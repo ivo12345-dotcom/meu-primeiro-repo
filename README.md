@@ -10,4 +10,4 @@ Um repositório de exemplo para aprender Git e GitHub.
 
 ## Contribuindo
 
-Pull requests são bem-vindos. Para mudancas maiores, abra uma issue primeiro.
+Pull requests são bem-vindos. Para mudanças maiores, abra uma issue primeiro.
