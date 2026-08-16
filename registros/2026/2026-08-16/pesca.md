@@ -18,9 +18,8 @@ O registo é feito por **lance**: cada passagem ao corrico e cada deriva de
 vertical é um lance próprio, com as suas horas e capturas.
 
 **Corrico** — percurso de ida e volta, cerca de **2 a 3 milhas** por
-passagem, do Mar da Palha até abaixo da Ponte Vasco da Gama *(a confirmar:
-percebi "abaixo da Gama", mas o áudio não estava claro)*. Motor sempre a
-trabalhar. Duas canas, duas amostras.
+passagem, do Mar da Palha até abaixo da **Ponte Vasco da Gama**. Motor
+sempre a trabalhar. Duas canas, duas amostras.
 
 **Vertical** — feito **à deriva**, com o motor fora de trabalho. Não é um
 plano fixo: entra em cena quando aparece uma **bola de peixe** e o corrico
