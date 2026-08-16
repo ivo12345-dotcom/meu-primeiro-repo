@@ -24,7 +24,7 @@
 | Técnica / arte | Corrico — 2 canas, 2 amostras |
 | N.º de canas | 2 |
 | Amostras | 2 |
-| Acessórios | "Pingalins" montados à frente e atrás, nas garras (anzóis) da amostra — *termo a confirmar* |
+| Acessórios | "Pingalins" montados à frente e atrás, nas garras (anzóis) da amostra — *termo a confirmar; foto a receber* |
 | Cana / carreto | |
 | Linha / fluorocarbono | |
 | Montagem / anzóis | |

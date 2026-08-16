@@ -47,7 +47,20 @@ Registo de pontos e derrotas — a preencher com os dados do plotter.
 
 | # | Hora | Ponto / Local | Latitude | Longitude | Profundidade | Rumo | Velocidade |
 |---|---|---|---|---|---|---|---|
-| 1 | ≈14:50 | Largada — Doca do Espanhol | 38° 42,02' N | 009° 10,51' W | — | — | — |
+| 1 | ≈14:50 | Largada do posto de amarração — Doca do Espanhol | 38° 42,02' N | 009° 10,51' W | — | — | — |
+| 2 | 14:55 | Em manobra dentro da doca, a navegar para a saída | — | — | — | — | — |
+
+> Prevista gravação de track a bordo. Quando estiver disponível, os pontos
+> desta tabela passam a sair do ficheiro do track (ver "Track / derrota"
+> abaixo).
+
+### Track / derrota
+
+| Campo | Valor |
+|---|---|
+| Gravação | Prevista — a fazer a bordo |
+| Ficheiro | *(a receber)* |
+| Formato | *(a confirmar — GPX/KML preferível)* |
 
 ## Motor e consumos
 
