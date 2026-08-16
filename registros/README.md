@@ -26,4 +26,4 @@ desse dia.
 
 | # | Data | Local | Navegação | Pesca | Capturas |
 |---|---|---|---|---|---|
-| 1 | 2026-08-16 | — | [ver](2026/2026-08-16/navegacao.md) | [ver](2026/2026-08-16/pesca.md) | — |
+| 1 | 2026-08-16 | Doca do Espanhol (Alcântara) — Tejo | [ver](2026/2026-08-16/navegacao.md) | [ver](2026/2026-08-16/pesca.md) | *em curso* |
