@@ -49,6 +49,7 @@ Registo de pontos e derrotas — a preencher com os dados do plotter.
 |---|---|---|---|---|---|---|---|
 | 1 | ≈14:50 | Largada do posto de amarração — Doca do Espanhol | 38° 42,02' N | 009° 10,51' W | — | — | — |
 | 2 | 14:55 | Em manobra dentro da doca, a navegar para a saída | — | — | — | — | — |
+| 3 | 14:58 | Saída para o Tejo, rumo a montante — destino Mar da Palha, em direção à Ponte Vasco da Gama | — | — | — | NE (subida do rio) | — |
 
 > Prevista gravação de track a bordo. Quando estiver disponível, os pontos
 > desta tabela passam a sair do ficheiro do track (ver "Track / derrota"

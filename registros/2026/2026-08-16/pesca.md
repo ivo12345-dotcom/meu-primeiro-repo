@@ -7,13 +7,25 @@
 
 | Campo | Valor |
 |---|---|
-| Local / pesqueiro | A definir em navegação — saída da Doca do Espanhol (Doca de Alcântara), Tejo |
-| Coordenadas | |
-| Profundidade | |
+| Zona | Rio Tejo — **Mar da Palha** |
 | Hora de início | ≈ 14:50 (hora local) — a confirmar |
 | Hora de fim | |
 | Maré | pendente (ver `navegacao.md`) |
-| Tipo de fundo | |
+
+## Pesqueiros
+
+### 1 — Mar da Palha, cabeços junto às bóias
+
+| Campo | Valor |
+|---|---|
+| Local | Mar da Palha, rio Tejo — cabeços junto às bóias, em direção à Ponte Vasco da Gama |
+| Coordenadas | *(a tirar no plotter)* |
+| Profundidade | |
+| Técnica | Corrico |
+| Hora de início | 14:58 — a caminho |
+| Hora de fim | |
+| Tipo de fundo | Cabeços |
+| Notas | Primeiro pesqueiro do dia |
 
 ## Plano de pesca (previsto à partida)
 
