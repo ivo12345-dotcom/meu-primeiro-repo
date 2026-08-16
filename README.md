@@ -1,13 +1,13 @@
 # Meu Primeiro Repo
 
-Um repositório de exemplo para aprender Git e GitHub.
+Diário de bordo e registo de pesca.
 
-## Como usar
+## Conteúdo
 
-1. Clone o repositório
-2. Explore os arquivos
-3. Faça sua primeira contribuição!
+- [`registros/`](registros/) — as saídas, uma pasta por dia, com o registo de
+  navegação e o registo de pesca.
+- [`registros/modelos/`](registros/modelos/) — modelos em branco.
 
-## Contribuindo
+O índice de todas as saídas está em [`registros/README.md`](registros/README.md).
 
-Pull requests são bem-vindos. Para mudancas maiores, abra uma issue primeiro.
+Primeira saída: **2026-08-16**.
