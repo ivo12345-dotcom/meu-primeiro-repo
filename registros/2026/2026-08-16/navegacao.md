@@ -67,7 +67,7 @@ Registo de pontos e derrotas — a preencher com os dados do plotter.
 
 | Campo | Valor |
 |---|---|
-| Regime | **Motor a trabalhar durante toda a saída** (pesca ao corrico) |
+| Regime | Motor a trabalhar nos lances de **corrico**; **à deriva**, sem motor, nos lances de pesca vertical |
 | Horas de motor (início) | |
 | Horas de motor (fim) | |
 | Distância percorrida | |
@@ -78,7 +78,8 @@ Registo de pontos e derrotas — a preencher com os dados do plotter.
 ## Ocorrências e notas
 
 - Preparação feita em terra antes da largada; saída imediata a seguir.
-- Sem paragem de motor prevista — todo o dia em navegação, ao corrico.
+- Corrico em passagens de ≈ 2–3 milhas, do Mar da Palha até abaixo da Ponte
+  Vasco da Gama.
 
 ## Manutenção / verificações
 
