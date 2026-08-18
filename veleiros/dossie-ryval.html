@@ -1,0 +1,777 @@
+<meta charset="utf-8">
+<title>Dossiê Ryval</title>
+<style>
+  /* ---- tokens: light (chart paper) ---- */
+  :root {
+    --ground:    #F2F4F3;
+    --surface:   #FBFCFB;
+    --surface-2: #E7EBEA;
+    --ink:       #132A33;
+    --ink-2:     #3D565E;
+    --muted:     #6B8087;
+    --rule:      #CBD5D3;
+    --rule-soft: #DEE5E3;
+
+    --accent:      #A8155F;   /* magenta de carta náutica */
+    --accent-soft: #F6E6EE;
+    --ok:          #2C6A57;
+    --ok-soft:     #E1EDE8;
+    --warn:        #A55E14;
+    --warn-soft:   #F5E9DA;
+    --gap:         #9A2B21;
+    --gap-soft:    #F6E4E1;
+
+    --serif: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+    --sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+    --measure: 68ch;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:    #0E1A1F;
+      --surface:   #15252A;
+      --surface-2: #1D3138;
+      --ink:       #DEE8E7;
+      --ink-2:     #B4C6C7;
+      --muted:     #8AA1A6;
+      --rule:      #2C444B;
+      --rule-soft: #223840;
+
+      --accent:      #F183BA;
+      --accent-soft: #3A1E2C;
+      --ok:          #6DBE9E;
+      --ok-soft:     #16332B;
+      --warn:        #E0A560;
+      --warn-soft:   #382814;
+      --gap:         #EE8477;
+      --gap-soft:    #3A211D;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:    #0E1A1F;
+    --surface:   #15252A;
+    --surface-2: #1D3138;
+    --ink:       #DEE8E7;
+    --ink-2:     #B4C6C7;
+    --muted:     #8AA1A6;
+    --rule:      #2C444B;
+    --rule-soft: #223840;
+
+    --accent:      #F183BA;
+    --accent-soft: #3A1E2C;
+    --ok:          #6DBE9E;
+    --ok-soft:     #16332B;
+    --warn:        #E0A560;
+    --warn-soft:   #382814;
+    --gap:         #EE8477;
+    --gap-soft:    #3A211D;
+  }
+
+  /* ---- base ---- */
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 20px 80px;
+  }
+
+  /* ---- masthead ---- */
+  .masthead {
+    border-bottom: 2px solid var(--ink);
+    padding: 40px 0 20px;
+    margin-bottom: 32px;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 10px;
+  }
+
+  .masthead h1 {
+    font-family: var(--serif);
+    font-size: clamp(34px, 7vw, 52px);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+
+  .masthead .sub {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(17px, 3vw, 20px);
+    color: var(--ink-2);
+    margin: 0 0 24px;
+  }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+
+  .fact {
+    background: var(--surface);
+    padding: 12px 14px;
+  }
+
+  .fact dt {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 4px;
+  }
+
+  .fact dd {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+
+  .fact dd.target { color: var(--accent); font-weight: 700; }
+
+  /* ---- sections ---- */
+  section { margin: 0 0 44px; }
+
+  h2 {
+    font-family: var(--serif);
+    font-size: clamp(23px, 4vw, 29px);
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    margin: 0 0 4px;
+    text-wrap: balance;
+  }
+
+  .lede {
+    color: var(--ink-2);
+    max-width: var(--measure);
+    margin: 0 0 20px;
+  }
+
+  h3 {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 26px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+
+  p { max-width: var(--measure); }
+
+  /* ---- status chips ---- */
+  .chip {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 2px;
+    white-space: nowrap;
+    vertical-align: 2px;
+  }
+  .chip.ok   { background: var(--ok-soft);   color: var(--ok);   }
+  .chip.warn { background: var(--warn-soft); color: var(--warn); }
+  .chip.gap  { background: var(--gap-soft);  color: var(--gap);  }
+
+  /* ---- verdict callout ---- */
+  .verdict {
+    background: var(--surface);
+    border-left: 3px solid var(--accent);
+    padding: 20px 22px;
+    margin-bottom: 40px;
+  }
+  .verdict p { margin: 0 0 10px; }
+  .verdict p:last-child { margin-bottom: 0; }
+
+  /* ---- open questions (the two blockers) ---- */
+  .blockers {
+    display: grid;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .blocker {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--warn);
+    padding: 16px 18px;
+  }
+
+  .blocker h4 {
+    font-family: var(--serif);
+    font-size: 19px;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+
+  .blocker p { margin: 0; font-size: 15px; color: var(--ink-2); }
+
+  /* ---- checklists ---- */
+  ul.check {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 1px;
+    background: var(--rule-soft);
+    border: 1px solid var(--rule-soft);
+  }
+
+  ul.check li {
+    background: var(--surface);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 11px 14px;
+  }
+
+  ul.check input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    flex: 0 0 auto;
+    width: 17px;
+    height: 17px;
+    margin: 4px 0 0;
+    border: 1.5px solid var(--muted);
+    border-radius: 2px;
+    background: transparent;
+    cursor: pointer;
+    display: grid;
+    place-content: center;
+  }
+
+  ul.check input[type="checkbox"]::after {
+    content: "";
+    width: 9px;
+    height: 5px;
+    border-left: 2px solid var(--surface);
+    border-bottom: 2px solid var(--surface);
+    transform: rotate(-45deg) translate(1px, -1px);
+    opacity: 0;
+  }
+
+  ul.check input[type="checkbox"]:checked {
+    background: var(--ok);
+    border-color: var(--ok);
+  }
+
+  ul.check input[type="checkbox"]:checked::after { opacity: 1; }
+
+  ul.check input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  ul.check input[type="checkbox"]:checked + span { color: var(--muted); }
+
+  ul.check span { font-size: 15px; line-height: 1.5; }
+
+  ul.check .why {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* ---- questions to seller ---- */
+  ol.ask {
+    counter-reset: q;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 10px;
+  }
+
+  ol.ask li {
+    counter-increment: q;
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    gap: 12px;
+    align-items: baseline;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--rule-soft);
+    font-size: 15px;
+  }
+
+  ol.ask li::before {
+    content: counter(q, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  ol.ask li:last-child { border-bottom: none; }
+
+  /* ---- budget table ---- */
+  .tablewrap { overflow-x: auto; border: 1px solid var(--rule); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+    background: var(--surface);
+  }
+
+  th, td {
+    text-align: left;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+
+  thead th {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  td.num, th.num {
+    text-align: right;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  tfoot td {
+    font-weight: 700;
+    border-bottom: none;
+    background: var(--surface-2);
+  }
+
+  /* ---- price strategy ---- */
+  .ladder {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    margin: 18px 0;
+  }
+
+  .rung { background: var(--surface); padding: 16px; }
+  .rung .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 6px;
+  }
+  .rung .amount {
+    font-family: var(--mono);
+    font-size: 21px;
+    font-variant-numeric: tabular-nums;
+    display: block;
+  }
+  .rung.goal { background: var(--accent-soft); }
+  .rung.goal .amount { color: var(--accent); font-weight: 700; }
+  .rung .note { font-size: 13px; color: var(--muted); display: block; margin-top: 6px; }
+
+  strong { font-weight: 700; }
+  em { font-style: italic; }
+
+  /* ---- quoted source text ---- */
+  blockquote {
+    margin: 14px 0;
+    padding: 0 0 0 16px;
+    border-left: 2px solid var(--accent);
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 16px;
+    color: var(--ink-2);
+    max-width: var(--measure);
+  }
+  blockquote cite {
+    display: block;
+    margin-top: 6px;
+    font-family: var(--mono);
+    font-style: normal;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* ---- ownership chain ---- */
+  ol.chain {
+    counter-reset: o;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0;
+  }
+  ol.chain li {
+    counter-increment: o;
+    position: relative;
+    padding: 0 0 20px 34px;
+    border-left: 1px solid var(--rule);
+    margin-left: 9px;
+    font-size: 15px;
+    max-width: var(--measure);
+  }
+  ol.chain li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.chain li::before {
+    content: counter(o);
+    position: absolute;
+    left: -9px;
+    top: 0;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--surface);
+    font-family: var(--mono);
+    font-size: 10px;
+    display: grid;
+    place-content: center;
+  }
+  ol.chain .when {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+
+  .footer {
+    margin-top: 56px;
+    padding-top: 18px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
+  @media (max-width: 520px) {
+    .wrap { padding: 0 16px 60px; }
+    ul.check li { padding: 10px 12px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Dossiê de compra · Preparado para a visita a Lagos</p>
+    <h1>Ryval</h1>
+    <p class="sub">Rival 34 · Peter Brett · Southern Boatbuilding, Southampton</p>
+
+    <dl class="facts">
+      <div class="fact"><dt>Construção</dt><dd>1976</dd></div>
+      <div class="fact"><dt>Dimensões</dt><dd>10,38 m</dd></div>
+      <div class="fact"><dt>Calado</dt><dd>1,78 m</dd></div>
+      <div class="fact"><dt>Pedido</dt><dd>28 000 €</dd></div>
+      <div class="fact"><dt>Alvo</dt><dd class="target">23–25 000 €</dd></div>
+      <div class="fact"><dt>Pedia antes</dt><dd>35 000 €</dd></div>
+    </dl>
+  </header>
+
+  <div class="verdict">
+    <p><strong>Vai vê-lo com intenção de comprar.</strong> O que estás a comprar por 28 000 € é um casco Peter Brett excelente com a estrutura toda resolvida e todos os sistemas de bordo por fazer. Essa é a ordem certa — o contrário é que arruína projetos.</p>
+    <p>Casco, mastro, mastreação, osmose e passa-cascos: feitos e pagos. Eletricidade, pilotos, eletrónica e molinete: por fazer. Isso é <em>dinheiro e tempo, não risco</em>.</p>
+  </div>
+
+  <section>
+    <h2>As duas coisas a resolver a bordo</h2>
+    <p class="lede">Nenhuma se vê nas fotografias. Ambas se veem em cinco minutos no barco, e uma delas ainda pode matar o negócio.</p>
+
+    <div class="blockers">
+      <div class="blocker">
+        <h4>Calha exterior no mastro para vela de capa</h4>
+        <p>Olha a <strong>face de ré do mastro</strong>, de baixo para cima. Procura uma calha exterior ao lado da abertura por onde sai a vela grande. Sem ela, e sem terceiro rizo, não tens forma de reduzir pano se o enrolador encravar — que é o modo de falha clássico deste sistema, e a solo é situação perigosa. Se existir, o problema maior desaparece.</p>
+        <p style="margin-top:8px"><strong>RESPOSTA DO VENDEDOR: não existe calha exterior.</strong></p>
+      </div>
+      <div class="blocker">
+        <h4>Identificação do piloto de vento</h4>
+        <p>Fotografa a <strong>chapa de marca no painel de popa</strong>. Se for um Aries, Monitor ou Windpilot com a base montada, valem 1 500–2 500 € e recuperam-se. Se for outra coisa, ou se faltarem peças de fundição, é sucata e monta-se de raiz.</p>
+        <p style="margin-top:8px"><strong>RESPOSTA DO VENDEDOR: está funcional mas desmontado. Marca e modelo ainda desconhecidos.</strong></p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>O que já está confirmado</h2>
+    <p class="lede">Trabalho duro já feito e pago, verificado por documentação, fotografia ou chapa de fabricante.</p>
+
+    <ul class="check">
+      <li><input type="checkbox" id="c1"><span><strong>Mastro e retranca Selden novos, 2022</strong> — logótipo confirmado, mastreação fixa brilhante e recente <span class="why">Poupança de 8 000–12 000 €</span></span></li>
+      <li><input type="checkbox" id="c2"><span><strong>Tratamento preventivo de osmose completo, 2021</strong> <span class="why">Pedir documentação e garantia ao vendedor</span></span></li>
+      <li><input type="checkbox" id="c3"><span><strong>Passa-cascos e válvulas em bronze substituídos, 2021</strong> — válvula de esfera com manete visível nas fotos</span></li>
+      <li><input type="checkbox" id="c4"><span><strong>Volvo Penta MD2030-D BT com caixa mecânica MS10L-A</strong> — transmissão por veio, não sail-drive. Pintura sã, sem fugas, gasóleo limpo no separador Delphi</span></li>
+      <li><input type="checkbox" id="c5"><span><strong>Cockpit fundo e estreito com bracadeira alta</strong> — a característica de segurança oceânica mais importante do barco</span></li>
+      <li><input type="checkbox" id="c6"><span><strong>Cana de leme</strong> — casa com piloto de vento, e é mais fiável que roda</span></li>
+      <li><input type="checkbox" id="c7"><span><strong>Conveses laterais largos, verdugo de teca, balaustrada dupla</strong></span></li>
+      <li><input type="checkbox" id="c8"><span><strong>Fogão Plastimo com forno, montado em cardan</strong>, e bomba de porão manual acessível na cozinha</span></li>
+      <li><input type="checkbox" id="c9"><span><strong>Interior sólido</strong> — verniz intacto, forro do teto limpo e sem abatimento, casa de banho remodelada, mesa de cartas a sério</span></li>
+      <li><input type="checkbox" id="c10"><span><strong>O barco navega</strong> — fotografia sob vela com grande e genoa a portar, prova que o enrolador de mastro abre</span></li>
+      <li><input type="checkbox" id="c11"><span><strong>Os enroladores têm comando manual</strong> — abre-se a embraiagem e usa-se manivela. Falha elétrica deixa de impedir reduzir pano</span></li>
+      <li><input type="checkbox" id="c12"><span><strong>Lugar de marina em Lagos, transmissível</strong> <span class="why">Confirmar por escrito com a marina, não com o corretor, e incluir na escritura</span></span></li>
+      <li><input type="checkbox" id="c13"><span><strong>Título livre de dívidas</strong></span></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Histórico documentado</h2>
+    <p class="lede">Extraído do dossiê de venda anterior do próprio vendedor. Três donos em 49 anos, com cadeia de propriedade e faturas.</p>
+
+    <ol class="chain">
+      <li>
+        <span class="when">1976 – 2005 · <em>Enchiridion</em></span>
+        <strong>Médico holandês.</strong> Trouxe-a do Reino Unido para Amesterdão, registou-a sob bandeira holandesa e navegou-a em família durante quase trinta anos no Mar do Norte, Canal da Mancha e águas holandesas. Porto de abrigo: Hindeloopen.
+      </li>
+      <li>
+        <span class="when">01/2005 · comprada por 40 000 € · <em>Ryval</em></span>
+        <strong>Segundo dono.</strong> Transportada por terra para o estaleiro Delta Marina, no sul dos Países Baixos, para o primeiro refit. Rebatizada, registada sob bandeira belga, porto de abrigo Nieuwpoort. Existe <em>Bill of Sale</em>.
+      </li>
+      <li>
+        <span class="when">Desde 2007 · Lagos</span>
+        Usada apenas como <em>daysailer</em> ao longo da costa algarvia. <strong>Varada quase todos os anos para inspeção e pintura de fundo.</strong>
+      </li>
+      <li>
+        <span class="when">2022 · refit interrompido</span>
+        <strong>Dono atual, holandês.</strong> Começou um refit completo do aparelho. Nunca o terminou — vende por motivos de saúde.
+      </li>
+    </ol>
+
+    <h3>Investimento com fatura</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Ano</th><th>Trabalho</th><th class="num">Valor</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">2005</td><td>Compra pelo segundo dono</td><td class="num">40 000 €</td></tr>
+          <tr><td class="num">2008</td><td>Motor Volvo MD2030 novo — Delta Marina</td><td class="num">13 000 €</td></tr>
+          <tr><td class="num">2005–08</td><td>Interior, verniz da teca, forros — Delta Marina Kortgene</td><td class="num">8 000 €</td></tr>
+          <tr><td class="num">2005–08</td><td>Estofos — De Jong Scheepsstoffering</td><td class="num">2 000 €</td></tr>
+          <tr><td class="num">2021</td><td>Anti-osmose completo e verdugo de teca — <strong>Sopromar</strong></td><td class="num">8 000 €</td></tr>
+          <tr><td class="num">2022</td><td>Mastro, retranca, mastreação e dois enroladores elétricos — concessionário Selden do Algarve</td><td class="num">27 000 €</td></tr>
+        </tbody>
+        <tfoot>
+          <tr><td colspan="2">Trabalho documentado desde 2005</td><td class="num">58 000 €</td></tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <h3>A frase que muda tudo</h3>
+    <blockquote>
+      A friend of the owner sailed her singlehanded from Nieuwpoort across Biscay to Lagos Portugal in two weeks.
+      <cite>Dossiê de venda do proprietário</cite>
+    </blockquote>
+    <p><strong>Este casco já atravessou o Golfo da Biscaia a solo</strong> — cerca de 1 400 milhas, da Bélgica ao Algarve, em duas semanas. Não é a reputação genérica do modelo: é este barco, já testado no tipo exato de navegação que queres fazer.</p>
+
+    <h3>Discrepâncias entre o histórico e o anúncio</h3>
+    <ul class="check">
+      <li><input type="checkbox" id="h1"><span><strong>O motor: 2005 ou 2008?</strong> O histórico dá fatura de 05-05-2008 e o número de série <span style="font-family:var(--mono)">#5102177013</span>, que bate exatamente com a chapa do motor a bordo. O vendedor mantém 2005. Provável gralha no documento — e em qualquer dos casos são 250 horas em quase vinte anos <span class="why">A documentação é genuína e é deste barco</span></span></li>
+      <li><input type="checkbox" id="h2"><span><strong>O ano de construção é 1976.</strong> O histórico e a chapa do construtor concordam; o anúncio do boat24 diz 1978. O vendedor já aceitou corrigir</span></li>
+      <li><input type="checkbox" id="h3"><span><strong>Em 2022 o barco ficou sem vela grande.</strong> O histórico diz «she is still missing her main sail». O vendedor confirma que a vela de 2025 está a bordo — pedir a fatura</span></li>
+      <li><input type="checkbox" id="h4"><span><strong>«A Rival 34 won the OSTAR 1976» não é exato.</strong> A OSTAR de 1976 foi ganha por Éric Tabarly no Pen Duick VI, numa frota de 125 barcos. Um Rival 34 pode ter ganho a sua classe. Serve para calibrares o peso da restante prosa comercial</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Vistoria — o que exigir ao vistoriador</h2>
+    <p class="lede">Barco fora de água, vistoriador escolhido por ti e nunca pelo vendedor. Orçamento de 800–1 200 €. Um relatório mau é o melhor dinheiro que gastas nesta compra.</p>
+
+    <h3>Casco e estrutura</h3>
+    <ul class="check">
+      <li><input type="checkbox" id="v1"><span><strong>Lastro: encapsulado ou aparafusado?</strong> <span class="why">Não presumir. O calado de 1,78 m indica barbatana — se houver parafusos, têm de ser inspecionados</span></span></li>
+      <li><input type="checkbox" id="v2"><span><strong>Berço da quilha por dentro</strong>, com o barco a pousar no cepo — fissuras, infiltração, movimento</span></li>
+      <li><input type="checkbox" id="v3"><span><strong>Resultado real do tratamento de osmose</strong> — leitura de humidade em vários pontos, não só a olho</span></li>
+      <li><input type="checkbox" id="v4"><span><strong>Leme e skeg</strong> — casquilhos, folga da haste, mexido em todos os sentidos</span></li>
+      <li><input type="checkbox" id="v5"><span><strong>Chapas de enfrechate e convés à volta delas</strong> — ponto de fadiga clássico</span></li>
+      <li><input type="checkbox" id="v6"><span><strong>Humidade no núcleo do convés</strong> — percussão em toda a superfície, sobretudo à volta de ferragens e vigias</span></li>
+      <li><input type="checkbox" id="v7"><span><strong>Base do pilar de compressão e teto da cabina à volta do pé do mastro</strong> <span class="why">O mastro é montado no teto, não encastrado na quilha — a carga desce toda por este pilar</span></span></li>
+      <li><input type="checkbox" id="v8"><span><strong>Origem das manchas de água</strong> vistas no interior do casco nos paióis e junto a uma válvula de fundo</span></li>
+    </ul>
+
+    <h3>Motor e sistemas</h3>
+    <ul class="check">
+      <li><input type="checkbox" id="v9"><span><strong>Ensaio de mar, motor a plena carga 20 minutos</strong> <span class="why">250 horas em quase vinte anos é quase nenhum uso — motores parados sofrem corrosão, injetores colados e vedantes ressequidos</span></span></li>
+      <li><input type="checkbox" id="v10"><span><strong>Análise de óleo e inspeção do permutador</strong></span></li>
+      <li><input type="checkbox" id="v11"><span><strong>Depósito de combustível: material e ano</strong> <span class="why">Se for o original de 1976 em aço, é substituição de ~1 500 €</span></span></li>
+      <li><input type="checkbox" id="v12"><span><strong>Abraçadeiras duplas</strong> em todas as mangueiras abaixo da linha de água <span class="why">Vi simples em algumas ligações</span></span></li>
+      <li><input type="checkbox" id="v13"><span><strong>Filtro de ar não-original</strong> no motor — perceber porquê e o que mais foi mexido</span></li>
+    </ul>
+
+    <h3>Navegação — verificar em pessoa</h3>
+    <ul class="check">
+      <li><input type="checkbox" id="v14"><span><strong>Barco equilibrado ao leme largado</strong> em ambas as amuras <span class="why">Um barco desequilibrado dá trabalho constante ao piloto de vento</span></span></li>
+      <li><input type="checkbox" id="v15"><span><strong>Enrolar e desenrolar a grande e o genoa</strong> com o motor desligado, a ver quanto consome da bateria</span></li>
+      <li><input type="checkbox" id="v16"><span><strong>Tamanho dos dois genoas</strong> <span class="why">O vendedor admite que o genoa é pequeno para o barco — «devia ter pelo menos mais 4 m²»</span></span></li>
+      <li><input type="checkbox" id="v17"><span><strong>Piloto de vento: marca, modelo, e todas as peças</strong> — está desmontado, verificar que nada falta</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Falhas já identificadas</h2>
+    <p class="lede">Não são defeitos escondidos — são sistemas que este barco simplesmente não tem, e que a tua missão exige. Servem de argumento de negociação.</p>
+
+    <ul class="check">
+      <li><input type="checkbox" id="f0"><span><span class="chip gap">Falha</span> <strong>Sem calha exterior no mastro</strong> — não é possível envergar vela de capa, e não há terceiro rizo. É o único item que não se resolve comprando: exige furar um mastro novo ou montar estai interior com reforço de convés. 1 000–3 500 €</span></li>
+      <li><input type="checkbox" id="f1"><span><span class="chip gap">Falha</span> <strong>Piloto automático obsoleto</strong> — a cabeça de comando é um Autohelm ST6000 dos anos 90, sem apoio da Raymarine. O que existe é um piloto de cana Raymarine, subdimensionado para 6 t. Substituição integral, não reparação</span></li>
+      <li><input type="checkbox" id="f2"><span><span class="chip gap">Falha</span> <strong>Genoa subdimensionado</strong> — admitido pelo vendedor. Falta-lhe pelo menos 4 m². Vela nova bem dimensionada: 2 500–4 000 €</span></li>
+      <li><input type="checkbox" id="f3"><span><span class="chip gap">Falha</span> <strong>Uma única bateria de 100 Ah</strong>, sem painéis solares, e o carregador a precisar de substituição. A instalação não suporta o próprio equipamento que o barco tem</span></li>
+      <li><input type="checkbox" id="f4"><span><span class="chip gap">Falha</span> <strong>Sem molinete de amarra</strong> — fundear 6 toneladas à mão, a solo, acaba por significar pagar marina em todo o lado</span></li>
+      <li><input type="checkbox" id="f5"><span><span class="chip warn">Rever</span> <strong>Bateria presa com fitas de nylon, sem caixa fechada, terminais expostos e já corroídos</strong> — não cumpre o mínimo para navegação ao largo</span></li>
+      <li><input type="checkbox" id="f6"><span><span class="chip warn">Rever</span> <strong>Isolador Volvo de 70 A por díodos</strong> — queda de ~0,6 V, subcarrega cronicamente. Substituir por DC-DC ou relé de tensão</span></li>
+      <li><input type="checkbox" id="f7"><span><span class="chip warn">Rever</span> <strong>Eletrónica do mastro no mesmo paiol da bateria</strong> — gases de bateria corroem eletrónica</span></li>
+      <li><input type="checkbox" id="f8"><span><span class="chip warn">Rever</span> <strong>Sem plotter moderno, sem AIS, sem jangada, sem EPIRB, sem frigorífico</strong> — GPS Furuno monocromático e VHF antigo</span></li>
+      <li><input type="checkbox" id="f9"><span><span class="chip warn">Rever</span> <strong>Soalho novo comprado e nunca instalado</strong>; revestimento e soalho a precisar de trabalho</span></li>
+      <li><input type="checkbox" id="f10"><span><span class="chip warn">Rever</span> <strong>Sem panos de balouço nos bancos</strong>, mesa do salão num só pé de alumínio já corroído, sem barra de proteção no fogão</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Perguntas ao vendedor</h2>
+    <p class="lede">As que já foram respondidas estão registadas acima. Estas ficam por fechar.</p>
+
+    <ol class="ask">
+      <li>Qual a marca e modelo do piloto de vento? Que peças lhe faltam?</li>
+      <li>O atuador do autopiloto está montado? A cabeça Autohelm ST6000 comanda o quê?</li>
+      <li>Que idade e que tamanho têm os dois genoas?</li>
+      <li>Podem enviar o cabeçalho das faturas — osmose 2021, Selden 2022, motor — com os valores tapados se preferirem?</li>
+      <li>Fotografias da sentina com o soalho levantado, da zona do berço da quilha por dentro, e dos paióis</li>
+      <li>O barco está em seco ou na água?</li>
+      <li>Confirmação escrita <strong>da marina</strong> de que o lugar é transmissível, em que condições e a que custo</li>
+      <li>Quantas horas fez o motor nos últimos cinco anos? Última revisão e última troca de impulsor?</li>
+      <li>Existe o <em>Bill of Sale</em> de 2005 e a cadeia de propriedade completa?</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Antes de falar com o vendedor</h2>
+    <p class="lede">Uma diligência gratuita que vale mais do que qualquer resposta do intermediário.</p>
+    <p><strong>Vai ao Sopromar e pergunta pelo <em>Ryval</em>.</strong> Estão a varar este casco quase todos os anos desde 2007 e foram eles que lhe fizeram o tratamento anti-osmose em 2021. Sabem exatamente o que o barco tem e o que lhe foi feito — e não têm nada a ganhar com a venda. É a melhor informação independente a que vais ter acesso, e está no mesmo sítio onde o barco se encontra.</p>
+  </section>
+
+  <section>
+    <h2>Orçamento depois da compra</h2>
+    <p class="lede">O custo real de pôr este barco pronto para Lisboa–Açores a solo. Isto sai do orçamento de equipamento, não do de compra.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Trabalho</th><th class="num">Mínimo</th><th class="num">Máximo</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Elétrico: banco 300–400 Ah, caixa, carregador novo, 300–400 W solar</td><td class="num">3 000 €</td><td class="num">5 000 €</td></tr>
+          <tr><td>Piloto automático novo e recuperação do piloto de vento</td><td class="num">4 000 €</td><td class="num">7 000 €</td></tr>
+          <tr><td>Plotter, AIS transponder, EPIRB, jangada</td><td class="num">4 000 €</td><td class="num">6 000 €</td></tr>
+          <tr><td>Molinete de amarra, com chapa de reforço e cabo</td><td class="num">1 500 €</td><td class="num">2 500 €</td></tr>
+          <tr><td><strong>Genoa novo bem dimensionado</strong></td><td class="num">2 500 €</td><td class="num">4 000 €</td></tr>
+          <tr><td><strong>Solução de pano de tempo</strong> — calha no mastro ou estai interior</td><td class="num">1 000 €</td><td class="num">3 500 €</td></tr>
+          <tr><td>Interior: panos de balouço, mesa, barra do fogão, soalho</td><td class="num">1 000 €</td><td class="num">2 500 €</td></tr>
+          <tr><td>Comunicações por satélite</td><td class="num">1 500 €</td><td class="num">1 500 €</td></tr>
+        </tbody>
+        <tfoot>
+          <tr><td>Total</td><td class="num">20 000 €</td><td class="num">30 000 €</td></tr>
+        </tfoot>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Estratégia de preço</h2>
+    <p class="lede">O anúncio diz <em>«for sale as it is &amp; open to offers»</em>, o barco está parado num estaleiro a acumular custos, e o vendedor vende por motivos de saúde. Não é um vendedor estratégico.</p>
+
+    <div class="ladder">
+      <div class="rung">
+        <span class="label">Pedia</span>
+        <span class="amount">35 000 €</span>
+        <span class="note">Dossiê anterior</span>
+      </div>
+      <div class="rung">
+        <span class="label">Pede agora</span>
+        <span class="amount">28 000 €</span>
+        <span class="note">Já desceu 20 %</span>
+      </div>
+      <div class="rung goal">
+        <span class="label">Alvo</span>
+        <span class="amount">23 000 €</span>
+        <span class="note">Após relatório de vistoria</span>
+      </div>
+      <div class="rung">
+        <span class="label">Limite</span>
+        <span class="amount">26 000 €</span>
+        <span class="note">Acima disto, procura outro</span>
+      </div>
+    </div>
+
+    <p><strong>A queda de 35 000 € para 28 000 € é o teu melhor argumento.</strong> Diz-te que o barco está há muito no mercado sem vender e que o vendedor já demonstrou que baixa. A tua proposta não é atrevida — é a continuação de uma trajetória que ele próprio iniciou.</p>
+
+    <p>Constrói a oferta sobre factos documentados, não sobre opinião: <strong>não há calha para vela de capa</strong>; <strong>o genoa está subdimensionado</strong>, admitido pelo vendedor; <strong>o piloto automático é obsoleto</strong>; <strong>a instalação elétrica não suporta o próprio equipamento do barco</strong>; <strong>não há molinete de amarra</strong>; e o que o relatório de vistoria encontrar.</p>
+
+    <h3>Prepara o contra-argumento</h3>
+    <p>O vendedor vai usar a <strong>fatura de 27 000 € do aparelho de 2022</strong> — é o argumento mais forte que ele tem, e é legítimo. A resposta é simples e verdadeira: <em>dinheiro gasto não é valor de mercado</em>. O que determina o preço é por quanto se vendem Rival 34 comparáveis, e quanto custa acabar este. E faltam-lhe 20 000 a 30 000 € de trabalho antes de poder ir aos Açores.</p>
+  </section>
+
+  <section>
+    <h2>Antes de assinar</h2>
+
+    <ul class="check">
+      <li><input type="checkbox" id="l1"><span><strong>Categoria de navegação.</strong> O anúncio diz «CE B – Offshore», mas um barco de 1976 é anterior à diretiva CE de 1998, e a categoria B não é oceânica. A categoria tem de ser atribuída pela autoridade marítima com base em vistoria <span class="why">Manter bandeira estrangeira contorna este problema</span></span></li>
+      <li><input type="checkbox" id="l2"><span><strong>Registo.</strong> O barco tem bandeira belga. Confirmar cadeia de propriedade, ausência de ónus, e o processo de transferência</span></li>
+      <li><input type="checkbox" id="l3"><span><strong>Lugar de marina em Lagos</strong> — confirmação escrita da marina e inclusão como condição na escritura</span></li>
+      <li><input type="checkbox" id="l4"><span><strong>Seguro.</strong> Muitas seguradoras excluem navegação a solo ou impõem condições. Confirma <em>antes</em> de comprar</span></li>
+      <li><input type="checkbox" id="l5"><span><strong>Reserva de 2 000–3 000 €</strong> para os primeiros três meses. Em qualquer barco usado aparece sempre algo que não estava no relatório</span></li>
+    </ul>
+  </section>
+
+  <p class="footer">Dossiê preparado a partir do anúncio do boat24, das fotografias fornecidas, da chapa do construtor, do dossiê de venda anterior do proprietário e das respostas do vendedor. Nenhuma inspeção física foi feita — nada aqui substitui a vistoria.</p>
+
+</div>
+
+<script>
+  (function () {
+    var boxes = document.querySelectorAll('ul.check input[type="checkbox"]');
+    var KEY = 'ryval-dossier-v1';
+    var state = {};
+    try { state = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { state = {}; }
+
+    boxes.forEach(function (box) {
+      if (state[box.id]) box.checked = true;
+      box.addEventListener('change', function () {
+        state[box.id] = box.checked;
+        try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* sem persistência */ }
+      });
+    });
+  })();
+</script>
