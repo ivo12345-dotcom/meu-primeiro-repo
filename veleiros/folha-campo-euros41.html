@@ -1,0 +1,497 @@
+<meta charset="utf-8">
+<title>Folha de Campo Euros 41</title>
+<style>
+  :root {
+    --paper:  #FFFFFF;
+    --ground: #EFF1F2;
+    --ink:    #111517;
+    --ink-2:  #3C464B;
+    --muted:  #6B767C;
+    --rule:   #B9C2C6;
+    --rule-2: #DCE1E3;
+    --mark:   #B23A0E;
+    --sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #16191B; --ground: #0D0F10; --ink: #E4E8EA; --ink-2: #B6C0C4;
+      --muted: #869195; --rule: #394347; --rule-2: #262D30; --mark: #FF8A55;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #16191B; --ground: #0D0F10; --ink: #E4E8EA; --ink-2: #B6C0C4;
+    --muted: #869195; --rule: #394347; --rule-2: #262D30; --mark: #FF8A55;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 15px; line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .sheet {
+    max-width: 820px; margin: 0 auto; background: var(--paper);
+    padding: 30px 32px 50px;
+  }
+
+  .head { border-bottom: 3px solid var(--ink); padding-bottom: 12px; margin-bottom: 6px; }
+  .head h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 3px; }
+  .head .sub { font-size: 13px; color: var(--ink-2); margin: 0; }
+
+  .fill {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px 18px; margin: 14px 0 18px;
+  }
+  .fill span {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--muted);
+    display: block; border-bottom: 1px solid var(--rule); padding-bottom: 20px;
+  }
+
+  .legend {
+    border: 1.5px solid var(--ink); padding: 9px 12px; margin-bottom: 22px;
+    font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 6px 22px; align-items: center;
+  }
+  .legend b { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; }
+
+  section { margin: 0 0 26px; break-inside: auto; }
+  .bh {
+    display: flex; align-items: baseline; gap: 9px;
+    border-bottom: 2px solid var(--ink); padding-bottom: 5px; margin-bottom: 4px;
+    break-after: avoid;
+  }
+  .bh .tg {
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    background: var(--ink); color: var(--paper); padding: 1px 6px; letter-spacing: 0.05em;
+  }
+  .bh h2 { font-size: 17px; font-weight: 800; letter-spacing: -0.01em; margin: 0; }
+  .intro { font-size: 12.5px; color: var(--ink-2); margin: 7px 0 9px; }
+
+  table.t { width: 100%; border-collapse: collapse; }
+  table.t thead th {
+    font-family: var(--mono); font-size: 8px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); font-weight: 700;
+    padding: 4px 3px; border-bottom: 1px solid var(--rule); text-align: center;
+  }
+  table.t thead th:first-child { text-align: left; }
+  table.t td {
+    border-bottom: 1px solid var(--rule-2); padding: 7px 5px;
+    vertical-align: top; break-inside: avoid;
+  }
+  table.t td.it { font-size: 13.5px; line-height: 1.35; }
+  table.t td.it .w {
+    display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.3;
+  }
+  table.t td.bx { width: 42px; text-align: center; }
+  table.t td.nt { width: 21%; border-left: 1px solid var(--rule-2); }
+  table.t tr.key td.it { font-weight: 600; }
+  table.t tr.key td.it::before {
+    content: "!"; font-family: var(--mono); font-weight: 700; color: var(--mark);
+    margin-right: 6px;
+  }
+  .box {
+    display: inline-block; width: 17px; height: 17px;
+    border: 1.5px solid var(--ink); border-radius: 2px; margin-top: 1px;
+  }
+
+  .notes { margin: 10px 0 0; break-inside: avoid; }
+  .notes .lab {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 4px;
+  }
+  .notes .lines { border: 1px solid var(--rule); }
+  .notes .lines div { border-bottom: 1px solid var(--rule-2); height: 21px; }
+  .notes .lines div:last-child { border-bottom: none; }
+
+  table.hum { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+  table.hum th, table.hum td { border: 1px solid var(--rule); padding: 0; text-align: center; }
+  table.hum thead th {
+    font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); padding: 5px 3px; background: var(--ground);
+  }
+  table.hum td.rl {
+    text-align: left; padding: 6px 7px; font-size: 12px; color: var(--ink-2);
+    background: var(--ground); white-space: nowrap;
+  }
+  table.hum td.cell { height: 34px; }
+
+  .calc {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    border: 1.5px solid var(--ink); margin-top: 10px;
+  }
+  .calc div { padding: 8px 10px; border-right: 1px solid var(--rule); }
+  .calc div:last-child { border-right: none; }
+  .calc .k {
+    font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.11em;
+    text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 16px;
+  }
+
+  .scale { margin-top: 10px; border: 1px solid var(--rule); }
+  .scale div {
+    display: grid; grid-template-columns: 92px 1fr; gap: 10px;
+    padding: 6px 10px; border-bottom: 1px solid var(--rule-2); font-size: 12.5px;
+  }
+  .scale div:last-child { border-bottom: none; }
+  .scale b { font-family: var(--mono); font-size: 12.5px; }
+
+  table.d { width: 100%; border-collapse: collapse; }
+  table.d thead th {
+    font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted); font-weight: 700;
+    padding: 4px 6px; border-bottom: 1px solid var(--rule); text-align: left;
+  }
+  table.d td { border-bottom: 1px solid var(--rule-2); padding: 8px 6px; font-size: 13.5px; break-inside: avoid; }
+  table.d td.bx { width: 42px; text-align: center; }
+  table.d td.obs { width: 34%; border-left: 1px solid var(--rule-2); }
+
+  .foot {
+    margin-top: 26px; padding-top: 10px; border-top: 1px solid var(--rule);
+    font-size: 10.5px; color: var(--muted); line-height: 1.5;
+  }
+
+  .printbar {
+    max-width: 820px; margin: 0 auto; padding: 14px 32px 0;
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  }
+  .printbar button {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    background: var(--ink); color: var(--paper); border: none;
+    padding: 11px 18px; border-radius: 3px; cursor: pointer;
+  }
+  .printbar button:focus-visible { outline: 3px solid var(--mark); outline-offset: 2px; }
+  .printbar span { font-size: 12.5px; color: var(--muted); }
+
+  .pb { break-before: page; }
+
+  @page { size: A4 portrait; margin: 11mm 10mm; }
+
+  @media print {
+    body { background: #fff; color: #000; font-size: 9.6pt; line-height: 1.32; }
+    .sheet { max-width: none; padding: 0; background: #fff; }
+    .no-print { display: none !important; }
+    .head h1 { font-size: 19pt; }
+    .bh h2 { font-size: 12.5pt; }
+    table.t td.it { font-size: 9.4pt; }
+    table.t td.it .w { font-size: 8.2pt; }
+    .box { border-color: #000; }
+    .bh .tg { background: #000; color: #fff; }
+    section { break-inside: auto; }
+    tr, .notes, .calc, .scale { break-inside: avoid; }
+    .bh { break-after: avoid; }
+  }
+</style>
+
+<div class="printbar no-print">
+  <button id="pr">Imprimir</button>
+  <span>A4 &middot; frente e verso &middot; marca a l&aacute;pis</span>
+</div>
+
+<div class="sheet">
+
+  <div class="head">
+    <h1>Amel Euros 41 &mdash; folha de campo</h1>
+    <p class="sub">1976 &middot; Henri Amel, La Rochelle &middot; 12,35 m &middot; 7 t &middot; calado 1,65 m &middot; ketch &middot; Portim&atilde;o, em seco h&aacute; um m&ecirc;s</p>
+  </div>
+
+  <div class="fill">
+    <span>Data</span>
+    <span>Hora de in&iacute;cio</span>
+    <span>Presentes</span>
+    <span>Tempo / luz</span>
+  </div>
+
+  <div class="legend">
+    <b>BEM</b> sem reparos
+    <b>M&Eacute;D</b> aceit&aacute;vel, a vigiar
+    <b>N&Atilde;O</b> defeito, em falta, ou n&atilde;o verific&aacute;vel
+  </div>
+
+  <!-- A -->
+  <section>
+    <div class="bh"><span class="tg">A</span><h2>Casco &mdash; fazer primeiro, com boa luz</h2></div>
+    <p class="intro">A tinta de fundo &eacute; recente e tapa defeitos. <strong>N&atilde;o confies nos olhos.</strong> Confia no humid&iacute;metro e no martelo. Se este bloco chumbar, acaba aqui.</p>
+
+    <table class="t">
+      <thead><tr><th>Item</th><th>Bem</th><th>M&eacute;d</th><th>N&atilde;o</th><th>Notas</th></tr></thead>
+      <tbody>
+        <tr class="key"><td class="it">Percutir todo o casco abaixo da linha de &aacute;gua<span class="w">Som seco e ressonante = s&atilde;o. Som abafado e morto = &aacute;gua ou delamina&ccedil;&atilde;o. Se o martelo e o humid&iacute;metro discordarem, acredita no martelo</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">Jun&ccedil;&atilde;o quilha-casco em todo o comprimento<span class="w">Linha de fissura, escorrimento, manchas de ferrugem</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Costados vistos de rasante, dos dois bordos<span class="w">Ondula&ccedil;&otilde;es e zonas de brilho diferente denunciam repara&ccedil;&otilde;es</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Bolhas, ou pontos a transpirar atrav&eacute;s da tinta de fundo</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">Leme: abanar de lado e de vante a r&eacute;<span class="w">Folga no casquilho. Percutir a p&aacute; &mdash; som morto significa leme cheio de &aacute;gua</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Skeg: fissuras na jun&ccedil;&atilde;o ao casco</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">Todos os passa-cascos e v&aacute;lvulas, um a um<span class="w">Bronze rosado = deszincifica&ccedil;&atilde;o, substituir. V&aacute;lvula que n&atilde;o roda = substituir</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">&Acirc;nodos: estado e liga&ccedil;&atilde;o de massa</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Veio: abanar para sentir folga no casquilho. H&eacute;lice, bucim, p&aacute;s</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Fundo da quilha: sinais de encalhe</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+      </tbody>
+    </table>
+
+    <div class="notes"><div class="lab">Notas do bloco A</div><div class="lines"><div></div><div></div><div></div><div></div></div></div>
+  </section>
+
+  <!-- A1 -->
+  <section>
+    <div class="bh"><span class="tg">A1</span><h2>Leituras de humidade</h2></div>
+    <p class="intro">Interessa a <strong>diferen&ccedil;a</strong> entre acima e abaixo da linha de &aacute;gua, n&atilde;o o valor absoluto. Escreve todos os n&uacute;meros, mesmo os bons. <strong>Medir tamb&eacute;m por dentro</strong> &mdash; na sentina e nos pai&oacute;is a tinta de fundo n&atilde;o falseia a leitura.</p>
+
+    <table class="hum">
+      <thead>
+        <tr><th style="width:26%">Posi&ccedil;&atilde;o</th><th>Proa</th><th>Meio-proa</th><th>Meio</th><th>Meio-popa</th><th>Popa</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="rl">REFER&Ecirc;NCIA<br>acima da linha &middot; BB</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
+        <tr><td class="rl">REFER&Ecirc;NCIA<br>acima da linha &middot; EB</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
+        <tr><td class="rl">BB &middot; faixa alta</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
+        <tr><td class="rl">BB &middot; faixa m&eacute;dia</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
+        <tr><td class="rl">BB &middot; faixa baixa</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
+        <tr><td class="rl">EB &middot; faixa alta</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
+        <tr><td class="rl">EB &middot; faixa m&eacute;dia</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
+        <tr><td class="rl">EB &middot; faixa baixa</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
+      </tbody>
+    </table>
+
+    <table class="hum">
+      <thead>
+        <tr><th style="width:26%">Zonas cr&iacute;ticas</th><th>Jun&ccedil;&atilde;o quilha</th><th>Bojo BB</th><th>Bojo EB</th><th>Passa-cascos</th><th>Leme</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="rl">Por fora</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
+        <tr><td class="rl">Por dentro</td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td><td class="cell"></td></tr>
+      </tbody>
+    </table>
+
+    <div class="calc">
+      <div><span class="k">M&eacute;dia refer&ecirc;ncia</span></div>
+      <div><span class="k">M&eacute;dia abaixo da linha</span></div>
+      <div><span class="k">Diferencial</span></div>
+    </div>
+
+    <div class="scale">
+      <div><b>at&eacute; +5</b><span>Casco s&atilde;o.</span></div>
+      <div><b>+5 a +15</b><span>Elevado mas plaus&iacute;vel num casco de 49 anos. Decide pelo martelo.</span></div>
+      <div><b>acima de +15</b><span>Ao fim de apenas um m&ecirc;s em seco, isto &eacute; real. Vistoria profissional obrigat&oacute;ria.</span></div>
+    </div>
+    <p class="intro" style="margin-top:8px"><strong>Pontos isolados</strong> muito acima da m&eacute;dia &mdash; na jun&ccedil;&atilde;o da quilha, no bojo ou junto a passa-cascos &mdash; pesam mais do que uma m&eacute;dia alta uniforme.</p>
+  </section>
+
+  <!-- A2 -->
+  <section class="pb">
+    <div class="bh"><span class="tg">A2</span><h2>Gelcoat &mdash; fissuras em estrela</h2></div>
+    <p class="intro">Duas coisas parecidas que significam o oposto. <strong>Craquel&eacute; geral</strong>, espalhado por superf&iacute;cies grandes, &eacute; idade e ultravioleta &mdash; cosm&eacute;tico. <strong>Fissuras em estrela ou radiais a partir de um parafuso ou ferragem</strong> significam que a estrutura por baixo fletiu, que falta chapa de refor&ccedil;o, ou que o n&uacute;cleo est&aacute; esmagado. Essas s&atilde;o estruturais.</p>
+
+    <table class="t">
+      <thead><tr><th>Onde procurar</th><th>Bem</th><th>M&eacute;d</th><th>N&atilde;o</th><th>Notas</th></tr></thead>
+      <tbody>
+        <tr class="key"><td class="it">Chapas de enfrechate &mdash; mastro grande, os dois bordos</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">Chapas de enfrechate &mdash; mastro da mezena, os dois bordos<span class="w">O mastro da mezena &eacute; sempre o esquecido</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">P&eacute; dos dois mastros e convés &agrave; volta<span class="w">Depress&atilde;o no teto da cabina, fissuras radiais</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">Apoios do Windpilot no painel de popa<span class="w">Um piloto de vento arranca o painel se estiver mal montado</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Bases dos bala&uacute;stres, uma a uma</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Guinchos e mordentes</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Extremos das calhas de escota do genoa</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Cunhos, buzinas e ponto de amarra&ccedil;&atilde;o do molinete</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Ferragem do estai de proa no talha-mar</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Jun&ccedil;&atilde;o casco-convés em todo o per&iacute;metro</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Cantos do cockpit central e tampas dos pai&oacute;is</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">Para cada fissura em estrela: abrir por dentro e ver se h&aacute; chapa de refor&ccedil;o<span class="w">Sem chapa de refor&ccedil;o, a ferragem vai arrancar mais cedo ou mais tarde</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+      </tbody>
+    </table>
+
+    <div class="notes"><div class="lab">Onde est&atilde;o as fissuras &mdash; desenhar ou descrever a localiza&ccedil;&atilde;o</div><div class="lines"><div></div><div></div><div></div><div></div><div></div><div></div></div></div>
+  </section>
+
+  <!-- B -->
+  <section>
+    <div class="bh"><span class="tg">B</span><h2>Windpilot Pacific</h2></div>
+    <p class="intro">O equipamento mais importante deste barco para navega&ccedil;&atilde;o a solo, e o &uacute;nico que o vendedor n&atilde;o confirmou funcionar. <strong>Verifica-se todo em terra, com as m&atilde;os.</strong> Segue esta ordem.</p>
+
+    <table class="t">
+      <thead><tr><th>Verifica&ccedil;&atilde;o</th><th>Bem</th><th>M&eacute;d</th><th>N&atilde;o</th><th>Notas</th></tr></thead>
+      <tbody>
+        <tr class="key"><td class="it">1 &middot; Chapa de modelo e n&uacute;mero de s&eacute;rie &mdash; fotografar<span class="w">Pacific ou Pacific Plus? O Plus traz leme auxiliar pr&oacute;prio e vale bastante mais</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">2 &middot; Rodar a palheta de ar em todo o arco, com a m&atilde;o<span class="w">Tem de rodar quase sem atrito. Se precisa de for&ccedil;a, os rolamentos est&atilde;o gastos e n&atilde;o trabalha com vento fraco</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">3 &middot; O movimento da palheta faz rodar a p&aacute; da &aacute;gua?<span class="w">&Eacute; o mecanismo todo. Se transmitir, o cora&ccedil;&atilde;o do aparelho est&aacute; bom</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">4 &middot; Balan&ccedil;ar o p&ecirc;ndulo de vante a r&eacute; em todo o curso<span class="w">Sem ranger, sem pontos duros, sem folga lateral</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">5 &middot; O tambor de adapta&ccedil;&atilde;o &agrave; roda do leme existe?<span class="w">Sem ele o Windpilot &eacute; decora&ccedil;&atilde;o. &Eacute; a pe&ccedil;a que mais desaparece dos barcos</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">6 &middot; Palheta de ar principal</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">7 &middot; Palheta de ar sobresselente</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">8 &middot; P&aacute; da &aacute;gua principal</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">9 &middot; P&aacute; da &aacute;gua sobresselente<span class="w">Uma p&aacute; nova custa v&aacute;rias centenas de euros</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">10 &middot; Cabos de comando e roldanas de reenvio</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">11 &middot; Trinco de levantar a p&aacute; para fora de &aacute;gua</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">12 &middot; Apoios no painel: corros&atilde;o por fora, chapas de refor&ccedil;o por dentro do paiol</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+      </tbody>
+    </table>
+
+    <div class="notes"><div class="lab">Modelo, n&uacute;mero de s&eacute;rie, e o que falta</div><div class="lines"><div></div><div></div><div></div></div></div>
+  </section>
+
+  <!-- C -->
+  <section class="pb">
+    <div class="bh"><span class="tg">C</span><h2>Convés e aparelho &mdash; dois mastros</h2></div>
+    <table class="t">
+      <thead><tr><th>Item</th><th>Bem</th><th>M&eacute;d</th><th>N&atilde;o</th><th>Notas</th></tr></thead>
+      <tbody>
+        <tr class="key"><td class="it">Percutir todo o convés e teto da cabina<span class="w">N&uacute;cleo h&uacute;mido &agrave; volta de ferragens, vigias e p&eacute;s de mastro</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">Terminais prensados de brandais e estais, nos dois mastros<span class="w">Fissuras capilares. Mastrea&ccedil;&atilde;o dita de 2022 &mdash; parece mesmo de 2022?</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Pontas de cruzetas, tangs e cavilhas fendidas</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">O que &eacute; exatamente o duplo estai de proa?<span class="w">Dois estais paralelos? Um remov&iacute;vel? O segundo est&aacute; nu ou tem enrolador? Determina se podes envergar bujarrona de tempo</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Dri&ccedil;a sobresselente para i&ccedil;ar vela de tempo</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Passagem das escotas de uma vela de tempo &mdash; calha interior ou olhal</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Molinete el&eacute;trico: fazer trabalhar nos dois sentidos</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">Tipo de &acirc;ncora dos 16 kg<span class="w">Rocna, Spade ou Vulcan passa no limite. Bruce ou CQR de 16 kg &eacute; insuficiente para 7 t</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Amarra: medir os 90 m, estado, destorcedor, amarra&ccedil;&atilde;o ao p&eacute; do paiol</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Cockpit central: embornais, tampas, vedantes</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Bote Plastimo e motor Tohatsu &mdash; existem e funcionam?</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+      </tbody>
+    </table>
+    <div class="notes"><div class="lab">Notas do bloco C</div><div class="lines"><div></div><div></div><div></div></div></div>
+  </section>
+
+  <!-- D -->
+  <section>
+    <div class="bh"><span class="tg">D</span><h2>Velas &mdash; exigir v&ecirc;-las desembaladas</h2></div>
+    <p class="intro">Uma vela pode parecer branca e estar morta. Apalpa-a: se estala e n&atilde;o tem corpo, acabou.</p>
+    <table class="t">
+      <thead><tr><th>Item</th><th>Bem</th><th>M&eacute;d</th><th>N&atilde;o</th><th>Notas</th></tr></thead>
+      <tbody>
+        <tr class="key"><td class="it">Quantos rizos tem a grande? H&aacute; terceiro rizo?<span class="w">Um terceiro rizo fundo faz o trabalho de vela de capa em quase tudo o que vais encontrar</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Grande North Sails 2023: esteira, testa, punhos, bolsos de s&aacute;vel, costuras</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Genoa Quantum 2022: banda anti-UV, esteira, punho de escota</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Mezena Quantum 2022</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Genoa sobresselente &mdash; existe mesmo? Estado?</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Mezena sobresselente &mdash; existe mesmo? Estado?</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Gennaker, meia de enrolar, pau de spinnaker e ferragens</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- E -->
+  <section>
+    <div class="bh"><span class="tg">E</span><h2>Motor &mdash; Volvo D2-40B, 2023</h2></div>
+    <table class="t">
+      <thead><tr><th>Item</th><th>Bem</th><th>M&eacute;d</th><th>N&atilde;o</th><th>Notas</th></tr></thead>
+      <tbody>
+        <tr class="key"><td class="it">Arrancar a frio e deixar trabalhar<span class="w">Fumo &agrave; partida, ralenti est&aacute;vel, ru&iacute;dos</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">&Oacute;leo: n&iacute;vel e cor. Emuls&atilde;o acastanhada = &aacute;gua no &oacute;leo</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Refrigera&ccedil;&atilde;o, permutador, correia, tampa do impulsor</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Crosta de sal em qualquer s&iacute;tio &mdash; denuncia fuga</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Filtros e separador de &aacute;gua: gas&oacute;leo limpo, sem borras</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Cotovelo de escape, mangueiras, abra&ccedil;adeiras duplas</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Horas reais no conta-horas &mdash; anotar</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Dois dep&oacute;sitos, 100 L + 150 L: material, acesso, estado</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- F -->
+  <section class="pb">
+    <div class="bh"><span class="tg">F</span><h2>Interior e sistemas</h2></div>
+    <table class="t">
+      <thead><tr><th>Item</th><th>Bem</th><th>M&eacute;d</th><th>N&atilde;o</th><th>Notas</th></tr></thead>
+      <tbody>
+        <tr class="key"><td class="it">Sentina: ver e cheirar. &Aacute;gua salgada ou doce?<span class="w">Salgada = entrada de mar. Doce = dep&oacute;sito ou infiltra&ccedil;&atilde;o de convés</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">Levantar o soalho: estrutura interna e ber&ccedil;o da quilha</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">Laminagem dos anteparos ao casco, em todo o barco<span class="w">Laminagem fissurada ou descolada &eacute; a avaria estrutural cl&aacute;ssica dos cascos antigos</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Ancoragens interiores das chapas de enfrechate</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Abrir todos os pai&oacute;is com lanterna: humidade, contraplacado podre</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Forro do teto e face inferior do convés: manchas junto a ferragens</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Dep&oacute;sito de &aacute;gua de 470 L: material, acesso, estado. Provar a &aacute;gua</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">Baterias: contar, fotografar, ler as datas<span class="w">Anunciam 260 Ah AGM de 2023 mais &laquo;adicionais&raquo; &mdash; descobrir a capacidade real total</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">Quadro el&eacute;trico e cablagem dos upgrades<span class="w">Emendas improvisadas e chamuscados. &Eacute; risco de inc&ecirc;ndio</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Pain&eacute;is solares e regulador Victron a produzir</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Tr&ecirc;s bombas de por&atilde;o: fazer trabalhar todas</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Fog&atilde;o em cardan, frigor&iacute;fico, sanita, dep&oacute;sito de negras, macerador</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Panos de balou&ccedil;o e beliche de mar utiliz&aacute;vel a solo</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">Cana de emerg&ecirc;ncia a bordo &mdash; experimentar mont&aacute;-la</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+      </tbody>
+    </table>
+    <div class="notes"><div class="lab">Notas do bloco F</div><div class="lines"><div></div><div></div><div></div></div></div>
+  </section>
+
+  <!-- G -->
+  <section>
+    <div class="bh"><span class="tg">G</span><h2>Seguran&ccedil;a &mdash; ler etiquetas, n&atilde;o listas</h2></div>
+    <p class="intro">N&atilde;o h&aacute; velas de mau tempo num barco que atravessou o Atl&acirc;ntico duas vezes. Espera o mesmo padr&atilde;o no resto. <strong>Anota as datas impressas, n&atilde;o o que diz o an&uacute;ncio.</strong></p>
+    <table class="t">
+      <thead><tr><th>Item</th><th>Bem</th><th>M&eacute;d</th><th>N&atilde;o</th><th>Data / notas</th></tr></thead>
+      <tbody>
+        <tr class="key"><td class="it">Jangada: marca, capacidade, &uacute;ltima revis&atilde;o, validade<span class="w">Fora de revis&atilde;o n&atilde;o &eacute; jangada, &eacute; uma mala pesada</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">Fachos: ler a validade um a um<span class="w">Os de 2022 est&atilde;o quase de certeza expirados &mdash; duram 3 a 4 anos</span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">PLB: registado em nome de quem? Transfer&iacute;vel?</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Cinco extintores: validade e press&atilde;o. Manta ign&iacute;fuga</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">AIS Classe B: ligar, confirmar que transmite. MMSI em nome de quem?</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Balaustrada, guarda-mancebos, pontos para linhas de vida</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Existe plotter? E comunica&ccedil;&otilde;es por sat&eacute;lite?</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- H -->
+  <section>
+    <div class="bh"><span class="tg">H</span><h2>Documentos &mdash; ver os originais</h2></div>
+    <table class="t">
+      <thead><tr><th>Item</th><th>Bem</th><th>M&eacute;d</th><th>N&atilde;o</th><th>Notas</th></tr></thead>
+      <tbody>
+        <tr class="key"><td class="it">Certificado de registo polaco original, em m&atilde;os</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">Licen&ccedil;a de esta&ccedil;&atilde;o de r&aacute;dio e MMSI &mdash; transfer&iacute;vel ou novo?</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr class="key"><td class="it">Comprovativo de IVA pago na UE</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Cadeia completa de contratos de compra e venda</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">Fatura da mastrea&ccedil;&atilde;o de 2022</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+        <tr><td class="it">T&iacute;tulo livre de &oacute;nus e hipotecas</td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="bx"><span class="box"></span></td><td class="nt"></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- REGISTO -->
+  <section class="pb">
+    <div class="bh"><span class="tg">R</span><h2>Registo de defeitos</h2></div>
+    <p class="intro">Marca apenas o que confirmaste com os teus olhos e descreve o que viste. <strong>Sem contas aqui</strong> &mdash; a matem&aacute;tica faz-se em casa.</p>
+
+    <table class="d">
+      <thead><tr><th style="width:42px"></th><th>Item</th><th>Observado</th></tr></thead>
+      <tbody>
+        <tr><td class="bx"><span class="box"></span></td><td>Humidade / suspeita de osmose</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>Fissuras em estrela no gelcoat</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>Bujarrona de tempo</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>Rizos da vela grande</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>Windpilot</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>Jangada</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>Fachos</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>&Acirc;ncora e amarra</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>Plotter e comunica&ccedil;&otilde;es</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>Banco de baterias</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>Estado das velas</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>Panos de balou&ccedil;o</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>&Acirc;nodos</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>Passa-cascos e v&aacute;lvulas</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>Casquilhos do leme</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>Cablagem el&eacute;trica</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>&nbsp;</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>&nbsp;</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>&nbsp;</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>&nbsp;</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>&nbsp;</td><td class="obs"></td></tr>
+        <tr><td class="bx"><span class="box"></span></td><td>&nbsp;</td><td class="obs"></td></tr>
+      </tbody>
+    </table>
+
+    <div class="notes" style="margin-top:16px">
+      <div class="lab">Impress&atilde;o geral &mdash; escrever ainda no estaleiro, antes de sair</div>
+      <div class="lines"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+    </div>
+  </section>
+
+  <p class="foot">
+    Folha de campo preparada a partir do an&uacute;ncio, das respostas escritas do vendedor e da conversa telef&oacute;nica. N&atilde;o constitui vistoria profissional &mdash; serve para decidir se vale a pena avan&ccedil;ar. A cl&aacute;usula &laquo;sujeito a vistoria satisfat&oacute;ria&raquo; exige relat&oacute;rio de vistoriador credenciado.
+  </p>
+
+</div>
+
+<script>
+  document.getElementById('pr').addEventListener('click', function () { window.print(); });
+</script>
