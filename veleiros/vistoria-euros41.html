@@ -1,0 +1,724 @@
+<meta charset="utf-8">
+<title>Vistoria Euros 41</title>
+<style>
+  :root {
+    --ground:    #E9EDF0;
+    --surface:   #F8FAFB;
+    --surface-2: #DBE3E8;
+    --ink:       #10202C;
+    --ink-2:     #34505F;
+    --muted:     #6E8697;
+    --rule:      #C3CFD7;
+    --rule-soft: #D8E0E5;
+
+    --accent:      #C74E17;
+    --accent-soft: #FBE7DC;
+    --ok:          #1F7A4C;
+    --ok-soft:     #DFEFE6;
+    --warn:        #9C6708;
+    --warn-soft:   #F7ECD5;
+    --bad:         #A81F14;
+    --bad-soft:    #F9E2DF;
+
+    --sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:    #0C1519;
+      --surface:   #142127;
+      --surface-2: #1D2E36;
+      --ink:       #DFE9ED;
+      --ink-2:     #AFC2CB;
+      --muted:     #7E97A3;
+      --rule:      #2A414B;
+      --rule-soft: #223640;
+
+      --accent:      #FF8A4C;
+      --accent-soft: #3A2216;
+      --ok:          #4FBF87;
+      --ok-soft:     #123528;
+      --warn:        #E0A63F;
+      --warn-soft:   #382B10;
+      --bad:         #F0705F;
+      --bad-soft:    #3A1B18;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:    #0C1519;
+    --surface:   #142127;
+    --surface-2: #1D2E36;
+    --ink:       #DFE9ED;
+    --ink-2:     #AFC2CB;
+    --muted:     #7E97A3;
+    --rule:      #2A414B;
+    --rule-soft: #223640;
+
+    --accent:      #FF8A4C;
+    --accent-soft: #3A2216;
+    --ok:          #4FBF87;
+    --ok-soft:     #123528;
+    --warn:        #E0A63F;
+    --warn-soft:   #382B10;
+    --bad:         #F0705F;
+    --bad-soft:    #3A1B18;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 96px;
+  }
+
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 16px; }
+
+  /* ---------- masthead ---------- */
+  .masthead { padding: 32px 0 22px; border-bottom: 3px solid var(--accent); }
+
+  .kicker {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 8px;
+    font-weight: 700;
+  }
+
+  h1 {
+    font-size: clamp(30px, 7vw, 44px);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.02;
+    margin: 0 0 6px;
+  }
+
+  .subhead { color: var(--ink-2); margin: 0 0 20px; font-size: 15px; }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+  .fact { background: var(--surface); padding: 10px 12px; }
+  .fact dt {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.13em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 3px;
+  }
+  .fact dd {
+    margin: 0; font-family: var(--mono); font-size: 15px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- sections ---------- */
+  section { margin: 34px 0; }
+
+  .block-head {
+    display: flex; align-items: baseline; gap: 10px;
+    border-bottom: 2px solid var(--ink); padding-bottom: 8px; margin-bottom: 6px;
+  }
+  .block-head .tag {
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    color: var(--surface); background: var(--ink);
+    padding: 2px 7px; border-radius: 2px; letter-spacing: 0.06em;
+  }
+  .block-head h2 {
+    font-size: clamp(19px, 4.4vw, 24px); font-weight: 800;
+    letter-spacing: -0.02em; margin: 0; text-wrap: balance;
+  }
+
+  .note { color: var(--ink-2); font-size: 15px; margin: 10px 0 16px; }
+  .note.tight { margin-bottom: 10px; }
+
+  h3 {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted); font-weight: 700;
+    margin: 22px 0 8px;
+  }
+
+  /* ---------- checklist ---------- */
+  ul.chk { list-style: none; padding: 0; margin: 0; display: grid; gap: 1px;
+           background: var(--rule-soft); border: 1px solid var(--rule-soft); }
+  ul.chk li {
+    background: var(--surface); display: flex; gap: 13px;
+    padding: 13px 14px; align-items: flex-start;
+  }
+  ul.chk label { display: flex; gap: 13px; align-items: flex-start; cursor: pointer; width: 100%; }
+  ul.chk input[type="checkbox"] {
+    appearance: none; -webkit-appearance: none; flex: 0 0 auto;
+    width: 22px; height: 22px; margin: 1px 0 0;
+    border: 2px solid var(--muted); border-radius: 3px;
+    background: transparent; cursor: pointer; display: grid; place-content: center;
+  }
+  ul.chk input[type="checkbox"]::after {
+    content: ""; width: 11px; height: 6px;
+    border-left: 2.5px solid var(--surface); border-bottom: 2.5px solid var(--surface);
+    transform: rotate(-45deg) translate(1px, -2px); opacity: 0;
+  }
+  ul.chk input[type="checkbox"]:checked { background: var(--ok); border-color: var(--ok); }
+  ul.chk input[type="checkbox"]:checked::after { opacity: 1; }
+  ul.chk input[type="checkbox"]:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  ul.chk .txt { font-size: 15px; }
+  ul.chk .why { display: block; font-size: 13px; color: var(--muted); margin-top: 3px; }
+  ul.chk li.critical { border-left: 4px solid var(--accent); }
+
+  /* ---------- moisture grid ---------- */
+  .grid-wrap { overflow-x: auto; border: 1px solid var(--rule); background: var(--surface); }
+  table.grid { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.grid th, table.grid td {
+    padding: 7px 9px; border-bottom: 1px solid var(--rule-soft); text-align: left;
+  }
+  table.grid thead th {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--muted); background: var(--surface-2);
+  }
+  table.grid td.lbl { font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+  table.grid input {
+    width: 100%; min-width: 58px; font-family: var(--mono); font-size: 16px;
+    font-variant-numeric: tabular-nums; text-align: center;
+    padding: 7px 4px; border: 1px solid var(--rule); border-radius: 3px;
+    background: var(--ground); color: var(--ink);
+  }
+  table.grid input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .readout {
+    margin-top: 12px; display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px; background: var(--rule); border: 1px solid var(--rule);
+  }
+  .readout div { background: var(--surface); padding: 12px 14px; }
+  .readout .k {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.13em;
+    text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 4px;
+  }
+  .readout .v {
+    font-family: var(--mono); font-size: 23px; font-weight: 700;
+    font-variant-numeric: tabular-nums; display: block;
+  }
+  #verdict-box .v { font-size: 16px; line-height: 1.3; }
+  .v.good { color: var(--ok); }
+  .v.mid  { color: var(--warn); }
+  .v.bad  { color: var(--bad); }
+
+  /* ---------- deductions ---------- */
+  ul.ded { list-style: none; padding: 0; margin: 0; display: grid; gap: 1px;
+           background: var(--rule-soft); border: 1px solid var(--rule-soft); }
+  ul.ded li { background: var(--surface); }
+  ul.ded label {
+    display: flex; gap: 13px; align-items: center; padding: 13px 14px; cursor: pointer;
+  }
+  ul.ded input[type="checkbox"] {
+    appearance: none; -webkit-appearance: none; flex: 0 0 auto;
+    width: 22px; height: 22px; border: 2px solid var(--muted); border-radius: 3px;
+    background: transparent; cursor: pointer; display: grid; place-content: center;
+  }
+  ul.ded input[type="checkbox"]::after {
+    content: ""; width: 11px; height: 6px;
+    border-left: 2.5px solid var(--surface); border-bottom: 2.5px solid var(--surface);
+    transform: rotate(-45deg) translate(1px, -2px); opacity: 0;
+  }
+  ul.ded input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+  ul.ded input[type="checkbox"]:checked::after { opacity: 1; }
+  ul.ded input[type="checkbox"]:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  ul.ded .d-txt { flex: 1; font-size: 15px; }
+  ul.ded .d-val {
+    font-family: var(--mono); font-size: 15px; font-variant-numeric: tabular-nums;
+    color: var(--muted); white-space: nowrap;
+  }
+  ul.ded input:checked ~ .d-val { color: var(--accent); font-weight: 700; }
+  ul.ded li.heavy .d-val { font-weight: 700; }
+
+  /* ---------- sticky ledger ---------- */
+  .ledger {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    background: var(--ink); color: var(--surface);
+    border-top: 3px solid var(--accent);
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .ledger-inner {
+    max-width: 720px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; align-items: center;
+  }
+  .ledger .k {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.13em;
+    text-transform: uppercase; opacity: 0.65; display: block; margin-bottom: 2px;
+  }
+  .ledger .v {
+    font-family: var(--mono); font-size: clamp(16px, 4.6vw, 22px); font-weight: 700;
+    font-variant-numeric: tabular-nums; display: block;
+  }
+  .ledger .v.hot { color: #FF9A61; }
+
+  /* ---------- misc ---------- */
+  .callout {
+    background: var(--accent-soft); border-left: 4px solid var(--accent);
+    padding: 14px 16px; margin: 16px 0; font-size: 15px;
+  }
+  .callout strong { font-weight: 700; }
+
+  .tiers { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+  .tier { background: var(--surface); padding: 14px 16px; display: grid;
+          grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
+  .tier .cond { font-size: 15px; }
+  .tier .num {
+    font-family: var(--mono); font-size: 18px; font-weight: 700;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .tier.t1 { border-left: 4px solid var(--ok); }
+  .tier.t1 .num { color: var(--ok); }
+  .tier.t2 { border-left: 4px solid var(--warn); }
+  .tier.t2 .num { color: var(--warn); }
+  .tier.t3 { border-left: 4px solid var(--bad); }
+  .tier.t3 .num { color: var(--bad); }
+
+  ol.photos { padding-left: 20px; margin: 0; display: grid; gap: 6px; font-size: 15px; }
+  ol.photos li::marker { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+
+  .kit { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+         gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+  .kit div { background: var(--surface); padding: 11px 13px; font-size: 14px; }
+  .kit .must { border-left: 3px solid var(--accent); font-weight: 600; }
+
+  .btn-reset {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    background: transparent; color: var(--muted); border: 1px solid var(--rule);
+    padding: 9px 14px; border-radius: 3px; cursor: pointer;
+  }
+  .btn-reset:hover { color: var(--bad); border-color: var(--bad); }
+  .btn-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .footer {
+    margin: 40px 0 0; padding: 16px 0; border-top: 1px solid var(--rule);
+    font-family: var(--mono); font-size: 11px; color: var(--muted); line-height: 1.6;
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="kicker">Folha de vistoria · uso em campo</p>
+    <h1>Amel Euros 41</h1>
+    <p class="subhead">Henri Amel · La Rochelle · Portimão · barco em seco há um mês · anúncio 725332</p>
+    <dl class="facts">
+      <div class="fact"><dt>Ano</dt><dd>1976</dd></div>
+      <div class="fact"><dt>Comprimento</dt><dd>12,35 m</dd></div>
+      <div class="fact"><dt>Calado</dt><dd>1,65 m</dd></div>
+      <div class="fact"><dt>Deslocamento</dt><dd>7 t</dd></div>
+      <div class="fact"><dt>Pedido</dt><dd>35 000 €</dd></div>
+      <div class="fact"><dt>Data</dt><dd id="today">__ / __</dd></div>
+    </dl>
+  </header>
+
+  <div class="callout">
+    <strong>O que já sabemos, confirmado pelo vendedor:</strong> nunca houve tratamento anti-osmose e nunca foram feitas leituras de humidade em 49 anos. Não existe vistoria de 2023 nem diários de bordo. Não há velas de mau tempo a bordo. O Windpilot é dado como funcional pelo proprietário, mas ninguém o verificou. <strong>Tudo o resto neste barco está por provar.</strong>
+  </div>
+
+  <section>
+    <div class="block-head"><span class="tag">KIT</span><h2>O que levar</h2></div>
+    <div class="kit">
+      <div class="must">Humidímetro sem pinos</div>
+      <div class="must">Martelo de cabeça plástica</div>
+      <div class="must">Lanterna potente</div>
+      <div>Multímetro</div>
+      <div>Espelho de haste</div>
+      <div>Chave de fendas romba</div>
+      <div>Íman pequeno</div>
+      <div>Fita métrica</div>
+      <div>Papel e trapos</div>
+      <div>Powerbank</div>
+      <div>Joelheiras e roupa velha</div>
+      <div>Luvas</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="block-head"><span class="tag">A</span><h2>Casco</h2></div>
+    <p class="note tight">Faz isto <strong>primeiro</strong>, com boa luz. É o que decide o negócio. A tinta de fundo é recente, por isso <strong>não confies nos olhos</strong> — confia no humidímetro e no martelo.</p>
+
+    <h3>Leituras de humidade</h3>
+    <p class="note tight">Interessa a <em>diferença</em> entre o casco acima e abaixo da linha de água, não o valor absoluto.</p>
+
+    <div class="grid-wrap">
+      <table class="grid">
+        <thead>
+          <tr><th>Posição</th><th>Proa</th><th>Meio</th><th>Popa</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="lbl">Referência<br>acima da linha</td>
+            <td><input type="number" inputmode="decimal" class="ref" id="r1" placeholder="—"></td>
+            <td><input type="number" inputmode="decimal" class="ref" id="r2" placeholder="—"></td>
+            <td><input type="number" inputmode="decimal" class="ref" id="r3" placeholder="—"></td>
+          </tr>
+          <tr>
+            <td class="lbl">BB · alta</td>
+            <td><input type="number" inputmode="decimal" class="wet" id="b1" placeholder="—"></td>
+            <td><input type="number" inputmode="decimal" class="wet" id="b2" placeholder="—"></td>
+            <td><input type="number" inputmode="decimal" class="wet" id="b3" placeholder="—"></td>
+          </tr>
+          <tr>
+            <td class="lbl">BB · baixa</td>
+            <td><input type="number" inputmode="decimal" class="wet" id="b4" placeholder="—"></td>
+            <td><input type="number" inputmode="decimal" class="wet" id="b5" placeholder="—"></td>
+            <td><input type="number" inputmode="decimal" class="wet" id="b6" placeholder="—"></td>
+          </tr>
+          <tr>
+            <td class="lbl">EB · alta</td>
+            <td><input type="number" inputmode="decimal" class="wet" id="e1" placeholder="—"></td>
+            <td><input type="number" inputmode="decimal" class="wet" id="e2" placeholder="—"></td>
+            <td><input type="number" inputmode="decimal" class="wet" id="e3" placeholder="—"></td>
+          </tr>
+          <tr>
+            <td class="lbl">EB · baixa</td>
+            <td><input type="number" inputmode="decimal" class="wet" id="e4" placeholder="—"></td>
+            <td><input type="number" inputmode="decimal" class="wet" id="e5" placeholder="—"></td>
+            <td><input type="number" inputmode="decimal" class="wet" id="e6" placeholder="—"></td>
+          </tr>
+          <tr>
+            <td class="lbl">Zonas críticas<br><span style="color:var(--muted);font-size:12px">quilha · passa-cascos · bojo</span></td>
+            <td><input type="number" inputmode="decimal" class="wet" id="c1" placeholder="quilha"></td>
+            <td><input type="number" inputmode="decimal" class="wet" id="c2" placeholder="p-cascos"></td>
+            <td><input type="number" inputmode="decimal" class="wet" id="c3" placeholder="bojo"></td>
+          </tr>
+          <tr>
+            <td class="lbl">Por dentro<br><span style="color:var(--muted);font-size:12px">sentina · paióis</span></td>
+            <td><input type="number" inputmode="decimal" class="wet" id="d1" placeholder="sentina"></td>
+            <td><input type="number" inputmode="decimal" class="wet" id="d2" placeholder="paiol"></td>
+            <td><input type="number" inputmode="decimal" class="wet" id="d3" placeholder="quilha"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="readout">
+      <div><span class="k">Média referência</span><span class="v" id="avg-ref">—</span></div>
+      <div><span class="k">Média abaixo da linha</span><span class="v" id="avg-wet">—</span></div>
+      <div><span class="k">Diferencial</span><span class="v" id="delta">—</span></div>
+      <div id="verdict-box"><span class="k">Leitura</span><span class="v" id="verdict">Preenche a grelha</span></div>
+    </div>
+
+    <h3>Percussão e inspeção visual</h3>
+    <ul class="chk">
+      <li class="critical"><label><input type="checkbox" id="a1"><span class="txt">Percutir todo o casco abaixo da linha de água<span class="why">Som seco e ressonante = laminado são. Som abafado e morto = água ou delaminação. Quando o martelo e o humidímetro discordam, acredita no martelo</span></span></label></li>
+      <li class="critical"><label><input type="checkbox" id="a2"><span class="txt">Junção quilha-casco em todo o comprimento<span class="why">Linha de fissura, escorrimento, manchas de ferrugem</span></span></label></li>
+      <li><label><input type="checkbox" id="a3"><span class="txt">Costados vistos de rasante, dos dois bordos<span class="why">Ondulações, brilho diferente = reparações antigas</span></span></label></li>
+      <li><label><input type="checkbox" id="a4"><span class="txt">Procurar pontos a "transpirar" na tinta de fundo</span></label></li>
+      <li class="critical"><label><input type="checkbox" id="a5"><span class="txt">Leme: abanar de lado e de vante a ré, procurar folga no casquilho<span class="why">Percutir a pá — som morto significa leme cheio de água</span></span></label></li>
+      <li><label><input type="checkbox" id="a6"><span class="txt">Skeg: fissuras na junção ao casco</span></label></li>
+      <li class="critical"><label><input type="checkbox" id="a7"><span class="txt">Todos os passa-cascos e válvulas, um a um<span class="why">Bronze rosado = deszincificação. Válvula que não roda = substituir</span></span></label></li>
+      <li><label><input type="checkbox" id="a8"><span class="txt">Ânodos: estado e ligação de massa</span></label></li>
+      <li><label><input type="checkbox" id="a9"><span class="txt">Veio: abanar para sentir folga no casquilho. Hélice, bucim e pás</span></label></li>
+      <li><label><input type="checkbox" id="a10"><span class="txt">Fundo da quilha: sinais de encalhe</span></label></li>
+      <li class="critical"><label><input type="checkbox" id="a11"><span class="txt">Fissuras em estrela no gelcoat a partir de ferragens<span class="why">Craquelé geral espalhado é idade e UV, cosmético. Fissuras radiais a partir de um parafuso são estruturais</span></span></label></li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="block-head"><span class="tag">B</span><h2>Windpilot</h2></div>
+    <p class="note tight">O equipamento mais importante do barco para navegação a solo. Verifica-se todo em terra, com as mãos.</p>
+    <ul class="chk">
+      <li class="critical"><label><input type="checkbox" id="w1"><span class="txt">Fotografar a chapa de modelo e número de série<span class="why">Pacific ou Pacific Plus? O Plus traz leme auxiliar e vale bastante mais</span></span></label></li>
+      <li class="critical"><label><input type="checkbox" id="w2"><span class="txt">Rodar a palheta de ar em todo o arco, com a mão<span class="why">Tem de rodar quase sem atrito. Se precisa de força, os rolamentos estão gastos e não funciona com vento fraco</span></span></label></li>
+      <li class="critical"><label><input type="checkbox" id="w3"><span class="txt">Confirmar que o movimento da palheta faz rodar a pá da água<span class="why">É este o mecanismo todo. Se transmitir, o coração do aparelho está bom</span></span></label></li>
+      <li><label><input type="checkbox" id="w4"><span class="txt">Balançar o pêndulo de vante a ré em todo o curso<span class="why">Sem ranger, sem pontos duros, sem folga lateral</span></span></label></li>
+      <li class="critical"><label><input type="checkbox" id="w5"><span class="txt">O tambor de adaptação à roda do leme existe?<span class="why">Sem ele o Windpilot é decoração. É a peça que mais desaparece dos barcos</span></span></label></li>
+      <li><label><input type="checkbox" id="w6"><span class="txt">Inventário: palheta e palheta sobresselente, pá da água e pá sobresselente, cabos, roldanas, trinco de levantar</span></label></li>
+      <li><label><input type="checkbox" id="w7"><span class="txt">Apoios no painel de popa, por fora e por dentro do paiol<span class="why">Corrosão, fissuras em estrela no gelcoat, chapas de reforço interiores</span></span></label></li>
+    </ul>
+    <div class="callout">Depois da visita, manda as fotografias e o número de série ao fabricante em Hamburgo. O Peter Förthmann responde pessoalmente e diz-te o modelo, o que falta e o que custa. <strong>Opinião de especialista, de graça, antes de fazeres proposta.</strong></div>
+  </section>
+
+  <section>
+    <div class="block-head"><span class="tag">C</span><h2>Convés e aparelho</h2></div>
+    <p class="note tight">É um ketch: <strong>dois mastros, dois jogos de mastreação</strong>. Dobro do trabalho, e o mastro da mezena costuma ser o esquecido.</p>
+    <ul class="chk">
+      <li class="critical"><label><input type="checkbox" id="d1c"><span class="txt">Percutir todo o convés e teto da cabina<span class="why">Sobretudo à volta de ferragens, balaustrada, chapas de enfrechate, guinchos e pés de mastro</span></span></label></li>
+      <li class="critical"><label><input type="checkbox" id="d2c"><span class="txt">Chapas de enfrechate dos dois mastros: fissuras em estrela, escorrimento de ferrugem</span></label></li>
+      <li class="critical"><label><input type="checkbox" id="d3c"><span class="txt">Terminais de todos os brandais e estais<span class="why">Fissuras capilares nos casquilhos prensados. Mastreação dita de 2022 — verificar se parece mesmo</span></span></label></li>
+      <li><label><input type="checkbox" id="d4c"><span class="txt">Pontas de cruzetas, tangs e cavilhas fendidas, nos dois mastros</span></label></li>
+      <li class="critical"><label><input type="checkbox" id="d5c"><span class="txt">O que é exatamente o duplo estai de proa?<span class="why">Dois estais paralelos? Um removível? O segundo está nu ou tem enrolador? Determina se podes envergar bujarrona de tempo</span></span></label></li>
+      <li><label><input type="checkbox" id="d6c"><span class="txt">Existe driça sobresselente para içar uma vela de tempo?</span></label></li>
+      <li><label><input type="checkbox" id="d7c"><span class="txt">Onde passariam as escotas de uma vela de tempo — calha interior ou olhal?</span></label></li>
+      <li><label><input type="checkbox" id="d8c"><span class="txt">Molinete elétrico: fazer trabalhar nos dois sentidos</span></label></li>
+      <li><label><input type="checkbox" id="d9c"><span class="txt">Que tipo de âncora é a de 16 kg?<span class="why">Rocna, Spade ou Vulcan passa no limite. Bruce ou CQR do mesmo peso é insuficiente para 7 t</span></span></label></li>
+      <li><label><input type="checkbox" id="d10c"><span class="txt">Amarra: medir e ver o estado dos 90 m. Destorcedor e amarração ao pé do paiol</span></label></li>
+      <li><label><input type="checkbox" id="d11c"><span class="txt">Cockpit central: embornais, tampas de paióis, vedantes</span></label></li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="block-head"><span class="tag">D</span><h2>Velas</h2></div>
+    <p class="note tight">Exige vê-las <strong>desembaladas</strong>. Uma vela pode parecer branca e estar morta — apalpa-a: se estala e não tem corpo, acabou.</p>
+    <ul class="chk">
+      <li class="critical"><label><input type="checkbox" id="s1"><span class="txt">Quantos rizos tem a grande? Há terceiro rizo?<span class="why">Um terceiro rizo bem fundo faz o trabalho de uma vela de capa em quase tudo o que vais encontrar</span></span></label></li>
+      <li><label><input type="checkbox" id="s2"><span class="txt">Grande North Sails 2023: esteira, testa, punhos, bolsos de sável, costuras</span></label></li>
+      <li><label><input type="checkbox" id="s3"><span class="txt">Genoa Quantum 2022: banda anti-UV, esteira, punho de escota</span></label></li>
+      <li><label><input type="checkbox" id="s4"><span class="txt">Mezena Quantum 2022</span></label></li>
+      <li><label><input type="checkbox" id="s5"><span class="txt">Confirmar que o genoa e a mezena <em>sobresselentes</em> existem mesmo e ver o estado</span></label></li>
+      <li><label><input type="checkbox" id="s6"><span class="txt">Gennaker e meia de enrolar. Pau de spinnaker e ferragens</span></label></li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="block-head"><span class="tag">E</span><h2>Motor</h2></div>
+    <p class="note tight">Volvo Penta D2-40B de 2023, cerca de 260 horas, incluindo uma travessia atlântica. À partida é o sistema mais saudável do barco.</p>
+    <ul class="chk">
+      <li class="critical"><label><input type="checkbox" id="m1"><span class="txt">Arrancar a frio e deixar trabalhar<span class="why">Fumo à partida, ralenti estável, ruídos</span></span></label></li>
+      <li class="critical"><label><input type="checkbox" id="m2"><span class="txt">Óleo: nível e cor. Emulsão acastanhada = água no óleo = mau</span></label></li>
+      <li><label><input type="checkbox" id="m3"><span class="txt">Líquido de refrigeração, permutador, correia, tampa do impulsor</span></label></li>
+      <li><label><input type="checkbox" id="m4"><span class="txt">Procurar crosta de sal em qualquer sítio — denuncia fuga</span></label></li>
+      <li><label><input type="checkbox" id="m5"><span class="txt">Filtros de gasóleo e separador de água: gasóleo limpo, sem borras</span></label></li>
+      <li><label><input type="checkbox" id="m6"><span class="txt">Cotovelo de escape e mangueiras: abraçadeiras duplas abaixo da linha de água</span></label></li>
+      <li><label><input type="checkbox" id="m7"><span class="txt">Fotografar a chapa: modelo e número de série</span></label></li>
+      <li><label><input type="checkbox" id="m8"><span class="txt">Dois depósitos (100 L + 150 L): material, acesso, estado</span></label></li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="block-head"><span class="tag">F</span><h2>Interior e sistemas</h2></div>
+    <ul class="chk">
+      <li class="critical"><label><input type="checkbox" id="i1"><span class="txt">Sentina: ver e cheirar. Água salgada ou doce?<span class="why">Salgada = entrada de mar. Doce = fuga de depósito ou infiltração de convés</span></span></label></li>
+      <li class="critical"><label><input type="checkbox" id="i2"><span class="txt">Levantar o soalho: estrutura interna e zona do berço da quilha</span></label></li>
+      <li class="critical"><label><input type="checkbox" id="i3"><span class="txt">Laminagem dos anteparos ao casco, em todo o barco<span class="why">Laminagem fissurada ou descolada é a avaria estrutural clássica dos cascos antigos</span></span></label></li>
+      <li><label><input type="checkbox" id="i4"><span class="txt">Ancoragens interiores das chapas de enfrechate</span></label></li>
+      <li><label><input type="checkbox" id="i5"><span class="txt">Abrir todos os paióis com lanterna: humidade, contraplacado podre, delaminação</span></label></li>
+      <li><label><input type="checkbox" id="i6"><span class="txt">Forro do teto e face inferior do convés: manchas à volta de ferragens</span></label></li>
+      <li><label><input type="checkbox" id="i7"><span class="txt">Depósito de água de 470 L: material, acesso, estado. Provar a água</span></label></li>
+      <li class="critical"><label><input type="checkbox" id="i8"><span class="txt">Baterias: contar, fotografar, ler as datas<span class="why">O anúncio diz 260 Ah AGM de 2023 mais "baterias de serviço adicionais" — descobre a capacidade real total</span></span></label></li>
+      <li><label><input type="checkbox" id="i9"><span class="txt">Quadro elétrico e cablagem dos "numerous upgrades"<span class="why">Instalações caseiras acumuladas são risco de incêndio. Procurar chamuscados e emendas improvisadas</span></span></label></li>
+      <li><label><input type="checkbox" id="i10"><span class="txt">Painéis solares e regulador Victron a produzir</span></label></li>
+      <li><label><input type="checkbox" id="i11"><span class="txt">Três bombas de porão: fazer trabalhar todas</span></label></li>
+      <li><label><input type="checkbox" id="i12"><span class="txt">Fogão em cardan, frigorífico, sanita Jabsco, depósito de águas negras e macerador</span></label></li>
+      <li><label><input type="checkbox" id="i13"><span class="txt">Há panos de balouço? Qual é o beliche de mar utilizável a solo?</span></label></li>
+      <li><label><input type="checkbox" id="i14"><span class="txt">A cana de emergência está a bordo? Experimentar montá-la</span></label></li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="block-head"><span class="tag">G</span><h2>Segurança — ler etiquetas, não listas</h2></div>
+    <p class="note tight">Se não há velas de mau tempo num barco que atravessou o Atlântico duas vezes, espera o mesmo padrão no resto. <strong>Não acredites no anúncio, acredita nas datas impressas.</strong></p>
+    <ul class="chk">
+      <li class="critical"><label><input type="checkbox" id="g1"><span class="txt">Jangada: marca, capacidade, <strong>data da última revisão e validade</strong><span class="why">Fora de revisão não é jangada, é uma mala pesada</span></span></label></li>
+      <li class="critical"><label><input type="checkbox" id="g2"><span class="txt">Fachos: ler a validade um a um<span class="why">Os de 2022 estão quase de certeza expirados — duram três a quatro anos</span></span></label></li>
+      <li><label><input type="checkbox" id="g3"><span class="txt">PLB: em nome de quem está registado? É transferível?</span></label></li>
+      <li><label><input type="checkbox" id="g4"><span class="txt">Cinco extintores: validade e pressão. Manta ignífuga</span></label></li>
+      <li><label><input type="checkbox" id="g5"><span class="txt">AIS Classe B: ligar e confirmar que transmite. MMSI programado em nome de quem?</span></label></li>
+      <li><label><input type="checkbox" id="g6"><span class="txt">Balaustrada, guarda-mancebos, pontos de amarração de linhas de vida</span></label></li>
+      <li><label><input type="checkbox" id="g7"><span class="txt">Existe plotter a bordo? E comunicações por satélite?</span></label></li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="block-head"><span class="tag">H</span><h2>Documentos</h2></div>
+    <ul class="chk">
+      <li class="critical"><label><input type="checkbox" id="h1"><span class="txt">Certificado de registo polaco original, em mãos</span></label></li>
+      <li class="critical"><label><input type="checkbox" id="h2"><span class="txt">Licença de estação de rádio e MMSI — transferível ou emitido novo?</span></label></li>
+      <li class="critical"><label><input type="checkbox" id="h3"><span class="txt">Comprovativo de IVA pago na UE</span></label></li>
+      <li><label><input type="checkbox" id="h4"><span class="txt">Cadeia completa de contratos de compra e venda anteriores</span></label></li>
+      <li><label><input type="checkbox" id="h5"><span class="txt">Fatura do trabalho de mastreação de 2022</span></label></li>
+      <li><label><input type="checkbox" id="h6"><span class="txt">Título livre de ónus e hipotecas</span></label></li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="block-head"><span class="tag">€</span><h2>Deduções</h2></div>
+    <p class="note tight">Marca o que confirmares. O total corre no rodapé e é a fundamentação da tua proposta — <strong>cada linha é um facto, não uma opinião</strong>.</p>
+    <ul class="ded">
+      <li class="heavy"><label><input type="checkbox" data-v="12500" id="x1"><span class="d-txt">Osmose confirmada — tratamento<span class="why" style="display:block;font-size:13px;color:var(--muted)">Ordem de grandeza já aceite pelo vendedor ao telefone</span></span><span class="d-val">12 500 €</span></label></li>
+      <li><label><input type="checkbox" data-v="1200" id="x2"><span class="d-txt">Bujarrona de tempo — confirmado que não existe</span><span class="d-val">1 200 €</span></label></li>
+      <li><label><input type="checkbox" data-v="600" id="x3"><span class="d-txt">Terceiro rizo na grande, se não tiver</span><span class="d-val">600 €</span></label></li>
+      <li><label><input type="checkbox" data-v="1500" id="x4"><span class="d-txt">Windpilot inoperacional ou peças em falta</span><span class="d-val">1 500 €</span></label></li>
+      <li><label><input type="checkbox" data-v="600" id="x5"><span class="d-txt">Jangada fora de validade</span><span class="d-val">600 €</span></label></li>
+      <li><label><input type="checkbox" data-v="300" id="x6"><span class="d-txt">Fachos expirados</span><span class="d-val">300 €</span></label></li>
+      <li><label><input type="checkbox" data-v="500" id="x7"><span class="d-txt">Âncora subdimensionada para 7 t</span><span class="d-val">500 €</span></label></li>
+      <li><label><input type="checkbox" data-v="1200" id="x8"><span class="d-txt">Plotter ausente</span><span class="d-val">1 200 €</span></label></li>
+      <li><label><input type="checkbox" data-v="1500" id="x9"><span class="d-txt">Comunicações por satélite</span><span class="d-val">1 500 €</span></label></li>
+      <li><label><input type="checkbox" data-v="800" id="x10"><span class="d-txt">Banco de baterias insuficiente ou envelhecido</span><span class="d-val">800 €</span></label></li>
+      <li><label><input type="checkbox" data-v="3000" id="x11"><span class="d-txt">Velas gastas — necessitam substituição</span><span class="d-val">3 000 €</span></label></li>
+      <li><label><input type="checkbox" data-v="400" id="x12"><span class="d-txt">Panos de balouço e beliche de mar</span><span class="d-val">400 €</span></label></li>
+      <li><label><input type="checkbox" data-v="200" id="x13"><span class="d-txt">Ânodos</span><span class="d-val">200 €</span></label></li>
+      <li><label><input type="checkbox" data-v="900" id="x14"><span class="d-txt">Passa-cascos ou válvulas a substituir</span><span class="d-val">900 €</span></label></li>
+      <li><label><input type="checkbox" data-v="1200" id="x15"><span class="d-txt">Casquilhos do leme com folga</span><span class="d-val">1 200 €</span></label></li>
+      <li><label><input type="checkbox" data-v="1500" id="x16"><span class="d-txt">Cablagem a refazer</span><span class="d-val">1 500 €</span></label></li>
+      <li><label><input type="checkbox" data-v="1000" id="x17"><span class="d-txt">Reforço de ferragens com fissuras em estrela</span><span class="d-val">1 000 €</span></label></li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="block-head"><span class="tag">→</span><h2>Regra de decisão</h2></div>
+    <p class="note tight">Decidido a frio, antes de ires. Não improvises no estaleiro.</p>
+    <div class="tiers">
+      <div class="tier t1">
+        <span class="cond">Diferencial de humidade baixo, percussão limpa, Windpilot a transmitir</span>
+        <span class="num">30 000 €</span>
+      </div>
+      <div class="tier t2">
+        <span class="cond">Windpilot morto, segurança fora de validade, humidade irregular</span>
+        <span class="num">27–28 000 €</span>
+      </div>
+      <div class="tier t3">
+        <span class="cond">Sinais claros de osmose ou humidade alta generalizada</span>
+        <span class="num">22–24 000 €<br><span style="font-size:13px;font-weight:400;color:var(--muted)">ou vais-te embora</span></span>
+      </div>
+    </div>
+    <div class="callout">
+      <strong>Teto absoluto: 32 000 €.</strong> Abaixo de 27 000 € sem provas na mão, o corretor filtra a proposta e nem a leva ao proprietário. Com leituras de humidade documentadas, podes ir aos 22 000 € e ser levado a sério.
+    </div>
+  </section>
+
+  <section>
+    <div class="block-head"><span class="tag">FOTO</span><h2>Fotografias obrigatórias</h2></div>
+    <ol class="photos">
+      <li>Cada leitura do humidímetro com o mostrador visível e a posição anotada</li>
+      <li>Junção quilha-casco em todo o comprimento, dos dois bordos</li>
+      <li>Leme e skeg, dos dois lados e por baixo</li>
+      <li>Todos os passa-cascos</li>
+      <li>Windpilot de quatro ângulos, mais a chapa de série</li>
+      <li>Base dos dois mastros e terminais da mastreação</li>
+      <li>Chapas de enfrechate, por dentro e por fora</li>
+      <li>Compartimento das baterias e quadro elétrico completo</li>
+      <li>Motor, chapa do motor e vareta do óleo</li>
+      <li>Sentina e por baixo do soalho</li>
+      <li>Etiqueta de revisão da jangada e validade dos fachos</li>
+      <li>Etiquetas das velas e punhos de escota e amura</li>
+    </ol>
+  </section>
+
+  <p style="margin:28px 0 0"><button class="btn-reset" id="reset">Limpar registo</button></p>
+
+  <p class="footer">
+    Folha de vistoria preparada a partir do anúncio, das respostas do vendedor e da conversa telefónica. Não constitui vistoria profissional. Serve para decidir se vale a pena fazer proposta — a cláusula «sujeito a vistoria satisfatória» exige relatório de vistoriador credenciado. <strong>Contém valores: usar em privado.</strong>
+  </p>
+
+</div>
+
+<div class="ledger">
+  <div class="ledger-inner">
+    <div><span class="k">Deduções</span><span class="v hot" id="ded-total">0 €</span></div>
+    <div><span class="k">35 000 − deduções</span><span class="v" id="net">35 000 €</span></div>
+    <div><span class="k">Teto</span><span class="v">32 000 €</span></div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var KEY = 'euros41-survey-v1';
+    var state = {};
+    try { state = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { state = {}; }
+
+    function save() {
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* sem persistência */ }
+    }
+
+    var fmt = function (n) {
+      return n.toLocaleString('pt-PT', { maximumFractionDigits: 0 }) + ' €';
+    };
+
+    /* ---- checkboxes ---- */
+    document.querySelectorAll('input[type="checkbox"]').forEach(function (box) {
+      if (state[box.id]) box.checked = true;
+      box.addEventListener('change', function () {
+        state[box.id] = box.checked;
+        save();
+        if (box.dataset.v) recalcLedger();
+      });
+    });
+
+    /* ---- moisture inputs ---- */
+    var inputs = document.querySelectorAll('table.grid input');
+    inputs.forEach(function (inp) {
+      if (state[inp.id] !== undefined && state[inp.id] !== null) inp.value = state[inp.id];
+      inp.addEventListener('input', function () {
+        state[inp.id] = inp.value;
+        save();
+        recalcMoisture();
+      });
+    });
+
+    function avg(sel) {
+      var vals = [];
+      document.querySelectorAll(sel).forEach(function (i) {
+        var v = parseFloat(i.value);
+        if (!isNaN(v)) vals.push(v);
+      });
+      if (!vals.length) return null;
+      return vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
+    }
+
+    function recalcMoisture() {
+      var r = avg('.ref'), w = avg('.wet');
+      var elR = document.getElementById('avg-ref');
+      var elW = document.getElementById('avg-wet');
+      var elD = document.getElementById('delta');
+      var elV = document.getElementById('verdict');
+
+      elR.textContent = r === null ? '—' : r.toFixed(1);
+      elW.textContent = w === null ? '—' : w.toFixed(1);
+
+      if (r === null || w === null) {
+        elD.textContent = '—';
+        elD.className = 'v';
+        elV.textContent = 'Preenche a grelha';
+        elV.className = 'v';
+        return;
+      }
+
+      var d = w - r;
+      elD.textContent = (d >= 0 ? '+' : '') + d.toFixed(1);
+
+      var cls, msg;
+      if (d <= 5) {
+        cls = 'good';
+        msg = 'Casco são. Segue para a proposta alta.';
+      } else if (d <= 15) {
+        cls = 'mid';
+        msg = 'Elevado mas plausível num casco de 49 anos. Decide pelo martelo.';
+      } else {
+        cls = 'bad';
+        msg = 'Alto. Ao fim de um mês em seco isto é real. Vistoria obrigatória ou desiste.';
+      }
+      elD.className = 'v ' + cls;
+      elV.className = 'v ' + cls;
+      elV.textContent = msg;
+    }
+
+    /* ---- ledger ---- */
+    function recalcLedger() {
+      var total = 0;
+      document.querySelectorAll('input[data-v]').forEach(function (b) {
+        if (b.checked) total += parseInt(b.dataset.v, 10);
+      });
+      document.getElementById('ded-total').textContent = fmt(total);
+      var net = 35000 - total;
+      var netEl = document.getElementById('net');
+      netEl.textContent = fmt(net);
+      netEl.className = 'v' + (net < 27000 ? ' hot' : '');
+    }
+
+    /* ---- reset ---- */
+    document.getElementById('reset').addEventListener('click', function () {
+      state = {};
+      save();
+      document.querySelectorAll('input[type="checkbox"]').forEach(function (b) { b.checked = false; });
+      inputs.forEach(function (i) { i.value = ''; });
+      recalcMoisture();
+      recalcLedger();
+    });
+
+    recalcMoisture();
+    recalcLedger();
+  })();
+</script>
