@@ -368,3 +368,86 @@ Humidímetro **sem pinos** *(medidores de pinos e detetores multifunção com %R
 - **A âncora de 16 kg do Amel é ligeira para 7 t** se for Bruce ou CQR. Rocna, Spade ou Vulcan passa no limite.
 - **Perguntar no Sopromar pelo Ryval** — varam-no quase todos os anos desde 2007 e fizeram-lhe a osmose. Informação independente e gratuita.
 - **A OSTAR de 1976 foi ganha por Éric Tabarly no Pen Duick VI.** A afirmação do anúncio do Rival de que «um Rival 34 ganhou a OSTAR de 1976» não é exata.
+
+---
+
+## 14. Visita feita — estado real do Rival e posicao de proposta
+
+Registo da visita e das conversas no local. Substitui os numeros das seccoes anteriores.
+
+### 14.1 O Amel Euros 41 esta fora
+
+Eliminado. Tres afirmacoes do anuncio desmentidas por fotografia:
+
+- **Motor "novo de 2023"** — e um Volvo D2-40**B**, variante produzida ate 2008. Alternador com ferrugem generalizada, bercos corroidos, compressor de refrigeracao coberto de zinabre.
+- **Velas de 2022** — a faixa UV do genoa esta desfeita. Impossivel em tres anos.
+- **Rigging de 2022** — esticadores com cabo baco, alma a abrir junto ao terminal, contrapinos oxidados.
+
+Restante: passa-casco de bronze dezincificado abaixo da linha de agua; ferrugem e zinabre a chorar da juncao leme/skeg com anodo quase consumido; massas por barrar e um furo de passa-casco aberto no casco submerso; antivegetativo a falhar; fissuras em estrela a partir de ferragem de convés corroida; armarios da cozinha e da casa de banho delaminados com forro podre; antepara manchada junto as tomadas de 220 V; transponder AIS Watcheye S pousado numa prateleira com cablagem em abracadeiras.
+
+**Trabalho necessario: €32.000 a €53.000 contra €35.000 de pedido.** Mesmo a €9.000 nao compensa — nao pelo dinheiro, pelo tempo. Come os dois anos reservados para *equipar* um barco que ja navega.
+
+**Nota sobre o Pedro:** nunca tinha visto o barco. Repetiu o que o proprietario lhe disse. Ficou envergonhado no local e pediu desculpa. Nao e desonestidade, e falha profissional — a fonte das tres afirmacoes erradas e o proprietario, nao o intermediario. Vale a pena manter contacto para barcos futuros.
+
+### 14.2 Rival "Ryval" — o que se apurou no local
+
+Positivo, e nao e pouco: **casco sadio, aparelho de pe, motor a trabalhar, leme protegido por skeg, osmose ja tratada.** E isto que nao se compra a retalho.
+
+Deficiencias confirmadas:
+
+| Item | Custo |
+|---|---|
+| Genoa subdimensionada (faltam ~4 m2 — confirmado pelo Dai) | €3.000 |
+| Mastro sem calha exterior — sem vela de capa possivel | €2.500 |
+| Leme de vento desmontado, conjunto por verificar | €800 |
+| **Sistema electrico e de carregamento inexistente** | €3.500 |
+| Electronica: plotter, AIS, instrumentos | €3.500 |
+| Piloto automatico de cana (ate 4.500 kg) num barco de 6 t | €1.800 |
+| **Subtotal equipamento** | **€15.100** |
+
+**O achado serio: os enroladores sao electricos e nao estao ligados a nenhum sistema de carregamento.** O barco e carregado com um carregador de automovel atraves de uma extensao. Isso nao e uma peca em falta — e a instalacao electrica inteira por fazer (banco de servico, alternador com regulador, separacao de circuitos, carregador de bordo, solar). E um carregador automotivo numa extensao e a forma como os barcos ardem na marina. Ao segundo dia de mar o sistema principal de manobra de vela fica dependente da manivela de emergencia.
+
+**O barco esta evacuado por dentro e por fora.** Sem balsa, sem EPIRB, sem amarras, sem anexo, sem ferramenta. Electronica: um GPS muito antigo e mais nada.
+
+| Inventario de um barco vazio | Custo |
+|---|---|
+| Balsa salva-vidas revisionada, usada | €1.200 |
+| EPIRB 406 MHz | €400 |
+| Colete de arnes, linhas de vida, recuperacao de homem ao mar | €700 |
+| Pirotecnia e extintores | €400 |
+| Amarras, cabos, defensas | €600 |
+| Anexo com motor fora de borda | €1.200 |
+| Ferramenta, sobressalentes, filtros, oleos | €800 |
+| Cozinha e roupa de cama | €400 |
+| **Subtotal inventario** | **€5.700** |
+
+**Sem guincho electrico** — irrelevante. Um 34 pes de 6 t faz-se a manivela.
+
+**Nao fico com o lugar em Lagos.** Consequencia: cerca de 180 milhas de Lagos ao Tejo, a solo, logo apos a escritura — sem plotter, sem AIS, com o leme de vento desmontado e sem carregamento. A lista acima nao e teorica, e a primeira viagem.
+
+### 14.3 Custo total real
+
+**€20.000 (barco) + €15.100 (equipamento) + €5.700 (inventario) = €40.800 para estar nos Acores.**
+Distribuido pelos dois anos previstos, mas e este o numero.
+
+### 14.4 Posicao de proposta
+
+- **Proposta de abertura: €20.000.** Justificacao muda de "€28.000 menos deducoes" para "isto e uma plataforma nua e vale isto". Um Rival 34 dos anos 70, casco sadio, aparelho de pe, motor a trabalhar, sem inventario e sem electronica, em Portugal, vale €18.000 a €24.000. A proposta e correcta, nao e agressiva.
+- **Tecto, escrito a frio: €23.000.** Acima disso o total passa dos €38.000 e compra-se um Rival ja pronto no Reino Unido.
+- **Nao subir em degraus.** De €20.000 vai-se uma unica vez ao numero final e diz-se que e o final. Se ele vier a €25.000, responde-se €23.000 como limite — e cumpre-se.
+- **Esperar 24 horas antes de responder a qualquer contraproposta.**
+
+**Leitura do vendedor:** nao precisa do dinheiro, tem mais dois barcos prontos na marina, de valor superior. Deixou de navegar por razoes de saude. Ja desceu de €35.000 para €28.000 sozinho — quem nao precisa do dinheiro nao concede 20% a menos que queira aquilo despachado. **A alavanca nao e o preco, e a rapidez, a certeza e o destino do barco.** Dinheiro pronto, sem financiamento, escritura em duas semanas, lugar de Lagos devolvido — e o barco volta ao mar em vez de apodrecer num estaleiro. Este ultimo ponto e verdade e deve ser dito.
+
+### 14.5 Decisoes tecnicas tomadas
+
+- **Nao comprar radar.** €2.500-3.500 instalado, consome corrente que este barco nao produz. O AIS faz 90% do trabalho por €600 e quase sem consumo — o que pode matar no Atlantico sao cargueiros e todos transmitem AIS. Esse dinheiro vai para o sistema electrico e para o leme de vento.
+- **Guardar o GPS antigo.** Da posicao tao bem como um de hoje e e o segundo sistema para quando o plotter se molhar. Deitar fora o velho depois de instalar o plotter e um erro comum.
+- **Ordem de trabalhos:** sistema electrico primeiro. Nao se instala electronica num barco que nao produz energia.
+
+### 14.6 Por confirmar antes de enviar a proposta
+
+- **A ancora e a amarra estao a bordo?** Se "evacuado" incluiu o ferro, sao mais €1.200 e e o unico item que nao se pode adiar.
+- **De que bateria vivem os enroladores e como e carregada com o barco a navegar?** Perguntar ao Dai numa mensagem separada, *antes* da proposta. Se houver alternador a carregar tudo, tiram-se €3.500 da lista e volta-se a €21.500. Se confirmar, a proposta fica blindada com o numero dele ja na conversa.
+- Marca e modelo do leme de vento; conjunto completo?
+- Actuador do piloto automatico esta montado?
