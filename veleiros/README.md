@@ -439,15 +439,36 @@ Distribuido pelos dois anos previstos, mas e este o numero.
 
 **Leitura do vendedor:** nao precisa do dinheiro, tem mais dois barcos prontos na marina, de valor superior. Deixou de navegar por razoes de saude. Ja desceu de €35.000 para €28.000 sozinho — quem nao precisa do dinheiro nao concede 20% a menos que queira aquilo despachado. **A alavanca nao e o preco, e a rapidez, a certeza e o destino do barco.** Dinheiro pronto, sem financiamento, escritura em duas semanas, lugar de Lagos devolvido — e o barco volta ao mar em vez de apodrecer num estaleiro. Este ultimo ponto e verdade e deve ser dito.
 
-### 14.5 Decisoes tecnicas tomadas
+### 14.5 Sistema electrico — o que fazer e como testar
+
+**Diagnostico confirmado:** tres bancos separados (arranque, servico, enroladores). O alternador serve os dois primeiros. O terceiro nao tem fonte alguma alem da extensao no cais.
+
+Um motor de enrolador de mastro puxa 80-150 A de pico. Uma bateria dedicada e cheia da cerca de uma duzia de ciclos. Numa travessia Lisboa-Madeira de 4-5 dias isso esgota-se no primeiro dia e meio. **Dai em diante o barco e manual.**
+
+**Nao ligar o terceiro banco ao alternador.** O alternador de serie ja e o gargalo — 60 A a servir dois bancos, antes de somar plotter, AIS, piloto e luzes. Pendurar-lhe um terceiro banco de alta descarga obriga a por o motor a carregar a meio do Atlantico.
+
+**Solucao certa:** refazer como sistema unico — banco de servico dimensionado, circuito dedicado de alta corrente para os enroladores, regulador externo, e **300-400 W de solar**. O solar produz 1,5-2 kWh/dia sem ligar o motor e e a melhor compra da lista inteira. Cabe nos €3.500.
+
+### 14.5.1 Teste obrigatorio no ensaio de mar — a manivela sob carga
+
+Faca-se o que se fizer a electricidade, havera uma noite a rizar a manivela. O que importa nao sao os amperes: **e se a manivela funciona com a vela cheia de vento.** Num enrolador de mastro nao se pode aliviar a escota e deixar flamejar — a vela esta presa a retranca.
+
+**Protocolo:** barco a um largo, vento real 12-15 nos, vela toda fora. Desligar o electrico no quadro. Abrir a embraiagem e enrolar dois rizos so a manivela. **Cronometrar.**
+
+- Menos de 2 minutos, a solo, sem largar o leme mais do que um bocado → o barco serve.
+- 4 minutos, as duas maos, todo o peso, ou empanca → **nao e um defeito de €3.500, e um barco que nao serve para navegar a solo.**
+
+Fazer o teste com as proprias maos. Nao deixar que seja o vendedor a demonstrar que da.
+
+### 14.6 Decisoes tecnicas tomadas
 
 - **Nao comprar radar.** €2.500-3.500 instalado, consome corrente que este barco nao produz. O AIS faz 90% do trabalho por €600 e quase sem consumo — o que pode matar no Atlantico sao cargueiros e todos transmitem AIS. Esse dinheiro vai para o sistema electrico e para o leme de vento.
 - **Guardar o GPS antigo.** Da posicao tao bem como um de hoje e e o segundo sistema para quando o plotter se molhar. Deitar fora o velho depois de instalar o plotter e um erro comum.
 - **Ordem de trabalhos:** sistema electrico primeiro. Nao se instala electronica num barco que nao produz energia.
 
-### 14.6 Por confirmar antes de enviar a proposta
+### 14.7 Por confirmar antes de enviar a proposta
 
 - **A ancora e a amarra estao a bordo?** Se "evacuado" incluiu o ferro, sao mais €1.200 e e o unico item que nao se pode adiar.
-- **De que bateria vivem os enroladores e como e carregada com o barco a navegar?** Perguntar ao Dai numa mensagem separada, *antes* da proposta. Se houver alternador a carregar tudo, tiram-se €3.500 da lista e volta-se a €21.500. Se confirmar, a proposta fica blindada com o numero dele ja na conversa.
+- ~~De que bateria vivem os enroladores?~~ **CONFIRMADO pelo vendedor a bordo:** o alternador do motor carrega **apenas a bateria de arranque e a de servico**. A bateria dos enroladores nao e carregada por nada — so pelo carregador de automovel na extensao, em marina. Os €3.500 ficam e estao confirmados pela boca dele. Na carta cita-se, nao se alega.
 - Marca e modelo do leme de vento; conjunto completo?
 - Actuador do piloto automatico esta montado?
