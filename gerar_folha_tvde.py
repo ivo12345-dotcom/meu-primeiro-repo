@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Gera a folha de calculo de controlo TVDE (Uber/Bolt) para Lisboa."""
+"""Gera a folha de calculo de controlo TVDE (Uber/Bolt) para Lisboa - versao Tesla."""
 from datetime import date, time
 
 from openpyxl import Workbook
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-from openpyxl.utils import get_column_letter
+from openpyxl.styles import Alignment, Border, Font, PatternFill
+from openpyxl.styles.borders import Side
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.formatting.rule import ColorScaleRule
 from openpyxl.comments import Comment
@@ -12,10 +12,9 @@ from openpyxl.comments import Comment
 OUT = "Controlo_TVDE_Lisboa.xlsx"
 
 FONT = "Arial"
-BLUE = "0000FF"       # inputs
-BLACK = "000000"      # formulas
-GREEN = "008000"      # links entre folhas
-YELLOW = "FFFF00"     # celulas a preencher / pressupostos
+BLUE = "0000FF"
+BLACK = "000000"
+GREEN = "008000"
 HDR_FILL = PatternFill("solid", fgColor="1F3864")
 SUB_FILL = PatternFill("solid", fgColor="D9E2F3")
 IN_FILL = PatternFill("solid", fgColor="FFF2CC")
@@ -26,19 +25,18 @@ thin = Side(style="thin", color="BFBFBF")
 BORDER = Border(left=thin, right=thin, top=thin, bottom=thin)
 
 EUR = '#,##0.00\\ "€"'
-EUR0 = '#,##0\\ "€"'
 PCT = '0.0%'
 NUM1 = '#,##0.0'
 NUM0 = '#,##0'
 
-FIRST = 4          # primeira linha de dados (linha 3 = exemplo)
+FIRST = 4
 EXAMPLE = 3
-LAST = 403         # ultima linha com formulas
+LAST = 403
 REG = "'Registo Diário'"
 
 wb = Workbook()
 
-# ---------------------------------------------------------------- helpers
+
 def style(ws, ref, *, font_color=BLACK, bold=False, size=10, fill=None,
           fmt=None, align=None, wrap=False, border=True, italic=False):
     cells = ws[ref] if ":" in ref else [[ws[ref]]]
@@ -54,9 +52,11 @@ def style(ws, ref, *, font_color=BLACK, bold=False, size=10, fill=None,
             if border:
                 c.border = BORDER
 
+
 def widths(ws, mapping):
     for col, w in mapping.items():
         ws.column_dimensions[col].width = w
+
 
 # ================================================================ GUIA
 guia = wb.active
@@ -68,10 +68,14 @@ GUIA_ROWS = [
     ("T", "Controlo TVDE — Lisboa", ""),
     ("S", "", "Folha de registo e análise de turnos. Preenche o separador «Registo Diário» ao fim de cada turno; os resumos calculam-se sozinhos."),
     ("B", "COMO USAR", ""),
-    ("L", "1. Config", "Começa aqui. Define a comissão da plataforma, o custo por km e os teus custos fixos mensais. Sem isto, os líquidos saem errados."),
+    ("L", "1. Config", "Começa aqui. Confirma a comissão da plataforma, o custo de manutenção e pneus por km, e os custos fixos mensais. Sem isto, os líquidos saem errados."),
     ("L", "2. Registo Diário", "Uma linha por turno. Preenche só as colunas com fundo amarelo. As colunas cinzentas são fórmulas — não escrevas lá."),
     ("L", "3. Resumos", "Ao fim de 2-3 semanas os separadores de resumo mostram-te que blocos horários e que zonas rendem mais €/hora líquido. Trabalha esses; corta os outros."),
     ("L", "Regra de ouro", "O que interessa é o €/hora LÍQUIDO, não a faturação. Um turno de 200 € com 11 horas e 250 km rende menos que um de 120 € com 5 horas e 80 km."),
+    ("B", "CARREGAMENTOS (TESLA)", ""),
+    ("L", "Coluna «Carregamento (€)»", "A eletricidade NÃO é estimada. Sempre que carregares, mete o valor real que pagaste na linha do turno em que carregaste. Se um carregamento der para dois turnos, mete tudo no turno em que pagaste — ao fim do mês o total fica certo à mesma."),
+    ("L", "Custo real por km", "O «Resumo Mensal» calcula o teu € de carregamento por 100 km. Ao fim de um mês ficas a saber o custo real de energia do carro — melhor do que qualquer estimativa."),
+    ("L", "Carregar em casa vs rápido", "Carregar em casa fora do horário de ponta é muito mais barato do que carregamento rápido na rua. Se der, chega ao turno com o carro cheio de casa e usa a rede pública só como recurso."),
     ("B", "HORÁRIOS — PONTO DE PARTIDA", ""),
     ("L", "Sexta e sábado, 23h-04h", "O melhor bloco da semana. Surge alto, corridas curtas encadeadas, pouco trânsito. A madrugada de domingo (saída de sábado à noite) também é forte."),
     ("L", "Manhã cedo, 05h30-08h30", "Voos de partida + primeiro pico de escritórios, com trânsito ainda leve. Ótima relação €/hora e pouca concorrência."),
@@ -92,6 +96,7 @@ GUIA_ROWS = [
     ("L", "Cruzeiros", "Manhãs de desembarque no terminal de Santa Apolónia / Jardim do Tabaco."),
     ("B", "CUIDADOS", ""),
     ("L", "Corridas para fora", "Sintra, Cascais, Setúbal à hora de ponta: cuidado com o regresso vazio. 40 € com 50 min de volta a zero rende menos que três corridas urbanas."),
+    ("L", "Autonomia", "Nos turnos de noite não deixes a bateria descer ao ponto de teres de parar 40 minutos a carregar na hora boa. Carrega antes de sair ou nas horas mortas do turno."),
     ("L", "Multi-app", "Uber + Bolt + FREENOW em simultâneo reduz o tempo parado — desde que aceites com critério e não andes a cancelar."),
     ("L", "Portagens", "A 2ª Circular é grátis. Ponte 25 de Abril, Ponte Vasco da Gama e A5 não. Regista-as na coluna própria."),
     ("L", "Legal", "Precisas de certificado de motorista TVDE, veículo licenciado com dístico e estar coletado nas Finanças."),
@@ -125,29 +130,27 @@ for kind, label, text in GUIA_ROWS:
         guia.cell(r, 3, text)
         style(guia, f"B{r}", bold=True, size=10, wrap=True, align="left", border=False)
         style(guia, f"C{r}", size=10, wrap=True, align="left", border=False)
-        guia.row_dimensions[r].height = 26
+        guia.row_dimensions[r].height = 30
         r += 1
 
 # ================================================================ CONFIG
 cfg = wb.create_sheet("Config")
 cfg.sheet_view.showGridLines = False
-widths(cfg, {"A": 38, "B": 14, "C": 58, "D": 24, "E": 32, "F": 14})
+widths(cfg, {"A": 38, "B": 14, "C": 62, "D": 24, "E": 32, "F": 14})
 
 cfg["A1"] = "Config — pressupostos e custos"
 style(cfg, "A1", bold=True, size=14, font_color="1F3864", border=False)
 cfg["A2"] = "Preenche as células amarelas. Tudo o resto na folha depende destes valores."
 style(cfg, "A2", size=10, italic=True, font_color="595959", border=False)
 
-cfg["A4"] = "Custos variáveis"
+cfg["A4"] = "Custos variáveis (por km)"
 style(cfg, "A4:C4", bold=True, size=11, font_color="FFFFFF", fill=HDR_FILL)
 
 var_rows = [
     ("Comissão da plataforma (%)", 0.25, PCT,
      "Percentagem que a app retém sobre a faturação. Se a tua app já te mostra os ganhos JÁ líquidos de comissão, põe 0% aqui e regista esse valor na coluna Faturação."),
-    ("Custo de energia por km (€/km)", 0.11, EUR,
-     "Combustível ou eletricidade. Cálculo: preço do litro ÷ km por litro. Ex.: 1,75 €/L ÷ 16 km/L = 0,11 €/km. Elétrico em casa fica ~0,04 €/km."),
-    ("Desgaste e manutenção por km (€/km)", 0.06, EUR,
-     "Pneus, revisões, travões, óleo e depreciação do carro. 0,05-0,08 €/km é uma estimativa realista para um carro a fazer TVDE. Valor a ajustar quando tiveres histórico."),
+    ("Manutenção e pneus por km (€/km)", 0.03, EUR,
+     "Só manutenção e pneus. Num Tesla a fazer TVDE os pneus são o grosso: um jogo de ~800 € a durar ~35.000 km dá 0,023 €/km; o resto (alinhamentos, filtros, escovas, líquidos) fecha nos ~0,03 €/km. Ajusta quando tiveres faturas reais."),
 ]
 r = 5
 for label, val, fmt, note in var_rows:
@@ -157,53 +160,69 @@ for label, val, fmt, note in var_rows:
     style(cfg, f"A{r}", size=10, align="left")
     style(cfg, f"B{r}", size=10, font_color=BLUE, bold=True, fill=IN_FILL, fmt=fmt, align="center")
     style(cfg, f"C{r}", size=9, italic=True, font_color="595959", wrap=True, align="left")
-    cfg.row_dimensions[r].height = 30
+    cfg.row_dimensions[r].height = 44
     r += 1
 
-cfg["A9"] = "Custos fixos mensais"
-style(cfg, "A9:C9", bold=True, size=11, font_color="FFFFFF", fill=HDR_FILL)
-cfg["C9"] = "Custos que pagas mesmo que não trabalhes. Entram no separador «Resumo Mensal»."
-style(cfg, "C9", bold=True, size=9, font_color="FFFFFF", fill=HDR_FILL, wrap=True, align="left")
+cfg["A8"] = "Eletricidade"
+style(cfg, "A8:C8", bold=True, size=11, font_color="FFFFFF", fill=HDR_FILL)
+cfg["A9"] = "Não é estimada aqui"
+cfg["C9"] = ("Metes o valor real de cada carregamento na coluna «Carregamento (€)» do Registo Diário. "
+             "O Resumo Mensal calcula depois quanto te custa mesmo a energia por 100 km.")
+style(cfg, "A9", size=10, bold=True, align="left")
+style(cfg, "C9", size=9, italic=True, font_color="595959", wrap=True, align="left")
+cfg.row_dimensions[9].height = 30
+
+cfg["A11"] = "Custos fixos mensais"
+style(cfg, "A11:B11", bold=True, size=11, font_color="FFFFFF", fill=HDR_FILL)
+cfg["C11"] = "Custos que pagas mesmo que não trabalhes. Entram no separador «Resumo Mensal»."
+style(cfg, "C11", bold=True, size=9, font_color="FFFFFF", fill=HDR_FILL, wrap=True, align="left")
 
 fix_rows = [
-    ("Seguro TVDE", 90, "Seguro com cobertura de atividade TVDE (mais caro que um seguro particular)."),
-    ("Aluguer ou prestação da viatura", 0, "Se o carro é teu e está pago, deixa a 0 — mas considera pôr aqui uma verba para o substituir."),
-    ("Contabilidade", 60, "Contabilista certificado. Obrigatório se estiveres em contabilidade organizada."),
-    ("Licenças e certificados (mensalizado)", 15, "Certificado de motorista TVDE e dístico do veículo: divide o custo anual por 12."),
-    ("Telemóvel e dados", 20, "Plano de dados — precisas de rede estável o turno inteiro."),
-    ("Inspeção, IUC e outros anuais (mensalizado)", 25, "Soma os custos anuais do carro e divide por 12."),
-    ("Outros custos fixos", 0, "Parque, lavagens por avença, o que mais tiveres."),
+    ("Prestação do carro", 390, "Prestação mensal do Tesla."),
+    ("Seguro", None, "A PREENCHER — seguro com cobertura de atividade TVDE. Mete o valor mensal assim que o tiveres."),
+    ("Outros custos fixos 1", 0, "Livre. Ex.: contabilidade, licenças TVDE mensalizadas, telemóvel, IUC e inspeção divididos por 12."),
+    ("Outros custos fixos 2", 0, "Livre."),
 ]
-r = 10
+r = 12
 for label, val, note in fix_rows:
     cfg.cell(r, 1, label)
-    cfg.cell(r, 2, val)
+    if val is not None:
+        cfg.cell(r, 2, val)
     cfg.cell(r, 3, note)
     style(cfg, f"A{r}", size=10, align="left")
     style(cfg, f"B{r}", size=10, font_color=BLUE, bold=True, fill=IN_FILL, fmt=EUR, align="center")
     style(cfg, f"C{r}", size=9, italic=True, font_color="595959", wrap=True, align="left")
+    cfg.row_dimensions[r].height = 26
     r += 1
 
-cfg["A17"] = "TOTAL de custos fixos mensais"
-cfg["B17"] = "=SUM(B10:B16)"
-style(cfg, "A17", bold=True, size=10, fill=SUB_FILL, align="left")
-style(cfg, "B17", bold=True, size=10, fill=SUB_FILL, fmt=EUR, align="center")
+cfg["B13"].comment = Comment(
+    "Valor por preencher. Enquanto estiver vazio conta como 0 € e o resultado mensal aparece melhor do que é na realidade.",
+    "Controlo TVDE", width=300, height=90)
 
-cfg["A19"] = "Primeiro mês de atividade"
-cfg["B19"] = date(2026, 9, 1)
-cfg["C19"] = "Define o primeiro mês listado no separador «Resumo Mensal». Ajusta se começares noutra data."
-style(cfg, "A19", size=10, align="left")
-style(cfg, "B19", size=10, font_color=BLUE, bold=True, fill=IN_FILL, fmt="mmm/yyyy", align="center")
-style(cfg, "C19", size=9, italic=True, font_color="595959", wrap=True, align="left")
+cfg["A16"] = "TOTAL de custos fixos mensais"
+cfg["B16"] = "=SUM(B12:B15)"
+style(cfg, "A16", bold=True, size=10, fill=SUB_FILL, align="left")
+style(cfg, "B16", bold=True, size=10, fill=SUB_FILL, fmt=EUR, align="center")
+cfg["C16"] = ("Só entram aqui os custos que listares acima. O que pagares e não estiver nesta lista "
+              "não é abatido em lado nenhum — o resultado mensal sai por isso melhor do que a realidade.")
+style(cfg, "C16", size=9, italic=True, font_color="C00000", wrap=True, align="left")
+cfg.row_dimensions[16].height = 30
 
-cfg["A21"] = "Legenda de cores"
-style(cfg, "A21:C21", bold=True, size=11, font_color="FFFFFF", fill=HDR_FILL)
+cfg["A18"] = "Primeiro mês de atividade"
+cfg["B18"] = date(2026, 9, 1)
+cfg["C18"] = "Define o primeiro mês listado no separador «Resumo Mensal». Ajusta se começares noutra data."
+style(cfg, "A18", size=10, align="left")
+style(cfg, "B18", size=10, font_color=BLUE, bold=True, fill=IN_FILL, fmt="mmm/yyyy", align="center")
+style(cfg, "C18", size=9, italic=True, font_color="595959", wrap=True, align="left")
+
+cfg["A20"] = "Legenda de cores"
+style(cfg, "A20:C20", bold=True, size=11, font_color="FFFFFF", fill=HDR_FILL)
 legend = [
     ("Azul sobre amarelo", BLUE, IN_FILL, "Célula que preenches tu."),
     ("Preto sobre cinzento", BLACK, CALC_FILL, "Fórmula. Não escrevas por cima — perdes o cálculo."),
     ("Verde", GREEN, None, "Valor que vem de outro separador."),
 ]
-r = 22
+r = 21
 for label, fc, fl, note in legend:
     cfg.cell(r, 1, label)
     cfg.cell(r, 3, note)
@@ -211,7 +230,6 @@ for label, fc, fl, note in legend:
     style(cfg, f"C{r}", size=9, italic=True, font_color="595959", align="left")
     r += 1
 
-# listas para as validações
 BLOCOS = [
     "Madrugada (00h-05h)", "Manhã cedo (05h-08h)", "Manhã (08h-12h)",
     "Almoço (12h-15h)", "Tarde (15h-17h)", "Pico tarde (17h-21h)",
@@ -250,7 +268,6 @@ reg = wb.create_sheet("Registo Diário", 1)
 reg.sheet_view.showGridLines = False
 
 COLS = [
-    # (letra, cabeçalho, tipo, largura, formato)
     ("A", "Data", "in", 11, "dd/mm/yyyy"),
     ("B", "Dia", "calc", 10, None),
     ("C", "Mês", "calc", 10, "mmm/yyyy"),
@@ -264,8 +281,8 @@ COLS = [
     ("K", "Comissão (€)", "calc", 12, EUR),
     ("L", "Gorjetas (€)", "in", 11, EUR),
     ("M", "Km", "in", 8, NUM0),
-    ("N", "Energia (€)", "calc", 11, EUR),
-    ("O", "Desgaste (€)", "calc", 11, EUR),
+    ("N", "Carregamento (€)", "in", 13, EUR),
+    ("O", "Manut. e pneus (€)", "calc", 12, EUR),
     ("P", "Portagens (€)", "in", 11, EUR),
     ("Q", "Outros (€)", "in", 10, EUR),
     ("R", "LÍQUIDO (€)", "calc", 13, EUR),
@@ -275,7 +292,7 @@ COLS = [
     ("V", "Notas", "in", 34, None),
 ]
 
-reg["A1"] = ("REGISTO DIÁRIO  —  preenche só as colunas de cabeçalho AMARELO, uma linha por turno.  "
+reg["A1"] = ("REGISTO DIÁRIO  —  preenche só as colunas de cabeçalho AZUL-ESCURO, uma linha por turno.  "
              "As colunas de cabeçalho CINZENTO são fórmulas: não escrevas nelas.  "
              "A linha 3 é um exemplo — apaga-a quando começares.")
 reg.merge_cells("A1:V1")
@@ -292,25 +309,25 @@ for letter, header, kind, w, fmt in COLS:
     c.border = BORDER
 reg.row_dimensions[2].height = 30
 
-# marcador visual: cabeçalhos de input com barra amarela por baixo (via fill das celulas)
 notes = {
     "J": "Valor total das corridas ANTES da comissão da plataforma. Se a app já te mostra o valor líquido de comissão, põe a comissão a 0% na Config e regista aqui esse valor.",
     "L": "Gorjetas não pagam comissão, por isso entram à parte.",
     "M": "Km TOTAIS do turno, incluindo os que fazes vazio à procura de corrida. É esse o custo real.",
+    "N": "Valor REAL do que pagaste a carregar. Preenche na linha do turno em que carregaste. Se um carregamento der para vários turnos, mete tudo no turno em que pagaste — ao fim do mês o total fica certo à mesma. Deixa vazio nos turnos em que não carregaste.",
+    "O": "Calculado a partir dos km e do valor por km definido na Config (manutenção e pneus).",
     "P": "Só as portagens que pagaste do teu bolso e não foram reembolsadas na corrida.",
     "Q": "Lavagens, estacionamento, parque do aeroporto, café. Tudo o que gastaste por causa do turno.",
     "H": "Horas com a app ligada. Se o turno passar da meia-noite, a fórmula trata disso sozinha.",
 }
 for col, txt in notes.items():
-    reg[f"{col}2"].comment = Comment(txt, "Controlo TVDE", width=320, height=110)
+    reg[f"{col}2"].comment = Comment(txt, "Controlo TVDE", width=340, height=130)
 
 FORMULAS = {
     "B": '=IF($A{r}="","",INDEX(Config!$F$2:$F$8,WEEKDAY($A{r},2)))',
     "C": '=IF($A{r}="","",EOMONTH($A{r},0))',
     "H": '=IF(OR($F{r}="",$G{r}=""),"",($G{r}-$F{r}+IF($G{r}<$F{r},1,0))*24)',
     "K": '=IF($J{r}="","",$J{r}*Config!$B$5)',
-    "N": '=IF($M{r}="","",$M{r}*Config!$B$6)',
-    "O": '=IF($M{r}="","",$M{r}*Config!$B$7)',
+    "O": '=IF($M{r}="","",$M{r}*Config!$B$6)',
     "R": '=IF($J{r}="","",$J{r}-$K{r}+SUM($L{r})-SUM($N{r}:$Q{r}))',
     "S": '=IF(OR($R{r}="",$H{r}="",$H{r}=0),"",$R{r}/$H{r})',
     "T": '=IF(OR($R{r}="",$M{r}="",$M{r}=0),"",$R{r}/$M{r})',
@@ -322,8 +339,7 @@ for row in range(EXAMPLE, LAST + 1):
         c = reg[f"{letter}{row}"]
         if kind == "calc":
             c.value = FORMULAS[letter].format(r=row)
-            c.font = Font(name=FONT, size=10, color=BLACK,
-                          bold=(letter in ("R", "S")))
+            c.font = Font(name=FONT, size=10, color=BLACK, bold=(letter in ("R", "S")))
             c.fill = CALC_FILL
         else:
             c.font = Font(name=FONT, size=10, color=BLUE)
@@ -334,13 +350,12 @@ for row in range(EXAMPLE, LAST + 1):
                                 vertical="center")
         c.border = BORDER
 
-# linha de exemplo
 example = {"A": date(2026, 9, 5), "D": "Noite (21h-00h)", "E": "Cais do Sodré / Bairro Alto",
            "F": time(21, 30), "G": time(4, 0), "I": 14, "J": 168.40, "L": 6.50,
-           "M": 122, "P": 3.20, "Q": 2.00, "V": "EXEMPLO — apaga esta linha. Muito movimento depois das 2h."}
+           "M": 122, "N": 11.80, "P": 3.20, "Q": 2.00,
+           "V": "EXEMPLO — apaga esta linha. Carreguei a meio do turno."}
 for k, v in example.items():
     reg[f"{k}{EXAMPLE}"] = v
-style(reg, f"A{EXAMPLE}:V{EXAMPLE}", size=10, italic=True)
 for letter, header, kind, w, fmt in COLS:
     c = reg[f"{letter}{EXAMPLE}"]
     c.font = Font(name=FONT, size=10, italic=True,
@@ -352,7 +367,6 @@ for letter, header, kind, w, fmt in COLS:
     c.alignment = Alignment(horizontal="left" if letter in ("D", "E", "V") else "center",
                             vertical="center")
 
-# validações
 dv_bloco = DataValidation(type="list", formula1="=Config!$D$2:$D$9", allow_blank=True)
 dv_zona = DataValidation(type="list", formula1="=Config!$E$2:$E$17", allow_blank=True)
 reg.add_data_validation(dv_bloco)
@@ -360,7 +374,6 @@ reg.add_data_validation(dv_zona)
 dv_bloco.add(f"D{EXAMPLE}:D{LAST}")
 dv_zona.add(f"E{EXAMPLE}:E{LAST}")
 
-# escala de cor no €/hora
 reg.conditional_formatting.add(
     f"S{EXAMPLE}:S{LAST}",
     ColorScaleRule(start_type="percentile", start_value=10, start_color="F8696B",
@@ -370,7 +383,8 @@ reg.conditional_formatting.add(
 reg.freeze_panes = "F3"
 reg.auto_filter.ref = f"A2:V{LAST}"
 
-# ================================================================ RESUMO TEMPO
+
+# ================================================================ RESUMOS
 def summary_sheet(name, items, key_col, title, subtitle, pos):
     ws = wb.create_sheet(name, pos)
     ws.sheet_view.showGridLines = False
@@ -411,9 +425,8 @@ def summary_sheet(name, items, key_col, title, subtitle, pos):
 
     tot = r
     ws.cell(tot, 1, "TOTAL")
-    for col in ("B", "C", "D", "E", "I"):
-        ws.cell(tot, {"B": 2, "C": 3, "D": 4, "E": 5, "I": 9}[col],
-                f"=SUM({col}5:{col}{tot-1})")
+    for col, idx in (("B", 2), ("C", 3), ("D", 4), ("E", 5), ("I", 9)):
+        ws.cell(tot, idx, f"=SUM({col}5:{col}{tot-1})")
     ws.cell(tot, 6, f'=IF($C{tot}=0,"",$E{tot}/$C{tot})')
     ws.cell(tot, 7, f'=IF($I{tot}=0,"",$E{tot}/$I{tot})')
     ws.cell(tot, 8, f'=IF($C{tot}=0,"",SUMPRODUCT($H5:$H{tot-1},$C5:$C{tot-1})/$C{tot})')
@@ -430,59 +443,55 @@ def summary_sheet(name, items, key_col, title, subtitle, pos):
                        end_type="max", end_color="63BE7B"))
     return ws, tot
 
-ws_bloco, tot_b = summary_sheet(
-    "Resumo Blocos", BLOCOS, "D",
-    "Resumo por bloco horário",
-    "Ordena mentalmente pela coluna €/HORA. O verde é onde deves trabalhar; o vermelho é onde estás a perder tempo.", 2)
 
-ws_zona, tot_z = summary_sheet(
-    "Resumo Zonas", ZONAS, "E",
-    "Resumo por zona",
-    "Zona onde passaste a maior parte do turno. Compara o €/hora e o €/km: uma zona com bom €/hora mas mau €/km está a queimar-te o carro.", 3)
-
-ws_dia, tot_d = summary_sheet(
-    "Resumo Dias", DIAS, "B",
-    "Resumo por dia da semana",
-    "Ao fim de um mês vês quais os dias que compensam mesmo. Descansar num dia mau vale mais do que trabalhá-lo.", 4)
+summary_sheet("Resumo Blocos", BLOCOS, "D", "Resumo por bloco horário",
+              "Ordena mentalmente pela coluna €/HORA. O verde é onde deves trabalhar; o vermelho é onde estás a perder tempo.", 2)
+summary_sheet("Resumo Zonas", ZONAS, "E", "Resumo por zona",
+              "Zona onde passaste a maior parte do turno. Compara o €/hora e o €/km: uma zona com bom €/hora mas mau €/km está a queimar-te o carro.", 3)
+summary_sheet("Resumo Dias", DIAS, "B", "Resumo por dia da semana",
+              "Ao fim de um mês vês quais os dias que compensam mesmo. Descansar num dia mau vale mais do que trabalhá-lo.", 4)
 
 # ================================================================ RESUMO MENSAL
 mes = wb.create_sheet("Resumo Mensal", 5)
 mes.sheet_view.showGridLines = False
-widths(mes, {"A": 14, "B": 10, "C": 11, "D": 15, "E": 15, "F": 16, "G": 16,
-             "H": 16, "I": 15, "J": 13})
+widths(mes, {"A": 14, "B": 10, "C": 11, "D": 15, "E": 16, "F": 14, "G": 15,
+             "H": 14, "I": 11, "J": 11, "K": 15, "L": 15})
 
 mes["A1"] = "Resumo mensal — o que sobra mesmo"
 style(mes, "A1", bold=True, size=14, font_color="1F3864", border=False)
-mes["A2"] = ("O «Líquido dos turnos» já desconta comissão, energia, desgaste, portagens e extras. "
-             "Falta abater os custos fixos do mês (Config) para chegar ao RESULTADO — é esse o teu rendimento antes de impostos.")
-mes.merge_cells("A2:J2")
+mes["A2"] = ("O «Líquido dos turnos» já desconta comissão, carregamentos, manutenção/pneus, portagens e extras. "
+             "Falta abater os custos fixos do mês (prestação e seguro, na Config) para chegar ao RESULTADO — é esse o teu rendimento antes de impostos.")
+mes.merge_cells("A2:L2")
 style(mes, "A2", size=10, italic=True, font_color="595959", wrap=True, align="left", border=False)
 mes.row_dimensions[2].height = 28
 
 heads = ["Mês", "Turnos", "Horas", "Faturação (€)", "Líquido dos turnos (€)",
-         "Custos fixos (€)", "RESULTADO (€)", "€/hora final", "Km", "Corridas"]
+         "Custos fixos (€)", "RESULTADO (€)", "€/hora final", "Km", "Corridas",
+         "Carregamentos (€)", "Energia por 100 km (€)"]
 for i, h in enumerate(heads, start=1):
     mes.cell(4, i, h)
-style(mes, "A4:J4", bold=True, size=9, font_color="FFFFFF", fill=HDR_FILL, align="center", wrap=True)
-mes.row_dimensions[4].height = 30
+style(mes, "A4:L4", bold=True, size=9, font_color="FFFFFF", fill=HDR_FILL, align="center", wrap=True)
+mes.row_dimensions[4].height = 34
 
 MONTHS = 18
 r = 5
 for i in range(MONTHS):
     if i == 0:
-        mes.cell(r, 1, "=EOMONTH(Config!$B$19,0)")
+        mes.cell(r, 1, "=EOMONTH(Config!$B$18,0)")
     else:
         mes.cell(r, 1, f"=EOMONTH(A{r-1},1)")
     mes.cell(r, 2, f'=COUNTIFS({REG}!$C${EXAMPLE}:$C${LAST},$A{r})')
     mes.cell(r, 3, f'=SUMIFS({REG}!$H${EXAMPLE}:$H${LAST},{REG}!$C${EXAMPLE}:$C${LAST},$A{r})')
     mes.cell(r, 4, f'=SUMIFS({REG}!$J${EXAMPLE}:$J${LAST},{REG}!$C${EXAMPLE}:$C${LAST},$A{r})')
     mes.cell(r, 5, f'=SUMIFS({REG}!$R${EXAMPLE}:$R${LAST},{REG}!$C${EXAMPLE}:$C${LAST},$A{r})')
-    mes.cell(r, 6, f'=IF($B{r}=0,0,Config!$B$17)')
+    mes.cell(r, 6, f'=IF($B{r}=0,0,Config!$B$16)')
     mes.cell(r, 7, f'=$E{r}-$F{r}')
     mes.cell(r, 8, f'=IF($C{r}=0,"",$G{r}/$C{r})')
     mes.cell(r, 9, f'=SUMIFS({REG}!$M${EXAMPLE}:$M${LAST},{REG}!$C${EXAMPLE}:$C${LAST},$A{r})')
     mes.cell(r, 10, f'=SUMIFS({REG}!$I${EXAMPLE}:$I${LAST},{REG}!$C${EXAMPLE}:$C${LAST},$A{r})')
-    style(ws=mes, ref=f"A{r}", size=10, fmt="mmm/yyyy", align="center")
+    mes.cell(r, 11, f'=SUMIFS({REG}!$N${EXAMPLE}:$N${LAST},{REG}!$C${EXAMPLE}:$C${LAST},$A{r})')
+    mes.cell(r, 12, f'=IF($I{r}=0,"",$K{r}/$I{r}*100)')
+    style(mes, f"A{r}", size=10, fmt="mmm/yyyy", align="center")
     style(mes, f"B{r}", size=10, fmt=NUM0, align="center")
     style(mes, f"C{r}", size=10, fmt=NUM1, align="center")
     style(mes, f"D{r}", size=10, fmt=EUR, align="center")
@@ -492,25 +501,29 @@ for i in range(MONTHS):
     style(mes, f"H{r}", size=10, fmt=EUR, align="center", bold=True)
     style(mes, f"I{r}", size=10, fmt=NUM0, align="center")
     style(mes, f"J{r}", size=10, fmt=NUM0, align="center")
+    style(mes, f"K{r}", size=10, fmt=EUR, align="center")
+    style(mes, f"L{r}", size=10, fmt=EUR, align="center")
     r += 1
 
 tot = r
 mes.cell(tot, 1, "TOTAL")
-for idx, col in ((2, "B"), (3, "C"), (4, "D"), (5, "E"), (6, "F"), (7, "G"), (9, "I"), (10, "J")):
+for idx, col in ((2, "B"), (3, "C"), (4, "D"), (5, "E"), (6, "F"), (7, "G"),
+                 (9, "I"), (10, "J"), (11, "K")):
     mes.cell(tot, idx, f"=SUM({col}5:{col}{tot-1})")
 mes.cell(tot, 8, f'=IF($C{tot}=0,"",$G{tot}/$C{tot})')
-style(mes, f"A{tot}:J{tot}", bold=True, size=10, fill=SUB_FILL, align="center")
+mes.cell(tot, 12, f'=IF($I{tot}=0,"",$K{tot}/$I{tot}*100)')
+style(mes, f"A{tot}:L{tot}", bold=True, size=10, fill=SUB_FILL, align="center")
 style(mes, f"A{tot}", bold=True, size=10, fill=SUB_FILL, align="left")
 for col, fmt in (("B", NUM0), ("C", NUM1), ("D", EUR), ("E", EUR), ("F", EUR),
-                 ("G", EUR), ("H", EUR), ("I", NUM0), ("J", NUM0)):
+                 ("G", EUR), ("H", EUR), ("I", NUM0), ("J", NUM0), ("K", EUR), ("L", EUR)):
     mes[f"{col}{tot}"].number_format = fmt
 
 nr = tot + 2
 mes.cell(nr, 1, "Nota")
 mes.cell(nr, 2, ("Os custos fixos só são debitados nos meses em que registaste turnos. "
-                 "O RESULTADO é antes de IRS e Segurança Social — reserva uma parte para isso. "
-                 "Se o «€/hora final» ficar abaixo do que ganharias noutro trabalho, os números estão a dizer-te alguma coisa."))
-mes.merge_cells(f"B{nr}:J{nr}")
+                 "O RESULTADO é antes de IRS e Segurança Social — reserva uma parte. "
+                 "A coluna «Energia por 100 km» dá-te o custo real de eletricidade do carro a partir dos teus carregamentos."))
+mes.merge_cells(f"B{nr}:L{nr}")
 style(mes, f"A{nr}", bold=True, size=9, italic=True, border=False)
 style(mes, f"B{nr}", size=9, italic=True, font_color="595959", wrap=True, align="left", border=False)
 mes.row_dimensions[nr].height = 30
