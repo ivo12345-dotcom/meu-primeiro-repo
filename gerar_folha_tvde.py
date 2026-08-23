@@ -178,26 +178,28 @@ cfg["C11"] = "Custos que pagas mesmo que não trabalhes. Entram no separador «R
 style(cfg, "C11", bold=True, size=9, font_color="FFFFFF", fill=HDR_FILL, wrap=True, align="left")
 
 fix_rows = [
-    ("Prestação do carro", 390, "Prestação mensal do Tesla."),
-    ("Seguro", None, "A PREENCHER — seguro com cobertura de atividade TVDE. Mete o valor mensal assim que o tiveres."),
-    ("Outros custos fixos 1", 0, "Livre. Ex.: contabilidade, licenças TVDE mensalizadas, telemóvel, IUC e inspeção divididos por 12."),
-    ("Outros custos fixos 2", 0, "Livre."),
+    ("Prestação do carro", 390, "in",
+     "Prestação mensal do Tesla."),
+    ("Seguro (970 €/ano ÷ 12)", "=B19/12", "calc",
+     "Calculado a partir do valor anual do seguro, na secção «Custos anuais» abaixo. Muda lá o valor e este acompanha."),
+    ("Outros custos fixos 1", 0, "in",
+     "Livre, para um custo que pagues TODOS OS MESES. Ex.: contabilidade, telemóvel."),
+    ("Outros custos anuais ÷ 12", "=B20/12", "calc",
+     "Calculado a partir do valor anual da secção abaixo. Ex.: IUC, inspeção, licenças TVDE."),
 ]
 r = 12
-for label, val, note in fix_rows:
+for label, val, kind, note in fix_rows:
     cfg.cell(r, 1, label)
-    if val is not None:
-        cfg.cell(r, 2, val)
+    cfg.cell(r, 2, val)
     cfg.cell(r, 3, note)
     style(cfg, f"A{r}", size=10, align="left")
-    style(cfg, f"B{r}", size=10, font_color=BLUE, bold=True, fill=IN_FILL, fmt=EUR, align="center")
+    if kind == "in":
+        style(cfg, f"B{r}", size=10, font_color=BLUE, bold=True, fill=IN_FILL, fmt=EUR, align="center")
+    else:
+        style(cfg, f"B{r}", size=10, font_color=BLACK, bold=True, fill=CALC_FILL, fmt=EUR, align="center")
     style(cfg, f"C{r}", size=9, italic=True, font_color="595959", wrap=True, align="left")
     cfg.row_dimensions[r].height = 26
     r += 1
-
-cfg["B13"].comment = Comment(
-    "Valor por preencher. Enquanto estiver vazio conta como 0 € e o resultado mensal aparece melhor do que é na realidade.",
-    "Controlo TVDE", width=300, height=90)
 
 cfg["A16"] = "TOTAL de custos fixos mensais"
 cfg["B16"] = "=SUM(B12:B15)"
@@ -208,21 +210,41 @@ cfg["C16"] = ("Só entram aqui os custos que listares acima. O que pagares e nã
 style(cfg, "C16", size=9, italic=True, font_color="C00000", wrap=True, align="left")
 cfg.row_dimensions[16].height = 30
 
-cfg["A18"] = "Primeiro mês de atividade"
-cfg["B18"] = date(2026, 9, 1)
-cfg["C18"] = "Define o primeiro mês listado no separador «Resumo Mensal». Ajusta se começares noutra data."
-style(cfg, "A18", size=10, align="left")
-style(cfg, "B18", size=10, font_color=BLUE, bold=True, fill=IN_FILL, fmt="mmm/yyyy", align="center")
-style(cfg, "C18", size=9, italic=True, font_color="595959", wrap=True, align="left")
+cfg["A18"] = "Custos anuais (entram mensalizados na tabela acima)"
+style(cfg, "A18:C18", bold=True, size=11, font_color="FFFFFF", fill=HDR_FILL)
 
-cfg["A20"] = "Legenda de cores"
-style(cfg, "A20:C20", bold=True, size=11, font_color="FFFFFF", fill=HDR_FILL)
+anuais = [
+    ("Seguro (anual)", 970,
+     "Seguro com cobertura de atividade TVDE. 970 €/ano = 80,83 €/mês, já refletido na tabela acima."),
+    ("Outros custos anuais", 0,
+     "Soma aqui o que pagas uma vez por ano: IUC, inspeção, certificado de motorista TVDE, dístico do veículo."),
+]
+r = 19
+for label, val, note in anuais:
+    cfg.cell(r, 1, label)
+    cfg.cell(r, 2, val)
+    cfg.cell(r, 3, note)
+    style(cfg, f"A{r}", size=10, align="left")
+    style(cfg, f"B{r}", size=10, font_color=BLUE, bold=True, fill=IN_FILL, fmt=EUR, align="center")
+    style(cfg, f"C{r}", size=9, italic=True, font_color="595959", wrap=True, align="left")
+    cfg.row_dimensions[r].height = 26
+    r += 1
+
+cfg["A22"] = "Primeiro mês de atividade"
+cfg["B22"] = date(2026, 9, 1)
+cfg["C22"] = "Define o primeiro mês listado no separador «Resumo Mensal». Ajusta se começares noutra data."
+style(cfg, "A22", size=10, align="left")
+style(cfg, "B22", size=10, font_color=BLUE, bold=True, fill=IN_FILL, fmt="mmm/yyyy", align="center")
+style(cfg, "C22", size=9, italic=True, font_color="595959", wrap=True, align="left")
+
+cfg["A24"] = "Legenda de cores"
+style(cfg, "A24:C24", bold=True, size=11, font_color="FFFFFF", fill=HDR_FILL)
 legend = [
     ("Azul sobre amarelo", BLUE, IN_FILL, "Célula que preenches tu."),
     ("Preto sobre cinzento", BLACK, CALC_FILL, "Fórmula. Não escrevas por cima — perdes o cálculo."),
     ("Verde", GREEN, None, "Valor que vem de outro separador."),
 ]
-r = 21
+r = 25
 for label, fc, fl, note in legend:
     cfg.cell(r, 1, label)
     cfg.cell(r, 3, note)
@@ -259,9 +281,9 @@ for i, v in enumerate(DIAS):
     cfg.cell(2 + i, 6, v)
     style(cfg, f"F{2+i}", size=9, align="left")
 
-cfg["D19"] = "Podes editar ou acrescentar zonas nesta lista — as caixas de seleção do registo acompanham."
-style(cfg, "D19:F19", size=9, italic=True, font_color="595959", wrap=True, align="left", border=False)
-cfg.merge_cells("D19:F21")
+cfg["D22"] = "Podes editar ou acrescentar zonas nesta lista — as caixas de seleção do registo acompanham."
+style(cfg, "D22:F22", size=9, italic=True, font_color="595959", wrap=True, align="left", border=False)
+cfg.merge_cells("D22:F24")
 
 # ================================================================ REGISTO DIÁRIO
 reg = wb.create_sheet("Registo Diário", 1)
@@ -477,7 +499,7 @@ MONTHS = 18
 r = 5
 for i in range(MONTHS):
     if i == 0:
-        mes.cell(r, 1, "=EOMONTH(Config!$B$18,0)")
+        mes.cell(r, 1, "=EOMONTH(Config!$B$22,0)")
     else:
         mes.cell(r, 1, f"=EOMONTH(A{r-1},1)")
     mes.cell(r, 2, f'=COUNTIFS({REG}!$C${EXAMPLE}:$C${LAST},$A{r})')
