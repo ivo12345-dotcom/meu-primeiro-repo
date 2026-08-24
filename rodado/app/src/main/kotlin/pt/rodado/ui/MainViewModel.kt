@@ -30,6 +30,7 @@ import pt.rodado.core.money.Money
 import pt.rodado.data.TeslaConfig
 import pt.rodado.data.TeslaRegion
 import pt.rodado.tesla.SyncOutcome
+import pt.rodado.tesla.TeslaApi
 import pt.rodado.tesla.TeslaAuth
 import java.time.DayOfWeek
 import java.time.Instant
@@ -258,20 +259,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return@launch
         }
         val config = settingsStore.teslaConfig.first()
-        auth.exchangeCode(config, codigo, verificador)
-            .onSuccess { tokens ->
-                settingsStore.saveTokens(tokens.accessToken, tokens.refreshToken, tokens.expiresAtEpoch)
-                escolherCarro()
-            }
-            .onFailure { mensagem.value = "A Tesla recusou o código: ${it.message}" }
+        emSegundoPlano {
+            auth.exchangeCode(config, codigo, verificador)
+                .onSuccess { tokens ->
+                    settingsStore.saveTokens(
+                        tokens.accessToken,
+                        tokens.refreshToken,
+                        tokens.expiresAtEpoch
+                    )
+                    escolherCarro()
+                }
+                .onFailure { mensagem.value = "A Tesla recusou o código: ${descreve(it)}" }
+        }
     }
 
+    /** Ja corre fora da linha principal: so e chamada de dentro de [emSegundoPlano]. */
     private suspend fun escolherCarro() {
         val config = settingsStore.teslaConfig.first()
-        val carros = runCatching { pt.rodado.tesla.TeslaApi().vehicles(config) }.getOrNull()
-        val carro = carros?.firstOrNull()
+        val carros = runCatching { TeslaApi().vehicles(config) }
+            .onFailure { mensagem.value = "Conta ligada, mas falhou a leitura dos carros: ${descreve(it)}" }
+            .getOrNull() ?: return
+        val carro = carros.firstOrNull()
         if (carro == null) {
-            mensagem.value = "Conta ligada, mas não encontrei nenhum carro."
+            mensagem.value = "Conta ligada, mas não há nenhum carro nesta conta Tesla."
             return
         }
         settingsStore.saveVehicle(carro.vin.ifBlank { carro.id })
@@ -292,11 +302,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             dominio == null ->
                 mensagem.value = "O endereço de retorno tem de ser um https:// com domínio."
 
-            else -> withContext(Dispatchers.IO) {
+            else -> emSegundoPlano {
                 auth.partnerToken(config)
-                    .mapCatching { token -> pt.rodado.tesla.TeslaApi().registerPartner(config, token, dominio) }
+                    .mapCatching { token -> TeslaApi().registerPartner(config, token, dominio) }
                     .onSuccess { mensagem.value = "Domínio $dominio registado na Tesla." }
-                    .onFailure { mensagem.value = "A Tesla recusou o registo do domínio: ${it.message}" }
+                    .onFailure {
+                        mensagem.value = "A Tesla recusou o registo do domínio: ${descreve(it)}"
+                    }
             }
         }
     }
@@ -330,4 +342,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         settingsStore.clearTeslaLink()
         mensagem.value = "Conta Tesla desligada."
     }
+
+    /**
+     * Corre trabalho de rede fora da linha principal.
+     *
+     * O Android recusa pedidos de rede na linha principal, e a excepcao que lanca
+     * nao traz mensagem — o erro chegava ao utilizador como "null". Todas as
+     * chamadas a Tesla passam por aqui para que isso nao se repita.
+     */
+    private suspend fun <T> emSegundoPlano(bloco: suspend () -> T): T =
+        withContext(Dispatchers.IO) { bloco() }
+
+    /** Texto legivel de um erro, mesmo quando a excepcao nao traz mensagem. */
+    private fun descreve(erro: Throwable): String =
+        erro.message?.takeIf { it.isNotBlank() } ?: erro::class.java.simpleName
 }
