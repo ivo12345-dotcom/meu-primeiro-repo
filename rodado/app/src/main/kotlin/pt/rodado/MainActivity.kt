@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.ViewList
@@ -40,6 +41,7 @@ import kotlinx.coroutines.withContext
 import pt.rodado.core.model.Platform
 import pt.rodado.ui.AnaliseScreen
 import pt.rodado.ui.DefinicoesScreen
+import pt.rodado.ui.FrotaScreen
 import pt.rodado.ui.ImportarScreen
 import pt.rodado.ui.MainViewModel
 import pt.rodado.ui.PainelScreen
@@ -50,6 +52,7 @@ private enum class Aba(val titulo: String, val icone: ImageVector) {
     PAINEL("Painel", Icons.Filled.Speed),
     TURNOS("Turnos", Icons.Filled.ViewList),
     IMPORTAR("Importar", Icons.Filled.FileDownload),
+    FROTA("Frota", Icons.Filled.Groups),
     ANALISE("Análise", Icons.Filled.BarChart),
     DEFINICOES("Definições", Icons.Filled.Settings)
 }
@@ -79,6 +82,8 @@ class MainActivity : ComponentActivity() {
         val custos by viewModel.settings.collectAsState()
         val tesla by viewModel.teslaConfig.collectAsState()
         val preview by viewModel.preview.collectAsState()
+        val frotaPreview by viewModel.fleetPreview.collectAsState()
+        val frota by viewModel.frota.collectAsState()
 
         var plataformaEscolhida by remember { mutableStateOf(Platform.UBER) }
         val escolherFicheiro = rememberLauncherForActivityResult(
@@ -86,15 +91,18 @@ class MainActivity : ComponentActivity() {
         ) { uri: Uri? ->
             if (uri == null) return@rememberLauncherForActivityResult
             scope.launch {
-                val texto = withContext(Dispatchers.IO) {
+                val ficheiro = withContext(Dispatchers.IO) {
                     runCatching {
-                        contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                        val texto = contentResolver.openInputStream(uri)
+                            ?.bufferedReader()?.use { it.readText() }
+                        texto to nomeDoFicheiro(uri)
                     }.getOrNull()
                 }
+                val texto = ficheiro?.first
                 if (texto.isNullOrBlank()) {
                     snackbar.showSnackbar("Não consegui ler o ficheiro.")
                 } else {
-                    viewModel.prepararImportacao(texto, plataformaEscolhida)
+                    viewModel.prepararImportacao(texto, plataformaEscolhida, ficheiro.second)
                 }
             }
         }
@@ -141,6 +149,7 @@ class MainActivity : ComponentActivity() {
                 Aba.IMPORTAR -> androidx.compose.foundation.layout.Box(conteudo) {
                     ImportarScreen(
                         preview = preview,
+                        frota = frotaPreview,
                         aoEscolherFicheiro = { plataforma ->
                             plataformaEscolhida = plataforma
                             escolherFicheiro.launch(
@@ -151,6 +160,10 @@ class MainActivity : ComponentActivity() {
                         aoConfirmar = viewModel::confirmarImportacao,
                         aoCancelar = viewModel::cancelarImportacao
                     )
+                }
+
+                Aba.FROTA -> androidx.compose.foundation.layout.Box(conteudo) {
+                    FrotaScreen(frota)
                 }
 
                 Aba.ANALISE -> androidx.compose.foundation.layout.Box(conteudo) {
@@ -180,4 +193,18 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    /**
+     * Nome do ficheiro escolhido.
+     *
+     * O relatorio de frota da Uber nao traz as datas do periodo la dentro — so no
+     * nome do ficheiro. Sem isto, todas as semanas importadas ficariam empilhadas
+     * na mesma data.
+     */
+    private fun nomeDoFicheiro(uri: Uri): String? = runCatching {
+        contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val coluna = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            if (coluna >= 0 && cursor.moveToFirst()) cursor.getString(coluna) else null
+        } ?: uri.lastPathSegment
+    }.getOrNull()
 }

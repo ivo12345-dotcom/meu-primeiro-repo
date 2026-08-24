@@ -14,9 +14,14 @@ import pt.rodado.RodadoApp
 import pt.rodado.core.calc.Calculator
 import pt.rodado.core.calc.Ledger
 import pt.rodado.core.calc.Totals
+import pt.rodado.core.csv.DriverWeekImporter
+import pt.rodado.core.csv.DriverWeekPreview
 import pt.rodado.core.csv.ImportPreview
+import pt.rodado.core.csv.ReportDetector
+import pt.rodado.core.csv.ReportKind
 import pt.rodado.core.csv.TripImporter
 import pt.rodado.core.model.CostSettings
+import pt.rodado.core.model.DriverWeek
 import pt.rodado.core.model.ExpenseKind
 import pt.rodado.core.model.HourBlock
 import pt.rodado.core.model.LISBOA
@@ -179,33 +184,77 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _preview = MutableStateFlow<ImportPreview?>(null)
     val preview: StateFlow<ImportPreview?> = _preview
 
-    fun prepararImportacao(texto: String, plataforma: Platform) {
-        _preview.value = runCatching { TripImporter.preview(texto, plataforma) }
-            .onFailure { mensagem.value = "Não consegui ler o ficheiro: ${it.message}" }
-            .getOrNull()
+    private val _fleetPreview = MutableStateFlow<DriverWeekPreview?>(null)
+    val fleetPreview: StateFlow<DriverWeekPreview?> = _fleetPreview
+
+    /** Semanas de cada motorista, das mais recentes para as mais antigas. */
+    val frota: StateFlow<List<DriverWeek>> = repository.driverWeeks
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * Le o ficheiro escolhido e decide sozinha o que ele e.
+     *
+     * As plataformas exportam relatorios diferentes com nomes parecidos, e quem
+     * exporta nao tem como saber qual e qual — os cabecalhos sabem.
+     */
+    fun prepararImportacao(texto: String, plataforma: Platform, nomeFicheiro: String?) {
+        _preview.value = null
+        _fleetPreview.value = null
+        when (runCatching { ReportDetector.detect(texto) }.getOrNull()) {
+            ReportKind.FROTA -> _fleetPreview.value =
+                runCatching { DriverWeekImporter.preview(texto, plataforma, nomeFicheiro) }
+                    .onFailure { mensagem.value = "Não consegui ler o relatório: ${it.message}" }
+                    .getOrNull()
+
+            ReportKind.VIAGENS -> _preview.value =
+                runCatching { TripImporter.preview(texto, plataforma) }
+                    .onFailure { mensagem.value = "Não consegui ler o ficheiro: ${it.message}" }
+                    .getOrNull()
+
+            else -> mensagem.value =
+                "Não reconheci este ficheiro. Precisa de ter uma coluna de motorista " +
+                    "(relatório de frota) ou de data e valor (relatório de viagens)."
+        }
     }
 
     fun ajustarColuna(chave: String, indice: Int?) {
         _preview.value = _preview.value?.withMapping(chave, indice)
+        _fleetPreview.value = _fleetPreview.value?.withMapping(chave, indice)
     }
 
     fun cancelarImportacao() {
         _preview.value = null
+        _fleetPreview.value = null
     }
 
     fun confirmarImportacao() = viewModelScope.launch {
-        val atual = _preview.value ?: return@launch
-        val resultado = TripImporter.apply(atual)
-        val novas = repository.importTrips(resultado.trips)
-        val repetidas = resultado.trips.size - novas
-        mensagem.value = buildString {
-            append("$novas viagens importadas")
-            if (repetidas > 0) append(", $repetidas já existiam")
-            if (resultado.skippedRows > 0) append(", ${resultado.skippedRows} linhas ignoradas")
-            append(".")
-            resultado.warnings.forEach { append(" $it") }
+        _preview.value?.let { atual ->
+            val resultado = TripImporter.apply(atual)
+            val novas = repository.importTrips(resultado.trips)
+            val repetidas = resultado.trips.size - novas
+            mensagem.value = buildString {
+                append("$novas viagens importadas")
+                if (repetidas > 0) append(", $repetidas já existiam")
+                if (resultado.skippedRows > 0) append(", ${resultado.skippedRows} linhas ignoradas")
+                append(".")
+                resultado.warnings.forEach { append(" $it") }
+            }
+            _preview.value = null
+            return@launch
         }
-        _preview.value = null
+
+        _fleetPreview.value?.let { atual ->
+            val resultado = DriverWeekImporter.apply(atual)
+            repository.importDriverWeeks(resultado.weeks)
+            mensagem.value = buildString {
+                append("${resultado.weeks.size} motoristas importados")
+                append(" (${atual.weekStart} a ${atual.weekEnd})")
+                if (resultado.skippedRows > 0) append(", ${resultado.skippedRows} linhas ignoradas")
+                append(".")
+                resultado.warnings.forEach { append(" $it") }
+            }
+            _fleetPreview.value = null
+        }
     }
 
     // ----------------------------------------------------------------- tesla

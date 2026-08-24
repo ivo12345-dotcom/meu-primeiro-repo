@@ -11,7 +11,8 @@ import androidx.room.RoomDatabase
         TripEntity::class,
         ChargeEntity::class,
         ExpenseEntity::class,
-        OdometerEntity::class
+        OdometerEntity::class,
+        DriverWeekEntity::class
     ],
     version = 1,
     exportSchema = false
@@ -19,6 +20,8 @@ import androidx.room.RoomDatabase
 abstract class RodadoDatabase : RoomDatabase() {
 
     abstract fun dao(): RodadoDao
+
+    abstract fun fleetDao(): FleetDao
 
     companion object {
         @Volatile

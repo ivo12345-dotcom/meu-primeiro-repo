@@ -103,11 +103,10 @@ class SettingsStore(private val context: Context) {
             prefs[Keys.commissionRate] = settings.fallbackCommissionRate
             prefs[Keys.maintenancePerKm] = settings.maintenancePerKm
             prefs[Keys.homePricePerKwh] = settings.homePricePerKwh
-            prefs[Keys.fixedCosts] = json.encodeToString(
-                settings.fixedCosts.map {
-                    StoredFixedCost(it.label, it.amount.cents, it.period == FixedCost.Period.ANUAL)
-                }
-            )
+            val guardados: List<StoredFixedCost> = settings.fixedCosts.map {
+                StoredFixedCost(it.label, it.amount.cents, it.period == FixedCost.Period.ANUAL)
+            }
+            prefs[Keys.fixedCosts] = json.encodeToString(guardados)
         }
     }
 

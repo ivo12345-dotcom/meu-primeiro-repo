@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.item
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -23,22 +22,58 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import pt.rodado.core.csv.DriverWeekPreview
 import pt.rodado.core.csv.ImportPreview
 import pt.rodado.core.model.Platform
 
 @Composable
 fun ImportarScreen(
     preview: ImportPreview?,
+    frota: DriverWeekPreview?,
     aoEscolherFicheiro: (Platform) -> Unit,
     aoAjustarColuna: (String, Int?) -> Unit,
     aoConfirmar: () -> Unit,
     aoCancelar: () -> Unit
 ) {
     LazyColumn(Modifier.fillMaxWidth()) {
-        if (preview == null) {
-            item { Explicacao(aoEscolherFicheiro) }
-        } else {
-            item { Mapeamento(preview, aoAjustarColuna, aoConfirmar, aoCancelar) }
+        when {
+            preview != null -> item {
+                Mapeamento(
+                    titulo = "Relatório de viagens",
+                    subtitulo = "${preview.table.rows.size} viagens do ${preview.platform.label}.",
+                    etiquetas = listOf(
+                        "Distância em ${preview.distanceUnit.label}",
+                        "Decimais: ${preview.decimalStyle.name.lowercase()}"
+                    ),
+                    cabecalhos = preview.table.headers,
+                    specs = preview.specs,
+                    indiceDe = { preview.mapping.indexOf(it) },
+                    emFalta = preview.missingRequired.map { it.label },
+                    podeImportar = preview.isUsable,
+                    aoAjustarColuna = aoAjustarColuna,
+                    aoConfirmar = aoConfirmar,
+                    aoCancelar = aoCancelar
+                )
+            }
+
+            frota != null -> item {
+                Mapeamento(
+                    titulo = "Relatório de frota",
+                    subtitulo = "${frota.table.rows.size} motoristas, de " +
+                        "${frota.weekStart} a ${frota.weekEnd}.",
+                    etiquetas = listOf("Decimais: ${frota.decimalStyle.name.lowercase()}"),
+                    cabecalhos = frota.table.headers,
+                    specs = frota.specs,
+                    indiceDe = { frota.mapping.indexOf(it) },
+                    emFalta = frota.missingRequired.map { it.label },
+                    podeImportar = frota.isUsable,
+                    aoAjustarColuna = aoAjustarColuna,
+                    aoConfirmar = aoConfirmar,
+                    aoCancelar = aoCancelar
+                )
+            }
+
+            else -> item { Explicacao(aoEscolherFicheiro) }
         }
     }
 }
@@ -48,9 +83,10 @@ private fun Explicacao(aoEscolherFicheiro: (Platform) -> Unit) {
     Column(Modifier.fillMaxWidth().padding(16.dp)) {
         Text("Importar viagens", style = MaterialTheme.typography.headlineSmall)
         Text(
-            "O Uber e a Bolt não deixam nenhuma app externa consultar os teus ganhos. " +
-                "O que dá é descarregar o extrato semanal em CSV e trazê-lo para aqui — " +
-                "traz viagem a viagem o que ganhaste, a comissão e a distância.",
+            "O Uber e a Bolt não deixam nenhuma app externa consultar os ganhos. " +
+                "O que dá é descarregar o relatório em CSV e trazê-lo para aqui. " +
+                "A app percebe sozinha se lhe deste o relatório de viagens (uma linha por " +
+                "corrida, com distância) ou o de frota (uma linha por motorista e por semana).",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(vertical = 12.dp)
@@ -59,8 +95,10 @@ private fun Explicacao(aoEscolherFicheiro: (Platform) -> Unit) {
             Column(Modifier.padding(16.dp)) {
                 Text("Onde ir buscar", fontWeight = FontWeight.SemiBold)
                 Text(
-                    "Uber: drivers.uber.com → Ganhos → Extratos → descarregar CSV\n" +
-                        "Bolt: partners.bolt.eu → Relatórios → exportar CSV",
+                    "Uber: drivers.uber.com ou o portal de frota → Ganhos → descarregar CSV\n" +
+                        "Bolt: partners.bolt.eu → Relatórios → exportar CSV\n\n" +
+                        "Só o relatório de viagens traz distâncias — é ele que permite " +
+                        "separar os km com cliente dos km vazios.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
@@ -74,11 +112,11 @@ private fun Explicacao(aoEscolherFicheiro: (Platform) -> Unit) {
             Button(
                 onClick = { aoEscolherFicheiro(Platform.UBER) },
                 modifier = Modifier.weight(1f)
-            ) { Text("Extrato Uber") }
+            ) { Text("Ficheiro Uber") }
             Button(
                 onClick = { aoEscolherFicheiro(Platform.BOLT) },
                 modifier = Modifier.weight(1f)
-            ) { Text("Extrato Bolt") }
+            ) { Text("Ficheiro Bolt") }
         }
         Text(
             "Importar o mesmo ficheiro duas vezes não duplica nada.",
@@ -91,44 +129,46 @@ private fun Explicacao(aoEscolherFicheiro: (Platform) -> Unit) {
 
 @Composable
 private fun Mapeamento(
-    preview: ImportPreview,
+    titulo: String,
+    subtitulo: String,
+    etiquetas: List<String>,
+    cabecalhos: List<String>,
+    specs: List<pt.rodado.core.csv.ColumnSpec>,
+    indiceDe: (String) -> Int?,
+    emFalta: List<String>,
+    podeImportar: Boolean,
     aoAjustarColuna: (String, Int?) -> Unit,
     aoConfirmar: () -> Unit,
     aoCancelar: () -> Unit
 ) {
     Column(Modifier.fillMaxWidth().padding(16.dp)) {
+        Text(titulo, style = MaterialTheme.typography.headlineSmall)
         Text(
-            "Confere as colunas",
-            style = MaterialTheme.typography.headlineSmall
-        )
-        Text(
-            "${preview.table.rows.size} linhas no ficheiro do ${preview.platform.label}. " +
-                "Os cabeçalhos mudam com o idioma da conta, por isso vale a pena confirmar " +
-                "antes de importar.",
+            "$subtitulo Os cabeçalhos mudam com o idioma da conta, por isso vale a pena " +
+                "confirmar antes de importar.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(vertical = 8.dp)
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AssistChip(onClick = {}, label = { Text("Distância em ${preview.distanceUnit.label}") })
-            AssistChip(onClick = {}, label = { Text("Decimais: ${preview.decimalStyle.name.lowercase()}") })
+            etiquetas.forEach { etiqueta ->
+                AssistChip(onClick = {}, label = { Text(etiqueta) })
+            }
         }
 
-        preview.specs.forEach { spec ->
+        specs.forEach { spec ->
             EscolhaDeColuna(
                 etiqueta = spec.label,
                 obrigatoria = spec.required,
-                cabecalhos = preview.table.headers,
-                seleccionada = preview.mapping.indexOf(spec.key),
+                cabecalhos = cabecalhos,
+                seleccionada = indiceDe(spec.key),
                 aoSeleccionar = { indice -> aoAjustarColuna(spec.key, indice) }
             )
         }
 
-        if (preview.missingRequired.isNotEmpty()) {
-            Aviso(
-                "Falta escolher: " + preview.missingRequired.joinToString(", ") { it.label }
-            )
+        if (emFalta.isNotEmpty()) {
+            Aviso("Falta escolher: " + emFalta.joinToString(", "))
         }
 
         Row(
@@ -140,7 +180,7 @@ private fun Mapeamento(
             }
             Button(
                 onClick = aoConfirmar,
-                enabled = preview.isUsable,
+                enabled = podeImportar,
                 modifier = Modifier.weight(1f)
             ) { Text("Importar") }
         }

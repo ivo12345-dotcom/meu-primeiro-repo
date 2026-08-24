@@ -17,7 +17,7 @@ class RodadoApp : Application() {
     val settings: SettingsStore by lazy { SettingsStore(this) }
 
     val repository: Repository by lazy {
-        Repository(RodadoDatabase.get(this).dao(), settings)
+        RodadoDatabase.get(this).let { Repository(it.dao(), it.fleetDao(), settings) }
     }
 
     val teslaSync: TeslaSync by lazy { TeslaSync(repository, settings) }

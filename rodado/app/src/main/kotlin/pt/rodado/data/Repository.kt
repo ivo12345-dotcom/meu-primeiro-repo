@@ -2,8 +2,10 @@ package pt.rodado.data
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import pt.rodado.core.calc.Ledger
 import pt.rodado.core.model.ChargeSession
+import pt.rodado.core.model.DriverWeek
 import pt.rodado.core.model.Expense
 import pt.rodado.core.model.ExpenseKind
 import pt.rodado.core.model.Shift
@@ -14,8 +16,22 @@ import java.util.UUID
 
 class Repository(
     private val dao: RodadoDao,
+    private val fleetDao: FleetDao,
     val settings: SettingsStore
 ) {
+
+    /** Semanas de cada motorista, vindas dos relatorios de frota. */
+    val driverWeeks: Flow<List<DriverWeek>> =
+        fleetDao.driverWeeks().map { linhas -> linhas.map { it.toDomain() } }
+
+    suspend fun importDriverWeeks(weeks: List<DriverWeek>): Int {
+        if (weeks.isEmpty()) return 0
+        fleetDao.upsertDriverWeeks(weeks.map { DriverWeekEntity.from(it) })
+        return weeks.size
+    }
+
+    suspend fun deleteDriverWeek(id: String) = fleetDao.deleteDriverWeek(id)
+
 
     /** Tudo o que ha registado, ja pronto para a calculadora. */
     val ledger: Flow<Ledger> = combine(
