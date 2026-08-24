@@ -181,9 +181,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _preview = MutableStateFlow<ImportPreview?>(null)
     val preview: StateFlow<ImportPreview?> = _preview
 
-    private val _preview = MutableStateFlow<ImportPreview?>(null)
-    val preview: StateFlow<ImportPreview?> = _preview
-
     /**
      * Le o ficheiro escolhido e decide sozinha o que ele e.
      *
