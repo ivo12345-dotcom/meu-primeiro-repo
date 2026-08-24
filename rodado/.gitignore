@@ -16,3 +16,6 @@ captures/
 *.aab
 *.keystore
 *.jks
+# Excepcao: a chave de depuracao e propositadamente versionada, para as
+# actualizacoes instalarem por cima. Nao protege nada.
+!debug.keystore

@@ -19,9 +19,31 @@ android {
         versionName = "0.1"
     }
 
+    /*
+     * Chave de assinatura fixa, guardada no repositorio.
+     *
+     * Sem isto cada build corre numa maquina diferente do GitHub, que gera uma
+     * chave de depuracao nova, e o Android recusa instalar a versao seguinte por
+     * cima da anterior com "App nao instalada" — obrigando a desinstalar e a
+     * perder as definicoes de cada vez.
+     *
+     * E uma chave de depuracao com password publica: nao protege nada e nao
+     * serve para publicar na Play Store. Serve so para que as actualizacoes
+     * instalem por cima.
+     */
+    signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
         }
         release {
             isMinifyEnabled = false
