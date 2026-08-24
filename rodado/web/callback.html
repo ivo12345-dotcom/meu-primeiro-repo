@@ -1,0 +1,48 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rodado — ligação à Tesla</title>
+<style>
+  body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 2rem 1.25rem;
+         background: #0f3d2e; color: #f6f4ef; line-height: 1.5; }
+  main { max-width: 34rem; margin: 0 auto; }
+  h1 { font-size: 1.25rem; margin: 0 0 1rem; }
+  code { display: block; background: #04241a; padding: 1rem; border-radius: .5rem;
+         word-break: break-all; font-size: .95rem; margin: 1rem 0; }
+  button { background: #4caf87; color: #04241a; border: 0; border-radius: .5rem;
+           padding: .75rem 1.25rem; font-size: 1rem; font-weight: 600; cursor: pointer; }
+  p.small { opacity: .8; font-size: .9rem; }
+</style>
+<main>
+  <h1>Ligação à Tesla</h1>
+  <div id="conteudo">A ler o endereço…</div>
+</main>
+<script>
+  // A Tesla so aceita enderecos de retorno em https, por isso o codigo aterra
+  // aqui em vez de voltar directamente para a app. Esta pagina so o mostra —
+  // nada e enviado para lado nenhum.
+  const parametros = new URLSearchParams(location.search);
+  const codigo = parametros.get("code");
+  const erro = parametros.get("error_description") || parametros.get("error");
+  const destino = document.getElementById("conteudo");
+
+  if (codigo) {
+    destino.innerHTML =
+      "<p>Copia este código e cola-o na app, no campo «Código devolvido pela Tesla».</p>" +
+      "<code id='codigo'></code>" +
+      "<button id='copiar'>Copiar código</button>" +
+      "<p class='small'>O código só serve uma vez e expira em poucos minutos.</p>";
+    document.getElementById("codigo").textContent = codigo;
+    document.getElementById("copiar").addEventListener("click", async () => {
+      await navigator.clipboard.writeText(codigo);
+      document.getElementById("copiar").textContent = "Copiado";
+    });
+  } else if (erro) {
+    destino.innerHTML = "<p>A Tesla devolveu um erro:</p><code></code>";
+    destino.querySelector("code").textContent = erro;
+  } else {
+    destino.innerHTML =
+      "<p>Esta página é o ponto de retorno do login da Tesla. " +
+      "Abre-a a partir da app, não directamente.</p>";
+  }
+</script>

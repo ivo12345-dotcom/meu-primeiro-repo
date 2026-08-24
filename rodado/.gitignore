@@ -1,0 +1,18 @@
+# Gradle e build
+.gradle/
+build/
+local.properties
+.kotlin/
+
+# Android Studio
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# APKs e chaves
+*.apk
+*.aab
+*.keystore
+*.jks
