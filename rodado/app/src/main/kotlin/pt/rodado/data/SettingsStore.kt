@@ -11,6 +11,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import pt.rodado.core.model.CostSettings
 import pt.rodado.core.model.FixedCost
@@ -63,13 +64,17 @@ class SettingsStore(private val context: Context) {
 
     private val json = Json { ignoreUnknownKeys = true }
 
+    // Serializador explicito em vez da versao com tipo inferido: a inferida
+    // resolve para a assinatura errada quando o tipo e uma lista generica.
+    private val custosFixos = ListSerializer(StoredFixedCost.serializer())
+
     val costSettings: Flow<CostSettings> = context.dataStore.data.map { it.toCostSettings() }
     val teslaConfig: Flow<TeslaConfig> = context.dataStore.data.map { it.toTeslaConfig() }
 
     private fun Preferences.toCostSettings(): CostSettings {
         val defaults = CostSettings()
         val stored = this[Keys.fixedCosts]?.let { raw ->
-            runCatching { json.decodeFromString<List<StoredFixedCost>>(raw) }.getOrNull()
+            runCatching { json.decodeFromString(custosFixos, raw) }.getOrNull()
         }
         return CostSettings(
             fallbackCommissionRate = this[Keys.commissionRate] ?: defaults.fallbackCommissionRate,
@@ -106,7 +111,7 @@ class SettingsStore(private val context: Context) {
             val guardados: List<StoredFixedCost> = settings.fixedCosts.map {
                 StoredFixedCost(it.label, it.amount.cents, it.period == FixedCost.Period.ANUAL)
             }
-            prefs[Keys.fixedCosts] = json.encodeToString(guardados)
+            prefs[Keys.fixedCosts] = json.encodeToString(custosFixos, guardados)
         }
     }
 

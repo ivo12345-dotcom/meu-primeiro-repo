@@ -22,24 +22,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import pt.rodado.core.csv.DriverWeekPreview
 import pt.rodado.core.csv.ImportPreview
 import pt.rodado.core.model.Platform
 
 @Composable
 fun ImportarScreen(
     preview: ImportPreview?,
-    frota: DriverWeekPreview?,
     aoEscolherFicheiro: (Platform) -> Unit,
     aoAjustarColuna: (String, Int?) -> Unit,
     aoConfirmar: () -> Unit,
     aoCancelar: () -> Unit
 ) {
     LazyColumn(Modifier.fillMaxWidth()) {
-        when {
-            preview != null -> item {
+        if (preview == null) {
+            item { Explicacao(aoEscolherFicheiro) }
+        } else {
+            item {
                 Mapeamento(
-                    titulo = "Relatório de viagens",
+                    titulo = "Confere as colunas",
                     subtitulo = "${preview.table.rows.size} viagens do ${preview.platform.label}.",
                     etiquetas = listOf(
                         "Distância em ${preview.distanceUnit.label}",
@@ -55,25 +55,6 @@ fun ImportarScreen(
                     aoCancelar = aoCancelar
                 )
             }
-
-            frota != null -> item {
-                Mapeamento(
-                    titulo = "Relatório de frota",
-                    subtitulo = "${frota.table.rows.size} motoristas, de " +
-                        "${frota.weekStart} a ${frota.weekEnd}.",
-                    etiquetas = listOf("Decimais: ${frota.decimalStyle.name.lowercase()}"),
-                    cabecalhos = frota.table.headers,
-                    specs = frota.specs,
-                    indiceDe = { frota.mapping.indexOf(it) },
-                    emFalta = frota.missingRequired.map { it.label },
-                    podeImportar = frota.isUsable,
-                    aoAjustarColuna = aoAjustarColuna,
-                    aoConfirmar = aoConfirmar,
-                    aoCancelar = aoCancelar
-                )
-            }
-
-            else -> item { Explicacao(aoEscolherFicheiro) }
         }
     }
 }
@@ -85,8 +66,8 @@ private fun Explicacao(aoEscolherFicheiro: (Platform) -> Unit) {
         Text(
             "O Uber e a Bolt não deixam nenhuma app externa consultar os ganhos. " +
                 "O que dá é descarregar o relatório em CSV e trazê-lo para aqui. " +
-                "A app percebe sozinha se lhe deste o relatório de viagens (uma linha por " +
-                "corrida, com distância) ou o de frota (uma linha por motorista e por semana).",
+                "Precisas do relatório de VIAGENS — uma linha por corrida, com a distância. " +
+                "É a distância que permite separar os km com cliente dos km vazios.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(vertical = 12.dp)

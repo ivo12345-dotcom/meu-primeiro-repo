@@ -13,15 +13,16 @@ e por mês.
 - **Importação dos extratos** em CSV, com deteção automática do separador, do
   formato dos números (`1.234,56` ou `1,234.56`) e da ordem das datas, e
   correção manual das colunas quando a deteção falha.
-- **Relatório de frota** "Ganhos por motorista": uma linha por motorista e por
-  semana, com as horas deduzidas a partir dos ganhos por hora.
+- **Deteção do tipo de relatório** pelos cabeçalhos, para avisar quando o
+  ficheiro escolhido é o de frota (por motorista e por semana, sem distâncias)
+  em vez do de viagens.
 - **Ligação à Tesla**: odómetro e histórico de carregamentos pela Fleet API.
 
 ## Estrutura
 
 | Módulo | O que é |
 |---|---|
-| `core/` | Modelo e cálculos. Kotlin puro, sem Android — é onde estão os testes. |
+| `core/` | Modelo e cálculos. Kotlin puro, sem Android — é onde estão os testes. Inclui também um leitor do relatório de frota "Ganhos por motorista", testado mas sem ecrã na app: está lá para o dia em que fizer falta. |
 | `app/`  | App Android: Room, Compose, WorkManager, cliente da Tesla. |
 | `web/`  | Página de retorno do login da Tesla, para alojar no teu domínio. |
 
