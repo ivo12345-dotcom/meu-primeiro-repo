@@ -6,15 +6,10 @@ depois do domínio registado.
 
 ---
 
-## 1. Comprar o domínio
+## 1. Domínio
 
-Qualquer domínio serve, e nunca vais ter de o mostrar a ninguém — é só para a
-Tesla confirmar que é teu. Um `.com` custa cerca de 10 €/ano.
-
-Onde comprar: Cloudflare, Namecheap, Porkbun, ou um registrador português como a
-Amen ou a PTisp se preferires suporte em português.
-
-**Depois de comprares, diz-me qual é** — preciso dele para configurar o resto.
+**`termedico.com`**, registado na Cloudflare. Já está fixado no ficheiro
+`docs/CNAME` deste repositório.
 
 ---
 
@@ -28,14 +23,22 @@ seleciona a branch e a pasta **`/docs`**, e Save.
 **Ainda em Settings → Pages:** no campo *Custom domain* escreve o teu domínio e
 Save. Espera uns minutos e liga o **Enforce HTTPS**.
 
-**No teu registrador de domínios**, cria os registos que o GitHub indica nessa
-mesma página (normalmente quatro registos `A` para o domínio e um `CNAME` para o
-`www`).
+**Na Cloudflare**, em DNS → Records, cria:
+
+- Quatro registos **A**, com *Name* a `@`, para `185.199.108.153`,
+  `185.199.109.153`, `185.199.110.153` e `185.199.111.153`
+- Um **CNAME**, *Name* a `www`, para `ivo12345-dotcom.github.io`
+
+Todos com o *Proxy status* em **DNS only** (nuvem cinzenta, não laranja): com o
+proxy ligado o GitHub não consegue emitir o certificado e ficas sem HTTPS.
+
+Em **SSL/TLS**, mete o modo em **Full**. Em *Flexible* o site entra num ciclo de
+redireccionamentos e não abre.
 
 **Confirma que resultou** abrindo no browser:
 
 ```
-https://<o-teu-dominio>/.well-known/appspecific/com.tesla.3p.public-key.pem
+https://termedico.com/.well-known/appspecific/com.tesla.3p.public-key.pem
 ```
 
 Tem de aparecer um texto que começa por `-----BEGIN PUBLIC KEY-----`. Se der 404,
@@ -52,10 +55,10 @@ aplicação com:
 |---|---|
 | Nome | Rodado |
 | Descrição | Controlo pessoal de atividade TVDE: quilómetros por turno e custo real de energia. |
-| Website | `https://<o-teu-dominio>` |
-| Política de privacidade | `https://<o-teu-dominio>/privacidade.html` |
-| Origem permitida | `https://<o-teu-dominio>` |
-| Endereço de retorno | `https://<o-teu-dominio>/tesla/callback/` |
+| Website | `https://termedico.com` |
+| Política de privacidade | `https://termedico.com/privacidade.html` |
+| Origem permitida | `https://termedico.com` |
+| Endereço de retorno | `https://termedico.com/tesla/callback/` |
 | Região | Europa, Médio Oriente e África |
 
 **Permissões a pedir** — só estas três, e mais nenhuma:
@@ -76,7 +79,7 @@ No fim ficas com um **Client ID** e um **Client Secret**. Guarda-os.
 Abre a app → **Definições** → secção **Tesla**:
 
 1. Cola o **Client ID** e o **Client Secret**.
-2. Endereço de retorno: `https://<o-teu-dominio>/tesla/callback/`
+2. Endereço de retorno: `https://termedico.com/tesla/callback/`
 3. Região: **Europa**.
 4. Carrega em **Guardar dados da aplicação**.
 
