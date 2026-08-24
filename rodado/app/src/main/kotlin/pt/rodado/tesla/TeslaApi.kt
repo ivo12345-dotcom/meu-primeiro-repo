@@ -8,7 +8,9 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Request
 import pt.rodado.core.model.ChargeSession
 import pt.rodado.core.money.Money
@@ -52,6 +54,31 @@ class TeslaApi(
                 error("A Tesla respondeu ${response.code}: ${text.take(300)}")
             }
             return json.parseToJsonElement(text).jsonObject
+        }
+    }
+
+    /**
+     * Regista o dominio da aplicacao na Fleet API da regiao.
+     *
+     * E um passo unico, feito uma vez por dominio e por regiao, e a Tesla so o
+     * aceita depois de conseguir ir buscar a chave publica ao dominio. Sem ele,
+     * o login do utilizador chega a correr mas os pedidos de dados sao recusados
+     * — e a mensagem de erro nao diz que foi isto que faltou.
+     */
+    fun registerPartner(config: TeslaConfig, partnerToken: String, domain: String): String {
+        val body = """{"domain":"$domain"}""".toRequestBody("application/json".toMediaType())
+        val request = Request.Builder()
+            .url(config.region.baseUrl + "/api/1/partner_accounts")
+            .header("Authorization", "Bearer $partnerToken")
+            .header("Accept", "application/json")
+            .post(body)
+            .build()
+        client.newCall(request).execute().use { response ->
+            val text = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                error("A Tesla respondeu ${response.code}: ${text.take(300)}")
+            }
+            return text
         }
     }
 

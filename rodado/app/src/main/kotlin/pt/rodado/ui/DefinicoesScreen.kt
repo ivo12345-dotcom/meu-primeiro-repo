@@ -40,6 +40,7 @@ fun DefinicoesScreen(
     tesla: TeslaConfig,
     aoGuardarCustos: (CostSettings) -> Unit,
     aoGuardarAppTesla: (String, String, String, TeslaRegion) -> Unit,
+    aoRegistarDominio: () -> Unit,
     aoLigarTesla: () -> Unit,
     aoColarCodigo: (String) -> Unit,
     aoSincronizar: () -> Unit,
@@ -47,7 +48,17 @@ fun DefinicoesScreen(
 ) {
     LazyColumn(Modifier.fillMaxWidth()) {
         item { BlocoCustos(custos, aoGuardarCustos) }
-        item { BlocoTesla(tesla, aoGuardarAppTesla, aoLigarTesla, aoColarCodigo, aoSincronizar, aoDesligarTesla) }
+        item {
+            BlocoTesla(
+                tesla,
+                aoGuardarAppTesla,
+                aoRegistarDominio,
+                aoLigarTesla,
+                aoColarCodigo,
+                aoSincronizar,
+                aoDesligarTesla
+            )
+        }
         item { Column(Modifier.padding(24.dp)) {} }
     }
 }
@@ -176,6 +187,7 @@ private fun LinhaCustoFixo(
 private fun BlocoTesla(
     tesla: TeslaConfig,
     aoGuardarApp: (String, String, String, TeslaRegion) -> Unit,
+    aoRegistarDominio: () -> Unit,
     aoLigar: () -> Unit,
     aoColarCodigo: (String) -> Unit,
     aoSincronizar: () -> Unit,
@@ -245,9 +257,21 @@ private fun BlocoTesla(
 
                 if (tesla.isRegistered) {
                     OutlinedButton(
+                        onClick = aoRegistarDominio,
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                    ) { Text("1. Registar o domínio na Tesla") }
+                    Text(
+                        "Passo único, a fazer uma vez depois de registares a aplicação no " +
+                            "portal da Tesla. Sem ele o login corre, mas os pedidos de dados " +
+                            "são recusados sem dizer porquê.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    OutlinedButton(
                         onClick = aoLigar,
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                    ) { Text(if (tesla.isLinked) "Ligar outra vez" else "Iniciar sessão na Tesla") }
+                    ) { Text(if (tesla.isLinked) "Ligar outra vez" else "2. Iniciar sessão na Tesla") }
 
                     OutlinedTextField(
                         value = codigo,
@@ -269,7 +293,7 @@ private fun BlocoTesla(
                         },
                         enabled = codigo.isNotBlank(),
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                    ) { Text("Concluir ligação") }
+                    ) { Text("3. Concluir ligação") }
                 }
 
                 if (tesla.isLinked) {

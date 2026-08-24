@@ -77,6 +77,23 @@ class TeslaAuth(private val client: OkHttpClient = OkHttpClient()) {
                 .build()
         )
 
+    /**
+     * Token de parceiro, para as operacoes que sao da aplicacao e nao de um
+     * utilizador — nomeadamente registar o dominio na Fleet API.
+     */
+    fun partnerToken(config: TeslaConfig): Result<String> = runCatching {
+        val tokens = postToken(
+            FormBody.Builder()
+                .add("grant_type", "client_credentials")
+                .add("client_id", config.clientId)
+                .add("client_secret", config.clientSecret)
+                .add("scope", SCOPES)
+                .add("audience", config.region.baseUrl)
+                .build()
+        ).getOrThrow()
+        tokens.accessToken
+    }
+
     fun refresh(config: TeslaConfig): Result<TeslaTokens> =
         postToken(
             FormBody.Builder()

@@ -163,6 +163,7 @@ class MainActivity : ComponentActivity() {
                         tesla = tesla,
                         aoGuardarCustos = viewModel::guardarCustos,
                         aoGuardarAppTesla = viewModel::guardarAppTesla,
+                        aoRegistarDominio = viewModel::registarDominioTesla,
                         aoLigarTesla = {
                             scope.launch {
                                 val url = viewModel.urlDeLoginTesla()

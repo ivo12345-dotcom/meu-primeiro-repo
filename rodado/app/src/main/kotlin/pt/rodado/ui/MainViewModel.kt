@@ -9,7 +9,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import pt.rodado.RodadoApp
 import pt.rodado.core.calc.Calculator
 import pt.rodado.core.calc.Ledger
@@ -275,6 +277,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         settingsStore.saveVehicle(carro.vin.ifBlank { carro.id })
         mensagem.value = "Ligado ao ${carro.name}."
     }
+
+    /**
+     * Regista o dominio da aplicacao na Fleet API. Passo unico, depois do
+     * registo no portal da Tesla e antes do primeiro login.
+     */
+    fun registarDominioTesla() = viewModelScope.launch {
+        val config = settingsStore.teslaConfig.first()
+        val dominio = dominioDe(config.redirectUri)
+        when {
+            config.clientId.isBlank() || config.clientSecret.isBlank() ->
+                mensagem.value = "Preenche primeiro o Client ID e o Client Secret."
+
+            dominio == null ->
+                mensagem.value = "O endereço de retorno tem de ser um https:// com domínio."
+
+            else -> withContext(Dispatchers.IO) {
+                auth.partnerToken(config)
+                    .mapCatching { token -> pt.rodado.tesla.TeslaApi().registerPartner(config, token, dominio) }
+                    .onSuccess { mensagem.value = "Domínio $dominio registado na Tesla." }
+                    .onFailure { mensagem.value = "A Tesla recusou o registo do domínio: ${it.message}" }
+            }
+        }
+    }
+
+    /** O domínio a registar sai do endereço de retorno, para não haver dois campos a dizer o mesmo. */
+    private fun dominioDe(redirectUri: String): String? =
+        runCatching { java.net.URI(redirectUri.trim()).host }.getOrNull()?.takeIf { it.isNotBlank() }
 
     fun sincronizarTesla() = viewModelScope.launch {
         mensagem.value = "A falar com o carro..."
