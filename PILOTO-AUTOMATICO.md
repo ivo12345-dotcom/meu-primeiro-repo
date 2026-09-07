@@ -135,5 +135,14 @@ Assim que chegarem as medidas do ponto 5: desenhar o aro e os grampos
 (paramétricos, para se poder afinar a folga do dente), gerar STL, e definir
 os parâmetros de fatiamento para ASA e PA-CF na K2 Plus.
 
-**Nota realista:** o modelo pode ser gerado aqui, mas o envio para a
-impressora é do proprietário — não há acesso remoto à K2 a partir daqui.
+### Envio para a impressora
+
+**O envio de gcode para a K2 já está montado no PC do proprietário e
+funciona.** Numa sessão local (com shell na máquina dele) o fluxo completo
+é possível: desenhar -> gerar STL -> fatiar -> enviar para a impressora.
+Ao abrir no PC, procurar o método já em uso — upload para a API do
+Moonraker, Creality Print, ou pasta vigiada pela impressora — e usar esse,
+em vez de assumir que não há acesso.
+
+A limitação existe apenas em sessões remotas (Claude Code na web), que
+nao alcançam a rede local. Não confundir as duas situações.
