@@ -177,10 +177,23 @@ acetona; lixas 40/80/120; espátulas e copos de mistura; luvas.
 Depois de lixar o fundo com lixa 40 e 80, apareceram bolhas — **confirmado
 pelo proprietário que é osmose**. Isto altera o plano e o calendário.
 
-**Escala ainda por confirmar:** quantas bolhas, que tamanho, e se o
-laminado por baixo está são ou mole/escuro/esfarelado. Se forem centenas ou
-o laminado estiver comprometido, a conversa passa a ser descascar o gelcoat
-à máquina (trabalho de estaleiro, outro orçamento) e convém um perito ver.
+**Escala CONFIRMADA: poucas bolhas, pequenas, fibra sã por baixo.**
+Osmose ligeira — o cenário bom. Não precisa de perito, de descascar gelcoat
+nem de estaleiro. É trabalho do proprietário.
+
+Consequências:
+- **A secagem deixa de ser um bloqueio de meses.** A humidade está
+  localizada nos pontos, não espalhada. **Medir em vez de assumir** — se o
+  humidímetro der valores baixos e estáveis em algumas semanas, está pronto.
+- **Não exagerar na abertura.** Abrir cada bolha só até fibra sã e seca, em
+  taça, e parar. Cada grama de laminado a mais que se tira é laminado a
+  repor.
+- **Pintar na primavera continua certo**, mas por causa do tempo (as demãos
+  de epóxi querem temperatura e ar seco; Novembro em Portugal não dá
+  garantias), não por causa da secagem. Isso liberta o inverno para a quilha
+  e para o piloto.
+- Com osmose desta escala, uma barreira epóxi bem feita provavelmente
+  resolve o assunto de vez.
 
 **Furos no casco:** os dois orifícios visíveis nas fotos são de acessórios
 em serviço (sonda / passa-cascos). **Não são para tapar.** Proteger com fita
