@@ -168,3 +168,71 @@ acetona; lixas 40/80/120; espátulas e copos de mistura; luvas.
 
 - Limpar o bolso de cima e reportar o que aparece (o parafuso não foi ainda
   visto em condições).
+
+
+---
+
+# ATUALIZAÇÃO 2026-09-08: OSMOSE NO CASCO
+
+Depois de lixar o fundo com lixa 40 e 80, apareceram bolhas — **confirmado
+pelo proprietário que é osmose**. Isto altera o plano e o calendário.
+
+**Escala ainda por confirmar:** quantas bolhas, que tamanho, e se o
+laminado por baixo está são ou mole/escuro/esfarelado. Se forem centenas ou
+o laminado estiver comprometido, a conversa passa a ser descascar o gelcoat
+à máquina (trabalho de estaleiro, outro orçamento) e convém um perito ver.
+
+**Furos no casco:** os dois orifícios visíveis nas fotos são de acessórios
+em serviço (sonda / passa-cascos). **Não são para tapar.** Proteger com fita
+durante as pinturas e refazer a vedação ao remontar.
+
+## Princípio
+
+A secagem é o que decide o resultado, e mede-se em **meses**. Tapar e
+pintar sobre laminado húmido sela o problema lá dentro e obriga a repetir
+tudo dentro de poucos anos.
+
+O barco está em seco e o fundo já está praticamente nu — condição ideal de
+secagem, e a época de navegação não se perde porque o inverno seria em
+seco de qualquer maneira.
+
+## O que NÃO se adia
+
+Secagem e **barreira epóxi**. São a parte estrutural.
+
+## O que SE pode adiar
+
+Só o silicone. Aplicar antivegetativo convencional na primavera, navegar
+2–3 anos, e depois converter com **Silic Seal** por cima do antivegetativo
+(é precisamente para isso que o produto existe). Poupa os €1.200–1.800 do
+Silic One agora sem sacrificar nada.
+
+## Calendário revisto
+
+| Quando | O quê |
+|---|---|
+| Agora | Abrir todas as bolhas (fresa, até laminado são), abrir em taça com margens em declive — nunca bordos vivos |
+| Agora, repetido | Lavar com água doce à pressão moderada, ao longo de dias/semanas — o líquido das bolhas é ácido e tem de sair |
+| Todo o inverno | Casco aberto e ventilado. **Nunca embrulhado em plástico fechado** (estufa, trava a secagem) |
+| Mensal | Humidímetro em vários pontos, apontar valores. Interessa a curva a estabilizar em baixo, não um número mágico |
+| Primavera | Encher com epóxi, alisar, **Light Primer** em toda a superfície — sem poupar demãos, é a camada que impede a repetição |
+| Primavera | Antivegetativo convencional, e para a água |
+| 2–3 anos depois | Silic Seal + tiecoat + Silic One |
+
+**O Silic Seal deixa de ser necessário agora:** com o casco a nu, vai
+Light Primer em toda a superfície. Um substrato só, sem dúvidas. O Silic
+Seal reaparece só na conversão futura.
+
+## Massas e fibra — regras
+
+- **Abaixo da linha de água, tudo epóxi. Nunca poliéster** (a massa
+  plástica de bate-chapas absorve água — entrada garantida para osmose).
+- Fibra só onde houver dano real; para irregularidades de superfície, massa
+  chega.
+- Com epóxi usar **tecido ou biaxial, NUNCA manta (CSM)** — o ligante da
+  manta precisa do estireno do poliéster para se desfazer; com epóxi fica
+  laminagem seca e cheia de vazios.
+- Furos que atravessem o laminado fecham-se com laminagem (escarva ~12:1
+  dos dois lados, epóxi e biaxial), nunca só com massa.
+- Antes do primário, acabar a **lixa 120** nas zonas de massa. Com Silic
+  One o alisamento é desempenho, não estética.
