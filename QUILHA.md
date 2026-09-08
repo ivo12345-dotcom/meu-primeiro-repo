@@ -89,12 +89,49 @@ epóxi mantém-se igual. Só muda o que vai por cima.
 | 3 | Silic One 2.ª demão (16 h depois) |
 | 4+ | Água (mín. 24 h, máx. 1 mês) |
 
-### Quantidades
+### DECIDIDO: Silic One no fundo todo, não só na quilha
 
-- Só a quilha (~6–8 m²): ~1,5 L para duas demãos.
-- Fundo inteiro do 34 pés (~30 m²): ~6 L.
-- **A decidir:** Silic One só na quilha ou no fundo todo? Não faz sentido
-  ter dois sistemas diferentes debaixo de água.
+Isto divide o trabalho em duas frentes com preparações diferentes.
+
+**Frente 1 — Quilha (ferro fundido, revestimento no fim de vida):**
+decapagem por jato até ferro nu -> Hempel Light Primer (barreira) ->
+Silic One Tiecoat -> Silic One (2 demãos).
+
+**Frente 2 — Casco em fibra (antivegetativo existente):** NÃO precisa de
+decapagem completa. Usar **Hempel Silic Seal / Conversion Primer**, um
+epóxi 2K feito para converter antivegetativo existente para Silic One.
+
+- **Condição/teste:** raspar com espátula de metal em várias zonas. Onde
+  estiver firme, fica; onde estiver solto ou quebradiço, remover. Se
+  falhar em grande extensão, decapar.
+- Depois: lixar a húmido, lavar com água doce, deixar secar.
+- Conversion Primer tem viscosidade muito baixa — escorridos têm de ser
+  espalhados imediatamente. **Não diluir.**
+- Tiecoat entra **assim que o primário estiver seco ao toque**.
+- Temperatura mínima de aplicação: 5 °C.
+
+### O dia crítico: primário + tiecoat
+
+O tiecoat tem de entrar dentro da janela do primário (2–4 h sobre Light
+Primer; seco ao toque sobre Conversion Primer). **Em ~30 m² de casco, uma
+pessoa sozinha não consegue.**
+
+- **Trabalhar por secções** (um bordo de cada vez, ou proa-a-meio e
+  meio-a-popa).
+- **Arranjar ajuda para esse dia.** É o dia crítico do projeto.
+
+### Quantidades (~30 m² casco + ~7 m² quilha = ~37 m², a 10 m²/L)
+
+| Produto | Quantidade |
+|---|---|
+| Silic One (2 demãos) | 7–8 L |
+| Silic One Tiecoat (1 demão) | ~4 L |
+| Silic Seal (casco) | confirmar rendimento na ficha |
+| Light Primer (quilha) | confirmar rendimento na ficha |
+
+**Orçamento:** estimativa grosseira de €1.200–1.800 no conjunto — bem acima
+de antivegetativo convencional. **Pedir cotação antes de comprar.** Compensa
+em 3–5 anos sem repintar, mas o desembolso é todo à cabeça.
 - **O alisamento passa a ser mais crítico.** O silicone funciona por a
   superfície ser escorregadia demais para a sujidade se fixar; cada
   irregularidade é um ponto de agarre. Bolsos e remendos têm de ficar ao
