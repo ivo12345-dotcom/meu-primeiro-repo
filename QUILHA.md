@@ -65,8 +65,36 @@ epóxi mantém-se igual. Só muda o que vai por cima.
 - **Janela de repintura do tiecoat: a armadilha principal.** Tem mínimo E
   máximo de horas para receber o silicone. Passar do máximo obriga a lixar
   e repetir. Ler a ficha técnica e planear o dia em função disso.
-- **Não misturar marcas** — primário, tiecoat e acabamento do mesmo sistema
-  (Hempel Silic One, International Intersleek, etc.).
+- **Sistema escolhido: Hempel Silic One.** Usar **Hempel Light Primer**
+  como barreira epóxi (NÃO Interprotect) — mantém a cadeia toda dentro do
+  mesmo sistema, com os intervalos documentados a aplicarem-se.
+
+### Intervalos (fichas técnicas Hempel — CONFIRMAR na embalagem)
+
+- **Tiecoat sobre Light Primer: min 2 h / MÁX 4 h a 20 °C** (2–8 h a 10 °C).
+  Mais quente = janela mais curta; tratar como 2 h em dia de calor.
+  **Primário e tiecoat no mesmo dia, em sequência.** Se exceder a janela,
+  aplicar nova demão de tiecoat.
+- **Silic One sobre tiecoat: min 8 h / MÁX 48 h a 20 °C** (min 16 h a 10 °C).
+- **Entre demãos de Silic One:** 16 h a 20 °C. São **2 demãos**.
+- **Imersão:** mínimo 24 h após a última demão, **até um mês** de folga.
+- **Rendimento:** ~10 m²/L por demão.
+
+### Calendário depois da decapagem
+
+| Dia | O quê |
+|---|---|
+| 1 | Light Primer (barreira) + tiecoat 2–4 h após a última demão |
+| 2 | Silic One 1.ª demão (8–48 h após tiecoat) |
+| 3 | Silic One 2.ª demão (16 h depois) |
+| 4+ | Água (mín. 24 h, máx. 1 mês) |
+
+### Quantidades
+
+- Só a quilha (~6–8 m²): ~1,5 L para duas demãos.
+- Fundo inteiro do 34 pés (~30 m²): ~6 L.
+- **A decidir:** Silic One só na quilha ou no fundo todo? Não faz sentido
+  ter dois sistemas diferentes debaixo de água.
 - **O alisamento passa a ser mais crítico.** O silicone funciona por a
   superfície ser escorregadia demais para a sujidade se fixar; cada
   irregularidade é um ponto de agarre. Bolsos e remendos têm de ficar ao
