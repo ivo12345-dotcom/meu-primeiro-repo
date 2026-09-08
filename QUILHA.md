@@ -43,7 +43,8 @@ fissurar. A lavagem à pressão só revelou o que já estava solto.
    camadas (de uma vez só a reação aquece e fissura).
 6. **Alisar** — só aqui se usa carga leve (407/410).
 7. **4–5 demãos de barreira epóxi** na quilha toda, não só nos remendos.
-8. **Antivegetativo.**
+8. **Tiecoat + tinta de silicone** (foul release) — decisão do
+   proprietário, em vez de antivegetativo. Ver secção abaixo.
 
 ### Nunca
 
@@ -53,6 +54,32 @@ fissurar. A lavagem à pressão só revelou o que já estava solto.
   é o que decide se dura dez anos ou dois.
 - **Carga leve com microesferas dentro dos bolsos** — fraca e absorvente.
   Alta densidade nos bolsos, leve só no acabamento.
+
+## Acabamento: silicone (foul release), NÃO antivegetativo
+
+Decisão do proprietário. Os passos 1 a 7 acima não mudam — o esquema de
+epóxi mantém-se igual. Só muda o que vai por cima.
+
+- **Tiecoat obrigatório** entre a barreira epóxi e o silicone. O silicone
+  não adere a epóxi diretamente; sem tiecoat descola em folhas.
+- **Janela de repintura do tiecoat: a armadilha principal.** Tem mínimo E
+  máximo de horas para receber o silicone. Passar do máximo obriga a lixar
+  e repetir. Ler a ficha técnica e planear o dia em função disso.
+- **Não misturar marcas** — primário, tiecoat e acabamento do mesmo sistema
+  (Hempel Silic One, International Intersleek, etc.).
+- **O alisamento passa a ser mais crítico.** O silicone funciona por a
+  superfície ser escorregadia demais para a sujidade se fixar; cada
+  irregularidade é um ponto de agarre. Bolsos e remendos têm de ficar ao
+  nível da superfície envolvente.
+- **Irreversível:** depois de aplicado, nada mais adere. Voltar a
+  antivegetativo obriga a decapar tudo até ao ferro outra vez.
+- **Expectativa:** dá o seu melhor em barcos usados com frequência — a
+  libertação faz-se com o movimento na água. Parado semanas na marina
+  apanha sujidade mole na mesma, mas sai com esponja em vez de raspador.
+  O proprietário vai navegar muito, portanto está no perfil certo.
+- **Manutenção:** lavagem à pressão só com pressão moderada — o silicone é
+  mole e risca-se. Retocar as zonas dos pés do escoramento antes de meter
+  na água.
 
 ## Material
 
