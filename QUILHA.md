@@ -249,3 +249,74 @@ Seal reaparece só na conversão futura.
   dos dois lados, epóxi e biaxial), nunca só com massa.
 - Antes do primário, acabar a **lixa 120** nas zonas de massa. Com Silic
   One o alisamento é desempenho, não estética.
+
+
+---
+
+# ATUALIZAÇÃO 2026-09-09: SILICONE ABANDONADO, PRIORIDADES DEFINIDAS
+
+## Decisões
+
+- **Silic One / sistema de silicone: ABANDONADO.** Vai antivegetativo
+  convencional. Toda a secção do Silic One acima fica como histórico — o
+  tiecoat, o Silic Seal e as janelas de repintura desse sistema já não se
+  aplicam.
+- **A barreira epóxi mantém-se e continua a ser o essencial.** Não é a
+  tinta que protege o laminado da osmose, é a barreira.
+
+## Material já comprado
+
+- Produto anti-osmose (barreira) — **confirmar por foto que é mesmo
+  barreira epóxi** (tipo Gelshield / Interprotect / Light Primer).
+- Massa — **confirmar por foto que é epóxi, não poliéster**.
+- Resina epóxi Presto 500 g (verificada: bicomponente, isenta de
+  dissolventes, baixa viscosidade, transparente; mistura **100:60 por
+  peso** — precisa de balança digital; pot life ~30 min a 20 °C; lixável
+  ~12 h). Serve para molhar cavidades e laminagens pequenas, **não** como
+  barreira.
+- Tinta 1K para o convés e tinta 2K para o costado.
+
+## Antivegetativo (ainda por comprar)
+
+- Tipo: **autopolimento** com cobre (International Micron, Hempel Cruising
+  Performer, Seajet 034 ou equivalente).
+- **Janela de repintura sobre a barreira epóxi** — confirmar na ficha do
+  primário e planear os dias em função disso. Passado o máximo, obriga a
+  lixar.
+- 2 demãos em geral, 3 nos bordos de ataque, linha de água, quilha e leme.
+
+## Convés e costado — ADIADOS
+
+O 1K no convés e o 2K no costado estão certos como escolhas, mas ficam
+**para o inverno seguinte**. Notas para quando chegar a altura:
+
+- **Convés: antiderrapante.** A tinta enche o relevo original e deixa o
+  convés escorregadio. Tinta já com carga antiderrapante, ou aditivo nas
+  zonas de pisar. Com navegação a solo, é segurança e não acabamento.
+- **Costado: desengordurar ANTES de lixar.** Lixar primeiro empurra a cera
+  do gelcoat para dentro dos riscos e a tinta descola em manchas. É a falha
+  nº 1 em pinturas de costado.
+- **2K não se pulveriza sem ar assistido** — os isocianatos são perigosos
+  por inalação e máscara de cartucho não chega. Aplicar a rolo e pincel
+  (passar o pincel a seco atrás do rolo para tirar bolhas).
+
+## PRIORIDADE ACORDADA
+
+**Fundo e quilha primeiro.** Depois o piloto (segurança, navega a solo).
+Costado e convés no inverno seguinte, com o barco já a navegar no meio.
+
+Razão: o conjunto todo é mais do que um inverno para uma pessoa, e o risco
+real é o barco ficar em terra duas épocas seguidas.
+
+## Sequência do inverno
+
+1. Abrir as bolhas, lavar repetidamente, casco aberto a secar
+2. Orçamento do jato para a quilha
+3. Humidímetro mensal até estabilizar em baixo
+4. Encher com massa epóxi, alisar, acabar a lixa 120
+5. Barreira epóxi no casco e na quilha
+6. Antivegetativo, dentro da janela de repintura
+7. Água
+
+O piloto automático corre em paralelo — trabalho de bancada para dias de
+chuva.
