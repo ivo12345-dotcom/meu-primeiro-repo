@@ -320,3 +320,52 @@ real é o barco ficar em terra duas épocas seguidas.
 
 O piloto automático corre em paralelo — trabalho de bancada para dias de
 chuva.
+
+
+---
+
+# MATERIAL CONFIRMADO (fotos verificadas 2026-09-09)
+
+| Produto | O que é | Veredicto |
+|---|---|---|
+| **Jotun Yachting Antipest Primer** (A 0,8 L + B 0,2 L, **4:1**) | Primário epóxi 2K com alto teor de flocos de alumínio | **Produto certo.** A Jotun descreve-o explicitamente como sendo para prevenir osmose em barcos de fibra. Serve acima e abaixo da linha de água e é compatível com poliuretanos |
+| **Hempel's Epoxy Filler 35250/35253** (0,5 L + 0,5 L, **1:1**) | Massa epóxi 2K | **Confirmado epóxi.** Parte A rosa, endurecedor verde — misturar até cor uniforme sem veios (indicador visual de mistura). 1 L chega de sobra para as bolhas existentes |
+| **Jotun Hardtop AX** (base 3,6 L + comp. B, **4:1**) | Poliuretano 2K de grau profissional | Certo para o costado. Fica para o inverno seguinte |
+| **Jotun Pilot II White** | Esmalte alquídico 1K, brilhante | Serve para o convés e retoca-se bem. **Brilhante = escorregadio**: aditivo antiderrapante obrigatório nas zonas de pisar |
+
+Mais diluentes.
+
+## ⚠️ LACUNA: quantidade de Antipest
+
+**1 litro não chega, nem perto.** Dá para uma demão em menos de 10 m². São
+~30 m² de fundo e a barreira anti-osmose precisa de **várias demãos** — uma
+demão não é barreira nenhuma. Provavelmente são precisos **10 a 15 litros**.
+
+**Ação:** ver rendimento e número de demãos na ficha técnica, calcular e
+encomendar o resto ANTES de começar.
+
+## Truque: alternar cores
+
+O Antipest existe em **cinzento e vermelho**. Comprar das duas e **alternar
+entre demãos** — vê-se exatamente onde já se passou e onde faltou. Numa
+barreira anti-osmose, um sítio esquecido é por onde tudo recomeça. Custo
+zero.
+
+## Diluentes
+
+Os diluentes Jotun são **numerados e não intermutáveis** — o do epóxi não
+serve na poliuretano nem no alquídico. Confirmar o número na ficha de cada
+tinta.
+
+**Respeitar o máximo de diluição.** Diluir a mais reduz a espessura da
+película, e numa barreira anti-osmose a espessura É a função do produto.
+
+## Sinergia
+
+O Antipest serve acima da linha de água e é compatível com poliuretanos —
+pode servir de primário do costado sob o Hardtop AX. Um produto a menos.
+
+## Pilot II sobre epóxi
+
+Alquídico não gosta de epóxi ainda a curar. Respeitar o tempo, e **lavar o
+blush do epóxi** antes de aplicar, senão descola.
