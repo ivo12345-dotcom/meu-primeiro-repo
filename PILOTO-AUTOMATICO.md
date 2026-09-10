@@ -14,9 +14,14 @@ todo antes de responder para recuperares o contexto.
 
 ## 2. Estado do piloto existente
 
-Piloto **Autohelm** de roda (wheel pilot de cinta). A marca Autohelm
-desapareceu por volta de 2001 (passou a Raymarine), portanto a unidade tem
-no mínimo 25 anos. Modelo provável: ST3000, ST4000 ou ST4000+.
+**MODELO CONFIRMADO POR FOTO (2026-09-10): Raytheon ST4000+, série
+Autohelm.** Wheel pilot de cinta.
+
+É a versão boa da família: tem **SeaTalk** e aceita entrada de GPS, o que
+lhe dá **modo track** (segue rota, não só rumo de bússola). Bastante mais
+capaz que o ST4000 simples.
+
+Procurar peças com o nome exato: **"Autohelm ST4000+ wheel drive"**.
 
 **O que existe:**
 - A unidade motora (motor + caixa + embraiagem) — solta dentro do
@@ -25,9 +30,39 @@ no mínimo 25 anos. Modelo provável: ST3000, ST4000 ou ST4000+.
   **não verificada** — um painel que acende não prova que o motor governa).
 
 **O que falta:**
-- O aro dentado que aperta aos raios da roda de leme.
-- A correia dentada.
+- O **aro dentado** que aperta aos raios da roda de leme.
+- Os **grampos** de fixação do aro aos raios.
 - Possivelmente o suporte/pino de fixação na consola.
+
+**Procurar em 2ª mão ANTES de imprimir.** eBay UK, "Autohelm ST4000+ wheel
+drive". Se aparecer por €100–150, é mais rápido e mais garantido do que
+imprimir.
+
+**A correia PODE já existir.** Foi encontrada a bordo uma correia dentada
+âmbar, de dentes trapezoidais finos (poliuretano com cabos de aço, o tipo
+certo). **Teste decisivo:** encostar à polia do motor — se engrenar
+certinho, sem folga e sem forçar, é a correia.
+
+Se engrenar, medir: **passo** (medir 10 dentes e dividir por 10, não um
+só), **comprimento total**, **largura**, **número total de dentes**. Com o
+passo e o comprimento fecha-se a geometria do aro — deixa de se estimar.
+
+Se estiver rachada na base dos dentes ou com cabos à vista, não faz mal:
+com o passo identificado, compra-se nova por €10–20 num fornecedor de
+transmissões.
+
+## ⚠️ Dois testes que decidem tudo, antes de gastar em peças
+
+**1. O painel de controlo.** Nas fotos está com o visor **muito riscado** e
+com dano nos bordos da etiqueta. **Ligar o sistema e ver se acende e
+responde.** Painéis ST4000+ falham por entrada de água e membrana rachada,
+e não há novos — só 2ª mão. Este teste decide se vale a pena continuar por
+este caminho ou saltar já para o EV-100.
+
+**2. A engrenagem de latão da saída do motor.** Está com **corrosão verde e
+massa ressequida**. Limpar com pincel e desengordurante, ver se os dentes
+estão inteiros e sem desgaste, e meter massa náutica nova. É a saída de
+força — se estiver comida, o resto não interessa.
 
 **Nota de segurança:** o sistema de cinta é externo ao leme. Se falhar,
 perde-se o piloto mas não o governo do barco. Falha benigna — daí ser
