@@ -116,52 +116,75 @@ Ordem acordada com o proprietário:
   3** (~€2.535 s/IVA só o computador, €6.000–9.000 sistema completo) — é a
   referência em navegação a solo, com modos polar, roll e rajada.
 
-## 4. Reparação do Autohelm — peças impressas
+## 4. ⚠️ CORREÇÃO IMPORTANTE: como o ST4000 Wheel Drive funciona
 
-**Impressoras disponíveis: Creality K2 Plus e K2 Pro.**
-(Especificações da K2 Pro por confirmar com o proprietário: volume de
-construção e se é fechada.)
+**O mecanismo foi mal percebido durante boa parte deste projeto.** A ideia
+de uma correia à volta da roda de leme, com um aro aparafusado aos raios,
+está ERRADA. Confirmado pelo manual de serviço Raymarine.
 
-### Materiais
-- **Aro dentado: ASA.** Estável aos UV, aguenta o calor do poço ao sol.
-  Imprimir na K2 Plus fechada.
-- **Grampos dos raios: PA-CF** (nylon com fibra de carbono) — é a peça que
-  leva todo o binário. Exige **bico endurecido** e **filamento seco**.
-- **PLA está fora de questão** (deforma ao sol). PETG só como recurso —
-  sofre de fluência sob carga contínua.
-- A correia **compra-se**, não se imprime. Se o perfil for normalizado
-  (tipo HTD), qualquer fornecedor de transmissões a tem por €10–20.
+**A arquitetura real** — é uma **unidade fechada** entre a consola e a roda:
 
-### Estratégia de impressão
-- **Orientação:** aro deitado na mesa, camadas horizontais. Assim o esforço
-  do dente fica no plano da camada. Impresso de pé, os dentes rompem na
-  adesão entre camadas.
-- **Segmentação:** o aro não cabe na mesa. Dividir de modo a que a corda de
-  cada segmento fique abaixo de ~330 mm (ou ~460 mm na diagonal da mesa).
-  Fórmula: `corda = diâmetro × sin(180°/n)`.
-- As **juntas devem cair entre dentes**, nunca a meio de um dente.
-- Ligações **sobrepostas (escarva)** com parafusos inox a atravessar, não
-  topo a topo.
-- **Arco de teste primeiro:** imprimir só ~60° de arco com meia dúzia de
-  dentes, comprar a correia, e verificar a engrenagem antes de lançar a
-  peça completa. Ajustar a folga do perfil do dente nesse arco.
-- Grampos: generosos, sobredimensionados, com parafusos metálicos a
-  atravessar. Não há restrição de peso.
+- **Chapa de suporte traseira** fixa à consola, com **roletes**
+- **Drive ring** (aro de acionamento) que **roda sobre esses roletes**
+- **Correia dentada INTERNA** ligando o **pinhão do motor** ao aro — a
+  correia não passa pela roda de leme
+- **Manípulo da embraiagem aperta a correia contra o pinhão** para agarrar
+- **A roda de leme aparafusa-se ao aro**, através de grampos nos raios
 
-## 5. MEDIDAS EM FALTA — pedir ao proprietário
+A engrenagem de latão vista na unidade **é o pinhão da correia**. A correia
+âmbar encontrada a bordo (perfil tipo distribuição de automóvel) é quase de
+certeza a correia interna.
 
-Nada se desenha sem isto:
+Fontes: [lista de peças](https://www.manualslib.com/manual/1199211/Raymarine-St4000Plus.html?page=17),
+[manual de serviço](https://www.manualslib.com/manual/2496479/Autohelm-St4000Plus.html)
 
-1. **Etiqueta da unidade Autohelm** — modelo e part number (ST3000 /
-   ST4000 / ST4000+ / ST5000+). Fotografar.
-2. **Polia de saída do motor** — número de dentes e passo (distância entre
-   centros de dois dentes consecutivos). Fotografar de perto com régua ou
-   paquímetro ao lado. **É daqui que sai tudo o resto.**
-3. **Diâmetro da roda de leme** e **número de raios**.
-4. **Secção do raio** (largura × espessura) onde os grampos vão apertar.
-5. **Distância do eixo da roda ao eixo da polia do motor** — define o
-   comprimento da correia.
-6. **Fotos do paiol da popa** (para o projeto do EV-200):
+## ⚠️ A IMPRESSÃO 3D SAI DO PLANO
+
+**O proprietário tem só o motor.** Falta a chapa traseira, os roletes, o
+drive ring com dentado interior, o manípulo de embraiagem, os grampos dos
+raios e a tampa — praticamente o produto todo.
+
+Fabricar isso em plástico impresso, com o binário do governo a passar por lá
+e a roda de leme montada em cima, seria um projeto de engenharia com
+resultado incerto. **Não é o fim de semana tranquilo descrito antes.**
+
+Toda a estratégia de impressão anterior (ASA, PA-CF, segmentação, arco de
+teste, medidas da polia e da roda) fica **obsoleta** e foi removida.
+
+## SOLUÇÃO: comprar wheel drive completo em 2ª mão
+
+Procurar no eBay UK: **"Autohelm ST4000 wheel drive"** ou **"Raymarine
+ST4000 wheel drive unit"**. Aparecem com regularidade, **£100–250**. Muita
+gente moderniza para EV-100 e vende o ST4000 antigo.
+
+**Boa posição de partida:** já se tem o caro — painel a funcionar, bússola
+fluxgate a ler, cablagem SeaTalk. Falta só a mecânica. O motor atual fica de
+**sobressalente**, que num equipamento fora de produção vale bastante.
+
+**Perguntar ao vendedor:**
+1. O **drive ring roda suave** nos roletes?
+2. O **manípulo da embraiagem** aperta e solta?
+3. Vêm os **grampos dos raios**?
+4. Foto da **correia interna** (se estiver rachada não faz mal — compra-se
+   por €10–20 num fornecedor de transmissões, com o passo medido)
+
+## Nota de honestidade que se mantém
+
+Mesmo completo, continua a ser um piloto **marginal para 5 toneladas**. Por
+€200 é um excelente remendo que dá o verão e liberta as mãos a motor e em
+navegação calma. **Não é o piloto para travessias a solo** — esse continua a
+ser o EV-200 abaixo do convés, quando o orçamento respirar.
+
+## 5. MEDIDAS AINDA ÚTEIS
+
+Já não são para desenhar peças (ver secção 4), mas continuam a servir:
+
+1. ~~Etiqueta da unidade~~ — **RESOLVIDO: Raytheon ST4000+**
+2. **Passo da correia interna** — medir 10 dentes e dividir por 10. Serve
+   para comprar correia nova se a existente estiver rachada.
+3. **Diâmetro da roda de leme** e **número de raios** — para confirmar
+   compatibilidade do drive ring que se comprar.
+4. **Fotos do paiol da popa** (para o projeto do EV-200):
    - Setor/quadrante do leme visto de cima, com a mecha visível.
    - Espaço lateral para um atuador de ~60 cm, e o que lá está
      (mangueiras, cablagem, depósito).
