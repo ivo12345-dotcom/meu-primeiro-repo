@@ -51,13 +51,32 @@ Se estiver rachada na base dos dentes ou com cabos à vista, não faz mal:
 com o passo identificado, compra-se nova por €10–20 num fornecedor de
 transmissões.
 
-## ⚠️ Dois testes que decidem tudo, antes de gastar em peças
+## ✅ TESTE PRINCIPAL: PASSOU (2026-09-10)
 
-**1. O painel de controlo.** Nas fotos está com o visor **muito riscado** e
-com dano nos bordos da etiqueta. **Ligar o sistema e ver se acende e
-responde.** Painéis ST4000+ falham por entrada de água e membrana rachada,
-e não há novos — só 2ª mão. Este teste decide se vale a pena continuar por
-este caminho ou saltar já para o EV-100.
+**O painel responde e o motor aciona nos dois sentidos.** Testado com
++1/-1 e +10/-10, ambos os lados. O sistema está vivo.
+
+Isto muda a economia: um ST4000+ com painel e motor a funcionar vale uns
+€300–400 em 2ª mão. Investir €100–150 no aro, ou uma tarde a imprimir,
+passa a ser claramente rentável.
+
+### Dois testes que faltam
+
+**A embraiagem.** Passar de `standby` para `auto` e ouvir — deve dar um
+**clique** claro. Em `standby` o eixo de saída roda livre à mão; em `auto`
+tem de resistir. Se não engatar, o motor roda mas não transmite, e a peça a
+substituir é outra.
+
+**A bússola fluxgate.** Em `auto` o visor mostra um rumo. **Rodar a bússola
+devagar com as mãos** — o número tem de acompanhar. Parado ou errático =
+bússola morta, e o piloto nunca governa por melhor que esteja a mecânica.
+
+### Nota histórica sobre o painel
+
+Nas fotos está com o visor **muito riscado** e com dano nos bordos da
+etiqueta — mas **funciona**. Painéis ST4000+ falham por entrada de água e
+membrana rachada, e não há novos, só 2ª mão. Vale a pena tratá-lo com
+cuidado e protegê-lo da água.
 
 **2. A engrenagem de latão da saída do motor.** Está com **corrosão verde e
 massa ressequida**. Limpar com pincel e desengordurante, ver se os dentes
