@@ -17,6 +17,12 @@ cruzeiro com mais recursos de mau tempo do que a média de um 34 pés:
 - **Estai interior amovível** — com **gancho pelicano**, prende a um
   **olhal rebatível** a meio do convés da proa
 
+## ⚠️ IDADE DO RIG: 12 ANOS (confirmado pelo proprietário)
+
+**Isto é o dado que comanda tudo o resto.** As conclusões abaixo foram
+inicialmente escritas com o pressuposto de mastreação original dos anos 80.
+**Esse pressuposto estava errado** — ver a secção final, que revê tudo.
+
 ## Achados da inspeção (2026-09-10)
 
 ### ⚠️ Esticadores — CORROSÃO CONFIRMADA
@@ -25,8 +31,8 @@ Verde crostoso nos corpos dos esticadores. Feito o teste de distinguir
 Duralac (pasta anti-galvânica, sai com acetona) de zinabre (crosta dura que
 não sai): **é corrosão**.
 
-**Corpo de bronze com corrosão ativa entre varões de inox, ao fim de ~40
-anos. Não se recupera com limpeza** — o material perdido dentro da rosca
+**Corpo de bronze com corrosão ativa entre varões de inox. Não se recupera
+com limpeza** — o material perdido dentro da rosca
 não volta e não há como medir o que falta sem desmontar.
 
 Outros sinais no mesmo conjunto:
@@ -91,43 +97,62 @@ Os observados têm aspeto envelhecido mas **sem fissuras óbvias nem
 curvatura de banana**. Limpar e passar lupa junto à boca antes de dar por
 bons.
 
-## Conclusão e prioridade revista
+## ⚠️ CAUSA IDENTIFICADA: os tubos de proteção
 
-Com a corrosão dos esticadores confirmada, **não faz sentido pôr esticadores
-novos em cabos e terminais de 1985**. Se se mexe, mexe-se no conjunto.
+Descoberto pelo proprietário, e é o diagnóstico certo. **O verde começa
+exatamente à saída do tubo.**
 
-**A mastreação passa à frente dos cabos de manobra.** Não gastar €1000 em
-drizas novas enquanto houver dúvida sobre o que segura o mastro.
+Mecanismo: água da chuva e salpicos entram por cima, escorrem por dentro do
+tubo e não têm por onde sair. Juntam-se no fundo, precisamente onde o tubo
+assenta no terminal. Fica ali água salgada permanente, sem ar, sem sol e sem
+a chuva a lavar — corrosão por frestas de manual.
 
-### ⚠️ Sinergia que muda a economia
+**Um cabo exposto molha-se e seca. Um cabo dentro de um tubo molha-se e fica
+molhado.**
 
-Se o mastro tem de descer, esse é o **único** momento em que também se faz
-barato: roldanas do topo, cablagem elétrica do mastro, pontas das cruzetas,
-e passar as drizas novas com o mastro deitado no cavalete. **Baixar o mastro
-duas vezes custa muito mais do que fazer tudo de uma.**
+### Correção
 
-Ou seja: se o rig for abaixo, os cabos de manobra deixam de ser adiáveis e
-passam a ser parte do mesmo trabalho.
+- **Tirar os tubos**, ou cortá-los de modo a que acabem **bem acima do
+  terminal**, com folga para escorrer e arejar. Nunca apoiados na peça.
+- Lavar tudo com água doce em abundância, secar bem, e ver o estado real do
+  cabo e do terminal por baixo.
+- Comparar um esticador **com** tubo e outro **sem** tubo. Se os sem tubo
+  estiverem limpos, o problema é de duas ou três peças e não do rig.
 
-### Prioridade
+## CONCLUSÃO REVISTA (com a idade real: 12 anos)
+
+**A mastreação NÃO está no fim de vida.** Doze anos fica na fronteira das
+recomendações habituais de 10–15 anos, mas isso é referência de prudência,
+não sentença. Cabo de 12 anos bem tratado tem muita vida.
+
+E encaixa com o diagnóstico do tubo: se o rig tem 12 anos e uma peça está
+corroída e outras não, a causa não é idade — **é o tubo a reter água naquele
+ponto**. Corrosão local, com causa identificada e removível.
+
+### Trabalho previsto — umas centenas de euros, não milhares
+
+1. Tirar ou encurtar **todos os tubos**
+2. Lavar, secar, inspecionar o que está por baixo
+3. Substituir os **esticadores afetados**
+4. Substituir o **gancho pelicano** se as picadas forem fundas (€40–90)
+
+**Não é preciso baixar o mastro.** Cai por terra o argumento de fazer o
+cordame de manobra ao mesmo tempo — volta ao plano faseado com o mastro em
+pé, usando mensageiros (ver `CABOS.md`).
+
+### Prioridade (revista, e de volta ao plano original)
 
 | | |
 |---|---|
 | 1 | Fundo, osmose e quilha — sem isto não vai à água |
-| 2 | **Mastreação fixa** — subiu, por causa da navegação a solo |
-| 3 | Cordame de manobra, **com o mastro em baixo** |
-| 4 | Piloto automático |
+| 2 | Piloto automático — segurança, navega a solo |
+| 3 | Mastreação: tubos, esticadores afetados, gancho pelicano |
+| 4 | Cordame de manobra — faseado, mastro em pé |
 | 5 | Convés e costado — inverno seguinte |
 
-## PRÓXIMO PASSO: chamar o mastreador
+### Recomendação que se mantém
 
-**€100–200** por uma inspeção ao rig. Não para confirmar o que já se sabe,
-mas para dar duas coisas que não se obtêm de outra forma:
-
-1. **Parecer com responsabilidade** sobre se os cabos aguentam mais uma
-   época
-2. **Orçamento firme**
-
-Com esses dois números decide-se se se faz tudo neste inverno, ou o casco
-agora e o mastro para o ano. Re-mastreação completa num 34 pés de uma
-cruzeta: **€1500–3000**.
+Aos 12 anos, **uma inspeção de mastreador continua a valer os €100–200** —
+não como veredicto, mas como **linha de base**: fica-se a saber o estado
+real, há um documento se o seguro perguntar, e sabe-se quantos anos restam
+antes de pensar nisto a sério.
