@@ -943,6 +943,11 @@ funcionar também ali:
     SmartShunt 500 A €91,54. **Opção A** 2×~190 W só no arco ≈ €480–580 +
     suporte; **opção B** 2×305 W em teto ≈ €660–860 + estrutura inox
     (€300–600, a cotar). Painéis de 305 W precisam de MPPT 100/20 ou 100/30.
+    **Ligação:** strings independentes, **um MPPT por painel** (sombra/avaria
+    não afeta o outro), ambos para o **banco de serviço** (bancos 2+3 sempre em
+    paralelo = 440 Ah). **Bateria do motor:** manter carregada por **VSR/ACR
+    bidirecional** ou **carregador de manutenção** (echo charger), conforme o
+    separador que já existir. Fusível à saída de cada MPPT; ambos em perfil AGM.
 
 **Alarme sonoro:** a solo, o alarme AIS tem de acordar quem dorme. O apito do
 Garmin é fraco. No Pi, acrescentar à lista um **altifalante ou besouro forte**
