@@ -241,6 +241,20 @@ O medidor do painel é **analógico**: uma boia com uma **resistência variável
 - **Primeiro medir a sonda** com o multímetro: a norma europeia é
   **10–180 Ω** e a americana **240–33 Ω**. O valor define o divisor.
 
+**Onde está (28/09):** ao lado do motor e ao lado da cama da cabine de popa
+(estibordo). Parece ter sido **prolongado para trás**, o que explica os 200 L
+contra os 90 L de origem. Consequências:
+- **A forma é irregular e o braço da boia é provavelmente o original.** A
+  leitura não é linear e pode "bater" nos extremos (cheio ou vazio antes do
+  tempo). É por isso que o dono anterior desenhou as quantidades no
+  medidor, e é essa tabela que se usa.
+- O fio da sonda até à mesa de navegação (Pi) é curto.
+- **Segurança, porque está junto à cama:** verificar o respiro do depósito
+  (tem de sair para fora do barco), as uniões e as mangueiras de gasóleo, e
+  se há cheiro a gasóleo na cabine. Os vapores de gasóleo são pouco
+  voláteis, mas o cheiro e as fugas junto a onde se dorme resolvem-se
+  primeiro.
+
 **Calibração** (o depósito não é um cubo, por isso a leitura não é linear):
 - Com o depósito quase vazio, ir **enchendo aos 20 L** (10 pontos até aos
   200 L) e registar a leitura a cada passo.
