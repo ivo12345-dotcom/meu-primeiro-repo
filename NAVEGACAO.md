@@ -244,6 +244,11 @@ O medidor do painel é **analógico**: uma boia com uma **resistência variável
 **Calibração** (o depósito não é um cubo, por isso a leitura não é linear):
 - Com o depósito quase vazio, ir **enchendo aos 20 L** (10 pontos até aos
   200 L) e registar a leitura a cada passo.
+- **Atalho:** o dono anterior deixou um **desenho do medidor com as
+  quantidades**. Com essa tabela (posição do ponteiro → litros) basta
+  registar a leitura do ADS1115 quando o ponteiro passa em cada marca, à
+  medida que o gasóleo se gasta ou se abastece. Não é preciso encher aos
+  20 L de propósito.
 - O OpenPlotter aceita os **pontos de ajuste** e interpola entre eles.
 - Com o consumo estimado do motor, dá **autonomia em horas** a motor.
 
@@ -558,6 +563,11 @@ Com tudo num ecrã só, esse ecrã passa a ser um ponto único de falha.
 6. **Diâmetro do tubo do pedestal da roda** (paquímetro) e percurso do cabo até
    onde fica o Pi.
 7. **Onde está a bússola fluxgate do ST4000+** (longe de ferro e de cabos?).
+8. **Foto do desenho do medidor de gasóleo com as quantidades** (feito pelo
+   dono anterior): dá a tabela ponteiro → litros para a calibração.
+9. **Medir a resistência da sonda do gasóleo** (10–180 Ω ou 240–33 Ω?).
+10. **Pinos da ficha Deutsch do motor** com o multímetro (60–120 Ω entre CAN H
+    e CAN L) e teste de escuta com a ignição ligada.
 
 **Alarme sonoro:** a solo, o alarme AIS tem de acordar quem dorme. O apito do
 Garmin é fraco. No Pi, acrescentar à lista um **altifalante ou besouro forte**
