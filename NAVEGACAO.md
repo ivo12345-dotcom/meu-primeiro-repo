@@ -183,6 +183,46 @@ mecânico com uma caixa **MDI** e **poucos sensores**. Segundo o manual:
   conta-rotações EVC**. Configuração `PROTOCOLS=J1939,MDI` (vem assim de
   fábrica).
 
+### Alternativa DIY ao YDEG-04: o motor ligado diretamente ao Pi (28/09)
+
+O MDI do D1 fala **J1939 em CAN**, e os valores usam PGN **normais** do J1939.
+Já existe um projeto aberto que os lê num D1/D2 com MDI
+([VolvoPenta-N2K_Interface](https://github.com/buhhe/VolvoPenta-N2K_Interface),
+[descrição](https://open-boat-projects.org/en/volvo-penta-nmea2000-interface/)):
+
+| PGN J1939 | Dado | Descodificação (do projeto) |
+|---|---|---|
+| 61444 | Rotações | `(Data[4]*256 + Data[3]) / 8` |
+| 65253 | Horas do motor | `(Data[0] + Data[1]*256) / 20` |
+| 65262 | Temperatura da água | `Data[0] − 40` (°C) |
+| 65271 | Tensão do alternador | `(Data[7]*256 + Data[6]) / 20` (V) |
+
+**Como ligar ao Pi:**
+- Um **adaptador USB–CAN** compatível com Linux (firmware candleLight/gs_usb,
+  de preferência **isolado**; ~€25–50, a cotar). Aparece como `can1` e fica
+  separado do `can0` da MacArthur (a rede NMEA 2000).
+- **NUNCA** ligar o barramento do motor ao CAN da MacArthur. São redes
+  diferentes, e misturá-las pode perturbar o motor e a rede N2K.
+- Pôr o adaptador em modo **só escuta** (`listen-only`): não envia nada nem
+  confirma mensagens, por isso não interfere com o motor.
+- Descodificar os 4 PGN no **Node-RED** (vem com o OpenPlotter) ou num plugin
+  do SignalK, e publicar como `propulsion.main.*`.
+- **Cabo em Y feito por nós:** ficha Deutsch **DT04-6P** + **DT06-6S** e uma
+  derivação, em série entre o MDI e o conta-rotações.
+- **Pinos (segundo o projeto aberto): 2 = CAN L, 5 = CAN H, 4 = massa,
+  6 = +12 V; 1 e 3 sem uso.** ⚠️ O manual do YDEG-04 fala em **dois troços
+  de CAN** nesta ficha (pinos 1/2 e 3/5). **Confirmar com o multímetro antes
+  de ligar:** 60–120 Ω entre CAN H e CAN L com tudo desligado.
+- **Primeiro teste:** `candump can1` com a ignição ligada. Ver que
+  identificadores aparecem antes de escrever qualquer descodificação.
+
+**O que se perde face ao YDEG-04:** os **alarmes do MDI** (sobreaquecimento,
+óleo, bateria) vêm numa mensagem **própria da Volvo** (PGN 65417), que o
+projeto aberto não descodifica. Dá para os descobrir: com a **ignição ligada
+e o motor parado**, os alarmes de óleo e de carga ficam ativos, e isso permite
+ver que bits mudam. Até lá, o Pi pode criar os próprios alarmes a partir dos
+valores (temperatura alta, tensão baixa).
+
 **Motor: painel Volvo Penta EVC** (conta-rotações, temperatura, painel EVC de
 arranque e paragem, e medidor de gasóleo analógico). Os motores D1/D2 com EVC
 falam um protocolo CAN da Volvo. **Opcional:** o gateway **Yacht Devices
