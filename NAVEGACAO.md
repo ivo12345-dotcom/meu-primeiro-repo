@@ -159,6 +159,30 @@ alimentação da HAT a alimentar tudo
 - Comando físico Bluetooth/USB para usar com luvas ou com o ecrã molhado.
 - Pi 5 de **8 GB** em vez de 4 GB, se o radar entrar no ecrã.
 
+### Fase 3 (futuro, sem data): plotter Raymarine Axiom na roda
+
+O Ivo quer pôr um **Axiom** mais tarde (28/09). Não está decidido o modelo
+nem a data. Se avançar, **substitui o SailProof** como ecrã da roda.
+
+- Preços SVB s/IVA (28/09): **Axiom+ 7 Touch €638,61** (~€785 c/IVA),
+  **Axiom+ 9 Touch €1 092,40** (~€1 344), Axiom 2 Pro 9 S €2 184,83. Num
+  veleiro chegam as versões sem sonda 3D. Recomendação: Axiom+ 9.
+- **O Axiom+ só tem NMEA 2000.** Não tem NMEA 0183 nem SeaTalk1.
+- **O Pi + MacArthur continuam a servir**, como ponte: leem o SeaTalk1 e o
+  0183 e põem tudo em NMEA 2000 para o Axiom. Dispensam os conversores da
+  Raymarine. O OpenCPN no Pi fica como reserva e o Wi-Fi continua a servir o
+  telemóvel.
+- **O Axiom só mostra radares Raymarine** (Quantum, Cyclone, Magnum e alguns
+  digitais antigos). O radar atual tem de ser identificado primeiro.
+- A acrescentar nessa altura: rede NMEA 2000 (cabo de backbone, T,
+  terminadores, cabo DeviceNet micro) e o cartão de cartas Navionics.
+- **Nada do que se compra agora se perde.** A porta NMEA 2000 da MacArthur é o
+  que liga o Axiom.
+
+Fontes: [SVB Axiom+ 9](https://www.svb24.com/en/raymarine-axiom-9-touch.html),
+[SVB Axiom+ 7](https://www.svb24.com/en/raymarine-axiom-7-touch.html),
+[Axiom e NMEA 0183](https://pysselilivet.blogspot.com/2019/05/raymarine-axiom-and-nmea0183.html).
+
 ### Fase 1 (testes) e fase 2 (ecrã definitivo)
 
 **Decisão de 28/09:** começar com o ecrã barato de 7". O Pi, a HAT, as cartas
