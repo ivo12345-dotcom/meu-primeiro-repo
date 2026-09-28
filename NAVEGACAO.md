@@ -25,7 +25,8 @@ Navegação sobretudo **a solo**. Isto obriga a manter uma reserva (ver §6).
 | Programa de carta | **OpenCPN** | É o único que junta todos os dados por cima da carta (ver §3) |
 | Cartas | **o-charts "Portugal"** (oeSENC, €16 s/IVA) | Oficiais do Instituto Hidrográfico: continente, Açores e Madeira. Até 5 aparelhos |
 | Navionics | **Fica no telemóvel**, como segunda carta | Lê o Wi-Fi do Pi (posição, profundidade e AIS) |
-| Ecrã | **SailProof STS10, 10"** (€499) | 1500 nits, IP65, toque com água e luvas, cabos incluídos |
+| Ecrã (fase 1, testes) | **Waveshare 7" HDMI LCD (C)** (€56,90) | Barato, HDMI + USB como o definitivo. Serve para provar o sistema |
+| Ecrã (fase 2, definitivo) | **SailProof STS10, 10"** (€499) | Só se a fase 1 correr bem. 1500 nits, IP65, toque com água e luvas |
 | Suporte | **Impresso em ASA**, com pala e tampa | O PETG degrada-se ao sol. O ASA foi feito para o exterior |
 
 ### Porque é que a Navionics não é o ecrã principal
@@ -46,7 +47,7 @@ Fontes: [Yacht Devices](https://www.yachtd.com/news/navonics_app_sonarchart_live
 ```
  NO POÇO (roda de leme)                 DENTRO (seco, perto do quadro)
  ┌──────────────────────┐   HDMI+USB   ┌──────────────────────────────────┐
- │ SailProof STS10 10"  │◄────────────►│ Raspberry Pi 5 + SSD NVMe         │
+ │ Ecrã tátil (7" → 10")│◄────────────►│ Raspberry Pi 5 + SSD NVMe         │
  │ suporte ASA + pala   │  (2 + 1,5 m) │ OpenPlotter: OpenCPN + SignalK    │
  └──────────────────────┘              │ MacArthur HAT                     │
                                        │  ├ NMEA 2000 ◄► (futuro EV-100)   │
@@ -135,12 +136,12 @@ alimentação da HAT a alimentar tudo
 | 4 | SSD NVMe 256 GB (M.2 2280) | [PcComponentes](https://www.pccomponentes.pt/gigabyte-ssd-m2-2280-256gb-pcie-30-x4-nvme) (Gigabyte) | **€34,33** | Preferir uma marca testada pela Pimoroni (Kingston, Crucial, Samsung, Kioxia) se custar o mesmo |
 | 5 | MacArthur HAT | [OpenMarine](https://shop.openmarine.net/home/23-macarthur-hat.html) | **~€76** (€62 s/IVA) | 36 em stock. Só envia às segundas e terças |
 | 6 | Módulo de alimentação 12→5 V da HAT | OpenMarine | **~€28** (desde €23 s/IVA) | Alimenta o conjunto todo a partir dos 12 V |
-| 7 | Ecrã SailProof STS10 10" | [SailProof](https://sailproof.shop/product/sunlight-readable-waterproof-touchscreen-10-2/) | **€499,17** | Parece incluir IVA; confirmar no checkout. DPD 1–6 dias úteis |
+| 7 | Ecrã de testes Waveshare 7" HDMI LCD (C), tátil capacitivo, 1024×600 | [welectron](https://www.welectron.com/Waveshare-11199-7inch-HDMI-LCD-C_1) | **€56,90** | Ligação por HDMI + USB, igual à do definitivo |
 | 8 | Cartas o-charts Portugal | [o-charts](https://o-charts.org/shop/en/oesenc/79-portugal.html) | **~€20** (€16 s/IVA) | Continente, Açores e Madeira |
 | 9 | Chave USB de licença o-charts | [o-charts](https://o-charts.org/shop/en/hardware/38-usb-key-dongle.html) | **~€23** (€19 s/IVA) | Recomendada: reinstalar o OpenPlotter apaga a licença; com a chave não se perde |
 | 10 | ASA preto 1 kg | [EVOLT](https://evolt.pt/produto/asa-1kg-black-esun/) | **€17,73** (Winkle, em stock) | eSUN €21,39 esgotado. 1 bobina chega para o suporte e a pala |
 | 11 | Porta-fusível em linha ATO/ATC IP55 | [SVB](https://www.svb24.pt/pt/seatec-porta-fusiveis-em-linha-ato.html) | **€3,32** | + fusível de 5 A |
-| | **Total** | | **≈ €838** | **Sem portes** (4–5 lojas, contar €30–50) |
+| | **Total** | | **≈ €396** | **Sem portes** (5 lojas, contar €30–50) |
 
 **Também é preciso** (preço não confirmado, loja náutica ou sobras):
 - Cabo **estanhado** de 1,5 mm² (≥ 16 AWG) vermelho/preto, do quadro até ao
@@ -156,6 +157,25 @@ alimentação da HAT a alimentar tudo
 - Cabos e conector em T de NMEA 2000, se algum aparelho for N2K.
 - Comando físico Bluetooth/USB para usar com luvas ou com o ecrã molhado.
 - Pi 5 de **8 GB** em vez de 4 GB, se o radar entrar no ecrã.
+
+### Fase 1 (testes) e fase 2 (ecrã definitivo)
+
+**Decisão de 28/09:** começar com o ecrã barato de 7". O Pi, a HAT, as cartas
+e as ligações são os mesmos nas duas fases; só se troca o ecrã. Na fase 1:
+- **Não é estanque nem se lê ao sol.** Testar à sombra, na cabine ou debaixo
+  da capota, e protegê-lo dos salpicos (saco estanque ou caixa impressa).
+- Serve para validar tudo o resto: leitura de cada aparelho, proa do ST4000+,
+  AIS, vento, a rota para o piloto, o Wi-Fi para a Navionics e o consumo real.
+- Passa-se à **fase 2 (SailProof STS10, €499,17)** só quando o sistema estiver
+  estável. O ecrã de 7" fica depois como segundo ecrã na mesa de cartas.
+- O **suporte e a pala impressos** desenham-se para o ecrã definitivo. Para a
+  fase 1 chega um suporte simples.
+
+Alternativas ao ecrã de testes que ficaram de fora:
+- **Raspberry Pi Touch Display 2** (7", desde $40–60): liga por fita DSI
+  curta. Não dá para o levar até à roda nem testa a ligação HDMI + USB.
+- **10,1" capacitivo HDMI genérico** (~€68 no eBay.de): maior, mas acima do
+  orçamento.
 
 **Não usar a fonte oficial de 27 W do Pi.** É para tomada de 230 V. No barco o
 Pi alimenta-se dos 12 V pelo módulo da HAT, com fusível no quadro.
@@ -181,11 +201,11 @@ Fontes dos preços: [RasPi Shop](https://raspishop.pt/c/robotica-e-desenvolvimen
 
 | Consumo | W | A a 12 V |
 |---|---|---|
-| SailProof STS10 (brilho máximo) | ~19 | ~1,6 |
+| SailProof STS10 (fase 2, brilho máximo) | ~19 | ~1,6 |
 | Pi 5 + HAT + SSD | ~7 | ~0,6 |
 | **Total** | **~26** | **~2,2** |
 
-**Em 24 h de navegação são ~50 Ah só neste sistema**, sem o piloto, o
+**Em 24 h de navegação, com o ecrã definitivo, são ~50 Ah só neste sistema**, sem o piloto, o
 frigorífico e as luzes. Baixar o brilho à noite (o modo noturno do OpenCPN)
 reduz o consumo do ecrã. Juntar estes números ao balanço de energia do barco
 quando se fizer o sistema elétrico. Hoje o barco tem baterias separadas
