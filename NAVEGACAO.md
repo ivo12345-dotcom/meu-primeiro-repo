@@ -395,7 +395,8 @@ alimentação da HAT a alimentar tudo
 | 11 | Porta-fusível em linha ATO/ATC IP55 | [SVB](https://www.svb24.pt/pt/seatec-porta-fusiveis-em-linha-ato.html) | **€3,32** | + fusível de 5 A |
 | 12 | **Motor → Pi, feito por nós** (decidido 28/09, em vez do YDEG-04): adaptador **USB–CAN** isolado (candleLight/gs_usb) + fichas **Deutsch DT04-6P e DT06-6S** com contactos e travas + cabo de 4 fios | a cotar | **~€40–60** | Ver secção "Alternativa DIY". O YDEG-04N (~€263,52) fica como **plano B** se o teste de escuta falhar |
 | 13 | **ADS1115** (I²C) + resistências do divisor, para o nível do gasóleo | a cotar | **~€5–10** | Ver "Nível do gasóleo" |
-| | **Total** | | **≈ €538** (€482 + ~€50 motor + ~€8 gasóleo) | Sem portes, sem cabos e sem o kit N2K. Portes: contar €30–50 |
+| 14 | **Barómetro BME280** (pressão, temperatura, humidade) DFRobot Gravity I²C, com cabo | [Botnroll PT](https://www.botnroll.com/en/temperature/5336-gravity-i2c-bme280-environmental-sensor-dfrobot-sen0236.html) | **€23,80** | Liga à I²C da MacArthur. Montar **fora da caixa do Pi** (o calor falseia a temperatura). Alternativa: Adafruit €26,60 |
+| | **Total** | | **≈ €562** (€482 + ~€50 motor + ~€8 gasóleo + €24 barómetro) | Sem portes, sem cabos e sem o kit N2K. Portes: contar €30–50 |
 
 **Também é preciso** (preço não confirmado, loja náutica ou sobras):
 - Cabo **estanhado** de 1,5 mm² (≥ 16 AWG) vermelho/preto, do quadro até ao
