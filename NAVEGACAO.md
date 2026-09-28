@@ -159,6 +159,33 @@ alimentação da HAT a alimentar tudo
 - Comando físico Bluetooth/USB para usar com luvas ou com o ecrã molhado.
 - Pi 5 de **8 GB** em vez de 4 GB, se o radar entrar no ecrã.
 
+### Ordem das compras (decidida 28/09)
+
+1. **Agora:** Pi 5 8 GB + MacArthur + ecrã de testes (esta lista).
+2. **Depois:** piloto **Raymarine EV-100 Wheel** (ver `PILOTO-AUTOMATICO.md`).
+3. **Mais tarde:** plotter **Axiom** (fase 3, abaixo).
+
+### Fase 2b: o EV-100 na rede do Pi
+
+O EV-100 fala **SeaTalkNG = NMEA 2000**. Liga-se à porta N2K da MacArthur com
+um cabo adaptador SeaTalkNG ↔ DeviceNet. Ganha-se:
+- **Proa rápida do EV-1** (sensor giroscópico). Resolve a dúvida da proa lenta
+  do ST4000+ para o radar sobreposto. O ST4000+ passa a reserva.
+- **Rotas do OpenCPN para o piloto:** o OpenCPN ≥ 5.12 envia os PGN 129283 e
+  129284 quando se ativa uma rota ou waypoint. O modo track engata-se no p70s.
+  Já foi testado com o EV-1 por outros utilizadores.
+- **Comando do piloto a partir do Pi ou do telemóvel** (standby, auto, ±1,
+  ±10): há plugins do SignalK e do OpenCPN para pilotos Raymarine N2K.
+  **Testar antes de confiar nisso ao largo.**
+- O **p70s** passa a mostrar também o vento, o AIS e a profundidade que o Pi
+  põe na rede.
+- A rede NMEA 2000 (backbone, T, terminadores) monta-se nesta fase e fica
+  pronta para o Axiom.
+
+Fontes: [OpenCPN wiki, pilotos](https://opencpn.org/wiki/dokuwiki/doku.php?id=opencpn%3Amanual_basic%3Aset_options%3Aconnections%3Aautopilot),
+[Yacht Devices, pilotos Raymarine](https://www.yachtd.com/news/raymarine_autopilot_support.html),
+[Cruisers Forum](https://www.cruisersforum.com/forums/f134/opencpn-nmea2000-and-autopilots-229737.html).
+
 ### Fase 3 (futuro, sem data): plotter Raymarine Axiom na roda
 
 O Ivo quer pôr um **Axiom** mais tarde (28/09). Não está decidido o modelo
