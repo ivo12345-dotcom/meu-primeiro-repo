@@ -116,7 +116,8 @@ Fontes: [MacArthur HAT, documentação](https://macarthur-hat-documentation.read
 | Plotter | **Garmin GPSMAP 421** (GPS interno) | NMEA 0183 porta 1 + NMEA 2000 (conector próprio) | Plotter e **GPS de reserva** |
 | VHF | **Navicom RT750** (DSC classe D) | NMEA 0183 (entrada de GPS para o DSC) | Recebe posição. O AIS já vem do B330 |
 | Navtex | **NASA Target Navtex Pro** | **Nenhuma saída de dados** confirmada | **Fica autónomo** |
-| Sonda | **Por identificar** (há sonda?) | ? | — |
+| Sonda | **NASA Clipper Depth** | Versões com NMEA dão **DBT/DPT** (profundidade) | Profundidade → 3.ª entrada 0183 (ver abaixo) |
+| Bússola repetidora | **Autohelm ST50 Compass** (SeaTalk1) | **SeaTalk1** (mesmo barramento do ST4000+) | Segunda fonte de proa, entra na SeaTalk1 IN |
 | Piloto | Raytheon ST4000+ | SeaTalk1 (+ entrada NMEA a confirmar) | Proa; recebe a rota |
 
 **O que muda:**
@@ -141,12 +142,18 @@ Fontes: [MacArthur HAT, documentação](https://macarthur-hat-documentation.read
 | **NMEA 2000** | **em-trak B330** (AIS + GPS); depois o EV-100, o GPSMAP 421 e o Axiom |
 | 0183 IN 1 | NASA Clipper Wind (MWV), 4 800 baud |
 | 0183 IN 2 | NASA Clipper Log (VHW/VLW), 4 800 baud |
+| **USB–0183 (novo)** | NASA Clipper Depth (DBT/DPT), 4 800 baud |
 | 0183 OUT 1 | Radar JRC 1000 + entrada GPS do RT750 (a mesma saída alimenta 2–3 recetores) |
 | 0183 OUT 2 | ST4000+, entrada NMEA (rota) |
-| SeaTalk1 IN | ST4000+ (proa) |
+| SeaTalk1 IN | Barramento SeaTalk1: ST4000+ e ST50 Compass (proa) |
 
-Se aparecer uma sonda NMEA 0183, falta uma entrada (multiplexer ou adaptador
-USB–0183).
+**Os três NASA (vento, log e sonda) precisam de 3 entradas 0183 e a MacArthur
+só tem 2.** Juntar um **adaptador USB–NMEA 0183 (RS-422, isolado)** no Pi
+para a sonda (a cotar). Alternativa: ligar a sonda à entrada 0183 do B330,
+se este aceitar 4 800 baud (confirmar no manual).
+
+**Há duas bússolas no SeaTalk1** (ST4000+ e ST50 Compass). Escolher uma como
+fonte de proa no SignalK e manter a outra de reserva.
 
 Fontes: [em-trak B330, manual](https://alphatronmarine.com/files/secured/docuware_documents/180-AIS+Em-trak+B330+InstallOper+Manual++12-1-2017.pdf),
 [em-trak, PGN do B330](https://productsupport.em-trak.com/hc/en-gb/articles/28856352427933-What-are-the-NMEA-2000-PGNs-supported-by-the-B100-B300-and-B330),
