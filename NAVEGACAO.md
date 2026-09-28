@@ -773,6 +773,24 @@ Garmin é fraco. No Pi, acrescentar à lista um **altifalante ou besouro forte**
 
 ## 10. Fora do âmbito deste documento (subprojeto seguinte)
 
+### Atualização de 28/09: decisões para a monitorização no porto
+- **O mesmo Pi fica sempre ligado.** O Ivo vai pôr painéis solares; a energia
+  fica para depois.
+- **Alarmes críticos por rádio Meshtastic** (placa Heltec WiFi LoRa 32 V3, 868
+  MHz, ligada ao Pi por USB): fumo, água no porão, fuga de gasóleo, intrusão,
+  bateria baixa. **4G como via garantida** para detalhes e câmaras.
+- **Barco em Peniche, Ivo em Lisboa (~75–80 km).** No mapa meshtastic.pt não
+  há nós em Peniche; os mais próximos são TasMouvir (Lourinhã, ~12 km) e
+  PMNKY (~20 km), há routers na zona de Torres Vedras/Montejunto (ARADO2ER a
+  383 m) e ~100 nós em Lisboa. A cadeia é possível mas **tem de ser testada**.
+- **Teste em curso** com a placa do Ivo e a de um amigo. Definições da
+  comunidade PT: EU_868, **LongFast**, **no máximo 4 saltos**, firmware Beta,
+  **nunca o modo Range Test**. Canal privado com chave para os alarmes;
+  antena da placa do barco no alto e por fora; usar traceroute; registar
+  RSSI e SNR.
+
+
+
 **Monitorização com o barco parado** (amarração ou marina): alarmes de fumo,
 de água no porão, de energia e de intrusão com câmaras interiores, a chegar ao
 telemóvel. Notas já discutidas:
