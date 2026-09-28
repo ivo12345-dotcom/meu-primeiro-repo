@@ -130,18 +130,19 @@ alimentação da HAT a alimentar tudo
 
 | # | Peça | Loja | Preço c/IVA | Nota |
 |---|---|---|---|---|
-| 1 | Raspberry Pi 5 **4 GB** | [RasPi Shop PT](https://raspishop.pt/c/robotica-e-desenvolvimento/raspberry-pi-robotica-e-desenvolvimento/placas-e-kits/raspberry-pi-5/) | **€109,99** | Esgotado. Pedir aviso ou procurar noutra loja |
+| 1 | Raspberry Pi 5 **4 GB** (ou **8 GB**, ver abaixo) | [Amazon.es 4 GB](https://www.amazon.es/dp/B0CK3L9WD3) / [Amazon.es 8 GB](https://www.amazon.es/dp/B0CK2FCG1K) | **€164,90** / **€204,80** | Em PT o 4 GB está esgotado em todo o lado (RasPi Shop €109,99, RS até fev/2027) |
 | 2 | Dissipador ativo oficial (SC1148) | [Botnroll PT](https://www.botnroll.com/en/accessories/5018-raspberry-pi-5-official-active-cooler-sc1148.html) | **€5,90** | |
 | 3 | Pimoroni NVMe Base | [RaspberryPi.dk](https://raspberrypi.dk/en/product/pimoroni-nvme-base-for-raspberry-pi-5/) | **€19,93** | Traz cabo PCIe, espaçadores e pés |
 | 4 | SSD NVMe 256 GB (M.2 2280) | [PcComponentes](https://www.pccomponentes.pt/gigabyte-ssd-m2-2280-256gb-pcie-30-x4-nvme) (Gigabyte) | **€34,33** | Preferir uma marca testada pela Pimoroni (Kingston, Crucial, Samsung, Kioxia) se custar o mesmo |
 | 5 | MacArthur HAT | [OpenMarine](https://shop.openmarine.net/home/23-macarthur-hat.html) | **~€76** (€62 s/IVA) | 36 em stock. Só envia às segundas e terças |
 | 6 | Módulo de alimentação 12→5 V da HAT | OpenMarine | **~€28** (desde €23 s/IVA) | Alimenta o conjunto todo a partir dos 12 V |
-| 7 | Ecrã de testes Waveshare 7" HDMI LCD (C), tátil capacitivo, 1024×600 | [welectron](https://www.welectron.com/Waveshare-11199-7inch-HDMI-LCD-C_1) | **€56,90** | Ligação por HDMI + USB, igual à do definitivo |
+| 7 | Ecrã de testes LAFVIN 7" HDMI, tátil capacitivo, 1024×600 | [Amazon.es](https://www.amazon.es/dp/B0BVW7J1J8) | **€48,78** | HDMI + toque por USB, como o definitivo. Há versão de 10,1" a €71,14 |
+| 7b | Cabo **micro-HDMI → HDMI** (o Pi 5 só tem micro-HDMI), com o comprimento até à roda (3–5 m) | Amazon | a confirmar (1 m: €9,95) | + cabo USB do mesmo comprimento para o toque |
 | 8 | Cartas o-charts Portugal | [o-charts](https://o-charts.org/shop/en/oesenc/79-portugal.html) | **~€20** (€16 s/IVA) | Continente, Açores e Madeira |
 | 9 | Chave USB de licença o-charts | [o-charts](https://o-charts.org/shop/en/hardware/38-usb-key-dongle.html) | **~€23** (€19 s/IVA) | Recomendada: reinstalar o OpenPlotter apaga a licença; com a chave não se perde |
 | 10 | ASA preto 1 kg | [EVOLT](https://evolt.pt/produto/asa-1kg-black-esun/) | **€17,73** (Winkle, em stock) | eSUN €21,39 esgotado. 1 bobina chega para o suporte e a pala |
 | 11 | Porta-fusível em linha ATO/ATC IP55 | [SVB](https://www.svb24.pt/pt/seatec-porta-fusiveis-em-linha-ato.html) | **€3,32** | + fusível de 5 A |
-| | **Total** | | **≈ €396** | **Sem portes** (5 lojas, contar €30–50) |
+| | **Total** | | **≈ €442 (Pi 4 GB) / ≈ €482 (Pi 8 GB)** | Sem portes nem cabos. Portes: contar €30–50 |
 
 **Também é preciso** (preço não confirmado, loja náutica ou sobras):
 - Cabo **estanhado** de 1,5 mm² (≥ 16 AWG) vermelho/preto, do quadro até ao
@@ -176,6 +177,18 @@ Alternativas ao ecrã de testes que ficaram de fora:
   curta. Não dá para o levar até à roda nem testa a ligação HDMI + USB.
 - **10,1" capacitivo HDMI genérico** (~€68 no eBay.de): maior, mas acima do
   orçamento.
+- **Waveshare 7" HDMI LCD (C)** (€56,90, welectron): igual ao LAFVIN, mas mais
+  caro.
+- **Freenove 7"** (€54,85, Amazon): liga por fita DSI, não tem HDMI.
+
+Outras opções rejeitadas a 28/09:
+- **Box Android X88 Pro B (Allwinner H313, 2 GB) em vez do Pi:** não tem o
+  conector de 40 pinos (não leva a MacArthur nem lê o SeaTalk1), é 3–4× mais
+  lenta e o Linux é só da comunidade, com Wi-Fi incerto. O Raspberry Pi OS
+  não arranca nela. Serviria apenas para aprender o OpenPlotter em casa.
+- **Kit db-tronic Pi 5 NVMe (Amazon):** a placa do disco vai por cima e choca
+  com a MacArthur. Tem fonte de 230 V e caixa de metal (que tira alcance ao
+  Wi-Fi). Sai mais caro que as peças soltas.
 
 **Não usar a fonte oficial de 27 W do Pi.** É para tomada de 230 V. No barco o
 Pi alimenta-se dos 12 V pelo módulo da HAT, com fusível no quadro.
