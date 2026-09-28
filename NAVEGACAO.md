@@ -557,6 +557,28 @@ com o motor a dar seguimento**, para o Ivo recolher as velas a solo.
 Fontes: [signalk-derived-data](https://github.com/SignalK/signalk-derived-data),
 [speedandcurrent](https://github.com/Asw1n/speedandcurrent).
 
+### Melhor rota (routing meteorológico), pedido do Ivo, 28/09
+
+Dá, com três peças no OpenCPN/SignalK:
+1. **Previsão (GRIB):** vento, ondulação, pressão e correntes para os
+   próximos dias. Descarregada pelo **plugin GRIB do OpenCPN** quando há
+   internet (4G ou Starlink). Ao largo, sem rede, fica a última previsão
+   descarregada. O **Meshtastic não serve** para isto: as mensagens são
+   pequenas de mais.
+2. **Polar do Arlequin** (velocidade do barco para cada vento e ângulo):
+   começa com uma polar genérica de um barco parecido e vai sendo
+   **aprendida automaticamente** a partir dos instrumentos a navegar (plugin
+   `signalk-polar-builder`: vento real, velocidade na água, adorno).
+3. **Cálculo da rota:** plugin **Weather Routing** do OpenCPN. Calcula por
+   isócronas a rota mais rápida, com limites que o Ivo define para navegar a
+   solo (vento máximo, ondulação máxima, ângulo mínimo ao vento, evitar
+   terra, motor abaixo de X nós de vento).
+
+A rota calculada passa a **rota ativa**: aparece na carta e, com o EV-100, o
+piloto segue-a em track. Recalcula-se sempre que chega uma previsão nova.
+**É uma ajuda à decisão, não uma garantia:** a previsão pode falhar, e a
+decisão de sair é sempre do skipper.
+
 ### Fase 3 (futuro, sem data): plotter Raymarine Axiom na roda
 
 O Ivo quer pôr um **Axiom** mais tarde (28/09). Não está decidido o modelo
