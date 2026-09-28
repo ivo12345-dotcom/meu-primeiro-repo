@@ -635,6 +635,27 @@ Fontes: [signalk-logbook](https://github.com/meri-imperiumi/signalk-logbook),
 [artigo do autor](https://bergie.iki.fi/blog/electronic-logbook/),
 [signalk-sailing-logbook](https://github.com/johansolve/signalk-sailing-logbook).
 
+## 7d. Segundo posto na cabine do Ivo (28/09)
+
+O Ivo descansa **na cabine junto à mesa de navegação**. Daí vê o poço pelas
+janelas, um bocado do mastro e os manómetros do motor. O sistema tem de
+funcionar também ali:
+- **O Pi fica instalado junto à mesa de navegação**, que é seca e perto do
+  quadro. O cabo longo é só o do ecrã da roda.
+- **Dois ecrãs no mesmo Pi:** o Pi 5 tem **duas saídas micro-HDMI**.
+  - Ecrã 1: o de 10" na roda.
+  - Ecrã 2: o **LAFVIN 7" dos testes** passa a ficar **na mesa de
+    navegação/beliche**, com instrumentos, AIS e alarmes. Cabos curtos.
+  - Os dois são táteis por USB. No Linux é preciso associar cada toque ao
+    seu ecrã (configuração, sem custo).
+  - Alternativa: um tablet ou o telemóvel em Wi-Fi (KIP/OpenCPN) no
+    beliche.
+- **Besouro 2 junto ao beliche**, com o volume testado para acordar a dormir
+  (já está na lista). Opcional: um **LED vermelho** de alarme à vista da
+  almofada.
+- **Modo noite nos dois ecrãs**, para não estragar a visão noturna quando
+  se sobe ao poço.
+
 ## 8. Fotos e medidas em falta (próxima ida ao barco)
 
 1. **Radar**: a etiqueta da antena e da unidade (modelo exato). **Prioridade.**
