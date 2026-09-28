@@ -596,6 +596,22 @@ no ecrã e no telemóvel).
 - Alternativas: `signalk-sailing-logbook` (acrescenta viragens e cambadas) ou
   o plugin de diário do OpenCPN.
 
+**Cópia sem fios (alternativa à pen, 28/09):**
+- **Syncthing** no Pi e no telemóvel (e no PC de casa, se quiser): sempre
+  que o telemóvel está na rede Wi-Fi do barco, a pasta do diário
+  **sincroniza sozinha**, nos dois sentidos, sem cabos e sem cloud. O
+  telemóvel fica com uma cópia completa, e é a melhor cópia de segurança
+  porque sai do barco contigo.
+- **Pasta partilhada (Samba)** no Pi: no PC com Windows, abre-se como uma
+  pasta de rede e copiam-se os ficheiros.
+- A própria **página web do diário** (signalk-logbook) abre no telemóvel.
+- **Com internet** (4G do barco ou Wi-Fi da marina), o `rclone` pode enviar
+  também uma cópia para a cloud (Google Drive, OneDrive).
+- **Bluetooth: não recomendado.** Dá (OBEX), mas é lento, tem de se
+  emparelhar à mão e cada envio precisa de aceitação no telemóvel.
+- **Decisão:** Wi-Fi (Syncthing) como principal. A pen fica **opcional**, o
+  que liberta uma porta USB.
+
 **Cópia para uma pen USB (pedido do Ivo, 28/09):**
 - A pen fica **sempre ligada ao Pi**, montada por UUID num sítio fixo
   (`/media/diario`) com `nofail`. Assim o Pi arranca mesmo sem a pen.
