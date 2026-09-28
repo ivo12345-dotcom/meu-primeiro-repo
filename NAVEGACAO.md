@@ -761,6 +761,25 @@ Traz peso e ruído à popa, faz sombra aos painéis e o arco já tem o radar e o
 painéis. Deixar previsto no arco um ponto de fixação e a passagem do cabo.
 Decidir depois de uma época de dados do SmartShunt.
 
+### Carregar com o motor no inverno (28/09)
+
+- O alternador do D1-20 é de **115 A / 14 V** com regulador interno
+  (confirmar na placa do D1-20B). A 1500–1800 rpm dá na prática cerca de
+  60–80 A, **se o separador não tiver díodos**. Com díodos perde ~0,7 V e
+  cai para cerca de 20–40 A.
+- Com o serviço a 50–80%, as AGM aceitam bem a carga (~40–70 Ah por hora de
+  motor). Acima de ~85% a corrente cai muito.
+- **Estratégia:** ligar o motor com o serviço a ~55%, carregar até ~80–85% e
+  deixar o sol acabar a carga. Não correr horas ao ralenti sem carga, porque
+  o motor vidra os cilindros. Usar ~1500–1800 rpm, de preferência a navegar.
+- **Custo:** ~0,8–1 L/h de gasóleo, ou seja ~2 L por dia no inverno com o
+  EV-100. É mais barato que o aerogerador se forem poucos dias de inverno a
+  navegar.
+- **Melhoria barata:** se o separador for de díodos, trocá-lo por um VSR/ACR.
+- **O Pi ajuda:** alarme "serviço a 55%, ligar o motor" e "85%, pode desligar"
+  a partir do SmartShunt, com as horas de motor e os Ah carregados a irem
+  para o diário.
+
 ## 6. Reserva (obrigatória a solo)
 
 Com tudo num ecrã só, esse ecrã passa a ser um ponto único de falha.
