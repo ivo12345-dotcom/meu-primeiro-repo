@@ -474,6 +474,26 @@ Fontes: [OpenCPN wiki, pilotos](https://opencpn.org/wiki/dokuwiki/doku.php?id=op
 [Yacht Devices, pilotos Raymarine](https://www.yachtd.com/news/raymarine_autopilot_support.html),
 [Cruisers Forum](https://www.cruisersforum.com/forums/f134/opencpn-nmea2000-and-autopilots-229737.html).
 
+### Ecrã da roda: Lowrance HDS-9 Live do Ivo (28/09)
+
+O Ivo tem uma **Lowrance HDS-9 Live, solta, com transdutor**. Passa a ser a
+proposta para o **ecrã 1 (roda)**, no lugar do SailProof STS10 (€499):
+- Ecrã tátil de 9" **SolarMAX HD** (lê-se ao sol), feito para o exterior;
+  cartas **Navionics ou C-MAP** (as de Portugal compram-se à parte).
+- Liga-se à **rede NMEA 2000**: o Pi põe lá vento, fundo, velocidade, proa,
+  motor e gasóleo, e o B330 põe o AIS. A HDS mostra tudo, com alarmes AIS.
+- **Sonda CHIRP própria:** dá um **segundo valor de fundo**, útil a solo como
+  reserva da NASA Clipper Depth.
+- Não mostra o OpenCPN nem o diário (não tem entrada de vídeo): esses ficam no
+  ecrã 2 (LAFVIN, mesa de navegação) e no telemóvel.
+- Radar: só Navico (Broadband/Halo). O JRC continua no ecrã dele.
+- EV-100: seguir rota pela NMEA 2000 deve funcionar; a confirmar.
+- **A fazer:** suporte na roda (o suporte e a pala em ASA desenham-se para a
+  HDS em vez do SailProof); alimentação 12 V com fusível; derivação N2K;
+  identificar o **modelo do transdutor** e escolher a montagem num veleiro
+  (de popa não serve bem com o barco adornado e o espelho invertido; em
+  princípio, dentro do casco ou por passa-casco).
+
 ### Fase 3 (futuro, sem data): plotter Raymarine Axiom na roda
 
 O Ivo quer pôr um **Axiom** mais tarde (28/09). Não está decidido o modelo
