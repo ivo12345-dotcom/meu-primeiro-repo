@@ -695,6 +695,31 @@ Com tudo num ecrã só, esse ecrã passa a ser um ponto único de falha.
 - Prever um **comando físico** (teclado ou roda pequena Bluetooth/USB) para
   zoom e confirmar alarmes com luvas ou com o ecrã molhado.
 
+## 7a. Produto final: maqueta e funções (28/09)
+
+**Maqueta interativa completa:** [`maquete-arlequin.html`](maquete-arlequin.html)
+(abrir no browser; 9 botões a funcionar). **Polar estimada:**
+[`polar-arlequin-estimada.csv`](polar-arlequin-estimada.csv).
+
+| Botão | Função |
+|---|---|
+| Carta | OpenCPN: rota, rasto, proa, COG, **abatimento**, **corrente**, **laylines**, AIS, vento real + painel (vento, proa, velocidades, fundo, **% da polar**, AIS, motor, gasóleo) |
+| Instr. | Vento grande + VMG, **polar com alvo e real**, desempenho, proa, fundo, adorno, barómetro e tendência, corrente |
+| AIS | Lista CPA/TCPA, alarmes, estado do B330, detalhe do alvo (silenciar, chamar por DSC a confirmar, centrar) |
+| Motor | Rotações, temperatura, tensão, horas, alarmes do MDI, consumo estimado, gasóleo |
+| Viagem | Rota em track, XTE, VMG ao WP + **resumo da viagem** (distância, tempo, médias, vela/motor, polar, gasóleo, vento, pressão, abatimento, corrente, GPX) |
+| Diário | signalk-logbook: hora a hora, motor, **velas**, **rota**, **alarmes (e se foram por Mesh)**, entradas de um toque, cópia Wi-Fi |
+| Melhor rota | GRIB + polar + Weather Routing: isócronas, rota ótima vs direta, limites a solo, **ativar no piloto** |
+| Rec. velas | Verificações, bordo e desvio, aproar ao vento com o EV-100, terminar, registo no diário |
+| Noite | Tudo a vermelho |
+
+Barra de cima sempre visível: nome, hora, GPS, **Meshtastic**, **4G**,
+pressão, **estado do piloto**, **alarme AIS**.
+
+**Dependências:** piloto em track, melhor rota no piloto e Recolher velas
+precisam do **EV-100**; o abatimento precisa do **sensor de inclinação**; a
+polar começa **estimada** e aprende-se a navegar.
+
 ## 7b. Disposição do ecrã escolhida (28/09)
 
 O Ivo escolheu a **primeira maqueta do ecrã de 10"**, na **horizontal**
