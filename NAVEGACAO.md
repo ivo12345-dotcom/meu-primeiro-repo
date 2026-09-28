@@ -670,6 +670,10 @@ Fontes: [signalk-logbook](https://github.com/meri-imperiumi/signalk-logbook),
 
 ## 7d. Segundo posto na cabine do Ivo (28/09)
 
+**Motor (28/09):** fica **atrás da escada**, encostado à cabine de popa. Há
+acesso **pela cabine** e **tirando a escada**. A ficha Deutsch do MDI e a
+ligação ao Pi (USB–CAN) ficam a poucos metros da mesa de navegação.
+
 **Planta (ficha técnica Jeanneau, em `Documents\Veleirorochura`):** de popa
 para proa: cabine de popa com cama de casal a **estibordo**, por baixo do poço;
 **mesa de navegação a estibordo** à frente dela; cozinha a bombordo; escada
