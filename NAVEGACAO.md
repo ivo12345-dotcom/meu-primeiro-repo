@@ -166,6 +166,23 @@ tensão da bateria e **códigos de alarme do motor**; e ainda temperatura do
 óleo e consumo, se o motor os medir. O **nível do gasóleo não** vem do EVC,
 porque o medidor é analógico.
 
+**O que o D1-20B dá de facto (manual do YDEG-04, 28/09):** o D1 é um diesel
+mecânico com uma caixa **MDI** e **poucos sensores**. Segundo o manual:
+- **Valores:** rotações, horas do motor, tensão da bateria e temperatura da
+  água (o que o MDI publica; confirmar ao ligar).
+- **Alarmes** (mensagem própria do MDI, que o YDEG-04 traduz para NMEA 2000):
+  **sobreaquecimento**, **pressão de óleo baixa**, **tensão baixa da bateria**,
+  **pré-aquecimento ligado**, **motor a parar**, **avaria de cablagem** e
+  alarme auxiliar (estes dois configuráveis).
+- **Não há valor de pressão do óleo**, só o alarme (o D1 tem um pressóstato,
+  não um sensor).
+- **Não há consumo real.** O YDEG-04 pode **estimar** o consumo a partir das
+  rotações (`FUEL_RATE_FAKE`, calibrável) — dá para uma ideia de autonomia.
+- **Nível do gasóleo:** não (o medidor é analógico, fora do MDI).
+- **Ligação:** à **porta Multilink da caixa MDI** ou **em série com o
+  conta-rotações EVC**. Configuração `PROTOCOLS=J1939,MDI` (vem assim de
+  fábrica).
+
 **Motor: painel Volvo Penta EVC** (conta-rotações, temperatura, painel EVC de
 arranque e paragem, e medidor de gasóleo analógico). Os motores D1/D2 com EVC
 falam um protocolo CAN da Volvo. **Opcional:** o gateway **Yacht Devices
