@@ -555,6 +555,26 @@ Com tudo num ecrã só, esse ecrã passa a ser um ponto único de falha.
 - Prever um **comando físico** (teclado ou roda pequena Bluetooth/USB) para
   zoom e confirmar alarmes com luvas ou com o ecrã molhado.
 
+## 7b. Disposição do ecrã escolhida (28/09)
+
+O Ivo escolheu a **primeira maqueta do ecrã de 10"**, na **horizontal**
+(1280×800):
+- **Barra de cima:** hora, GPS, rota e **alarme AIS a vermelho**.
+- **Carta à esquerda (~58 %):** o barco com a linha da proa e o vetor COG, a
+  rota e os waypoints, os alvos AIS com vetores (o perigoso a vermelho), o
+  anel de 0,5 MN e, em baixo, o próximo WP e o XTE.
+- **Painel à direita:**
+  - vento aparente (mostrador) e vento real;
+  - proa, SOG/COG, fundo (com tendência), velocidade na água e corrente
+    estimada;
+  - **lista AIS** com CPA e TCPA;
+  - motor (rotações, temperatura, tensão, horas, óleo e carga);
+  - gasóleo (L, autonomia em horas e em MN).
+- **Botões em baixo:** Carta, Instrumentos, AIS, Motor, Rota e Noite.
+- Montagem na **horizontal**: o suporte e a pala desenham-se para isso.
+- Implementação: OpenCPN (carta, AIS, rota) + painel de instrumentos do
+  **KIP** (SignalK) ou do próprio OpenCPN (dashboard), a decidir na montagem.
+
 ## 8. Fotos e medidas em falta (próxima ida ao barco)
 
 1. **Radar**: a etiqueta da antena e da unidade (modelo exato). **Prioridade.**
