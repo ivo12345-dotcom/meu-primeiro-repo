@@ -192,6 +192,48 @@ Fontes: [em-trak B330, manual](https://alphatronmarine.com/files/secured/docuwar
 [Navicom RT750](https://www.navicom.fr/produits/rt750ais-vhf-fixe-25w-avec-antenne-gps-et-ais-integre-nmea-2000),
 [NASA Target Navtex Pro-Plus](https://www.nasamarine.com/product/target-navtex-pro-plus-v2/).
 
+## 2c. Ligações confirmadas na documentação (pesquisa de 28/09)
+
+| Aparelho | O que diz a documentação | Consequência |
+|---|---|---|
+| **ST4000+** | Tem terminais **NMEA IN** atrás do painel: **vermelho = dados +, azul = dados −**. Aceita dados de navegação (modo **track**) e de vento (modo **vento**) em NMEA 0183 | ✅ **MacArthur 0183 OUT 2 → NMEA IN do ST4000+.** O OpenCPN envia a rota (APB/XTE, a confirmar). Só há uma entrada NMEA |
+| **Radar JRC 1000** | Duas entradas separadas: navegação (**amarelo +, verde −**; RMC, GLL, VTG, RMB, BWC…) e bússola (**azul +, branco −**; HDG, HDM, HDT) | ✅ **OUT 1 → as duas entradas em paralelo.** O radar passa a ter posição e proa (marcação verdadeira, rumo para cima) |
+| **VHF RT750** | Entrada NMEA 0183 a **4 800 baud**. RT750 V2: **preto = massa NMEA, verde = GPS +** | ✅ **OUT 1 → verde (+) e preto (−).** Na GPS Setup do rádio, escolher a fonte NMEA 0183 |
+| **em-trak B330** | NMEA 0183 a 38 400 baud; pode **multiplexar** a entrada 0183 para o Wi-Fi (comando `nmea1mux` no proAIS2); NMEA 2000 LEN 1 | ✅ Entra pela **N2K**. O B330 precisa da rede N2K **alimentada** |
+| **MacArthur (N2K)** | Traz **1 terminador de 120 Ω** (opcional); a rede precisa de **2**; o barramento CAN alimenta-se **diretamente da bateria**; o Pi **não** se alimenta do barramento | Kit N2K: **1 terminador** (o outro é o da HAT), T, cabo e **derivação de alimentação a 12 V com fusível** |
+| **NASA Clipper Wind** | A **Mk1 (topo do mastro de 5 fios)** só dá NMEA com o **cabo/conector de saída NMEA** da NASA; a **V2 (3 fios)** envia **MWV** diretamente | Ver o número de fios do cabo do mastro. Se for Mk1: comprar o conector de saída NMEA da NASA |
+| **NASA Clipper Depth (antiga)** | A ficha de 5 pinos atrás fala **I²C** (para o repetidor), **não NMEA**. Há um projeto aberto com Arduino que o converte em `$IIDPT` a 4 800 baud | Se for a antiga: **conversor próprio** (ver abaixo) ou sonda nova com NMEA |
+| **NASA Clipper Log (antiga)** | Provavelmente igual à Depth (I²C para o repetidor). As versões novas (Easy Log / EML-2 NMEA) dão **VHW + VLW** | Ver a versão nas costas |
+
+### Conversor próprio para os NASA antigos (se for preciso)
+
+Um **ESP32** (~€5–10) a fazer de "repetidor" I²C dos NASA:
+- lê a ficha de repetidor da **sonda** e do **log** (o ESP32 tem 2 barramentos
+  I²C);
+- envia os dados ao **SignalK por Wi-Fi** (biblioteca **SensESP**) ou em NMEA
+  0183 por fio;
+- **resolve também a falta de entradas 0183**, porque deixa de ser preciso o
+  adaptador USB.
+- ⚠️ Confirmar a tensão do I²C dos NASA (provavelmente 5 V). O ESP32 é 3,3 V,
+  por isso precisa de um conversor de nível.
+- Base: o projeto aberto [NASADepth-NMEA](https://github.com/dreisday/NASADepth-NMEA)
+  (endereço I²C 0x3e, pinos 1 = SCL, 3 = SDA, 2 e 5 = massa, na ficha de 5 pinos).
+
+**Por isso as fotos das costas dos NASA passam a ser as mais importantes:**
+dizem se é preciso o conversor ou só cabos.
+
+Fontes: [ST4000+, ligações NMEA](https://www.manualslib.com/manual/138185/Raymarine-Autopilot-Plus-St4000Plus.html?page=68),
+[JRC 1000, manual](https://www.scribd.com/document/577970612/JRC-1000-Radar-Manual),
+[RT750 V2, ligação NMEA](https://www.navicom.fr/api/dam/files/975ed5cd-c039-410d-81d6-730194f4c52a),
+[RT750, manual](https://www.manualslib.com/manual/3610453/Navicom-Rt750.html),
+[em-trak B330, manual](https://alphatronmarine.com/files/secured/docuware_documents/180-AIS+Em-trak+B330+InstallOper+Manual++12-1-2017.pdf),
+[MacArthur, NMEA 2000](https://macarthur-hat-documentation.readthedocs.io/en/latest/nmea2000.html),
+[MacArthur, alimentação](https://macarthur-hat-documentation.readthedocs.io/en/latest/power.html),
+[NASA, saída NMEA do Clipper Wind Mk1](https://www.nasamarine.com/product/clipper-wind-nmea-output-cable/),
+[NASA Clipper Wind V2](https://www.nasamarine.com/product/clipper-wind-system/),
+[OpenSeaMap, ligações da Clipper Depth](https://openseamap-develop.narkive.com/SOdDATA6/nasa-clipper-depth-wiring-information),
+[NASADepth-NMEA](https://github.com/dreisday/NASADepth-NMEA/blob/main/Clipper_Depth_to_NMEA.ino).
+
 ## 3. O radar é a incógnita
 
 Os radares falam protocolos fechados de cada marca. O plugin **radar_pi** do
