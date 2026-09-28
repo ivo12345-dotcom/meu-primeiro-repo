@@ -105,6 +105,52 @@ Fontes: [MacArthur HAT, documentação](https://macarthur-hat-documentation.read
 [loja OpenMarine](https://shop.openmarine.net/home/23-macarthur-hat.html),
 [OpenPlotter](https://openmarine.net/openplotter).
 
+## 2b. Inventário identificado por fotos (28/09)
+
+| Aparelho | Modelo | Ligação de dados | Papel no sistema |
+|---|---|---|---|
+| Radar | **JRC Radar 1000** (LCD monocromático 6", até 16 MN) | Só **entrada** NMEA 0183 (GPS e bússola) | **Fica autónomo.** Não é suportado pelo radar_pi nem pelo Axiom. O Pi pode enviar-lhe posição e proa |
+| Plotter | **Garmin GPSMAP 421** (GPS interno) | NMEA 0183 porta 1 (entrada e saída) + NMEA 2000 (conector próprio) | **Fonte de GPS do sistema** e plotter de reserva |
+| VHF | **Navicom RT750** (DSC classe D) | NMEA 0183. A versão **RT750 AIS** tem recetor AIS com saída 0183 (38 400 baud); existe também a versão N2K | AIS para o Pi (se for a versão AIS); recebe GPS para o DSC |
+| Navtex | **NASA Target Navtex Pro** | **Nenhuma saída de dados** confirmada | **Fica autónomo** |
+| Anemómetro | **Por identificar** | ? | — |
+| Piloto | Raytheon ST4000+ | SeaTalk1 (+ entrada NMEA a confirmar) | Proa; recebe a rota |
+
+**O que muda:**
+- **O radar sai do ecrã único.** O JRC 1000 usa um protocolo fechado da JRC e
+  só aceita dados, não os envia. Continua no ecrã dele. Ligar a saída 0183 da
+  MacArthur à entrada do radar dá-lhe posição e proa (para a marcação
+  verdadeira no EBL).
+- **Há GPS.** Faltava uma fonte de posição na lista. O GPSMAP 421 dá a
+  posição ao Pi pela saída 0183 da porta 1. Como reserva, um recetor GPS USB
+  (~€15–25) no Pi, a cotar.
+- **O Axiom não mostrará este radar.** Quando vier o Axiom, ter radar no
+  ecrã implica um radar Raymarine novo (Quantum 2 ou Cyclone). Decisão para
+  essa altura.
+- Com o radar fora do Pi, o **Pi de 8 GB** tem folga de sobra (fica pela
+  compra já decidida).
+
+**Portas da MacArthur (proposta, a confirmar com o anemómetro):**
+
+| Porta | Liga a |
+|---|---|
+| 0183 IN 1 | Garmin GPSMAP 421, porta 1 OUT (GPS), 4 800 baud |
+| 0183 IN 2 | RT750 AIS, saída NMEA (AIS), 38 400 baud |
+| 0183 OUT 1 | Radar JRC 1000 + entrada GPS do RT750 (a mesma saída pode alimentar 2–3 recetores) |
+| 0183 OUT 2 | ST4000+, entrada NMEA (rota) |
+| SeaTalk1 IN | ST4000+ (proa). Se o anemómetro for SeaTalk1, entra no mesmo barramento |
+| NMEA 2000 | Livre até ao EV-100. O GPSMAP 421 pode ligar aqui também |
+
+Se o anemómetro for NMEA 0183, faltam entradas: é preciso um multiplexer ou
+um adaptador USB–0183.
+
+Fontes: [JRC 1000, Practical Sailor](https://www.practical-sailor.com/marine-electronics/entry-level-lcd-radars/),
+[manual JRC 1000](https://www.manualslib.com/products/Jrc-Radar-1000-5904204.html),
+[instalação GPSMAP 400/500](https://www.manualowl.com/m/Garmin/GPSMAP-421%2F421s/Manual/133497?page=7),
+[Navicom RT750 AIS](https://www.navicom.fr/produits/rt750ais-vhf-fixe-25w-avec-antenne-gps-et-ais-integre-nmea-2000),
+[ligação NMEA RT750 AIS](https://download.navicom.fr/navicom/documents/connexion%20VHF%20nmea%200183/RT%20750AIS/AUTRE%20APPAREIL/RT750%20ais%20autres%20appareils.pdf),
+[NASA Target Navtex Pro-Plus](https://www.nasamarine.com/product/target-navtex-pro-plus-v2/).
+
 ## 3. O radar é a incógnita
 
 Os radares falam protocolos fechados de cada marca. O plugin **radar_pi** do
