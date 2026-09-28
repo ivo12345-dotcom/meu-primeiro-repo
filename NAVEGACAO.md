@@ -596,6 +596,23 @@ no ecrã e no telemóvel).
 - Alternativas: `signalk-sailing-logbook` (acrescenta viragens e cambadas) ou
   o plugin de diário do OpenCPN.
 
+**Cópia para uma pen USB (pedido do Ivo, 28/09):**
+- A pen fica **sempre ligada ao Pi**, montada por UUID num sítio fixo
+  (`/media/diario`) com `nofail`. Assim o Pi arranca mesmo sem a pen.
+- Um **temporizador systemd** corre de **15 em 15 minutos** e ao desligar:
+  `rsync` dos ficheiros do diário (YAML por dia) + exportação diária em
+  **CSV/PDF** para a pen, seguido de `sync`.
+- Formato da pen: **exFAT** (ou FAT32), para se ler diretamente no PC com
+  Windows. Como o exFAT/FAT não tem journal, a cópia é pequena e seguida de
+  `sync`, e o original fica no SSD. Um corte de energia estraga no máximo a
+  última cópia, nunca o diário.
+- Na mesma rotina: **cópia semanal da configuração do SignalK/OpenPlotter**
+  para a pen. Se o SSD morrer, o sistema reinstala-se depressa.
+- ⚠️ **Portas USB do Pi 5: são só 4.** Toque do ecrã, chave o-charts, USB-CAN
+  do motor, pen, e ainda o adaptador USB-0183 da sonda (se não for pelo
+  ESP32). **São 5.** Solução: um **hub USB pequeno** (de preferência
+  alimentado) ou a sonda pelo ESP32 (Wi-Fi), que liberta uma porta.
+
 Fontes: [signalk-logbook](https://github.com/meri-imperiumi/signalk-logbook),
 [artigo do autor](https://bergie.iki.fi/blog/electronic-logbook/),
 [signalk-sailing-logbook](https://github.com/johansolve/signalk-sailing-logbook).
