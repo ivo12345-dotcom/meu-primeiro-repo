@@ -109,46 +109,53 @@ Fontes: [MacArthur HAT, documentação](https://macarthur-hat-documentation.read
 
 | Aparelho | Modelo | Ligação de dados | Papel no sistema |
 |---|---|---|---|
-| Radar | **JRC Radar 1000** (LCD monocromático 6", até 16 MN) | Só **entrada** NMEA 0183 (GPS e bússola) | **Fica autónomo.** Não é suportado pelo radar_pi nem pelo Axiom. O Pi pode enviar-lhe posição e proa |
-| Plotter | **Garmin GPSMAP 421** (GPS interno) | NMEA 0183 porta 1 (entrada e saída) + NMEA 2000 (conector próprio) | **Fonte de GPS do sistema** e plotter de reserva |
-| VHF | **Navicom RT750** (DSC classe D) | NMEA 0183. A versão **RT750 AIS** tem recetor AIS com saída 0183 (38 400 baud); existe também a versão N2K | AIS para o Pi (se for a versão AIS); recebe GPS para o DSC |
+| **AIS** | **em-trak B330**, classe B, **transponder** (emite e recebe), GPS próprio, Wi-Fi | **NMEA 2000**, NMEA 0183 (38 400 baud), USB, Wi-Fi | **Fonte de AIS e de GPS.** Liga à porta **N2K** da MacArthur |
+| Anemómetro | **NASA Clipper Wind** | V2: o topo do mastro envia **MWV em NMEA 0183**. V1 (5 fios, analógica): só com cabo NMEA opcional | Vento → 0183 IN 1 |
+| Log | **NASA Clipper Log** | Versões com NMEA dão **VHW + VLW** (velocidade e distância) | Velocidade na água → 0183 IN 2 |
+| Radar | **JRC Radar 1000** (LCD monocromático 6", até 16 MN) | Só **entrada** NMEA 0183 (GPS e bússola) | **Fica autónomo.** Não é suportado pelo radar_pi nem pelo Axiom |
+| Plotter | **Garmin GPSMAP 421** (GPS interno) | NMEA 0183 porta 1 + NMEA 2000 (conector próprio) | Plotter e **GPS de reserva** |
+| VHF | **Navicom RT750** (DSC classe D) | NMEA 0183 (entrada de GPS para o DSC) | Recebe posição. O AIS já vem do B330 |
 | Navtex | **NASA Target Navtex Pro** | **Nenhuma saída de dados** confirmada | **Fica autónomo** |
-| Anemómetro | **Por identificar** | ? | — |
+| Sonda | **Por identificar** (há sonda?) | ? | — |
 | Piloto | Raytheon ST4000+ | SeaTalk1 (+ entrada NMEA a confirmar) | Proa; recebe a rota |
 
 **O que muda:**
-- **O radar sai do ecrã único.** O JRC 1000 usa um protocolo fechado da JRC e
-  só aceita dados, não os envia. Continua no ecrã dele. Ligar a saída 0183 da
-  MacArthur à entrada do radar dá-lhe posição e proa (para a marcação
-  verdadeira no EBL).
-- **Há GPS.** Faltava uma fonte de posição na lista. O GPSMAP 421 dá a
-  posição ao Pi pela saída 0183 da porta 1. Como reserva, um recetor GPS USB
-  (~€15–25) no Pi, a cotar.
-- **O Axiom não mostrará este radar.** Quando vier o Axiom, ter radar no
-  ecrã implica um radar Raymarine novo (Quantum 2 ou Cyclone). Decisão para
-  essa altura.
-- Com o radar fora do Pi, o **Pi de 8 GB** tem folga de sobra (fica pela
-  compra já decidida).
+- **O AIS é um transponder B330 com NMEA 2000 e Wi-Fi.** Entra na MacArthur
+  pela porta N2K (cabo adaptador) e traz também o **GPS**. As duas entradas
+  0183 ficam livres para o vento e o log.
+- **Teste que se pode fazer já, sem comprar nada:** ligar o telemóvel ao
+  **Wi-Fi do B330** e configurar a Navionics (ou o OpenCPN Android) para ler
+  AIS e GPS por TCP/UDP. O B330 tem de estar ligado e com MMSI programado.
+- **O radar sai do ecrã único.** O JRC 1000 usa um protocolo fechado e só
+  aceita dados. A saída 0183 da MacArthur pode dar-lhe posição e proa (para a
+  marcação verdadeira).
+- **O Axiom não mostrará este radar.** Radar no Axiom = radar Raymarine novo.
+- **NASA V1 ou V2?** Ver as costas do Clipper Wind e do Clipper Log (número de
+  fios, se há fio NMEA). Se não houver saída NMEA, a NASA vende cabos e
+  conversores.
 
-**Portas da MacArthur (proposta, a confirmar com o anemómetro):**
+**Portas da MacArthur (proposta):**
 
 | Porta | Liga a |
 |---|---|
-| 0183 IN 1 | Garmin GPSMAP 421, porta 1 OUT (GPS), 4 800 baud |
-| 0183 IN 2 | RT750 AIS, saída NMEA (AIS), 38 400 baud |
-| 0183 OUT 1 | Radar JRC 1000 + entrada GPS do RT750 (a mesma saída pode alimentar 2–3 recetores) |
+| **NMEA 2000** | **em-trak B330** (AIS + GPS); depois o EV-100, o GPSMAP 421 e o Axiom |
+| 0183 IN 1 | NASA Clipper Wind (MWV), 4 800 baud |
+| 0183 IN 2 | NASA Clipper Log (VHW/VLW), 4 800 baud |
+| 0183 OUT 1 | Radar JRC 1000 + entrada GPS do RT750 (a mesma saída alimenta 2–3 recetores) |
 | 0183 OUT 2 | ST4000+, entrada NMEA (rota) |
-| SeaTalk1 IN | ST4000+ (proa). Se o anemómetro for SeaTalk1, entra no mesmo barramento |
-| NMEA 2000 | Livre até ao EV-100. O GPSMAP 421 pode ligar aqui também |
+| SeaTalk1 IN | ST4000+ (proa) |
 
-Se o anemómetro for NMEA 0183, faltam entradas: é preciso um multiplexer ou
-um adaptador USB–0183.
+Se aparecer uma sonda NMEA 0183, falta uma entrada (multiplexer ou adaptador
+USB–0183).
 
-Fontes: [JRC 1000, Practical Sailor](https://www.practical-sailor.com/marine-electronics/entry-level-lcd-radars/),
-[manual JRC 1000](https://www.manualslib.com/products/Jrc-Radar-1000-5904204.html),
+Fontes: [em-trak B330, manual](https://alphatronmarine.com/files/secured/docuware_documents/180-AIS+Em-trak+B330+InstallOper+Manual++12-1-2017.pdf),
+[em-trak, PGN do B330](https://productsupport.em-trak.com/hc/en-gb/articles/28856352427933-What-are-the-NMEA-2000-PGNs-supported-by-the-B100-B300-and-B330),
+[NASA Clipper Wind V2](https://www.nasamarine.com/product/clipper-wind-system/),
+[NASA Clipper Wind NMEA (fórum YBW)](https://forums.ybw.com/threads/nasa-clipper-wind-nmea-0183-output-tx.534078/),
+[NASA Clipper Log](https://www.seashop.com/en/nasa-clipper-log),
+[JRC 1000, Practical Sailor](https://www.practical-sailor.com/marine-electronics/entry-level-lcd-radars/),
 [instalação GPSMAP 400/500](https://www.manualowl.com/m/Garmin/GPSMAP-421%2F421s/Manual/133497?page=7),
-[Navicom RT750 AIS](https://www.navicom.fr/produits/rt750ais-vhf-fixe-25w-avec-antenne-gps-et-ais-integre-nmea-2000),
-[ligação NMEA RT750 AIS](https://download.navicom.fr/navicom/documents/connexion%20VHF%20nmea%200183/RT%20750AIS/AUTRE%20APPAREIL/RT750%20ais%20autres%20appareils.pdf),
+[Navicom RT750](https://www.navicom.fr/produits/rt750ais-vhf-fixe-25w-avec-antenne-gps-et-ais-integre-nmea-2000),
 [NASA Target Navtex Pro-Plus](https://www.nasamarine.com/product/target-navtex-pro-plus-v2/).
 
 ## 3. O radar é a incógnita
