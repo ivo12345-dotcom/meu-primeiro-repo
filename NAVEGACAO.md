@@ -160,6 +160,18 @@ se este aceitar 4 800 baud (confirmar no manual).
   alimentado). Um kit inicial N2K resolve tudo, e é a mesma rede que depois
   recebe o EV-100 e o Axiom.
 
+**Motor: painel Volvo Penta EVC** (conta-rotações, temperatura, painel EVC de
+arranque e paragem, e medidor de gasóleo analógico). Os motores D1/D2 com EVC
+falam um protocolo CAN da Volvo. **Opcional:** o gateway **Yacht Devices
+YDEG-04** (~$249) liga ao multilink do EVC e põe na rede NMEA 2000 as
+rotações, a temperatura, a pressão do óleo, as horas do motor, a tensão da
+bateria e o consumo (se o motor o medir). Assim os dados do motor aparecem no
+OpenCPN, no telemóvel e no diário de bordo. **Falta: o modelo exato do motor**
+(chapa no bloco) e confirmar a versão do EVC. O medidor de gasóleo é
+analógico e não entra na rede sem um sensor à parte. Fontes:
+[Yacht Devices YDEG-04](https://www.yachtd.com/products/engine_gateway.html),
+[notícia YD sobre EVC](https://www.yachtd.com/news/j1939_volvo_penta_evc_gateway.html).
+
 **O ST4000+ tem a tecla `track`**, por isso aceita rota vinda de fora. Falta
 confirmar nos terminais de trás se entra por NMEA 0183 ou só por SeaTalk1. Se
 for só por SeaTalk1, a rota não lhe chega pela MacArthur, que só lê SeaTalk1.
