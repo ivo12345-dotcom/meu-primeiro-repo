@@ -249,6 +249,17 @@ contra os 90 L de origem. Consequências:
   tempo). É por isso que o dono anterior desenhou as quantidades no
   medidor, e é essa tabela que se usa.
 - O fio da sonda até à mesa de navegação (Pi) é curto.
+- **É em inox** (Ivo, 28/09), provavelmente feito por medida, o que confirma
+  que foi alterado. Consequências:
+  - Se a sonda antiga ler mal, **troca-se** por uma sonda de **tubo
+    ajustável ao fundo** (corta-se ao comprimento). É mais precisa do que a
+    boia de braço. Os depósitos de inox costumam ter uma **flange de 5
+    parafusos (norma SAE)** para a sonda: ver se a tem.
+  - **Corrosão:** o inox pica (corrosão por fissura) onde fica água parada
+    por baixo ou encostada, sobretudo junto às soldaduras e aos apoios. Ver
+    o fundo e os apoios do depósito, e se o porão por baixo fica seco.
+  - Verificar se o depósito está **ligado à massa** (ligação equipotencial),
+    como é habitual nos depósitos metálicos de combustível.
 - **Vai quase até ao painel de popa** (Ivo, 28/09). Duas consequências fora
   deste sistema:
   - **Leme de emergência (Camada B, `LEME-EMERGENCIA.md`):** as ferragens
