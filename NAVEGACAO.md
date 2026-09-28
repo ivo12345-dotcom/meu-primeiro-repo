@@ -283,7 +283,7 @@ alimentação da HAT a alimentar tudo
 | 9 | Chave USB de licença o-charts | [o-charts](https://o-charts.org/shop/en/hardware/38-usb-key-dongle.html) | **~€23** (€19 s/IVA) | Recomendada: reinstalar o OpenPlotter apaga a licença; com a chave não se perde |
 | 10 | ASA preto 1 kg | [EVOLT](https://evolt.pt/produto/asa-1kg-black-esun/) | **€17,73** (Winkle, em stock) | eSUN €21,39 esgotado. 1 bobina chega para o suporte e a pala |
 | 11 | Porta-fusível em linha ATO/ATC IP55 | [SVB](https://www.svb24.pt/pt/seatec-porta-fusiveis-em-linha-ato.html) | **€3,32** | + fusível de 5 A |
-| 12 | **Gateway do motor Yacht Devices YDEG-04N** (NMEA 2000 Micro-C), decidido 28/09 | [SVB](https://www.svb24.com/en/yacht-devices-nmea2000-engine-gateway-ydeg-04n.html) | **~€263,52** (€214,24 s/IVA) | **Motor: Volvo Penta D1-…B (série B, com MDI)**, compatível segundo a Yacht Devices ("D1 and D2 series with MDI"). N.º de série do motor: **5102100024**. Falta só o número do modelo (D1-13B/20B/30B) para registo. Liga ao multilink do EVC com o conector em Y que traz |
+| 12 | **Gateway do motor Yacht Devices YDEG-04N** (NMEA 2000 Micro-C), decidido 28/09 | [SVB](https://www.svb24.com/en/yacht-devices-nmea2000-engine-gateway-ydeg-04n.html) | **~€263,52** (€214,24 s/IVA) | **Motor: Volvo Penta D1-20B (série B, com MDI)**, compatível segundo a Yacht Devices ("D1 and D2 series with MDI"). N.º de série do motor: **5102100024**. Liga ao multilink do EVC com o conector em Y que traz |
 | | **Total** | | **≈ €746** (€482 + gateway) | Sem portes, sem cabos e sem o kit N2K. Portes: contar €30–50 |
 
 **Também é preciso** (preço não confirmado, loja náutica ou sobras):
