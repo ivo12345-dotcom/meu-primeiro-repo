@@ -588,6 +588,8 @@ Com tudo num ecrã só, esse ecrã passa a ser um ponto único de falha.
 9. **Medir a resistência da sonda do gasóleo** (10–180 Ω ou 240–33 Ω?).
 10. **Pinos da ficha Deutsch do motor** com o multímetro (60–120 Ω entre CAN H
     e CAN L) e teste de escuta com a ignição ligada.
+11. **Água doce:** capacidade de cada depósito (BB e EB), se há **torneira
+    seletora** ou se estão em paralelo, e onde está a **bomba de água**.
 
 **Alarme sonoro:** a solo, o alarme AIS tem de acordar quem dorme. O apito do
 Garmin é fraco. No Pi, acrescentar à lista um **altifalante ou besouro forte**
