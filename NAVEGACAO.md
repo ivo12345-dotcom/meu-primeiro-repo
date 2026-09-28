@@ -256,6 +256,26 @@ Fontes: [OpenPlotter, ADS1115](https://github.com/sailoog/openplotter-documentat
 [openplotter-i2c](https://github.com/openplotter/openplotter-i2c),
 [opções de nível de depósito](https://www.liverpool.ac.uk/~cmi/boat/tanklevel.html).
 
+### Água doce: 2 depósitos flexíveis (BB e EB, debaixo dos beliches), 28/09
+
+Os depósitos **flexíveis** (de bexiga) não aceitam boia nem sonda: não há
+parede rígida para a montar e a superfície mexe-se. As opções:
+
+| Método | Como funciona | Prós | Contras |
+|---|---|---|---|
+| **Caudalímetro** (recomendado) | Sensor de efeito Hall na saída da bomba de água conta os litros gastos; ao encher, carrega-se em "cheio" | Barato (~€10–20, versão **para água potável**), um só sensor para os dois depósitos, instalação simples | Conta o que se gasta, não mede o que lá está. Erro de ~5–10 %. É preciso marcar "cheio" ao abastecer |
+| **Células de carga** (pesar) | Estrado de contraplacado sobre 4 células de carga por depósito; 1 kg = 1 L | Mede a água real, qualquer que seja a forma do depósito | Precisa de espaço e de base plana debaixo do beliche. O balanço do barco e o peso no beliche perturbam: medir fundeado ou em média |
+| Pressão no fundo | Sensor de pressão baixa na saída do depósito | — | **Não serve:** um depósito flexível sob o colchão muda de pressão quando alguém se deita ou se senta |
+
+**Proposta:** **caudalímetro** a jusante das duas saídas (conta o total) e o
+ESP32 com **SensESP** a contar os impulsos e a enviar para o SignalK
+(`tanks.freshWater.*`), com um botão ou comando "cheio" no telemóvel. Se
+houver válvula seletora BB/EB, um sensor na válvula (ou um caudalímetro por
+depósito) dá o nível de cada um.
+
+**Falta saber:** a capacidade de cada depósito, se há **válvula seletora** ou
+se estão em paralelo, e onde está a bomba de água.
+
 **Motor: painel Volvo Penta EVC** (conta-rotações, temperatura, painel EVC de
 arranque e paragem, e medidor de gasóleo analógico). Os motores D1/D2 com EVC
 falam um protocolo CAN da Volvo. **Opcional:** o gateway **Yacht Devices
