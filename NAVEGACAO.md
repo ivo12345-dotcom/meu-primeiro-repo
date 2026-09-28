@@ -668,6 +668,46 @@ reduz o consumo do ecrã. Juntar estes números ao balanço de energia do barco
 quando se fizer o sistema elétrico. Hoje o barco tem baterias separadas
 (motor e serviço), **sem painel solar e sem monitor de bateria**.
 
+## 5b. Balanço de energia com as baterias AGM (estimativa, 28/09)
+
+**Baterias:** 3 bancos × 2 × 110 Ah, seladas, **provavelmente AGM** (a
+confirmar na etiqueta). Banco 1 = motor; bancos 2+3 = **serviço 440 Ah**.
+- AGM: não descer abaixo de **50%** → **~220 Ah úteis**. Na prática, a
+  carregar pelo motor ou pelo sol, as AGM demoram muito a encher acima de
+  ~85%, por isso a janela real entre cargas é **~150 Ah** (50→85%).
+
+**Consumos estimados por dia (a confirmar com o monitor de bateria):**
+
+| Carga | A navegar 24 h | No porto (Pi sempre ligado) |
+|---|---|---|
+| Pi 5 + HAT + SSD (~7 W) | 14 Ah | 14 Ah |
+| Ecrã 1 roda (LAFVIN, ~5 W) | 10 Ah | — |
+| Ecrã 2 mesa (7", modo noite) | 6 Ah | — |
+| Instrumentos NASA + ST50 | 7 Ah | — |
+| AIS B330 (170 mA) | 4 Ah | 4 Ah (se ligado) |
+| VHF RT750 em escuta (0,5 A) | 12 Ah | — |
+| Radar JRC 1000 (~8 h de noite) | ~19 Ah | — |
+| Navtex, Meshtastic, sensores | 4 Ah | 3 Ah |
+| Router 4G (~3 W) | 6 Ah | 6 Ah |
+| Luzes de navegação (LED) | ~2 Ah | — |
+| Luzes interiores, telemóvel, etc. | 5 Ah | — |
+| **Subtotal** | **~89 Ah** | **~27 Ah** |
+| Frigorífico (se houver, ~35–40%) | +30–40 Ah | — |
+| Piloto EV-100 (futuro, 2–4 A) | +50–100 Ah | — |
+| **Total** | **~120 Ah (sem piloto) · ~185 Ah (com EV-100)** | **~27 Ah** |
+
+**O que isto quer dizer:**
+- **No porto:** 220 Ah úteis ÷ 27 Ah/dia ≈ **8 dias** sem carregar.
+- **A navegar:** com o EV-100, gasta-se **quase toda a janela útil num dia**.
+  É preciso carregar todos os dias (motor e/ou solar).
+- **Solar necessário** (Portugal, perdas ~25%):
+  - Porto, no inverno (~2,7 h de sol útil): **~150–200 W**.
+  - A navegar, no verão (~6,5 h), sem piloto: **~300 W**; com o EV-100:
+    **~450–500 W**. Realista num 34 pés: **300–400 W** no arco de popa ou
+    na capota, mais o motor nos dias de pouco sol.
+- **Luzes de navegação incandescentes** gastam ~25 Ah por noite em vez de
+  ~2: se não forem LED, trocar é das melhorias mais baratas.
+
 ## 6. Reserva (obrigatória a solo)
 
 Com tudo num ecrã só, esse ecrã passa a ser um ponto único de falha.
