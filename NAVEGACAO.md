@@ -223,6 +223,34 @@ e o motor parado**, os alarmes de óleo e de carga ficam ativos, e isso permite
 ver que bits mudam. Até lá, o Pi pode criar os próprios alarmes a partir dos
 valores (temperatura alta, tensão baixa).
 
+### Nível do gasóleo (depósito de 200 L), decidido 28/09
+
+O medidor do painel é **analógico**: uma boia com uma **resistência variável**
+(sonda) dentro do depósito, ligada por um fio ao medidor. Não passa pelo MDI.
+
+**Como o Pi o lê:**
+- **ADS1115** (conversor analógico–digital I²C, ~€5–10) ligado ao conector I²C
+  da MacArthur. O **OpenPlotter suporta-o de raiz** (app I2C) e tem **modo
+  ohmímetro** com resistência fixa e divisor de tensão.
+- Ligação **em paralelo e sem cortar nada**: ler a **tensão no fio da sonda**
+  (entre o terminal da sonda no medidor e a massa), com um **divisor de
+  tensão** para baixar 12 V para a gama do ADS1115. O medidor do painel
+  continua a funcionar igual.
+- Publica em `tanks.fuel.0.currentLevel` → OpenCPN, telemóvel, alarme de
+  reserva.
+- **Primeiro medir a sonda** com o multímetro: a norma europeia é
+  **10–180 Ω** e a americana **240–33 Ω**. O valor define o divisor.
+
+**Calibração** (o depósito não é um cubo, por isso a leitura não é linear):
+- Com o depósito quase vazio, ir **enchendo aos 20 L** (10 pontos até aos
+  200 L) e registar a leitura a cada passo.
+- O OpenPlotter aceita os **pontos de ajuste** e interpola entre eles.
+- Com o consumo estimado do motor, dá **autonomia em horas** a motor.
+
+Fontes: [OpenPlotter, ADS1115](https://github.com/sailoog/openplotter-documentation/blob/master/en/analog-ads1115.md),
+[openplotter-i2c](https://github.com/openplotter/openplotter-i2c),
+[opções de nível de depósito](https://www.liverpool.ac.uk/~cmi/boat/tanklevel.html).
+
 **Motor: painel Volvo Penta EVC** (conta-rotações, temperatura, painel EVC de
 arranque e paragem, e medidor de gasóleo analógico). Os motores D1/D2 com EVC
 falam um protocolo CAN da Volvo. **Opcional:** o gateway **Yacht Devices
@@ -341,7 +369,8 @@ alimentação da HAT a alimentar tudo
 | 10 | ASA preto 1 kg | [EVOLT](https://evolt.pt/produto/asa-1kg-black-esun/) | **€17,73** (Winkle, em stock) | eSUN €21,39 esgotado. 1 bobina chega para o suporte e a pala |
 | 11 | Porta-fusível em linha ATO/ATC IP55 | [SVB](https://www.svb24.pt/pt/seatec-porta-fusiveis-em-linha-ato.html) | **€3,32** | + fusível de 5 A |
 | 12 | **Motor → Pi, feito por nós** (decidido 28/09, em vez do YDEG-04): adaptador **USB–CAN** isolado (candleLight/gs_usb) + fichas **Deutsch DT04-6P e DT06-6S** com contactos e travas + cabo de 4 fios | a cotar | **~€40–60** | Ver secção "Alternativa DIY". O YDEG-04N (~€263,52) fica como **plano B** se o teste de escuta falhar |
-| | **Total** | | **≈ €530** (€482 + ~€50 do motor) | Sem portes, sem cabos e sem o kit N2K. Portes: contar €30–50 |
+| 13 | **ADS1115** (I²C) + resistências do divisor, para o nível do gasóleo | a cotar | **~€5–10** | Ver "Nível do gasóleo" |
+| | **Total** | | **≈ €538** (€482 + ~€50 motor + ~€8 gasóleo) | Sem portes, sem cabos e sem o kit N2K. Portes: contar €30–50 |
 
 **Também é preciso** (preço não confirmado, loja náutica ou sobras):
 - Cabo **estanhado** de 1,5 mm² (≥ 16 AWG) vermelho/preto, do quadro até ao
