@@ -249,6 +249,14 @@ contra os 90 L de origem. Consequências:
   tempo). É por isso que o dono anterior desenhou as quantidades no
   medidor, e é essa tabela que se usa.
 - O fio da sonda até à mesa de navegação (Pi) é curto.
+- **Vai quase até ao painel de popa** (Ivo, 28/09). Duas consequências fora
+  deste sistema:
+  - **Leme de emergência (Camada B, `LEME-EMERGENCIA.md`):** as ferragens
+    aparafusam-se ao painel de popa. **Antes de furar, ver pelo interior
+    onde acaba o depósito**, para não furar o depósito nem uma mangueira.
+  - **Peso a ré:** 200 L de gasóleo pesam ~170 kg, quase todos lá atrás.
+    Com o depósito cheio, o barco fica mais pesado de popa. Não é grave,
+    mas convém ter em conta no caimento e ao arrumar mais peso a ré.
 - **Segurança, porque está junto à cama:** verificar o respiro do depósito
   (tem de sair para fora do barco), as uniões e as mangueiras de gasóleo, e
   se há cheiro a gasóleo na cabine. Os vapores de gasóleo são pouco
