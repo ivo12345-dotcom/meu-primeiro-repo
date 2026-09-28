@@ -644,8 +644,10 @@ funcionar também ali:
   quadro. O cabo longo é só o do ecrã da roda.
 - **Dois ecrãs no mesmo Pi:** o Pi 5 tem **duas saídas micro-HDMI**.
   - Ecrã 1: o de 10" na roda.
-  - Ecrã 2: o **LAFVIN 7" dos testes** passa a ficar **na mesa de
-    navegação/beliche**, com instrumentos, AIS e alarmes. Cabos curtos.
+  - Ecrã 2: o **LAFVIN 7" dos testes** fica **na cabine onde o Ivo
+    descansa** (confirmado 28/09), à vista do beliche, com instrumentos, AIS
+    e alarmes. A cabine fica junto à mesa de navegação, onde está o Pi, por
+    isso os cabos são curtos.
   - Os dois são táteis por USB. No Linux é preciso associar cada toque ao
     seu ecrã (configuração, sem custo).
   - Alternativa: um tablet ou o telemóvel em Wi-Fi (KIP/OpenCPN) no
