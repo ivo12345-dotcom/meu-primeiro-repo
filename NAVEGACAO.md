@@ -740,6 +740,27 @@ primavera/outono 5,0 h, verão 6,5 h.
 - Estas contas são estimativas. Os valores reais vêm do SmartShunt ao fim de
   algumas semanas.
 
+### Aerogerador (analisado 28/09, adiado)
+
+Estimativa com a distribuição de Rayleigh e curvas aproximadas dos
+fabricantes, com perdas de 15%. Na prática, contar com cerca de metade.
+
+| Vento médio | Silentwind 400+ | Rutland 914i |
+|---|---|---|
+| 3,5 m/s (marina abrigada) | até ~45 Ah/dia | até ~22 Ah/dia |
+| 4,5 m/s | até ~90 Ah/dia | até ~47 Ah/dia |
+| 5,5 m/s (inverno ventoso, fundeado) | até ~145 Ah/dia | até ~80 Ah/dia |
+
+**Preços (28/09):** Silentwind 400+/Pro 12 V €525–740 (livre.pt, NautiRadar,
+nootica) · Rutland 914i ~€900–1000 · Superwind 350-II ~€2900. A isto
+somam-se o mastro ou suporte (€200–400) e o controlador próprio com
+resistência de descarga (os MPPT Victron não servem para vento).
+
+**Decisão:** por agora não se compra. Só ajuda no caso "inverno com EV-100".
+Traz peso e ruído à popa, faz sombra aos painéis e o arco já tem o radar e os
+painéis. Deixar previsto no arco um ponto de fixação e a passagem do cabo.
+Decidir depois de uma época de dados do SmartShunt.
+
 ## 6. Reserva (obrigatória a solo)
 
 Com tudo num ecrã só, esse ecrã passa a ser um ponto único de falha.
