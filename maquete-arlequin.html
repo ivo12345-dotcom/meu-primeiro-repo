@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Arlequin: maqueta do ecrã de navegação</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<style>
+body{margin:0;background:#e9e7e1;font-family:Arial,Helvetica,sans-serif}
+.scr{aspect-ratio:1280/800;background:#0f1114;border-radius:6px;overflow:hidden;display:flex;flex-direction:column;color:#e8eaed;font-size:11px}
+.tile{background:#1d2127;border-radius:6px;padding:4px 7px;min-width:0}
+.lab{color:#b4b2a9}.big{font-size:16px;font-weight:bold}
+.kb{flex:1;text-align:center;background:#2c2f35;color:#e8eaed;border-radius:6px;padding:7px 0;font-size:11px;cursor:pointer;user-select:none;border:1px solid #3a3e45;white-space:nowrap}
+.kb.on{background:#185fa5;border-color:#378add}
+.kb.vel{background:#633806;border-color:#ba7517}.kb.vel.on{background:#ba7517}
+.kb.rt{background:#3c3489;border-color:#7f77dd}.kb.rt.on{background:#534ab7}
+.act{display:inline-block;text-align:center;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:bold;cursor:pointer;user-select:none;border:1px solid #3a3e45;background:#2c2f35;color:#e8eaed}
+.act.sel{background:#185fa5;border-color:#378add}.act.go{background:#0f6e56;border-color:#1d9e75}.act.stop{background:#a32d2d;border-color:#e24b4a}
+.night{filter:brightness(.6) sepia(1) hue-rotate(-50deg) saturate(4)}
+table.ais{width:100%;border-collapse:collapse}table.ais td,table.ais th{padding:3px 5px;text-align:left;border-bottom:1px solid #2c2f35;font-weight:normal;color:inherit}
+.ent{display:flex;gap:8px;padding:3px 0;border-bottom:1px solid #2c2f35}.t{flex:0 0 38px;color:#b4b2a9}
+.tag{border-radius:4px;padding:0 6px;margin-right:4px}.qa{background:#2c2f35;border-radius:6px;padding:7px 0;text-align:center;font-size:12px}
+.ok{color:#97c459}.chip{border-radius:4px;padding:2px 6px;background:#2c2f35;display:inline-flex;align-items:center;gap:4px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:1px 8px}
+.nota{font-size:13px;color:#555;text-align:center;margin-top:10px}
+</style>
+</head>
+<body>
+<div style="max-width:1100px;margin:0 auto;padding:1.5rem 1rem">
+<h1 style="font-size:20px;font-weight:bold;margin:0 0 4px">ARLEQUIN · Jeanneau Melody 34</h1>
+<div style="font-size:13px;color:#555;margin-bottom:12px">Maqueta do ecrã de navegação (OpenCPN + SignalK no Raspberry Pi) · 28/09/2026</div>
+<div style="background:#1b1d21;border-radius:16px;padding:14px;">
+<div class="scr" id="scr">
+<div style="display:flex;align-items:center;gap:6px;background:#16181c;padding:4px 8px;">
+<span style="font-weight:bold;letter-spacing:2px;color:#fac775;">ARLEQUIN</span><span>14:32</span>
+<span class="chip"><i class="ti ti-satellite"></i>GPS</span><span class="chip"><i class="ti ti-antenna"></i>Mesh</span><span class="chip"><i class="ti ti-wifi"></i>4G</span><span class="chip">1016 ▼</span>
+<span id="pil" class="chip" style="margin-left:auto;background:#0f6e56;">EV-100: TRACK WP2</span>
+<span class="chip" style="background:#a32d2d;color:#fff;font-weight:bold;"><i class="ti ti-alert-triangle"></i>NORDIC STAR 0,4 MN</span></div>
+<div id="page" style="flex:1;display:flex;min-height:0;"></div>
+<div style="display:flex;gap:3px;padding:4px;background:#16181c;" id="bar">
+<div class="kb on" data-p="carta">Carta</div><div class="kb" data-p="instr">Instr.</div><div class="kb" data-p="ais">AIS (3)</div><div class="kb" data-p="motor">Motor</div><div class="kb" data-p="rota">Viagem</div><div class="kb" data-p="diario">Diário</div><div class="kb rt" data-p="best">Melhor rota</div><div class="kb vel" data-p="velas">Rec. velas</div><div class="kb" data-p="noite">Noite</div>
+</div></div></div>
+<p class="nota">Maqueta ilustrativa · valores e nomes de exemplo · polar estimada · piloto em track, melhor rota no piloto e Recolher velas só com o EV-100 · abatimento só com o sensor de inclinação</p>
+</div>
+<script>
+const dial=(s,a=-42)=>`<svg viewBox="0 0 60 60" width="${s}" height="${s}"><circle cx="30" cy="30" r="26" fill="none" stroke="#5f5e5a" stroke-width="2"/><path d="M30 4 A26 26 0 0 0 11 12" stroke="#e24b4a" stroke-width="4" fill="none"/><path d="M30 4 A26 26 0 0 1 49 12" stroke="#1d9e75" stroke-width="4" fill="none"/><line x1="30" y1="30" x2="${(30+24*Math.sin(a*Math.PI/180)).toFixed(1)}" y2="${(30-24*Math.cos(a*Math.PI/180)).toFixed(1)}" stroke="#fac775" stroke-width="3"/><line x1="30" y1="30" x2="20" y2="8" stroke="#85b7eb" stroke-width="2"/></svg>`;
+const ang=[42,52,60,75,90,110,120,135,150,180];
+const S={6:[3.7,4.0,4.3,4.5,4.4,3.8,3.6,3.2,2.7,2.3],10:[5.1,5.65,5.9,6.15,6.1,5.7,5.5,5.0,4.25,3.8],14:[5.8,6.4,6.6,6.8,6.85,6.8,6.65,6.3,5.55,5.1],20:[6.0,6.6,6.85,7.2,7.3,7.3,7.3,7.2,6.8,6.5]};
+const C={6:'#85B7EB',10:'#1D9E75',14:'#BA7517',20:'#D85A30'};
+function polarSvg(){const cx=18,cy=120,k=13.5;let h='';
+[2,4,6,8].forEach(r=>{h+=`<path d="M${cx} ${cy-r*k} A${r*k} ${r*k} 0 0 1 ${cx} ${cy+r*k}" fill="none" stroke="#444441" stroke-width="0.6"/><text x="${cx+3}" y="${cy-r*k-2}" font-size="9" fill="#888780">${r}</text>`;});
+[30,60,90,120,150].forEach(a=>{const t=a*Math.PI/180;h+=`<line x1="${cx}" y1="${cy}" x2="${cx+8.3*k*Math.sin(t)}" y2="${cy-8.3*k*Math.cos(t)}" stroke="#444441" stroke-width="0.5"/><text x="${cx+9*k*Math.sin(t)}" y="${cy-9*k*Math.cos(t)+3}" font-size="9" fill="#888780" text-anchor="middle">${a}°</text>`;});
+Object.keys(S).forEach(w=>{const p=ang.map((a,i)=>{const t=a*Math.PI/180,r=S[w][i]*k;return `${(cx+r*Math.sin(t)).toFixed(1)},${(cy-r*Math.cos(t)).toFixed(1)}`;});h+=`<polyline points="${p.join(' ')}" fill="none" stroke="${C[w]}" stroke-width="${w==14?2.6:1.4}" opacity="${w==14?1:.55}"/>`;});
+const t=60*Math.PI/180;h+=`<circle cx="${cx+6.3*k*Math.sin(t)}" cy="${cy-6.3*k*Math.cos(t)}" r="4" fill="#fac775" stroke="#0f1114"/><circle cx="${cx+5.4*k*Math.sin(t)}" cy="${cy-5.4*k*Math.cos(t)}" r="4" fill="#fff" stroke="#0f1114"/>`;
+return `<svg viewBox="0 0 150 240" width="100%" height="100%">${h}</svg>`;}
+const chart=`<svg viewBox="0 0 640 520" width="100%" height="100%" preserveAspectRatio="xMidYMid slice"><rect width="640" height="520" fill="#fff"/><path d="M0 0 L640 0 L640 60 C560 80 500 50 440 90 C380 130 400 160 330 180 C270 196 230 150 170 170 C110 190 60 230 0 235 Z" fill="#f5e6c8" stroke="#8a7a55"/><path d="M0 330 C140 340 260 300 380 320 C500 340 580 300 640 310" fill="none" stroke="#85b7eb" stroke-dasharray="4 3"/><text x="580" y="302" font-size="11" fill="#185fa5">20 m</text><text x="70" y="120" font-size="12" fill="#6b5a35">Peniche</text><text x="520" y="40" font-size="12" fill="#6b5a35">Berlengas →</text><path d="M300 360 L470 170 L600 120" fill="none" stroke="#d4537e" stroke-width="2.5"/><circle cx="470" cy="170" r="5" fill="none" stroke="#d4537e" stroke-width="2"/><text x="478" y="166" font-size="11" fill="#993556">WP2</text><path d="M140 480 C170 440 200 420 240 400 C265 388 285 372 300 360" fill="none" stroke="#d4537e" stroke-width="2" stroke-dasharray="1 4" stroke-linecap="round"/><line x1="300" y1="360" x2="580" y2="170" stroke="#888780" stroke-dasharray="8 5"/><line x1="300" y1="360" x2="340" y2="60" stroke="#888780" stroke-dasharray="8 5"/><text x="540" y="196" font-size="11" fill="#5f5e5a">layline EB</text><text x="346" y="76" font-size="11" fill="#5f5e5a">layline BB</text><line x1="300" y1="360" x2="372" y2="252" stroke="#0f1114" stroke-width="2"/><line x1="300" y1="360" x2="388" y2="268" stroke="#1d9e75" stroke-width="2.5"/><path d="M336 306 A62 62 0 0 1 344 313" fill="none" stroke="#ba7517" stroke-width="2.5"/><text x="340" y="300" font-size="11" font-weight="bold" fill="#854f0b">6°</text><line x1="388" y1="268" x2="426" y2="282" stroke="#378add" stroke-width="3"/><polygon points="426,282 414,274 416,288" fill="#378add"/><text x="432" y="292" font-size="11" font-weight="bold" fill="#185fa5">0,6 nós → 110°</text><circle cx="300" cy="360" r="55" fill="none" stroke="#b4b2a9" stroke-width=".8" stroke-dasharray="3 3"/><polygon points="300,346 292,370 308,370" fill="#0f1114" transform="rotate(35 300 360)"/><text x="226" y="394" font-size="12" font-weight="bold" fill="#0f1114">ARLEQUIN</text><line x1="500" y1="440" x2="380" y2="330" stroke="#e24b4a" stroke-width="2" stroke-dasharray="5 3"/><polygon points="500,428 492,448 508,448" fill="#e24b4a" transform="rotate(-48 500 440)"/><circle cx="500" cy="440" r="14" fill="none" stroke="#e24b4a" stroke-width="1.5"/><text x="518" y="444" font-size="11" fill="#a32d2d">NORDIC STAR</text><line x1="120" y1="300" x2="160" y2="320" stroke="#1d9e75" stroke-width="1.5" stroke-dasharray="4 3"/><polygon points="120,290 113,308 127,308" fill="#1d9e75" transform="rotate(120 120 300)"/><text x="88" y="286" font-size="11" fill="#0f6e56">MARIA JOÃO</text><path d="M470 64 l0 22 M470 64 l8 3 M470 70 l8 3" stroke="#185fa5" stroke-width="1.5" fill="none"/><text x="486" y="78" font-size="11" fill="#185fa5">vento real 14 nós de 330°</text></svg>`;
+const route=(on)=>`<svg viewBox="0 0 640 520" width="100%" height="100%" preserveAspectRatio="xMidYMid slice"><rect width="640" height="520" fill="#fff"/><path d="M640 0 L640 520 L560 520 C540 440 520 380 500 330 C480 270 470 200 455 120 C448 80 440 40 430 0 Z" fill="#f5e6c8" stroke="#8a7a55"/><text x="520" y="480" font-size="12" fill="#6b5a35">Peniche</text><text x="470" y="40" font-size="12" fill="#6b5a35">Figueira da Foz</text><text x="470" y="300" font-size="12" fill="#6b5a35">Nazaré</text>${[0,1,2,3,4,5].map(i=>`<g transform="translate(${60+i*80},${80+(i%2)*40})"><path d="M0 0 l0 20 M0 0 l7 3 M0 6 l7 3" stroke="#85b7eb" stroke-width="1.3" fill="none" transform="rotate(200)"/></g>`).join('')}${[0,1,2,3,4,5].map(i=>`<g transform="translate(${80+i*70},${300+(i%2)*50})"><path d="M0 0 l0 20 M0 0 l7 3 M0 6 l7 3 M0 12 l7 3" stroke="#378add" stroke-width="1.3" fill="none" transform="rotate(205)"/></g>`).join('')}${[1,2,3,4,5].map(i=>`<path d="M${505-i*6} ${470-i*4} C ${470-i*40} ${440-i*60}, ${380-i*20} ${360-i*55}, ${440-i*4} ${300-i*55}" fill="none" stroke="#afa9ec" stroke-width="1" stroke-dasharray="3 3"/>`).join('')}<line x1="530" y1="470" x2="455" y2="45" stroke="#888780" stroke-width="1.5" stroke-dasharray="7 5"/><text x="505" y="220" font-size="11" fill="#5f5e5a">direta</text><path d="M530 470 C470 420 400 360 380 280 C365 210 400 120 455 45" fill="none" stroke="${on?'#1d9e75':'#534ab7'}" stroke-width="3"/><text x="300" y="250" font-size="12" font-weight="bold" fill="${on?'#0f6e56':'#3c3489'}">rota ótima</text><circle cx="380" cy="280" r="4" fill="${on?'#1d9e75':'#534ab7'}"/><text x="330" y="296" font-size="11" fill="#3c3489">virar 18:40</text><text x="20" y="505" font-size="11" fill="#5f5e5a">Vento GRIB (azul) · isócronas de 2 h (lilás)</text></svg>`;
+const fuel=h=>`<div class="tile"><div style="display:flex;justify-content:space-between;"><span class="lab">Gasóleo</span><span>124 L de 200 · ~31 h · ~180 MN</span></div><div style="height:${h}px;background:#444441;border-radius:4px;margin-top:3px;"><div style="width:62%;height:${h}px;background:#639922;border-radius:4px;"></div></div></div>`;
+let st={bordo:'EB',desv:15,fase:'pronto',rt:'calc'};
+const P={
+carta:()=>`<div style="flex:0 0 58%;position:relative;">${chart}<div style="position:absolute;left:6px;bottom:6px;background:rgba(15,17,20,.88);border-radius:6px;padding:4px 7px;line-height:1.5;"><div>WP2 · 3,1 MN · 34 min · XTE 0,02 MN</div><div>━ proa · <span style="color:#1d9e75;">━</span> fundo · <span style="color:#378add;">━</span> corrente · <span style="color:#fac775;">◠</span> abatimento</div></div></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:3px;padding:3px;min-width:0;">
+<div class="tile" style="display:flex;align-items:center;gap:8px;">${dial(46,-58)}<div style="flex:1"><div class="lab">Vento aparente</div><div class="big">58° BB · 16,0 nós</div><div style="color:#85b7eb;">real 14,0 nós de 330°</div></div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;">
+<div class="tile"><div class="lab">Proa</div><div class="big">035°</div></div><div class="tile"><div class="lab">COG · SOG</div><div style="font-weight:bold;">044° · 5,9</div></div><div class="tile"><div class="lab">Fundo</div><div class="big">31 m</div></div>
+<div class="tile"><div class="lab">Vel. água</div><div style="font-weight:bold;">5,4 nós</div></div><div class="tile"><div class="lab">Polar</div><div style="font-weight:bold;color:#fac775;">86 %</div></div><div class="tile"><div class="lab">Abatim.</div><div style="font-weight:bold;color:#fac775;">6°</div></div></div>
+<div class="tile"><div style="display:flex;justify-content:space-between;"><span class="lab">AIS</span><span class="lab">CPA · TCPA</span></div><div style="display:flex;justify-content:space-between;color:#f09595;font-weight:bold;"><span>NORDIC STAR</span><span>0,4 MN · 12 min</span></div><div style="display:flex;justify-content:space-between;"><span>MARIA JOÃO</span><span>1,8 MN · 25 min</span></div></div>
+<div class="tile"><div style="display:flex;justify-content:space-between;"><span class="lab">Motor</span><span class="ok">desligado · à vela</span></div><div class="lab">1 243 h · bateria 12,8 V</div></div>${fuel(7)}</div>`,
+instr:()=>`<div style="flex:1;display:grid;grid-template-columns:1.1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr;gap:4px;padding:4px;">
+<div class="tile" style="grid-row:span 3;display:flex;flex-direction:column;align-items:center;justify-content:center;">${dial(120,-58)}<div class="big" style="font-size:20px;">58° BB · 16,0 nós</div><div class="lab">aparente</div><div style="color:#85b7eb;margin-top:3px;">Real 14,0 nós · TWA 60° · rajada 19,5</div><div style="margin-top:3px;">VMG ao vento 4,1 nós</div></div>
+<div class="tile" style="grid-row:span 3;display:flex;flex-direction:column;"><div class="lab">Polar do Arlequin · vento real 14 nós</div><div style="flex:1;min-height:0;">${polarSvg()}</div><div style="font-size:10px;"><span style="color:#fac775;">●</span> alvo 6,3 nós · ○ real 5,4 nós</div></div>
+<div class="tile"><div class="lab">Desempenho</div><div style="font-size:26px;font-weight:bold;color:#fac775;">86 %</div><div class="lab">da polar · alvo 6,3 nós</div></div>
+<div class="tile"><div class="lab">Proa · fundo</div><div style="font-size:18px;font-weight:bold;">035° · 31 m</div><div class="lab">adorno 18° · abatimento 6°</div></div>
+<div class="tile"><div class="lab">Barómetro · corrente</div><div style="font-size:15px;font-weight:bold;">1016 ▼ 2,4/3 h</div><div style="color:#85b7eb;">0,6 nós → 110°</div><div class="lab">cabine 21 °C · 68 %</div></div></div>`,
+ais:()=>`<div style="flex:1;display:flex;flex-direction:column;gap:4px;padding:4px;min-width:0;">
+<div class="tile"><table class="ais"><tr class="lab"><th>Nome</th><th>Tipo</th><th>Dist.</th><th>Marc.</th><th>SOG/COG</th><th>CPA</th><th>TCPA</th><th>Estado</th></tr>
+<tr style="color:#f09595;font-weight:bold;"><td>NORDIC STAR</td><td>Carga</td><td>1,9 MN</td><td>128°</td><td>14,0 / 305°</td><td>0,4 MN</td><td>12 min</td><td>PERIGO</td></tr>
+<tr><td>MARIA JOÃO</td><td>Pesca</td><td>2,6 MN</td><td>255°</td><td>3,1 / 120°</td><td>1,8 MN</td><td>25 min</td><td>seguro</td></tr>
+<tr><td>SEAGULL</td><td>Recreio</td><td>4,1 MN</td><td>052°</td><td>6,2 / 310°</td><td>—</td><td>—</td><td>afasta-se</td></tr></table></div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;"><div class="tile"><div class="lab">Alarme CPA</div><div class="big">&lt; 0,5 MN</div></div><div class="tile"><div class="lab">Alarme TCPA</div><div class="big">&lt; 20 min</div></div><div class="tile"><div class="lab">ARLEQUIN · AIS B330</div><div class="big ok">A emitir</div></div></div>
+<div class="tile" style="flex:1;"><div class="lab">NORDIC STAR · detalhe</div><div style="font-size:13px;margin-top:3px;">189 m · calado 9,8 m · destino Setúbal</div><div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;"><span style="background:#a32d2d;color:#fff;border-radius:4px;padding:4px 10px;">Silenciar alarme</span><span style="background:#2c2f35;border-radius:4px;padding:4px 10px;">Chamar por VHF (DSC)</span><span style="background:#2c2f35;border-radius:4px;padding:4px 10px;">Centrar na carta</span></div></div></div>`,
+motor:()=>`<div style="flex:1;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:1fr 1fr auto;gap:4px;padding:4px;">
+<div class="tile" style="grid-column:span 2;grid-row:span 2;display:flex;flex-direction:column;align-items:center;justify-content:center;"><svg viewBox="0 0 120 80" width="210" height="140"><path d="M10 70 A50 50 0 0 1 110 70" fill="none" stroke="#444441" stroke-width="8"/><path d="M10 70 A50 50 0 0 1 86 27" fill="none" stroke="#1d9e75" stroke-width="8"/><path d="M98 45 A50 50 0 0 1 110 70" fill="none" stroke="#e24b4a" stroke-width="8"/><line x1="60" y1="70" x2="84" y2="30" stroke="#e8eaed" stroke-width="3"/></svg><div style="font-size:30px;font-weight:bold;">2 150 rpm</div><div class="lab">Arlequin · Volvo Penta D1-20B</div></div>
+<div class="tile"><div class="lab">Temperatura água</div><div style="font-size:28px;font-weight:bold;">78 °C</div><div class="ok">normal</div></div>
+<div class="tile"><div class="lab">Tensão</div><div style="font-size:28px;font-weight:bold;">14,1 V</div><div class="ok">a carregar</div></div>
+<div class="tile"><div class="lab">Horas do motor</div><div style="font-size:28px;font-weight:bold;">1 243 h</div><div class="lab">revisão às 1 300 h</div></div>
+<div class="tile"><div class="lab">Alarmes do MDI</div><div style="margin-top:3px;"><span class="ok">● Óleo</span> &nbsp;<span class="ok">● Carga</span> &nbsp;<span class="ok">● Temp.</span></div><div class="lab" style="margin-top:3px;">Consumo ~4 L/h (estimado)</div></div>
+<div style="grid-column:span 4;">${fuel(12)}</div></div>`,
+rota:()=>`<div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;min-width:0;">
+<div style="display:flex;flex-direction:column;gap:4px;">
+<div class="tile"><div class="lab">Rota ativa · piloto em track</div><div class="big">Peniche → Berlengas · 9,9 MN</div><div class="lab">chegada ~15:10</div></div>
+<div class="tile" style="flex:1;"><table class="ais"><tr class="lab"><th>Ponto</th><th>Rumo</th><th>Dist.</th><th>Chegada</th></tr>
+<tr class="lab"><td>WP1 Saída Peniche</td><td>—</td><td>—</td><td>13:05</td></tr>
+<tr style="color:#ed93b1;font-weight:bold;"><td>WP2 Cabo Carvoeiro W</td><td>044°</td><td>3,1 MN</td><td>15:06</td></tr>
+<tr><td>WP3 Berlengas</td><td>296°</td><td>0,4 MN</td><td>15:10</td></tr></table>
+<div style="margin-top:6px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;"><div><div class="lab">XTE</div><div style="font-weight:bold;">0,02 MN</div></div><div><div class="lab">VMG ao WP</div><div style="font-weight:bold;">5,6 nós</div></div><div><div class="lab">Laylines</div><div style="font-weight:bold;">na carta</div></div></div></div></div>
+<div class="tile"><div class="lab">Resumo da viagem</div><div class="g2" style="margin-top:3px;">
+<span>Distância</span><span style="font-weight:bold;">6,8 MN</span><span>Tempo</span><span style="font-weight:bold;">1 h 25</span>
+<span>Vel. média / máx.</span><span style="font-weight:bold;">4,8 / 7,2 nós</span><span>À vela / motor</span><span style="font-weight:bold;">1 h 05 / 0 h 20</span>
+<span>Média da polar</span><span style="font-weight:bold;color:#fac775;">88 %</span><span>Gasóleo gasto</span><span style="font-weight:bold;">~1,3 L</span>
+<span>Vento médio / máx.</span><span style="font-weight:bold;">13 / 19 nós</span><span>Pressão</span><span style="font-weight:bold;">1018 → 1016 hPa</span>
+<span>Abatimento médio</span><span style="font-weight:bold;">5°</span><span>Corrente média</span><span style="font-weight:bold;">0,5 nós → 115°</span></div>
+<div style="margin-top:8px;display:flex;gap:4px;"><span style="background:#185fa5;border-radius:4px;padding:4px 8px;">Guardar rasto (GPX)</span><span style="background:#2c2f35;border-radius:4px;padding:4px 8px;">Para o diário</span></div></div></div>`,
+diario:()=>`<div style="flex:1;display:flex;gap:4px;padding:4px;min-height:0;">
+<div style="flex:0 0 64%;display:flex;flex-direction:column;gap:4px;min-width:0;">
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;"><div class="tile"><div class="lab">Diário do Arlequin</div><div style="font-weight:bold;">Peniche → Berlengas</div></div><div class="tile"><div class="lab">Percorrido</div><div class="big">6,8 MN</div></div><div class="tile"><div class="lab">Tempo</div><div class="big">1 h 25</div></div><div class="tile"><div class="lab">Motor</div><div class="big">0,3 h</div></div></div>
+<div class="tile" style="flex:1;overflow:hidden;">
+<div class="ent"><span class="t">14:30</span><div><span class="tag" style="background:#a32d2d;color:#fff;">Alarme</span>AIS NORDIC STAR · CPA 0,4 MN · rumo alterado 20° a EB · enviado por Mesh</div></div>
+<div class="ent"><span class="t">14:00</span><div><span class="tag" style="background:#2c2f35;">Auto</span>39°23,1′N 009°24,4′W · 044° · 5,9 nós · vento 14 de 330° · polar 86 % · abat. 6° · 1016 hPa ▼</div></div>
+<div class="ent"><span class="t">13:28</span><div><span class="tag" style="background:#633806;color:#fff;">Velas</span>Velas içadas · motor desligado · piloto em track WP2</div></div>
+<div class="ent"><span class="t">13:10</span><div><span class="tag" style="background:#633806;color:#fff;">Velas</span>Recolher velas terminado · 4 min · rumo anterior</div></div>
+<div class="ent" style="border:none;"><span class="t">13:05</span><div><span class="tag" style="background:#185fa5;">Motor</span>Saída de Peniche · motor ligado · 1 242,7 h</div></div></div></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:4px;min-width:0;">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;"><div class="qa">Motor ON/OFF</div><div class="qa">Rizar / soltar</div><div class="qa">Mudar vela</div><div class="qa">Fundear</div><div class="qa">Amarrar</div><div class="qa">Avaria</div><div class="qa" style="grid-column:span 2;background:#185fa5;">Nota escrita</div></div>
+<div class="tile"><div class="lab">Automático</div><div>Hora a hora, motor, velas, rota, alarmes, início e fim</div></div>
+<div class="tile"><div class="lab">Cópias</div><div class="ok">Telemóvel sincronizado 14:15 (Wi-Fi)</div><div>PDF por dia · pen opcional</div></div></div></div>`,
+best:()=>`<div style="flex:0 0 56%;">${route(st.rt==='ativa')}</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:3px;padding:3px;min-width:0;">
+<div class="tile"><div class="lab">Destino</div><div class="big">Peniche → Figueira da Foz</div><div class="lab">Previsão GRIB de 12:00 (4G) · polar do Arlequin</div></div>
+<div class="tile"><div class="lab">Limites para navegar a solo</div><div class="g2"><span>Vento máx.</span><span style="font-weight:bold;">25 nós</span><span>Onda máx.</span><span style="font-weight:bold;">2,5 m</span><span>Ângulo mín. ao vento</span><span style="font-weight:bold;">45°</span><span>Motor se vento &lt;</span><span style="font-weight:bold;">5 nós</span></div></div>
+<div class="tile"><div class="lab">Resultado</div><div class="g2"><span>Distância</span><span style="font-weight:bold;">44 MN (direta 40)</span><span>Chegada</span><span style="font-weight:bold;color:#97c459;">~23:10 (−1 h 20)</span><span>Vento máx. na rota</span><span style="font-weight:bold;">19 nós</span><span>Onda máx.</span><span style="font-weight:bold;">1,8 m</span><span>A motor</span><span style="font-weight:bold;">0 %</span><span>Virar de bordo</span><span style="font-weight:bold;">1 vez, 18:40</span></div></div>
+<div class="tile" style="display:flex;gap:6px;justify-content:center;align-items:center;flex:1;">${st.rt==='ativa'?`<span class="act" data-a="rcalc">Recalcular</span><span class="act stop" data-a="rstop">Desativar</span>`:`<span class="act" data-a="rcalc">Calcular</span><span class="act go" data-a="ron">Ativar no piloto</span>`}</div></div>`,
+velas:()=>{
+ if(st.fase==='pronto') return `<div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px;">
+<div style="display:flex;flex-direction:column;gap:6px;"><div class="tile"><div class="lab">Verificações antes de aproar</div><div class="ok">✓ Motor a trabalhar · 1 350 rpm</div><div class="ok">✓ Seguimento · 2,1 nós na água</div><div class="ok">✓ Vento válido · aparente 58° BB, 16 nós</div><div class="ok">✓ Piloto EV-100 presente</div></div>
+<div class="tile"><div class="lab">1. Tu: motor ligado e avante devagar (1200–1500 rpm)</div><div class="lab">2. Escolhe o bordo e o desvio · 3. Iniciar</div></div></div>
+<div style="display:flex;flex-direction:column;gap:6px;">
+<div class="tile"><div class="lab">Vento de que bordo fica a proa</div><div style="display:flex;gap:6px;margin-top:4px;"><span class="act ${st.bordo==='BB'?'sel':''}" data-a="bb">Bombordo</span><span class="act ${st.bordo==='EB'?'sel':''}" data-a="eb">Estibordo</span></div></div>
+<div class="tile"><div class="lab">Desvio da proa do vento</div><div style="display:flex;gap:6px;margin-top:4px;"><span class="act ${st.desv===10?'sel':''}" data-a="d10">10°</span><span class="act ${st.desv===15?'sel':''}" data-a="d15">15°</span><span class="act ${st.desv===20?'sel':''}" data-a="d20">20°</span></div></div>
+<div class="tile" style="flex:1;display:flex;align-items:center;justify-content:center;"><span class="act go" data-a="go" style="font-size:16px;padding:12px 30px;">Iniciar: aproar ao vento</span></div></div></div>`;
+ return `<div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px;">
+<div class="tile" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">${dial(140,st.bordo==='EB'?st.desv:-st.desv)}<div class="big" style="font-size:22px;">${st.desv}° ${st.bordo} · 17,5 nós</div><div class="lab">vento aparente · proa ao vento</div></div>
+<div style="display:flex;flex-direction:column;gap:6px;"><div class="tile"><div class="lab">Estado</div><div class="big ok">Aproado ao vento · recolhe as velas</div><div class="lab">Rumo alvo 283° · proa 284° · registado no diário</div></div>
+<div class="tile"><div style="display:flex;justify-content:space-between;"><span>Motor</span><span class="ok">1 350 rpm</span></div><div style="display:flex;justify-content:space-between;"><span>Seguimento</span><span class="ok">1,9 nós</span></div><div class="lab">Besouro toca se o motor parar ou a velocidade cair abaixo de 1,5 nós</div></div>
+<div class="tile" style="display:flex;gap:6px;justify-content:center;align-items:center;flex:1;"><span class="act" data-a="back">Terminar: rumo anterior</span><span class="act stop" data-a="stby">Terminar: standby</span></div></div></div>`;}
+};
+const scr=document.getElementById('scr'),page=document.getElementById('page'),pil=document.getElementById('pil');let cur='carta';
+function show(p){cur=p;page.innerHTML=P[p]();document.querySelectorAll('#bar .kb').forEach(b=>{if(b.dataset.p!=='noite')b.classList.toggle('on',b.dataset.p===p)});
+if(st.fase==='ativo'){pil.textContent=`EV-100: AUTO · aproado ${st.desv}° ${st.bordo}`;pil.style.background='#854f0b';}else if(st.rt==='ativa'){pil.textContent='EV-100: TRACK · melhor rota';pil.style.background='#534ab7';}else{pil.textContent='EV-100: TRACK WP2';pil.style.background='#0f6e56';}}
+document.getElementById('bar').addEventListener('click',e=>{const b=e.target.closest('.kb');if(!b)return;if(b.dataset.p==='noite'){const n=scr.classList.toggle('night');b.classList.toggle('on',n);b.textContent=n?'Dia':'Noite';return;}show(b.dataset.p);});
+page.addEventListener('click',e=>{const a=e.target.closest('.act');if(!a)return;const k=a.dataset.a;
+if(k==='bb')st.bordo='BB';if(k==='eb')st.bordo='EB';if(k==='d10')st.desv=10;if(k==='d15')st.desv=15;if(k==='d20')st.desv=20;
+if(k==='go')st.fase='ativo';if(k==='back'||k==='stby')st.fase='pronto';if(k==='ron')st.rt='ativa';if(k==='rstop')st.rt='calc';show(cur);});
+show('carta');
+</script>
+</body>
+</html>
