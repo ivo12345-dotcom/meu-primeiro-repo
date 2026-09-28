@@ -734,6 +734,16 @@ funcionar também ali:
     e CAN L) e teste de escuta com a ignição ligada.
 11. **Água doce:** capacidade de cada depósito (BB e EB), se há **torneira
     seletora** ou se estão em paralelo, e onde está a **bomba de água**.
+12. **Fuga de gasóleo** na ligação da mangueira ao depósito: trocar a
+    braçadeira (inox 316, banda lisa, duas se couber), ver o estado da
+    mangueira (ISO 7840 A1), limpar, ligar o motor e confirmar com papel
+    branco. Ver também a mangueira de retorno.
+13. **Depósito de gasóleo em inox:** respiro para fora, fundo e apoios sem
+    água parada (corrosão), ligação à massa, se tem **flange SAE de 5
+    parafusos** para a sonda, e **onde acaba junto ao painel de popa**
+    (antes de furar para o leme de emergência).
+14. **Sensor de líquido** (a acrescentar ao sistema do barco parado): escolher
+    o ponto mais baixo por baixo do depósito de gasóleo para o pôr.
 
 **Alarme sonoro:** a solo, o alarme AIS tem de acordar quem dorme. O apito do
 Garmin é fraco. No Pi, acrescentar à lista um **altifalante ou besouro forte**
