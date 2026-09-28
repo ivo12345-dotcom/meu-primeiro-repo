@@ -537,6 +537,25 @@ com o motor a dar seguimento**, para o Ivo recolher as velas a solo.
 - Se a manobra for **abortada** (motor parou, sem seguimento, standby no
   p70s), fica registado **o motivo**.
 
+### Abatimento, corrente e informação da viagem (pedido do Ivo, 28/09)
+
+- **Corrente (set/drift), vento real, VMG:** plugin `signalk-derived-data`, a
+  partir da proa, velocidade na água (log NASA), COG/SOG (GPS) e vento.
+- **Abatimento (leeway):** precisa do **ângulo de adornamento** (heel). Juntar
+  um **sensor de inclinação (IMU) I²C**: o ICM-20948 da OpenMarine (~€12 c/IVA,
+  estava esgotado) ou equivalente. Fórmula clássica: abatimento = K × adorno /
+  velocidade², com **K calibrado para o Arlequin**; ou o plugin
+  `speedandcurrent`, que estima abatimento e corrente a partir dos dados.
+- **Na carta (OpenCPN):** linha de proa, vetor COG/SOG, **seta da corrente**,
+  **ângulo de abatimento** e **laylines** (plugin `tactics_pi`), e o rasto
+  gravado da viagem.
+- **Resumo da viagem** (diário + OpenCPN): distância, tempo, velocidade média
+  e máxima, horas de motor, gasóleo estimado, vento médio e máximo, pressão
+  inicial e final, rasto em GPX.
+
+Fontes: [signalk-derived-data](https://github.com/SignalK/signalk-derived-data),
+[speedandcurrent](https://github.com/Asw1n/speedandcurrent).
+
 ### Fase 3 (futuro, sem data): plotter Raymarine Axiom na roda
 
 O Ivo quer pôr um **Axiom** mais tarde (28/09). Não está decidido o modelo
