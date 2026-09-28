@@ -570,10 +570,35 @@ O Ivo escolheu a **primeira maqueta do ecrã de 10"**, na **horizontal**
   - **lista AIS** com CPA e TCPA;
   - motor (rotações, temperatura, tensão, horas, óleo e carga);
   - gasóleo (L, autonomia em horas e em MN).
-- **Botões em baixo:** Carta, Instrumentos, AIS, Motor, Rota e Noite.
+- **Botões em baixo:** Carta, Instrumentos, AIS, Motor, Rota, **Diário** e Noite.
 - Montagem na **horizontal**: o suporte e a pala desenham-se para isso.
 - Implementação: OpenCPN (carta, AIS, rota) + painel de instrumentos do
   **KIP** (SignalK) ou do próprio OpenCPN (dashboard), a decidir na montagem.
+
+## 7c. Diário de bordo (pedido do Ivo, 28/09)
+
+Página **Diário** no ecrã (7.º botão, entre Rota e Noite). Base: o plugin do
+SignalK **signalk-logbook** (semi-automático, com interface web que funciona
+no ecrã e no telemóvel).
+- **Entradas automáticas:** **de hora a hora** a navegar (posição, rumo,
+  velocidade, vento, fundo, horas de motor); **motor ligado/desligado**;
+  **início e fim de viagem** (precisa do plugin `signalk-autostate`).
+- **Entradas manuais:** botões de um toque (motor, rizar, mudar vela,
+  fundear, amarrar, avaria) e **notas** escritas. Mudanças de vela também
+  registadas.
+- **Guardado no Pi** em ficheiros YAML, **um por dia**
+  (`~/.signalk/plugin-config-data/signalk-logbook/AAAA-MM-DD.yml`): fáceis de
+  ler, de copiar e de exportar para PDF.
+- **A juntar aos alarmes:** registar também os alarmes AIS e do motor.
+- **Sugestão:** um **barómetro** I²C (BME280, ~€5–10) na MacArthur. O diário
+  passa a registar a **pressão atmosférica** de hora a hora, que é o dado mais
+  útil para ver o tempo a mudar a solo. A cotar.
+- Alternativas: `signalk-sailing-logbook` (acrescenta viragens e cambadas) ou
+  o plugin de diário do OpenCPN.
+
+Fontes: [signalk-logbook](https://github.com/meri-imperiumi/signalk-logbook),
+[artigo do autor](https://bergie.iki.fi/blog/electronic-logbook/),
+[signalk-sailing-logbook](https://github.com/johansolve/signalk-sailing-logbook).
 
 ## 8. Fotos e medidas em falta (próxima ida ao barco)
 
