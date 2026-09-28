@@ -637,6 +637,14 @@ Fontes: [signalk-logbook](https://github.com/meri-imperiumi/signalk-logbook),
 
 ## 7d. Segundo posto na cabine do Ivo (28/09)
 
+**Planta (ficha técnica Jeanneau, em `Documents\Veleirorochura`):** de popa
+para proa: cabine de popa com cama de casal a **estibordo**, por baixo do poço;
+**mesa de navegação a estibordo** à frente dela; cozinha a bombordo; escada
+ao centro; sala com beliches dos dois lados (os **depósitos de água** estão
+debaixo deles); WC; cabine de proa; poço da âncora. Dados de origem: água
+**180 L**, gasóleo **90 L** e motor Yanmar 2QM. Hoje o barco tem **200 L de
+gasóleo** e um **Volvo D1-20B**, por isso foi alterado.
+
 O Ivo descansa **na cabine junto à mesa de navegação**. Daí vê o poço pelas
 janelas, um bocado do mastro e os manómetros do motor. O sistema tem de
 funcionar também ali:
@@ -644,17 +652,17 @@ funcionar também ali:
   quadro. O cabo longo é só o do ecrã da roda.
 - **Dois ecrãs no mesmo Pi:** o Pi 5 tem **duas saídas micro-HDMI**.
   - Ecrã 1: o de 10" na roda.
-  - Ecrã 2: o **LAFVIN 7" dos testes** fica **na cabine onde o Ivo
-    descansa** (confirmado 28/09), à vista do beliche, com instrumentos, AIS
-    e alarmes. A cabine fica junto à mesa de navegação, onde está o Pi, por
-    isso os cabos são curtos.
+  - Ecrã 2: o **LAFVIN 7" dos testes** fica **na mesa de navegação, virado
+    para a porta da cabine de popa**. A cabine do Ivo só tem a cama; com a
+    porta aberta vê-se a mesa de navegação (confirmado 28/09). Assim vê-se o
+    ecrã deitado, e os cabos até ao Pi têm centímetros.
   - Os dois são táteis por USB. No Linux é preciso associar cada toque ao
     seu ecrã (configuração, sem custo).
   - Alternativa: um tablet ou o telemóvel em Wi-Fi (KIP/OpenCPN) no
     beliche.
-- **Besouro 2 junto ao beliche**, com o volume testado para acordar a dormir
-  (já está na lista). Opcional: um **LED vermelho** de alarme à vista da
-  almofada.
+- **Besouro 2 DENTRO da cabine de popa**, junto à cabeceira, para acordar
+  mesmo com a porta fechada. Testar o volume. Opcional: um **LED vermelho**
+  de alarme à vista da almofada.
 - **Modo noite nos dois ecrãs**, para não estragar a visão noturna quando
   se sobe ao poço.
 
