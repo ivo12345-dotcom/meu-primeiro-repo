@@ -152,6 +152,21 @@ só tem 2.** Juntar um **adaptador USB–NMEA 0183 (RS-422, isolado)** no Pi
 para a sonda (a cotar). Alternativa: ligar a sonda à entrada 0183 do B330,
 se este aceitar 4 800 baud (confirmar no manual).
 
+**Compras que o inventário acrescenta (a cotar):**
+- **Adaptador USB–NMEA 0183** (RS-422, de preferência isolado), para a sonda.
+- **Mini-rede NMEA 2000** para ligar o B330 à MacArthur: cabo de derivação
+  (micro-C), 2 T, **2 terminadores de 120 Ω** e **alimentação da rede a 12 V**
+  (a porta N2K da MacArthur não alimenta o barramento; o B330 precisa dele
+  alimentado). Um kit inicial N2K resolve tudo, e é a mesma rede que depois
+  recebe o EV-100 e o Axiom.
+
+**O ST4000+ tem a tecla `track`**, por isso aceita rota vinda de fora. Falta
+confirmar nos terminais de trás se entra por NMEA 0183 ou só por SeaTalk1. Se
+for só por SeaTalk1, a rota não lhe chega pela MacArthur, que só lê SeaTalk1.
+
+**Radar:** a antena JRC é um radome no arco de popa. O suporte tem ferrugem:
+ver o estado dos parafusos e da base.
+
 **Há duas bússolas no SeaTalk1** (ST4000+ e ST50 Compass). Escolher uma como
 fonte de proa no SignalK e manter a outra de reserva.
 
