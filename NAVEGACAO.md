@@ -476,8 +476,12 @@ Fontes: [OpenCPN wiki, pilotos](https://opencpn.org/wiki/dokuwiki/doku.php?id=op
 
 ### Ecrã da roda: Lowrance HDS-9 Live do Ivo (28/09)
 
-O Ivo tem uma **Lowrance HDS-9 Live, solta, com transdutor**. Passa a ser a
-proposta para o **ecrã 1 (roda)**, no lugar do SailProof STS10 (€499):
+**Decisão de 28/09: fica para mais tarde.** Primeiro avança o plano original
+(Pi + ecrã de testes LAFVIN); a HDS entra depois, se fizer sentido.
+
+O Ivo tem uma **Lowrance HDS-9 Live, solta, com transdutor e cartão Navionics
+da Península Ibérica**. É uma opção futura para o **ecrã 1 (roda)**, no lugar
+do SailProof STS10 (€499):
 - Ecrã tátil de 9" **SolarMAX HD** (lê-se ao sol), feito para o exterior;
   cartas **Navionics ou C-MAP** (as de Portugal compram-se à parte).
 - Liga-se à **rede NMEA 2000**: o Pi põe lá vento, fundo, velocidade, proa,
