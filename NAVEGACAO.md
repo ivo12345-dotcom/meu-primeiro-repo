@@ -710,6 +710,36 @@ confirmar na etiqueta). Banco 1 = motor; bancos 2+3 = **serviço 440 Ah**.
   LED, o Ivo troca-as. As contas assumem LED (~2 Ah por noite em vez de ~25).
   Ao trocar, escolher luzes **homologadas (COLREG)** para barcos até 12 m.
 
+## 5c. Solar 2 × 305 W cruzado com o balanço (28/09)
+
+Produção = 610 W × horas de sol útil × 0,55–0,75 (perdas, painel deitado,
+sombras de radome/retranca/velas) ÷ 13 V. Sol útil: inverno 2,7 h,
+primavera/outono 5,0 h, verão 6,5 h.
+
+| Situação | Produz (Ah/dia) | Gasta (Ah/dia) | Saldo |
+|---|---|---|---|
+| Porto, inverno (Pi sempre ligado) | 70–95 | 27 | **+43 a +68** |
+| Porto, inverno, com frigorífico | 70–95 | ~62 | **+8 a +33** |
+| A navegar, verão, sem piloto | 168–229 | ~120–130 | **+38 a +109** |
+| A navegar, verão, com EV-100 | 168–229 | ~185–200 | **−32 a +44** |
+| A navegar, primavera/outono, sem piloto | 129–176 | ~120 | **+9 a +56** |
+| A navegar, primavera/outono, com EV-100 | 129–176 | ~185 | **−56 a −9** |
+| A navegar, inverno, sem piloto | 70–95 | ~120 | **−50 a −25** |
+| A navegar, inverno, com EV-100 | 70–95 | ~185 | **−115 a −90** |
+
+**Conclusões:**
+- **No porto** o barco fica autónomo o ano todo, mesmo com o frigorífico.
+- **A navegar sem piloto:** autónomo da primavera ao outono.
+- **Com o EV-100 no verão:** fica perto do equilíbrio; num dia de sombra
+  falta pouco, e a janela de ~150 Ah aguenta uns dias.
+- **Com o EV-100 fora do verão, e no inverno em geral:** falta energia. Uma
+  hora de motor dá mais ~40–60 Ah (estimativa, depende do separador e da
+  aceitação das AGM); no inverno com piloto são ~2 h de motor por dia.
+- **AGM:** o sol raramente as leva aos 100%. Uma carga completa no cais de vez
+  em quando (por exemplo uma vez por mês) prolonga-lhes a vida.
+- Estas contas são estimativas. Os valores reais vêm do SmartShunt ao fim de
+  algumas semanas.
+
 ## 6. Reserva (obrigatória a solo)
 
 Com tudo num ecrã só, esse ecrã passa a ser um ponto único de falha.
