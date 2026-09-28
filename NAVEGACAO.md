@@ -740,7 +740,7 @@ primavera/outono 5,0 h, verão 6,5 h.
 - Estas contas são estimativas. Os valores reais vêm do SmartShunt ao fim de
   algumas semanas.
 
-### Aerogerador (analisado 28/09, por decidir)
+### Aerogerador (analisado 28/09; retirado do plano pelo Ivo)
 
 Estimativa com a distribuição de Rayleigh e curvas aproximadas dos
 fabricantes, com perdas de 15%. Na prática, contar com cerca de metade.
