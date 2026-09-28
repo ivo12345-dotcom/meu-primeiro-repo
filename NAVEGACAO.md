@@ -144,7 +144,7 @@ Fontes: [MacArthur HAT, documentação](https://macarthur-hat-documentation.read
 | 0183 IN 2 | NASA Clipper Log (VHW/VLW), 4 800 baud |
 | **USB–0183 (novo)** | NASA Clipper Depth (DBT/DPT), 4 800 baud |
 | 0183 OUT 1 | Radar JRC 1000 + entrada GPS do RT750 (a mesma saída alimenta 2–3 recetores) |
-| 0183 OUT 2 | ST4000+, entrada NMEA (rota) |
+| 0183 OUT 2 | **Livre por agora.** O ST4000+ não tem a parte mecânica, por isso não há rota para lhe enviar. Fica reservada para quando houver unidade de roda |
 | SeaTalk1 IN | Barramento SeaTalk1: ST4000+ e ST50 Compass (proa) |
 
 **Os três NASA (vento, log e sonda) precisam de 3 entradas 0183 e a MacArthur
@@ -193,6 +193,12 @@ Fontes: [em-trak B330, manual](https://alphatronmarine.com/files/secured/docuwar
 [NASA Target Navtex Pro-Plus](https://www.nasamarine.com/product/target-navtex-pro-plus-v2/).
 
 ## 2c. Ligações confirmadas na documentação (pesquisa de 28/09)
+
+**Decisão de 28/09 (Ivo):** o ST4000+ **não governa** (falta a unidade de roda) e o
+EV-100 **não vem para já**. Do piloto **só se lê a proa** (a bússola) pelo
+SeaTalk1. Não se liga nada à entrada NMEA dele. O que está abaixo sobre a rota
+fica para quando houver unidade de roda.
+
 
 | Aparelho | O que diz a documentação | Consequência |
 |---|---|---|
