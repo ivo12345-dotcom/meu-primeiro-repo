@@ -76,6 +76,30 @@ outra app.
   extra, ou ligar a cadeia através do AIS (muitos AIS têm entrada de
   multiplexer). Fecha-se com as fotos.
 
+### O ST4000+ como bússola (mesmo sem a parte mecânica)
+
+O **painel e a bússola fluxgate do ST4000+ funcionam** (testados a 10/09).
+Mesmo sem a unidade de roda, o painel ligado **põe a proa magnética no
+barramento SeaTalk1**. A MacArthur HAT lê-a, o SignalK converte-a e o OpenCPN
+passa a ter a **proa**. Custo zero.
+
+- **Proa ≠ rumo.** O **rumo** (COG) vem do GPS e diz para onde o barco está a
+  andar. A **proa** vem da bússola e diz para onde a proa aponta. Com corrente
+  ou abatimento são diferentes, e a solo essa diferença é informação útil.
+- **Sem proa não há vento verdadeiro correto.** O SignalK precisa da proa para
+  calcular a direção do vento verdadeiro a partir do anemómetro.
+- **O radar sobreposto à carta também precisa de proa.** A proa de uma
+  fluxgate dos anos 90 pode ser lenta para isso. **Testar:** se a imagem do
+  radar "arrastar" nas viragens, é preciso uma bússola mais rápida. Uma
+  bússola eletrónica NMEA 2000 fica na lista condicional.
+- **Calibrar a bússola** com o próprio painel (o modo de calibração faz-se a
+  motor, em círculos lentos). O painel calibra a bússola sem precisar do
+  motor do piloto.
+- A fluxgate tem de ficar **longe de ferro e de cabos com corrente** (o motor,
+  as colunas de som, o próprio ecrã novo). Confirmar onde está montada.
+- Quando o EV-100 chegar, o sensor dele (EV-1) passa a ser a bússola
+  principal, e o ST4000+ fica como reserva.
+
 Fontes: [MacArthur HAT, documentação](https://macarthur-hat-documentation.readthedocs.io/),
 [loja OpenMarine](https://shop.openmarine.net/home/23-macarthur-hat.html),
 [OpenPlotter](https://openmarine.net/openplotter).
@@ -93,21 +117,48 @@ Se o radar for suportado e se quiser vê-lo sobreposto, considerar o Pi 5 de
 
 ## 4. Lista de material
 
-| Peça | Preço | Estado |
-|---|---|---|
-| Raspberry Pi 5 **4 GB** | €109,99 (RasPi Shop PT, esgotado) / kit €114,99 | Confirmado 28/09 |
-| (alternativa) Pi 5 8 GB | €132,51 RS (provavelmente s/IVA) a €269,40 | Preços muito desencontrados; pesquisar bem |
-| MacArthur HAT | €60 | Confirmado |
-| Base NVMe + SSD | — | A cotar |
-| Dissipador ativo oficial | — | A cotar |
-| Conversor 12→5 V 5 A (ou módulo de alimentação da HAT) | — | A cotar |
-| Caixa para o Pi | — | A cotar (ou impressa) |
-| SailProof STS10 | €499,17 | Confirmado (IVA não indicado na página) |
-| Cartas o-charts Portugal | €16 s/IVA | Confirmado, edição 2026/1-2 |
-| Suporte + pala em ASA | Filamento | Impressão própria |
+Preços pesquisados a 28/09/2026. O "c/IVA" das lojas que mostram preço sem
+IVA foi calculado com 23% (a loja pode aplicar a taxa do seu país).
+
+**Montagem do conjunto:** Pi 5 → **base NVMe por baixo** → MacArthur HAT por
+cima. A base NVMe **tem de ser a de baixo (Pimoroni)**, porque a M.2 HAT+
+oficial vai por cima e choca com a MacArthur. É uma montagem que outros já
+usaram com o OpenPlotter 4 sem problemas: 50–55 °C, com o módulo de
+alimentação da HAT a alimentar tudo
+([fórum OpenMarine](https://forum.openmarine.net/showthread.php?tid=5254)).
+
+| # | Peça | Loja | Preço c/IVA | Nota |
+|---|---|---|---|---|
+| 1 | Raspberry Pi 5 **4 GB** | [RasPi Shop PT](https://raspishop.pt/c/robotica-e-desenvolvimento/raspberry-pi-robotica-e-desenvolvimento/placas-e-kits/raspberry-pi-5/) | **€109,99** | Esgotado. Pedir aviso ou procurar noutra loja |
+| 2 | Dissipador ativo oficial (SC1148) | [Botnroll PT](https://www.botnroll.com/en/accessories/5018-raspberry-pi-5-official-active-cooler-sc1148.html) | **€5,90** | |
+| 3 | Pimoroni NVMe Base | [RaspberryPi.dk](https://raspberrypi.dk/en/product/pimoroni-nvme-base-for-raspberry-pi-5/) | **€19,93** | Traz cabo PCIe, espaçadores e pés |
+| 4 | SSD NVMe 256 GB (M.2 2280) | [PcComponentes](https://www.pccomponentes.pt/gigabyte-ssd-m2-2280-256gb-pcie-30-x4-nvme) (Gigabyte) | **€34,33** | Preferir uma marca testada pela Pimoroni (Kingston, Crucial, Samsung, Kioxia) se custar o mesmo |
+| 5 | MacArthur HAT | [OpenMarine](https://shop.openmarine.net/home/23-macarthur-hat.html) | **~€76** (€62 s/IVA) | 36 em stock. Só envia às segundas e terças |
+| 6 | Módulo de alimentação 12→5 V da HAT | OpenMarine | **~€28** (desde €23 s/IVA) | Alimenta o conjunto todo a partir dos 12 V |
+| 7 | Ecrã SailProof STS10 10" | [SailProof](https://sailproof.shop/product/sunlight-readable-waterproof-touchscreen-10-2/) | **€499,17** | Parece incluir IVA; confirmar no checkout. DPD 1–6 dias úteis |
+| 8 | Cartas o-charts Portugal | [o-charts](https://o-charts.org/shop/en/oesenc/79-portugal.html) | **~€20** (€16 s/IVA) | Continente, Açores e Madeira |
+| 9 | Chave USB de licença o-charts | [o-charts](https://o-charts.org/shop/en/hardware/38-usb-key-dongle.html) | **~€23** (€19 s/IVA) | Recomendada: reinstalar o OpenPlotter apaga a licença; com a chave não se perde |
+| 10 | ASA preto 1 kg | [EVOLT](https://evolt.pt/produto/asa-1kg-black-esun/) | **€17,73** (Winkle, em stock) | eSUN €21,39 esgotado. 1 bobina chega para o suporte e a pala |
+| 11 | Porta-fusível em linha ATO/ATC IP55 | [SVB](https://www.svb24.pt/pt/seatec-porta-fusiveis-em-linha-ato.html) | **€3,32** | + fusível de 5 A |
+| | **Total** | | **≈ €838** | **Sem portes** (4–5 lojas, contar €30–50) |
+
+**Também é preciso** (preço não confirmado, loja náutica ou sobras):
+- Cabo **estanhado** de 1,5 mm² (≥ 16 AWG) vermelho/preto, do quadro até ao
+  Pi.
+- 4 espaçadores M2,5 de 15 mm, para a caixa.
+- **Caixa do Pi impressa**: há um modelo já feito para Pi 5 + MacArthur + NVMe
+  por baixo
+  ([Printables, Ozoner](https://www.printables.com/model/781587-case-for-raspberry-pi-5-with-macarthur-hat-and-bot)).
+  Imprimir em ASA ou PETG, porque fica dentro do barco.
+
+**Só depois das fotos** (pode não ser preciso):
+- Multiplexer ou adaptador USB–NMEA 0183, se houver mais de 2 fontes 0183.
+- Cabos e conector em T de NMEA 2000, se algum aparelho for N2K.
+- Comando físico Bluetooth/USB para usar com luvas ou com o ecrã molhado.
+- Pi 5 de **8 GB** em vez de 4 GB, se o radar entrar no ecrã.
 
 **Não usar a fonte oficial de 27 W do Pi.** É para tomada de 230 V. No barco o
-Pi alimenta-se dos 12 V por conversor, com fusível no quadro.
+Pi alimenta-se dos 12 V pelo módulo da HAT, com fusível no quadro.
 
 Os preços do Pi subiram várias vezes em 2025–2026 por causa da falta de
 memória RAM
