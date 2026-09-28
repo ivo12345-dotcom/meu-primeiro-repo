@@ -938,6 +938,11 @@ funcionar também ali:
     Plano: 2 painéis rígidos (400–500 W se forem por cima da roda), um MPPT
     Victron SmartSolar por painel (sombra do radome), SmartShunt no serviço,
     tudo lido pelo Pi por Bluetooth; perfil de carga AGM.
+    **Preços (28/09):** painel 185 W 12 V €134–155 · 190 W 24 V série 4C €106,41
+    (FV Componentes) · 305 W 20 V €164–235 · MPPT SmartSolar 75/15 ~€88 ·
+    SmartShunt 500 A €91,54. **Opção A** 2×~190 W só no arco ≈ €480–580 +
+    suporte; **opção B** 2×305 W em teto ≈ €660–860 + estrutura inox
+    (€300–600, a cotar). Painéis de 305 W precisam de MPPT 100/20 ou 100/30.
 
 **Alarme sonoro:** a solo, o alarme AIS tem de acordar quem dorme. O apito do
 Garmin é fraco. No Pi, acrescentar à lista um **altifalante ou besouro forte**
