@@ -498,6 +498,37 @@ do SailProof STS10 (€499):
   (de popa não serve bem com o barco adornado e o espelho invertido; em
   princípio, dentro do casco ou por passa-casco).
 
+### Função "Recolher velas" (pedido do Ivo, 28/09; só com o EV-100)
+
+Um botão no ecrã (Pi, e mais tarde a HDS) que põe o barco **aproado ao vento
+com o motor a dar seguimento**, para o Ivo recolher as velas a solo.
+
+**O que o Pi pode e não pode fazer:**
+- **Pode:** comandar o EV-100 pelo SignalK (`signalk-autopilot`): pôr em
+  auto e **rumo = direção do vento**, calculada a partir do vento aparente e
+  da proa; ler as **rotações do motor** (CAN) e a **velocidade na água**
+  (log).
+- **Não pode:** ligar o motor, meter a mudança nem acelerar. O D1-20B tem
+  manete mecânica e o Pi só **escuta** o CAN do motor. Automatizar o arranque
+  e a mudança seria um risco de segurança (cabos na água, hélice) e fica
+  **de fora**.
+
+**Sequência:**
+1. O Ivo liga o motor e mete **avante devagar** (ex.: 1200–1500 rpm).
+2. Carrega em **"Recolher velas"**. O Pi verifica: motor a trabalhar
+   (rotações > 0), seguimento (velocidade na água > ~1,5 nós), vento válido,
+   EV-100 presente. Se falhar alguma, **não faz nada** e diz porquê.
+3. O Pi põe o EV-100 em auto com o rumo **à proa do vento**, com um
+   **desvio configurável** (ex.: 10–15° para um dos bordos, para o barco não
+   ficar a "bater" nem a mudar de bordo sozinho; lado escolhido no ecrã).
+4. Durante a manobra, o ecrã mostra o vento aparente, as rotações e a
+   velocidade. **Alarme no besouro** se o motor parar ou a velocidade cair
+   abaixo do mínimo.
+5. **"Terminar"**: volta ao rumo anterior ou a standby (à escolha).
+
+**Segurança:** o botão **standby do p70s** tem sempre prioridade; testar em
+águas calmas; regista no diário ("Velas recolhidas às 17:42").
+
 ### Fase 3 (futuro, sem data): plotter Raymarine Axiom na roda
 
 O Ivo quer pôr um **Axiom** mais tarde (28/09). Não está decidido o modelo
