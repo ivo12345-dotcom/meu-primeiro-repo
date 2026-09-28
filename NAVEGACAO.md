@@ -527,7 +527,15 @@ com o motor a dar seguimento**, para o Ivo recolher as velas a solo.
 5. **"Terminar"**: volta ao rumo anterior ou a standby (à escolha).
 
 **Segurança:** o botão **standby do p70s** tem sempre prioridade; testar em
-águas calmas; regista no diário ("Velas recolhidas às 17:42").
+águas calmas.
+
+**Registo automático no diário de bordo** (signalk-logbook), duas entradas:
+- **Início:** "17:38 Recolher velas: aproado 15° EB · posição · vento aparente
+  e real · motor 1 350 rpm · 2,1 nós".
+- **Fim:** "17:44 Velas recolhidas · duração 6 min · terminou em rumo
+  anterior/standby".
+- Se a manobra for **abortada** (motor parou, sem seguimento, standby no
+  p70s), fica registado **o motivo**.
 
 ### Fase 3 (futuro, sem data): plotter Raymarine Axiom na roda
 
