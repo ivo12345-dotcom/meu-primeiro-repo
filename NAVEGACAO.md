@@ -705,8 +705,9 @@ confirmar na etiqueta). Banco 1 = motor; bancos 2+3 = **serviço 440 Ah**.
   - A navegar, no verão (~6,5 h), sem piloto: **~300 W**; com o EV-100:
     **~450–500 W**. Realista num 34 pés: **300–400 W** no arco de popa ou
     na capota, mais o motor nos dias de pouco sol.
-- **Luzes de navegação incandescentes** gastam ~25 Ah por noite em vez de
-  ~2: se não forem LED, trocar é das melhorias mais baratas.
+- **Luzes de navegação: LED (decisão do Ivo, 28/09).** Se as atuais não forem
+  LED, o Ivo troca-as. As contas assumem LED (~2 Ah por noite em vez de ~25).
+  Ao trocar, escolher luzes **homologadas (COLREG)** para barcos até 12 m.
 
 ## 6. Reserva (obrigatória a solo)
 
