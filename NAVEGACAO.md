@@ -670,6 +670,10 @@ Fontes: [signalk-logbook](https://github.com/meri-imperiumi/signalk-logbook),
 
 ## 7d. Segundo posto na cabine do Ivo (28/09)
 
+**Planta final do Arlequin (28/09, aprovada pelo Ivo):** [`planta-arlequin.pdf`](planta-arlequin.pdf)
+(A4 para imprimir) e [`planta-arlequin.svg`](planta-arlequin.svg). Mostra o interior
+(letras a–n) e a posição do sistema de navegação (números 1–10).
+
 **Motor (28/09):** fica **atrás da escada**, encostado à cabine de popa. Há
 acesso **pela cabine** e **tirando a escada**. A ficha Deutsch do MDI e a
 ligação ao Pi (USB–CAN) ficam a poucos metros da mesa de navegação.
