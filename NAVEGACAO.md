@@ -948,6 +948,13 @@ funcionar também ali:
     paralelo = 440 Ah). **Bateria do motor:** manter carregada por **VSR/ACR
     bidirecional** ou **carregador de manutenção** (echo charger), conforme o
     separador que já existir. Fusível à saída de cada MPPT; ambos em perfil AGM.
+    **Escolhido (28/09): opção B, 2 × 305 W** (610 W no total) em teto por cima
+    da roda. Cada painel tem um **MPPT SmartSolar 100/30** (com 305 W a 12 V dá
+    ~23 A; o 75/15 cortava a 15 A e o 100/20 a 20 A). Fusível de **40 A** à saída
+    de cada MPPT, junto às baterias. Cabo de 6 mm² do MPPT às baterias (troço
+    curto) e 4–6 mm² com MC4 do painel ao MPPT. Confirmar que o Voc a frio do
+    painel escolhido fica abaixo de 100 V. Produção estimada: ~150–180 Ah/dia
+    no verão e ~60–80 Ah/dia no inverno.
 
 **Alarme sonoro:** a solo, o alarme AIS tem de acordar quem dorme. O apito do
 Garmin é fraco. No Pi, acrescentar à lista um **altifalante ou besouro forte**
