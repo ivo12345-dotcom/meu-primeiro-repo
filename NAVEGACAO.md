@@ -160,6 +160,12 @@ se este aceitar 4 800 baud (confirmar no manual).
   alimentado). Um kit inicial N2K resolve tudo, e é a mesma rede que depois
   recebe o EV-100 e o Axiom.
 
+**Dados do motor: DECIDIDO pô-los na rede (28/09).** O YDEG-04 põe no NMEA 2000,
+a partir do EVC: rotações, temperatura da água, pressão do óleo, horas,
+tensão da bateria e **códigos de alarme do motor**; e ainda temperatura do
+óleo e consumo, se o motor os medir. O **nível do gasóleo não** vem do EVC,
+porque o medidor é analógico.
+
 **Motor: painel Volvo Penta EVC** (conta-rotações, temperatura, painel EVC de
 arranque e paragem, e medidor de gasóleo analógico). Os motores D1/D2 com EVC
 falam um protocolo CAN da Volvo. **Opcional:** o gateway **Yacht Devices
@@ -277,7 +283,8 @@ alimentação da HAT a alimentar tudo
 | 9 | Chave USB de licença o-charts | [o-charts](https://o-charts.org/shop/en/hardware/38-usb-key-dongle.html) | **~€23** (€19 s/IVA) | Recomendada: reinstalar o OpenPlotter apaga a licença; com a chave não se perde |
 | 10 | ASA preto 1 kg | [EVOLT](https://evolt.pt/produto/asa-1kg-black-esun/) | **€17,73** (Winkle, em stock) | eSUN €21,39 esgotado. 1 bobina chega para o suporte e a pala |
 | 11 | Porta-fusível em linha ATO/ATC IP55 | [SVB](https://www.svb24.pt/pt/seatec-porta-fusiveis-em-linha-ato.html) | **€3,32** | + fusível de 5 A |
-| | **Total** | | **≈ €482** | Sem portes nem cabos. Portes: contar €30–50 |
+| 12 | **Gateway do motor Yacht Devices YDEG-04N** (NMEA 2000 Micro-C), decidido 28/09 | [SVB](https://www.svb24.com/en/yacht-devices-nmea2000-engine-gateway-ydeg-04n.html) | **~€263,52** (€214,24 s/IVA) | **Só depois de confirmar o modelo do motor** (chapa). Liga ao multilink do EVC com o conector em Y que traz |
+| | **Total** | | **≈ €746** (€482 + gateway) | Sem portes, sem cabos e sem o kit N2K. Portes: contar €30–50 |
 
 **Também é preciso** (preço não confirmado, loja náutica ou sobras):
 - Cabo **estanhado** de 1,5 mm² (≥ 16 AWG) vermelho/preto, do quadro até ao
