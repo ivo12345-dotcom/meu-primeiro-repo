@@ -450,6 +450,26 @@ Com tudo num ecrã só, esse ecrã passa a ser um ponto único de falha.
 7. **Caminho do cabo** do pedestal até ao sítio seco onde fica o Pi (máximo
    3,5 m com as extensões do ecrã).
 
+## 8b. Lista para a próxima ida ao barco (28/09)
+
+1. **AIS no Garmin:** o GPSMAP 421 mostra triângulos de barcos? Se sim,
+   configurar a **zona de segurança** (raio e tempo) do alarme de colisão. Se
+   não, ver se o B330 está ligado ao 421 (NMEA 2000 ou 0183 a 38 400 baud).
+2. **Teste de Wi-Fi do B330:** ligar o telemóvel ao Wi-Fi do B330 e ver se a
+   Navionics recebe AIS e GPS.
+3. **Costas dos três NASA** (vento, log, sonda): fichas e número de fios. No
+   vento, o cabo do mastro tem 3 ou 5 fios? Isto decide entre cabos e o
+   conversor ESP32.
+4. **Chapa do motor Volvo** (modelo e número de série).
+5. **Quadro elétrico e baterias.**
+6. **Diâmetro do tubo do pedestal da roda** (paquímetro) e percurso do cabo até
+   onde fica o Pi.
+7. **Onde está a bússola fluxgate do ST4000+** (longe de ferro e de cabos?).
+
+**Alarme sonoro:** a solo, o alarme AIS tem de acordar quem dorme. O apito do
+Garmin é fraco. No Pi, acrescentar à lista um **altifalante ou besouro forte**
+(ou o alarme no telemóvel pelo SignalK).
+
 ## 9. Próximos passos
 
 1. Fotos e medidas do §8.
