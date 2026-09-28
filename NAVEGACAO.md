@@ -930,6 +930,14 @@ funcionar também ali:
 15. **Baterias (3 bancos × 2 × 110 Ah, seladas: 1 motor, 2 serviço):** foto da
     etiqueta de uma bateria de cada banco (AGM/gel/SLA, data), dos comutadores,
     do que divide a carga do alternador (díodos/VSR/DC-DC) e do carregador de cais.
+16. **Painéis solares (decidido 28/09): no arco de popa, ao lado do radar, a
+    fazer também de teto/sombra por cima da roda, sem chegar à retranca.**
+    Fotos do arco (de trás e de lado) e medidas: largura útil de cada lado do
+    radar, comprimento disponível para a frente, diâmetro dos tubos, altura do
+    arco acima do piso do poço, distância do arco à roda, e a altura do Ivo.
+    Plano: 2 painéis rígidos (400–500 W se forem por cima da roda), um MPPT
+    Victron SmartSolar por painel (sombra do radome), SmartShunt no serviço,
+    tudo lido pelo Pi por Bluetooth; perfil de carga AGM.
 
 **Alarme sonoro:** a solo, o alarme AIS tem de acordar quem dorme. O apito do
 Garmin é fraco. No Pi, acrescentar à lista um **altifalante ou besouro forte**
