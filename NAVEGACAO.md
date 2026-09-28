@@ -885,6 +885,9 @@ funcionar também ali:
     (antes de furar para o leme de emergência).
 14. **Sensor de líquido** (a acrescentar ao sistema do barco parado): escolher
     o ponto mais baixo por baixo do depósito de gasóleo para o pôr.
+15. **Baterias (3 bancos × 2 × 110 Ah, seladas: 1 motor, 2 serviço):** foto da
+    etiqueta de uma bateria de cada banco (AGM/gel/SLA, data), dos comutadores,
+    do que divide a carga do alternador (díodos/VSR/DC-DC) e do carregador de cais.
 
 **Alarme sonoro:** a solo, o alarme AIS tem de acordar quem dorme. O apito do
 Garmin é fraco. No Pi, acrescentar à lista um **altifalante ou besouro forte**
