@@ -674,6 +674,9 @@ Fontes: [signalk-logbook](https://github.com/meri-imperiumi/signalk-logbook),
 (A4 para imprimir) e [`planta-arlequin.svg`](planta-arlequin.svg). Mostra o interior
 (letras a–n) e a posição do sistema de navegação (números 1–10).
 
+**Esquema final de ligações (28/09):** [`esquema-arlequin.pdf`](esquema-arlequin.pdf) (A4) e
+[`esquema-arlequin.svg`](esquema-arlequin.svg): entradas → Pi/MacArthur → saídas, e a rede NMEA 2000.
+
 **Motor (28/09):** fica **atrás da escada**, encostado à cabine de popa. Há
 acesso **pela cabine** e **tirando a escada**. A ficha Deutsch do MDI e a
 ligação ao Pi (USB–CAN) ficam a poucos metros da mesa de navegação.
