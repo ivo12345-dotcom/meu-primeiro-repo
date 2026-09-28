@@ -692,7 +692,7 @@ confirmar na etiqueta). Banco 1 = motor; bancos 2+3 = **serviço 440 Ah**.
 | Luzes de navegação (LED) | ~2 Ah | — |
 | Luzes interiores, telemóvel, etc. | 5 Ah | — |
 | **Subtotal** | **~89 Ah** | **~27 Ah** |
-| Frigorífico (se houver, ~35–40%) | +30–40 Ah | — |
+| Frigorífico a compressor (confirmado 28/09; 120 L de origem) | +30–40 Ah (verão pode passar dos 40) | desligado quando o barco fica sozinho |
 | Piloto EV-100 (futuro, 2–4 A) | +50–100 Ah | — |
 | **Total** | **~120 Ah (sem piloto) · ~185 Ah (com EV-100)** | **~27 Ah** |
 
