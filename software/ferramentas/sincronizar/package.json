@@ -1,0 +1,8 @@
+{
+  "name": "arlequin-sincronizar",
+  "private": true,
+  "description": "Copia a caixa negra do Arlequin para o portátil (Tailscale/ssh) e confirma ao Pi o que chegou bem",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": { "test": "node --test \"test/*.test.mjs\"" }
+}

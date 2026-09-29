@@ -1,0 +1,81 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { mkdtempSync, mkdirSync, writeFileSync, appendFileSync, readdirSync, readFileSync, existsSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import os from 'node:os'
+import path from 'node:path'
+import { sincronizar, sha256 } from '../lib.mjs'
+import { transporteLocal, transporteSsh } from '../transportes.mjs'
+
+const require = createRequire(import.meta.url)
+const confirmados = require('../../../signalk-arlequin-caixanegra/lib/confirmados.js')
+const AGORA = Date.UTC(2026, 8, 29, 14, 30, 0)
+
+function pi () {
+  const b = mkdtempSync(path.join(os.tmpdir(), 'arlequin-pi-'))
+  for (const d of ['bruto', 'tabela', 'saidas', 'entrada']) mkdirSync(path.join(b, d))
+  writeFileSync(path.join(b, 'bruto', '2026-09-29T10.ndjson.gz'), 'dez')
+  writeFileSync(path.join(b, 'bruto', '2026-09-29T14.ndjson.gz'), 'catorze') // hora atual, a crescer
+  writeFileSync(path.join(b, 'tabela', '2026-09-29.csv.gz'), 't')
+  writeFileSync(path.join(b, 'confirmados.json'), '{}')
+  return b
+}
+
+test('copia tudo, confirma só horas fechadas, e o Pi aceita a confirmação', async () => {
+  const origem = pi()
+  const destino = mkdtempSync(path.join(os.tmpdir(), 'arlequin-pc-'))
+  const r = await sincronizar({ transporte: transporteLocal(origem), destino, agora: AGORA })
+  assert.equal(r.copiados, 3)
+  assert.equal(r.confirmados, 1)
+  assert.deepEqual(r.diferentes, [])
+  assert.equal(readFileSync(path.join(destino, 'bruto', '2026-09-29T14.ndjson.gz'), 'utf8'), 'catorze')
+  assert.equal(existsSync(path.join(destino, 'entrada')), false, 'a entrada não se copia')
+  const listas = readdirSync(path.join(origem, 'entrada'))
+  assert.equal(listas.length, 1)
+  assert.match(listas[0], /^confirmados-.*\.json$/)
+  const aceite = confirmados.processarEntrada(origem)
+  assert.deepEqual(aceite.aceites, ['bruto/2026-09-29T10.ndjson.gz'])
+  // segunda vez: nada de novo
+  const r2 = await sincronizar({ transporte: transporteLocal(origem), destino, agora: AGORA })
+  assert.equal(r2.copiados, 0)
+  assert.equal(r2.confirmados, 0)
+  // a hora atual cresceu e a hora fechou: copia de novo e confirma
+  appendFileSync(path.join(origem, 'bruto', '2026-09-29T14.ndjson.gz'), ' e mais')
+  const r3 = await sincronizar({ transporte: transporteLocal(origem), destino, agora: AGORA + 3600000 })
+  assert.equal(r3.copiados, 1)
+  assert.equal(r3.confirmados, 1)
+  assert.equal(sha256(path.join(destino, 'bruto', '2026-09-29T14.ndjson.gz')), sha256(path.join(origem, 'bruto', '2026-09-29T14.ndjson.gz')))
+})
+
+test('hash diferente: não confirma e avisa', async () => {
+  const origem = pi()
+  const destino = mkdtempSync(path.join(os.tmpdir(), 'arlequin-pc-'))
+  const t = transporteLocal(origem)
+  const mau = { ...t, hashes: async (fs) => Object.fromEntries(fs.map(f => [f, '0'.repeat(64)])) }
+  const r = await sincronizar({ transporte: mau, destino, agora: AGORA })
+  assert.deepEqual(r.diferentes, ['bruto/2026-09-29T10.ndjson.gz'])
+  assert.equal(r.confirmados, 0)
+  assert.equal(readdirSync(path.join(origem, 'entrada')).length, 0)
+})
+
+test('ssh: comandos certos e respostas bem lidas', async () => {
+  const chamadas = []
+  const exec = async (cmd, args, op = {}) => {
+    chamadas.push({ cmd, args, ...op })
+    const remoto = args[1]
+    if (remoto.includes('find ')) return 'bruto/2026-09-29T10.ndjson.gz\t123\ntabela/2026-09-29.csv.gz\t45\n'
+    if (remoto.includes('sha256sum')) return `${'a'.repeat(64)}  bruto/2026-09-29T10.ndjson.gz\n`
+    return ''
+  }
+  const t = transporteSsh('pi@arlequin', { exec })
+  assert.deepEqual(await t.listar(), [{ ficheiro: 'bruto/2026-09-29T10.ndjson.gz', bytes: 123 }, { ficheiro: 'tabela/2026-09-29.csv.gz', bytes: 45 }])
+  assert.deepEqual(await t.hashes(['bruto/2026-09-29T10.ndjson.gz']), { 'bruto/2026-09-29T10.ndjson.gz': 'a'.repeat(64) })
+  await t.copiar(['bruto/2026-09-29T10.ndjson.gz'], 'C:\\dados')
+  await t.escreverEntrada('confirmados-x.json', '[]')
+  const copiar = chamadas[2]
+  assert.equal(copiar.cmd, 'ssh')
+  assert.deepEqual(copiar.para, ['tar', ['-xf', '-', '-C', 'C:\\dados']])
+  assert.equal(copiar.entrada, 'bruto/2026-09-29T10.ndjson.gz\n')
+  assert.match(chamadas[3].args[1], /cat > ~\/arlequin-dados\/entrada\/confirmados-x\.json\.tmp && mv .*confirmados-x\.json\.tmp .*confirmados-x\.json$/)
+  assert.ok(chamadas.every(c => c.args[0] === 'pi@arlequin'))
+})
