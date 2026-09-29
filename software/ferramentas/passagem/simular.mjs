@@ -25,14 +25,17 @@ const dif = (a, b) => { let d = norm(a - b); if (d > 180) d -= 360; return d } /
 
 // ---------- rota: Algés → Peniche por fora ----------
 export const ROTA = [
+  // Rio: canal da barra norte. Depois de Cascais afasta-se para ~5 MN dos cabos
+  // e da costa (pedido do Ivo: ir por fora, não junto à costa).
   { nome: 'Algés (partida)', lat: 38.6955, lon: -9.2330 },
   { nome: 'Barra Norte', lat: 38.6680, lon: -9.3150 },
   { nome: 'Largo de Carcavelos', lat: 38.6630, lon: -9.3500 },
-  { nome: 'Largo de Cascais', lat: 38.6700, lon: -9.4300 },
-  { nome: 'Cabo Raso', lat: 38.7050, lon: -9.5200 },
-  { nome: 'Cabo da Roca', lat: 38.7800, lon: -9.5450 },
-  { nome: 'Ericeira', lat: 38.9700, lon: -9.4750 },
-  { nome: 'Santa Cruz', lat: 39.1300, lon: -9.4350 },
+  { nome: 'Largo de Cascais', lat: 38.6500, lon: -9.4500 },
+  { nome: 'Largo do Cabo Raso', lat: 38.6900, lon: -9.6000 },
+  { nome: 'Largo da Roca', lat: 38.7800, lon: -9.6200 },
+  { nome: 'Largo da Ericeira', lat: 38.9650, lon: -9.5400 },
+  { nome: 'Largo de Santa Cruz', lat: 39.1300, lon: -9.5000 },
+  { nome: 'Largo de Peniche', lat: 39.2800, lon: -9.4500 },
   { nome: 'Peniche Sul', lat: 39.3300, lon: -9.3950 },
   { nome: 'Peniche (porto)', lat: 39.3530, lon: -9.3770 }
 ]
@@ -71,7 +74,8 @@ function vetor (a, b) {
 }
 
 // ---------- meteorologia ----------
-const PONTOS = [{ lat: 38.68, lon: -9.35 }, { lat: 38.78, lon: -9.55 }, { lat: 38.97, lon: -9.50 }, { lat: 39.30, lon: -9.45 }]
+// Meteorologia ao largo, onde a rota passa (vento e ondas lá fora são maiores).
+const PONTOS = [{ lat: 38.68, lon: -9.35 }, { lat: 38.78, lon: -9.62 }, { lat: 38.97, lon: -9.55 }, { lat: 39.30, lon: -9.47 }]
 async function meteorologia () {
   const lat = PONTOS.map(p => p.lat).join(',')
   const lon = PONTOS.map(p => p.lon).join(',')

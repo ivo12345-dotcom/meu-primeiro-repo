@@ -12,7 +12,7 @@ const { ROTA, COSTA } = JSON.parse(readFileSync(path.join(aqui, 'rota.json'), 'u
 
 const W = 680; const H = 760
 const mapa = { x: 10, y: 40, w: 250, h: 700 }
-const lat0 = 38.63; const lat1 = 39.38; const lon0 = -9.60; const lon1 = -9.18
+const lat0 = 38.63; const lat1 = 39.38; const lon0 = -9.72; const lon1 = -9.18
 const k = Math.cos(39 * Math.PI / 180)
 const esc = Math.min(mapa.w / ((lon1 - lon0) * k), mapa.h / (lat1 - lat0))
 const X = (lon) => (mapa.x + (lon - lon0) * k * esc).toFixed(1)
