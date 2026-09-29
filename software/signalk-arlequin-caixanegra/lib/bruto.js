@@ -41,4 +41,19 @@ function criarGravadorBruto (dir) {
   }
 }
 
-module.exports = { criarGravadorBruto, nomeHora }
+// Um corte de energia a meio de um despejo deixa o último bloco gzip cortado, e
+// um bloco cortado deixa o resto do ficheiro por ler (o gunzip pára aí). Ao
+// arrancar confere-se o ficheiro onde se vai continuar a escrever: se não se
+// lê inteiro, muda de nome (<nome>.danificado-<hora UTC>) e o novo começa limpo.
+// Esse nome não é de uma hora do bruto: copia-se para o portátil mas nunca se
+// confirma nem se apaga sozinho.
+function isolarSeDanificado (f, agora) {
+  let dados
+  try { dados = fs.readFileSync(f) } catch { return null } // ainda não existe
+  try { zlib.gunzipSync(dados); return null } catch {}
+  const novo = `${f}.danificado-${new Date(agora).toISOString().slice(0, 19).replace(/:/g, '-')}Z`
+  fs.renameSync(f, novo)
+  return novo
+}
+
+module.exports = { criarGravadorBruto, nomeHora, isolarSeDanificado }

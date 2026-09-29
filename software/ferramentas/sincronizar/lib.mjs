@@ -12,6 +12,7 @@ import { existsSync, statSync, readFileSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 
 export const sha256 = (f) => createHash('sha256').update(readFileSync(f)).digest('hex')
+// Só uma hora do bruto com o nome certo (um .danificado-* copia-se mas nunca se confirma).
 const horaDoBruto = (f) => f.match(/^bruto\/(\d{4}-\d{2}-\d{2}T\d{2})\.ndjson\.gz$/)?.[1]
 
 export async function sincronizar ({ transporte, destino, agora = Date.now() }) {

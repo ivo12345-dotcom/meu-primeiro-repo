@@ -22,16 +22,17 @@ test('entrada: hash certo fica confirmado; errado, inexistente ou fora do bruto 
   entrada(b, 'confirmados-1.json', [
     { ficheiro: 'bruto/2026-09-28T10.ndjson.gz', sha256: h10 },
     { ficheiro: 'bruto/2026-09-28T11.ndjson.gz', sha256: 'f'.repeat(64) },
-    { ficheiro: 'bruto/nao-existe.ndjson.gz', sha256: h10 },
+    { ficheiro: 'bruto/2026-09-28T09.ndjson.gz', sha256: h10 },
     { ficheiro: '../velas.json', sha256: h10 },
     { ficheiro: 'tabela/2026-09-28.csv.gz', sha256: h10 },
     { ficheiro: 'bruto/..', sha256: h10 },
-    { ficheiro: 'bruto/.', sha256: h10 }
+    { ficheiro: 'bruto/.', sha256: h10 },
+    { ficheiro: 'bruto/2026-09-28T10.ndjson.gz.danificado-2026-09-28T10-30-00Z', sha256: h10 }
   ])
   fs.writeFileSync(path.join(b, 'entrada', 'meio-escrito.json.tmp'), '[')
   const r = conf.processarEntrada(b)
   assert.deepEqual(r.aceites, ['bruto/2026-09-28T10.ndjson.gz'])
-  assert.deepEqual(r.rejeitados.map(x => x.motivo), ['hash diferente', 'não existe', 'fora do bruto', 'fora do bruto', 'fora do bruto', 'fora do bruto'])
+  assert.deepEqual(r.rejeitados.map(x => x.motivo), ['hash diferente', 'não existe', 'fora do bruto', 'fora do bruto', 'fora do bruto', 'fora do bruto', 'fora do bruto'])
   assert.deepEqual(conf.lerConfirmados(b), { 'bruto/2026-09-28T10.ndjson.gz': h10 })
   assert.equal(fs.existsSync(path.join(b, 'entrada', 'confirmados-1.json')), false)
   assert.equal(fs.existsSync(path.join(b, 'entrada', 'meio-escrito.json.tmp')), true, 'os .tmp ficam para o fim da cópia')

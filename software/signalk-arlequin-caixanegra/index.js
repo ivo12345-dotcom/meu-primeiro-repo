@@ -8,7 +8,7 @@
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
-const { criarGravadorBruto } = require('./lib/bruto')
+const { criarGravadorBruto, nomeHora, isolarSeDanificado } = require('./lib/bruto')
 const est = require('./lib/estado')
 const estavel = require('./lib/estavel')
 const tabela = require('./lib/tabela')
@@ -191,6 +191,17 @@ module.exports = function (app) {
     } catch (e) { erros++; app.error(`estado: ${e.message}`) }
   }
 
+  // Os ficheiros onde se vai continuar a escrever (hora e dia atuais) têm de se
+  // ler inteiros; um bloco cortado por um corte de energia estragava o resto.
+  function isolarDanificados (agora) {
+    for (const f of [path.join(base, 'bruto', nomeHora(agora)), path.join(base, 'tabela', tabela.nomeDia(agora))]) {
+      try {
+        const novo = isolarSeDanificado(f, agora)
+        if (novo) { erros++; app.error(`caixa negra: ${path.basename(f)} estava danificado (corte de energia?); ficou como ${path.basename(novo)} e começa um novo`) }
+      } catch (e) { erros++; app.error(`caixa negra: ${path.basename(f)}: ${e.message}`) }
+    }
+  }
+
   plugin.start = function (props) {
     o = { pasta: '~/arlequin-dados', limiteAviso: 80, limiteParar: 95, portos: PORTOS, ...props }
     base = path.resolve(o.pasta.startsWith('~') ? path.join(os.homedir(), o.pasta.slice(1)) : o.pasta)
@@ -208,6 +219,7 @@ module.exports = function (app) {
     avisoDisco = 'normal'
     erros = 0
     ultimoErroDelta = -Infinity
+    isolarDanificados(Date.now())
     publicarVelas()
     app.signalk.on('unfilteredDelta', aoDelta)
     temporizador = setInterval(segundo, 1000)

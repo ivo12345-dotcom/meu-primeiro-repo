@@ -14,7 +14,8 @@ const path = require('node:path')
 const sha256Ficheiro = (f) => crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex')
 const ficheiroConf = (base) => path.join(base, 'confirmados.json')
 const ORCAMENTO_BYTES = 200e6
-const NOME_BRUTO = /^bruto\/[\w-][\w.-]*$/
+// Só horas fechadas do bruto (nunca um .danificado-*, nem nada fora do bruto).
+const NOME_BRUTO = /^bruto\/\d{4}-\d{2}-\d{2}T\d{2}\.ndjson\.gz$/
 const valido = (x) => !!x && typeof x === 'object' && typeof x.ficheiro === 'string' && NOME_BRUTO.test(x.ficheiro)
 // Bytes que é preciso ler para conferir o hash desta entrada (0 se não há nada a ler).
 function custo (base, x) {

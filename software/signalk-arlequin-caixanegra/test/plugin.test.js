@@ -288,3 +288,29 @@ test('uma mensagem que não se consegue gravar (BigInt) não rebenta o SignalK; 
   assert.equal(mensagens.filter(m => /mensagem/.test(m)).length, 2, 'passado 1 min volta a registar')
   p.stop()
 })
+
+test('depois de um corte de energia: um .gz com o último bloco cortado fica de lado e o novo começa limpo', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 50
+  const app = appFalso()
+  const base = path.join(app.dir, 'dados')
+  for (const d of ['bruto', 'tabela']) fs.mkdirSync(path.join(base, d), { recursive: true })
+  const cortado = (texto) => { const g = zlib.gzipSync(texto); return g.subarray(0, g.length - 7) }
+  const fBruto = path.join(base, 'bruto', '2026-09-29T14.ndjson.gz')
+  const fTabela = path.join(base, 'tabela', '2026-09-29.csv.gz')
+  fs.writeFileSync(fBruto, Buffer.concat([zlib.gzipSync('{"antes":1}\n'), cortado('{"antes":2}\n'.repeat(50))]))
+  fs.writeFileSync(fTabela, Buffer.concat([zlib.gzipSync('t,lat\n'), cortado('x,y\n'.repeat(50))]))
+  const bom = path.join(base, 'bruto', '2026-09-29T13.ndjson.gz') // hora anterior, inteira: não se mexe
+  fs.writeFileSync(bom, zlib.gzipSync('{"ok":1}\n'))
+  const p = criar(app)
+  p.start({ pasta: base })
+  correr(t, app, 20, 'nmea0183.GP')
+  p.stop()
+  assert.ok(fs.existsSync(path.join(base, 'bruto', '2026-09-29T14.ndjson.gz.danificado-2026-09-29T14-00-00Z')), fs.readdirSync(path.join(base, 'bruto')).join(', '))
+  assert.ok(fs.existsSync(path.join(base, 'tabela', '2026-09-29.csv.gz.danificado-2026-09-29T14-00-00Z')), fs.readdirSync(path.join(base, 'tabela')).join(', '))
+  assert.ok(ndjson(fBruto).length >= 20, 'o bruto novo lê-se inteiro')
+  const linhas = csv(fTabela)
+  assert.equal(linhas[0][0], 't', 'a tabela nova começa com o cabeçalho')
+  assert.equal(linhas.length, 1 + 2)
+  assert.ok(fs.existsSync(bom))
+})

@@ -178,3 +178,14 @@ test('local: lerConfirmados lê o confirmados.json da origem (sem ficheiro → v
   const vazia = mkdtempSync(path.join(os.tmpdir(), 'arlequin-pi-'))
   assert.deepEqual(await transporteLocal(vazia).lerConfirmados(), {})
 })
+
+test('um bruto .danificado-* (isolado depois de um corte de energia) copia-se mas nunca se confirma', async () => {
+  const origem = pi()
+  writeFileSync(path.join(origem, 'bruto', '2026-09-29T09.ndjson.gz.danificado-2026-09-29T09-20-00Z'), 'cortado')
+  const destino = mkdtempSync(path.join(os.tmpdir(), 'arlequin-pc-'))
+  const r = await sincronizar({ transporte: comoPi(origem), destino, agora: AGORA })
+  assert.equal(readFileSync(path.join(destino, 'bruto', '2026-09-29T09.ndjson.gz.danificado-2026-09-29T09-20-00Z'), 'utf8'), 'cortado')
+  assert.equal(r.confirmados, 1)
+  const [nome] = readdirSync(path.join(origem, 'entrada'))
+  assert.deepEqual(JSON.parse(readFileSync(path.join(origem, 'entrada', nome), 'utf8')).map(c => c.ficheiro), ['bruto/2026-09-29T10.ndjson.gz'])
+})
