@@ -1,7 +1,7 @@
 """Dados inventados com resposta conhecida, para testar a AI sem barco:
-o barco "verdadeiro" é 10% mais lento do que a polar à volta dos 60°, o vento
-real é 20% mais forte do que a previsão e o motor gasta mais 10% do que diz a
-Volvo. Escreve tabela/, saidas/ e previsoes/ como a caixa negra e o plugin da AI."""
+o barco "verdadeiro" é 8% mais lento do que a polar em geral e mais 10% à volta
+dos 60°, o vento real é 20% mais forte do que a previsão e o motor gasta mais 10%
+do que diz a Volvo. Escreve tabela/, saidas/ e previsoes/ como a caixa negra e o plugin da AI."""
 
 import gzip
 import json
@@ -14,17 +14,16 @@ from .base import litros_volvo, stw_polar
 from .dados import NUMERICAS
 
 COLUNAS = ['t'] + NUMERICAS
-NO = 1852 / 3600
 
 
-def verdade_stw(polar, twa_abs, tws, fator60=0.9):
+def verdade_stw(polar, twa_abs, tws, fator60=0.9, fator_geral=0.92):
     """A velocidade "verdadeira" do barco inventado (nós)."""
     perda = (1 - fator60) * np.exp(-((np.asarray(twa_abs) - 60) / 20) ** 2)
-    return stw_polar(polar, twa_abs, tws) * (1 - perda)
+    return stw_polar(polar, twa_abs, tws) * fator_geral * (1 - perda)
 
 
-def gerar(pasta, polar, sessoes=3, horas_motor=2.0, horas_vela=2.5, inicio='2026-06-01T08:00:00Z',
-          fator60=0.9, razao_vento=1.2, fator_consumo=1.1, ruido=0.15, simulado=0, semente=1):
+def gerar(pasta, polar, sessoes=3, horas_motor=2.0, horas_vela=4.0, inicio='2026-06-01T08:00:00Z',
+          fator60=0.9, fator_geral=0.92, razao_vento=1.2, fator_consumo=1.1, ruido=0.15, simulado=0, semente=1):
     rng = np.random.default_rng(semente)
     pasta = Path(pasta)
     for d in ('tabela', 'saidas', 'previsoes'):
@@ -43,7 +42,7 @@ def gerar(pasta, polar, sessoes=3, horas_motor=2.0, horas_vela=2.5, inicio='2026
         proa = (twd - lado * twa_abs) % 360
         motor = np.arange(n) < n_motor
         rpm = np.where(motor, 1800 + (np.arange(n) // 60 % 4) * 150, 0)
-        stw = np.where(motor, 4.5 + rpm / 1000, verdade_stw(polar, twa_abs, tws, fator60)) + rng.normal(0, ruido, n)
+        stw = np.where(motor, 4.5 + rpm / 1000, verdade_stw(polar, twa_abs, tws, fator60, fator_geral)) + rng.normal(0, ruido, n)
         litros = np.where(motor, litros_volvo(rpm) * fator_consumo + rng.normal(0, 0.05, n), np.nan)
         lat = 39.0 + np.arange(n) * 0.00005
         lon = np.full(n, -9.6)

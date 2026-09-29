@@ -5,6 +5,8 @@ registo de tudo em modelos/registo.json."""
 
 import gzip
 import json
+import os
+import re
 from pathlib import Path
 
 import lightgbm as lgb
@@ -27,8 +29,9 @@ MODELOS = {
     'velocidade': {
         'alvo': 'stw',
         'variaveis': ['tws', 'twaAbs', 'rajada', 'prevOndas', 'prevPeriodo', 'ondasAnguloRel', 'balAdorno',
-                      'balCaimento', 'adornoAbs', 'grandeRizos', 'genoaPct', 'rpm'],
-        'filtro': lambda d: d['tws'].notna() & d['twaAbs'].notna() & d['stw'].notna(),
+                      'balCaimento', 'adornoAbs', 'grandeRizos', 'genoaPct'],
+        # só à vela: a motor a polar não quer dizer nada (e o rpm é sempre 0 à vela)
+        'filtro': lambda d: d['tws'].notna() & d['twaAbs'].notna() & d['stw'].notna() & (d['rpm'].fillna(0) <= 0),
         'base': lambda d, polar: stw_polar(polar, d['twaAbs'], d['tws']),
     },
     'ventoForca': {
@@ -101,6 +104,20 @@ def frases(nome, d, x, p50, polar):
             f'do que a previsão']
 
 
+def escrever(caminho, dados):
+    """Escreve de uma vez: primeiro num .tmp ao lado, depois troca (um corte de luz não deixa meio ficheiro)."""
+    caminho = Path(caminho)
+    tmp = caminho.with_name(caminho.name + '.tmp')
+    tmp.write_bytes(dados)
+    os.replace(tmp, caminho)
+
+
+def proxima_versao(pasta):
+    """A maior vNNNN que já existe + 1 (as versões nunca se apagam nem se reescrevem)."""
+    numeros = [int(m.group(1)) for f in pasta.glob('v*.json.gz') if (m := re.fullmatch(r'v(\d+)\.json\.gz', f.name))]
+    return f'v{max(numeros, default=0) + 1:04d}'
+
+
 def versao_atual(pasta):
     f = pasta / 'atual'
     return f.read_text(encoding='utf-8').strip() if f.exists() else None
@@ -128,21 +145,26 @@ def treinar_um(nome, d, pasta_modelos, agora, polar):
         return {**res, 'motivo': 'só uma saída: são precisas pelo menos 2 (uma fica para o teste)'}
     teste = linhas[linhas['sessao'] == sess[-1]]
     treino = linhas[linhas['sessao'] != sess[-1]]
+    ultima_saida = teste['t'].min()
+    pasta = Path(pasta_modelos, nome)
+    pasta.mkdir(parents=True, exist_ok=True)
+    atual = versao_atual(pasta)
+    em_uso = carregar(pasta, atual) if atual else None
+    # a versão em uso já aprendeu com esta saída (voltou a treinar com tudo): o teste não seria justo
+    if em_uso is not None and em_uso.get('ultimaSaida') and pd.Timestamp(em_uso['ultimaSaida']) >= ultima_saida:
+        return {**res, 'motivo': 'sem saída nova para testar desde a versão em uso'}
     x_tr, x_te = treino[spec['variaveis']], teste[spec['variaveis']]
     novo = treinar_quantis(x_tr, treino[spec['alvo']])
     mae_novo = mae(novo['p50'].predict(x_te), teste[spec['alvo']])
     mae_base = mae(spec['base'](teste, polar), teste[spec['alvo']])
-    pasta = Path(pasta_modelos, nome)
-    pasta.mkdir(parents=True, exist_ok=True)
-    atual = versao_atual(pasta)
-    mae_atual = mae(prever_guardado(carregar(pasta, atual), teste), teste[spec['alvo']]) if atual else None
+    mae_atual = mae(prever_guardado(em_uso, teste), teste[spec['alvo']]) if atual else None
     aceite = mae_novo <= mae_atual if atual else mae_novo < mae_base
     final = treinar_quantis(linhas[spec['variaveis']], linhas[spec['alvo']]) if aceite else novo
-    numero = len(list(pasta.glob('v*.json.gz'))) + 1
-    versao = f'v{numero:04d}'
+    versao = proxima_versao(pasta)
     modelo = {
         'modelo': nome, 'versao': versao, 'criado': agora.isoformat(), 'alvo': spec['alvo'],
         'variaveis': spec['variaveis'], 'horas': res['horas'], 'n': res['n'], 'sessoes': len(sess),
+        'ultimaSaida': ultima_saida.isoformat(),
         'mae': round(mae_novo, 4), 'maeAtual': None if mae_atual is None else round(mae_atual, 4),
         'maeBase': round(mae_base, 4), 'aceite': aceite,
         'quantis': {q: b.dump_model() for q, b in final.items()},
@@ -150,9 +172,9 @@ def treinar_um(nome, d, pasta_modelos, agora, polar):
         'celulas': celulas(linhas) if nome == 'velocidade' else None,
         'frases': frases(nome, linhas, linhas[spec['variaveis']], final['p50'], polar),
     }
-    (pasta / f'{versao}.json.gz').write_bytes(gzip.compress(json.dumps(modelo).encode('utf-8')))
+    escrever(pasta / f'{versao}.json.gz', gzip.compress(json.dumps(modelo).encode('utf-8')))
     if aceite:
-        (pasta / 'atual').write_text(versao, encoding='utf-8')
+        escrever(pasta / 'atual', versao.encode('utf-8'))
     motivo = ('erra menos do que ' + ('a versão em uso' if atual else 'a polar/curva de origem')) if aceite \
         else ('erra mais do que ' + ('a versão em uso' if atual else 'a polar/curva de origem'))
     return {**res, 'versao': versao, 'aceite': aceite, 'motivo': motivo, 'mae': modelo['mae'],
@@ -164,13 +186,19 @@ def treinar(base, polar, agora=None, incluir_simulado=False, modelos=None):
     agora = agora or pd.Timestamp.now(tz='UTC')
     df = ler_tabela(base)
     if not incluir_simulado:
-        df = df[df['simulado'] != 1]
+        df = df[df['simulado'] == 0]  # em branco (NaN) também não ensina
     d = preparar(df.reset_index(drop=True), ler_saidas(base), ler_previsoes(base))  # o balanço usa também as linhas não estáveis
     d = d[d['estavel'] == 1].reset_index(drop=True)
     pasta_modelos = Path(base, 'modelos')
     pasta_modelos.mkdir(parents=True, exist_ok=True)
-    resultados = [treinar_um(n, d, pasta_modelos, agora, polar) for n in (modelos or MODELOS)]
+    resultados = []
+    for n in (modelos or MODELOS):
+        try:
+            resultados.append(treinar_um(n, d, pasta_modelos, agora, polar))
+        except Exception as e:  # um modelo estragado não pára os outros
+            resultados.append({'modelo': n, 'data': agora.isoformat(), 'versao': None, 'aceite': False,
+                               'motivo': f'erro: {e}'})
     registo = pasta_modelos / 'registo.json'
     antigo = json.loads(registo.read_text(encoding='utf-8')) if registo.exists() else []
-    registo.write_text(json.dumps(antigo + resultados, ensure_ascii=False, indent=1), encoding='utf-8')
+    escrever(registo, json.dumps(antigo + resultados, ensure_ascii=False, indent=1).encode('utf-8'))
     return resultados
