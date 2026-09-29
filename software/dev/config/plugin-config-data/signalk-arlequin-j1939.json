@@ -1,0 +1,10 @@
+{
+  "enabled": true,
+  "configuration": {
+    "fonte": "simulador",
+    "interface": "can1",
+    "estimarConsumo": true,
+    "fatorConsumo": 1,
+    "mapaAlarmes": []
+  }
+}

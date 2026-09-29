@@ -134,3 +134,20 @@ test('GET /sessoes devolve as cargas, a mais recente primeiro', async () => {
   assert.ok(resposta.sessoes[0].ah > 50)
   assert.ok(resposta.runTimeS > 3600)
 })
+
+test('horas de motor: não publica se o J1939 (outra fonte) já as publica', () => {
+  const app = appFalso()
+  app.getSelfPath = (p) => p === 'propulsion.main.runTime'
+    ? { value: 4475000, $source: 'signalk-arlequin-j1939', timestamp: new Date().toISOString() }
+    : undefined
+  const plugin = criarPlugin(app)
+  plugin.start({})
+  let m = criarModelo({ socInicial: 0.9 }, Date.now())
+  for (let i = 0; i < 5; i++) {
+    const r = avancar(m, 60 * 1000, { motor: true })
+    m = r.modelo
+    app.receber(deltaDaLeitura(r.leitura))
+  }
+  plugin.stop()
+  assert.deepEqual(app.runTime, [])
+})

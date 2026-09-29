@@ -7,7 +7,8 @@ O desenho está em `NAVEGACAO.md` e em `docs/superpowers/specs/`.
 |---|---|---|
 | `arlequin-ecra/` | **Ecrã da roda**: painel web com as 9 páginas (em `/arlequin-ecra/`) + plugin que arruma as janelas OpenCPN/painel | Sim |
 | `signalk-arlequin-energia/` | Plugin: alarmes das baterias AGM e registo das cargas pelo motor | Sim |
-| `signalk-arlequin-ais` | Plugin: alarme de colisão AIS (CPA/TCPA) no servidor | Sim |
+| `signalk-arlequin-ais/` | Plugin: alarme de colisão AIS (CPA/TCPA) no servidor | Sim |
+| `signalk-arlequin-j1939/` | Plugin: motor D1-20B pelo J1939 do MDI (rotações, horas, temperatura, tensão, consumo estimado, alarmes, descoberta da PGN 65417) | Sim |
 | `arlequin-simulador/` | Plugin que finge o barco (navegação, vento, AIS, motor, baterias, sol) | Não (só testes) |
 | `dev/` | SignalK local no portátil, com tudo ligado e o diário de bordo | Não |
 
@@ -89,3 +90,27 @@ depois.
    modo noite do OpenCPN. Isto afina-se na montagem.
 6. Abrir o painel em Chromium, em modo kiosk:
    `chromium --kiosk http://localhost:3000/arlequin-ecra/`
+
+## Motor pelo J1939 (no barco)
+
+1. Adaptador USB–CAN (candleLight/gs_usb, de preferência isolado) no cabo em Y
+   do MDI. **Nunca** na rede NMEA 2000 da MacArthur.
+2. No Pi:
+   ```bash
+   sudo apt install can-utils
+   sudo ip link set can1 up type can bitrate 250000 listen-only on
+   candump can1
+   ```
+   Primeiro só o `candump`, com a ignição ligada: ver que tramas chegam.
+3. Plugin `signalk-arlequin-j1939` com a fonte `candump` e a interface `can1`.
+4. **Descoberta dos alarmes do MDI:** abrir
+   `http://<pi>:3000/plugins/signalk-arlequin-j1939/pagina`, ligar a ignição
+   com o motor parado (acendem os alarmes de óleo e de carga), ligar o motor e
+   ver que bits da PGN 65417 mudam. Pôr esse mapa (byte, bit → alarme) na
+   configuração do plugin.
+5. **Consumo:** é estimado pela curva da Volvo Penta (1800 rpm → 1,0 L/h;
+   2400 → 2,0; 3200 → 4,6). Calibrar o fator com o depósito: litros
+   metidos ÷ litros estimados.
+
+No portátil, o simulador fala J1939 (`motorJ1939`) e o plugin usa a fonte
+`simulador`: a cadeia é a mesma do barco.

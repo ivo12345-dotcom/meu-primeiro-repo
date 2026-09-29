@@ -33,6 +33,7 @@ module.exports = function (app) {
   let temporizador = null
   let estado, sessao, leitura, desvio, ficheiroRunTime, ficheiroSessoes, opcoes
   let runTimePublicado = false
+  let inicioDados = null
 
   // Hora "dos dados": o relógio do sistema corrigido pelo carimbo da última
   // delta. No barco dá o mesmo; com o simulador acelerado segue o tempo simulado.
@@ -48,6 +49,18 @@ module.exports = function (app) {
     } catch (e) {
       app.error(`não consegui guardar as horas de motor: ${e.message}`)
     }
+  }
+
+  // As horas do MDI (plugin J1939) valem mais: se outra fonte publicou as horas
+  // de motor nos últimos 5 min, este contador fica só para as sessões de carga.
+  // Nos primeiros 30 s (tempo dos dados) espera, para dar tempo ao J1939 de arrancar.
+  function outraFonteDeHoras (t) {
+    if (inicioDados === null) inicioDados = t
+    if (t - inicioDados < 30 * 1000) return true
+    const p = app.getSelfPath?.(`propulsion.${opcoes.propulsao}.runTime`)
+    if (!p) return false
+    const fontes = p.values ? Object.entries(p.values).map(([src, v]) => ({ src, ts: v.timestamp })) : [{ src: p.$source, ts: p.timestamp }]
+    return fontes.some(f => f.src && !String(f.src).startsWith(plugin.id) && Date.now() - Date.parse(f.ts) < 5 * 60 * 1000)
   }
 
   function tick () {
@@ -68,7 +81,7 @@ module.exports = function (app) {
     const s = passoSessao(sessao, { motorLigado, corrente: leitura.corrente, soc: leitura.soc }, t)
     const minutoAntes = Math.floor(sessao.runTimeS / 60)
     sessao = s.sessao
-    if (Math.floor(sessao.runTimeS / 60) !== minutoAntes || !runTimePublicado) {
+    if ((Math.floor(sessao.runTimeS / 60) !== minutoAntes || !runTimePublicado) && !outraFonteDeHoras(t)) {
       runTimePublicado = true
       publicar([{ path: `propulsion.${opcoes.propulsao}.runTime`, value: Math.round(sessao.runTimeS) }])
     }
@@ -106,6 +119,7 @@ module.exports = function (app) {
     leitura = { soc: null, socEm: 0, corrente: 0, vMotor: null, rpm: null, rpmEm: 0, sog: 0, modo: 'day' }
     desvio = 0
     runTimePublicado = false
+    inicioDados = null
 
     const dir = app.getDataDirPath()
     fs.mkdirSync(dir, { recursive: true })

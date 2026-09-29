@@ -146,6 +146,7 @@ module.exports = function (app) {
   }
 
   // Diagnóstico: PGN vistas e mudanças da 65417 (JSON e página simples).
+  // A página fica em /pagina porque o SignalK usa a raiz /plugins/<id>/ para si.
   plugin.registerWithRouter = function (router) {
     const diag = () => {
       let mudancas = []
@@ -154,7 +155,7 @@ module.exports = function (app) {
       return { fonte: o.fonte, tramas: vistasTotal, rpm: Math.round(rpmAtual || 0), vistas, mudancas: mudancas.reverse() }
     }
     router.get('/diagnostico', (req, res) => res.json(diag()))
-    router.get('/', (req, res) => {
+    router.get('/pagina', (req, res) => {
       const d = diag()
       const esc = (s) => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
       res.type('html').send(`<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="2"><title>Arlequin · J1939</title>

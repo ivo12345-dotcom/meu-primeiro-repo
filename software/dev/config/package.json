@@ -7,6 +7,7 @@
     "arlequin-simulador": "file:../../arlequin-simulador",
     "arlequin-ecra": "file:../../arlequin-ecra",
     "signalk-arlequin-ais": "file:../../signalk-arlequin-ais",
-    "@meri-imperiumi/signalk-logbook": "0.13.2"
+    "@meri-imperiumi/signalk-logbook": "0.13.2",
+    "signalk-arlequin-j1939": "file:../../signalk-arlequin-j1939"
   }
 }

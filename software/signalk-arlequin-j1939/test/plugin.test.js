@@ -93,7 +93,7 @@ test('diagnóstico: PGN vistas e mudanças da 65417 gravadas', async (t) => {
   let d
   rotas['/diagnostico']({}, { json: (j) => { d = j } })
   let html
-  rotas['/']({}, { type: () => ({ send: (h) => { html = h } }) })
+  rotas['/pagina']({}, { type: () => ({ send: (h) => { html = h } }) })
   p.stop()
   assert.equal(d.vistas.find(v => v.pgn === 65417).n, 3)
   assert.equal(d.mudancas.length, 2)

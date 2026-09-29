@@ -6,6 +6,7 @@ const { criarModelo, avancar } = require('./lib/modelo')
 const { CENARIOS, passoEm } = require('./lib/cenarios')
 const { deltaDaLeitura } = require('./lib/delta')
 const { criarNavegacao, avancarNav } = require('./lib/navegacao')
+const { tramasMotor } = require('./lib/j1939sim')
 
 module.exports = function (app) {
   const plugin = {
@@ -20,6 +21,7 @@ module.exports = function (app) {
       cenario: { type: 'string', title: 'Cenário', enum: Object.keys(CENARIOS), default: 'navegar-demo' },
       msPorHora: { type: 'number', title: 'Milissegundos reais por hora simulada', default: 2000 },
       inicio: { type: 'string', title: 'Início da simulação (data/hora ISO)', default: '2026-01-10T08:00:00' },
+      motorJ1939: { type: 'boolean', title: 'navegar-demo: o motor fala J1939 (para o plugin signalk-arlequin-j1939)', default: true },
       ventoDeGraus: { type: 'number', title: 'navegar-demo: de onde vem o vento real (graus)', default: 20 },
       colisaoRepeteMin: { type: 'number', title: 'navegar-demo: repetir o navio em colisão de N em N min (0 = só uma vez)', default: 0 },
       cicloVelaMin: { type: 'number', title: 'navegar-demo: minutos à vela em cada ciclo', default: 20 },
@@ -73,13 +75,24 @@ module.exports = function (app) {
     }, Date.now())
     let m = criarModelo(cenario.opcoes, Date.now())
     let segundos = 0
+    let horasMotorS = 1243 * 3600 // o contador do MDI começa nas 1243 h
     temporizador = setInterval(() => {
       const r = avancarNav(nav, 1000)
       nav = r.estado
       const en = avancar(m, 1000, { ...cenario.passos[0], motor: r.motor })
       m = en.modelo
-      for (const d of r.deltas) app.handleMessage(plugin.id, d)
-      app.handleMessage(plugin.id, deltaDaLeitura(en.leitura, o))
+      const j1939 = o.motorJ1939 !== false
+      // Com J1939, os propulsion.main.* vêm do plugin do motor, não daqui.
+      const semMotor = (d) => j1939 && !d.context
+        ? { ...d, updates: d.updates.map(u => ({ ...u, values: u.values.filter(v => !v.path.startsWith('propulsion.main.')) })) }
+        : d
+      for (const d of r.deltas) app.handleMessage(plugin.id, semMotor(d))
+      app.handleMessage(plugin.id, semMotor(deltaDaLeitura(en.leitura, o)))
+      if (j1939) {
+        if (r.motor) horasMotorS += 1
+        const volt = r.motor ? 14.2 : en.leitura.vMotor
+        for (const l of tramasMotor({ t: Date.now(), rpm: en.leitura.rpm * 60, tempK: nav.tempMotor, volt, horasS: horasMotorS })) app.emit('arlequin-j1939', l)
+      }
       if (++segundos % 30 === 0) {
         app.setPluginStatus(`${o.cenario} · ${r.motor ? 'a motor' : 'à vela'} · SOG ${(r.sog * 3600 / 1852).toFixed(1)} nós · serviço ${Math.round(en.leitura.soc * 100)}%`)
       }
