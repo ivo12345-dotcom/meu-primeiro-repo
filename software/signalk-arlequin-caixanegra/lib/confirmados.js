@@ -36,7 +36,7 @@ function processarEntrada (base) {
       continue
     }
     for (const { ficheiro, sha256 } of lista) {
-      if (typeof ficheiro !== 'string' || !/^bruto\/[\w.-]+$/.test(ficheiro)) { r.rejeitados.push({ ficheiro: String(ficheiro), motivo: 'fora do bruto' }); continue }
+      if (typeof ficheiro !== 'string' || !/^bruto\/[\w-][\w.-]*$/.test(ficheiro)) { r.rejeitados.push({ ficheiro: String(ficheiro), motivo: 'fora do bruto' }); continue }
       const alvo = path.join(base, ficheiro)
       if (!fs.existsSync(alvo)) { r.rejeitados.push({ ficheiro, motivo: 'não existe' }); continue }
       if (sha256Ficheiro(alvo) !== sha256) { r.rejeitados.push({ ficheiro, motivo: 'hash diferente' }); continue }

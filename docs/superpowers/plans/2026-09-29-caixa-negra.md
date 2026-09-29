@@ -772,7 +772,7 @@ function atualizar (s0, a, portos, { raioMn = 0.5, paragemMs = 600000 } = {}) {
       if (a.t - s.paradoDesde >= paragemMs) {
         terminada = {
           inicio: iso(e.inicio), fim: iso(a.t), de: e.de, para: perto.nome,
-          milhas: r1(e.milhas), horasVela: r2(e.horasVela), horasMotor: r2(e.horasMotor), gasoleoL: r1(e.gasoleoL),
+          milhas: r1(e.milhas), horasVela: r2(e.horasVela), horasMotor: r2(e.horasMotor), gasoleoL: r2(e.gasoleoL),
           socInicio: e.socInicio, socFim: a.soc ?? null, simulado: e.simulado
         }
         s.emCurso = null
