@@ -98,7 +98,8 @@ Plugin SignalK. Grava **desde o primeiro dia** em `~/arlequin-dados/`:
 - **Correções da revisão final (29/09):**
   - Aos 80% apaga-se o bruto confirmado até abaixo dos **75%** (folga, para o aviso não ir e vir); o aviso só fica se, depois de apagar, o disco continuar acima dos 80%. O aviso do disco nunca vai para o Telegram, só o alarme dos 95%.
   - O portátil só dá um ficheiro como confirmado quando o `confirmados.json` **do próprio Pi** o tem (lido pelo ssh); se a lista ficou por processar, volta a mandar-se. Pela pen só se copia, não se confirma.
-  - O sha256 no Pi tem um orçamento de 200 MB por minuto (entrada e apagar); o resto fica para o minuto seguinte.
+  - O sha256 no Pi tem **um só** orçamento de 150 MB por minuto, partilhado pela entrada e pelo apagar; o resto fica para o minuto seguinte. O portátil manda as confirmações em listas `confirmados-<hora>-<n>.json` de até 150 MB cada (um ficheiro maior vai sozinho), porque o Pi confere cada lista inteira.
+  - Um bruto confirmado que mudou depois de confirmado (o sha256 já não bate certo) nunca se apaga e não conta como espaço a libertar: não esconde o aviso dos 80% nem o alarme dos 95%. Continua no `confirmados.json`.
   - Ao arrancar, o bruto da hora e a tabela do dia que não se descomprimam inteiros (corte de energia) passam a `<nome>.danificado-<hora UTC>` e começa-se um ficheiro limpo; esses nunca se confirmam.
   - Hora do GPS a mais de 60 s da do Pi → aviso `notifications.arlequin.caixanegra.relogio` (só ecrã). Relógio: pilha do RTC do Pi 5 e hora pelo GPS.
   - O portátil nunca sobrescreve um bruto confirmado ou de hora fechada com uma versão mais pequena: guarda-a ao lado como `<nome>.N`.

@@ -187,7 +187,7 @@ module.exports = function (app) {
   let mudados = new Set()
   const chaveMudado = (f, h) => `${f} ${h}`
 
-  function verificarDisco () {
+  function verificarDisco (gastos) {
     const u = disco.usoDisco(base)
     const ficheiros = listarBruto()
     const conf = confirmados.lerConfirmados(base, erroConfirmados)
@@ -200,7 +200,7 @@ module.exports = function (app) {
       limiteParar: o.limiteParar
     })
     let plano = planear()
-    const r = plano.apagar.length ? confirmados.apagarConfirmados(base, plano.apagar, { aoErro: erroConfirmados }) : { apagados: [], mudados: [] }
+    const r = plano.apagar.length ? confirmados.apagarConfirmados(base, plano.apagar, { orcamentoBytes: confirmados.ORCAMENTO_BYTES, gastos, aoErro: erroConfirmados }) : { apagados: [], mudados: [] }
     if (r.mudados.length) {
       for (const f of r.mudados) mudados.add(chaveMudado(f, conf[f]))
       plano = planear() // o aviso e o parar só contam com o que se pode mesmo apagar
@@ -225,12 +225,15 @@ module.exports = function (app) {
   }
 
   function minuto () {
+    // Um só orçamento de sha256 por minuto: o apagar só usa o que a entrada deixou.
+    let gastos = 0
     try {
-      const r = confirmados.processarEntrada(base, { aoErro: erroConfirmados })
+      const r = confirmados.processarEntrada(base, { orcamentoBytes: confirmados.ORCAMENTO_BYTES, aoErro: erroConfirmados })
+      gastos = r.bytes
       if (r.rejeitados.length) app.error(`confirmações rejeitadas: ${r.rejeitados.map(x => `${x.ficheiro} (${x.motivo})`).join(', ')}`)
     } catch (e) { erros++; app.error(`entrada: ${e.message}`) }
     guardar(ficheiroSaida(), saidas)
-    try { verificarDisco() } catch (e) { erros++; app.error(`disco: ${e.message}`) }
+    try { verificarDisco(gastos) } catch (e) { erros++; app.error(`disco: ${e.message}`) }
     try {
       const mb = listarBruto().reduce((s, f) => s + f.bytes, 0) / 1e6
       const hora = ultimaLinha ? new Date(ultimaLinha).toLocaleTimeString('pt-PT') : '—'

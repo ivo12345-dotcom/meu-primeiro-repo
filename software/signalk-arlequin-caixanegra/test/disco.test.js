@@ -169,3 +169,23 @@ test('entrada com elementos inválidos (null, números): rejeitados um a um, a l
   assert.deepEqual(r.rejeitados.map(x => x.motivo), ['entrada inválida', 'entrada inválida', 'entrada inválida'])
   assert.deepEqual(fs.readdirSync(path.join(b, 'entrada')), [], 'a lista saiu da entrada')
 })
+
+test('orçamento partilhado: 150 MB por minuto no total; o que a entrada gastou já não se gasta no apagar', () => {
+  assert.equal(conf.ORCAMENTO_BYTES, 150e6)
+  const { b, h } = baseCem()
+  entrada(b, 'c-1.json', [{ ficheiro: 'bruto/2026-09-28T10.ndjson.gz', sha256: h['bruto/2026-09-28T10.ndjson.gz'] }])
+  entrada(b, 'c-2.json', [{ ficheiro: 'bruto/2026-09-28T11.ndjson.gz', sha256: h['bruto/2026-09-28T11.ndjson.gz'] }])
+  const r = conf.processarEntrada(b, { orcamentoBytes: 150 })
+  assert.equal(r.bytes, 100, 'devolve quantos bytes leu para o sha256')
+  // O apagar do mesmo minuto recebe o que já se gastou: 100 + 100 passava dos 150 → espera.
+  const a = conf.apagarConfirmados(b, ['bruto/2026-09-28T10.ndjson.gz'], { orcamentoBytes: 150, gastos: r.bytes })
+  assert.deepEqual(a, { apagados: [], mudados: [], bytes: 0 })
+  // No minuto seguinte (nada gasto ainda) já cabe.
+  const a2 = conf.apagarConfirmados(b, ['bruto/2026-09-28T10.ndjson.gz'], { orcamentoBytes: 150 })
+  assert.deepEqual(a2, { apagados: ['bruto/2026-09-28T10.ndjson.gz'], mudados: [], bytes: 100 })
+  // E a entrada também respeita o que já se gastou.
+  const r2 = conf.processarEntrada(b, { orcamentoBytes: 150, gastos: 100 })
+  assert.deepEqual(r2.aceites, [])
+  assert.equal(r2.adiadas, 1)
+  assert.equal(r2.bytes, 0)
+})
