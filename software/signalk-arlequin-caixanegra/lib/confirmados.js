@@ -4,6 +4,8 @@
 // no fim, para nunca se ler uma lista a meio). Aqui confere-se o hash de cada
 // ficheiro no SSD: só os que batem certo ficam em confirmados.json, e só esses
 // podem ser apagados quando o disco enche, e só se o hash ainda bater certo.
+// Calcular sha256 bloqueia o SignalK: por minuto só se lê até `orcamentoBytes`
+// (200 MB); o que não couber fica para o minuto seguinte.
 
 const crypto = require('node:crypto')
 const fs = require('node:fs')
@@ -11,6 +13,14 @@ const path = require('node:path')
 
 const sha256Ficheiro = (f) => crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex')
 const ficheiroConf = (base) => path.join(base, 'confirmados.json')
+const ORCAMENTO_BYTES = 200e6
+const NOME_BRUTO = /^bruto\/[\w-][\w.-]*$/
+const valido = (x) => !!x && typeof x === 'object' && typeof x.ficheiro === 'string' && NOME_BRUTO.test(x.ficheiro)
+// Bytes que é preciso ler para conferir o hash desta entrada (0 se não há nada a ler).
+function custo (base, x) {
+  if (!valido(x)) return 0
+  try { return fs.statSync(path.join(base, x.ficheiro)).size } catch { return 0 }
+}
 
 // Sem ficheiro (ainda nada confirmado) → {}. Ilegível ou estragado → {} também
 // (o portátil volta a confirmar e o ficheiro reescreve-se), mas avisa por
@@ -36,13 +46,17 @@ function gravarConfirmados (base, conf) {
   fs.renameSync(tmp, ficheiroConf(base))
 }
 
-function processarEntrada (base, { aoErro } = {}) {
+// Uma lista confere-se inteira ou fica toda para o minuto seguinte; uma lista
+// maior do que o orçamento confere-se sozinha (senão nunca passava).
+function processarEntrada (base, { orcamentoBytes = ORCAMENTO_BYTES, aoErro } = {}) {
   const dir = path.join(base, 'entrada')
   const conf = lerConfirmados(base, aoErro)
-  const r = { aceites: [], rejeitados: [] }
+  const r = { aceites: [], rejeitados: [], adiadas: 0 }
   let nomes = []
   try { nomes = fs.readdirSync(dir).filter(n => n.endsWith('.json')).sort() } catch { return r }
-  for (const nome of nomes) {
+  let gastos = 0
+  for (let i = 0; i < nomes.length; i++) {
+    const nome = nomes[i]
     const f = path.join(dir, nome)
     let lista
     try { lista = JSON.parse(fs.readFileSync(f, 'utf8')); if (!Array.isArray(lista)) throw new Error('não é lista') } catch {
@@ -50,8 +64,11 @@ function processarEntrada (base, { aoErro } = {}) {
       fs.renameSync(f, f + '.mau')
       continue
     }
+    const bytes = lista.reduce((s, x) => s + custo(base, x), 0)
+    if (gastos > 0 && gastos + bytes > orcamentoBytes) { r.adiadas = nomes.length - i; break }
+    gastos += bytes
     for (const { ficheiro, sha256 } of lista) {
-      if (typeof ficheiro !== 'string' || !/^bruto\/[\w-][\w.-]*$/.test(ficheiro)) { r.rejeitados.push({ ficheiro: String(ficheiro), motivo: 'fora do bruto' }); continue }
+      if (typeof ficheiro !== 'string' || !NOME_BRUTO.test(ficheiro)) { r.rejeitados.push({ ficheiro: String(ficheiro), motivo: 'fora do bruto' }); continue }
       const alvo = path.join(base, ficheiro)
       if (!fs.existsSync(alvo)) { r.rejeitados.push({ ficheiro, motivo: 'não existe' }); continue }
       if (sha256Ficheiro(alvo) !== sha256) { r.rejeitados.push({ ficheiro, motivo: 'hash diferente' }); continue }
@@ -64,12 +81,16 @@ function processarEntrada (base, { aoErro } = {}) {
   return r
 }
 
-function apagarConfirmados (base, ficheiros, { aoErro } = {}) {
+function apagarConfirmados (base, ficheiros, { orcamentoBytes = ORCAMENTO_BYTES, aoErro } = {}) {
   const conf = lerConfirmados(base, aoErro)
   const apagados = []
+  let gastos = 0
   for (const ficheiro of ficheiros) {
     const alvo = path.join(base, ficheiro)
     if (!conf[ficheiro] || !fs.existsSync(alvo)) continue
+    const bytes = fs.statSync(alvo).size
+    if (gastos > 0 && gastos + bytes > orcamentoBytes) break // o resto fica para o minuto seguinte
+    gastos += bytes
     if (sha256Ficheiro(alvo) !== conf[ficheiro]) continue // mudou depois de confirmado: fica
     fs.unlinkSync(alvo)
     delete conf[ficheiro]

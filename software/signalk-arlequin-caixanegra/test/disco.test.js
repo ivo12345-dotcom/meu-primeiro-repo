@@ -107,3 +107,53 @@ test('confirmados.json: sem ficheiro → vazio e calado; estragado → vazio mas
   conf.apagarConfirmados(b, ['bruto/2026-09-28T10.ndjson.gz'], { aoErro: (e) => avisos.push(e) })
   assert.equal(avisos.length, 2)
 })
+
+// Três horas de bruto com 100 bytes cada, para medir o orçamento de hash.
+function baseCem () {
+  const b = fs.mkdtempSync(path.join(os.tmpdir(), 'arlequin-disco-'))
+  for (const d of ['bruto', 'entrada']) fs.mkdirSync(path.join(b, d))
+  const h = {}
+  for (const hh of ['10', '11', '12']) {
+    const f = path.join(b, 'bruto', `2026-09-28T${hh}.ndjson.gz`)
+    fs.writeFileSync(f, hh.repeat(50))
+    h[`bruto/2026-09-28T${hh}.ndjson.gz`] = conf.sha256Ficheiro(f)
+  }
+  return { b, h }
+}
+
+test('orçamento por minuto: as listas processam-se inteiras ou ficam para o minuto seguinte', () => {
+  const { b, h } = baseCem()
+  entrada(b, 'c-1.json', [{ ficheiro: 'bruto/2026-09-28T10.ndjson.gz', sha256: h['bruto/2026-09-28T10.ndjson.gz'] }])
+  entrada(b, 'c-2.json', [{ ficheiro: 'bruto/2026-09-28T11.ndjson.gz', sha256: h['bruto/2026-09-28T11.ndjson.gz'] }])
+  entrada(b, 'c-3.json', [{ ficheiro: 'bruto/2026-09-28T12.ndjson.gz', sha256: h['bruto/2026-09-28T12.ndjson.gz'] }])
+  let r = conf.processarEntrada(b, { orcamentoBytes: 150 })
+  assert.deepEqual(r.aceites, ['bruto/2026-09-28T10.ndjson.gz'], '100 + 100 passava os 150: a 2.ª lista espera')
+  assert.equal(r.adiadas, 2)
+  assert.deepEqual(fs.readdirSync(path.join(b, 'entrada')).sort(), ['c-2.json', 'c-3.json'])
+  r = conf.processarEntrada(b, { orcamentoBytes: 150 })
+  assert.deepEqual(r.aceites, ['bruto/2026-09-28T11.ndjson.gz'])
+  r = conf.processarEntrada(b, { orcamentoBytes: 150 })
+  assert.deepEqual(r.aceites, ['bruto/2026-09-28T12.ndjson.gz'])
+  assert.equal(r.adiadas, 0)
+  assert.equal(Object.keys(conf.lerConfirmados(b)).length, 3)
+})
+
+test('orçamento: uma lista maior do que o orçamento processa-se sozinha (senão nunca passava)', () => {
+  const { b, h } = baseCem()
+  entrada(b, 'c-1.json', Object.entries(h).map(([ficheiro, sha256]) => ({ ficheiro, sha256 })))
+  entrada(b, 'c-2.json', [{ ficheiro: 'bruto/2026-09-28T10.ndjson.gz', sha256: h['bruto/2026-09-28T10.ndjson.gz'] }])
+  const r = conf.processarEntrada(b, { orcamentoBytes: 150 })
+  assert.equal(r.aceites.length, 3)
+  assert.equal(r.adiadas, 1)
+  assert.deepEqual(fs.readdirSync(path.join(b, 'entrada')), ['c-2.json'])
+})
+
+test('orçamento também no apagar: pára quando se gastou, o resto fica para o minuto seguinte', () => {
+  const { b, h } = baseCem()
+  entrada(b, 'c.json', Object.entries(h).map(([ficheiro, sha256]) => ({ ficheiro, sha256 })))
+  conf.processarEntrada(b)
+  const todos = Object.keys(h)
+  assert.deepEqual(conf.apagarConfirmados(b, todos, { orcamentoBytes: 150 }), ['bruto/2026-09-28T10.ndjson.gz'])
+  assert.deepEqual(conf.apagarConfirmados(b, todos, { orcamentoBytes: 250 }), ['bruto/2026-09-28T11.ndjson.gz', 'bruto/2026-09-28T12.ndjson.gz'])
+  assert.deepEqual(conf.lerConfirmados(b), {})
+})
