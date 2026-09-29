@@ -140,10 +140,13 @@ module.exports = function (app) {
     }
   }
 
+  // Um confirmados.json estragado não pára nada (conta como vazio), mas tem de se ver.
+  const erroConfirmados = (e) => { erros++; app.error(e.message) }
+
   function verificarDisco () {
     const u = disco.usoDisco(base)
-    const plano = disco.planear({ ...u, ficheiros: listarBruto(), confirmados: confirmados.lerConfirmados(base), limiteAviso: o.limiteAviso, limiteParar: o.limiteParar })
-    const apagados = plano.apagar.length ? confirmados.apagarConfirmados(base, plano.apagar) : []
+    const plano = disco.planear({ ...u, ficheiros: listarBruto(), confirmados: confirmados.lerConfirmados(base, erroConfirmados), limiteAviso: o.limiteAviso, limiteParar: o.limiteParar })
+    const apagados = plano.apagar.length ? confirmados.apagarConfirmados(base, plano.apagar, { aoErro: erroConfirmados }) : []
     infoDisco = { ...u, aviso: plano.aviso, apagados: apagados.length }
     const pct = Math.round(u.usadoPct)
     if (plano.pararBruto) {
@@ -165,7 +168,7 @@ module.exports = function (app) {
 
   function minuto () {
     try {
-      const r = confirmados.processarEntrada(base)
+      const r = confirmados.processarEntrada(base, { aoErro: erroConfirmados })
       if (r.rejeitados.length) app.error(`confirmações rejeitadas: ${r.rejeitados.map(x => `${x.ficheiro} (${x.motivo})`).join(', ')}`)
     } catch (e) { erros++; app.error(`entrada: ${e.message}`) }
     guardar(ficheiroSaida(), saidas)

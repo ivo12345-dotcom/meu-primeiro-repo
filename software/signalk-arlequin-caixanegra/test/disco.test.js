@@ -91,3 +91,19 @@ test('usoDisco dá números com sentido', () => {
   const u = disco.usoDisco(os.tmpdir())
   assert.ok(u.total > 0 && u.livre >= 0 && u.usadoPct >= 0 && u.usadoPct <= 100)
 })
+
+test('confirmados.json: sem ficheiro → vazio e calado; estragado → vazio mas avisa (para se ver)', () => {
+  const b = base()
+  const erros = []
+  assert.deepEqual(conf.lerConfirmados(b, (e) => erros.push(e)), {})
+  assert.deepEqual(erros, [], 'não haver ficheiro é normal no início')
+  fs.writeFileSync(path.join(b, 'confirmados.json'), '{"bruto/2026-09-28T10.ndjson.gz": "ab') // cortado a meio
+  assert.deepEqual(conf.lerConfirmados(b, (e) => erros.push(e)), {})
+  assert.equal(erros.length, 1)
+  assert.match(erros[0].message, /confirmados\.json/)
+  // processarEntrada e apagarConfirmados passam o aviso a quem os chama
+  const avisos = []
+  conf.processarEntrada(b, { aoErro: (e) => avisos.push(e) })
+  conf.apagarConfirmados(b, ['bruto/2026-09-28T10.ndjson.gz'], { aoErro: (e) => avisos.push(e) })
+  assert.equal(avisos.length, 2)
+})

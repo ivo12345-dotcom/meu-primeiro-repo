@@ -12,8 +12,23 @@ const path = require('node:path')
 const sha256Ficheiro = (f) => crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex')
 const ficheiroConf = (base) => path.join(base, 'confirmados.json')
 
-function lerConfirmados (base) {
-  try { return JSON.parse(fs.readFileSync(ficheiroConf(base), 'utf8')) } catch { return {} }
+// Sem ficheiro (ainda nada confirmado) → {}. Ilegível ou estragado → {} também
+// (o portátil volta a confirmar e o ficheiro reescreve-se), mas avisa por
+// `aoErro`, para o problema se ver no plugin em vez de passar calado.
+function lerConfirmados (base, aoErro = () => {}) {
+  let texto
+  try { texto = fs.readFileSync(ficheiroConf(base), 'utf8') } catch (e) {
+    if (e.code !== 'ENOENT') aoErro(new Error(`confirmados.json ilegível: ${e.message}`))
+    return {}
+  }
+  try {
+    const m = JSON.parse(texto)
+    if (!m || typeof m !== 'object' || Array.isArray(m)) throw new Error('não é um mapa')
+    return m
+  } catch (e) {
+    aoErro(new Error(`confirmados.json estragado: ${e.message}`))
+    return {}
+  }
 }
 function gravarConfirmados (base, conf) {
   const tmp = ficheiroConf(base) + '.tmp'
@@ -21,9 +36,9 @@ function gravarConfirmados (base, conf) {
   fs.renameSync(tmp, ficheiroConf(base))
 }
 
-function processarEntrada (base) {
+function processarEntrada (base, { aoErro } = {}) {
   const dir = path.join(base, 'entrada')
-  const conf = lerConfirmados(base)
+  const conf = lerConfirmados(base, aoErro)
   const r = { aceites: [], rejeitados: [] }
   let nomes = []
   try { nomes = fs.readdirSync(dir).filter(n => n.endsWith('.json')).sort() } catch { return r }
@@ -49,8 +64,8 @@ function processarEntrada (base) {
   return r
 }
 
-function apagarConfirmados (base, ficheiros) {
-  const conf = lerConfirmados(base)
+function apagarConfirmados (base, ficheiros, { aoErro } = {}) {
+  const conf = lerConfirmados(base, aoErro)
   const apagados = []
   for (const ficheiro of ficheiros) {
     const alvo = path.join(base, ficheiro)

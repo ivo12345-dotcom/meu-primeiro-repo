@@ -1175,6 +1175,6 @@ node software/ferramentas/sincronizar/sincronizar.mjs --host pi@arlequin
 
 - Os dados ficam em `Documents\Veleiro\arlequin-dados`.
 - Recomendado: incluir esta pasta na cópia de segurança do Windows ou no OneDrive.
-- Sem rede, também dá com uma pen: `--origem E:\arlequin-dados`.
+- Sem rede, também dá com uma pen: `--origem E:\arlequin-dados`. Pela pen **só se copiam** os dados: a confirmação ao Pi (que o deixa libertar espaço aos 80%) só acontece por ssh/Tailscale. O portátil só dá um ficheiro como confirmado quando o `confirmados.json` do próprio Pi o tem.
 
 **Velas:** na página **Velas** do ecrã, toca no estado da grande e da genoa sempre que mudares. A AI precisa disto para aprender, e o ecrã lembra-te se o vento mudar muito.

@@ -2,7 +2,8 @@
 // ao Pi o que chegou bem, para ele poder libertar espaço quando o disco encher.
 //   node sincronizar.mjs                          → ssh pi@arlequin → Documents\Veleiro\arlequin-dados
 //   node sincronizar.mjs --host ivo@arlequin --destino D:\arlequin-dados
-//   node sincronizar.mjs --origem E:\arlequin-dados   (pasta local, ex.: uma pen)
+//   node sincronizar.mjs --origem E:\arlequin-dados   (pasta local, ex.: uma pen; só copia,
+//                                                     não confirma nada ao Pi: isso só por ssh)
 
 import os from 'node:os'
 import path from 'node:path'
@@ -16,6 +17,7 @@ const inicio = Date.now()
 try {
   const r = await sincronizar({ transporte, destino })
   console.log(`Ficheiros no barco: ${r.remotos} · copiados agora: ${r.copiados} (${(r.bytes / 1e6).toFixed(1)} MB) · confirmados ao Pi: ${r.confirmados}`)
+  if (r.semConfirmar) console.log('Pela pen só se copia: para o Pi poder libertar espaço, sincroniza uma vez por ssh (Tailscale).')
   if (r.diferentes.length) console.log(`ATENÇÃO: ${r.diferentes.length} ficheiro(s) com hash diferente, não confirmados: ${r.diferentes.join(', ')}`)
   console.log(`Em ${destino} · ${Math.round((Date.now() - inicio) / 1000)} s`)
 } catch (e) {

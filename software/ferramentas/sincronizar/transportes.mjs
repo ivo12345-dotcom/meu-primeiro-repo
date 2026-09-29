@@ -1,6 +1,8 @@
 // Transportes da sincronização: uma pasta local a fazer de Pi (testes, ou os
 // dados trazidos numa pen) e o Pi a sério por ssh (Tailscale). Por ssh a cópia
 // vai num só "tar" (rápido com muitos ficheiros) e o tar do Windows desempacota.
+// Só o ssh confirma (`podeConfirmar`): uma lista escrita numa pen nunca chegava
+// ao Pi, e o portátil ficava a julgar que tinha confirmado.
 
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
@@ -9,8 +11,18 @@ import path from 'node:path'
 
 const PASTAS = ['bruto', 'tabela', 'saidas', 'previsoes', 'modelos']
 
-export function transporteLocal (origem) {
+// O confirmados.json do Pi: sem ficheiro, ou estragado, é como não haver nada
+// confirmado (volta-se a mandar e o Pi confere outra vez; não se perde nada).
+function lerMapa (texto) {
+  try { const m = JSON.parse(texto); return m && typeof m === 'object' && !Array.isArray(m) ? m : {} } catch { return {} }
+}
+
+export function transporteLocal (origem, { podeConfirmar = false } = {}) {
   return {
+    podeConfirmar,
+    async lerConfirmados () {
+      try { return lerMapa(readFileSync(path.join(origem, 'confirmados.json'), 'utf8')) } catch { return {} }
+    },
     async listar () {
       const lista = []
       const andar = (rel) => {
@@ -78,6 +90,10 @@ export function executar (cmd, args, { entrada, para } = {}) {
 export function transporteSsh (host, { pasta = 'arlequin-dados', exec = executar } = {}) {
   const dir = `~/${pasta}`
   return {
+    podeConfirmar: true,
+    async lerConfirmados () {
+      return lerMapa(await exec('ssh', [host, `cat ${dir}/confirmados.json 2>/dev/null || echo {}`]))
+    },
     async listar () {
       const t = await exec('ssh', [host, `cd ${dir} || exit 1; find ${PASTAS.join(' ')} -type f -printf '%p\\t%s\\n' 2>/dev/null; true`])
       return t.split('\n').filter(Boolean).map(l => { const [ficheiro, bytes] = l.split('\t'); return { ficheiro, bytes: Number(bytes) } })

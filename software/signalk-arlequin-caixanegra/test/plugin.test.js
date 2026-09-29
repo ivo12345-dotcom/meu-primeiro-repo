@@ -249,3 +249,22 @@ test('disco a 81% com bruto confirmado: apaga e não avisa (o aviso aos 80% não
   assert.equal(fs.existsSync(antigo), false, 'o confirmado foi apagado')
   assert.deepEqual(app.notificacoes.filter(n => n.path === 'notifications.arlequin.caixanegra.disco'), [], 'sem aviso: depois de apagar fica abaixo dos 80%')
 })
+
+test('confirmados.json estragado no Pi: conta como erro (vê-se no /estado) e o resto continua', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 50
+  const app = appFalso()
+  const mensagens = []
+  app.error = (m) => mensagens.push(m)
+  const base = path.join(app.dir, 'dados')
+  fs.mkdirSync(base, { recursive: true })
+  fs.writeFileSync(path.join(base, 'confirmados.json'), '{isto não é json')
+  const p = criar(app)
+  p.start({ pasta: base })
+  correr(t, app, 60, 'nmea0183.GP')
+  const est = await chamar(rotas(p).get['/estado'], {})
+  p.stop()
+  assert.ok(est.erros > 0, 'erro contado')
+  assert.ok(mensagens.some(m => /confirmados\.json/.test(m)), mensagens.join(' | '))
+  assert.ok(csv(path.join(base, 'tabela', '2026-09-29.csv.gz')).length > 1, 'a tabela continua')
+})
