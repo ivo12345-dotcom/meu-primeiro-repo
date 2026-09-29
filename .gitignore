@@ -16,3 +16,4 @@ software/dev/config/*
 software/dev/config/plugin-config-data/*/
 software/ferramentas/passagem/*.json
 software/ferramentas/passagem/relatorio.svg
+software/dev/arlequin-dados/

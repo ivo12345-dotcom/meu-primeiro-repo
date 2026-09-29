@@ -1,0 +1,8 @@
+{
+  "enabled": true,
+  "configuration": {
+    "pasta": "arlequin-dados",
+    "limiteAviso": 80,
+    "limiteParar": 95
+  }
+}

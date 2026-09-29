@@ -10,6 +10,7 @@
     "@meri-imperiumi/signalk-logbook": "0.13.2",
     "signalk-arlequin-j1939": "file:../../signalk-arlequin-j1939",
     "signalk-arlequin-gasoleo": "file:../../signalk-arlequin-gasoleo",
-    "signalk-arlequin-agua": "file:../../signalk-arlequin-agua"
+    "signalk-arlequin-agua": "file:../../signalk-arlequin-agua",
+    "signalk-arlequin-caixanegra": "file:../../signalk-arlequin-caixanegra"
   }
 }

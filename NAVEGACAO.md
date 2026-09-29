@@ -1147,3 +1147,34 @@ telemóvel. Notas já discutidas:
 - Base recomendada: **Victron Cerbo GX + SmartShunt**, com as entradas
   digitais para porão, fumo e gaiuta e alertas pela app VRM. Não está
   decidido.
+
+## Caixa negra e Tailscale (dados para o Claude analisar)
+
+**O que grava** (plugin `signalk-arlequin-caixanegra`), em `~/arlequin-dados` no Pi, desde o primeiro dia:
+- `bruto/`: todas as mensagens, 1 ficheiro por hora;
+- `tabela/`: 1 linha a cada 10 s, para a AI;
+- `saidas/`: resumo de cada saída;
+- `previsoes/`: escrito pelo plugin da rota.
+
+**Regras do disco:** aos 80% apaga do `bruto/` só o que o portátil já confirmou. Aos 95% sem nada confirmado pára o bruto, e a tabela continua. Nunca apaga nada que não esteja no portátil.
+
+**Tailscale: feito pelo Ivo, uma vez** (o Claude não trata contas nem palavras-passe):
+1. Criar a conta em tailscale.com (entrar com Google ou Microsoft).
+2. No portátil: instalar o Tailscale para Windows e entrar com a conta.
+3. No Pi, com rede (o telemóvel em ponto de acesso serve):
+   - `curl -fsSL https://tailscale.com/install.sh | sh`
+   - `sudo tailscale up --ssh --hostname arlequin`
+   - abrir o link que aparece e aprovar com a conta.
+4. Testar no portátil: `ssh pi@arlequin "ls ~/arlequin-dados"`.
+
+**Copiar os dados** (sempre que estiveres a bordo com rede):
+
+```
+node software/ferramentas/sincronizar/sincronizar.mjs --host pi@arlequin
+```
+
+- Os dados ficam em `Documents\Veleiro\arlequin-dados`.
+- Recomendado: incluir esta pasta na cópia de segurança do Windows ou no OneDrive.
+- Sem rede, também dá com uma pen: `--origem E:\arlequin-dados`.
+
+**Velas:** na página **Velas** do ecrã, toca no estado da grande e da genoa sempre que mudares. A AI precisa disto para aprender, e o ecrã lembra-te se o vento mudar muito.

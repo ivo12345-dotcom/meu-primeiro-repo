@@ -84,6 +84,18 @@ Plugin SignalK. Grava **desde o primeiro dia** em `~/arlequin-dados/`:
 - **Tailscale:** a conta e o primeiro login no Pi e no portátil são feitos **pelo Ivo**. O Claude não trata credenciais. Os passos ficam escritos no `NAVEGACAO.md`.
 - Recomendação (a decisão é do Ivo): incluir a pasta `arlequin-dados` na cópia de segurança do Windows ou no OneDrive. Depois dos 80%, o portátil passa a ser a única cópia dos dados antigos.
 
+### Notas de implementação (29/09)
+
+- **A previsão não entra na tabela de 10 s.** Junta-se no treino (Parte 2) a partir de `previsoes/`, pela hora e posição. Assim a caixa negra não depende do plugin da rota, e previsões descarregadas mais tarde também servem.
+- **A confirmação do portátil é um ficheiro, não um pedido HTTP.**
+  - A sincronização escreve `entrada/confirmados-*.json` pelo ssh (`.tmp` e depois muda o nome).
+  - O plugin lê a entrada a cada minuto e confere o sha256 de cada ficheiro.
+  - Evita abrir ou autenticar a API do SignalK para o portátil.
+  - O `POST /confirmados` do desenho original fica substituído por isto.
+- **Só se confirmam horas do bruto já fechadas.** Antes de apagar, o plugin volta a conferir o hash.
+- **"Sensores sem alarme" = proa, STW e TWS com valores de há menos de 15 s.** Ainda não há alarmes de sensor próprios.
+- **O lembrete das velas é só para o ecrã.** O plugin do porto não o manda para o Telegram. O alarme do disco (95%) vai para o Telegram.
+
 ## Parte 2: AI (`software/arlequin-ia/`, Python)
 
 ### Modelos
