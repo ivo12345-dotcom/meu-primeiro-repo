@@ -134,3 +134,21 @@ test('Motor: teclado do "Abasteci" manda os litros ao plugin do gasóleo', async
   assert.equal(estado.teclado, null)
   assert.match(estado.msgGas, /40 → 125 L/)
 })
+
+test('Motor: calibração completa — abrir, +5 L, estado a estabilizar', async () => {
+  const estado = {}
+  const pedidos = []
+  let resposta = { ativa: false, tabela: [], capacidadeL: 200 }
+  const ctx = { ...contexto(store, estado), pedir: async (url, o) => { pedidos.push({ url, o }); return resposta } }
+  await motor.acao('calib-abrir', {}, ctx)
+  estado.calib = resposta
+  assert.match(motor.render(ctx), /Começar \(depósito vazio\)/)
+  resposta = { ativa: true, total: 0, pontos: [], pendente: { litros: 0 }, razaoAtual: 0.12 }
+  await motor.acao('calib-iniciar', {}, ctx)
+  assert.match(motor.render(ctx), /a estabilizar/)
+  resposta = { ativa: true, total: 5, pontos: [{ litros: 0, razao: 0.12 }], pendente: { litros: 5 }, razaoAtual: 0.2 }
+  await motor.acao('calib-mais', { l: '5' }, ctx)
+  assert.deepEqual(pedidos.at(-1).o.body, { litros: '5' })
+  assert.ok(pedidos.at(-1).url.endsWith('/calibracao/adicionar'))
+  assert.match(motor.render(ctx), /No depósito: 5 L/)
+})

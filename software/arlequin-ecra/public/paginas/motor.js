@@ -47,6 +47,36 @@ function teclado (t) {
 </div></div>`
 }
 
+// Calibração completa do depósito (vazio e +5 L de cada vez): estado de 2 em 2 s.
+function buscarCalib (ctx) {
+  if (ctx.estado.aBuscarCalib || Date.now() - (ctx.estado.calibEm || 0) < 2000) return
+  ctx.estado.aBuscarCalib = true
+  ctx.pedir('/plugins/signalk-arlequin-gasoleo/calibracao')
+    .then(r => { ctx.estado.calib = r })
+    .catch(() => { ctx.estado.calib = null })
+    .finally(() => { ctx.estado.aBuscarCalib = false; ctx.estado.calibEm = Date.now() })
+}
+
+function painelCalib (c, msg) {
+  const nf = (x, d = 0) => String(x.toFixed(d)).replace('.', ',')
+  if (!c) return '<div class="lab">A ligar ao plugin do gasóleo…</div>'
+  if (!c.ativa) {
+    return `<div class="vv">Calibração completa do depósito</div>
+<div style="font-size:1.15rem;margin:.5rem 0;">Com o depósito <b>vazio e limpo</b>, o barco direito e o motor desligado. Depois deitas o gasóleo aos 5 L e carregas em "+5 L" de cada vez: o sistema espera que a leitura estabilize e grava.</div>
+<div class="lab">Tabela atual: ${c.tabela?.length || 0} pontos · capacidade ${c.capacidadeL} L</div>
+<div class="acoes" style="margin-top:.6rem;"><button class="acao go" data-acao="calib-iniciar">Começar (depósito vazio)</button><button class="acao" data-acao="calib-fechar">Fechar</button></div>`
+  }
+  const ultimos = c.pontos.slice(-6).reverse().map(p => `<div class="linha"><span>${nf(p.litros)} L</span><span class="lab">razão ${nf(p.razao, 4)}</span></div>`).join('')
+  const pronto = !c.pendente
+  return `<div class="linha"><span class="vv">No depósito: ${nf(c.total)} L</span><span class="${pronto ? 'ok' : 'atencao'}" style="font-size:1.3rem;">${pronto ? '✓ pronto: deita mais' : '⏳ a estabilizar…'}</span></div>
+<div class="lab">${c.pontos.length} pontos gravados · razão agora ${c.razaoAtual != null ? nf(c.razaoAtual, 4) : '—'}</div>
+${c.boiaParada ? `<div class="atencao">A boia não mexeu entre ${nf(c.boiaParada.de)} e ${nf(c.boiaParada.ate)} L: aí o medidor não vê diferença.</div>` : ''}
+<div class="acoes" style="margin:.6rem 0;"><button class="acao go" data-acao="calib-mais" data-l="5" ${pronto ? '' : 'disabled style="opacity:.5"'}>+5 L</button><button class="acao go" data-acao="calib-mais" data-l="10" ${pronto ? '' : 'disabled style="opacity:.5"'}>+10 L</button><button class="acao" data-acao="calib-desfazer">Desfazer</button></div>
+<div style="max-height:9rem;overflow:auto;">${ultimos}</div>
+${msg ? `<div class="perigo">${msg}</div>` : ''}
+<div class="acoes" style="margin-top:.6rem;"><button class="acao go" data-acao="calib-terminar" data-cheio="1">Terminar: está cheio</button><button class="acao" data-acao="calib-terminar" data-cheio="">Terminar (não está cheio)</button><button class="acao stop" data-acao="calib-cancelar">Cancelar</button></div>`
+}
+
 const hm = (iso) => { const d = new Date(iso); return `${d.getDate()}/${d.getMonth() + 1} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` }
 
 export default {
@@ -55,6 +85,7 @@ export default {
     buscarSessoes(ctx)
     buscarCurva(ctx)
     buscarGasoleo(ctx)
+    if (ctx.estado.calibAberta) buscarCalib(ctx)
     const rpm = ctx.v('propulsion.main.revolutions')
     const ligado = ok(rpm) && rpm > 5
     const temp = ctx.v('propulsion.main.temperature')
@@ -97,7 +128,7 @@ export default {
   <div class="lab">${regimes}</div></div>
 ${tileGasoleo(ctx, true)}
 <div class="tile" style="flex:0 0 auto;"><div class="linha"><span class="lab">${gasInfo}</span>
-  <span class="acoes"><button class="btn" style="padding:.4rem .9rem;" data-acao="abrir-teclado" data-modo="abasteci">Abasteci</button><button class="btn" style="padding:.4rem .9rem;" data-acao="abrir-teclado" data-modo="calibrar">Calibrar</button></span></div>
+  <span class="acoes"><button class="btn" style="padding:.4rem .9rem;" data-acao="abrir-teclado" data-modo="abasteci">Abasteci</button><button class="btn" style="padding:.4rem .9rem;" data-acao="abrir-teclado" data-modo="calibrar">Calibrar</button><button class="btn" style="padding:.4rem .9rem;" data-acao="calib-abrir">Calibração completa</button></span></div>
   ${ctx.estado.msgGas ? `<div class="${ctx.estado.msgGasErro ? 'perigo' : 'ok'}">${ctx.estado.msgGas}</div>` : ''}</div>
 <div class="tile"><div class="lab">Alarmes do motor, da energia e do gasóleo</div>${alarmes.length ? alarmes.map(n => `<div class="${n.state === 'warn' ? 'atencao' : 'perigo'}">${n.message}</div>`).join('') : '<div class="ok">sem alarmes</div>'}</div>
 </div>
@@ -112,10 +143,27 @@ ${tileGasoleo(ctx, true)}
 ${sess === undefined ? '<div class="lab">a carregar…</div>' : sess === null ? '<div class="lab">plugin de energia não responde</div>' : sess.length === 0 ? '<div class="lab">ainda nenhuma</div>'
   : sess.map(s => `<div class="linha"><span>${hm(s.inicio)}</span><span>${Math.floor(s.duracaoMin / 60)} h ${String(s.duracaoMin % 60).padStart(2, '0')} · +${num(s.ah, 1)} Ah · ${Math.round(s.socInicial * 100)}→${Math.round(s.socFinal * 100)}%</span></div>`).join('')}
 </div>
-</div>${ctx.estado.teclado ? teclado(ctx.estado.teclado) : ''}`
+</div>${ctx.estado.teclado ? teclado(ctx.estado.teclado) : ''}${ctx.estado.calibAberta ? `<div class="teclado"><div class="tile teclado-caixa" style="width:min(44rem,94vw);">${painelCalib(ctx.estado.calib, ctx.estado.msgCalib)}</div></div>` : ''}`
   },
   async acao (nome, dados, ctx) {
     const e = ctx.estado
+    const calib = async (rota, corpo = {}) => {
+      try {
+        e.calib = await ctx.pedir(`/plugins/signalk-arlequin-gasoleo/calibracao${rota}`, { method: 'POST', body: corpo })
+        e.msgCalib = null
+      } catch (err) { e.msgCalib = err.message }
+      e.calibEm = 0
+    }
+    if (nome === 'calib-abrir') { e.calibAberta = true; e.calibEm = 0; e.msgCalib = null }
+    if (nome === 'calib-fechar') e.calibAberta = false
+    if (nome === 'calib-iniciar') await calib('/iniciar')
+    if (nome === 'calib-mais') await calib('/adicionar', { litros: dados.l })
+    if (nome === 'calib-desfazer') await calib('/desfazer')
+    if (nome === 'calib-cancelar' && confirm('Cancelar a calibração? Fica a tabela antiga.')) { await calib('/cancelar'); e.calibAberta = false }
+    if (nome === 'calib-terminar') {
+      await calib('/terminar', { cheio: !!dados.cheio })
+      if (!e.msgCalib) { e.calibAberta = false; e.msgGas = 'Calibração guardada'; e.msgGasErro = false; e.gasEm = 0 }
+    }
     if (nome === 'abrir-teclado') e.teclado = { modo: dados.modo, valor: '' }
     if (nome === 'teclado-cancelar') e.teclado = null
     if (nome === 'tecla' && e.teclado) {

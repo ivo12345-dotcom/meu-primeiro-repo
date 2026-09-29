@@ -150,3 +150,42 @@ test('abastecimento sem a sonda mudar: 422 e a tabela fica igual', async (t) => 
   assert.equal(a.status, 422)
   assert.equal(app.opcoesGuardadas, null)
 })
+
+test('calibração completa pelo ecrã: vazio, +5 L até cheio, tabela e capacidade guardadas', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ tabela: [{ razao: 0.1, litros: 0 }, { razao: 0.7, litros: 200 }] })
+  const r = rotasDe(p)
+  app.self['tanks.fuel.0.supplyVoltage'] = 12.5
+  const razaoDe = (L) => 0.12 + 0.55 * Math.sqrt(L / 210) // depósito real de 210 L
+  app.self['tanks.fuel.0.senderVoltage'] = razaoDe(0) * 12.5
+  await chamar(r.post['/calibracao/iniciar'], {})
+  avancar(t, 40)
+  for (let L = 5; L <= 210; L += 5) {
+    const a = await chamar(r.post['/calibracao/adicionar'], { litros: '5' })
+    assert.equal(a.ok, true, a.erro)
+    app.self['tanks.fuel.0.senderVoltage'] = razaoDe(L) * 12.5
+    avancar(t, 45)
+  }
+  const fim = await chamar(r.post['/calibracao/terminar'], { cheio: true })
+  p.stop()
+  assert.equal(fim.ok, true, fim.erro)
+  assert.equal(fim.tabela.length, 43)
+  assert.equal(fim.capacidadeL, 210)
+  assert.equal(app.opcoesGuardadas.capacidadeL, 210)
+  assert.equal(app.opcoesGuardadas.tabela.length, 43)
+})
+
+test('importar a folha do multímetro', async (t) => {
+  const app = appFalso()
+  const p = criar(app)
+  p.start({})
+  const r = rotasDe(p)
+  const linhas = [0, 20, 60, 120, 200].map(L => ({ litros: L, sonda: (0.1 + 0.003 * L) * 12.6, alimentacao: 12.6 }))
+  const res = await chamar(r.post['/calibracao/importar'], { linhas, cheio: true })
+  p.stop()
+  assert.equal(res.ok, true)
+  assert.equal(res.tabela.length, 5)
+  assert.equal(app.opcoesGuardadas.capacidadeL, 200)
+})

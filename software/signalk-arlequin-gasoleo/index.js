@@ -6,7 +6,8 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { novoEstado, passo } = require('./lib/nivel')
-const { acrescentarPonto } = require('./lib/tabela')
+const { acrescentarPonto, monotona } = require('./lib/tabela')
+const calibracao = require('./lib/calibracao')
 
 const DUAS_HORAS = 2 * 3600 * 1000
 
@@ -39,6 +40,7 @@ module.exports = function (app) {
   let estado = novoEstado()
   let temporizador = null
   let ultimoAbastecimento = null
+  let calib = null // sessão de calibração completa (depósito vazio, +5 L de cada vez)
   let ficheiroAbast, ficheiroNivel
   let ultimaGravacao = 0
 
@@ -63,6 +65,15 @@ module.exports = function (app) {
     const alimentacao = numero(o.caminhoAlimentacao)
     if (sonda === null || alimentacao === null) {
       app.setPluginStatus('À espera das tensões do ADS1115 (app I2C do OpenPlotter)')
+      return
+    }
+    // Calibração em curso: só se juntam leituras (barco direito); nada de alarmes nem abastecimentos.
+    if (calib) {
+      const roll = app.getSelfPath?.('navigation.attitude')?.value?.roll
+      if (!(typeof roll === 'number' && Math.abs(roll) >= 5 * Math.PI / 180)) {
+        calib = calibracao.amostra(calib, { t: Date.now(), razao: alimentacao > 1 ? sonda / alimentacao : null })
+      }
+      app.setPluginStatus(`Calibração: ${calib.total} L no depósito · ${calib.pontos.length} pontos${calib.pendente ? ' · a estabilizar…' : ''}`)
       return
     }
     const rpm = numero('propulsion.main.revolutions')
@@ -135,6 +146,54 @@ module.exports = function (app) {
 
   plugin.registerWithRouter = function (router) {
     const litrosDoPedido = (req) => Number(String(req.body?.litros ?? '').replace(',', '.'))
+
+    // ---- Calibração completa (depósito vazio e limpo, gasóleo aos 5 L) ----
+    const vistaCalib = () => calib && {
+      ativa: true, total: calib.total, pontos: calib.pontos, boiaParada: calib.boiaParada,
+      pendente: calib.pendente && { litros: calib.pendente.litros }, razaoAtual: estado.razao
+    }
+    const aplicarTabela = (tabela, capacidadeL) => {
+      o = { ...o, tabela, ...(capacidadeL ? { capacidadeL } : {}) }
+      app.savePluginOptions?.(o, (e) => { if (e) app.error(`não guardei a tabela: ${e.message || e}`) })
+      estado = novoEstado() // o nível volta a sair da tabela nova
+      try { fs.unlinkSync(ficheiroNivel) } catch { }
+    }
+    router.get('/calibracao', (req, res) => res.json(vistaCalib() || { ativa: false, tabela: o.tabela, capacidadeL: o.capacidadeL }))
+    router.post('/calibracao/iniciar', (req, res) => {
+      const litros = req.body?.litros === undefined ? 0 : litrosDoPedido(req)
+      if (!(litros >= 0)) return res.status(400).json({ ok: false, erro: 'litros inválidos' })
+      calib = calibracao.iniciar(litros)
+      res.json({ ok: true, ...vistaCalib() })
+    })
+    router.post('/calibracao/adicionar', (req, res) => {
+      if (!calib) return res.status(409).json({ ok: false, erro: 'não há calibração em curso' })
+      try { calib = calibracao.adicionar(calib, litrosDoPedido(req), Date.now()) } catch (e) { return res.status(409).json({ ok: false, erro: e.message }) }
+      res.json({ ok: true, ...vistaCalib() })
+    })
+    router.post('/calibracao/desfazer', (req, res) => {
+      if (!calib) return res.status(409).json({ ok: false, erro: 'não há calibração em curso' })
+      calib = calibracao.desfazer(calib)
+      res.json({ ok: true, ...vistaCalib() })
+    })
+    router.post('/calibracao/cancelar', (req, res) => { calib = null; res.json({ ok: true, ativa: false }) })
+    router.post('/calibracao/terminar', (req, res) => {
+      if (!calib) return res.status(409).json({ ok: false, erro: 'não há calibração em curso' })
+      let r
+      try { r = calibracao.terminar(calib, { cheio: !!req.body?.cheio }) } catch (e) { return res.status(409).json({ ok: false, erro: e.message }) }
+      if (!monotona(r.tabela)) return res.status(422).json({ ok: false, erro: 'a tabela não é coerente: rever os pontos (desfazer)' })
+      aplicarTabela(r.tabela, r.capacidadeL)
+      calib = null
+      res.json({ ok: true, ...r })
+    })
+    // Folha do multímetro: { linhas: [{ litros, sonda, alimentacao }], cheio }
+    router.post('/calibracao/importar', (req, res) => {
+      let r
+      try { r = calibracao.importar(req.body?.linhas || []) } catch (e) { return res.status(400).json({ ok: false, erro: e.message }) }
+      if (r.tabela.length < 2 || !monotona(r.tabela)) return res.status(422).json({ ok: false, erro: 'a folha não dá uma tabela coerente' })
+      const cap = req.body?.cheio ? Math.max(...(req.body.linhas || []).map(l => l.litros)) : null
+      aplicarTabela(r.tabela, cap)
+      res.json({ ok: true, ...r, capacidadeL: cap || o.capacidadeL })
+    })
 
     router.get('/estado', (req, res) => res.json({
       litros: estado.litros, mediana: estado.mediana, razao: estado.razao, razaoMediana: estado.razaoMediana,
