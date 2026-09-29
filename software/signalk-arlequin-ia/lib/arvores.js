@@ -7,6 +7,7 @@
 const ZERO = 1e-35
 
 function vaiEsquerda (no, v) {
+  if (no.decision_type !== undefined && no.decision_type !== '<=') throw new Error(`divisão não numérica (${no.decision_type}) não suportada`)
   if (v === null || v === undefined || Number.isNaN(v)) v = NaN
   if (Number.isNaN(v) && no.missing_type !== 'NaN') v = 0
   if ((no.missing_type === 'Zero' && Math.abs(v) <= ZERO) || (no.missing_type === 'NaN' && Number.isNaN(v))) return no.default_left

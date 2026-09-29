@@ -32,3 +32,13 @@ test('árvore de uma só folha e regras de valores em falta', () => {
   assert.equal(preverArvores(dump, { a: null }), 1 + 20 + 200 + 2000) // NaN: à direita; None: NaN vira 0 (> -1); Zero: 0 é falta → à direita
   assert.equal(preverArvores(dump, {}), 1 + 20 + 200 + 2000)
 })
+
+test('divisão categórica (==) não suportada: falha em vez de avaliar mal', () => {
+  const dump = {
+    feature_names: ['a'],
+    tree_info: [
+      { tree_structure: { split_feature: 0, decision_type: '==', threshold: '1||2', default_left: false, left_child: { leaf_value: 10 }, right_child: { leaf_value: 20 } } }
+    ]
+  }
+  assert.throws(() => preverArvores(dump, { a: 1 }), /não numérica/)
+})

@@ -31,7 +31,8 @@ def main(saida):
                       'grandeRizos': rng.integers(-1, 3, 60), 'genoaPct': rng.choice([0, 50, 70, 100], 60),
                       'rpm': rng.choice([0, 0, 0, 1800, 2200], 60)})[m['variaveis']].astype(float)
     for col, cada in (('prevOndas', 3), ('balAdorno', 4), ('tws', 11), ('rpm', 7)):
-        x.loc[x.index[::cada], col] = np.nan
+        if col in x.columns:
+            x.loc[x.index[::cada], col] = np.nan
     casos = [{'x': {k: (None if pd.isna(v) else float(v)) for k, v in linha.items()},
               **{q: float(prever_guardado(m, x.iloc[[i]], q)[0]) for q in ('p10', 'p50', 'p90')}}
              for i, (_, linha) in enumerate(x.iterrows())]
