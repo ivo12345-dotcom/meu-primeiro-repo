@@ -91,3 +91,8 @@ test('disco da caixa negra: o aviso (warn) nunca vai para o Telegram; só o alar
   passo('normal', 'Normal', 300)
   assert.deepEqual(envios, ['🚨 Disco a 96%: parei de gravar o bruto', '✓ Resolvido: Disco a 96%: parei de gravar o bruto'])
 })
+
+test('o aviso do relógio do Pi desacertado nunca vai para o Telegram', () => {
+  const r = encaminhar(novoEncaminhador(), [n('notifications.arlequin.caixanegra.relogio', 'warn', 'Relógio do Pi desacertado 5 min')], 0)
+  assert.deepEqual(r.mensagens, [])
+})

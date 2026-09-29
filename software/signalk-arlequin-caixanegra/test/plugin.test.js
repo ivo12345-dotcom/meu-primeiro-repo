@@ -314,3 +314,33 @@ test('depois de um corte de energia: um .gz com o último bloco cortado fica de 
   assert.equal(linhas.length, 1 + 2)
   assert.ok(fs.existsSync(bom))
 })
+
+test('relógio do Pi: com a hora do GPS a mais de 60 s avisa uma vez (só no ecrã); abaixo dos 30 s limpa', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 50
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  const comGps = (n, desvioMs) => {
+    for (let i = 0; i < n; i++) {
+      app.signalk.emit('unfilteredDelta', { context: EU, updates: [{ $source: 'nmea0183.GP', values: [{ path: 'navigation.datetime', value: new Date(Date.now() + desvioMs).toISOString() }] }] })
+      t.mock.timers.tick(1000)
+    }
+  }
+  const relogio = () => app.notificacoes.filter(n => n.path === 'notifications.arlequin.caixanegra.relogio')
+  comGps(30, 45000) // 45 s: ainda tolerável
+  assert.deepEqual(relogio(), [])
+  comGps(30, -5 * 60000) // o GPS diz 5 min antes: o Pi está adiantado
+  assert.equal(relogio().length, 1)
+  assert.equal(relogio()[0].state, 'warn')
+  assert.deepEqual(relogio()[0].method, ['visual'])
+  assert.equal(relogio()[0].message, 'Relógio do Pi desacertado 5 min — os dados ficam com a hora errada')
+  comGps(30, 40000) // 40 s: melhor, mas ainda não dentro dos 30 s
+  assert.equal(relogio().length, 1)
+  comGps(30, 2000)
+  assert.equal(relogio().length, 2)
+  assert.equal(relogio()[1].state, 'normal')
+  comGps(30, 2000)
+  assert.equal(relogio().length, 2, 'não repete')
+  p.stop()
+})

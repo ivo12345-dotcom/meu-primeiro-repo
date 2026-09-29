@@ -1167,6 +1167,11 @@ telemóvel. Notas já discutidas:
    - abrir o link que aparece e aprovar com a conta.
 4. Testar no portátil: `ssh pi@arlequin "ls ~/arlequin-dados"`.
 
+**Relógio do Pi certo** (uma vez): os nomes dos ficheiros e a junção dos dados com as previsões e as saídas dependem da hora do Pi. A bordo não há Internet para a acertar e, sem pilha, o Pi arranca com a hora errada.
+- Pôr a **pilha do relógio (RTC) do Pi 5** (a oficial, recarregável, na ficha "BAT").
+- E acertar a hora pelo GPS: plugin **`@signalk/set-system-time`** no SignalK (ou o equivalente do OpenPlotter).
+- Se mesmo assim a hora do GPS e a do Pi diferirem mais de 1 min, o ecrã avisa "Relógio do Pi desacertado" (só no ecrã, não vai para o Telegram).
+
 **Copiar os dados** (sempre que estiveres a bordo com rede):
 
 ```

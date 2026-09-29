@@ -55,6 +55,7 @@ module.exports = function (app) {
   let ultimaLinha = null
   let infoDisco = null
   let avisoDisco = 'normal'
+  let relogioErrado = false
   let erros = 0
 
   // Corre dentro do emit do SignalK: se rebentasse aqui, a mensagem perdia-se
@@ -110,6 +111,7 @@ module.exports = function (app) {
     contador++
     if (contador % 10 === 0) {
       try { dezSegundos(agora, v) } catch (e) { erros++; app.error(`caixa negra: ${e.message}`) }
+      try { verificarRelogio(agora) } catch (e) { erros++; app.error(`relógio: ${e.message}`) }
     }
     if (contador % 60 === 0) {
       try { minuto() } catch (e) { erros++; app.error(`caixa negra: ${e.message}`) }
@@ -153,6 +155,24 @@ module.exports = function (app) {
 
   // Um confirmados.json estragado não pára nada (conta como vazio), mas tem de se ver.
   const erroConfirmados = (e) => { erros++; app.error(e.message) }
+
+  // Os nomes dos ficheiros e as junções da AI (previsões, saídas) dependem da
+  // hora do Pi. Se a hora do GPS (navigation.datetime) diferir mais de 60 s,
+  // aviso só no ecrã; limpa quando voltar a menos de 30 s.
+  function verificarRelogio (agora) {
+    const g = estado.valores['navigation.datetime']
+    if (!g || agora - g.t > 15000) return
+    const gps = Date.parse(g.value)
+    if (!Number.isFinite(gps)) return
+    const desvio = Math.abs(g.t - gps) // hora do Pi quando chegou a mensagem − hora que o GPS lá pôs
+    if (!relogioErrado && desvio > 60000) {
+      relogioErrado = true
+      notificar('relogio', 'warn', `Relógio do Pi desacertado ${Math.round(desvio / 60000)} min — os dados ficam com a hora errada`)
+    } else if (relogioErrado && desvio < 30000) {
+      relogioErrado = false
+      notificar('relogio', 'normal', 'Normal')
+    }
+  }
 
   function verificarDisco () {
     const u = disco.usoDisco(base)
@@ -217,6 +237,7 @@ module.exports = function (app) {
     ultimaLinha = null
     infoDisco = null
     avisoDisco = 'normal'
+    relogioErrado = false
     erros = 0
     ultimoErroDelta = -Infinity
     isolarDanificados(Date.now())

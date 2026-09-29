@@ -16,9 +16,11 @@ function novoEncaminhador () {
 // O limite de 10 min só trava ALARMES repetidos do mesmo caminho; o "resolvido"
 // de um alarme que foi enviado segue sempre (senão ficava-se a julgar que continua).
 const SO_ALARME = ['notifications.arlequin.caixanegra.disco']
+// Lembretes e avisos só para o ecrã: nunca seguem para o Telegram.
+const NUNCA = ['notifications.arlequin.caixanegra.velas', 'notifications.arlequin.caixanegra.relogio']
 const GRAVE = new Set(['alarm', 'emergency'])
 
-function encaminhar (enc0, notificacoes, agora, { intervalo = 10 * 60 * 1000, amarrado = false, ignorarAmarrado = ['notifications.arlequin.ais.'], nunca = ['notifications.arlequin.caixanegra.velas'], soAlarme = SO_ALARME } = {}) {
+function encaminhar (enc0, notificacoes, agora, { intervalo = 10 * 60 * 1000, amarrado = false, ignorarAmarrado = ['notifications.arlequin.ais.'], nunca = NUNCA, soAlarme = SO_ALARME } = {}) {
   const enc = { estados: { ...enc0.estados }, mensagem: { ...enc0.mensagem }, ultimoAlarme: { ...enc0.ultimoAlarme }, pendente: { ...enc0.pendente } }
   const mensagens = []
   for (const n of notificacoes) {
@@ -58,4 +60,4 @@ function listarNotificacoes (arvore, prefixo = 'notifications') {
   return lista
 }
 
-module.exports = { novoEncaminhador, encaminhar, listarNotificacoes }
+module.exports = { novoEncaminhador, encaminhar, listarNotificacoes, NUNCA }
