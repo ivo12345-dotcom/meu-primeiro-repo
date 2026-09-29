@@ -9,7 +9,7 @@ const os = require('node:os')
 const path = require('node:path')
 const { exec } = require('node:child_process')
 const { novoEstado, passo, distancia } = require('./lib/regras')
-const { novoEncaminhador, encaminhar, listarNotificacoes } = require('./lib/mensagens')
+const { novoEncaminhador, encaminhar, listarNotificacoes, alarmesAtivos } = require('./lib/mensagens')
 const { resumo } = require('./lib/resumo')
 const { criarTelegram } = require('./lib/telegram')
 
@@ -99,8 +99,7 @@ module.exports = function (app) {
 
   function textoEstado () {
     const pos = val('navigation.position')
-    const alarmes = listarNotificacoes(app.getSelfPath?.('notifications'))
-      .filter(n => ['alarm', 'emergency', 'warn'].includes(n.state)).map(n => n.message || n.caminho)
+    const alarmes = alarmesAtivos(listarNotificacoes(app.getSelfPath?.('notifications')))
     return resumo(val, {
       armado: persist.armado,
       amarracao: { ponto: estado.amarracao.ponto, distancia: estado.amarracao.ponto && pos ? distancia(estado.amarracao.ponto, pos) : null },

@@ -60,4 +60,11 @@ function listarNotificacoes (arvore, prefixo = 'notifications') {
   return lista
 }
 
-module.exports = { novoEncaminhador, encaminhar, listarNotificacoes, NUNCA }
+// Alarmes ativos para o /estado do Telegram (sem os lembretes só do ecrã).
+function alarmesAtivos (lista, nunca = NUNCA) {
+  return lista
+    .filter(n => ['alarm', 'emergency', 'warn'].includes(n.state) && !nunca.some(p => n.caminho.startsWith(p)))
+    .map(n => n.message || n.caminho)
+}
+
+module.exports = { novoEncaminhador, encaminhar, listarNotificacoes, alarmesAtivos, NUNCA }

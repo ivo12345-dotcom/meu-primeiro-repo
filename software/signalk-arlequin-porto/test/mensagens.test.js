@@ -1,7 +1,7 @@
 'use strict'
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { novoEncaminhador, encaminhar, listarNotificacoes } = require('../lib/mensagens')
+const { novoEncaminhador, encaminhar, listarNotificacoes, alarmesAtivos } = require('../lib/mensagens')
 const { resumo } = require('../lib/resumo')
 
 const MIN = 60 * 1000
@@ -95,4 +95,15 @@ test('disco da caixa negra: o aviso (warn) nunca vai para o Telegram; só o alar
 test('o aviso do relógio do Pi desacertado nunca vai para o Telegram', () => {
   const r = encaminhar(novoEncaminhador(), [n('notifications.arlequin.caixanegra.relogio', 'warn', 'Relógio do Pi desacertado 5 min')], 0)
   assert.deepEqual(r.mensagens, [])
+})
+
+test('/estado: os lembretes só do ecrã (velas, relógio) não aparecem nos alarmes ativos', () => {
+  assert.deepEqual(alarmesAtivos([
+    n('notifications.arlequin.caixanegra.velas', 'warn', 'As velas continuam assim?'),
+    n('notifications.arlequin.caixanegra.relogio', 'warn', 'Relógio do Pi desacertado 5 min'),
+    n('notifications.arlequin.caixanegra.disco', 'warn', 'Disco a 81%'),
+    n('notifications.arlequin.porto.fumo', 'emergency', 'FUMO a bordo!'),
+    n('notifications.arlequin.energia.ligarMotor', 'normal', 'Normal'),
+    { caminho: 'notifications.arlequin.porto.intrusao', state: 'alarm' }
+  ]), ['Disco a 81%', 'FUMO a bordo!', 'notifications.arlequin.porto.intrusao'])
 })
