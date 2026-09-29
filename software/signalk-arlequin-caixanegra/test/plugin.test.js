@@ -250,6 +250,51 @@ test('disco a 81% com bruto confirmado: apaga e não avisa (o aviso aos 80% não
   assert.deepEqual(app.notificacoes.filter(n => n.path === 'notifications.arlequin.caixanegra.disco'), [], 'sem aviso: depois de apagar fica abaixo dos 80%')
 })
 
+test('disco a 96% com um confirmado que mudou depois de confirmado: não conta como espaço a libertar → pára o bruto e dá alarme', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 96
+  totalFalso = 1000 // o ficheiro de 100 bytes vale 10%: se contasse, 96 → 86 e o alarme ficava escondido
+  t.after(() => { totalFalso = 256e9 })
+  const app = appFalso()
+  const base = path.join(app.dir, 'dados')
+  fs.mkdirSync(path.join(base, 'bruto'), { recursive: true })
+  const antigo = path.join(base, 'bruto', '2026-09-28T10.ndjson.gz')
+  fs.writeFileSync(antigo, 'x'.repeat(100))
+  fs.writeFileSync(path.join(base, 'confirmados.json'), JSON.stringify({ 'bruto/2026-09-28T10.ndjson.gz': confirmados.sha256Ficheiro(antigo) }))
+  fs.appendFileSync(antigo, 'mudou') // depois de confirmado: já não bate certo, nunca se apaga
+  const p = criar(app)
+  p.start({ pasta: base })
+  correr(t, app, 60, 'nmea0183.GP')
+  assert.match(app.estado, /BRUTO PARADO/, 'logo no primeiro minuto')
+  const alarme = app.notificacoes.filter(n => n.path === 'notifications.arlequin.caixanegra.disco')
+  assert.deepEqual(alarme.map(n => n.state), ['alarm'])
+  correr(t, app, 120, 'nmea0183.GP')
+  p.stop()
+  assert.match(app.estado, /BRUTO PARADO/, 'e continua nos minutos seguintes (não volta a contar como libertado)')
+  assert.equal(app.notificacoes.filter(n => n.path === 'notifications.arlequin.caixanegra.disco').length, 1)
+  assert.equal(fs.existsSync(antigo), true, 'não se apaga')
+  assert.deepEqual(Object.keys(confirmados.lerConfirmados(base)), ['bruto/2026-09-28T10.ndjson.gz'], 'nem sai do confirmados.json')
+})
+
+test('disco a 81% com um confirmado que mudou: o aviso dos 80% não fica escondido', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 81
+  totalFalso = 1000
+  t.after(() => { totalFalso = 256e9 })
+  const app = appFalso()
+  const base = path.join(app.dir, 'dados')
+  fs.mkdirSync(path.join(base, 'bruto'), { recursive: true })
+  const antigo = path.join(base, 'bruto', '2026-09-28T10.ndjson.gz')
+  fs.writeFileSync(antigo, 'x'.repeat(100))
+  fs.writeFileSync(path.join(base, 'confirmados.json'), JSON.stringify({ 'bruto/2026-09-28T10.ndjson.gz': confirmados.sha256Ficheiro(antigo) }))
+  fs.appendFileSync(antigo, 'mudou')
+  const p = criar(app)
+  p.start({ pasta: base })
+  correr(t, app, 180, 'nmea0183.GP')
+  p.stop()
+  assert.deepEqual(app.notificacoes.filter(n => n.path === 'notifications.arlequin.caixanegra.disco').map(n => n.state), ['warn'])
+})
+
 test('confirmados.json estragado no Pi: conta como erro (vê-se no /estado) e o resto continua', async (t) => {
   t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
   usoFalso = 50

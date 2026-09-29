@@ -53,8 +53,9 @@ test('apagar só o confirmado e só se o hash ainda bater certo', () => {
   entrada(b, 'c.json', [{ ficheiro: 'bruto/2026-09-28T10.ndjson.gz', sha256: h10 }, { ficheiro: 'bruto/2026-09-28T11.ndjson.gz', sha256: h11 }])
   conf.processarEntrada(b)
   fs.appendFileSync(path.join(b, 'bruto', '2026-09-28T11.ndjson.gz'), 'mais') // mudou depois de confirmado
-  const apagados = conf.apagarConfirmados(b, ['bruto/2026-09-28T10.ndjson.gz', 'bruto/2026-09-28T11.ndjson.gz', 'bruto/outro.gz'])
-  assert.deepEqual(apagados, ['bruto/2026-09-28T10.ndjson.gz'])
+  const r = conf.apagarConfirmados(b, ['bruto/2026-09-28T10.ndjson.gz', 'bruto/2026-09-28T11.ndjson.gz', 'bruto/outro.gz'])
+  assert.deepEqual(r.apagados, ['bruto/2026-09-28T10.ndjson.gz'])
+  assert.deepEqual(r.mudados, ['bruto/2026-09-28T11.ndjson.gz'], 'quem chama fica a saber que este não se pode apagar')
   assert.equal(fs.existsSync(path.join(b, 'bruto', '2026-09-28T11.ndjson.gz')), true)
   assert.deepEqual(Object.keys(conf.lerConfirmados(b)), ['bruto/2026-09-28T11.ndjson.gz'])
 })
@@ -154,8 +155,8 @@ test('orçamento também no apagar: pára quando se gastou, o resto fica para o 
   entrada(b, 'c.json', Object.entries(h).map(([ficheiro, sha256]) => ({ ficheiro, sha256 })))
   conf.processarEntrada(b)
   const todos = Object.keys(h)
-  assert.deepEqual(conf.apagarConfirmados(b, todos, { orcamentoBytes: 150 }), ['bruto/2026-09-28T10.ndjson.gz'])
-  assert.deepEqual(conf.apagarConfirmados(b, todos, { orcamentoBytes: 250 }), ['bruto/2026-09-28T11.ndjson.gz', 'bruto/2026-09-28T12.ndjson.gz'])
+  assert.deepEqual(conf.apagarConfirmados(b, todos, { orcamentoBytes: 150 }).apagados, ['bruto/2026-09-28T10.ndjson.gz'])
+  assert.deepEqual(conf.apagarConfirmados(b, todos, { orcamentoBytes: 250 }).apagados, ['bruto/2026-09-28T11.ndjson.gz', 'bruto/2026-09-28T12.ndjson.gz'])
   assert.deepEqual(conf.lerConfirmados(b), {})
 })
 

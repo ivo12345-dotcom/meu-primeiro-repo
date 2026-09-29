@@ -85,9 +85,13 @@ function processarEntrada (base, { orcamentoBytes = ORCAMENTO_BYTES, aoErro } = 
   return r
 }
 
+// Devolve { apagados, mudados }: `mudados` são confirmados cujo sha256 já não
+// bate certo (mudaram depois de confirmados). Esses nunca se apagam; quem chama
+// não os pode contar como espaço a libertar.
 function apagarConfirmados (base, ficheiros, { orcamentoBytes = ORCAMENTO_BYTES, aoErro } = {}) {
   const conf = lerConfirmados(base, aoErro)
   const apagados = []
+  const mudados = []
   let gastos = 0
   for (const ficheiro of ficheiros) {
     const alvo = path.join(base, ficheiro)
@@ -95,13 +99,13 @@ function apagarConfirmados (base, ficheiros, { orcamentoBytes = ORCAMENTO_BYTES,
     const bytes = fs.statSync(alvo).size
     if (gastos > 0 && gastos + bytes > orcamentoBytes) break // o resto fica para o minuto seguinte
     gastos += bytes
-    if (sha256Ficheiro(alvo) !== conf[ficheiro]) continue // mudou depois de confirmado: fica
+    if (sha256Ficheiro(alvo) !== conf[ficheiro]) { mudados.push(ficheiro); continue } // mudou depois de confirmado: fica
     fs.unlinkSync(alvo)
     delete conf[ficheiro]
     apagados.push(ficheiro)
   }
   if (apagados.length) gravarConfirmados(base, conf)
-  return apagados
+  return { apagados, mudados }
 }
 
 module.exports = { sha256Ficheiro, lerConfirmados, processarEntrada, apagarConfirmados }

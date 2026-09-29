@@ -179,11 +179,33 @@ module.exports = function (app) {
     }
   }
 
+  // Confirmados que mudaram depois de confirmados (o sha256 já não bate certo):
+  // nunca se apagam, por isso não podem contar como espaço a libertar, senão
+  // escondiam o aviso dos 80% e o alarme dos 95% para sempre. Ficam no
+  // confirmados.json; a chave leva o hash, para que uma nova confirmação do
+  // portátil (hash novo) os volte a tornar apagáveis.
+  let mudados = new Set()
+  const chaveMudado = (f, h) => `${f} ${h}`
+
   function verificarDisco () {
     const u = disco.usoDisco(base)
-    const plano = disco.planear({ ...u, ficheiros: listarBruto(), confirmados: confirmados.lerConfirmados(base, erroConfirmados), limiteAviso: o.limiteAviso, limiteParar: o.limiteParar })
-    const apagados = plano.apagar.length ? confirmados.apagarConfirmados(base, plano.apagar, { aoErro: erroConfirmados }) : []
-    infoDisco = { ...u, aviso: plano.aviso, apagados: apagados.length }
+    const ficheiros = listarBruto()
+    const conf = confirmados.lerConfirmados(base, erroConfirmados)
+    mudados = new Set(Object.entries(conf).map(([f, h]) => chaveMudado(f, h)).filter(k => mudados.has(k)))
+    const planear = () => disco.planear({
+      ...u,
+      ficheiros,
+      confirmados: Object.fromEntries(Object.entries(conf).filter(([f, h]) => !mudados.has(chaveMudado(f, h)))),
+      limiteAviso: o.limiteAviso,
+      limiteParar: o.limiteParar
+    })
+    let plano = planear()
+    const r = plano.apagar.length ? confirmados.apagarConfirmados(base, plano.apagar, { aoErro: erroConfirmados }) : { apagados: [], mudados: [] }
+    if (r.mudados.length) {
+      for (const f of r.mudados) mudados.add(chaveMudado(f, conf[f]))
+      plano = planear() // o aviso e o parar só contam com o que se pode mesmo apagar
+    }
+    infoDisco = { ...u, aviso: plano.aviso, apagados: r.apagados.length }
     const pct = Math.round(u.usadoPct)
     if (plano.pararBruto) {
       if (!bruto.parado) bruto.parar()
@@ -243,6 +265,7 @@ module.exports = function (app) {
     infoDisco = null
     avisoDisco = 'normal'
     relogioErrado = false
+    mudados = new Set()
     erros = 0
     ultimoErroDelta = -Infinity
     isolarDanificados(Date.now())
