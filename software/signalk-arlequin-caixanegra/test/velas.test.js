@@ -37,3 +37,10 @@ test('sem vento conhecido não há lembrete', () => {
   const e2 = velas.mudar(nunca, { grandeRizos: 1 }, 0, 5)
   assert.equal(velas.precisaLembrete(e2, 10 * H, undefined), false)
 })
+
+test('calmaria: o vento de partida conta pelo menos como 2 nós', () => {
+  const NO = 1852 / 3600
+  const e = velas.mudar(velas.novoEstadoVelas(), { grandeRizos: 0 }, 0, 0)
+  assert.equal(velas.precisaLembrete(e, 1.1 * H, 2.5 * NO), false, '2,5 nós é só 25% acima de 2')
+  assert.equal(velas.precisaLembrete(e, 1.1 * H, 12 * NO), true, 'entrou vento a sério')
+})
