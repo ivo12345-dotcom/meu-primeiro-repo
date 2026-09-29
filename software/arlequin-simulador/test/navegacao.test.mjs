@@ -70,3 +70,11 @@ test('gasóleo só desce com o motor', () => {
   assert.equal(n0, n19)
   assert.ok(n25 < n19)
 })
+
+test('o NORDIC STAR só aparece uma vez (por omissão)', () => {
+  const { hist } = correr(70 * 60)
+  const nasceu = new Set(hist.map(r => r.estado.alvos[0].nasceu))
+  assert.equal(nasceu.size, 1)
+  const { hist: h2 } = correr(70 * 60, { colisaoRepeteMin: 30 })
+  assert.equal(new Set(h2.map(r => r.estado.alvos[0].nasceu)).size, 3)
+})

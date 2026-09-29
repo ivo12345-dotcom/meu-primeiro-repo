@@ -30,7 +30,8 @@ const PADRAO = Object.freeze({
   cicloMotorS: 5 * 60,
   combustivelM3: 0.2 * 0.62,
   capacidadeM3: 0.2,
-  pressaoPa: 101600
+  pressaoPa: 101600,
+  colisaoRepeteMin: 0 // 0 = o NORDIC STAR só aparece uma vez
 })
 
 // Deslocamento em metros para lat/lon (plano local).
@@ -157,8 +158,10 @@ function avancarNav (e0, dtMs) {
   const xte = doInicio.dist * Math.sin(dif(doInicio.rumo, perna.rumo))
   const vmg = sog * Math.cos(dif(cog, v.rumo))
 
-  // AIS: o NORDIC STAR renasce de 30 em 30 min em rota de colisão.
-  if (!e.alvos[0] || e.t - e.alvos[0].nasceu > 30 * 60 * 1000) e.alvos[0] = alvoColisao(e.pos, { vx, vy }, e.t)
+  // AIS: o NORDIC STAR aparece uma vez em rota de colisão (ou de N em N min,
+  // se colisaoRepeteMin > 0).
+  const repete = c.colisaoRepeteMin > 0 && e.alvos[0] && e.t - e.alvos[0].nasceu > c.colisaoRepeteMin * 60 * 1000
+  if (!e.alvos[0] || repete) e.alvos[0] = alvoColisao(e.pos, { vx, vy }, e.t)
   e.alvos = e.alvos.map((a, i) => {
     const cogA = i === 1 ? norm(a.cog + 2 * GRAU * dt / 10) : a.cog // o pesqueiro anda às voltas
     return { ...a, cog: cogA, position: mover(a.position, a.sog * Math.sin(cogA) * dt, a.sog * Math.cos(cogA) * dt) }

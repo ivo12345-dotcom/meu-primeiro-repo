@@ -21,6 +21,7 @@ module.exports = function (app) {
       msPorHora: { type: 'number', title: 'Milissegundos reais por hora simulada', default: 2000 },
       inicio: { type: 'string', title: 'Início da simulação (data/hora ISO)', default: '2026-01-10T08:00:00' },
       ventoDeGraus: { type: 'number', title: 'navegar-demo: de onde vem o vento real (graus)', default: 20 },
+      colisaoRepeteMin: { type: 'number', title: 'navegar-demo: repetir o navio em colisão de N em N min (0 = só uma vez)', default: 0 },
       cicloVelaMin: { type: 'number', title: 'navegar-demo: minutos à vela em cada ciclo', default: 20 },
       cicloMotorMin: { type: 'number', title: 'navegar-demo: minutos a motor em cada ciclo', default: 5 },
       servico: { type: 'string', title: 'ID do banco de serviço', default: 'servico' },
@@ -66,6 +67,7 @@ module.exports = function (app) {
   function comecarTempoReal (o, cenario) {
     let nav = criarNavegacao({
       ventoDir: (o.ventoDeGraus ?? 20) * Math.PI / 180,
+      colisaoRepeteMin: o.colisaoRepeteMin ?? 0,
       cicloVelaS: (o.cicloVelaMin ?? 20) * 60,
       cicloMotorS: (o.cicloMotorMin ?? 5) * 60
     }, Date.now())

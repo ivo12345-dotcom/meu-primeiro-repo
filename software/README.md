@@ -28,7 +28,8 @@ npm start
 
 O simulador arranca no cenário `navegar-demo`: em tempo real, de Peniche para a
 Nazaré. O vento vem de 020°, por isso a última perna é à bolina. Há três navios
-AIS e um deles, o NORDIC STAR, vem em rota de colisão de 30 em 30 min. O motor
+AIS e um deles, o NORDIC STAR, aparece uma vez em rota de colisão (a opção
+`colisaoRepeteMin` repete-o de N em N min). O motor
 trabalha 5 min em cada 25.
 
 Os outros cenários, acelerados (1 h simulada = 2 s), servem para os alarmes de
