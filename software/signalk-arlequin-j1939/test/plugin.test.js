@@ -87,7 +87,6 @@ test('diagnóstico: PGN vistas e mudanças da 65417 gravadas', async (t) => {
   enviar(app, 65417, '0300000000000000')
   enviar(app, 65417, '0300000000000000')
   enviar(app, 65417, '0000000000000000')
-  await new Promise(r => setTimeout(r, 50))
   const rotas = {}
   p.registerWithRouter({ get: (r, h) => { rotas[r] = h } })
   let d

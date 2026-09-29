@@ -426,7 +426,7 @@ alimentação da HAT a alimentar tudo
 | 9 | Chave USB de licença o-charts | [o-charts](https://o-charts.org/shop/en/hardware/38-usb-key-dongle.html) | **~€23** (€19 s/IVA) | Recomendada: reinstalar o OpenPlotter apaga a licença; com a chave não se perde |
 | 10 | ASA preto 1 kg | [EVOLT](https://evolt.pt/produto/asa-1kg-black-esun/) | **€17,73** (Winkle, em stock) | eSUN €21,39 esgotado. 1 bobina chega para o suporte e a pala |
 | 11 | Porta-fusível em linha ATO/ATC IP55 | [SVB](https://www.svb24.pt/pt/seatec-porta-fusiveis-em-linha-ato.html) | **€3,32** | + fusível de 5 A |
-| 12 | **Motor → Pi, feito por nós** (decidido 28/09, em vez do YDEG-04): adaptador **USB–CAN** isolado (candleLight/gs_usb) + fichas **Deutsch DT04-6P e DT06-6S** com contactos e travas + cabo de 4 fios | a cotar | **~€40–60** | Ver secção "Alternativa DIY". O YDEG-04N (~€263,52) fica como **plano B** se o teste de escuta falhar |
+| 12 | **Motor → Pi, feito por nós** (decidido 28/09, em vez do YDEG-04): ver a lista **"Motor J1939: compras"** abaixo | Amazon.es | **≈ €101** (≈ €75 com cabo de rede em vez do cabo CAN) | O YDEG-04N (~€263,52) fica como **plano B** se o teste de escuta falhar |
 | 13 | **ADS1115** (I²C) + resistências do divisor, para o nível do gasóleo | a cotar | **~€5–10** | Ver "Nível do gasóleo" |
 | 14 | **Barómetro BME280** (pressão, temperatura, humidade) DFRobot Gravity I²C, com cabo | [Botnroll PT](https://www.botnroll.com/en/temperature/5336-gravity-i2c-bme280-environmental-sensor-dfrobot-sen0236.html) | **€23,80** | Liga à I²C da MacArthur. Montar **fora da caixa do Pi** (o calor falseia a temperatura). Alternativa: Adafruit €26,60 |
 | 15 | **2 besouros piezo ativos 12 V, 95 dB a 30 cm**, 8 mA (1 no poço, 1 na **cabine do comandante**, junto ao beliche e ao ecrã 2) | [Botnroll PT](https://www.botnroll.com/en/sounders/861-buzzer-piezoelectrico.html) | **€3,60** (2 × €1,80) | Comandados pelo Pi por um **transístor NPN** (BC337 ou 2N2222) + resistência de 1 kΩ, a partir de um GPIO (cêntimos). Testar se o volume acorda quem dorme; se não, trocar por uma sirene de painel mais forte |
@@ -448,6 +448,27 @@ alimentação da HAT a alimentar tudo
 - Cabos e conector em T de NMEA 2000, se algum aparelho for N2K.
 - Comando físico Bluetooth/USB para usar com luvas ou com o ecrã molhado.
 - Pi 5 de **8 GB** em vez de 4 GB, se o radar entrar no ecrã.
+
+### Motor J1939: compras (preços vistos a 29/09/2026 na Amazon.es, c/IVA)
+
+| Peça | Link | Preço | Nota |
+|---|---|---|---|
+| Adaptador **USB–CAN isolado** InnoMaker USB2CAN (gs_usb, SocketCAN nativo, 3000 V, jumper 120 Ω) | [B0956NV6CM](https://www.amazon.es/dp/B0956NV6CM) | **€37,02** | Em stock. Jumper de 120 Ω **desligado**: o barramento do MDI já tem terminação. **Não** comprar o Waveshare USB-CAN-A (protocolo série, não é SocketCAN) |
+| Terminal **DB9 fêmea** → parafusos | [B08153D2F1](https://www.amazon.es/dp/B08153D2F1) | **€12,19** | O USB2CAN tem ficha DB9 (norma CiA: pino 7 CAN-H, 2 CAN-L, 3 massa; confirmar no manual) |
+| **2 pares de fichas Deutsch DT 6 pinos com 15 cm de fio** (macho + fêmea) | [B0FKB6S6H3](https://www.amazon.es/dp/B0FKB6S6H3) | **€15,14** | Já cravadas: **não é preciso alicate Deutsch** (só soldar). "Compatíveis" DT, não originais |
+| Cabo **CAN blindado** Lapp Unitronic BUS CAN 1×2×0,22 mm², 10 m | [B0CFLBKBDK](https://www.amazon.es/dp/B0CFLBKBDK) | **€36,53** | Alternativa mais barata para ~3 m: cabo de rede **Cat6 FTP** (um par CAN, outro para a massa); preço não visto |
+| Manga termorretrátil **com cola** (sortido) + estanho | loja náutica / Amazon | a confirmar | Emendas soldadas, nunca de cravar em "T" |
+| Hub USB alimentado (o Pi 5 só tem 4 portas USB) | a cotar | a confirmar | Já estava previsto (§7c) |
+| **Total** | | **≈ €101** (≈ €75 com Cat6) | Contra ~€263 do YDEG-04N |
+
+**Cabo em Y, e não emendar a cablagem do motor (29/09):** o Y fica entre o
+MDI e o conta-rotações. Tira-se e volta tudo ao original em 10 segundos, não
+se corta a cablagem da Volvo e as emendas ficam num cabo nosso. Emendar
+diretamente os fios poupa ~€15, mas deixa emendas na cablagem do motor
+(corrosão, fios destorcidos no par CAN) e, se algo correr mal, o painel e o
+MDI podem deixar de comunicar. O Y só leva 3 fios à derivação: CAN-H (pino
+5), CAN-L (pino 2) e massa (pino 4), a confirmar com o multímetro (60–120 Ω
+entre H e L com tudo desligado).
 
 ### Ordem das compras (decidida 28/09)
 

@@ -49,6 +49,14 @@ test('HOURS 65253: 4 bytes a 0,05 h (não rebenta aos 3276 h)', () => {
   assert.deepEqual(descodificar(65253, hex('FFFFFFFFFFFFFFFF')), [])
 })
 
+test('HOURS: o motor do Arlequin (~3300 h) passa o limite dos 2 bytes (3276,75 h)', () => {
+  // 3300 h = 66000 = 0x000101D0; o projeto aberto (2 bytes) leria 0x01D0 = 23,2 h
+  assert.equal(valor(descodificar(65253, hex('D0010100FFFFFFFF')), 'propulsion.main.runTime'), 3300 * 3600)
+  // mesmo na fronteira: 3276,75 h (0xFFFF) e 3276,80 h (0x10000)
+  assert.equal(valor(descodificar(65253, hex('FFFF0000FFFFFFFF')), 'propulsion.main.runTime'), Math.round(65535 * 0.05 * 3600))
+  assert.equal(valor(descodificar(65253, hex('00000100FFFFFFFF')), 'propulsion.main.runTime'), Math.round(65536 * 0.05 * 3600))
+})
+
 test('ET1 65262: água (°C − 40) e óleo (0,03125 °C − 273)', () => {
   const v = descodificar(65262, hex('7AFF2029FFFFFFFF'))
   assert.equal(valor(v, 'propulsion.main.temperature'), (0x7a - 40) + 273.15) // 82 °C

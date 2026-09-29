@@ -53,6 +53,7 @@ module.exports = function (app) {
   let valores = {} // caminho → valor (último)
   let estado, desc, ativosMapa, rpmEm, rpmAtual, ficheiroDesc, vistasTotal
   let detetor, curva, ficheiroCurva, ultimaGravacao
+  let mudancas = [] // últimas 50 mudanças das PGN proprietárias (o ficheiro guarda todas)
 
   function aoReceber (linha) {
     const t = lerLinha(linha)
@@ -66,6 +67,7 @@ module.exports = function (app) {
     const r = registar(desc, t, rpmAtual)
     desc = r.d
     if (r.mudou) {
+      mudancas = [...mudancas.slice(-49), r.mudou]
       fs.appendFile(ficheiroDesc, JSON.stringify(r.mudou) + '\n', () => {})
       app.debug(`PGN ${r.mudou.pgn} mudou: ${r.mudou.bytes} ${r.mudou.bitsMudados.join(', ')}`)
     }
@@ -153,6 +155,7 @@ module.exports = function (app) {
     const dir = app.getDataDirPath()
     fs.mkdirSync(dir, { recursive: true })
     ficheiroDesc = path.join(dir, 'descoberta-65417.jsonl')
+    try { mudancas = fs.readFileSync(ficheiroDesc, 'utf8').trim().split('\n').filter(Boolean).slice(-50).map(l => JSON.parse(l)) } catch { mudancas = [] }
     ficheiroCurva = path.join(dir, 'curva-consumo.json')
     detetor = criarDetetor()
     ultimaGravacao = 0
@@ -179,10 +182,8 @@ module.exports = function (app) {
   // A página fica em /pagina porque o SignalK usa a raiz /plugins/<id>/ para si.
   plugin.registerWithRouter = function (router) {
     const diag = () => {
-      let mudancas = []
-      try { mudancas = fs.readFileSync(ficheiroDesc, 'utf8').trim().split('\n').filter(Boolean).slice(-50).map(l => JSON.parse(l)) } catch { }
       const vistas = Object.entries(desc?.vistas || {}).map(([pgn, v]) => ({ pgn: Number(pgn), n: v.n, origem: v.origem, bytes: v.bytes }))
-      return { fonte: o.fonte, tramas: vistasTotal, rpm: Math.round(rpmAtual || 0), vistas, mudancas: mudancas.reverse() }
+      return { fonte: o.fonte, tramas: vistasTotal, rpm: Math.round(rpmAtual || 0), vistas, mudancas: [...mudancas].reverse() }
     }
     router.get('/diagnostico', (req, res) => res.json(diag()))
     // Curva de consumo aprendida no barco (para a página Motor).

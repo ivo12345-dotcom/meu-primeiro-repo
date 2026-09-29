@@ -75,7 +75,9 @@ module.exports = function (app) {
     }, Date.now())
     let m = criarModelo(cenario.opcoes, Date.now())
     let segundos = 0
-    let horasMotorS = 1243 * 3600 // o contador do MDI começa nas 1243 h
+    // O D1-20B do Arlequin tem ~3200–3300 h (Ivo, 29/09): começa mesmo antes do
+    // limite dos 2 bytes (3276,75 h) para o demo o atravessar.
+    let horasMotorS = 3276.5 * 3600
     temporizador = setInterval(() => {
       const r = avancarNav(nav, 1000)
       nav = r.estado
