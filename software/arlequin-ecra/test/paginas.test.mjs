@@ -208,3 +208,37 @@ test('Diário: botão "Orcas" de um toque grava "Orcas avistadas"', async () => 
   assert.deepEqual(gravados, [['Orcas avistadas', 'navigation']])
   assert.equal(ctx.estado.msg, 'Gravado: Orcas avistadas')
 })
+
+test('Diário: cartão da AI mostra os modelos em uso e manda treinar e voltar atrás', async () => {
+  const ia = {
+    emTreino: false,
+    ultimoTreino: { em: '2026-09-29T20:00:00Z', resultados: [{ aceite: true }, { aceite: false }] },
+    modelos: {
+      velocidade: { versao: 'v0003', versoes: ['v0001', 'v0003'], horas: 12.5, frases: ['a 60° com 12 nós andas 5,6 nós (a polar dizia 6,2)'] },
+      ventoForca: { versao: null, versoes: [] },
+      consumo: { versao: 'v0001', versoes: ['v0001'], horas: 6, frases: [] }
+    }
+  }
+  const estado = { ia, iaEm: Date.now() }
+  const html = diario.render(contexto(store, estado))
+  assert.match(html, /v0003 · 12,5 h · a 60° com 12 nós andas 5,6 nós/)
+  assert.match(html, /Vento<\/td><td>a aprender/)
+  assert.match(html, /data-acao="ia-voltar" data-modelo="velocidade"/)
+  assert.doesNotMatch(html, /data-modelo="consumo"/)
+  assert.match(html, /1 de 2 modelos melhoraram/)
+  const iaComErro = { ...ia, modelos: { ...ia.modelos, consumo: { versao: 'v0002', versoes: ['v0001', 'v0002'], erro: 'ficheiro estragado' } } }
+  const htmlComErro = diario.render(contexto(store, { ia: iaComErro, iaEm: Date.now() }))
+  assert.match(htmlComErro, /v0002 · não consegui ler o modelo: ficheiro estragado/)
+  assert.doesNotMatch(htmlComErro, /NaN/)
+  const pedidos = []
+  const ctx = { ...contexto(store, estado), pedir: async (url, op) => { pedidos.push({ url, ...op }); return { ok: true, versao: 'v0001' } } }
+  await diario.acao('ia-treinar', {}, ctx)
+  await diario.acao('ia-voltar', { modelo: 'velocidade' }, ctx)
+  assert.deepEqual(pedidos.filter(p => p.method === 'POST'), [
+    { url: '/plugins/signalk-arlequin-ia/treinar', method: 'POST' },
+    { url: '/plugins/signalk-arlequin-ia/voltar', method: 'POST', body: { modelo: 'velocidade' } }
+  ])
+  assert.equal(ctx.estado.msg, 'Velocidade voltou à v0001')
+  const semIa = diario.render(contexto(store, { ia: { erro: 'a AI não responde (o plugin signalk-arlequin-ia está ligado?)' }, iaEm: Date.now() }))
+  assert.match(semIa, /AI: a AI não responde/)
+})
