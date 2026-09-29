@@ -84,8 +84,13 @@ module.exports = function (app) {
   const ficheiroVelas = () => path.join(dirPlugin, 'velas.json')
   const ficheiroSaida = () => path.join(dirPlugin, 'saida-em-curso.json')
   const ler = (f, omissao) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')) } catch { return omissao } }
+  // Escreve num .tmp e muda o nome no fim: um corte de energia a meio nunca
+  // deixa o velas.json ou o saida-em-curso.json cortado.
   function guardar (f, obj) {
-    try { fs.writeFileSync(f, JSON.stringify(obj)) } catch (e) { erros++; app.error(`não guardei ${path.basename(f)}: ${e.message}`) }
+    try {
+      fs.writeFileSync(f + '.tmp', JSON.stringify(obj))
+      fs.renameSync(f + '.tmp', f)
+    } catch (e) { erros++; app.error(`não guardei ${path.basename(f)}: ${e.message}`) }
   }
 
   function twsMedio () {

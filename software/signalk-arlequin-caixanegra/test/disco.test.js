@@ -158,3 +158,13 @@ test('orçamento também no apagar: pára quando se gastou, o resto fica para o 
   assert.deepEqual(conf.apagarConfirmados(b, todos, { orcamentoBytes: 250 }), ['bruto/2026-09-28T11.ndjson.gz', 'bruto/2026-09-28T12.ndjson.gz'])
   assert.deepEqual(conf.lerConfirmados(b), {})
 })
+
+test('entrada com elementos inválidos (null, números): rejeitados um a um, a lista não fica presa', () => {
+  const b = base()
+  const h10 = conf.sha256Ficheiro(path.join(b, 'bruto', '2026-09-28T10.ndjson.gz'))
+  entrada(b, 'c.json', [null, 5, 'texto', { ficheiro: 'bruto/2026-09-28T10.ndjson.gz', sha256: h10 }])
+  const r = conf.processarEntrada(b)
+  assert.deepEqual(r.aceites, ['bruto/2026-09-28T10.ndjson.gz'])
+  assert.deepEqual(r.rejeitados.map(x => x.motivo), ['entrada inválida', 'entrada inválida', 'entrada inválida'])
+  assert.deepEqual(fs.readdirSync(path.join(b, 'entrada')), [], 'a lista saiu da entrada')
+})

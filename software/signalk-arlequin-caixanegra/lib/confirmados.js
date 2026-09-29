@@ -68,7 +68,10 @@ function processarEntrada (base, { orcamentoBytes = ORCAMENTO_BYTES, aoErro } = 
     const bytes = lista.reduce((s, x) => s + custo(base, x), 0)
     if (gastos > 0 && gastos + bytes > orcamentoBytes) { r.adiadas = nomes.length - i; break }
     gastos += bytes
-    for (const { ficheiro, sha256 } of lista) {
+    for (const item of lista) {
+      // Um elemento que não é objeto (null, número…) não pode travar a lista para sempre.
+      if (!item || typeof item !== 'object') { r.rejeitados.push({ ficheiro: String(item), motivo: 'entrada inválida' }); continue }
+      const { ficheiro, sha256 } = item
       if (typeof ficheiro !== 'string' || !NOME_BRUTO.test(ficheiro)) { r.rejeitados.push({ ficheiro: String(ficheiro), motivo: 'fora do bruto' }); continue }
       const alvo = path.join(base, ficheiro)
       if (!fs.existsSync(alvo)) { r.rejeitados.push({ ficheiro, motivo: 'não existe' }); continue }
