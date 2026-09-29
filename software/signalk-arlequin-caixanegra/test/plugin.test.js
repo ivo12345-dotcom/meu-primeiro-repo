@@ -115,6 +115,79 @@ test('lembrete das velas quando o vento sobe 60% durante mais de 1 h', async (t)
   assert.deepEqual(lembrete[0].method, ['visual'])
 })
 
+test('depois da troca do simulador para dados reais, a estabilidade não volta logo (janela de 2 min + 15 s)', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 50
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  correr(t, app, 130, 'arlequin-simulador')
+  correr(t, app, 20, 'nmea0183.GP')
+  const f = path.join(app.dir, 'dados', 'tabela', '2026-09-29.csv.gz')
+  let linhas = csv(f)
+  const cab = linhas[0]
+  for (const l of linhas.slice(1)) assert.equal(l[cab.indexOf('estavel')], '0', 'ainda dentro da janela alargada de simulado')
+  correr(t, app, 130, 'nmea0183.GP')
+  p.stop()
+  linhas = csv(f)
+  assert.equal(linhas[linhas.length - 1][cab.indexOf('estavel')], '1', 'depois de sobra, já estável')
+})
+
+test('erros no ciclo de 1 s (ex.: pasta bruto apagada) não derrubam o servidor; a tabela continua a ser escrita', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 50
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  correr(t, app, 20, 'nmea0183.GP')
+  const base = path.join(app.dir, 'dados')
+  const linhasAntes = csv(path.join(base, 'tabela', '2026-09-29.csv.gz')).length
+  fs.rmSync(path.join(base, 'bruto'), { recursive: true, force: true })
+  assert.doesNotThrow(() => correr(t, app, 70, 'nmea0183.GP'))
+  const linhasDepois = csv(path.join(base, 'tabela', '2026-09-29.csv.gz')).length
+  assert.ok(linhasDepois > linhasAntes, 'a tabela continuou a crescer apesar dos erros do bruto')
+  const est = await chamar(rotas(p).get['/estado'], {})
+  assert.ok(est.erros > 0, 'os erros do ciclo ficaram contados')
+  p.stop()
+})
+
+test('lembrete das velas: genoa enrolada aparece como "enrolada", não "0%"', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 50
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  correr(t, app, 130, 'nmea0183.GP', { tws: 5 })
+  await chamar(rotas(p).post['/velas'], { genoaPct: 0 })
+  correr(t, app, 3700, 'nmea0183.GP', { tws: 8 })
+  p.stop()
+  const lembrete = app.notificacoes.filter(n => n.path === 'notifications.arlequin.caixanegra.velas' && n.state === 'warn')
+  assert.equal(lembrete.length, 1)
+  assert.match(lembrete[0].message, /genoa enrolada/)
+  assert.doesNotMatch(lembrete[0].message, /genoa 0%/)
+})
+
+test('disco: entre 90% e 95% o bruto continua parado; só resume abaixo de 90%', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 96
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  correr(t, app, 60, 'nmea0183.GP')
+  assert.match(app.estado, /BRUTO PARADO/, '96% parou')
+  const f = path.join(app.dir, 'dados', 'bruto', '2026-09-29T14.ndjson.gz')
+  const antes = fs.statSync(f).size
+  usoFalso = 92
+  correr(t, app, 60, 'nmea0183.GP')
+  assert.equal(fs.statSync(f).size, antes, 'a 92% continua parado, tamanho não muda')
+  assert.match(app.estado, /BRUTO PARADO/, 'a 92% continua parado no estado')
+  usoFalso = 89
+  correr(t, app, 70, 'nmea0183.GP')
+  assert.ok(fs.statSync(f).size > antes, 'a 89% retomou e o ficheiro cresceu')
+  assert.doesNotMatch(app.estado, /BRUTO PARADO/, 'a 89% já não está parado')
+  p.stop()
+})
+
 test('disco a 96% sem nada confirmado: pára o bruto e dá alarme; a 50% retoma', (t) => {
   t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
   usoFalso = 96

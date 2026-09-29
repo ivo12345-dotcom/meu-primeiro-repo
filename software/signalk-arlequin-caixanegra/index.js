@@ -83,7 +83,13 @@ module.exports = function (app) {
 
   function listarBruto () {
     const dir = path.join(base, 'bruto')
-    return fs.readdirSync(dir).filter(n => n.endsWith('.gz')).map(n => ({ ficheiro: `bruto/${n}`, bytes: fs.statSync(path.join(dir, n)).size }))
+    try {
+      return fs.readdirSync(dir).filter(n => n.endsWith('.gz')).map(n => ({ ficheiro: `bruto/${n}`, bytes: fs.statSync(path.join(dir, n)).size }))
+    } catch (e) {
+      erros++
+      app.error(`bruto: ${e.message}`)
+      return []
+    }
   }
 
   function segundo () {
@@ -91,8 +97,12 @@ module.exports = function (app) {
     const v = (c) => est.valor(estado, c, agora)
     estavel.juntar(janela, { t: agora, proa: v('navigation.headingTrue'), stw: v('navigation.speedThroughWater'), tws: v('environment.wind.speedTrue') })
     contador++
-    if (contador % 10 === 0) dezSegundos(agora, v)
-    if (contador % 60 === 0) minuto()
+    if (contador % 10 === 0) {
+      try { dezSegundos(agora, v) } catch (e) { erros++; app.error(`caixa negra: ${e.message}`) }
+    }
+    if (contador % 60 === 0) {
+      try { minuto() } catch (e) { erros++; app.error(`caixa negra: ${e.message}`) }
+    }
   }
 
   function dezSegundos (agora, v) {
@@ -100,7 +110,8 @@ module.exports = function (app) {
     const pos = v('navigation.position')
     const perto = portoMaisPerto(pos, o.portos)
     const simulado = est.simuladoRecente(estado, agora)
-    const eEstavel = !simulado && estavel.estavel(janela, { longeDoPorto: !!perto && perto.mn > 0.5 })
+    const eEstavel = !est.simuladoRecente(estado, agora, estavel.JANELA_MS + 15000) &&
+      estavel.estavel(janela, { longeDoPorto: !!perto && perto.mn > 0.5 })
     try {
       tabela.escrever(path.join(base, 'tabela'), agora, tabela.linha({ v, agora, rajadaMs: estavel.rajada(janela), simulado, estavel: eEstavel }))
       ultimaLinha = agora
@@ -121,7 +132,8 @@ module.exports = function (app) {
     if (velasLib.precisaLembrete(velas, agora, twsMedio())) {
       velas = { ...velas, lembradoEm: agora }
       guardar(ficheiroVelas(), velas)
-      notificar('velas', 'warn', `As velas continuam assim? Grande ${NOME_GRANDE[velas.grandeRizos]}, genoa ${velas.genoaPct}%`)
+      const textoGenoa = velas.genoaPct === 0 ? 'enrolada' : `${velas.genoaPct}%`
+      notificar('velas', 'warn', `As velas continuam assim? Grande ${NOME_GRANDE[velas.grandeRizos]}, genoa ${textoGenoa}`)
     }
   }
 
@@ -155,9 +167,11 @@ module.exports = function (app) {
     } catch (e) { erros++; app.error(`entrada: ${e.message}`) }
     guardar(ficheiroSaida(), saidas)
     try { verificarDisco() } catch (e) { erros++; app.error(`disco: ${e.message}`) }
-    const mb = listarBruto().reduce((s, f) => s + f.bytes, 0) / 1e6
-    const hora = ultimaLinha ? new Date(ultimaLinha).toLocaleTimeString('pt-PT') : '—'
-    app.setPluginStatus(`${bruto.parado ? 'BRUTO PARADO · ' : ''}bruto ${mb.toFixed(1)} MB · disco ${Math.round(infoDisco?.usadoPct ?? 0)}% · última linha ${hora}`)
+    try {
+      const mb = listarBruto().reduce((s, f) => s + f.bytes, 0) / 1e6
+      const hora = ultimaLinha ? new Date(ultimaLinha).toLocaleTimeString('pt-PT') : '—'
+      app.setPluginStatus(`${bruto.parado ? 'BRUTO PARADO · ' : ''}bruto ${mb.toFixed(1)} MB · disco ${Math.round(infoDisco?.usadoPct ?? 0)}% · última linha ${hora}`)
+    } catch (e) { erros++; app.error(`estado: ${e.message}`) }
   }
 
   plugin.start = function (props) {
