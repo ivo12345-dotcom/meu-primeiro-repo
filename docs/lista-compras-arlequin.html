@@ -34,7 +34,7 @@ footer { margin-top: 12px; color: #777; font-size: 8pt; border-top: 1px solid #d
 <body>
 <header>
   <h1>ARLEQUIN · Jeanneau Melody 34</h1>
-  <div class="sub">Lista de compras do sistema de navegação, motor e energia · preços de 28–29/09/2026, com IVA, sem portes</div>
+  <div class="sub">Lista de compras do sistema de navegação, motor, energia, gasóleo e água · preços de 28–29/09/2026, com IVA, sem portes</div>
 </header>
 
 <h2 class="nav">1. Navegação — Pi, ecrã e sensores · ≈ €547</h2>
@@ -52,7 +52,7 @@ footer { margin-top: 12px; color: #777; font-size: 8pt; border-top: 1px solid #d
 <tr><td class="n">9</td><td>Chave USB da licença o-charts</td><td class="l"><a href="https://o-charts.org/shop/en/hardware/38-usb-key-dongle.html">o-charts</a></td><td class="p">~€23</td></tr>
 <tr><td class="n">10</td><td>ASA preto 1 kg (suporte e pala do ecrã)</td><td class="l"><a href="https://evolt.pt/produto/asa-1kg-black-esun/">EVOLT</a></td><td class="p">€17,73</td></tr>
 <tr><td class="n">11</td><td>Porta-fusível em linha ATO IP55 + fusível 5 A</td><td class="l"><a href="https://www.svb24.pt/pt/seatec-porta-fusiveis-em-linha-ato.html">SVB</a></td><td class="p">€3,32</td></tr>
-<tr><td class="n">13</td><td>ADS1115 (I²C) + resistências — nível do gasóleo</td><td class="l">a cotar</td><td class="p">~€5–10</td></tr>
+<tr><td class="n">13</td><td>ADS1115 (I²C) + 2 divisores 47 kΩ / 10 kΩ — nível do gasóleo (sonda + alimentação do medidor)</td><td class="l">a cotar</td><td class="p">~€5–10</td></tr>
 <tr><td class="n">14</td><td>Barómetro BME280 DFRobot Gravity (fora da caixa do Pi)</td><td class="l"><a href="https://www.botnroll.com/en/temperature/5336-gravity-i2c-bme280-environmental-sensor-dfrobot-sen0236.html">Botnroll</a></td><td class="p">€23,80</td></tr>
 <tr><td class="n">15</td><td>2 besouros piezo 12 V, 95 dB (poço + cabine) + NPN BC337</td><td class="l"><a href="https://www.botnroll.com/en/sounders/861-buzzer-piezoelectrico.html">Botnroll</a></td><td class="p">€3,60</td></tr>
 <tr><td class="n">16</td><td>Sensor de inclinação SparkFun ICM-20948 (abatimento)</td><td class="l"><a href="https://es.rs-online.com/web/p/kits-de-desarrollo-de-sensores/2836590">RS Online</a></td><td class="p">~€25,51</td></tr>
@@ -71,7 +71,24 @@ footer { margin-top: 12px; color: #777; font-size: 8pt; border-top: 1px solid #d
 </table>
 <div class="caixa"><b>Não comprar:</b> o Waveshare USB-CAN-A (não é SocketCAN). As fichas Deutsch e o cabo CAN de 10 m deixaram de ser precisos: o adaptador fica junto ao motor, com uma derivação soldada ≤ 50 cm, e daí vai um cabo USB até ao Pi. Plano B se a escuta falhar: YDEG-04N (~€263,52).</div>
 
-<h2 class="sol">3. Energia solar · 2 × 305 W · ≈ €680–820 sem a estrutura</h2>
+<h2 class="mot">3. Água doce · bombas de pé · ≈ €19</h2>
+<table>
+<tr><th>#</th><th>Peça</th><th>Loja</th><th class="p">Preço</th></tr>
+<tr><td class="n">A1</td><td>3 sensores magnéticos (reed) com íman, com cabo — 1 por pedal de água doce + 1 de reserva <span class="nota">(a bomba de água do mar não leva)</span></td><td class="l"><a href="https://www.amazon.es/dp/B093LBSDH1">Amazon.es</a></td><td class="p">€6,56</td></tr>
+<tr><td class="n">A2</td><td>ESP32 DevKitC WROOM-32U com antena externa <span class="nota">(só se os pedais ficarem longe do Pi)</span></td><td class="l"><a href="https://www.amazon.es/dp/B0H1WQCMJ1">Amazon.es</a></td><td class="p">€12,69</td></tr>
+<tr class="soma"><td></td><td>Subtotal água</td><td></td><td class="p">≈ €19</td></tr>
+</table>
+
+<h2 class="mot">Limpeza do depósito de gasóleo (quando o esvaziares) · opcional</h2>
+<table>
+<tr><th>#</th><th>Peça</th><th>Loja</th><th class="p">Preço</th></tr>
+<tr><td class="n">G1</td><td>Bomba de trasfega de gasóleo 12 V (ou manual) + mangueira</td><td class="l">loja náutica</td><td class="p">a confirmar</td></tr>
+<tr><td class="n">G2</td><td>Bidões para gasóleo, ~180 L no total</td><td class="l">—</td><td class="p">a confirmar</td></tr>
+<tr><td class="n">G3</td><td>Funil com filtro separador de água</td><td class="l">loja náutica</td><td class="p">a confirmar</td></tr>
+<tr><td class="n">G4</td><td>Filtro de gasóleo do motor + braçadeiras/mangueiras de combustível novas + absorventes</td><td class="l">Volvo Penta / náutica</td><td class="p">a confirmar</td></tr>
+</table>
+
+<h2 class="sol">4. Energia solar · 2 × 305 W · ≈ €680–820 sem a estrutura</h2>
 <table>
 <tr><th>#</th><th>Peça</th><th>Loja</th><th class="p">Preço</th></tr>
 <tr><td class="n">S1</td><td>2 painéis de 305 W <span class="nota">(modelo a escolher com as medidas do arco)</span></td><td class="l">a escolher</td><td class="p">€328–470</td></tr>
@@ -87,7 +104,8 @@ footer { margin-top: 12px; color: #777; font-size: 8pt; border-top: 1px solid #d
 <table>
 <tr><td>Navegação</td><td class="p">≈ €547</td></tr>
 <tr><td>Motor J1939</td><td class="p">≈ €49</td></tr>
-<tr class="soma"><td>Navegação + motor (já fechado)</td><td class="p">≈ €596</td></tr>
+<tr><td>Água doce</td><td class="p">≈ €19</td></tr>
+<tr class="soma"><td>Navegação + motor + água (já fechado)</td><td class="p">≈ €615</td></tr>
 <tr><td>Solar sem a estrutura</td><td class="p">≈ €680–820</td></tr>
 <tr><td>Estrutura inox</td><td class="p">€300–600</td></tr>
 <tr><td class="nota">Cabos, fitas e portes</td><td class="p nota">≈ €30–50</td></tr>

@@ -490,6 +490,13 @@ emendas em T soldadas** (em vez do cabo em Y). Como fazer:
 Nota: deixa de ser reversível em 10 s (a emenda fica na cablagem do motor).
 Bem feita, dura; é a opção do Ivo.
 
+### Água doce: compras (29/09, Amazon.es)
+
+| Peça | Link | Preço | Nota |
+|---|---|---|---|
+| 3 sensores magnéticos (reed) com íman e cabo | [B093LBSDH1](https://www.amazon.es/dp/B093LBSDH1) | **€6,56** | 1 por pedal de água doce + 1 de reserva; a bomba de água do mar não leva |
+| ESP32 DevKitC WROOM-32U com antena externa | [B0H1WQCMJ1](https://www.amazon.es/dp/B0H1WQCMJ1) | **€12,69** | Só se os pedais ficarem longe do Pi |
+
 ### Ordem das compras (decidida 28/09)
 
 1. **Agora:** Pi 5 8 GB + MacArthur + ecrã de testes (esta lista).
