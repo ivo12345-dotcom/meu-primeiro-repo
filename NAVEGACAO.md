@@ -1074,6 +1074,15 @@ funcionar também ali:
     1,66 m (proa-popa), 38 kg. Preço €199–268 conforme a loja. Alternativas se
     não couber: 2 × 215 W (1580 × 705 mm, 11,7 kg) ou 2 × 185 W (1485 × 668 mm,
     11 kg, chegam MPPT 75/15). **Fecha-se com as fotos e medidas (Ivo, 30/09).**
+    **Estrutura do teto (29/09):** o arco inclina-se para ré e o topo passa pouco
+    do espelho. Opções desenhadas: A pernas nas braçolas; B consola (não); C
+    escoras; D centrada no arco (0,83/0,83 m, radar num poste +40 cm); E toda
+    atrás (não: ~1,4 m sobre o mar, mais comprimento na marina). **Proposta:
+    D ajustada** ~0,4 m para ré do topo do arco e ~1,25 m para vante, com duas
+    escoras curtas das pernas do arco (a inclinação ajuda), sem pernas no poço.
+    Medidas extra pedidas: recuo do arco (base → topo, na horizontal) e quanto
+    o topo passa do espelho. Falta decidir: serralheiro (soldado) ou o Ivo
+    (aparafusado com peças de inox).
 
 **Alarme sonoro:** a solo, o alarme AIS tem de acordar quem dorme. O apito do
 Garmin é fraco. No Pi, acrescentar à lista um **altifalante ou besouro forte**
