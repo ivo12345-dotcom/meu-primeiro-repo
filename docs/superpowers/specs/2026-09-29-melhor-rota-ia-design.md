@@ -24,7 +24,7 @@ A decisão é sempre do Ivo. O botão **"Sair agora mesmo assim"** dá a melhor 
 | Destino | **Lista no ecrã + rota ativa do OpenCPN** no topo da lista |
 | Arquitetura | **Opção 1:** caixa negra (Node) + treino em Python + previsões e rota em Node |
 | Guardar dados | **Desde o 1.º dia, nunca apagar sozinho.** Aos 80% do SSD passa o mais antigo para o **portátil** (opção B), só depois de confirmado |
-| Limites "não recomendado sozinho" | vento médio > **22 nós**, rajadas > **30**, ondas > **3 m**, > **8 h** seguidas ao leme, chegada de noite a porto desconhecido |
+| Limites "não recomendado sozinho" | vento médio > **22 nós**, rajadas > **30**, ondas > **3 m**, > **8 h** equivalentes ao leme (motor em calma conta metade, a roda tem travão), chegada de noite a porto desconhecido |
 | Sair contra a recomendação | Botão **"Sair agora mesmo assim"** |
 | Rotas costeiras | **Por fora**, afastamento mínimo **5 MN** por defeito |
 
@@ -156,23 +156,17 @@ Todos são LightGBM com **regressão por quantis: P10, P50 e P90** (pessimista, 
 
 - **Excluída sempre:** passa em terra, numa zona a evitar ou no separador de tráfego, ou mais perto da costa do que o afastamento mínimo (fora das aproximações).
 - **Excluída (vira aviso vermelho em "Sair agora mesmo assim"):** gasóleo < 40 L ou bateria < 50% à chegada, no cenário **P10**.
-- **"Não recomendada sozinho"** (só com tripulação "só eu"): vento médio > 22 nós, rajadas > 30, ondas > 3 m, > 8 h seguidas ao leme, chegada de noite a porto marcado como desconhecido.
+- **"Não recomendada sozinho"** (só com tripulação "só eu"): vento médio > 22 nós, rajadas > 30, ondas > 3 m, > 8 h equivalentes ao leme (o motor em calma, com vento < 10 nós e ondas < 1,5 m, conta a metade), chegada de noite a porto marcado como desconhecido.
 
 ### Decisão
 
 - **Custo** = horas de viagem + 0,25 × horas de espera até partir + 1,5 × horas de noite + 1,0 × horas ao leme (só eu) + 0,5 × (rajada máxima − 20, se positivo) + 2 × (onda máxima − 2 m, se positivo) + 0,5 × horas contra o vento.
   - **Esperar ganha quando poupa mais risco do que tempo.**
-  - **Horas ao leme:** sem piloto, contam **todas** as horas, à vela e a motor.
+  - **Horas ao leme (decidido pelo Ivo a 29/09, opção b):** sem piloto contam todas as horas, à vela e a motor. **As horas a motor em calma (vento < 10 nós e ondas < 1,5 m) contam a metade**, porque a roda tem travão e dá para pausas curtas. Isto vale para o limite das 8 h e para o custo.
 - **Exemplo (29/09, só eu):**
-  - partir agora por fora: 14,3 + 0 + 15,6 + 14,3 + 3,5 + 1,2 + 0 = **48,9**;
-  - amanhã às 08:00 a motor: 12,2 + 4,1 + 1,4 + 12,2 + 0 + 0 + 0 = **29,9**;
-  - resultado: amanhã ganha.
-- **Questão em aberto (a decidir pelo Ivo):**
-  - sem piloto, qualquer passagem Lisboa–Peniche passa das 8 h ao leme, incluindo a motor em calma, e por isso é sempre "não recomendada sozinho";
-  - hipóteses:
-    - (a) manter assim, que é a mensagem honesta: piloto ou tripulação;
-    - (b) contar a metade as horas a motor em calma (vento < 10 nós, ondas < 1,5 m), se a roda puder ser travada para pausas curtas;
-    - (c) subir o limite.
+  - partir agora por fora: 14,3 + 0 + 15,6 + 14,3 + 3,5 + 1,2 + 0 = **48,9**. O motor depois da meia-noite apanha ondas de 2,5 m, por isso não conta como calma. Tem 14,3 h equivalentes ao leme, o que a marca como "não recomendada sozinho";
+  - amanhã às 08:00 a motor: 12,2 + 4,1 + 1,4 + 6,1 + 0 + 0 + 0 = **23,8**. São 12,2 h a motor em calma, que equivalem a 6,1 h ao leme, abaixo das 8 h;
+  - veredicto: **"Espera até amanhã às 08:00"**.
 - **Mostra as 3 de menor custo.**
 - **Veredicto:**
   - **Segue:** a melhor parte agora e não é "não recomendada".
@@ -256,7 +250,7 @@ Todos são LightGBM com **regressão por quantis: P10, P50 e P90** (pessimista, 
 - **Integração no SignalK local:**
   - replay da passagem, e a caixa negra grava com `simulado`;
   - um treino com o marcador de teste produz um modelo;
-  - `/calcular` com uma **previsão gravada** (a de 29/09, fixa para os testes serem repetíveis) dá "Espera" sozinho e mostra "Sair agora" com os pontos de desistência;
+  - `/calcular` com uma **previsão gravada** (a de 29/09, fixa para os testes serem repetíveis) dá "Espera até amanhã às 08:00" sozinho e mostra "Sair agora" com os pontos de desistência;
   - o ecrã é verificado no browser em todos os estados, de dia e de noite.
 - **Sincronização:** pastas locais a fazer de "Pi", hashes, e confirmação só depois da verificação.
 
