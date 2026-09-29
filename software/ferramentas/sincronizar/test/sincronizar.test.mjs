@@ -232,3 +232,9 @@ test('um bruto de hora fechada maior no Pi (a cópia do portátil foi feita a me
   assert.deepEqual(r.conflitos, [])
   assert.equal(r.confirmados, 1)
 })
+
+test('ssh: uma resposta estranha do sha256sum dá um erro claro', async () => {
+  const exec = async () => 'sha256sum: bruto/x.gz: Permission denied\n'
+  const t = transporteSsh('pi@arlequin', { exec })
+  await assert.rejects(t.hashes(['bruto/x.gz']), /resposta inesperada do sha256sum: sha256sum: bruto\/x\.gz: Permission denied/)
+})

@@ -106,7 +106,11 @@ export function transporteSsh (host, { pasta = 'arlequin-dados', exec = executar
     },
     async hashes (ficheiros) {
       const t = await exec('ssh', [host, `cd ${dir} && xargs -d '\\n' sha256sum --`], { entrada: ficheiros.join('\n') + '\n' })
-      return Object.fromEntries(t.split('\n').filter(Boolean).map(l => { const m = l.match(/^([0-9a-f]{64}) [ *](.+)$/); return [m[2], m[1]] }))
+      return Object.fromEntries(t.split('\n').filter(Boolean).map(l => {
+        const m = l.match(/^([0-9a-f]{64}) [ *](.+)$/)
+        if (!m) throw new Error(`resposta inesperada do sha256sum: ${l}`)
+        return [m[2], m[1]]
+      }))
     },
     async escreverEntrada (nome, texto) {
       const e = `${dir}/entrada`
