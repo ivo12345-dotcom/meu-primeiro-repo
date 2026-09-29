@@ -1,10 +1,24 @@
-// Recolher velas, sem piloto: passos à mão. Motor ligado → aproar ao vento
-// (rumo alvo = direção do vento real) → recolher → terminar. Tudo no diário.
+// Velas: o estado atual (grande e genoa), que só o Ivo sabe e fica gravado na
+// caixa negra para a AI, e recolher velas sem piloto, passo a passo. Motor
+// ligado → aproar ao vento (rumo alvo = direção do vento real) → recolher →
+// terminar. Tudo no diário.
 
 import { correcaoLeme, rumoAproar } from '../lib/rumo.js'
 import { rumo, velocidade, ok } from './comum.js'
 
 const PASSOS = ['Liga o motor', 'Aproa ao vento', 'Recolhe as velas', 'Terminado']
+
+const URL_VELAS = '/plugins/signalk-arlequin-caixanegra/velas'
+const GRANDE = [[0, 'Inteira'], [1, '1 rizo'], [2, '2 rizos'], [-1, 'Arriada']]
+const GENOA = [[100, '100%'], [70, '70%'], [50, '50%'], [0, 'Enrolada']]
+
+function estadoVelas (ctx) {
+  const opcoes = (acao, lista, atual) => lista
+    .map(([v, t]) => `<button class="acao${v === atual ? ' go' : ''}" data-acao="${acao}" data-valor="${v}">${t}</button>`)
+    .join('')
+  return `<div class="tile"><div class="lab">Grande</div><div class="acoes">${opcoes('grande', GRANDE, ctx.v('sails.grande.rizos'))}</div>
+<div class="lab" style="margin-top:.4rem;">Genoa</div><div class="acoes">${opcoes('genoa', GENOA, ctx.v('sails.genoa.percentagem'))}</div></div>`
+}
 
 export default {
   render (ctx) {
@@ -37,10 +51,15 @@ ${!motor ? '' : '<div class="ok" style="margin-top:.4rem;">Motor já está ligad
       ? '<button class="acao go" data-acao="comecar">Começar</button>'
       : `${p === 1 ? `<button class="acao go" data-acao="aproado" ${aproado ? '' : 'style="opacity:.6"'}>Estou aproado</button>` : ''}${p === 2 ? '<button class="acao go" data-acao="recolhidas">Velas recolhidas</button>' : ''}<button class="acao stop" data-acao="cancelar">Cancelar</button>`
     return `<div class="col" style="flex:1.3;">${guia}</div>
-<div class="col"><div class="tile" style="flex:1;">${lista}</div>${e.msg ? `<div class="tile ${e.msgErro ? 'perigo' : 'lab'}">${e.msg}</div>` : ''}<div class="acoes">${botoes}</div></div>`
+<div class="col">${estadoVelas(ctx)}<div class="tile" style="flex:1;">${lista}</div>${e.msg ? `<div class="tile ${e.msgErro ? 'perigo' : 'lab'}">${e.msg}</div>` : ''}<div class="acoes">${botoes}</div></div>`
   },
   async acao (nome, dados, ctx) {
     const e = ctx.estado
+    if (nome === 'grande' || nome === 'genoa') {
+      const body = nome === 'grande' ? { grandeRizos: Number(dados.valor) } : { genoaPct: Number(dados.valor) }
+      try { await ctx.pedir(URL_VELAS, { method: 'POST', body }); e.msg = null } catch (err) { e.msg = `Velas não gravadas (${err.message})`; e.msgErro = true }
+      return
+    }
     const registar = async (t) => {
       try { await ctx.logbook(t, 'navigation'); e.msg = `Diário: ${t}`; e.msgErro = false } catch (err) { e.msg = `Diário não gravou (${err.message})`; e.msgErro = true }
     }

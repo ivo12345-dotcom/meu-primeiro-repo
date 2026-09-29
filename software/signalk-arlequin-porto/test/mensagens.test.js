@@ -67,3 +67,12 @@ test('/estado: resumo legível com o que houver', () => {
   assert.match(t, /Alarme ARMADO · ⚓ amarrado, a 4 m do ponto/)
   assert.match(t, /Sem alarmes/)
 })
+
+test('o lembrete das velas nunca vai para o Telegram; o alarme do disco vai', () => {
+  const e = novoEncaminhador()
+  const r = encaminhar(e, [
+    n('notifications.arlequin.caixanegra.velas', 'warn', 'As velas continuam assim?'),
+    n('notifications.arlequin.caixanegra.disco', 'alarm', 'Disco a 96%')
+  ], 0)
+  assert.deepEqual(r.mensagens, ['🚨 Disco a 96%'])
+})

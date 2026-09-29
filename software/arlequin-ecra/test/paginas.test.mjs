@@ -175,3 +175,26 @@ test('Motor: água doce com os dois depósitos, dias que faltam e "Calibrar bomb
   assert.match(html, /4 <span/)
   assert.ok(pedidos.some(u => u.endsWith('calibrar-bomba/iniciar')))
 })
+
+test('Velas: estado atual marcado e os toques mandam para a caixa negra', async () => {
+  const st = storeSimulado(60)
+  aplicarDelta(st, { updates: [{ timestamp: new Date().toISOString(), values: [
+    { path: 'sails.grande.rizos', value: 1 },
+    { path: 'sails.genoa.percentagem', value: 70 }
+  ] }] })
+  const html = velas.render(contexto(st, {}))
+  assert.match(html, /class="acao go" data-acao="grande" data-valor="1"/)
+  assert.match(html, /class="acao go" data-acao="genoa" data-valor="70"/)
+  assert.match(html, /class="acao" data-acao="grande" data-valor="-1">Arriada/)
+  const pedidos = []
+  const ctx = { ...contexto(st, {}), pedir: async (url, op) => { pedidos.push({ url, ...op }); return { ok: true } } }
+  await velas.acao('grande', { valor: '2' }, ctx)
+  await velas.acao('genoa', { valor: '0' }, ctx)
+  assert.deepEqual(pedidos, [
+    { url: '/plugins/signalk-arlequin-caixanegra/velas', method: 'POST', body: { grandeRizos: 2 } },
+    { url: '/plugins/signalk-arlequin-caixanegra/velas', method: 'POST', body: { genoaPct: 0 } }
+  ])
+  const falha = { ...contexto(st, {}), pedir: async () => { throw new Error('caixa negra desligada') } }
+  await velas.acao('grande', { valor: '1' }, falha)
+  assert.match(falha.estado.msg, /Velas não gravadas \(caixa negra desligada\)/)
+})

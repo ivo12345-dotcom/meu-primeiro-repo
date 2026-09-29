@@ -23,6 +23,8 @@ export function deveTocar (n) {
 }
 
 export function paginaDoAlarme (caminho) {
+  if (caminho.includes('.caixanegra.velas')) return 'velas'
+  if (caminho.includes('.caixanegra.')) return 'diario'
   if (caminho.includes('.ais.')) return 'ais'
   if (/energia|propulsion|electrical|tanks/.test(caminho)) return 'motor'
   return 'carta'

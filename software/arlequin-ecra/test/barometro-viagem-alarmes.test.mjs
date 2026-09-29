@@ -82,3 +82,8 @@ test('bip curto só quando a ligação cai', () => {
   assert.equal(bipDeLigacao(null, false), false) // arranque sem servidor
   assert.equal(bipDeLigacao(false, true), false) // religou
 })
+
+test('o lembrete das velas abre a página Velas', () => {
+  assert.equal(paginaDoAlarme('notifications.arlequin.caixanegra.velas'), 'velas')
+  assert.equal(paginaDoAlarme('notifications.arlequin.caixanegra.disco'), 'diario')
+})

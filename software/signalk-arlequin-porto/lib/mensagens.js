@@ -14,10 +14,11 @@ function novoEncaminhador () {
 // notificacoes: [{ caminho, state, message }]
 // O limite de 10 min só trava ALARMES repetidos do mesmo caminho; o "resolvido"
 // de um alarme que foi enviado segue sempre (senão ficava-se a julgar que continua).
-function encaminhar (enc0, notificacoes, agora, { intervalo = 10 * 60 * 1000, amarrado = false, ignorarAmarrado = ['notifications.arlequin.ais.'] } = {}) {
+function encaminhar (enc0, notificacoes, agora, { intervalo = 10 * 60 * 1000, amarrado = false, ignorarAmarrado = ['notifications.arlequin.ais.'], nunca = ['notifications.arlequin.caixanegra.velas'] } = {}) {
   const enc = { estados: { ...enc0.estados }, mensagem: { ...enc0.mensagem }, ultimoAlarme: { ...enc0.ultimoAlarme }, pendente: { ...enc0.pendente } }
   const mensagens = []
   for (const n of notificacoes) {
+    if (nunca.some(p => n.caminho.startsWith(p))) continue // lembretes só para o ecrã
     const antes = enc.estados[n.caminho] || 'normal'
     const agoraEstado = ATIVO.has(n.state) ? n.state : 'normal'
     enc.estados[n.caminho] = agoraEstado
