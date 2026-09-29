@@ -20,6 +20,7 @@ module.exports = function (app) {
       cenario: { type: 'string', title: 'Cenário', enum: Object.keys(CENARIOS), default: 'navegar-demo' },
       msPorHora: { type: 'number', title: 'Milissegundos reais por hora simulada', default: 2000 },
       inicio: { type: 'string', title: 'Início da simulação (data/hora ISO)', default: '2026-01-10T08:00:00' },
+      ventoDeGraus: { type: 'number', title: 'navegar-demo: de onde vem o vento real (graus)', default: 20 },
       cicloVelaMin: { type: 'number', title: 'navegar-demo: minutos à vela em cada ciclo', default: 20 },
       cicloMotorMin: { type: 'number', title: 'navegar-demo: minutos a motor em cada ciclo', default: 5 },
       servico: { type: 'string', title: 'ID do banco de serviço', default: 'servico' },
@@ -63,7 +64,11 @@ module.exports = function (app) {
 
   // Navegação + energia ao ritmo do relógio (1 passo por segundo), para o ecrã.
   function comecarTempoReal (o, cenario) {
-    let nav = criarNavegacao({ cicloVelaS: (o.cicloVelaMin ?? 20) * 60, cicloMotorS: (o.cicloMotorMin ?? 5) * 60 }, Date.now())
+    let nav = criarNavegacao({
+      ventoDir: (o.ventoDeGraus ?? 20) * Math.PI / 180,
+      cicloVelaS: (o.cicloVelaMin ?? 20) * 60,
+      cicloMotorS: (o.cicloMotorMin ?? 5) * 60
+    }, Date.now())
     let m = criarModelo(cenario.opcoes, Date.now())
     let segundos = 0
     temporizador = setInterval(() => {
