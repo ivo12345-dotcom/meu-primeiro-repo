@@ -198,3 +198,13 @@ test('Velas: estado atual marcado e os toques mandam para a caixa negra', async 
   await velas.acao('grande', { valor: '1' }, falha)
   assert.match(falha.estado.msg, /Velas não gravadas \(caixa negra desligada\)/)
 })
+
+test('Diário: botão "Orcas" de um toque grava "Orcas avistadas"', async () => {
+  const html = diario.render(contexto(store, {}))
+  assert.match(html, /data-acao="rapida" data-texto="Orcas avistadas" data-cat="navigation">Orcas</)
+  const gravados = []
+  const ctx = { ...contexto(store, {}), logbook: async (texto, cat) => { gravados.push([texto, cat]) } }
+  await diario.acao('rapida', { texto: 'Orcas avistadas', cat: 'navigation' }, ctx)
+  assert.deepEqual(gravados, [['Orcas avistadas', 'navigation']])
+  assert.equal(ctx.estado.msg, 'Gravado: Orcas avistadas')
+})

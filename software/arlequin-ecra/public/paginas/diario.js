@@ -1,8 +1,9 @@
 // Diário de bordo (signalk-logbook): entradas de hoje, botões de um toque, notas.
 
+// [texto no diário, categoria, rótulo do botão (se for diferente do texto)]
 const RAPIDAS = [
   ['Motor ligado', 'engine'], ['Motor desligado', 'engine'], ['Rizei', 'navigation'], ['Mudei de vela', 'navigation'],
-  ['Fundeei', 'navigation'], ['Amarrei', 'navigation'], ['Avaria', 'maintenance']
+  ['Fundeei', 'navigation'], ['Amarrei', 'navigation'], ['Avaria', 'maintenance'], ['Orcas avistadas', 'navigation', 'Orcas']
 ]
 
 const hoje = () => new Date().toISOString().slice(0, 10)
@@ -36,7 +37,7 @@ ${e.msg ? `<div class="tile ${e.msgErro ? 'perigo' : 'ok'}">${esc(e.msg)}</div>`
 </div>
 <div class="col estica">
 <div class="tile" style="flex:0 0 auto;"><div class="lab">Um toque</div></div>
-${RAPIDAS.map(([t, c]) => `<button class="acao" data-acao="rapida" data-texto="${t}" data-cat="${c}">${t}</button>`).join('')}
+${RAPIDAS.map(([t, c, rotulo]) => `<button class="acao" data-acao="rapida" data-texto="${t}" data-cat="${c}">${rotulo || t}</button>`).join('')}
 </div>`
   },
   async acao (nome, dados, ctx, input) {
