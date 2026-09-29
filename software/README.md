@@ -8,6 +8,7 @@ O desenho está em `NAVEGACAO.md` e em `docs/superpowers/specs/`.
 | `arlequin-ecra/` | **Ecrã da roda**: painel web com as 9 páginas (em `/arlequin-ecra/`) + plugin que arruma as janelas OpenCPN/painel | Sim |
 | `signalk-arlequin-energia/` | Plugin: alarmes das baterias AGM e registo das cargas pelo motor | Sim |
 | `signalk-arlequin-ais/` | Plugin: alarme de colisão AIS (CPA/TCPA) no servidor | Sim |
+| `signalk-arlequin-gasoleo/` | Plugin: nível do gasóleo pela sonda original (ADS1115), calibração, reserva 40 L, fuga, consumo anormal, abastecimentos | Sim |
 | `signalk-arlequin-j1939/` | Plugin: motor D1-20B pelo J1939 do MDI (rotações, horas, temperatura, tensão, consumo estimado, alarmes, descoberta da PGN 65417) | Sim |
 | `arlequin-simulador/` | Plugin que finge o barco (navegação, vento, AIS, motor, baterias, sol) | Não (só testes) |
 | `dev/` | SignalK local no portátil, com tudo ligado e o diário de bordo | Não |
@@ -116,3 +117,24 @@ depois.
 
 No portátil, o simulador fala J1939 (`motorJ1939`) e o plugin usa a fonte
 `simulador`: a cadeia é a mesma do barco.
+
+## Gasóleo (no barco)
+
+1. ADS1115 na I²C da MacArthur: **A0** = terminal "S" (sonda) do medidor,
+   **A1** = terminal "+" do medidor, cada um com um divisor 47 kΩ / 10 kΩ.
+   Não se corta nada: o medidor continua a funcionar.
+2. App I2C do OpenPlotter: publicar A0 em `tanks.fuel.0.senderVoltage` e A1
+   em `tanks.fuel.0.supplyVoltage` (tensões reais, já com o divisor).
+3. Plugin `signalk-arlequin-gasoleo`. Calibrar no ecrã, página **Motor →
+   Calibrar**, com o barco direito e 3 min parado:
+   - depósito cheio → "200";
+   - as marcas do desenho do dono anterior, à medida que o gasóleo desce;
+   - **mais pontos perto do vazio** (a boia é menos linear no fundo).
+   Depois, cada abastecimento: **Abasteci** e os litros metidos. Pontos que não
+   batem certo com a tabela são recusados (engano ou sonda ainda a mexer).
+4. Alarmes: reserva ≤ 40 L; fuga > 5 L em 12 h com o motor parado; **consumo
+   anormal** quando uma saída a motor gasta mais do que o esperado (> 3 L ou
+   30% acima): possível fuga com o motor a trabalhar ou avaria. Cada saída
+   também dá o **fator de calibração** do consumo (em `/estado`).
+5. O Pi precisa de teclado no ecrã só para as notas do Diário; o Abasteci e o
+   Calibrar têm teclado numérico próprio.

@@ -1,0 +1,10 @@
+{
+  "name": "signalk-arlequin-gasoleo",
+  "version": "0.1.0",
+  "description": "Nível do gasóleo do Arlequin pela sonda original (ADS1115): calibração, reserva, fuga, abastecimentos",
+  "main": "index.js",
+  "keywords": ["signalk-node-server-plugin", "signalk-category-utility"],
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": { "test": "node --test \"test/*.test.js\"" }
+}

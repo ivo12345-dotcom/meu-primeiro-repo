@@ -104,3 +104,9 @@ body.noite button, body.noite .btn { color: var(--texto); }
   #barra { flex-wrap: wrap; }
   html { font-size: calc(100vw / 42); }
 }
+
+/* Teclado numérico por cima da página (Abasteci / Calibrar). */
+.teclado { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 10; }
+.teclado-caixa { width: min(30rem, 92vw); padding: 1rem; }
+.teclas { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
+.teclas .acao { font-size: 2rem; padding: .8rem 0; }

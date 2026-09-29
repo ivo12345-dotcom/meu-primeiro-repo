@@ -119,3 +119,18 @@ test('Melhor rota contra o vento: mostra os dois bordos e o rumo do bordo', () =
   assert.match(html, /WP contra o vento/)
   assert.match(html, /Amurado a EB: <b>\d{3}°<\/b>/)
 })
+
+test('Motor: teclado do "Abasteci" manda os litros ao plugin do gasóleo', async () => {
+  const estado = {}
+  const pedidos = []
+  const ctx = { ...contexto(store, estado), pedir: async (url, o) => { pedidos.push({ url, o }); return { antes: 40, depois: 125 } } }
+  await motor.acao('abrir-teclado', { modo: 'abasteci' }, ctx)
+  assert.match(motor.render(ctx), /Quantos litros meteste/)
+  for (const t of ['8', '5', ',', '5', '⌫']) await motor.acao('tecla', { t }, ctx)
+  assert.equal(estado.teclado.valor, '85,')
+  await motor.acao('teclado-ok', {}, ctx)
+  const p = pedidos.find(x => x.url.includes('abastecimento'))
+  assert.deepEqual(p.o.body, { litros: '85,' })
+  assert.equal(estado.teclado, null)
+  assert.match(estado.msgGas, /40 → 125 L/)
+})

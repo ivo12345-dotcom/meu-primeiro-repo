@@ -95,7 +95,14 @@ export async function pedir (url, opcoes = {}) {
     ...opcoes,
     body: opcoes.body ? JSON.stringify(opcoes.body) : undefined
   })
-  if (!r.ok) throw new Error(`${r.status}`)
+  if (!r.ok) {
+    // O erro leva a explicação do plugin, se houver ({ erro: '…' }), e o código.
+    let msg = String(r.status)
+    try { const j = await r.json(); if (j?.erro) msg = j.erro } catch { /* sem corpo */ }
+    const e = new Error(msg)
+    e.status = r.status
+    throw e
+  }
   const tipo = r.headers.get('content-type') || ''
   return tipo.includes('json') ? r.json() : r.text()
 }

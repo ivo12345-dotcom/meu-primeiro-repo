@@ -13,7 +13,7 @@ function buscar (ctx, forcar = false) {
   ctx.estado.aBuscar = true
   ctx.pedir(`/plugins/signalk-logbook/logs/${hoje()}`)
     .then(r => { ctx.estado.entradas = Array.isArray(r) ? r : []; ctx.estado.erro = null })
-    .catch(e => { ctx.estado.entradas = []; ctx.estado.erro = e.message === '404' ? 'vazio' : 'sem diário' })
+    .catch(e => { ctx.estado.entradas = []; ctx.estado.erro = e.status === 404 ? 'vazio' : 'sem diário' })
     .finally(() => { ctx.estado.aBuscar = false; ctx.estado.em = Date.now(); ctx.refrescar() })
 }
 

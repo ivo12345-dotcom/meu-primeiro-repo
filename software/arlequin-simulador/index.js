@@ -7,6 +7,7 @@ const { CENARIOS, passoEm } = require('./lib/cenarios')
 const { deltaDaLeitura } = require('./lib/delta')
 const { criarNavegacao, avancarNav } = require('./lib/navegacao')
 const { tramasMotor } = require('./lib/j1939sim')
+const { tensoesSonda } = require('./lib/sonda')
 
 module.exports = function (app) {
   const plugin = {
@@ -21,6 +22,7 @@ module.exports = function (app) {
       cenario: { type: 'string', title: 'Cenário', enum: Object.keys(CENARIOS), default: 'navegar-demo' },
       msPorHora: { type: 'number', title: 'Milissegundos reais por hora simulada', default: 2000 },
       inicio: { type: 'string', title: 'Início da simulação (data/hora ISO)', default: '2026-01-10T08:00:00' },
+      gasoleoPorSonda: { type: 'boolean', title: 'navegar-demo: o gasóleo chega pela sonda (para o plugin signalk-arlequin-gasoleo)', default: true },
       motorJ1939: { type: 'boolean', title: 'navegar-demo: o motor fala J1939 (para o plugin signalk-arlequin-j1939)', default: true },
       ventoDeGraus: { type: 'number', title: 'navegar-demo: de onde vem o vento real (graus)', default: 20 },
       colisaoRepeteMin: { type: 'number', title: 'navegar-demo: repetir o navio em colisão de N em N min (0 = só uma vez)', default: 0 },
@@ -84,12 +86,23 @@ module.exports = function (app) {
       const en = avancar(m, 1000, { ...cenario.passos[0], motor: r.motor })
       m = en.modelo
       const j1939 = o.motorJ1939 !== false
-      // Com J1939, os propulsion.main.* vêm do plugin do motor, não daqui.
-      const semMotor = (d) => j1939 && !d.context
-        ? { ...d, updates: d.updates.map(u => ({ ...u, values: u.values.filter(v => !v.path.startsWith('propulsion.main.')) })) }
+      const porSonda = o.gasoleoPorSonda !== false
+      // Com J1939 e com a sonda, os propulsion.main.* e o nível do depósito vêm
+      // dos plugins do motor e do gasóleo, não daqui.
+      const tirar = (p) => (j1939 && p.startsWith('propulsion.main.')) || (porSonda && p.startsWith('tanks.fuel.0.'))
+      const semMotor = (d) => !d.context
+        ? { ...d, updates: d.updates.map(u => ({ ...u, values: u.values.filter(v => !tirar(v.path)) })) }
         : d
       for (const d of r.deltas) app.handleMessage(plugin.id, semMotor(d))
       app.handleMessage(plugin.id, semMotor(deltaDaLeitura(en.leitura, o)))
+      if (porSonda) {
+        const roll = r.deltas[0].updates[0].values.find(x => x.path === 'navigation.attitude')?.value?.roll ?? 0
+        const t = tensoesSonda({ litros: nav.combustivel * 1000, alimentacao: r.motor ? 14.2 : en.leitura.tensao, roll, sog: r.sog })
+        app.handleMessage(plugin.id, { updates: [{ values: [
+          { path: 'tanks.fuel.0.senderVoltage', value: t.sonda },
+          { path: 'tanks.fuel.0.supplyVoltage', value: t.alimentacao }
+        ] }] })
+      }
       if (j1939) {
         if (r.motor) horasMotorS += 1
         const volt = r.motor ? 14.2 : en.leitura.vMotor

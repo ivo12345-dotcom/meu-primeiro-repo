@@ -1,0 +1,53 @@
+{
+  "enabled": true,
+  "configuration": {
+    "caminhoSonda": "tanks.fuel.0.senderVoltage",
+    "caminhoAlimentacao": "tanks.fuel.0.supplyVoltage",
+    "capacidadeL": 200,
+    "tabela": [
+      {
+        "razao": 0.1,
+        "litros": 0
+      },
+      {
+        "razao": 0.1949,
+        "litros": 5
+      },
+      {
+        "razao": 0.2342,
+        "litros": 10
+      },
+      {
+        "razao": 0.2897,
+        "litros": 20
+      },
+      {
+        "razao": 0.3683,
+        "litros": 40
+      },
+      {
+        "razao": 0.4286,
+        "litros": 60
+      },
+      {
+        "razao": 0.4795,
+        "litros": 80
+      },
+      {
+        "razao": 0.5648,
+        "litros": 120
+      },
+      {
+        "razao": 0.6367,
+        "litros": 160
+      },
+      {
+        "razao": 0.7,
+        "litros": 200
+      }
+    ],
+    "logbook": true,
+    "token": "",
+    "logbookUrl": "http://localhost:3000/plugins/signalk-logbook/logs"
+  }
+}
