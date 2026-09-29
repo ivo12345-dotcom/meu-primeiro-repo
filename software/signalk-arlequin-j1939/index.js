@@ -9,6 +9,7 @@ const { lerLinha, descodificar } = require('./lib/j1939')
 const { litrosHora, m3s } = require('./lib/consumo')
 const { novoEstadoMotor, avaliarMotor } = require('./lib/motor')
 const { novaDescoberta, registar, alarmesDoMapa } = require('./lib/descoberta')
+const { criarDetetor, estavel, novaCurva, amostra, resumo } = require('./lib/curva')
 
 const RPM_VELHO = 5000 // sem EEC1 há 5 s = motor parado (ignição desligada)
 
@@ -51,6 +52,7 @@ module.exports = function (app) {
   let ouvinte = null
   let valores = {} // caminho → valor (último)
   let estado, desc, ativosMapa, rpmEm, rpmAtual, ficheiroDesc, vistasTotal
+  let detetor, curva, ficheiroCurva, ultimaGravacao
 
   function aoReceber (linha) {
     const t = lerLinha(linha)
@@ -94,9 +96,33 @@ module.exports = function (app) {
       vals.push({ path: 'propulsion.main.fuel.rate', value: m3s(litrosHora(rpm, o.fatorConsumo)) })
     }
     vals.push({ path: 'propulsion.main.state', value: estado.ligado ? 'started' : 'stopped' })
+
+    // Curva aprendida: em regime estável, velocidade (na água, se houver) e consumo por faixa.
+    const lh = 'propulsion.main.fuel.rate' in valores
+      ? valores['propulsion.main.fuel.rate'] * 3600 * 1000
+      : (o.estimarConsumo ? litrosHora(rpm, o.fatorConsumo) : null)
+    const e = estavel(detetor, estado.ligado ? rpm : 0, agora)
+    detetor = e.d
+    const vel = velocidade()
+    if (estado.ligado && e.estavel && typeof lh === 'number' && vel > 0.5) {
+      curva = amostra(curva, { rpm, lh, vel })
+      if (agora - ultimaGravacao > 60000) {
+        ultimaGravacao = agora
+        fs.writeFile(ficheiroCurva, JSON.stringify(curva), () => {})
+      }
+    }
     app.handleMessage(plugin.id, { updates: [{ values: vals }] })
     publicarNotificacoes(r.notificacoes)
     app.setPluginStatus(`${o.fonte} · ${vistasTotal} tramas · ${estado.ligado ? Math.round(rpm) + ' rpm' : 'parado'} · ${Object.keys(desc.vistas).length} PGN`)
+  }
+
+  // Velocidade na água se for recente; senão a velocidade no fundo.
+  function velocidade () {
+    for (const p of ['navigation.speedThroughWater', 'navigation.speedOverGround']) {
+      const v = app.getSelfPath?.(p)
+      if (typeof v?.value === 'number' && Date.now() - Date.parse(v.timestamp) < 10000) return v.value
+    }
+    return null
   }
 
   function arrancarCandump () {
@@ -127,6 +153,10 @@ module.exports = function (app) {
     const dir = app.getDataDirPath()
     fs.mkdirSync(dir, { recursive: true })
     ficheiroDesc = path.join(dir, 'descoberta-65417.jsonl')
+    ficheiroCurva = path.join(dir, 'curva-consumo.json')
+    detetor = criarDetetor()
+    ultimaGravacao = 0
+    try { curva = JSON.parse(fs.readFileSync(ficheiroCurva, 'utf8')) } catch { curva = novaCurva() }
     if (o.fonte === 'simulador') {
       ouvinte = aoReceber
       app.on('arlequin-j1939', ouvinte)
@@ -155,6 +185,11 @@ module.exports = function (app) {
       return { fonte: o.fonte, tramas: vistasTotal, rpm: Math.round(rpmAtual || 0), vistas, mudancas: mudancas.reverse() }
     }
     router.get('/diagnostico', (req, res) => res.json(diag()))
+    // Curva de consumo aprendida no barco (para a página Motor).
+    router.get('/consumo', (req, res) => res.json({
+      ...resumo(curva || novaCurva()),
+      consumo: 'propulsion.main.fuel.rate' in valores ? 'medido pelo MDI' : `estimado (curva Volvo × ${o.fatorConsumo})`
+    }))
     router.get('/pagina', (req, res) => {
       const d = diag()
       const esc = (s) => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))

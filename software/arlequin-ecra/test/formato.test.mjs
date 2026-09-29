@@ -44,3 +44,9 @@ test('hora local HH:MM', () => {
   const d = new Date(2026, 8, 29, 14, 32)
   assert.equal(f.hora(d), '14:32')
 })
+
+import { litrosPorMilha } from '../public/lib/consumo-milha.js'
+test('litros por milha no ecrã', () => {
+  assert.ok(Math.abs(litrosPorMilha(2.0, 5 * 1852 / 3600) - 0.4) < 1e-9)
+  assert.equal(litrosPorMilha(2.0, 0.1), null)
+})

@@ -100,3 +100,26 @@ test('diagnóstico: PGN vistas e mudanças da 65417 gravadas', async (t) => {
   assert.deepEqual(d.mudancas[0].bitsMudados, ['byte0.bit0 1→0', 'byte0.bit1 1→0'])
   assert.match(html, /byte0\.bit0 1→0/)
 })
+
+test('curva aprendida: regime estável a andar entra na faixa certa e aparece em /consumo', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  app.getSelfPath = (p) => p === 'navigation.speedThroughWater' ? { value: 5.2 * 1852 / 3600, timestamp: new Date(Date.now()).toISOString() } : undefined
+  const p = criar(app)
+  p.start({ fonte: 'simulador' })
+  for (let s = 0; s < 120; s++) {
+    enviar(app, 61444, 'FFFFFF004BFFFFFF') // 2400 rpm
+    t.mock.timers.tick(1000)
+  }
+  const rotas = {}
+  p.registerWithRouter({ get: (r, h) => { rotas[r] = h } })
+  let c
+  rotas['/consumo']({}, { json: (j) => { c = j } })
+  p.stop()
+  assert.equal(c.faixas.length, 1)
+  assert.equal(c.faixas[0].de, 2400)
+  assert.ok(Math.abs(c.faixas[0].nos - 5.2) < 1e-6)
+  assert.ok(Math.abs(c.faixas[0].lmn - 2.0 / 5.2) < 1e-6)
+  assert.equal(c.melhor.de, 2400)
+  assert.match(c.consumo, /estimado/)
+})
