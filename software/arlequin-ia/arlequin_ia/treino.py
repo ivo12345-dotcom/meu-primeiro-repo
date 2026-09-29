@@ -7,6 +7,8 @@ import gzip
 import json
 import os
 import re
+import sys
+import traceback
 from pathlib import Path
 
 import lightgbm as lgb
@@ -23,6 +25,8 @@ PARAMETROS = {'objective': 'quantile', 'num_leaves': 15, 'learning_rate': 0.05, 
 RONDAS = 200
 HORAS_MINIMAS = 5.0
 SEGUNDOS_POR_LINHA = 10
+# rpm em falta (NaN) conta como motor parado: a ECU do motor está desligada quando o motor está parado
+MOTOR_PARADO_RPM = 300
 
 VARS_VENTO = ['latCel', 'lonCel', 'prevTws', 'prevTwd', 'horaDia', 'idadePrevH', 'tendPressao3h']
 MODELOS = {
@@ -31,7 +35,8 @@ MODELOS = {
         'variaveis': ['tws', 'twaAbs', 'rajada', 'prevOndas', 'prevPeriodo', 'ondasAnguloRel', 'balAdorno',
                       'balCaimento', 'adornoAbs', 'grandeRizos', 'genoaPct'],
         # só à vela: a motor a polar não quer dizer nada (e o rpm é sempre 0 à vela)
-        'filtro': lambda d: d['tws'].notna() & d['twaAbs'].notna() & d['stw'].notna() & (d['rpm'].fillna(0) <= 0),
+        'filtro': lambda d: (d['tws'].notna() & d['twaAbs'].notna() & d['stw'].notna()
+                              & (d['rpm'].fillna(0) <= MOTOR_PARADO_RPM)),
         'base': lambda d, polar: stw_polar(polar, d['twaAbs'], d['tws']),
     },
     'ventoForca': {
@@ -46,7 +51,7 @@ MODELOS = {
     },
     'consumo': {
         'alvo': 'litrosHora', 'variaveis': ['rpm', 'stw', 'prevOndas', 'ondasAnguloRel', 'balCaimento'],
-        'filtro': lambda d: (d['rpm'] > 300) & d['litrosHora'].notna(),
+        'filtro': lambda d: (d['rpm'] > MOTOR_PARADO_RPM) & d['litrosHora'].notna(),
         'base': lambda d, polar: litros_volvo(d['rpm']),
     },
 }
@@ -74,7 +79,7 @@ def celulas(d):
 def frases(nome, d, x, p50, polar):
     """Até 3 frases simples sobre o que o modelo aprendeu."""
     if nome == 'velocidade':
-        vela = d[(d['rpm'].fillna(0) <= 0)].copy()
+        vela = d[(d['rpm'].fillna(0) <= MOTOR_PARADO_RPM)].copy()
         if vela.empty:
             return []
         vela['cel'] = (vela['tws'] // 2 * 2).astype(int).astype(str) + '|' + (vela['twaAbs'] // 15 * 15).astype(int).astype(str)
@@ -105,17 +110,27 @@ def frases(nome, d, x, p50, polar):
 
 
 def escrever(caminho, dados):
-    """Escreve de uma vez: primeiro num .tmp ao lado, depois troca (um corte de luz não deixa meio ficheiro)."""
+    """Escreve de uma vez: primeiro num .tmp ao lado (com fsync, para o ficheiro ir mesmo a disco), depois troca
+    (um corte de luz não deixa meio ficheiro nem um .tmp por gravar)."""
     caminho = Path(caminho)
     tmp = caminho.with_name(caminho.name + '.tmp')
-    tmp.write_bytes(dados)
+    with open(tmp, 'wb') as f:
+        f.write(dados)
+        f.flush()
+        os.fsync(f.fileno())
     os.replace(tmp, caminho)
+
+
+def _numeros_versoes(pasta):
+    """Os números das vNNNN que existem (legíveis ou não), do maior para o menor."""
+    return sorted((int(m.group(1)) for f in pasta.glob('v*.json.gz') if (m := re.fullmatch(r'v(\d+)\.json\.gz', f.name))),
+                  reverse=True)
 
 
 def proxima_versao(pasta):
     """A maior vNNNN que já existe + 1 (as versões nunca se apagam nem se reescrevem)."""
-    numeros = [int(m.group(1)) for f in pasta.glob('v*.json.gz') if (m := re.fullmatch(r'v(\d+)\.json\.gz', f.name))]
-    return f'v{max(numeros, default=0) + 1:04d}'
+    recente = versao_mais_recente(pasta)
+    return f'v{(int(recente[1:]) if recente else 0) + 1:04d}'
 
 
 def versao_atual(pasta):
@@ -124,13 +139,32 @@ def versao_atual(pasta):
 
 
 def versao_mais_recente(pasta):
-    """A maior vNNNN que já existe (aceite ou não), ou None se não houver nenhuma."""
-    numeros = [int(m.group(1)) for f in pasta.glob('v*.json.gz') if (m := re.fullmatch(r'v(\d+)\.json\.gz', f.name))]
-    return f'v{max(numeros):04d}' if numeros else None
+    """A maior vNNNN que já existe (legível ou não, aceite ou não), ou None se não houver nenhuma."""
+    numeros = _numeros_versoes(pasta)
+    return f'v{numeros[0]:04d}' if numeros else None
 
 
 def carregar(pasta, versao):
     return json.loads(gzip.decompress((pasta / f'{versao}.json.gz').read_bytes()).decode('utf-8'))
+
+
+def carregar_seguro(pasta, versao):
+    """Como `carregar`, mas devolve None em vez de rebentar com uma versão corrompida (p.ex. ficheiro vazio
+    por um corte de luz a meio da escrita). Nunca apaga nem sobrescreve o ficheiro ilegível."""
+    try:
+        return carregar(pasta, versao)
+    except Exception:
+        return None
+
+
+def versao_legivel_mais_recente(pasta):
+    """A versão mais recente que se consiga mesmo ler, saltando as corrompidas (sem lhes tocar).
+    None se não houver nenhuma versão legível."""
+    for n in _numeros_versoes(pasta):
+        modelo = carregar_seguro(pasta, f'v{n:04d}')
+        if modelo is not None:
+            return modelo
+    return None
 
 
 def prever_guardado(modelo_json, d, quantil='p50'):
@@ -155,10 +189,12 @@ def treinar_um(nome, d, pasta_modelos, agora, polar):
     pasta = Path(pasta_modelos, nome)
     pasta.mkdir(parents=True, exist_ok=True)
     atual = versao_atual(pasta)
-    em_uso = carregar(pasta, atual) if atual else None
-    recente_nome = versao_mais_recente(pasta)
-    recente = carregar(pasta, recente_nome) if recente_nome else None
-    # a última versão gravada (mesmo rejeitada) já foi testada com esta saída: repetir dava a mesma versão outra vez
+    # se a versão apontada por "atual" estiver ilegível (corrompida), conta como se não houvesse modelo em uso:
+    # nunca apaga nem sobrescreve o ficheiro, só deixa de o usar como referência
+    em_uso = carregar_seguro(pasta, atual) if atual else None
+    # idem para a versão mais recente: salta as ilegíveis em vez de rebentar, sem lhes tocar
+    recente = versao_legivel_mais_recente(pasta)
+    # a última versão gravada e legível (mesmo rejeitada) já foi testada com esta saída: repetir dava a mesma versão outra vez
     referencia = recente if recente is not None and recente.get('ultimaSaida') else em_uso
     if referencia is not None and referencia.get('ultimaSaida') and pd.Timestamp(referencia['ultimaSaida']) >= ultima_saida:
         return {**res, 'motivo': 'sem saída nova para testar desde a última versão'}
@@ -166,8 +202,8 @@ def treinar_um(nome, d, pasta_modelos, agora, polar):
     novo = treinar_quantis(x_tr, treino[spec['alvo']])
     mae_novo = mae(novo['p50'].predict(x_te), teste[spec['alvo']])
     mae_base = mae(spec['base'](teste, polar), teste[spec['alvo']])
-    mae_atual = mae(prever_guardado(em_uso, teste), teste[spec['alvo']]) if atual else None
-    aceite = mae_novo <= mae_atual if atual else mae_novo < mae_base
+    mae_atual = mae(prever_guardado(em_uso, teste), teste[spec['alvo']]) if em_uso is not None else None
+    aceite = mae_novo <= mae_atual if em_uso is not None else mae_novo < mae_base
     final = treinar_quantis(linhas[spec['variaveis']], linhas[spec['alvo']]) if aceite else novo
     versao = proxima_versao(pasta)
     modelo = {
@@ -184,8 +220,8 @@ def treinar_um(nome, d, pasta_modelos, agora, polar):
     escrever(pasta / f'{versao}.json.gz', gzip.compress(json.dumps(modelo).encode('utf-8')))
     if aceite:
         escrever(pasta / 'atual', versao.encode('utf-8'))
-    motivo = ('erra menos do que ' + ('a versão em uso' if atual else 'a polar/curva de origem')) if aceite \
-        else ('erra mais do que ' + ('a versão em uso' if atual else 'a polar/curva de origem'))
+    motivo = ('erra menos do que ' + ('a versão em uso' if em_uso is not None else 'a polar/curva de origem')) if aceite \
+        else ('erra mais do que ' + ('a versão em uso' if em_uso is not None else 'a polar/curva de origem'))
     return {**res, 'versao': versao, 'aceite': aceite, 'motivo': motivo, 'mae': modelo['mae'],
             'maeAtual': modelo['maeAtual'], 'maeBase': modelo['maeBase'], 'frases': modelo['frases']}
 
@@ -205,8 +241,9 @@ def treinar(base, polar, agora=None, incluir_simulado=False, modelos=None):
         try:
             resultados.append(treinar_um(n, d, pasta_modelos, agora, polar))
         except Exception as e:  # um modelo estragado não pára os outros
-            resultados.append({'modelo': n, 'data': agora.isoformat(), 'versao': None, 'aceite': False,
-                               'motivo': f'erro: {e}'})
+            print(traceback.format_exc(), file=sys.stderr)
+            resultados.append({'modelo': n, 'data': agora.isoformat(), 'horas': None, 'n': None,
+                               'versao': None, 'aceite': False, 'motivo': f'erro: {e}'})
     registo = pasta_modelos / 'registo.json'
     antigo = json.loads(registo.read_text(encoding='utf-8')) if registo.exists() else []
     escrever(registo, json.dumps(antigo + resultados, ensure_ascii=False, indent=1).encode('utf-8'))

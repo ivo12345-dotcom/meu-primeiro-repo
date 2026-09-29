@@ -179,18 +179,54 @@ def test_numero_da_versao_segue_a_maior_e_nunca_reescreve(tmp_path):
 
 def test_um_modelo_estragado_nao_para_os_outros(tmp_path):
     gerar(tmp_path, POLAR)
-    pasta = tmp_path / 'modelos' / 'velocidade'
-    pasta.mkdir(parents=True)
-    (pasta / 'v0001.json.gz').write_bytes(b'lixo')
-    (pasta / 'atual').write_text('v0001', encoding='utf-8')
+    (tmp_path / 'modelos').mkdir(parents=True)
+    # um ficheiro no lugar da pasta do modelo obriga o mkdir() do treino a rebentar (erro genuíno, não de
+    # versão ilegível: essa já não pára o treino, ver test_uma_versao_ilegivel_nao_bloqueia_o_modelo)
+    (tmp_path / 'modelos' / 'velocidade').write_bytes(b'nao e uma pasta')
     r = {x['modelo']: x for x in treinar(tmp_path, POLAR, agora=AGORA)}
     v = r['velocidade']
     assert v['motivo'].startswith('erro:') and v['versao'] is None and v['aceite'] is False, v
     assert v['modelo'] == 'velocidade' and v['data'] == AGORA.isoformat()
+    assert v['horas'] is None and v['n'] is None
     for nome in ('ventoForca', 'ventoDirecao', 'consumo'):
         assert r[nome]['versao'] == 'v0001', r[nome]
     registo = json.loads((tmp_path / 'modelos' / 'registo.json').read_text(encoding='utf-8'))
     assert [x['modelo'] for x in registo] == ['velocidade', 'ventoForca', 'ventoDirecao', 'consumo']
+
+
+def test_uma_versao_ilegivel_nao_bloqueia_o_modelo(tmp_path):
+    gerar(tmp_path, POLAR)
+    assert treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])[0]['versao'] == 'v0001'
+    pasta = tmp_path / 'modelos' / 'velocidade'
+    (pasta / 'v0002.json.gz').write_bytes(b'')  # corte de luz a meio da escrita: ficheiro vazio
+    gerar(tmp_path, POLAR, sessoes=1, inicio='2026-06-10T08:00:00Z', semente=2)  # saída nova
+    r = treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])[0]
+    assert r['versao'] == 'v0003' and not r['motivo'].startswith('erro:'), r
+    assert (pasta / 'v0003.json.gz').exists()
+    assert (pasta / 'v0002.json.gz').read_bytes() == b''  # ilegível, mas nunca tocada
+
+
+def test_atual_a_apontar_para_versao_ilegivel_conta_como_sem_modelo_em_uso(tmp_path):
+    gerar(tmp_path, POLAR)
+    pasta = tmp_path / 'modelos' / 'velocidade'
+    pasta.mkdir(parents=True)
+    (pasta / 'v0001.json.gz').write_bytes(b'lixo')
+    (pasta / 'atual').write_text('v0001', encoding='utf-8')
+    r = treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])[0]
+    assert r['versao'] == 'v0002' and not r['motivo'].startswith('erro:'), r
+    assert r['maeAtual'] is None  # comparado com a polar/curva de origem, como se não houvesse modelo em uso
+    assert (pasta / 'v0001.json.gz').read_bytes() == b'lixo'  # ilegível, mas nunca tocada
+
+
+def test_versao_antiga_sem_ultima_saida_nao_bloqueia(tmp_path):
+    gerar(tmp_path, POLAR)
+    assert treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])[0]['versao'] == 'v0001'
+    pasta = tmp_path / 'modelos' / 'velocidade'
+    modelo = carregar(pasta, 'v0001')
+    del modelo['ultimaSaida']  # versões antigas, de antes deste campo existir
+    (pasta / 'v0001.json.gz').write_bytes(gzip.compress(json.dumps(modelo).encode('utf-8')))
+    r = treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])[0]  # mesma saída, sem referência para o teste
+    assert r['versao'] == 'v0002' and not r['motivo'].startswith('sem saída nova'), r
 
 
 def test_o_primeiro_modelo_pior_do_que_a_origem_fica_guardado_mas_nao_entra_em_uso(tmp_path):
