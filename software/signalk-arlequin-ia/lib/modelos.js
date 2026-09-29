@@ -25,7 +25,7 @@ function versoes (pasta, nome) {
 }
 
 // { nome: modelo | null } com o modelo em uso de cada tipo (sem o texto nativo do Python).
-function carregarModelos (pasta) {
+function carregarModelos (pasta, aoErro = () => {}) {
   const out = {}
   for (const nome of NOMES) {
     const v = versaoAtual(pasta, nome)
@@ -33,7 +33,7 @@ function carregarModelos (pasta) {
       const m = v ? lerVersao(pasta, nome, v) : null
       if (m) delete m.nativo
       out[nome] = m
-    } catch { out[nome] = null }
+    } catch (e) { aoErro(nome, e); out[nome] = null }
   }
   return out
 }

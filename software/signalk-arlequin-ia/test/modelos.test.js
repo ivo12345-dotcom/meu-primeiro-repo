@@ -64,4 +64,17 @@ test('consumo: entre 50% e 200% da Volvo; sem modelo fica a Volvo', () => {
   assert.deepEqual(m.preverConsumo(null, {}, 1.3), { p10: 1.3, p50: 1.3, p90: 1.3 })
 })
 
+test('modelo ilegível na cena avisa via callback antes de ficar null', () => {
+  const p = pastaComModelo()
+  // Sobrescrever v0001 com bytes lixo
+  fs.writeFileSync(path.join(p, 'velocidade', 'v0001.json.gz'), Buffer.from([0xFF, 0xFE, 0xFD]))
+  const erros = []
+  const ms = m.carregarModelos(p, (nome, e) => erros.push([nome, e]))
+  assert.equal(erros.length, 1)
+  assert.equal(erros[0][0], 'velocidade')
+  assert.ok(erros[0][1] instanceof Error)
+  assert.equal(ms.velocidade, null)
+  assert.deepEqual(Object.keys(ms), m.NOMES)
+})
+
 function fixa (v) { return { feature_names: [], tree_info: [{ tree_structure: { leaf_value: v } }] } }
