@@ -44,6 +44,14 @@ export function aplicarDelta (store, delta) {
   }
 }
 
+// Sem ligação os alarmes guardados ficam velhos: esquecem-se, para o ecrã não
+// continuar a apitar um alarme que já pode ter passado. Ao religar, o SignalK
+// volta a mandar os que ainda estiverem ativos. A barra mostra "SEM LIGAÇÃO".
+export function perderLigacao (store) {
+  store.ligado = false
+  store.notificacoes.clear()
+}
+
 export function ligar (store, { host = location.host, aoMudar = () => {} } = {}) {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
   let ws
@@ -62,7 +70,7 @@ export function ligar (store, { host = location.host, aoMudar = () => {} } = {})
       if (m.updates) aplicarDelta(store, m)
     }
     ws.onclose = () => {
-      store.ligado = false
+      perderLigacao(store)
       aoMudar()
       setTimeout(abrir, 3000)
     }
