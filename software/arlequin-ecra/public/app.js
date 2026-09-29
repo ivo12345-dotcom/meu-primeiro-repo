@@ -26,8 +26,9 @@ const guardado = (k, def) => { try { return JSON.parse(localStorage.getItem(k)) 
 const guardar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch { /* sem armazenamento */ } }
 
 const app = {
-  pagina: guardado('arlequin.pagina', 'carta'),
-  noite: guardado('arlequin.noite', false),
+  // ?pagina=ais e ?noite=1 abrem direto numa página (atalhos e capturas).
+  pagina: PAGINAS[parametros.get('pagina')] ? parametros.get('pagina') : guardado('arlequin.pagina', 'carta'),
+  noite: parametros.has('noite') ? parametros.get('noite') === '1' : guardado('arlequin.noite', false),
   polar: null,
   baro: guardado('arlequin.baro', criarBarometro()),
   viagem: guardado('arlequin.viagem', null) || novaViagem(Date.now()),
