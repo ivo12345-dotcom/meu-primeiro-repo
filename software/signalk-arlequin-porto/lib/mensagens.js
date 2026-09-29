@@ -2,7 +2,8 @@
 // Que notificações seguem para o Telegram: só as mudanças de estado (normal →
 // aviso/alarme e de volta), cada caminho no máximo de 10 em 10 min enquanto
 // oscilar. No porto (amarrado), os alarmes AIS não seguem: um navio a passar ao
-// largo da marina não é perigo para um barco amarrado.
+// largo da marina não é perigo para um barco amarrado. Alguns caminhos só
+// seguem em alarme (o aviso dos 80% do disco fica no ecrã: só os 95% contam).
 
 const ICONE = { warn: '⚠️', alert: '⚠️', alarm: '🚨', emergency: '🔥' }
 const ATIVO = new Set(['warn', 'alert', 'alarm', 'emergency'])
@@ -14,13 +15,18 @@ function novoEncaminhador () {
 // notificacoes: [{ caminho, state, message }]
 // O limite de 10 min só trava ALARMES repetidos do mesmo caminho; o "resolvido"
 // de um alarme que foi enviado segue sempre (senão ficava-se a julgar que continua).
-function encaminhar (enc0, notificacoes, agora, { intervalo = 10 * 60 * 1000, amarrado = false, ignorarAmarrado = ['notifications.arlequin.ais.'], nunca = ['notifications.arlequin.caixanegra.velas'] } = {}) {
+const SO_ALARME = ['notifications.arlequin.caixanegra.disco']
+const GRAVE = new Set(['alarm', 'emergency'])
+
+function encaminhar (enc0, notificacoes, agora, { intervalo = 10 * 60 * 1000, amarrado = false, ignorarAmarrado = ['notifications.arlequin.ais.'], nunca = ['notifications.arlequin.caixanegra.velas'], soAlarme = SO_ALARME } = {}) {
   const enc = { estados: { ...enc0.estados }, mensagem: { ...enc0.mensagem }, ultimoAlarme: { ...enc0.ultimoAlarme }, pendente: { ...enc0.pendente } }
   const mensagens = []
   for (const n of notificacoes) {
     if (nunca.some(p => n.caminho.startsWith(p))) continue // lembretes só para o ecrã
     const antes = enc.estados[n.caminho] || 'normal'
-    const agoraEstado = ATIVO.has(n.state) ? n.state : 'normal'
+    const soGrave = soAlarme.some(p => n.caminho.startsWith(p))
+    // Para estes caminhos um aviso conta como normal: não segue, e o "resolvido" só sai se houve alarme.
+    const agoraEstado = ATIVO.has(n.state) && (!soGrave || GRAVE.has(n.state)) ? n.state : 'normal'
     enc.estados[n.caminho] = agoraEstado
     if (agoraEstado === antes) continue
     if (amarrado && ignorarAmarrado.some(p => n.caminho.startsWith(p))) continue

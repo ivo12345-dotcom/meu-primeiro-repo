@@ -76,3 +76,18 @@ test('o lembrete das velas nunca vai para o Telegram; o alarme do disco vai', ()
   ], 0)
   assert.deepEqual(r.mensagens, ['🚨 Disco a 96%'])
 })
+
+test('disco da caixa negra: o aviso (warn) nunca vai para o Telegram; só o alarme e o seu "resolvido"', () => {
+  const D = 'notifications.arlequin.caixanegra.disco'
+  let e = novoEncaminhador()
+  const envios = []
+  const passo = (state, message, m) => { const r = encaminhar(e, [n(D, state, message)], m * MIN); e = r.enc; envios.push(...r.mensagens) }
+  passo('warn', 'Disco a 81%: copia os dados para o portátil', 0)
+  passo('normal', 'Normal', 60)
+  passo('warn', 'Disco a 81%: copia os dados para o portátil', 120)
+  assert.deepEqual(envios, [], 'aviso e o seu fim ficam só no ecrã')
+  passo('alarm', 'Disco a 96%: parei de gravar o bruto', 180)
+  passo('warn', 'Disco a 90%: copia os dados para o portátil', 240)
+  passo('normal', 'Normal', 300)
+  assert.deepEqual(envios, ['🚨 Disco a 96%: parei de gravar o bruto', '✓ Resolvido: Disco a 96%: parei de gravar o bruto'])
+})

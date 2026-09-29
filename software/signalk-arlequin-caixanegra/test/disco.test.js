@@ -58,7 +58,7 @@ test('apagar só o confirmado e só se o hash ainda bater certo', () => {
   assert.deepEqual(Object.keys(conf.lerConfirmados(b)), ['bruto/2026-09-28T11.ndjson.gz'])
 })
 
-test('plano do disco: abaixo de 80% nada; acima apaga o confirmado mais antigo até baixar', () => {
+test('plano do disco: abaixo de 80% nada; acima apaga o confirmado mais antigo até baixar dos 75% (histerese)', () => {
   const ficheiros = [
     { ficheiro: 'bruto/2026-09-28T12.ndjson.gz', bytes: 30 },
     { ficheiro: 'bruto/2026-09-28T10.ndjson.gz', bytes: 30 },
@@ -67,12 +67,18 @@ test('plano do disco: abaixo de 80% nada; acima apaga o confirmado mais antigo a
   ]
   const confirmadosTodos = Object.fromEntries(ficheiros.map(f => [f.ficheiro, 'h']))
   assert.deepEqual(disco.planear({ usadoPct: 79, total: 1000, ficheiros, confirmados: confirmadosTodos }), { aviso: false, apagar: [], pararBruto: false })
+  // Cada ficheiro vale 3%: 85 → 82 → 79 → 76 → 73. Só pára abaixo de 75% (80 − 5),
+  // senão voltava aos 80% daí a pouco e o aviso ia e vinha.
   const p = disco.planear({ usadoPct: 85, total: 1000, ficheiros, confirmados: confirmadosTodos })
-  assert.equal(p.aviso, true)
-  assert.deepEqual(p.apagar, ['bruto/2026-09-28T10.ndjson.gz', 'bruto/2026-09-28T11.ndjson.gz'])
+  assert.deepEqual(p.apagar, ['bruto/2026-09-28T10.ndjson.gz', 'bruto/2026-09-28T11.ndjson.gz', 'bruto/2026-09-28T12.ndjson.gz', 'bruto/2026-09-28T13.ndjson.gz'])
+  assert.equal(p.aviso, false, 'depois de apagar fica abaixo dos 80%: não há aviso')
   assert.equal(p.pararBruto, false)
+  // Só a T13 confirmada: 85 → 82, continua acima dos 80% → aviso (falta confirmar mais no portátil).
   const soUm = disco.planear({ usadoPct: 85, total: 1000, ficheiros, confirmados: { 'bruto/2026-09-28T13.ndjson.gz': 'h' } })
   assert.deepEqual(soUm.apagar, ['bruto/2026-09-28T13.ndjson.gz'], 'nunca o que não está confirmado')
+  assert.equal(soUm.aviso, true)
+  // Nada confirmado a 81%: aviso, nada a apagar.
+  assert.deepEqual(disco.planear({ usadoPct: 81, total: 1000, ficheiros, confirmados: {} }), { aviso: true, apagar: [], pararBruto: false })
 })
 
 test('plano do disco: 96% sem nada confirmado → parar o bruto; com o suficiente não', () => {

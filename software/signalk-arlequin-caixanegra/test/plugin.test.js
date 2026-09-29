@@ -7,13 +7,15 @@ const path = require('node:path')
 const zlib = require('node:zlib')
 const { EventEmitter } = require('node:events')
 const disco = require('../lib/disco')
+const confirmados = require('../lib/confirmados')
 const criar = require('..')
 
 const NO = 1852 / 3600
 const EU = 'vessels.urn:mrn:signalk:uuid:arlequin'
 const INICIO = Date.UTC(2026, 8, 29, 14, 0, 0)
 let usoFalso = 50
-disco.usoDisco = () => ({ total: 256e9, livre: 256e9 * (1 - usoFalso / 100), usadoPct: usoFalso })
+let totalFalso = 256e9
+disco.usoDisco = () => ({ total: totalFalso, livre: totalFalso * (1 - usoFalso / 100), usadoPct: usoFalso })
 
 function appFalso (dir) {
   const app = { valores: {}, notificacoes: [], estado: '', signalk: new EventEmitter(), selfContext: EU }
@@ -227,4 +229,23 @@ test('disco a 96% sem nada confirmado: pára o bruto e dá alarme; a 50% retoma'
   assert.ok(fs.statSync(f).size > antes, 'retomou')
   assert.equal(app.notificacoes.filter(n => n.path === 'notifications.arlequin.caixanegra.disco').pop().state, 'normal')
   p.stop()
+})
+
+test('disco a 81% com bruto confirmado: apaga e não avisa (o aviso aos 80% não pode ir e vir)', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 81
+  totalFalso = 1000 // cada ficheiro de 100 bytes vale 10%
+  t.after(() => { totalFalso = 256e9 })
+  const app = appFalso()
+  const base = path.join(app.dir, 'dados')
+  fs.mkdirSync(path.join(base, 'bruto'), { recursive: true })
+  const antigo = path.join(base, 'bruto', '2026-09-28T10.ndjson.gz')
+  fs.writeFileSync(antigo, 'x'.repeat(100))
+  fs.writeFileSync(path.join(base, 'confirmados.json'), JSON.stringify({ 'bruto/2026-09-28T10.ndjson.gz': confirmados.sha256Ficheiro(antigo) }))
+  const p = criar(app)
+  p.start({ pasta: base })
+  correr(t, app, 60, 'nmea0183.GP')
+  p.stop()
+  assert.equal(fs.existsSync(antigo), false, 'o confirmado foi apagado')
+  assert.deepEqual(app.notificacoes.filter(n => n.path === 'notifications.arlequin.caixanegra.disco'), [], 'sem aviso: depois de apagar fica abaixo dos 80%')
 })
