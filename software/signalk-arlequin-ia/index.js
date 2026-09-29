@@ -145,6 +145,8 @@ module.exports = function (app, deps = {}) {
     })
     router.post('/voltar', (req, res) => {
       if (!base) return desligada(res)
+      // O Python escreve o atual e o registo.json no fim do treino: não mexer ao mesmo tempo.
+      if (emTreino) return res.status(409).json({ ok: false, erro: 'está a treinar; tenta depois' })
       const nome = req.body?.modelo
       if (!mod.NOMES.includes(nome)) return res.status(400).json({ ok: false, erro: 'modelo desconhecido' })
       const atual = mod.versaoAtual(pastaModelos(), nome)
