@@ -93,8 +93,10 @@ depois.
 
 ## Motor pelo J1939 (no barco)
 
-1. Adaptador USB–CAN (candleLight/gs_usb, de preferência isolado) no cabo em Y
-   do MDI. **Nunca** na rede NMEA 2000 da MacArthur.
+1. Adaptador USB–CAN isolado (InnoMaker USB2CAN, gs_usb) junto ao motor, com
+   uma derivação curta soldada nos fios CAN-H, CAN-L e massa da cablagem do
+   MDI (procedimento no NAVEGACAO.md, "Motor J1939: compras"). **Nunca** na
+   rede NMEA 2000 da MacArthur.
 2. No Pi:
    ```bash
    sudo apt install can-utils

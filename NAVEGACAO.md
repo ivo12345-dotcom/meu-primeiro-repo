@@ -426,7 +426,7 @@ alimentação da HAT a alimentar tudo
 | 9 | Chave USB de licença o-charts | [o-charts](https://o-charts.org/shop/en/hardware/38-usb-key-dongle.html) | **~€23** (€19 s/IVA) | Recomendada: reinstalar o OpenPlotter apaga a licença; com a chave não se perde |
 | 10 | ASA preto 1 kg | [EVOLT](https://evolt.pt/produto/asa-1kg-black-esun/) | **€17,73** (Winkle, em stock) | eSUN €21,39 esgotado. 1 bobina chega para o suporte e a pala |
 | 11 | Porta-fusível em linha ATO/ATC IP55 | [SVB](https://www.svb24.pt/pt/seatec-porta-fusiveis-em-linha-ato.html) | **€3,32** | + fusível de 5 A |
-| 12 | **Motor → Pi, feito por nós** (decidido 28/09, em vez do YDEG-04): ver a lista **"Motor J1939: compras"** abaixo | Amazon.es | **≈ €64** + cabo USB | O YDEG-04N (~€263,52) fica como **plano B** se o teste de escuta falhar |
+| 12 | **Motor → Pi, feito por nós** (decidido 28/09, em vez do YDEG-04): ver a lista **"Motor J1939: compras"** abaixo | Amazon.es | **≈ €49** + cabo USB e fitas | O YDEG-04N (~€263,52) fica como **plano B** se o teste de escuta falhar |
 | 13 | **ADS1115** (I²C) + resistências do divisor, para o nível do gasóleo | a cotar | **~€5–10** | Ver "Nível do gasóleo" |
 | 14 | **Barómetro BME280** (pressão, temperatura, humidade) DFRobot Gravity I²C, com cabo | [Botnroll PT](https://www.botnroll.com/en/temperature/5336-gravity-i2c-bme280-environmental-sensor-dfrobot-sen0236.html) | **€23,80** | Liga à I²C da MacArthur. Montar **fora da caixa do Pi** (o calor falseia a temperatura). Alternativa: Adafruit €26,60 |
 | 15 | **2 besouros piezo ativos 12 V, 95 dB a 30 cm**, 8 mA (1 no poço, 1 na **cabine do comandante**, junto ao beliche e ao ecrã 2) | [Botnroll PT](https://www.botnroll.com/en/sounders/861-buzzer-piezoelectrico.html) | **€3,60** (2 × €1,80) | Comandados pelo Pi por um **transístor NPN** (BC337 ou 2N2222) + resistência de 1 kΩ, a partir de um GPIO (cêntimos). Testar se o volume acorda quem dorme; se não, trocar por uma sirene de painel mais forte |
@@ -455,21 +455,40 @@ alimentação da HAT a alimentar tudo
 |---|---|---|---|
 | Adaptador **USB–CAN isolado** InnoMaker USB2CAN (gs_usb, SocketCAN nativo, 3000 V, jumper 120 Ω) | [B0956NV6CM](https://www.amazon.es/dp/B0956NV6CM) | **€37,02** | Em stock. Jumper de 120 Ω **desligado**: o barramento do MDI já tem terminação. **Não** comprar o Waveshare USB-CAN-A (protocolo série, não é SocketCAN) |
 | Terminal **DB9 fêmea** → parafusos | [B08153D2F1](https://www.amazon.es/dp/B08153D2F1) | **€12,19** | O USB2CAN tem ficha DB9 (norma CiA: pino 7 CAN-H, 2 CAN-L, 3 massa; confirmar no manual) |
-| **2 pares de fichas Deutsch DT 6 pinos com 15 cm de fio** (macho + fêmea) | [B0FKB6S6H3](https://www.amazon.es/dp/B0FKB6S6H3) | **€15,14** | Já cravadas: **não é preciso alicate Deutsch** (só soldar). "Compatíveis" DT, não originais |
+| ~~2 pares de fichas Deutsch DT 6 pinos~~ | [B0FKB6S6H3](https://www.amazon.es/dp/B0FKB6S6H3) | ~~€15,14~~ | **Dispensadas (29/09):** o Ivo liga direto à cablagem da Volvo (ver abaixo) |
+| **Fita vulcanizada** (autoamalgamante) + fita isoladora de PVC + abraçadeiras | loja náutica / Amazon | a confirmar | Isolamento das emendas em T |
 | ~~Cabo CAN blindado Lapp 10 m~~ | [B0CFLBKBDK](https://www.amazon.es/dp/B0CFLBKBDK) | ~~€36,53~~ | **Dispensado (29/09):** o adaptador fica junto ao motor, com uma derivação CAN curta (≤ 50 cm, os fios das fichas torcidos). O J1939 só admite derivações até ~1 m. Até ao Pi vai um **cabo USB** (até ~3 m) |
 | Cabo USB-A → micro-USB com o comprimento até ao Pi (até ~3 m) | a cotar | a confirmar | Micro-USB é a ficha do USB2CAN |
 | Manga termorretrátil **com cola** (sortido) + estanho | loja náutica / Amazon | a confirmar | Emendas soldadas, nunca de cravar em "T" |
 | Hub USB alimentado (o Pi 5 só tem 4 portas USB) | a cotar | a confirmar | Já estava previsto (§7c) |
-| **Total** | | **≈ €64** + cabo USB e manga | Contra ~€263 do YDEG-04N |
+| **Total** | | **≈ €49** + cabo USB e fitas | Contra ~€263 do YDEG-04N |
 
-**Cabo em Y: DECIDIDO pelo Ivo (29/09), e não emendar a cablagem do motor.** o Y fica entre o
-MDI e o conta-rotações. Tira-se e volta tudo ao original em 10 segundos, não
-se corta a cablagem da Volvo e as emendas ficam num cabo nosso. Emendar
-diretamente os fios poupa ~€15, mas deixa emendas na cablagem do motor
-(corrosão, fios destorcidos no par CAN) e, se algo correr mal, o painel e o
-MDI podem deixar de comunicar. O Y só leva 3 fios à derivação: CAN-H (pino
-5), CAN-L (pino 2) e massa (pino 4), a confirmar com o multímetro (60–120 Ω
-entre H e L com tudo desligado).
+**Ligação: DECIDIDO pelo Ivo (29/09) — direto à cablagem da Volvo, com
+emendas em T soldadas** (em vez do cabo em Y). Como fazer:
+1. **Identificar os fios antes de descarnar:** as cores não são conhecidas.
+   Com o multímetro, pela traseira da ficha Deutsch (sem a abrir), achar os
+   fios dos pinos **5 (CAN-H), 2 (CAN-L) e 4 (massa)**. Tudo desligado:
+   **60–120 Ω entre o 5 e o 2**. O pino 6 (+12 V) não se toca.
+2. **Ignição desligada e bateria isolada** enquanto se solda (eletrónica do MDI).
+3. **Emenda em T:** descarnar ~10 mm a meio do fio sem cortar os filamentos,
+   enrolar o fio da derivação, soldar com fluxo e **pouco estanho** (o estanho
+   não pode subir pelo fio, que fica rígido e parte com a vibração).
+4. **Desfasar as 3 emendas ~5 cm**; CAN-H e CAN-L **torcidos** até à emenda e
+   na derivação.
+5. **Isolar:** fita **vulcanizada** esticada a ~50% com meia sobreposição (sela
+   e é estanque) e fita isoladora de PVC por cima. **Sem cola quente** (amolece
+   com o calor do motor e não sela no PVC). A manga termorretrátil não entra
+   numa emenda a meio do fio.
+6. **Abraçadeiras dos dois lados de cada emenda**, a prender a derivação à
+   cablagem, para a emenda nunca trabalhar com a vibração.
+7. **Derivação curta (≤ 50 cm)** até ao adaptador USB–CAN junto ao motor
+   (J1939 admite ~1 m); daí um cabo USB até ao Pi.
+8. **Testar:** 60–120 Ω entre CAN-H e CAN-L na ponta do adaptador; sem
+   continuidade entre o CAN e a massa ou os +12 V; o motor arranca e o
+   conta-rotações funciona **antes** de ligar o adaptador; depois `candump can1`.
+
+Nota: deixa de ser reversível em 10 s (a emenda fica na cablagem do motor).
+Bem feita, dura; é a opção do Ivo.
 
 ### Ordem das compras (decidida 28/09)
 
