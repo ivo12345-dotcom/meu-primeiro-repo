@@ -6,9 +6,13 @@
 // Só se confirmam horas do bruto já fechadas: a hora atual ainda está a crescer.
 // O que conta como confirmado é o que o PRÓPRIO Pi já aceitou (o confirmados.json
 // dele): se uma lista ficou por processar, na vez seguinte volta a mandar-se.
+// Um bruto já confirmado, ou de uma hora fechada que o portátil já tem, só se
+// sobrescreve se o do Pi for MAIOR (a cópia foi feita a meio da hora); se for
+// mais pequeno, a cópia do portátil fica e o do Pi guarda-se ao lado como
+// <nome>.1, .2… (`conflitos`), para nunca se perder a cópia boa.
 
 import { createHash } from 'node:crypto'
-import { existsSync, statSync, readFileSync, mkdirSync } from 'node:fs'
+import { existsSync, statSync, readFileSync, mkdirSync, mkdtempSync, renameSync, rmSync } from 'node:fs'
 import path from 'node:path'
 
 export const sha256 = (f) => createHash('sha256').update(readFileSync(f)).digest('hex')
@@ -20,18 +24,31 @@ export async function sincronizar ({ transporte, destino, agora = Date.now() }) 
   const local = (f) => path.join(destino, ...f.split('/'))
   const remotos = await transporte.listar()
   const confirmadosPi = transporte.podeConfirmar ? await transporte.lerConfirmados() : {}
-  const aCopiar = remotos.filter(r => !existsSync(local(r.ficheiro)) || statSync(local(r.ficheiro)).size !== r.bytes)
-  if (aCopiar.length) await transporte.copiar(aCopiar.map(r => r.ficheiro), destino)
-
   // O Pi pode só fechar o ficheiro da hora até 10 s depois de o relógio do portátil já ter
   // virado a hora; margem para não confirmar um bruto que ainda pode crescer.
   const horaAtual = new Date(agora - 10 * 60000).toISOString().slice(0, 13)
+  const fechado = (f) => { const h = horaDoBruto(f); return !!h && h < horaAtual }
+  const protegido = (f) => !!confirmadosPi[f] || fechado(f)
+
+  const aCopiar = []
+  const conflitos = []
+  for (const r of remotos) {
+    if (!existsSync(local(r.ficheiro))) { aCopiar.push(r); continue }
+    const tam = statSync(local(r.ficheiro)).size
+    if (tam === r.bytes) continue
+    if (protegido(r.ficheiro) && r.bytes < tam) conflitos.push(r)
+    else aCopiar.push(r)
+  }
+  if (aCopiar.length) await transporte.copiar(aCopiar.map(r => r.ficheiro), destino)
+  const guardados = await guardarConflitos(transporte, destino, local, conflitos)
+
+  const emConflito = new Set(conflitos.map(r => r.ficheiro))
   const recopiados = new Set(aCopiar.map(r => r.ficheiro))
   // Não se volta a calcular o hash do que o Pi já confirmou (anos de bruto), só do novo ou recopiado.
   // Pela pen não se confirma nada: a lista ficava na pen e nunca chegava ao Pi.
   const candidatos = !transporte.podeConfirmar ? [] : remotos
     .map(r => r.ficheiro)
-    .filter(f => { const h = horaDoBruto(f); return h && h < horaAtual && existsSync(local(f)) && (!confirmadosPi[f] || recopiados.has(f)) })
+    .filter(f => fechado(f) && !emConflito.has(f) && existsSync(local(f)) && (!confirmadosPi[f] || recopiados.has(f)))
   const remotosHash = candidatos.length ? await transporte.hashes(candidatos) : {}
   // Única verificação: só se confirma quando o sha256 local bate certo com o do Pi.
   const verificar = (ficheiros) => {
@@ -68,6 +85,33 @@ export async function sincronizar ({ transporte, destino, agora = Date.now() }) 
     bytes: aCopiar.reduce((s, r) => s + r.bytes, 0) + reparados.reduce((s, f) => s + bytesDe(f), 0),
     confirmados: confirmar.length,
     semConfirmar: !transporte.podeConfirmar,
-    diferentes
+    diferentes,
+    conflitos: guardados
+  }
+}
+
+// Guarda o ficheiro do Pi ao lado da cópia do portátil (<nome>.N, o primeiro N
+// livre), copiando-o primeiro para uma pasta temporária. Se já houver um <nome>.N
+// com o mesmo tamanho, já foi guardado numa vez anterior: não se repete.
+async function guardarConflitos (transporte, destino, local, conflitos) {
+  const jaGuardado = (r) => {
+    for (let n = 1; existsSync(`${local(r.ficheiro)}.${n}`); n++) {
+      if (statSync(`${local(r.ficheiro)}.${n}`).size === r.bytes) return true
+    }
+    return false
+  }
+  const novos = conflitos.filter(r => !jaGuardado(r))
+  if (!novos.length) return []
+  const tmp = mkdtempSync(path.join(destino, '.conflitos-'))
+  try {
+    await transporte.copiar(novos.map(r => r.ficheiro), tmp)
+    return novos.map(r => {
+      let n = 1
+      while (existsSync(`${local(r.ficheiro)}.${n}`)) n++
+      renameSync(path.join(tmp, ...r.ficheiro.split('/')), `${local(r.ficheiro)}.${n}`)
+      return { ficheiro: r.ficheiro, guardadoComo: `${r.ficheiro}.${n}` }
+    })
+  } finally {
+    rmSync(tmp, { recursive: true, force: true })
   }
 }
