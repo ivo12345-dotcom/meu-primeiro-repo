@@ -27,3 +27,9 @@ export function paginaDoAlarme (caminho) {
   if (/energia|propulsion|electrical|tanks/.test(caminho)) return 'motor'
   return 'carta'
 }
+
+// Bip curto só no momento em que a ligação ao SignalK cai (não a cada tentativa
+// falhada de religar, nem no arranque).
+export function bipDeLigacao (estavaLigado, ligado) {
+  return estavaLigado === true && ligado === false
+}

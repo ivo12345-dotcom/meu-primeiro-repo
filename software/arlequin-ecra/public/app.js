@@ -6,7 +6,7 @@ import { cpa, classificar } from './lib/cpa.js'
 import { lerPolar } from './lib/polar.js'
 import { criarBarometro, registarPressao, tendencia } from './lib/barometro.js'
 import { novaViagem, acumular } from './lib/viagem.js'
-import { maisGrave, deveTocar, paginaDoAlarme } from './lib/alarmes.js'
+import { maisGrave, deveTocar, paginaDoAlarme, bipDeLigacao } from './lib/alarmes.js'
 import carta from './paginas/carta.js'
 import instr from './paginas/instr.js'
 import ais from './paginas/ais.js'
@@ -34,7 +34,9 @@ const app = {
   viagem: guardado('arlequin.viagem', null) || novaViagem(Date.now()),
   estados: {}, // estado de cada página (seleções, passos…)
   audio: null,
-  bipados: new Set()
+  bipados: new Set(),
+  estavaLigado: null,
+  sons: [] // últimos sons tocados (diagnóstico: window.arlequin.app.sons)
 }
 
 // ---------- contexto passado às páginas ----------
@@ -91,7 +93,8 @@ function barraHtml (ctx) {
 }
 
 // ---------- som ----------
-function bip (duracao = 0.25, freq = 880) {
+function bip (duracao = 0.25, freq = 880, motivo = '') {
+  app.sons = [...app.sons.slice(-9), { t: new Date().toISOString(), motivo, tocou: !!app.audio }]
   if (!app.audio) return
   const o = app.audio.createOscillator()
   const g = app.audio.createGain()
@@ -108,9 +111,9 @@ function tocar (ctx) {
     const t = deveTocar(n)
     if (t === 'continuo') continuo = true
     const chave = `${n.caminho}@${n.timestamp}`
-    if (t === 'curto' && !app.bipados.has(chave)) { app.bipados.add(chave); bip(0.35, 660) }
+    if (t === 'curto' && !app.bipados.has(chave)) { app.bipados.add(chave); bip(0.35, 660, n.caminho) }
   }
-  if (continuo) bip(0.4, 1000)
+  if (continuo) bip(0.4, 1000, 'alarme')
 }
 
 // ---------- render ----------
@@ -213,6 +216,16 @@ window.arlequin = { novaViagemAgora, app, store }
 
 document.body.classList.toggle('noite', app.noite)
 fetch('polar-arlequin.csv').then(r => r.text()).then(t => { app.polar = lerPolar(t) }).catch(() => {})
-ligar(store, { aoMudar: () => render() })
+// Ligação caiu: dois bips curtos, uma só vez. A barra fica com "SEM LIGAÇÃO".
+function aoMudarLigacao () {
+  if (bipDeLigacao(app.estavaLigado, store.ligado)) {
+    bip(0.18, 520, 'ligação perdida')
+    setTimeout(() => bip(0.18, 520, 'ligação perdida'), 300)
+  }
+  app.estavaLigado = store.ligado
+  render()
+}
+
+ligar(store, { aoMudar: aoMudarLigacao })
 irPara(app.pagina)
 setInterval(ciclo, 1000)

@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { criarBarometro, registarPressao, tendencia } from '../public/lib/barometro.js'
 import { novaViagem, acumular } from '../public/lib/viagem.js'
-import { maisGrave, deveTocar, paginaDoAlarme } from '../public/lib/alarmes.js'
+import { maisGrave, deveTocar, paginaDoAlarme, bipDeLigacao } from '../public/lib/alarmes.js'
 
 const H = 3600 * 1000
 const NO = 1852 / 3600
@@ -74,4 +74,11 @@ test('cada alarme leva à sua página', () => {
   assert.equal(paginaDoAlarme('notifications.arlequin.energia.ligarMotor'), 'motor')
   assert.equal(paginaDoAlarme('notifications.propulsion.main.overTemperature'), 'motor')
   assert.equal(paginaDoAlarme('notifications.navigation.anchor'), 'carta')
+})
+
+test('bip curto só quando a ligação cai', () => {
+  assert.equal(bipDeLigacao(true, false), true)
+  assert.equal(bipDeLigacao(false, false), false) // tentativas falhadas de religar
+  assert.equal(bipDeLigacao(null, false), false) // arranque sem servidor
+  assert.equal(bipDeLigacao(false, true), false) // religou
 })
