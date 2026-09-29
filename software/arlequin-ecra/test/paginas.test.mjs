@@ -230,6 +230,7 @@ test('Diário: cartão da AI mostra os modelos em uso e manda treinar e voltar a
   const htmlComErro = diario.render(contexto(store, { ia: iaComErro, iaEm: Date.now() }))
   assert.match(htmlComErro, /v0002 · não consegui ler o modelo: ficheiro estragado/)
   assert.doesNotMatch(htmlComErro, /NaN/)
+  assert.doesNotMatch(htmlComErro, /data-modelo="consumo"/)
   const pedidos = []
   const ctx = { ...contexto(store, estado), pedir: async (url, op) => { pedidos.push({ url, ...op }); return { ok: true, versao: 'v0001' } } }
   await diario.acao('ia-treinar', {}, ctx)
@@ -241,4 +242,42 @@ test('Diário: cartão da AI mostra os modelos em uso e manda treinar e voltar a
   assert.equal(ctx.estado.msg, 'Velocidade voltou à v0001')
   const semIa = diario.render(contexto(store, { ia: { erro: 'a AI não responde (o plugin signalk-arlequin-ia está ligado?)' }, iaEm: Date.now() }))
   assert.match(semIa, /AI: a AI não responde/)
+})
+
+test('Diário: cartão da AI mostra mensagem do plugin quando rejeita com HTTP status', async () => {
+  const estado = {}
+  const ctx = {
+    ...contexto(store, estado),
+    pedir: async (url) => {
+      if (url.includes('/ia')) {
+        const err = new Error('a AI não está ligada')
+        err.status = 503
+        throw err
+      }
+      return new Promise(() => {}) // never resolves for logbook
+    },
+    refrescar: () => {}
+  }
+  diario.aoEntrar(ctx)
+  await new Promise(r => setTimeout(r, 10))
+  const html = diario.render(ctx)
+  assert.match(html, /AI: a AI não está ligada/)
+})
+
+test('Diário: cartão da AI mostra mensagem genérica para erro sem status', async () => {
+  const estado = {}
+  const ctx = {
+    ...contexto(store, estado),
+    pedir: async (url) => {
+      if (url.includes('/ia')) {
+        throw new Error('a AI não está ligada')
+      }
+      return new Promise(() => {}) // never resolves for logbook
+    },
+    refrescar: () => {}
+  }
+  diario.aoEntrar(ctx)
+  await new Promise(r => setTimeout(r, 10))
+  const html = diario.render(ctx)
+  assert.match(html, /AI: a AI não responde \(o plugin signalk-arlequin-ia está ligado\?\)/)
 })

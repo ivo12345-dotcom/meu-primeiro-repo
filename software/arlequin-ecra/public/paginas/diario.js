@@ -30,7 +30,7 @@ function buscarIa (ctx, forcar = false) {
   e.iaABuscar = true
   ctx.pedir(`${URL_IA}/ia`)
     .then(r => { e.ia = r })
-    .catch(() => { e.ia = { erro: 'a AI não responde (o plugin signalk-arlequin-ia está ligado?)' } })
+    .catch(err => { e.ia = { erro: err?.message && err.status ? err.message : 'a AI não responde (o plugin signalk-arlequin-ia está ligado?)' } })
     .finally(() => { e.iaABuscar = false; e.iaEm = Date.now(); ctx.refrescar() })
 }
 
