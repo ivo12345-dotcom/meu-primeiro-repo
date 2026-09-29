@@ -268,3 +268,23 @@ test('confirmados.json estragado no Pi: conta como erro (vê-se no /estado) e o 
   assert.ok(mensagens.some(m => /confirmados\.json/.test(m)), mensagens.join(' | '))
   assert.ok(csv(path.join(base, 'tabela', '2026-09-29.csv.gz')).length > 1, 'a tabela continua')
 })
+
+test('uma mensagem que não se consegue gravar (BigInt) não rebenta o SignalK; conta o erro e só avisa 1 vez por minuto', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 50
+  const app = appFalso()
+  const mensagens = []
+  app.error = (m) => mensagens.push(m)
+  const p = criar(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  const mau = { context: EU, updates: [{ $source: 'x', values: [{ path: 'propulsion.main.contador', value: 10n }] }] }
+  assert.doesNotThrow(() => app.signalk.emit('unfilteredDelta', mau))
+  assert.doesNotThrow(() => app.signalk.emit('unfilteredDelta', mau))
+  const est = await chamar(rotas(p).get['/estado'], {})
+  assert.equal(est.erros, 2)
+  assert.equal(mensagens.filter(m => /mensagem/.test(m)).length, 1, 'no mesmo minuto só se regista uma vez')
+  correr(t, app, 61, 'nmea0183.GP')
+  app.signalk.emit('unfilteredDelta', mau)
+  assert.equal(mensagens.filter(m => /mensagem/.test(m)).length, 2, 'passado 1 min volta a registar')
+  p.stop()
+})

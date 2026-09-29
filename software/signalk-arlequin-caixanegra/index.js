@@ -57,10 +57,21 @@ module.exports = function (app) {
   let avisoDisco = 'normal'
   let erros = 0
 
+  // Corre dentro do emit do SignalK: se rebentasse aqui, a mensagem perdia-se
+  // para o servidor todo. Conta sempre o erro, mas só o regista 1 vez por minuto.
+  let ultimoErroDelta = -Infinity
   const aoDelta = (delta) => {
     const agora = Date.now()
-    bruto.escrever(delta, agora)
-    est.aplicar(estado, delta, app.selfContext, agora)
+    try {
+      bruto.escrever(delta, agora)
+      est.aplicar(estado, delta, app.selfContext, agora)
+    } catch (e) {
+      erros++
+      if (agora - ultimoErroDelta >= 60000) {
+        ultimoErroDelta = agora
+        app.error(`caixa negra: mensagem não gravada: ${e.message}`)
+      }
+    }
   }
 
   const publicar = (values) => app.handleMessage(plugin.id, { updates: [{ values }] })
@@ -196,6 +207,7 @@ module.exports = function (app) {
     infoDisco = null
     avisoDisco = 'normal'
     erros = 0
+    ultimoErroDelta = -Infinity
     publicarVelas()
     app.signalk.on('unfilteredDelta', aoDelta)
     temporizador = setInterval(segundo, 1000)
