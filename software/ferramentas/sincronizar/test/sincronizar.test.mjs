@@ -279,3 +279,22 @@ test('por omissão, cada lista de confirmações tem no máximo 150 MB', async (
   assert.equal(r.confirmados, 2)
   assert.deepEqual(escritas, [1, 1], '100 MB + 100 MB passava dos 150 MB')
 })
+
+test('tabela do dia mais pequena no Pi (ex.: isolada como .danificado e recomeçada): a cópia do portátil fica, a do Pi guarda-se como .1', async () => {
+  const origem = pi()
+  const destino = mkdtempSync(path.join(os.tmpdir(), 'arlequin-pc-'))
+  const T = path.join('tabela', '2026-09-29.csv.gz')
+  writeFileSync(path.join(origem, T), 'tabela boa do dia')
+  await sincronizar({ transporte: comoPi(origem), destino, agora: AGORA })
+  // O Pi isolou a tabela do dia (danificada) e começou uma nova, mais pequena.
+  writeFileSync(path.join(origem, T), 'nova')
+  const r = await sincronizar({ transporte: comoPi(origem), destino, agora: AGORA + 60000 })
+  assert.equal(readFileSync(path.join(destino, T), 'utf8'), 'tabela boa do dia', 'a cópia do portátil não se estraga')
+  assert.equal(readFileSync(path.join(destino, T + '.1'), 'utf8'), 'nova')
+  assert.deepEqual(r.conflitos, [{ ficheiro: 'tabela/2026-09-29.csv.gz', guardadoComo: 'tabela/2026-09-29.csv.gz.1' }])
+  // Maior no Pi (continuou a crescer por cima da cópia do portátil): sobrescreve-se normalmente.
+  writeFileSync(path.join(origem, T), 'tabela boa do dia e mais')
+  const r2 = await sincronizar({ transporte: comoPi(origem), destino, agora: AGORA + 120000 })
+  assert.deepEqual(r2.conflitos, [])
+  assert.equal(readFileSync(path.join(destino, T), 'utf8'), 'tabela boa do dia e mais')
+})

@@ -6,10 +6,12 @@
 // Só se confirmam horas do bruto já fechadas: a hora atual ainda está a crescer.
 // O que conta como confirmado é o que o PRÓPRIO Pi já aceitou (o confirmados.json
 // dele): se uma lista ficou por processar, na vez seguinte volta a mandar-se.
-// Um bruto já confirmado, ou de uma hora fechada que o portátil já tem, só se
-// sobrescreve se o do Pi for MAIOR (a cópia foi feita a meio da hora); se for
-// mais pequeno, a cópia do portátil fica e o do Pi guarda-se ao lado como
-// <nome>.1, .2… (`conflitos`), para nunca se perder a cópia boa.
+// Um bruto já confirmado, ou de uma hora fechada que o portátil já tem, e
+// qualquer ficheiro da tabela/, só se sobrescreve se o do Pi for MAIOR (a cópia
+// foi feita a meio da hora ou do dia); se for mais pequeno, a cópia do portátil
+// fica e o do Pi guarda-se ao lado como <nome>.1, .2… (`conflitos`), para nunca
+// se perder a cópia boa. Na tabela acontece quando o Pi isola o ficheiro do dia
+// danificado (corte de energia) e recomeça um novo, mais pequeno.
 // As confirmações vão em listas de até `bytesPorLista` (150 MB) do Pi: o Pi
 // confere uma lista inteira de uma vez, e uma lista de semanas de bruto (GB)
 // parava o SignalK nesse minuto. Um ficheiro maior do que isso vai sozinho.
@@ -31,7 +33,7 @@ export async function sincronizar ({ transporte, destino, agora = Date.now(), by
   // virado a hora; margem para não confirmar um bruto que ainda pode crescer.
   const horaAtual = new Date(agora - 10 * 60000).toISOString().slice(0, 13)
   const fechado = (f) => { const h = horaDoBruto(f); return !!h && h < horaAtual }
-  const protegido = (f) => !!confirmadosPi[f] || fechado(f)
+  const protegido = (f) => !!confirmadosPi[f] || fechado(f) || f.startsWith('tabela/')
 
   const aCopiar = []
   const conflitos = []

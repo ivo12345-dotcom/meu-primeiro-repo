@@ -19,7 +19,7 @@ try {
   console.log(`Ficheiros no barco: ${r.remotos} · copiados agora: ${r.copiados} (${(r.bytes / 1e6).toFixed(1)} MB) · confirmados ao Pi: ${r.confirmados}`)
   if (r.semConfirmar) console.log('Pela pen só se copia: para o Pi poder libertar espaço, sincroniza uma vez por ssh (Tailscale).')
   if (r.diferentes.length) console.log(`ATENÇÃO: ${r.diferentes.length} ficheiro(s) com hash diferente, não confirmados: ${r.diferentes.join(', ')}`)
-  if (r.conflitos.length) console.log(`ATENÇÃO: ${r.conflitos.length} ficheiro(s) do bruto mais pequenos no barco do que no portátil; a cópia do portátil ficou e o do barco guardou-se ao lado: ${r.conflitos.map(c => `${c.ficheiro} → ${c.guardadoComo}`).join(', ')}`)
+  if (r.conflitos.length) console.log(`ATENÇÃO: ${r.conflitos.length} ficheiro(s) mais pequenos no barco do que no portátil; a cópia do portátil ficou e o do barco guardou-se ao lado: ${r.conflitos.map(c => `${c.ficheiro} → ${c.guardadoComo}`).join(', ')}`)
   console.log(`Em ${destino} · ${Math.round((Date.now() - inicio) / 1000)} s`)
 } catch (e) {
   console.error(`Falhou: ${e.message}`)

@@ -102,7 +102,7 @@ Plugin SignalK. Grava **desde o primeiro dia** em `~/arlequin-dados/`:
   - Um bruto confirmado que mudou depois de confirmado (o sha256 já não bate certo) nunca se apaga e não conta como espaço a libertar: não esconde o aviso dos 80% nem o alarme dos 95%. Continua no `confirmados.json`.
   - Ao arrancar, o bruto da hora e a tabela do dia que não se descomprimam inteiros (corte de energia) passam a `<nome>.danificado-<hora UTC>` e começa-se um ficheiro limpo; esses nunca se confirmam.
   - Hora do GPS a mais de 60 s da do Pi → aviso `notifications.arlequin.caixanegra.relogio` (só ecrã). Relógio: pilha do RTC do Pi 5 e hora pelo GPS.
-  - O portátil nunca sobrescreve um bruto confirmado ou de hora fechada com uma versão mais pequena: guarda-a ao lado como `<nome>.N`.
+  - O portátil nunca sobrescreve um bruto confirmado ou de hora fechada, nem um ficheiro da `tabela/`, com uma versão mais pequena: guarda-a ao lado como `<nome>.N` (na tabela, acontece quando o Pi isola o ficheiro do dia danificado e recomeça).
 
 ## Parte 2: AI (`software/arlequin-ia/`, Python)
 
