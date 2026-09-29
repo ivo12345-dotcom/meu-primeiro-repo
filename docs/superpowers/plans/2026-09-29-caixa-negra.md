@@ -1108,6 +1108,7 @@ Expected: FAIL com `Cannot find module '../lib/velas'`
 const GRANDE = [0, 1, 2, -1] // inteira, 1 rizo, 2 rizos, arriada
 const GENOA = [100, 70, 50, 0] // % desenrolada; 0 = enrolada
 const HORA = 3600000
+const BASE_MINIMA = 2 * 1852 / 3600 // 2 nós: numa calmaria a percentagem sobre zero não diz nada
 
 function novoEstadoVelas () {
   return { grandeRizos: 0, genoaPct: 100, mudouEm: null, twsNaMudanca: null, lembradoEm: null }
@@ -1127,10 +1128,11 @@ function mudar (e, { grandeRizos, genoaPct }, agora, tws) {
 }
 
 function precisaLembrete (e, agora, tws) {
-  if (!Number.isFinite(tws) || !Number.isFinite(e.twsNaMudanca) || e.twsNaMudanca <= 0) return false
+  if (!Number.isFinite(tws) || !Number.isFinite(e.twsNaMudanca)) return false
   const desde = Math.max(e.mudouEm ?? 0, e.lembradoEm ?? 0)
   if (agora - desde < HORA) return false
-  return Math.abs(tws - e.twsNaMudanca) / e.twsNaMudanca > 0.4
+  const base = Math.max(e.twsNaMudanca, BASE_MINIMA) // decisão do Ivo: numa calmaria conta como 2 nós
+  return Math.abs(tws - base) / base > 0.4
 }
 
 module.exports = { GRANDE, GENOA, novoEstadoVelas, mudar, precisaLembrete }
@@ -1557,7 +1559,7 @@ module.exports = function (app) {
 - [ ] **Step 4: Correr os testes e ver que passam**
 
 Run: `cd software/signalk-arlequin-caixanegra && npm test`
-Expected: PASS (30 testes no total)
+Expected: PASS (31 testes no total)
 
 - [ ] **Step 5: Commit**
 
@@ -2092,7 +2094,7 @@ software/dev/arlequin-dados/
 ```
 
 Run: `cd software/dev/config && npm install && cd .. && npm test`
-Expected: todos os pacotes PASS (energia 33, simulador 16, ais 4, ecrã 53, j1939 28, gasóleo 31, água 9, porto 20, caixa negra 30, sincronizar 3).
+Expected: todos os pacotes PASS (energia 33, simulador 16, ais 4, ecrã 53, j1939 28, gasóleo 31, água 9, porto 20, caixa negra 31, sincronizar 3).
 
 - [ ] **Step 2: Validação ao vivo com o simulador**
 
