@@ -77,7 +77,7 @@ Plugin SignalK. Grava **desde o primeiro dia** em `~/arlequin-dados/`:
 
 ### Sincronização com o portátil (`software/ferramentas/sincronizar/`)
 
-- Script Node no portátil. Liga-se ao Pi por **ssh via Tailscale** e usa o OpenSSH do Windows (`ssh`/`scp`).
+- Script Node no portátil. Liga-se ao Pi por **ssh via Tailscale** e usa o OpenSSH do Windows (`ssh`). A cópia vai num só `tar` por ssh (rápido com muitos ficheiros), desempacotado pelo `tar` do Windows; não usa `scp`.
 - Copia para `C:\Users\ivo12\Documents\Veleiro\arlequin-dados\` (fora do git) tudo o que for novo.
 - Calcula o sha256 dos dois lados e só então faz `POST /confirmados`.
 - Mostra um resumo: ficheiros, MB, saídas novas.
@@ -95,6 +95,13 @@ Plugin SignalK. Grava **desde o primeiro dia** em `~/arlequin-dados/`:
 - **Só se confirmam horas do bruto já fechadas.** Antes de apagar, o plugin volta a conferir o hash.
 - **"Sensores sem alarme" = proa, STW e TWS com valores de há menos de 15 s.** Ainda não há alarmes de sensor próprios.
 - **O lembrete das velas é só para o ecrã.** O plugin do porto não o manda para o Telegram. O alarme do disco (95%) vai para o Telegram.
+- **Correções da revisão final (29/09):**
+  - Aos 80% apaga-se o bruto confirmado até abaixo dos **75%** (folga, para o aviso não ir e vir); o aviso só fica se, depois de apagar, o disco continuar acima dos 80%. O aviso do disco nunca vai para o Telegram, só o alarme dos 95%.
+  - O portátil só dá um ficheiro como confirmado quando o `confirmados.json` **do próprio Pi** o tem (lido pelo ssh); se a lista ficou por processar, volta a mandar-se. Pela pen só se copia, não se confirma.
+  - O sha256 no Pi tem um orçamento de 200 MB por minuto (entrada e apagar); o resto fica para o minuto seguinte.
+  - Ao arrancar, o bruto da hora e a tabela do dia que não se descomprimam inteiros (corte de energia) passam a `<nome>.danificado-<hora UTC>` e começa-se um ficheiro limpo; esses nunca se confirmam.
+  - Hora do GPS a mais de 60 s da do Pi → aviso `notifications.arlequin.caixanegra.relogio` (só ecrã). Relógio: pilha do RTC do Pi 5 e hora pelo GPS.
+  - O portátil nunca sobrescreve um bruto confirmado ou de hora fechada com uma versão mais pequena: guarda-a ao lado como `<nome>.N`.
 
 ## Parte 2: AI (`software/arlequin-ia/`, Python)
 

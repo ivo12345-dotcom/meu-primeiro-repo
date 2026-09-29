@@ -1559,7 +1559,7 @@ module.exports = function (app) {
 - [ ] **Step 4: Correr os testes e ver que passam**
 
 Run: `cd software/signalk-arlequin-caixanegra && npm test`
-Expected: PASS (31 testes no total)
+Expected: PASS (31 testes no total; no fim do ramo, com os testes das revisões, são 46)
 
 - [ ] **Step 5: Commit**
 
@@ -1730,7 +1730,7 @@ O resto da função fica igual.
 - [ ] **Step 6: Correr os testes e ver que passam**
 
 Run: `cd software/arlequin-ecra && npm test` e `cd software/signalk-arlequin-porto && npm test`
-Expected: PASS (ecrã: 53 testes; porto: 20 testes)
+Expected: PASS (ecrã: 53 testes; porto: 20 testes. No fim do ramo, com os testes das revisões: ecrã 54, porto 23)
 
 - [ ] **Step 7: Commit**
 
@@ -2039,7 +2039,7 @@ try {
 - [ ] **Step 7: Correr os testes e ver que passam**
 
 Run: `cd software/ferramentas/sincronizar && npm test`
-Expected: PASS (3 testes)
+Expected: PASS (3 testes; no fim do ramo, com os testes das revisões, são 15)
 
 - [ ] **Step 8: Commit**
 
@@ -2094,7 +2094,7 @@ software/dev/arlequin-dados/
 ```
 
 Run: `cd software/dev/config && npm install && cd .. && npm test`
-Expected: todos os pacotes PASS (energia 33, simulador 16, ais 4, ecrã 53, j1939 28, gasóleo 31, água 9, porto 20, caixa negra 31, sincronizar 3).
+Expected: todos os pacotes PASS. No fim do ramo, com os testes acrescentados nas revisões (incluindo a revisão final): energia 33, simulador 16, ais 4, ecrã 54, j1939 28, gasóleo 31, água 9, porto 23, caixa negra 46, sincronizar 15.
 
 - [ ] **Step 2: Validação ao vivo com o simulador**
 
