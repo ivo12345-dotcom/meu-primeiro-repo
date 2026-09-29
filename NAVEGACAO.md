@@ -1067,6 +1067,13 @@ funcionar também ali:
     curto) e 4–6 mm² com MC4 do painel ao MPPT. Confirmar que o Voc a frio do
     painel escolhido fica abaixo de 100 V. Produção estimada: ~150–180 Ah/dia
     no verão e ~60–80 Ah/dia no inverno.
+    **Painel candidato (29/09):** Victron BlueSolar 305W-20V mono
+    (SPM043052002): 1658 × 1002 × 35 mm, 19 kg; Vmp 32,5 V, Imp 9,38 A, Voc
+    39,7 V, Isc 10,27 A. Com o MPPT 100/30: Voc a 0 °C ≈ 43 V (< 100 V),
+    ~22,6 A a 12 V (< 30 A), Isc < 35 A. Dois lado a lado = 2,0 m (través) ×
+    1,66 m (proa-popa), 38 kg. Preço €199–268 conforme a loja. Alternativas se
+    não couber: 2 × 215 W (1580 × 705 mm, 11,7 kg) ou 2 × 185 W (1485 × 668 mm,
+    11 kg, chegam MPPT 75/15). **Fecha-se com as fotos e medidas (Ivo, 30/09).**
 
 **Alarme sonoro:** a solo, o alarme AIS tem de acordar quem dorme. O apito do
 Garmin é fraco. No Pi, acrescentar à lista um **altifalante ou besouro forte**
