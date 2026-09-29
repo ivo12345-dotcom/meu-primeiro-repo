@@ -53,16 +53,24 @@ export function executar (cmd, args, { entrada, para } = {}) {
     let saida = ''
     if (q) p.stdout.pipe(q.stdin)
     else p.stdout.on('data', (d) => { saida += d })
+    // Se o `q` morrer cedo (ex.: sai com erro antes de ler tudo), escrever no seu stdin dá
+    // EPIPE — sem este handler isso é um erro não apanhado que rebenta o processo; aqui o
+    // código de saída do `q` já reporta a falha, por isso basta engolir o erro do pipe.
+    q?.stdin.on('error', () => {})
     let falta = q ? 2 : 1
     let erro = null
-    const fim = (nome) => (codigo) => {
-      if (codigo !== 0 && !erro) erro = new Error(`${nome} saiu com o código ${codigo}`)
-      if (--falta === 0) { if (erro) reject(erro); else resolve(saida) }
-    }
+    const fecha = () => { if (--falta === 0) { if (erro) reject(erro); else resolve(saida) } }
     p.on('error', reject)
     q?.on('error', reject)
-    p.on('close', fim(cmd))
-    q?.on('close', fim(para[0]))
+    p.on('close', (codigo) => {
+      if (codigo !== 0 && !erro) erro = new Error(`${cmd} saiu com o código ${codigo}`)
+      fecha()
+    })
+    q?.on('close', (codigo) => {
+      if (codigo !== 0 && !erro) erro = new Error(`${para[0]} saiu com o código ${codigo}`)
+      if (codigo !== 0) p.kill() // o `q` morreu: não faz sentido o `p` continuar a produzir para um pipe fechado
+      fecha()
+    })
     p.stdin.end(entrada ?? '')
   })
 }
@@ -71,11 +79,14 @@ export function transporteSsh (host, { pasta = 'arlequin-dados', exec = executar
   const dir = `~/${pasta}`
   return {
     async listar () {
-      const t = await exec('ssh', [host, `cd ${dir} && find ${PASTAS.join(' ')} -type f -printf '%p\\t%s\\n' 2>/dev/null; true`])
+      const t = await exec('ssh', [host, `cd ${dir} || exit 1; find ${PASTAS.join(' ')} -type f -printf '%p\\t%s\\n' 2>/dev/null; true`])
       return t.split('\n').filter(Boolean).map(l => { const [ficheiro, bytes] = l.split('\t'); return { ficheiro, bytes: Number(bytes) } })
     },
     async copiar (ficheiros, destino) {
-      await exec('ssh', [host, `cd ${dir} && tar -cf - -T -`], { entrada: ficheiros.join('\n') + '\n', para: ['tar', ['-xf', '-', '-C', destino]] })
+      // O Pi vai acrescentando ao bruto da hora atual a cada 10 s; se crescer a meio da leitura,
+      // o GNU tar sai com código 1 ("file changed as we read it"). Isso não é um erro real (o
+      // ficheiro fica cá com o tamanho antigo e é recopiado depois), por isso engole-se o código 1.
+      await exec('ssh', [host, `cd ${dir} && tar --warning=no-file-changed -cf - -T -; s=$?; [ $s -eq 1 ] && exit 0; exit $s`], { entrada: ficheiros.join('\n') + '\n', para: ['tar', ['-xf', '-', '-C', destino]] })
     },
     async hashes (ficheiros) {
       const t = await exec('ssh', [host, `cd ${dir} && xargs -d '\\n' sha256sum --`], { entrada: ficheiros.join('\n') + '\n' })

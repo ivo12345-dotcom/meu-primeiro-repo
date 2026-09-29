@@ -21,7 +21,9 @@ export async function sincronizar ({ transporte, destino, agora = Date.now() }) 
   const registo = path.join(destino, '.confirmados.json')
   let enviados = {}
   try { enviados = JSON.parse(readFileSync(registo, 'utf8')) } catch { enviados = {} }
-  const horaAtual = new Date(agora).toISOString().slice(0, 13)
+  // O Pi pode só fechar o ficheiro da hora até 10 s depois de o relógio do portátil já ter
+  // virado a hora; margem para não confirmar um bruto que ainda pode crescer.
+  const horaAtual = new Date(agora - 10 * 60000).toISOString().slice(0, 13)
   const recopiados = new Set(aCopiar.map(r => r.ficheiro))
   // Não se volta a calcular o hash do que já foi confirmado (anos de bruto), só do novo ou recopiado.
   const candidatos = remotos
@@ -29,11 +31,23 @@ export async function sincronizar ({ transporte, destino, agora = Date.now() }) 
     .filter(f => { const h = horaDoBruto(f); return h && h < horaAtual && existsSync(local(f)) && (!enviados[f] || recopiados.has(f)) })
   const remotosHash = candidatos.length ? await transporte.hashes(candidatos) : {}
   const confirmar = []
-  const diferentes = []
+  let diferentes = []
   for (const f of candidatos) {
     const h = sha256(local(f))
     if (remotosHash[f] === h) confirmar.push({ ficheiro: f, sha256: h })
     else diferentes.push(f)
+  }
+  if (diferentes.length) {
+    // Mesmo tamanho mas conteúdo diferente: a cópia local está corrompida. Recopia-se uma vez
+    // e confirma-se as que passarem a bater certo; só ficam em `diferentes` as que persistirem.
+    await transporte.copiar(diferentes, destino)
+    const aindaDiferentes = []
+    for (const f of diferentes) {
+      const h = sha256(local(f))
+      if (remotosHash[f] === h) confirmar.push({ ficheiro: f, sha256: h })
+      else aindaDiferentes.push(f)
+    }
+    diferentes = aindaDiferentes
   }
   if (confirmar.length) {
     const nome = `confirmados-${new Date(agora).toISOString().replace(/[:.]/g, '-')}.json`

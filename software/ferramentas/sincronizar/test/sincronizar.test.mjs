@@ -5,7 +5,7 @@ import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
 import { sincronizar, sha256 } from '../lib.mjs'
-import { transporteLocal, transporteSsh } from '../transportes.mjs'
+import { transporteLocal, transporteSsh, executar } from '../transportes.mjs'
 
 const require = createRequire(import.meta.url)
 const confirmados = require('../../../signalk-arlequin-caixanegra/lib/confirmados.js')
@@ -69,13 +69,59 @@ test('ssh: comandos certos e respostas bem lidas', async () => {
   }
   const t = transporteSsh('pi@arlequin', { exec })
   assert.deepEqual(await t.listar(), [{ ficheiro: 'bruto/2026-09-29T10.ndjson.gz', bytes: 123 }, { ficheiro: 'tabela/2026-09-29.csv.gz', bytes: 45 }])
+  assert.match(chamadas[0].args[1], /^cd ~\/arlequin-dados \|\| exit 1; find /)
   assert.deepEqual(await t.hashes(['bruto/2026-09-29T10.ndjson.gz']), { 'bruto/2026-09-29T10.ndjson.gz': 'a'.repeat(64) })
   await t.copiar(['bruto/2026-09-29T10.ndjson.gz'], 'C:\\dados')
   await t.escreverEntrada('confirmados-x.json', '[]')
   const copiar = chamadas[2]
   assert.equal(copiar.cmd, 'ssh')
+  assert.equal(copiar.args[1], "cd ~/arlequin-dados && tar --warning=no-file-changed -cf - -T -; s=$?; [ $s -eq 1 ] && exit 0; exit $s")
   assert.deepEqual(copiar.para, ['tar', ['-xf', '-', '-C', 'C:\\dados']])
   assert.equal(copiar.entrada, 'bruto/2026-09-29T10.ndjson.gz\n')
   assert.match(chamadas[3].args[1], /cat > ~\/arlequin-dados\/entrada\/confirmados-x\.json\.tmp && mv .*confirmados-x\.json\.tmp .*confirmados-x\.json$/)
   assert.ok(chamadas.every(c => c.args[0] === 'pi@arlequin'))
+})
+
+test('executar: não rebenta com EPIPE, dá reject limpo', { timeout: 20000 }, async () => {
+  await assert.rejects(
+    executar(process.execPath, ['-e', 'process.exit(2)']),
+    /saiu com o código 2/
+  )
+
+  await assert.rejects(
+    executar(
+      process.execPath,
+      ['-e', 'process.stdout.write(Buffer.alloc(20e6))'],
+      { para: [process.execPath, ['-e', 'process.exit(3)']] }
+    )
+  )
+
+  const ok = await executar(process.execPath, ['-e', "process.stdout.write('ok')"])
+  assert.equal(ok, 'ok')
+})
+
+test('lib: uma cópia local corrompida com o mesmo tamanho é reparada', async () => {
+  const origem = pi()
+  const destino = mkdtempSync(path.join(os.tmpdir(), 'arlequin-pc-'))
+  mkdirSync(path.join(destino, 'bruto'), { recursive: true })
+  writeFileSync(path.join(destino, 'bruto', '2026-09-29T10.ndjson.gz'), 'xyz') // mesmo tamanho que 'dez', conteúdo diferente
+  const r = await sincronizar({ transporte: transporteLocal(origem), destino, agora: AGORA })
+  assert.equal(r.copiados, 2) // T14 e tabela; T10 fica de fora por ter o mesmo tamanho
+  assert.equal(r.confirmados, 1)
+  assert.deepEqual(r.diferentes, [])
+  assert.equal(
+    readFileSync(path.join(destino, 'bruto', '2026-09-29T10.ndjson.gz'), 'utf8'),
+    readFileSync(path.join(origem, 'bruto', '2026-09-29T10.ndjson.gz'), 'utf8')
+  )
+})
+
+test('lib: margem de 10 min antes de fechar a hora', async () => {
+  const origem = pi()
+  const destino = mkdtempSync(path.join(os.tmpdir(), 'arlequin-pc-'))
+  const agora = Date.UTC(2026, 8, 29, 15, 5, 0)
+  const r = await sincronizar({ transporte: transporteLocal(origem), destino, agora })
+  assert.equal(r.confirmados, 1) // só a T10 (fechada); a T14, mesmo já "no passado" à hora do relógio, tem 10 min de margem
+  const [nome] = readdirSync(path.join(origem, 'entrada'))
+  const confirmados = JSON.parse(readFileSync(path.join(origem, 'entrada', nome), 'utf8'))
+  assert.deepEqual(confirmados.map(c => c.ficheiro), ['bruto/2026-09-29T10.ndjson.gz'])
 })
