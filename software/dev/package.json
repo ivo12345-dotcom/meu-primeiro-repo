@@ -5,7 +5,7 @@
   "scripts": {
     "instalar": "npm install && node ligar-admin-ui.js && cd config && npm install",
     "start": "signalk-server -c config",
-    "test": "cd ../signalk-arlequin-energia && npm test && cd ../arlequin-simulador && node --test \"test/*.test.*\" && cd ../signalk-arlequin-ais && npm test && cd ../arlequin-ecra && npm test && cd ../signalk-arlequin-j1939 && npm test && cd ../signalk-arlequin-gasoleo && npm test && cd ../signalk-arlequin-agua && npm test && cd ../signalk-arlequin-porto && npm test && cd ../signalk-arlequin-caixanegra && npm test && cd ../ferramentas/sincronizar && npm test"
+    "test": "cd ../signalk-arlequin-energia && npm test && cd ../arlequin-simulador && node --test \"test/*.test.*\" && cd ../signalk-arlequin-ais && npm test && cd ../arlequin-ecra && npm test && cd ../signalk-arlequin-j1939 && npm test && cd ../signalk-arlequin-gasoleo && npm test && cd ../signalk-arlequin-agua && npm test && cd ../signalk-arlequin-porto && npm test && cd ../signalk-arlequin-caixanegra && npm test && cd ../ferramentas/sincronizar && npm test && cd ../../signalk-arlequin-ia && npm test && cd ../arlequin-ia && python -m pytest -q"
   },
   "dependencies": {
     "signalk-server": "2.33.0"

@@ -1,0 +1,9 @@
+{
+  "enabled": true,
+  "configuration": {
+    "pasta": "arlequin-dados",
+    "python": "python",
+    "previsoes": true,
+    "treinoAutomatico": false
+  }
+}

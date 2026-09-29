@@ -150,6 +150,19 @@ Todos são LightGBM com **regressão por quantis: P10, P50 e P90** (pessimista, 
 
 **A AI nunca mexe nas regras de segurança da Parte 3.**
 
+### Notas de implementação (29/09, aprovadas pelo Ivo)
+
+- **Plugin próprio `signalk-arlequin-ia`** (em vez de ficar no plugin da rota, que ainda não existe). Faz o disparo do treino, o `/ia`, o cartão no Diário e o avaliador JS em `lib/modelos.js`, que a Parte 3 vai reutilizar.
+- **Previsão arquivada já agora** pelo plugin da AI, em `previsoes/`, de hora a hora a navegar e de 3 em 3 h parado. A Parte 3 passa a ler daqui.
+- **Balanço medido pela IMU:** desvio padrão do adorno e do caimento em 2 min, calculado no treino a partir da tabela. Entra nos modelos da velocidade e do consumo, ao lado da onda prevista.
+- **O vento são dois modelos:** `ventoForca` (razão medido/previsto) e `ventoDirecao` (diferença medido − previsto).
+- **Detalhes do treino:**
+  - "última saída" = a mais recente em `saidas/`, e são precisas 2;
+  - o 1.º modelo tem de bater a polar ou a curva de origem;
+  - se for aceite, volta a treinar com todos os dados antes de guardar;
+  - o ficheiro leva também o texto nativo do LightGBM, para o Python comparar versões.
+- **Disparo automático:** parado há 1 h com uma saída nova desde o último treino.
+
 ## Parte 3: Melhor rota: cálculo (`software/signalk-arlequin-rota/`)
 
 ### Recolha

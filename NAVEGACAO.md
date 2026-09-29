@@ -1182,4 +1182,20 @@ node software/ferramentas/sincronizar/sincronizar.mjs --host pi@arlequin
 - Recomendado: incluir esta pasta na cópia de segurança do Windows ou no OneDrive.
 - Sem rede, também dá com uma pen: `--origem E:\arlequin-dados`. Pela pen **só se copiam** os dados: a confirmação ao Pi (que o deixa libertar espaço aos 80%) só acontece por ssh/Tailscale. O portátil só dá um ficheiro como confirmado quando o `confirmados.json` do próprio Pi o tem.
 
+### AI a bordo (plugin `signalk-arlequin-ia` + pacote `software/arlequin-ia`)
+
+- **Instalar no Pi** (uma vez):
+
+  ```
+  python3 -m venv ~/arlequin-ia-venv && ~/arlequin-ia-venv/bin/pip install -r software/arlequin-ia/requirements.txt
+  ```
+
+  Depois, na configuração do plugin, pôr `python` = `/home/pi/arlequin-ia-venv/bin/python`.
+- **O que faz sozinho:**
+  - guarda a previsão Open-Meteo para a posição do barco sempre que há rede (de hora a hora a navegar, de 3 em 3 h parado);
+  - depois de cada saída, quando o barco está parado há 1 h, treina os modelos com prioridade baixa.
+- **O que aprende:** a velocidade real do Arlequin contigo ao leme, em quanto a previsão do vento falha (força e direção) e o gasóleo real. O simulador nunca ensina.
+- **Quando começa a valer:** precisa de pelo menos 5 h de navegação estável e 2 saídas. Até lá o ecrã diz "a aprender" e usa-se a polar de origem.
+- **No ecrã:** no Diário, o cartão "AI" mostra a versão em uso e o que aprendeu. Tem "Treinar agora" e "Voltar atrás", se um modelo novo te parecer pior.
+
 **Velas:** na página **Velas** do ecrã, toca no estado da grande e da genoa sempre que mudares. A AI precisa disto para aprender, e o ecrã lembra-te se o vento mudar muito.
