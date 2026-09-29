@@ -106,7 +106,7 @@ test('lib: uma cópia local corrompida com o mesmo tamanho é reparada', async (
   mkdirSync(path.join(destino, 'bruto'), { recursive: true })
   writeFileSync(path.join(destino, 'bruto', '2026-09-29T10.ndjson.gz'), 'xyz') // mesmo tamanho que 'dez', conteúdo diferente
   const r = await sincronizar({ transporte: transporteLocal(origem), destino, agora: AGORA })
-  assert.equal(r.copiados, 2) // T14 e tabela; T10 fica de fora por ter o mesmo tamanho
+  assert.equal(r.copiados, 3) // T14 e tabela (tamanho diferente) + T10 reparado (recopiado na passagem de reparação)
   assert.equal(r.confirmados, 1)
   assert.deepEqual(r.diferentes, [])
   assert.equal(
