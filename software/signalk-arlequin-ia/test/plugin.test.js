@@ -183,3 +183,53 @@ test('"voltar atrás" durante um treino: 409, para o Python não lhe passar por 
   assert.equal(fs.readFileSync(path.join(pv, 'atual'), 'utf8'), 'v0002')
   await esperar(async () => (await chamar(r.get['/ia'])).ultimoTreino)
 })
+
+function doisModelosAceites (app) {
+  const pv = path.join(app.dir, 'dados', 'modelos', 'velocidade')
+  fs.mkdirSync(pv, { recursive: true })
+  for (const versao of ['v0001', 'v0002']) fs.writeFileSync(path.join(pv, `${versao}.json.gz`), zlib.gzipSync(JSON.stringify({ ...fixture.modelo, versao, aceite: true })))
+  fs.writeFileSync(path.join(pv, 'atual'), 'v0002')
+  return pv
+}
+
+test('"voltar atrás" acrescenta ao registo.json sem perder o que lá estava', async (t) => {
+  const app = appFalso()
+  const pv = doisModelosAceites(app)
+  const ficheiro = path.join(app.dir, 'dados', 'modelos', 'registo.json')
+  const antes = [{ modelo: 'velocidade', versao: 'v0001', aceite: true, motivo: 'treino' }, { modelo: 'velocidade', versao: 'v0002', aceite: true, motivo: 'treino' }]
+  fs.writeFileSync(ficheiro, JSON.stringify(antes))
+  const p = criar(app, { comando: UMA_LINHA, nice: false })
+  p.start({ pasta: path.join(app.dir, 'dados'), treinoAutomatico: false })
+  t.after(() => p.stop())
+  const v = await chamar(rotas(p).post['/voltar'], { modelo: 'velocidade' })
+  assert.equal(v.code, 200)
+  assert.equal(v.aviso, undefined)
+  const registo = JSON.parse(fs.readFileSync(ficheiro, 'utf8'))
+  assert.equal(registo.length, 3)
+  assert.deepEqual(registo.slice(0, 2), antes)
+  assert.match(registo[2].motivo, /voltou atrás à mão \(estava v0002\)/)
+  assert.equal(fs.readFileSync(path.join(pv, 'atual'), 'utf8'), 'v0001')
+  assert.deepEqual(fs.readdirSync(path.join(app.dir, 'dados', 'modelos')).filter(n => n.endsWith('.tmp')), [])
+  assert.deepEqual(fs.readdirSync(pv).filter(n => n.endsWith('.tmp')), [])
+})
+
+test('"voltar atrás" com o registo.json ilegível: muda o atual, avisa e não toca no registo', async (t) => {
+  for (const conteudo of ['{', '{"a":1}']) {
+    const app = appFalso()
+    const pv = doisModelosAceites(app)
+    const ficheiro = path.join(app.dir, 'dados', 'modelos', 'registo.json')
+    fs.writeFileSync(ficheiro, conteudo)
+    const p = criar(app, { comando: UMA_LINHA, nice: false })
+    p.start({ pasta: path.join(app.dir, 'dados'), treinoAutomatico: false })
+    t.after(() => p.stop())
+    const v = await chamar(rotas(p).post['/voltar'], { modelo: 'velocidade' })
+    assert.equal(v.code, 200)
+    assert.equal(v.ok, true)
+    assert.equal(v.versao, 'v0001')
+    assert.equal(v.aviso, 'o registo.json está ilegível e não foi alterado')
+    assert.equal(fs.readFileSync(path.join(pv, 'atual'), 'utf8'), 'v0001')
+    assert.equal(fs.readFileSync(ficheiro, 'utf8'), conteudo)
+    assert.equal(app.erros.length, 1)
+    assert.match(app.erros[0], /registo\.json/)
+  }
+})

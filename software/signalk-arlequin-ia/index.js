@@ -15,6 +15,18 @@ const mod = require('./lib/modelos')
 
 const NO = 1852 / 3600
 
+// Escreve para f.tmp, força para o disco e só então troca: quem lê vê o ficheiro
+// antigo ou o novo, nunca meio escrito (como o treino em Python faz).
+function escreverAtomico (f, texto) {
+  const tmp = f + '.tmp'
+  const fd = fs.openSync(tmp, 'w')
+  try {
+    fs.writeSync(fd, texto)
+    fs.fsyncSync(fd)
+  } finally { fs.closeSync(fd) }
+  fs.renameSync(tmp, f)
+}
+
 module.exports = function (app, deps = {}) {
   const fetchFn = deps.fetch || ((...a) => fetch(...a))
   const plugin = {
@@ -46,7 +58,7 @@ module.exports = function (app, deps = {}) {
   const pastaModelos = () => path.join(base, 'modelos')
   const ficheiroEstado = () => path.join(dirPlugin, 'estado.json')
   const guardarEstado = () => {
-    try { fs.writeFileSync(ficheiroEstado() + '.tmp', JSON.stringify(estado)); fs.renameSync(ficheiroEstado() + '.tmp', ficheiroEstado()) } catch (e) { app.error(`não guardei o estado da AI: ${e.message}`) }
+    try { escreverAtomico(ficheiroEstado(), JSON.stringify(estado)) } catch (e) { app.error(`não guardei o estado da AI: ${e.message}`) }
   }
   const v = (c) => app.getSelfPath?.(c)?.value
 
@@ -153,12 +165,20 @@ module.exports = function (app, deps = {}) {
       const anteriores = mod.versoes(pastaModelos(), nome).filter(x => atual && x < atual).reverse()
       const alvo = anteriores.find(x => { try { return mod.lerVersao(pastaModelos(), nome, x).aceite } catch { return false } })
       if (!alvo) return res.status(409).json({ ok: false, erro: 'não há versão anterior que tenha estado em uso' })
-      fs.writeFileSync(path.join(pastaModelos(), nome, 'atual'), alvo)
       const registo = path.join(pastaModelos(), 'registo.json')
-      let lista = []
-      try { lista = JSON.parse(fs.readFileSync(registo, 'utf8')) } catch { lista = [] }
+      // Sem registo começa-se um; ilegível fica como está (não se apaga o histórico).
+      let lista = null
+      try {
+        lista = JSON.parse(fs.readFileSync(registo, 'utf8'))
+        if (!Array.isArray(lista)) throw new Error('não é uma lista')
+      } catch (e) {
+        lista = e.code === 'ENOENT' ? [] : null
+        if (!lista) app.error(`voltar atrás: o registo.json está ilegível (${e.message}); não foi alterado`)
+      }
+      escreverAtomico(path.join(pastaModelos(), nome, 'atual'), alvo)
+      if (!lista) return res.json({ ok: true, versao: alvo, aviso: 'o registo.json está ilegível e não foi alterado' })
       lista.push({ modelo: nome, data: new Date().toISOString(), versao: alvo, aceite: true, motivo: `voltou atrás à mão (estava ${atual})` })
-      fs.writeFileSync(registo, JSON.stringify(lista, null, 1))
+      escreverAtomico(registo, JSON.stringify(lista, null, 1))
       res.json({ ok: true, versao: alvo })
     })
   }
