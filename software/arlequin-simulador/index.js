@@ -80,6 +80,7 @@ module.exports = function (app) {
     // O D1-20B do Arlequin tem ~3200–3300 h (Ivo, 29/09): começa mesmo antes do
     // limite dos 2 bytes (3276,75 h) para o demo o atravessar.
     let horasMotorS = 3276.5 * 3600
+    const pedaladas = [0, 0] // contadores das bombas de pé (como o ESP32 os daria)
     temporizador = setInterval(() => {
       const r = avancarNav(nav, 1000)
       nav = r.estado
@@ -95,6 +96,13 @@ module.exports = function (app) {
         : d
       for (const d of r.deltas) app.handleMessage(plugin.id, semMotor(d))
       app.handleMessage(plugin.id, semMotor(deltaDaLeitura(en.leitura, o)))
+      // Água doce: pedaladas nas bombas de pé (cozinha ~1 a cada 2 min, WC ~1 a cada 3 min).
+      if (Math.random() < 1 / 120) pedaladas[0] += 1 + Math.floor(Math.random() * 3)
+      if (Math.random() < 1 / 180) pedaladas[1] += 1 + Math.floor(Math.random() * 2)
+      app.handleMessage(plugin.id, { updates: [{ values: [
+        { path: 'tanks.freshWater.0.pedaladas', value: pedaladas[0] },
+        { path: 'tanks.freshWater.1.pedaladas', value: pedaladas[1] }
+      ] }] })
       if (porSonda) {
         const roll = r.deltas[0].updates[0].values.find(x => x.path === 'navigation.attitude')?.value?.roll ?? 0
         const t = tensoesSonda({ litros: nav.combustivel * 1000, alimentacao: r.motor ? 14.2 : en.leitura.tensao, roll, sog: r.sog })

@@ -9,6 +9,7 @@ O desenho está em `NAVEGACAO.md` e em `docs/superpowers/specs/`.
 | `signalk-arlequin-energia/` | Plugin: alarmes das baterias AGM e registo das cargas pelo motor | Sim |
 | `signalk-arlequin-ais/` | Plugin: alarme de colisão AIS (CPA/TCPA) no servidor | Sim |
 | `signalk-arlequin-gasoleo/` | Plugin: nível do gasóleo pela sonda original (ADS1115), calibração, reserva 40 L, fuga, consumo anormal, abastecimentos | Sim |
+| `signalk-arlequin-agua/` | Plugin: água doce pelas pedaladas das bombas de pé (Enchi, calibrar a bomba, aviso ≤ 20%, dias que faltam) | Sim |
 | `signalk-arlequin-j1939/` | Plugin: motor D1-20B pelo J1939 do MDI (rotações, horas, temperatura, tensão, consumo estimado, alarmes, descoberta da PGN 65417) | Sim |
 | `arlequin-simulador/` | Plugin que finge o barco (navegação, vento, AIS, motor, baterias, sol) | Não (só testes) |
 | `dev/` | SignalK local no portátil, com tudo ligado e o diário de bordo | Não |
@@ -138,3 +139,18 @@ No portátil, o simulador fala J1939 (`motorJ1939`) e o plugin usa a fonte
    também dá o **fator de calibração** do consumo (em `/estado`).
 5. O Pi precisa de teclado no ecrã só para as notas do Diário; o Abasteci e o
    Calibrar têm teclado numérico próprio.
+
+## Água doce (no barco)
+
+1. As bombas de água doce são **de pé** (lavatório do WC e lava-loiça). Em cada
+   **pedal de água doce**: um **reed switch** e um íman, que fecham uma vez por
+   pedalada. A bomba de **água do mar** do lava-loiça **não** leva sensor.
+2. Os reed switches vão a um contador (ESP32 com SensESP, `DigitalInputCounter`,
+   ou GPIO do Pi) que publica o **contador acumulado** em
+   `tanks.freshWater.0.pedaladas` (cozinha) e `tanks.freshWater.1.pedaladas`
+   (WC). Se o contador recomeçar do zero, o plugin percebe.
+3. Plugin `signalk-arlequin-agua`: pôr as **capacidades reais** (vêm a 80 L por
+   omissão). No ecrã, **Motor → Calibrar bomba**: bombear para uma jarra de 1 L e
+   Terminar. Ao encher o depósito: **Enchi**.
+4. Aviso de água a acabar a 20% (limpa a 25%). Mostra também os **dias que
+   faltam** ao ritmo dos últimos dias.

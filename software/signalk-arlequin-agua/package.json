@@ -1,0 +1,10 @@
+{
+  "name": "signalk-arlequin-agua",
+  "version": "0.1.0",
+  "description": "Água doce do Arlequin pelas pedaladas das bombas de pé",
+  "main": "index.js",
+  "keywords": ["signalk-node-server-plugin", "signalk-category-utility"],
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": { "test": "node --test \"test/*.test.js\"" }
+}

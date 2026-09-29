@@ -152,3 +152,26 @@ test('Motor: calibração completa — abrir, +5 L, estado a estabilizar', async
   assert.ok(pedidos.at(-1).url.endsWith('/calibracao/adicionar'))
   assert.match(motor.render(ctx), /No depósito: 5 L/)
 })
+
+test('Motor: água doce com os dois depósitos, dias que faltam e "Calibrar bomba"', async () => {
+  const st = storeSimulado(1)
+  aplicarDelta(st, { updates: [{ timestamp: new Date().toISOString(), values: [
+    { path: 'tanks.freshWater.0.name', value: 'Cozinha (BB)' }, { path: 'tanks.freshWater.0.currentVolume', value: 0.045 }, { path: 'tanks.freshWater.0.currentLevel', value: 0.56 },
+    { path: 'tanks.freshWater.1.name', value: 'WC (EB)' }, { path: 'tanks.freshWater.1.currentVolume', value: 0.012 }, { path: 'tanks.freshWater.1.currentLevel', value: 0.15 }
+  ] }] })
+  const estadoAgua = { tanques: [{ id: 0, nome: 'Cozinha (BB)', ritmo: { litrosDia: 9, dias: 5 } }, { id: 1, nome: 'WC (EB)', ritmo: null, pedaladasCalibracao: 4 }] }
+  const estado = { agua: estadoAgua }
+  const pedidos = []
+  const ctx = { ...contexto(st, estado), pedir: async (url, o) => { pedidos.push(url); return url.endsWith('/estado') ? estadoAgua : { ok: true } } }
+  let html = motor.render(ctx)
+  assert.match(html, /Cozinha \(BB\)/)
+  assert.match(html, /45 L/)
+  assert.match(html, /~5,0 dias/)
+  await motor.acao('agua-calib', { id: '1' }, ctx)
+  motor.render(ctx) // pede o estado
+  await new Promise(r => setTimeout(r, 10))
+  html = motor.render(ctx)
+  assert.match(html, /Calibrar a bomba: WC \(EB\)/)
+  assert.match(html, /4 <span/)
+  assert.ok(pedidos.some(u => u.endsWith('calibrar-bomba/iniciar')))
+})

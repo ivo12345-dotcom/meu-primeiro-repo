@@ -1,0 +1,9 @@
+{
+  "enabled": true,
+  "configuration": {
+    "avisoPct": 20,
+    "logbook": true,
+    "logbookUrl": "http://localhost:3000/plugins/signalk-logbook/logs",
+    "token": ""
+  }
+}
