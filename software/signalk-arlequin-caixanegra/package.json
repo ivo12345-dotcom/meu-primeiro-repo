@@ -1,0 +1,10 @@
+{
+  "name": "signalk-arlequin-caixanegra",
+  "version": "0.1.0",
+  "description": "Caixa negra do Arlequin: grava todos os dados desde o primeiro dia (bruto, tabela de 10 s para a AI, saídas) e o estado das velas",
+  "main": "index.js",
+  "keywords": ["signalk-node-server-plugin", "signalk-category-utility"],
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": { "test": "node --test \"test/*.test.js\"" }
+}
