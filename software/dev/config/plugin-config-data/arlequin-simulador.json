@@ -6,6 +6,7 @@
     "inicio": "2026-01-10T08:00:00",
     "cicloVelaMin": 20,
     "ventoDeGraus": 20,
-    "motorJ1939": true
+    "motorJ1939": true,
+    "instantePassagem": ""
   }
 }

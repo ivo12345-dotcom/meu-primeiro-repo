@@ -82,15 +82,26 @@ test('rodar no fundeadouro (picos curtos de velocidade) não conta como navegar'
   assert.equal(estado.navegar.estado, false)
 })
 
-test('85% com motor ligado: desligarMotor uma vez; limpa quando o motor para', () => {
+test('carga pedida (motor ligado a 55%): aos 85% "já podes desligar", uma vez; limpa quando o motor para', () => {
   const { todas } = correr([
-    [T0, { soc: 0.84, rpm: 30 }],
-    [T0 + MIN, { soc: 0.85, rpm: 30 }],
-    [T0 + 2 * MIN, { soc: 0.86, rpm: 30 }],
-    [T0 + 3 * MIN, { soc: 0.86, rpm: 0 }]
+    [T0, { soc: 0.55 }],
+    [T0 + MIN, { soc: 0.55, rpm: 30 }],
+    [T0 + 2 * MIN, { soc: 0.84, rpm: 30 }],
+    [T0 + 3 * MIN, { soc: 0.85, rpm: 30 }],
+    [T0 + 4 * MIN, { soc: 0.86, rpm: 30 }],
+    [T0 + 5 * MIN, { soc: 0.86, rpm: 0 }]
   ])
-  assert.deepEqual(ids(todas), ['desligarMotor:warn', 'desligarMotor:normal'])
-  assert.match(todas[0].message, /85%.*desligar o motor/)
+  assert.deepEqual(ids(todas), ['ligarMotor:warn', 'ligarMotor:normal', 'desligarMotor:warn', 'desligarMotor:normal'])
+  assert.match(todas[2].message, /85%.*desligar o motor/)
+})
+
+test('sair da marina a motor com a bateria cheia: NÃO diz "já podes desligar"', () => {
+  const { todas } = correr([
+    [T0, { soc: 0.95, rpm: 30 }],
+    [T0 + MIN, { soc: 0.95, rpm: 30 }],
+    [T0 + 60 * MIN, { soc: 0.96, rpm: 30 }]
+  ])
+  assert.deepEqual(todas, [])
 })
 
 test('abaixo de 50%: servicoCritico alarm com som mesmo de noite parado', () => {

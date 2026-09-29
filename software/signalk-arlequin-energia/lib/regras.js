@@ -25,7 +25,7 @@ function novoEstado () {
   return {
     ativos: {}, // id -> { desde, ultimoEnvio }
     navegar: { estado: false, candidatoDesde: null },
-    motor: { ligado: false, paradoDesde: null }
+    motor: { ligado: false, paradoDesde: null, paraCarregar: false }
   }
 }
 
@@ -66,10 +66,20 @@ function atualizarNavegar (nav, sog, agora, lim) {
   return { estado: nav.estado, candidatoDesde: desde }
 }
 
-function atualizarMotor (motor, rpm, agora, lim) {
+// paraCarregar: o motor arrancou COM a bateria baixa (aviso dos 55% ativo ou
+// abaixo de 58%). Só então faz sentido dizer "já podes desligar" aos 85%. Sair
+// da marina a motor com a bateria cheia não é uma carga (visto na simulação
+// Algés → Peniche de 29/09: apitava ao largar).
+function atualizarMotor (motor, rpm, agora, lim, ativos = {}, soc = null) {
   const ligado = typeof rpm === 'number' && rpm > lim.rpmLigado
-  if (ligado) return { ligado: true, paradoDesde: null }
-  return { ligado: false, paradoDesde: motor.paradoDesde ?? agora }
+  if (ligado) {
+    const arrancou = !motor.ligado
+    const paraCarregar = arrancou
+      ? !!ativos.ligarMotor || (typeof soc === 'number' && soc <= lim.ligarLimpa)
+      : !!motor.paraCarregar
+    return { ligado: true, paradoDesde: null, paraCarregar }
+  }
+  return { ligado: false, paradoDesde: motor.paradoDesde ?? agora, paraCarregar: false }
 }
 
 // Para cada alarme: true = deve ficar ativo, false = deve limpar,
@@ -82,7 +92,7 @@ function condicoes (ativos, l, motor, agora, lim) {
     c.ligarMotor = ativos.ligarMotor
       ? l.soc <= lim.ligarLimpa && !motor.ligado
       : l.soc <= lim.ligar && !motor.ligado
-    c.desligarMotor = motor.ligado && (ativos.desligarMotor ? true : l.soc >= lim.desligar)
+    c.desligarMotor = motor.ligado && motor.paraCarregar && (ativos.desligarMotor ? true : l.soc >= lim.desligar)
     c.servicoCritico = ativos.servicoCritico ? l.soc <= lim.criticoLimpa : l.soc < lim.critico
   } else {
     c.ligarMotor = c.desligarMotor = c.servicoCritico = null
@@ -100,7 +110,7 @@ function condicoes (ativos, l, motor, agora, lim) {
 
 function avaliar (estado, leitura, agora, lim = LIMITES) {
   const navegar = atualizarNavegar(estado.navegar, leitura.sog, agora, lim)
-  const motor = atualizarMotor(estado.motor, leitura.rpm, agora, lim)
+  const motor = atualizarMotor(estado.motor, leitura.rpm, agora, lim, estado.ativos, leitura.soc)
   const ativos = { ...estado.ativos }
   const notificacoes = []
   const cond = condicoes(ativos, leitura, motor, agora, lim)

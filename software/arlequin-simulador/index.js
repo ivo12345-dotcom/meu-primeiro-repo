@@ -7,7 +7,10 @@ const { CENARIOS, passoEm } = require('./lib/cenarios')
 const { deltaDaLeitura } = require('./lib/delta')
 const { criarNavegacao, avancarNav } = require('./lib/navegacao')
 const { tramasMotor } = require('./lib/j1939sim')
-const { tensoesSonda } = require('./lib/sonda')
+const { tensoesSonda, razaoSimulada } = require('./lib/sonda')
+const { pontoMaisPerto, deltaDoPonto } = require('./lib/replay')
+const path = require('node:path')
+const fs = require('node:fs')
 
 module.exports = function (app) {
   const plugin = {
@@ -22,6 +25,7 @@ module.exports = function (app) {
       cenario: { type: 'string', title: 'Cenário', enum: Object.keys(CENARIOS), default: 'navegar-demo' },
       msPorHora: { type: 'number', title: 'Milissegundos reais por hora simulada', default: 2000 },
       inicio: { type: 'string', title: 'Início da simulação (data/hora ISO)', default: '2026-01-10T08:00:00' },
+      instantePassagem: { type: 'string', title: 'Passagem simulada: congelar neste instante (ISO local, ex.: 2026-09-29T21:00)', default: '' },
       gasoleoPorSonda: { type: 'boolean', title: 'navegar-demo: o gasóleo chega pela sonda (para o plugin signalk-arlequin-gasoleo)', default: true },
       motorJ1939: { type: 'boolean', title: 'navegar-demo: o motor fala J1939 (para o plugin signalk-arlequin-j1939)', default: true },
       ventoDeGraus: { type: 'number', title: 'navegar-demo: de onde vem o vento real (graus)', default: 20 },
@@ -40,6 +44,7 @@ module.exports = function (app) {
     const cenario = CENARIOS[o.cenario]
     if (!cenario) return app.setPluginError(`cenário desconhecido: ${o.cenario}`)
 
+    if (o.instantePassagem) return comecarPassagem(o)
     if (cenario.tempoReal) return comecarTempoReal(o, cenario)
 
     const PASSO_MIN = 1
@@ -121,6 +126,26 @@ module.exports = function (app) {
       }
     }, 1000)
     app.setPluginStatus(`A simular "${o.cenario}": ${cenario.descricao}`)
+  }
+
+  // Passagem simulada (ferramentas/passagem): o sistema "vive" um instante dela.
+  function comecarPassagem (o) {
+    const dir = path.join(__dirname, '..', 'ferramentas', 'passagem')
+    const pontos = JSON.parse(fs.readFileSync(path.join(dir, 'passagem.json'), 'utf8'))
+    const { ROTA } = JSON.parse(fs.readFileSync(path.join(dir, 'rota.json'), 'utf8'))
+    const p = pontoMaisPerto(pontos, new Date(o.instantePassagem).getTime())
+    let horas = 3276.5 * 3600
+    temporizador = setInterval(() => {
+      app.handleMessage(plugin.id, deltaDoPonto(p, ROTA))
+      const razao = razaoSimulada(p.gasoleo)
+      const v = p.motor ? 14.2 : 12.7
+      app.handleMessage(plugin.id, { updates: [{ values: [
+        { path: 'tanks.fuel.0.senderVoltage', value: razao * v }, { path: 'tanks.fuel.0.supplyVoltage', value: v },
+        { path: 'tanks.freshWater.0.pedaladas', value: 0 }, { path: 'tanks.freshWater.1.pedaladas', value: 0 }
+      ] }] })
+      for (const l of tramasMotor({ t: Date.now(), rpm: p.motor ? 2000 : 0, tempK: p.motor ? 355 : 300, volt: v, horasS: horas })) app.emit('arlequin-j1939', l)
+    }, 1000)
+    app.setPluginStatus(`Passagem: ${new Date(p.t).toLocaleString('pt-PT')} · ${p.wp} · ${p.motor ? 'motor' : 'vela'} · vento ${Math.round(p.tws)} nós`)
   }
 
   plugin.stop = function () {
