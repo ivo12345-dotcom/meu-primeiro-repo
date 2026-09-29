@@ -6,3 +6,11 @@ Thumbs.db
 # Editor
 .vscode/
 *.swp
+
+# Node / SignalK local
+node_modules/
+software/dev/config/*
+!software/dev/config/package.json
+!software/dev/config/settings.json
+!software/dev/config/plugin-config-data/
+software/dev/config/plugin-config-data/*/

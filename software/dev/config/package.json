@@ -1,0 +1,9 @@
+{
+  "name": "arlequin-signalk-config",
+  "private": true,
+  "description": "Pasta de configuração do SignalK local (plugins do Arlequin ligados por file:)",
+  "dependencies": {
+    "signalk-arlequin-energia": "file:../../signalk-arlequin-energia",
+    "arlequin-simulador": "file:../../arlequin-simulador"
+  }
+}

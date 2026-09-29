@@ -1,0 +1,11 @@
+{
+  "name": "arlequin-dev",
+  "private": true,
+  "description": "SignalK local no portátil para testar os plugins do Arlequin",
+  "scripts": {
+    "instalar": "npm install && cd config && npm install",
+    "start": "signalk-server -c config",
+    "test": "cd ../signalk-arlequin-energia && npm test && cd ../arlequin-simulador && npm test"
+  },
+  "dependencies": { "signalk-server": "2.33.0" }
+}

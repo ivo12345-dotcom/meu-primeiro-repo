@@ -1,0 +1,10 @@
+{
+  "name": "signalk-arlequin-energia",
+  "version": "0.1.0",
+  "description": "Alarmes das baterias AGM e registo das cargas pelo motor do veleiro Arlequin",
+  "main": "index.js",
+  "keywords": ["signalk-node-server-plugin", "signalk-category-utility"],
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": { "test": "node --test \"test/*.test.js\"" }
+}

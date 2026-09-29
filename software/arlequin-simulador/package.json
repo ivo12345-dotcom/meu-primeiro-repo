@@ -1,0 +1,10 @@
+{
+  "name": "arlequin-simulador",
+  "version": "0.1.0",
+  "description": "Simulador do sistema elétrico do Arlequin para testes (desligar no barco)",
+  "main": "index.js",
+  "keywords": ["signalk-node-server-plugin", "signalk-category-utility"],
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": { "test": "node --test \"test/*.test.js\"" }
+}
