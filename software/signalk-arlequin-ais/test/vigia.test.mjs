@@ -22,7 +22,7 @@ test('rota de colisão: alarme com som e mensagem', () => {
   assert.deepEqual(r.ativos, { 1: true })
   assert.equal(r.notificacoes[0].state, 'alarm')
   assert.deepEqual(r.notificacoes[0].method, ['visual', 'sound'])
-  assert.match(r.notificacoes[0].message, /^NORDIC STAR: CPA 0,0 MN daqui a 10 min$/)
+  assert.equal(r.notificacoes[0].message, 'NORDIC STAR em rota de colisão · CPA 0,0 MN')
 })
 
 test('não repete o alarme enquanto continua em perigo', () => {

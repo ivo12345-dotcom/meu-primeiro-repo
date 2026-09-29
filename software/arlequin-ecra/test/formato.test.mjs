@@ -16,6 +16,7 @@ test('números com vírgula e — quando falta', () => {
   assert.equal(f.num(undefined), '—')
   assert.equal(f.num(NaN), '—')
   assert.equal(f.num(1243, 0), '1243')
+  assert.equal(f.num(-0.04, 1), '0,0')
 })
 
 test('rumos com 3 dígitos e 0–359', () => {

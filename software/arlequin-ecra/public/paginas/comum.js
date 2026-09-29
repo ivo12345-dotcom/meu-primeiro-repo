@@ -1,0 +1,78 @@
+// Blocos repetidos entre páginas.
+
+import { velocidade, distancia, duracao, num, rumo, anguloBordo, graus, nos } from '../lib/formato.js'
+import { barra } from '../lib/desenho.js'
+
+const ok = (v) => typeof v === 'number' && Number.isFinite(v)
+
+export const CONSUMO_CRUZEIRO = 0.9 / 3600 / 1000 // m³/s (0,9 L/h)
+export const VELOCIDADE_MOTOR = 5.5 * 1852 / 3600 // m/s
+
+export function tile (lab, valorHtml, extra = '', cls = 'v') {
+  return `<div class="tile"><div class="lab">${lab}</div><div class="${cls}">${valorHtml}</div>${extra}</div>`
+}
+
+export function ventoTexto (ctx) {
+  const awa = ctx.v('environment.wind.angleApparent')
+  const aws = ctx.v('environment.wind.speedApparent')
+  const tws = ctx.v('environment.wind.speedTrue')
+  const twd = ctx.v('environment.wind.directionTrue')
+  return {
+    aparente: `${anguloBordo(awa)} · ${velocidade(aws)} nós`,
+    real: `real ${velocidade(tws)} nós de ${rumo(twd)}`
+  }
+}
+
+// Gasóleo: litros, autonomia em horas e em MN (ao consumo atual ou de cruzeiro).
+export function gasoleo (ctx) {
+  const nivel = ctx.v('tanks.fuel.0.currentLevel')
+  const cap = ctx.v('tanks.fuel.0.capacity')
+  if (!ok(nivel) || !ok(cap)) return { html: '<span class="lab">sem dados do depósito</span>', nivel: null }
+  const litros = nivel * cap * 1000
+  const taxa = ctx.v('propulsion.main.fuel.rate')
+  const consumo = ok(taxa) && taxa > 0 ? taxa : CONSUMO_CRUZEIRO
+  const horas = (nivel * cap) / consumo / 3600
+  const sog = ctx.v('navigation.speedOverGround')
+  const vel = ok(taxa) && taxa > 0 && ok(sog) && sog > 0.5 ? sog : VELOCIDADE_MOTOR
+  const milhas = horas * 3600 * vel / 1852
+  return {
+    nivel,
+    html: `${num(litros, 0)} L de ${num(cap * 1000, 0)} · ~${num(horas, 0)} h · ~${num(milhas, 0)} MN`
+  }
+}
+
+export function tileGasoleo (ctx, grande = false) {
+  const g = gasoleo(ctx)
+  const cor = g.nivel !== null && g.nivel < 0.2 ? 'var(--bb)' : 'var(--verde)'
+  return `<div class="tile"><div class="linha"><span class="lab">Gasóleo</span><span class="${grande ? 'v' : ''}">${g.html}</span></div>${barra(g.nivel, cor)}</div>`
+}
+
+export function motorResumo (ctx) {
+  const rpm = ctx.v('propulsion.main.revolutions')
+  const ligado = ok(rpm) && rpm > 5
+  const horas = ctx.v('propulsion.main.runTime')
+  const soc = ctx.v('electrical.batteries.servico.capacity.stateOfCharge')
+  return {
+    ligado,
+    estado: ligado ? `<span class="amarelo">a trabalhar · ${num(rpm * 60, 0)} rpm</span>` : '<span class="ok">desligado</span>',
+    detalhe: `${ok(horas) ? num(horas / 3600, 0) + ' h' : '— h'} · serviço ${ok(soc) ? num(soc * 100, 0) + '%' : '—'}`
+  }
+}
+
+export function linhaAlvo (a) {
+  const cls = a.classe === 'perigo' ? 'perigo' : a.classe === 'atencao' ? 'atencao' : ''
+  const cpaTxt = a.r && a.classe !== 'afasta' ? `${distancia(a.r.cpa)} MN · ${duracao(a.r.tcpa)}` : a.classe === 'afasta' ? 'afasta-se' : '—'
+  return `<div class="linha ${cls}"><span>${a.name || a.mmsi}</span><span>${cpaTxt}</span></div>`
+}
+
+export function proximoWp (ctx) {
+  const dist = ctx.v('navigation.course.calcValues.distance') ?? ctx.v('navigation.courseRhumbline.nextPoint.distance')
+  const rumoWp = ctx.v('navigation.course.calcValues.bearingTrue') ?? ctx.v('navigation.courseRhumbline.nextPoint.bearingTrue')
+  const xte = ctx.v('navigation.course.calcValues.crossTrackError') ?? ctx.v('navigation.courseRhumbline.crossTrackError')
+  const ttg = ctx.v('navigation.course.calcValues.timeToGo')
+  const vmg = ctx.v('navigation.course.calcValues.velocityMadeGood')
+  const nome = ctx.v('navigation.course.nextPoint')?.name || 'WP'
+  return { ativo: ok(dist), dist, rumoWp, xte, ttg, vmg, nome }
+}
+
+export { velocidade, distancia, duracao, num, rumo, anguloBordo, graus, nos, ok }

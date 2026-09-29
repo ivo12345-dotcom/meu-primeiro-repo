@@ -1,0 +1,121 @@
+// Desenha as 9 páginas com 13 minutos de dados do simulador (sem browser),
+// para apanhar erros e confirmar o que cada página mostra.
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { criarStore, aplicarDelta } from '../public/signalk.js'
+import { cpa, classificar } from '../public/lib/cpa.js'
+import { lerPolar } from '../public/lib/polar.js'
+import { novaViagem } from '../public/lib/viagem.js'
+import carta from '../public/paginas/carta.js'
+import instr from '../public/paginas/instr.js'
+import ais from '../public/paginas/ais.js'
+import motor from '../public/paginas/motor.js'
+import viagem from '../public/paginas/viagem.js'
+import diario from '../public/paginas/diario.js'
+import melhor from '../public/paginas/melhor.js'
+import velas from '../public/paginas/velas.js'
+
+const require = createRequire(import.meta.url)
+const { criarNavegacao, avancarNav } = require('../../arlequin-simulador/lib/navegacao.js')
+const polar = lerPolar(readFileSync(new URL('../public/polar-arlequin.csv', import.meta.url), 'utf8'))
+
+function storeSimulado (segundos) {
+  const store = criarStore()
+  store.selfContext = 'vessels.urn:mrn:signalk:uuid:arlequin'
+  let e = criarNavegacao({}, Date.now() - segundos * 1000)
+  for (let s = 0; s < segundos; s++) {
+    const r = avancarNav(e, 1000)
+    e = r.estado
+    for (const d of r.deltas) aplicarDelta(store, d)
+  }
+  aplicarDelta(store, { updates: [{ timestamp: new Date().toISOString(), values: [
+    { path: 'notifications.arlequin.ais.263000001', value: { id: '11111111-1111-4111-8111-111111111111', state: 'alarm', method: ['visual', 'sound'], message: 'NORDIC STAR: CPA 0,1 MN daqui a 2 min', status: { silenced: false } } },
+    { path: 'electrical.batteries.servico.capacity.stateOfCharge', value: 0.62 }
+  ] }] })
+  return store
+}
+
+function contexto (store, estado = {}) {
+  const v = (p) => store.self.get(p)?.value
+  const eu = { position: v('navigation.position'), cog: v('navigation.courseOverGroundTrue'), sog: v('navigation.speedOverGround') }
+  const alvos = [...store.vessels.values()].map(a => { const r = cpa(eu, a); return { ...a, r, classe: classificar(r) } })
+  return {
+    v,
+    idade: () => 0,
+    store,
+    polar,
+    baro: { sentido: 'desce', hpa3h: -2.4 },
+    viagem: { ...novaViagem(Date.now() - 3600e3), ultimo: Date.now(), distancia: 9260, tempoVela: 3000, tempoMotor: 600, gasoleoL: 0.2, ventoMax: 8, pressaoInicial: 101600, pressaoFinal: 101520 },
+    alvos,
+    notificacoes: [...store.notificacoes.values()],
+    estado,
+    demo: true,
+    pedir: () => new Promise(() => {}),
+    logbook: async () => {},
+    refrescar: () => {}
+  }
+}
+
+const store = storeSimulado(13 * 60)
+const PAGS = { carta, instr, ais, motor, viagem, diario, melhor, velas }
+
+for (const [nome, pag] of Object.entries(PAGS)) {
+  test(`página ${nome} desenha-se sem erros`, () => {
+    const html = pag.render(contexto(store))
+    assert.ok(html.length > 200, `${nome} vazia`)
+    assert.ok(!/undefined|NaN/.test(html), `${nome} tem undefined/NaN: ${html.match(/.{40}(undefined|NaN).{20}/)?.[0]}`)
+  })
+}
+
+test('Carta mostra o vento, o WP e o NORDIC STAR como perigo', () => {
+  const html = carta.render(contexto(store))
+  assert.match(html, /Vento aparente/)
+  assert.match(html, /WP\d/)
+  assert.match(html, /NORDIC STAR/)
+})
+
+test('AIS: o NORDIC STAR vem primeiro; tocar mostra o botão de silenciar', () => {
+  const ctx = contexto(store)
+  const primeiro = ctx.alvos.sort((a, b) => (a.classe === 'perigo' ? -1 : 0) - (b.classe === 'perigo' ? -1 : 0))[0]
+  assert.equal(primeiro.name, 'NORDIC STAR')
+  const estado = { sel: '263000001' }
+  const html = ais.render(contexto(store, estado))
+  assert.match(html, /Silenciar alarme/)
+})
+
+test('Melhor rota dá um rumo a seguir e a correção ao leme', () => {
+  const html = melhor.render(contexto(store))
+  assert.match(html, /Rumo a seguir/)
+  assert.match(html, /\d{3}°/)
+})
+
+test('Recolher velas: começar → pede motor; com motor → aproar com rumo do vento', async () => {
+  const estado = {}
+  await velas.acao('comecar', {}, contexto(store, estado))
+  assert.equal(estado.passo, 0)
+  const st = storeSimulado(1)
+  aplicarDelta(st, { updates: [{ timestamp: new Date().toISOString(), values: [{ path: 'propulsion.main.revolutions', value: 30 }] }] })
+  const html = velas.render(contexto(st, estado))
+  assert.equal(estado.passo, 1)
+  assert.match(html, /Aproa ao vento: rumo/)
+  assert.match(html, /020°/) // vento real de 020° no início
+})
+
+test('Melhor rota contra o vento: mostra os dois bordos e o rumo do bordo', () => {
+  const store = criarStore()
+  let e = criarNavegacao({ cicloVelaS: 1e9 }, Date.now() - 6 * 3600e3)
+  let achou = false
+  for (let s = 0; s < 6 * 3600 && !achou; s++) {
+    const r = avancarNav(e, 1000)
+    e = r.estado
+    for (const d of r.deltas) aplicarDelta(store, d)
+    const twa = Math.abs(((store.self.get('navigation.course.calcValues.bearingTrue').value - store.self.get('environment.wind.directionTrue').value) * 180 / Math.PI + 540) % 360 - 180)
+    achou = s > 60 && twa < 40
+  }
+  assert.ok(achou, 'a simulação devia chegar a uma perna contra o vento')
+  const html = melhor.render(contexto(store))
+  assert.match(html, /WP contra o vento/)
+  assert.match(html, /Amurado a EB: <b>\d{3}°<\/b>/)
+})

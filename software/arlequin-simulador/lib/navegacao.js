@@ -51,7 +51,7 @@ function vetor (p, q) {
 function stwVela (twaAbs, twsNos) {
   if (twaAbs < 35 * GRAU) return 0
   const forma = Math.sin(Math.min(twaAbs, 100 * GRAU)) * (twaAbs > 100 * GRAU ? 0.9 + 0.1 * Math.cos(twaAbs - 100 * GRAU) : 1)
-  return Math.min(7.2, 0.46 * twsNos) * forma * NO
+  return Math.min(7.2, 0.46 * twsNos) * forma * 0.85 * NO // ~85-95% da polar
 }
 
 function alvoColisao (eu, vEu, t) {

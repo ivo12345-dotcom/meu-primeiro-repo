@@ -1,0 +1,56 @@
+// Melhor rota, sem piloto: a rota ótima calcula-se e ativa-se no OpenCPN
+// (Weather Routing). Aqui mostra-se o rumo a seguir ao leme, em grande, e
+// contra o vento os dois bordos ótimos da polar e quando virar.
+
+import { angulosOtimos } from '../lib/polar.js'
+import { correcaoLeme, bordejo } from '../lib/rumo.js'
+import { barraXte } from '../lib/desenho.js'
+import { proximoWp, velocidade, distancia, duracao, rumo, num, graus, ok } from './comum.js'
+
+export default {
+  render (ctx) {
+    const wp = proximoWp(ctx)
+    const proa = ctx.v('navigation.headingTrue')
+    const twd = ctx.v('environment.wind.directionTrue')
+    const tws = ctx.v('environment.wind.speedTrue')
+    if (!wp.ativo) {
+      return `<div class="tile centro" style="flex:1;"><div class="vv">Sem rota ativa</div>
+<div style="font-size:1.3rem;max-width:40rem;margin-top:.6rem;">Calcula a rota ótima no OpenCPN (Weather Routing, com o GRIB e a polar do Arlequin) e ativa-a. Aqui aparece o rumo a seguir ao leme.</div></div>`
+    }
+    let alvo = wp.rumoWp
+    let bordos = ''
+    if (ctx.polar && ok(twd) && ok(tws) && ok(wp.rumoWp)) {
+      const ang = angulosOtimos(ctx.polar, tws)
+      const b = bordejo({ rumoWp: wp.rumoWp, direcaoVento: twd, anguloBolina: ang.bolina, proa })
+      if (b.contraVento) {
+        const atual = b.bordoAtual === 'BB' ? b.amuraBB : b.amuraEB
+        const outro = b.bordoAtual === 'BB' ? b.amuraEB : b.amuraBB
+        alvo = b.virar ? outro : atual
+        bordos = `<div class="tile ${b.virar ? 'perigo' : ''}" style="font-size:1.3rem;">
+<div class="lab">WP contra o vento · bolina ótima ${num(graus(ang.bolina), 0)}° do vento real</div>
+<div class="linha"><span>Amurado a EB: <b>${rumo(b.amuraEB)}</b></span><span>Amurado a BB: <b>${rumo(b.amuraBB)}</b></span></div>
+<div class="vv" style="margin-top:.3rem;">${b.virar ? 'VIRA AGORA — chegaste à layline' : `Continua amurado a ${b.bordoAtual}; vira na layline`}</div></div>`
+      }
+    }
+    const c = correcaoLeme(alvo, proa)
+    const grande = !c ? '—'
+      : c.lado === null ? '<span class="ok">✓ no rumo</span>'
+        : c.lado === 'BB' ? `<span class="bb-txt">◀ ${c.graus}° BB</span>` : `<span class="eb-txt">${c.graus}° EB ▶</span>`
+    return `<div class="col" style="flex:1.3;">
+<div class="tile centro" style="flex:1;">
+  <div class="lab" style="font-size:1.2rem;">Rumo a seguir</div>
+  <div class="vvv" style="font-size:6rem;">${rumo(alvo)}</div>
+  <div class="vvv" style="font-size:4.6rem;margin-top:.4rem;">${grande}</div>
+  <div style="font-size:1.3rem;margin-top:.5rem;">proa atual ${rumo(proa)}</div>
+</div>
+${bordos}
+</div>
+<div class="col estica">
+<div class="tile"><div class="lab">${wp.nome}</div><div class="vv">${distancia(wp.dist)} MN · ${duracao(wp.ttg)}</div><div class="lab">rumo direto ${rumo(wp.rumoWp)}</div></div>
+<div class="tile"><div class="lab">XTE ${ok(wp.xte) ? `${distancia(Math.abs(wp.xte), 2)} MN ${wp.xte > 0 ? 'EB' : 'BB'}` : '—'}</div>${barraXte(wp.xte)}</div>
+<div class="tile"><div class="lab">VMG ao WP</div><div class="vv">${velocidade(wp.vmg)} nós</div></div>
+<div class="tile"><div class="lab">Vento real</div><div class="vv">${velocidade(tws)} nós de ${rumo(twd)}</div></div>
+<div class="tile lab">A rota ótima (isócronas, GRIB) calcula-se no OpenCPN. Com o EV-100, este rumo passa a ir para o piloto.</div>
+</div>`
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "arlequin-ecra",
+  "version": "0.1.0",
+  "description": "Ecrã da roda do veleiro Arlequin (painel ao lado do OpenCPN)",
+  "main": "index.js",
+  "keywords": ["signalk-node-server-plugin", "signalk-webapp", "signalk-category-chart-plotters"],
+  "signalk": { "displayName": "Arlequin · ecrã" },
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": { "test": "node --test \"test/*.test.mjs\"" }
+}

@@ -4,6 +4,9 @@
   "description": "Pasta de configuração do SignalK local (plugins do Arlequin ligados por file:)",
   "dependencies": {
     "signalk-arlequin-energia": "file:../../signalk-arlequin-energia",
-    "arlequin-simulador": "file:../../arlequin-simulador"
+    "arlequin-simulador": "file:../../arlequin-simulador",
+    "arlequin-ecra": "file:../../arlequin-ecra",
+    "signalk-arlequin-ais": "file:../../signalk-arlequin-ais",
+    "@meri-imperiumi/signalk-logbook": "0.13.2"
   }
 }

@@ -10,7 +10,8 @@ const ok = (v) => typeof v === 'number' && Number.isFinite(v)
 
 export function num (v, casas = 0) {
   if (!ok(v)) return '—'
-  return v.toFixed(casas).replace('.', ',')
+  const t = v.toFixed(casas)
+  return (Number(t) === 0 ? (0).toFixed(casas) : t).replace('.', ',')
 }
 
 // Rumo verdadeiro com 3 dígitos: 035°

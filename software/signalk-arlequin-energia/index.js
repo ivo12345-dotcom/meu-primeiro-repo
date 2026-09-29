@@ -32,6 +32,7 @@ module.exports = function (app) {
   let unsubscribes = []
   let temporizador = null
   let estado, sessao, leitura, desvio, ficheiroRunTime, ficheiroSessoes, opcoes
+  let runTimePublicado = false
 
   // Hora "dos dados": o relógio do sistema corrigido pelo carimbo da última
   // delta. No barco dá o mesmo; com o simulador acelerado segue o tempo simulado.
@@ -67,7 +68,8 @@ module.exports = function (app) {
     const s = passoSessao(sessao, { motorLigado, corrente: leitura.corrente, soc: leitura.soc }, t)
     const minutoAntes = Math.floor(sessao.runTimeS / 60)
     sessao = s.sessao
-    if (Math.floor(sessao.runTimeS / 60) !== minutoAntes) {
+    if (Math.floor(sessao.runTimeS / 60) !== minutoAntes || !runTimePublicado) {
+      runTimePublicado = true
       publicar([{ path: `propulsion.${opcoes.propulsao}.runTime`, value: Math.round(sessao.runTimeS) }])
     }
     if (s.fechada) {
@@ -103,6 +105,7 @@ module.exports = function (app) {
     estado = novoEstado()
     leitura = { soc: null, socEm: 0, corrente: 0, vMotor: null, rpm: null, rpmEm: 0, sog: 0, modo: 'day' }
     desvio = 0
+    runTimePublicado = false
 
     const dir = app.getDataDirPath()
     fs.mkdirSync(dir, { recursive: true })

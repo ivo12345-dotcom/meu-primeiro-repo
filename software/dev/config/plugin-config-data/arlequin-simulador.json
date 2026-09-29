@@ -1,1 +1,9 @@
-{ "enabled": true, "configuration": { "cenario": "inverno-navegar", "msPorHora": 2000, "inicio": "2026-01-10T08:00:00" } }
+{
+  "enabled": true,
+  "configuration": {
+    "cenario": "navegar-demo",
+    "msPorHora": 2000,
+    "inicio": "2026-01-10T08:00:00",
+    "cicloVelaMin": 20
+  }
+}

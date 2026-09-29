@@ -8,9 +8,9 @@ const LIMPA_CPA = 0.6 * 1852 // histerese: só limpa acima de 0,6 MN
 
 const nm = (m) => (m / 1852).toFixed(1).replace('.', ',')
 
+// Sem o tempo que falta: a mensagem fica parada, o TCPA vivo está no ecrã.
 function mensagem (a, r) {
-  const min = Math.max(0, Math.round(r.tcpa / 60))
-  return `${a.nome || a.mmsi}: CPA ${nm(r.cpa)} MN daqui a ${min} min`
+  return `${a.nome || a.mmsi} em rota de colisão · CPA ${nm(r.cpa)} MN`
 }
 
 // eu: { position, cog, sog }; alvos: [{ mmsi, nome, position, cog, sog, em }]
