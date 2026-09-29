@@ -61,18 +61,18 @@ module.exports = function (app) {
   // Corre dentro do emit do SignalK: se rebentasse aqui, a mensagem perdia-se
   // para o servidor todo. Conta sempre o erro, mas só o regista 1 vez por minuto.
   let ultimoErroDelta = -Infinity
+  const falhouDelta = (e, agora) => {
+    erros++
+    if (agora - ultimoErroDelta >= 60000) {
+      ultimoErroDelta = agora
+      app.error(`caixa negra: mensagem não gravada: ${e.message}`)
+    }
+  }
   const aoDelta = (delta) => {
     const agora = Date.now()
-    try {
-      bruto.escrever(delta, agora)
-      est.aplicar(estado, delta, app.selfContext, agora)
-    } catch (e) {
-      erros++
-      if (agora - ultimoErroDelta >= 60000) {
-        ultimoErroDelta = agora
-        app.error(`caixa negra: mensagem não gravada: ${e.message}`)
-      }
-    }
+    // Separados: se o bruto não a consegue gravar, os valores contam na mesma para a tabela.
+    try { bruto.escrever(delta, agora) } catch (e) { falhouDelta(e, agora) }
+    try { est.aplicar(estado, delta, app.selfContext, agora) } catch (e) { falhouDelta(e, agora) }
   }
 
   const publicar = (values) => app.handleMessage(plugin.id, { updates: [{ values }] })
