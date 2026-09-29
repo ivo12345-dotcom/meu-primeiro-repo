@@ -123,6 +123,12 @@ def versao_atual(pasta):
     return f.read_text(encoding='utf-8').strip() if f.exists() else None
 
 
+def versao_mais_recente(pasta):
+    """A maior vNNNN que já existe (aceite ou não), ou None se não houver nenhuma."""
+    numeros = [int(m.group(1)) for f in pasta.glob('v*.json.gz') if (m := re.fullmatch(r'v(\d+)\.json\.gz', f.name))]
+    return f'v{max(numeros):04d}' if numeros else None
+
+
 def carregar(pasta, versao):
     return json.loads(gzip.decompress((pasta / f'{versao}.json.gz').read_bytes()).decode('utf-8'))
 
@@ -150,9 +156,12 @@ def treinar_um(nome, d, pasta_modelos, agora, polar):
     pasta.mkdir(parents=True, exist_ok=True)
     atual = versao_atual(pasta)
     em_uso = carregar(pasta, atual) if atual else None
-    # a versão em uso já aprendeu com esta saída (voltou a treinar com tudo): o teste não seria justo
-    if em_uso is not None and em_uso.get('ultimaSaida') and pd.Timestamp(em_uso['ultimaSaida']) >= ultima_saida:
-        return {**res, 'motivo': 'sem saída nova para testar desde a versão em uso'}
+    recente_nome = versao_mais_recente(pasta)
+    recente = carregar(pasta, recente_nome) if recente_nome else None
+    # a última versão gravada (mesmo rejeitada) já foi testada com esta saída: repetir dava a mesma versão outra vez
+    referencia = recente if recente is not None and recente.get('ultimaSaida') else em_uso
+    if referencia is not None and referencia.get('ultimaSaida') and pd.Timestamp(referencia['ultimaSaida']) >= ultima_saida:
+        return {**res, 'motivo': 'sem saída nova para testar desde a última versão'}
     x_tr, x_te = treino[spec['variaveis']], teste[spec['variaveis']]
     novo = treinar_quantis(x_tr, treino[spec['alvo']])
     mae_novo = mae(novo['p50'].predict(x_te), teste[spec['alvo']])

@@ -126,7 +126,7 @@ def test_sem_saida_nova_nao_cria_versoes(tmp_path):
     assert all(x['aceite'] for x in treinar(tmp_path, POLAR, agora=AGORA))
     r = treinar(tmp_path, POLAR, agora=AGORA)
     assert all(x['versao'] is None and x['aceite'] is False
-               and x['motivo'] == 'sem saída nova para testar desde a versão em uso' for x in r), r
+               and x['motivo'] == 'sem saída nova para testar desde a última versão' for x in r), r
     assert not list((tmp_path / 'modelos').glob('*/v0002.json.gz'))
     gerar(tmp_path, POLAR, sessoes=1, inicio='2026-06-10T08:00:00Z', semente=2)
     r = treinar(tmp_path, POLAR, agora=AGORA)
@@ -134,6 +134,24 @@ def test_sem_saida_nova_nao_cria_versoes(tmp_path):
         assert x['versao'] == 'v0002', x
         assert (tmp_path / 'modelos' / x['modelo'] / 'v0002.json.gz').exists()
     assert carregar(tmp_path / 'modelos' / 'velocidade', 'v0002')['ultimaSaida'] == '2026-06-10T10:00:00+00:00'  # a 1.ª linha à vela (2 h a motor antes)
+
+
+def test_sem_saida_nova_nao_volta_a_gravar_versao_rejeitada(tmp_path):
+    gerar(tmp_path, POLAR)
+    assert treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])[0]['aceite'] is True
+    rng = np.random.default_rng(7)
+    for f in (tmp_path / 'tabela').glob('*.csv.gz'):  # estraga as saídas antigas (velocidades baralhadas)
+        df = pd.read_csv(f, compression='gzip')
+        df['stw'] = rng.permutation(df['stw'].to_numpy())
+        f.write_bytes(gzip.compress(df.to_csv(index=False).encode()))
+    gerar(tmp_path, POLAR, sessoes=1, inicio='2026-06-10T08:00:00Z', semente=2)  # uma saída nova, boa
+    r = treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])[0]
+    assert r['versao'] == 'v0002' and r['aceite'] is False  # v0002 fica gravada mas rejeitada
+    assert (tmp_path / 'modelos' / 'velocidade' / 'atual').read_text() == 'v0001'
+
+    r2 = treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])[0]  # sem saída nova desde v0002
+    assert r2['versao'] is None and r2['aceite'] is False and r2['motivo'].startswith('sem saída nova'), r2
+    assert not (tmp_path / 'modelos' / 'velocidade' / 'v0003.json.gz').exists()
 
 
 def test_simulado_em_branco_nunca_ensina(tmp_path):
