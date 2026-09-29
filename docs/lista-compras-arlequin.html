@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<title>ARLEQUIN · Lista de compras</title>
+<style>
+@page { size: A4 portrait; margin: 14mm 12mm 14mm 12mm; }
+* { box-sizing: border-box; }
+body { font-family: Arial, Helvetica, sans-serif; color: #1f1f1f; font-size: 9.6pt; margin: 0; }
+header { border-bottom: 1px solid #bbb; padding-bottom: 6px; margin-bottom: 10px; }
+h1 { font-size: 15pt; margin: 0; }
+.sub { color: #555; font-size: 9.5pt; margin-top: 3px; }
+h2 { font-size: 11.5pt; margin: 14px 0 5px; padding: 4px 8px; border-radius: 4px; }
+h2.nav { background: #E1F5EE; color: #085041; }
+h2.mot { background: #EEEDFE; color: #3C3489; }
+h2.sol { background: #FAEEDA; color: #633806; }
+h2.tot { background: #F1EFE8; color: #2C2C2A; }
+table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+tr { page-break-inside: avoid; }
+th { text-align: left; font-size: 8.5pt; color: #555; font-weight: normal; border-bottom: 1px solid #999; padding: 3px 5px; }
+td { padding: 3.5px 5px; border-bottom: 1px solid #e3e1da; vertical-align: top; }
+td.n { width: 22px; color: #777; }
+td.p { white-space: nowrap; text-align: right; width: 95px; }
+td.l { width: 120px; }
+th.p { text-align: right; }
+a { color: #185FA5; text-decoration: none; }
+.nota { color: #555; font-size: 8.5pt; }
+tr.soma td { font-weight: bold; border-top: 1px solid #999; border-bottom: none; }
+.caixa { border: 1px solid #ddd; border-radius: 5px; padding: 6px 9px; margin-top: 10px; font-size: 8.8pt; color: #333; }
+.caixa b { color: #1f1f1f; }
+footer { margin-top: 12px; color: #777; font-size: 8pt; border-top: 1px solid #ddd; padding-top: 5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ARLEQUIN · Jeanneau Melody 34</h1>
+  <div class="sub">Lista de compras do sistema de navegação, motor e energia · preços de 28–29/09/2026, com IVA, sem portes</div>
+</header>
+
+<h2 class="nav">1. Navegação — Pi, ecrã e sensores · ≈ €547</h2>
+<table>
+<tr><th>#</th><th>Peça</th><th>Loja</th><th class="p">Preço</th></tr>
+<tr><td class="n">1</td><td>Raspberry Pi 5 <b>8 GB</b></td><td class="l"><a href="https://www.amazon.es/dp/B0CK2FCG1K">Amazon.es</a></td><td class="p">€204,80</td></tr>
+<tr><td class="n">2</td><td>Dissipador ativo oficial (SC1148)</td><td class="l"><a href="https://www.botnroll.com/en/accessories/5018-raspberry-pi-5-official-active-cooler-sc1148.html">Botnroll</a></td><td class="p">€5,90</td></tr>
+<tr><td class="n">3</td><td>Pimoroni NVMe Base (fica por baixo do Pi)</td><td class="l"><a href="https://raspberrypi.dk/en/product/pimoroni-nvme-base-for-raspberry-pi-5/">RaspberryPi.dk</a></td><td class="p">€19,93</td></tr>
+<tr><td class="n">4</td><td>SSD NVMe 256 GB (M.2 2280)</td><td class="l"><a href="https://www.pccomponentes.pt/gigabyte-ssd-m2-2280-256gb-pcie-30-x4-nvme">PcComponentes</a></td><td class="p">€34,33</td></tr>
+<tr><td class="n">5</td><td>MacArthur HAT <span class="nota">(só envia às segundas e terças)</span></td><td class="l"><a href="https://shop.openmarine.net/home/23-macarthur-hat.html">OpenMarine</a></td><td class="p">~€76</td></tr>
+<tr><td class="n">6</td><td>Módulo de alimentação 12→5 V da HAT</td><td class="l">OpenMarine</td><td class="p">~€28</td></tr>
+<tr><td class="n">7</td><td>Ecrã de testes LAFVIN 7" HDMI tátil, 1024×600</td><td class="l"><a href="https://www.amazon.es/dp/B0BVW7J1J8">Amazon.es</a></td><td class="p">€48,78</td></tr>
+<tr><td class="n">7b</td><td>Cabos micro-HDMI → HDMI e USB até à roda (3–5 m)</td><td class="l">Amazon</td><td class="p">a confirmar</td></tr>
+<tr><td class="n">8</td><td>Cartas o-charts Portugal (continente, Açores, Madeira)</td><td class="l"><a href="https://o-charts.org/shop/en/oesenc/79-portugal.html">o-charts</a></td><td class="p">~€20</td></tr>
+<tr><td class="n">9</td><td>Chave USB da licença o-charts</td><td class="l"><a href="https://o-charts.org/shop/en/hardware/38-usb-key-dongle.html">o-charts</a></td><td class="p">~€23</td></tr>
+<tr><td class="n">10</td><td>ASA preto 1 kg (suporte e pala do ecrã)</td><td class="l"><a href="https://evolt.pt/produto/asa-1kg-black-esun/">EVOLT</a></td><td class="p">€17,73</td></tr>
+<tr><td class="n">11</td><td>Porta-fusível em linha ATO IP55 + fusível 5 A</td><td class="l"><a href="https://www.svb24.pt/pt/seatec-porta-fusiveis-em-linha-ato.html">SVB</a></td><td class="p">€3,32</td></tr>
+<tr><td class="n">13</td><td>ADS1115 (I²C) + resistências — nível do gasóleo</td><td class="l">a cotar</td><td class="p">~€5–10</td></tr>
+<tr><td class="n">14</td><td>Barómetro BME280 DFRobot Gravity (fora da caixa do Pi)</td><td class="l"><a href="https://www.botnroll.com/en/temperature/5336-gravity-i2c-bme280-environmental-sensor-dfrobot-sen0236.html">Botnroll</a></td><td class="p">€23,80</td></tr>
+<tr><td class="n">15</td><td>2 besouros piezo 12 V, 95 dB (poço + cabine) + NPN BC337</td><td class="l"><a href="https://www.botnroll.com/en/sounders/861-buzzer-piezoelectrico.html">Botnroll</a></td><td class="p">€3,60</td></tr>
+<tr><td class="n">16</td><td>Sensor de inclinação SparkFun ICM-20948 (abatimento)</td><td class="l"><a href="https://es.rs-online.com/web/p/kits-de-desarrollo-de-sensores/2836590">RS Online</a></td><td class="p">~€25,51</td></tr>
+<tr><td class="n">17</td><td>Sensor DS18B20 estanque 2 m (frigorífico) + 4,7 kΩ</td><td class="l"><a href="https://www.botnroll.com/en/temperature/429-sensor-de-temperatura-a-prova-de-agua-ds18b20-09m-.html">Botnroll</a></td><td class="p">€4,65</td></tr>
+<tr class="soma"><td></td><td>Subtotal navegação</td><td></td><td class="p">≈ €547</td></tr>
+</table>
+
+<h2 class="mot">2. Motor · J1939 do D1-20B (ligação direta à cablagem) · ≈ €49</h2>
+<table>
+<tr><th>#</th><th>Peça</th><th>Loja</th><th class="p">Preço</th></tr>
+<tr><td class="n">M1</td><td>Adaptador <b>USB–CAN isolado</b> InnoMaker USB2CAN (SocketCAN nativo) — <b>jumper 120 Ω desligado</b></td><td class="l"><a href="https://www.amazon.es/dp/B0956NV6CM">Amazon.es</a></td><td class="p">€37,02</td></tr>
+<tr><td class="n">M2</td><td>Terminal DB9 fêmea → parafusos (pino 7 CAN-H, 2 CAN-L, 3 massa)</td><td class="l"><a href="https://www.amazon.es/dp/B08153D2F1">Amazon.es</a></td><td class="p">€12,19</td></tr>
+<tr><td class="n">M3</td><td>Cabo USB-A → micro-USB até ao Pi (~3 m)</td><td class="l">Amazon</td><td class="p">a confirmar</td></tr>
+<tr><td class="n">M4</td><td>Fita vulcanizada + fita isoladora PVC + abraçadeiras</td><td class="l">loja náutica</td><td class="p">a confirmar</td></tr>
+<tr class="soma"><td></td><td>Subtotal motor</td><td></td><td class="p">≈ €49</td></tr>
+</table>
+<div class="caixa"><b>Não comprar:</b> o Waveshare USB-CAN-A (não é SocketCAN). As fichas Deutsch e o cabo CAN de 10 m deixaram de ser precisos: o adaptador fica junto ao motor, com uma derivação soldada ≤ 50 cm, e daí vai um cabo USB até ao Pi. Plano B se a escuta falhar: YDEG-04N (~€263,52).</div>
+
+<h2 class="sol">3. Energia solar · 2 × 305 W · ≈ €680–820 sem a estrutura</h2>
+<table>
+<tr><th>#</th><th>Peça</th><th>Loja</th><th class="p">Preço</th></tr>
+<tr><td class="n">S1</td><td>2 painéis de 305 W <span class="nota">(modelo a escolher com as medidas do arco)</span></td><td class="l">a escolher</td><td class="p">€328–470</td></tr>
+<tr><td class="n">S2</td><td>2 × MPPT Victron SmartSolar <b>100/30</b> (um por painel)</td><td class="l"><a href="https://www.svb24.pt/pt/victron-controlador-de-carga-solar-smartsolar-mppt-100-30.html">SVB</a></td><td class="p">€259,90</td></tr>
+<tr><td class="n">S3</td><td>Victron SmartShunt 500 A (negativo do serviço)</td><td class="l">—</td><td class="p">€91,54</td></tr>
+<tr><td class="n">S4</td><td>2 fusíveis de 40 A com porta-fusível (saída de cada MPPT)</td><td class="l">—</td><td class="p">a confirmar</td></tr>
+<tr><td class="n">S5</td><td>Cabo 6 mm² (MPPT → baterias), cabo solar 4–6 mm² e fichas MC4</td><td class="l">—</td><td class="p">a confirmar</td></tr>
+<tr><td class="n">S6</td><td>Estrutura inox do teto por cima da roda</td><td class="l">serralheiro</td><td class="p">€300–600</td></tr>
+<tr><td class="n">S7</td><td>VSR ou carregador de manutenção (bateria do motor)</td><td class="l">—</td><td class="p">depois das fotos</td></tr>
+</table>
+
+<h2 class="tot">Totais</h2>
+<table>
+<tr><td>Navegação</td><td class="p">≈ €547</td></tr>
+<tr><td>Motor J1939</td><td class="p">≈ €49</td></tr>
+<tr class="soma"><td>Navegação + motor (já fechado)</td><td class="p">≈ €596</td></tr>
+<tr><td>Solar sem a estrutura</td><td class="p">≈ €680–820</td></tr>
+<tr><td>Estrutura inox</td><td class="p">€300–600</td></tr>
+<tr><td class="nota">Cabos, fitas e portes</td><td class="p nota">≈ €30–50</td></tr>
+</table>
+
+<div class="caixa"><b>Fora da lista (decisões do Ivo):</b> ecrã definitivo SailProof 10" (€499, só se os testes com o 7" correrem bem) · EV-100 · Axiom · Meshtastic (só depois do sistema validado) · aerogerador (retirado).</div>
+
+<footer>Detalhe e decisões: NAVEGACAO.md no repositório (ramo claude/piloto-automatico-cwnr0f). Preços podem mudar; confirmar antes de encomendar.</footer>
+</body>
+</html>
