@@ -14,6 +14,19 @@ const { lancarTreino } = require('./lib/processo')
 const mod = require('./lib/modelos')
 
 const NO = 1852 / 3600
+const numeroOuNull = (x) => (Number.isFinite(x) ? x : null)
+const eObjeto = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
+
+// O estado.json lido campo a campo: o que tiver a forma errada volta ao valor de origem.
+function estadoValido (lido) {
+  const e = eObjeto(lido) ? lido : {}
+  const p = eObjeto(e.previsao) ? e.previsao : {}
+  return {
+    ultimoTreinoMs: Number.isFinite(e.ultimoTreinoMs) ? e.ultimoTreinoMs : 0,
+    ultimoTreino: eObjeto(e.ultimoTreino) ? e.ultimoTreino : null,
+    previsao: { okEm: numeroOuNull(p.okEm), tentativaEm: numeroOuNull(p.tentativaEm), erro: typeof p.erro === 'string' ? p.erro : null }
+  }
+}
 
 // Escreve para f.tmp, força para o disco e só então troca: quem lê vê o ficheiro
 // antigo ou o novo, nunca meio escrito (como o treino em Python faz).
@@ -53,7 +66,7 @@ module.exports = function (app, deps = {}) {
   let emTreino = null
   let aBuscar = false
   let disparo = {}
-  let estado = { ultimoTreinoMs: 0, ultimoTreino: null, previsao: { okEm: null, tentativaEm: null, erro: null } }
+  let estado = estadoValido({})
 
   const pastaModelos = () => path.join(base, 'modelos')
   const ficheiroEstado = () => path.join(dirPlugin, 'estado.json')
@@ -138,12 +151,21 @@ module.exports = function (app, deps = {}) {
     base = path.resolve(o.pasta.startsWith('~') ? path.join(os.homedir(), o.pasta.slice(1)) : o.pasta)
     dirPlugin = app.getDataDirPath()
     fs.mkdirSync(dirPlugin, { recursive: true })
-    try { estado = { ...estado, ...JSON.parse(fs.readFileSync(ficheiroEstado(), 'utf8')) } } catch { /* primeiro arranque */ }
+    let texto = null
+    try { texto = fs.readFileSync(ficheiroEstado(), 'utf8') } catch { /* primeiro arranque */ }
+    if (texto !== null) {
+      let lido = {}
+      try { lido = JSON.parse(texto) } catch (e) { app.error(`o estado.json da AI está ilegível (${e.message}); começo do zero`) }
+      estado = estadoValido(lido)
+    }
     disparo = {}
+    if (temporizador) clearInterval(temporizador)
     temporizador = setInterval(minuto, 60000)
     app.setPluginStatus(resumo())
   }
 
+  // Um treino a correr não é parado: acaba sozinho (no máximo 30 min, lib/processo.js).
+  // Como o emTreino continua ocupado, um start logo a seguir não lança um segundo.
   plugin.stop = function () {
     if (temporizador) clearInterval(temporizador)
     temporizador = null

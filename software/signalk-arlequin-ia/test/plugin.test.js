@@ -256,3 +256,37 @@ test('/ia não volta a abrir o modelo em uso se o ficheiro não mudou', async (t
   assert.equal((await chamar(r.get['/ia'])).modelos.velocidade.versao, 'v0001')
   assert.deepEqual(lidos, ['velocidade|v0002', 'velocidade|v0002', 'velocidade|v0001'])
 })
+
+test('start duas vezes seguidas não deixa um temporizador a correr depois do stop', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: Date.now() })
+  const app = appFalso()
+  let pedidos = 0
+  const p = criar(app, { fetch: async () => { pedidos++; throw new Error('sem rede') }, comando: UMA_LINHA, nice: false })
+  p.start({ pasta: path.join(app.dir, 'dados'), treinoAutomatico: false })
+  p.start({ pasta: path.join(app.dir, 'dados'), treinoAutomatico: false })
+  p.stop()
+  app.self['navigation.position'] = { latitude: 39.1, longitude: -9.6 }
+  minutos(t, 2)
+  await new Promise(r => setTimeout(r, 50))
+  assert.equal(pedidos, 0)
+})
+
+test('estado.json com campos estragados: fica o que é válido e a previsão continua a ser pedida', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: Date.now() })
+  const app = appFalso()
+  fs.mkdirSync(app.getDataDirPath(), { recursive: true })
+  fs.writeFileSync(path.join(app.getDataDirPath(), 'estado.json'), JSON.stringify({ previsao: null, ultimoTreinoMs: 'ontem', ultimoTreino: { em: '2026-09-28T10:00:00.000Z', motivo: 'x', resultados: [] } }))
+  let pedidos = 0
+  const p = criar(app, { fetch: async (u) => { pedidos++; return { ok: true, json: async () => (u.includes('marine') ? { hourly: { time: [] } } : VENTO) } }, comando: UMA_LINHA, nice: false })
+  p.start({ pasta: path.join(app.dir, 'dados'), treinoAutomatico: false })
+  t.after(() => p.stop())
+  app.self['navigation.position'] = { latitude: 39.1, longitude: -9.6 }
+  minutos(t, 1)
+  await esperar(() => pedidos === 2)
+  const ia = await chamar(rotas(p).get['/ia'])
+  assert.equal(ia.ultimoTreino.em, '2026-09-28T10:00:00.000Z')
+  await esperar(async () => (await chamar(rotas(p).get['/ia'])).previsao.okEm)
+  const guardado = JSON.parse(fs.readFileSync(path.join(app.getDataDirPath(), 'estado.json'), 'utf8'))
+  assert.equal(guardado.ultimoTreinoMs, 0)
+  assert.deepEqual(app.erros, [])
+})
