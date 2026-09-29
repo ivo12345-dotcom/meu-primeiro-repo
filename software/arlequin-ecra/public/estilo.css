@@ -98,3 +98,9 @@ input[type=text] { font: inherit; font-size: 1.1rem; padding: .5rem; flex: 1; ba
 /* De noite nada pode ser branco: o alarme fica vermelho sobre escuro. */
 body.noite .chip.alarme, body.noite .chip.aviso { color: #ff5a3a; }
 body.noite button, body.noite .btn { color: var(--texto); }
+/* Ecrãs ao alto (telemóvel): sem a zona da carta e a barra pode partir. */
+@media (max-aspect-ratio: 1/1) {
+  .carta-demo { display: none; }
+  #barra { flex-wrap: wrap; }
+  html { font-size: calc(100vw / 42); }
+}
