@@ -1,0 +1,10 @@
+{
+  "name": "signalk-arlequin-j1939",
+  "version": "0.1.0",
+  "description": "Motor Volvo Penta D1-20B do Arlequin pelo J1939 do MDI (só escuta)",
+  "main": "index.js",
+  "keywords": ["signalk-node-server-plugin", "signalk-category-hardware"],
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": { "test": "node --test \"test/*.test.js\"" }
+}
