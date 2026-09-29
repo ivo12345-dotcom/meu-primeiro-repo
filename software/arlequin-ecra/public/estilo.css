@@ -88,7 +88,8 @@ button, .btn { font: inherit; color: var(--texto); background: var(--botao); bor
 #botoes button.vel { background: var(--vel); } #botoes button.vel.on { background: var(--vel-on); }
 .acao { padding: .7rem 1.1rem; font-size: 1.1rem; font-weight: bold; }
 .acao.go { background: #0f6e56; } .acao.stop { background: var(--perigo-fundo); }
-body.noite .acao.go { background: #3a0500; }
+/* De noite o fundo escuro não chega para se ver qual está escolhido (ex.: a vela atual). */
+body.noite .acao.go { background: #3a0500; color: #ff5a3a; outline: 2px solid #ff5a3a; outline-offset: -2px; }
 .acoes { display: flex; flex-wrap: wrap; gap: .4rem; }
 input[type=text] { font: inherit; font-size: 1.1rem; padding: .5rem; flex: 1; background: var(--tile); color: var(--texto); border: 1px solid var(--borda); border-radius: .4rem; }
 .passo { display: flex; gap: .6rem; align-items: center; padding: .45rem .3rem; border-bottom: 1px solid var(--botao); font-size: 1.15rem; }
