@@ -1,0 +1,10 @@
+{
+  "name": "signalk-arlequin-ia",
+  "version": "0.1.0",
+  "description": "AI do Arlequin: arquiva a previsão do tempo, lança o treino (Python/LightGBM) no porto e faz as previsões dos modelos em JavaScript",
+  "main": "index.js",
+  "keywords": ["signalk-node-server-plugin", "signalk-category-utility"],
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": { "test": "node --test \"test/*.test.js\"" }
+}
