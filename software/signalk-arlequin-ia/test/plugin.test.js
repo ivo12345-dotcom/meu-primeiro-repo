@@ -136,3 +136,30 @@ test('/ia mostra o modelo em uso; "voltar atrás" repõe a versão anterior que 
   assert.equal((await chamar(r.post['/voltar'], { modelo: 'velocidade' })).code, 409)
   p.stop()
 })
+
+test('antes de ligar, as três rotas respondem 503 e o processo não cai', async () => {
+  const app = appFalso()
+  const p = criar(app, { comando: UMA_LINHA, nice: false })
+  const r = rotas(p)
+  for (const [h, body] of [[r.get['/ia']], [r.post['/treinar'], {}], [r.post['/voltar'], { modelo: 'velocidade' }]]) {
+    const res = await chamar(h, body)
+    assert.equal(res.code, 503)
+    assert.deepEqual({ ok: res.ok, erro: res.erro }, { ok: false, erro: 'a AI não está ligada' })
+  }
+  await new Promise(r => setTimeout(r, 300)) // tempo para um treino (que não devia ter começado) acabar
+  assert.deepEqual(app.erros, [])
+})
+
+test('um erro no fim do treino (ex.: o estado no ecrã) fica no app.error e não derruba o SignalK', async (t) => {
+  const app = appFalso()
+  const p = criar(app, { comando: UMA_LINHA, nice: false })
+  p.start({ pasta: path.join(app.dir, 'dados'), treinoAutomatico: false })
+  t.after(() => p.stop())
+  app.setPluginStatus = (s) => { if (!s.startsWith('A treinar')) throw new Error('ecrã partido') }
+  const r = rotas(p)
+  assert.equal((await chamar(r.post['/treinar'], {})).code, 202)
+  await esperar(() => app.erros.some(e => /ecrã partido/.test(e)))
+  const ia = await chamar(r.get['/ia'])
+  assert.equal(ia.emTreino, false)
+  assert.equal(ia.ultimoTreino.resultados[0].modelo, 'velocidade')
+})

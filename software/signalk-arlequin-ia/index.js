@@ -67,8 +67,9 @@ module.exports = function (app, deps = {}) {
         estado.ultimoTreinoMs = Date.now()
         emTreino = null
         guardarEstado()
-        app.setPluginStatus(resumo())
+        try { app.setPluginStatus(resumo()) } catch (e) { app.error(`treino: ${e.message}`) }
       })
+      .catch(e => app.error(`treino: ${e.message}`))
     return true
   }
 
@@ -127,7 +128,9 @@ module.exports = function (app, deps = {}) {
   }
 
   plugin.registerWithRouter = function (router) {
+    const desligada = (res) => res.status(503).json({ ok: false, erro: 'a AI não está ligada' })
     router.get('/ia', (req, res) => {
+      if (!base) return desligada(res)
       res.json({
         emTreino: !!emTreino,
         ultimoTreino: estado.ultimoTreino,
@@ -136,10 +139,12 @@ module.exports = function (app, deps = {}) {
       })
     })
     router.post('/treinar', (req, res) => {
+      if (!base) return desligada(res)
       if (!treinar('pedido no ecrã')) return res.status(409).json({ ok: false, erro: 'já está a treinar' })
       res.status(202).json({ ok: true })
     })
     router.post('/voltar', (req, res) => {
+      if (!base) return desligada(res)
       const nome = req.body?.modelo
       if (!mod.NOMES.includes(nome)) return res.status(400).json({ ok: false, erro: 'modelo desconhecido' })
       const atual = mod.versaoAtual(pastaModelos(), nome)
