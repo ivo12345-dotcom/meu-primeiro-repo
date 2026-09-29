@@ -1083,6 +1083,10 @@ funcionar também ali:
     Medidas extra pedidas: recuo do arco (base → topo, na horizontal) e quanto
     o topo passa do espelho. Falta decidir: serralheiro (soldado) ou o Ivo
     (aparafusado com peças de inox).
+    **Comprimento na marina (Ivo, 29/09): sem problema até aos 12 m** (o
+    Melody tem 10,55 m fora a fora, 10,25 m de casco; 6000 kg). A D centrada
+    (+~0,8 m, ~11,4 m) fica dentro do escalão; a escolha entre D centrada e D
+    ajustada passa a ser só **sombra na roda** contra **estrutura mais simples**.
 
 **Alarme sonoro:** a solo, o alarme AIS tem de acordar quem dorme. O apito do
 Garmin é fraco. No Pi, acrescentar à lista um **altifalante ou besouro forte**
