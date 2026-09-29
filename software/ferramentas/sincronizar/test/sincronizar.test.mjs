@@ -238,3 +238,44 @@ test('ssh: uma resposta estranha do sha256sum dá um erro claro', async () => {
   const t = transporteSsh('pi@arlequin', { exec })
   await assert.rejects(t.hashes(['bruto/x.gz']), /resposta inesperada do sha256sum: sha256sum: bruto\/x\.gz: Permission denied/)
 })
+
+test('confirmações partidas em listas de até N bytes do Pi (um ficheiro maior vai sozinho): o Pi nunca confere GB de uma vez', async () => {
+  const origem = pi()
+  writeFileSync(path.join(origem, 'bruto', '2026-09-29T11.ndjson.gz'), 'on') // 2
+  writeFileSync(path.join(origem, 'bruto', '2026-09-29T12.ndjson.gz'), 'doze e grande') // 13, maior do que o limite
+  writeFileSync(path.join(origem, 'bruto', '2026-09-29T13.ndjson.gz'), 'x') // 1
+  const destino = mkdtempSync(path.join(os.tmpdir(), 'arlequin-pc-'))
+  const r = await sincronizar({ transporte: comoPi(origem), destino, agora: AGORA, bytesPorLista: 5 })
+  assert.equal(r.confirmados, 4)
+  const nomes = readdirSync(path.join(origem, 'entrada')).sort()
+  assert.equal(nomes.length, 3)
+  for (const [i, n] of nomes.entries()) {
+    assert.match(n, new RegExp(`^confirmados-[^:]+-${i + 1}\.json$`))
+  }
+  const listas = nomes.map(n => JSON.parse(readFileSync(path.join(origem, 'entrada', n), 'utf8')).map(c => c.ficheiro))
+  assert.deepEqual(listas, [
+    ['bruto/2026-09-29T10.ndjson.gz', 'bruto/2026-09-29T11.ndjson.gz'], // 3 + 2 = 5
+    ['bruto/2026-09-29T12.ndjson.gz'], // 13 > 5: sozinho
+    ['bruto/2026-09-29T13.ndjson.gz']
+  ])
+  assert.deepEqual(readdirSync(path.join(origem, 'entrada')).filter(n => n.endsWith('.tmp')), [], 'escritas com .tmp + mudança de nome')
+  assert.equal(confirmados.processarEntrada(origem).aceites.length, 4)
+})
+
+test('por omissão, cada lista de confirmações tem no máximo 150 MB', async () => {
+  const origem = pi()
+  const destino = mkdtempSync(path.join(os.tmpdir(), 'arlequin-pc-'))
+  const escritas = []
+  const t = comoPi(origem)
+  const listar = t.listar
+  // O Pi diz que cada hora fechada tem 100 MB (os tamanhos vêm da listagem do Pi)
+  const falso = {
+    ...t,
+    listar: async () => (await listar()).map(r => r.ficheiro.startsWith('bruto/2026-09-29T1') ? { ...r, bytes: 100e6 } : r),
+    escreverEntrada: async (nome, texto) => { escritas.push(JSON.parse(texto).length); return t.escreverEntrada(nome, texto) }
+  }
+  writeFileSync(path.join(origem, 'bruto', '2026-09-29T11.ndjson.gz'), 'onze')
+  const r = await sincronizar({ transporte: falso, destino, agora: AGORA })
+  assert.equal(r.confirmados, 2)
+  assert.deepEqual(escritas, [1, 1], '100 MB + 100 MB passava dos 150 MB')
+})

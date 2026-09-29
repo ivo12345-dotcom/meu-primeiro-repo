@@ -10,6 +10,9 @@
 // sobrescreve se o do Pi for MAIOR (a cópia foi feita a meio da hora); se for
 // mais pequeno, a cópia do portátil fica e o do Pi guarda-se ao lado como
 // <nome>.1, .2… (`conflitos`), para nunca se perder a cópia boa.
+// As confirmações vão em listas de até `bytesPorLista` (150 MB) do Pi: o Pi
+// confere uma lista inteira de uma vez, e uma lista de semanas de bruto (GB)
+// parava o SignalK nesse minuto. Um ficheiro maior do que isso vai sozinho.
 
 import { createHash } from 'node:crypto'
 import { existsSync, statSync, readFileSync, mkdirSync, mkdtempSync, renameSync, rmSync } from 'node:fs'
@@ -19,7 +22,7 @@ export const sha256 = (f) => createHash('sha256').update(readFileSync(f)).digest
 // Só uma hora do bruto com o nome certo (um .danificado-* copia-se mas nunca se confirma).
 const horaDoBruto = (f) => f.match(/^bruto\/(\d{4}-\d{2}-\d{2}T\d{2})\.ndjson\.gz$/)?.[1]
 
-export async function sincronizar ({ transporte, destino, agora = Date.now() }) {
+export async function sincronizar ({ transporte, destino, agora = Date.now(), bytesPorLista = 150e6 }) {
   mkdirSync(destino, { recursive: true })
   const local = (f) => path.join(destino, ...f.split('/'))
   const remotos = await transporte.listar()
@@ -74,11 +77,11 @@ export async function sincronizar ({ transporte, destino, agora = Date.now() }) 
     confirmar.push(...segunda.ok)
     diferentes = segunda.mal
   }
-  if (confirmar.length) {
-    const nome = `confirmados-${new Date(agora).toISOString().replace(/[:.]/g, '-')}.json`
-    await transporte.escreverEntrada(nome, JSON.stringify(confirmar))
-  }
   const bytesDe = (f) => remotos.find(r => r.ficheiro === f)?.bytes ?? 0
+  const ts = new Date(agora).toISOString().replace(/[:.]/g, '-')
+  for (const [i, lista] of partir(confirmar, (c) => bytesDe(c.ficheiro), bytesPorLista).entries()) {
+    await transporte.escreverEntrada(`confirmados-${ts}-${i + 1}.json`, JSON.stringify(lista))
+  }
   return {
     remotos: remotos.length,
     copiados: aCopiar.length + reparados.length,
@@ -88,6 +91,22 @@ export async function sincronizar ({ transporte, destino, agora = Date.now() }) 
     diferentes,
     conflitos: guardados
   }
+}
+
+// Parte a lista em grupos seguidos de até `limite` bytes; um elemento maior do
+// que o limite fica num grupo só dele.
+function partir (itens, bytes, limite) {
+  const grupos = []
+  let atual = []
+  let soma = 0
+  for (const x of itens) {
+    const b = bytes(x)
+    if (atual.length && soma + b > limite) { grupos.push(atual); atual = []; soma = 0 }
+    atual.push(x)
+    soma += b
+  }
+  if (atual.length) grupos.push(atual)
+  return grupos
 }
 
 // Guarda o ficheiro do Pi ao lado da cópia do portátil (<nome>.N, o primeiro N
