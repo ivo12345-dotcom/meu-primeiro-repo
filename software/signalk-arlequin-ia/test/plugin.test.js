@@ -233,3 +233,26 @@ test('"voltar atrás" com o registo.json ilegível: muda o atual, avisa e não t
     assert.match(app.erros[0], /registo\.json/)
   }
 })
+
+test('/ia não volta a abrir o modelo em uso se o ficheiro não mudou', async (t) => {
+  const mod = require('../lib/modelos')
+  const original = mod.lerVersao
+  const lidos = []
+  mod.lerVersao = (...a) => { lidos.push(`${a[1]}|${a[2]}`); return original(...a) }
+  t.after(() => { mod.lerVersao = original })
+  const app = appFalso()
+  const pv = doisModelosAceites(app)
+  const p = criar(app, { comando: UMA_LINHA, nice: false })
+  p.start({ pasta: path.join(app.dir, 'dados'), treinoAutomatico: false })
+  t.after(() => p.stop())
+  const r = rotas(p)
+  assert.equal((await chamar(r.get['/ia'])).modelos.velocidade.versao, 'v0002')
+  assert.equal((await chamar(r.get['/ia'])).modelos.velocidade.versao, 'v0002')
+  assert.deepEqual(lidos, ['velocidade|v0002'])
+  fs.utimesSync(path.join(pv, 'v0002.json.gz'), new Date(2020, 0, 1), new Date(2020, 0, 1))
+  await chamar(r.get['/ia'])
+  assert.deepEqual(lidos, ['velocidade|v0002', 'velocidade|v0002'], 'ficheiro mudado → lê outra vez')
+  fs.writeFileSync(path.join(pv, 'atual'), 'v0001')
+  assert.equal((await chamar(r.get['/ia'])).modelos.velocidade.versao, 'v0001')
+  assert.deepEqual(lidos, ['velocidade|v0002', 'velocidade|v0002', 'velocidade|v0001'])
+})

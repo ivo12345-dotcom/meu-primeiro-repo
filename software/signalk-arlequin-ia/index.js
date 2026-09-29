@@ -108,14 +108,24 @@ module.exports = function (app, deps = {}) {
     } catch (e) { app.error(`disparo: ${e.message}`) }
   }
 
+  // O resumo de cada modelo em uso, guardado por nome|versão|mtime: o /ia não
+  // descomprime o modelo inteiro a cada pedido. Uma entrada por modelo.
+  const cacheResumo = new Map()
   function resumoModelo (nome) {
     const versao = mod.versaoAtual(pastaModelos(), nome)
     const versoes = mod.versoes(pastaModelos(), nome)
     if (!versao) return { versao: null, versoes }
+    let chave
+    try { chave = `${nome}|${versao}|${fs.statSync(path.join(pastaModelos(), nome, `${versao}.json.gz`)).mtimeMs}` } catch (e) { return { versao, versoes, erro: e.message } }
+    const guardado = cacheResumo.get(nome)
+    if (guardado?.chave === chave) return { versao, versoes, ...guardado.dados }
+    let dados
     try {
       const m = mod.lerVersao(pastaModelos(), nome, versao)
-      return { versao, versoes, criado: m.criado, horas: m.horas, mae: m.mae, maeBase: m.maeBase, frases: m.frases || [] }
-    } catch (e) { return { versao, versoes, erro: e.message } }
+      dados = { criado: m.criado, horas: m.horas, mae: m.mae, maeBase: m.maeBase, frases: m.frases || [] }
+    } catch (e) { dados = { erro: e.message } }
+    cacheResumo.set(nome, { chave, dados })
+    return { versao, versoes, ...dados }
   }
 
   function resumo () {
