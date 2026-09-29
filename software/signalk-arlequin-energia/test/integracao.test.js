@@ -119,3 +119,18 @@ test('parado no porto de noite: o aviso dos 55% fica só no ecrã', () => {
   assert.ok(aviso, 'devia ter pedido para ligar o motor')
   assert.deepEqual(aviso.method, ['visual'])
 })
+
+test('GET /sessoes devolve as cargas, a mais recente primeiro', async () => {
+  const { app } = correrCenario('inverno-navegar')
+  await new Promise(r => setTimeout(r, 50))
+  const plugin = criarPlugin(app)
+  plugin.start({})
+  const rotas = {}
+  plugin.registerWithRouter({ get: (p, h) => { rotas[p] = h } })
+  let resposta
+  rotas['/sessoes']({ query: {} }, { json: (j) => { resposta = j } })
+  plugin.stop()
+  assert.ok(resposta.sessoes.length >= 1)
+  assert.ok(resposta.sessoes[0].ah > 50)
+  assert.ok(resposta.runTimeS > 3600)
+})

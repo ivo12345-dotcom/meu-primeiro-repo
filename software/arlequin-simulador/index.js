@@ -5,6 +5,7 @@
 const { criarModelo, avancar } = require('./lib/modelo')
 const { CENARIOS, passoEm } = require('./lib/cenarios')
 const { deltaDaLeitura } = require('./lib/delta')
+const { criarNavegacao, avancarNav } = require('./lib/navegacao')
 
 module.exports = function (app) {
   const plugin = {
@@ -16,7 +17,7 @@ module.exports = function (app) {
   plugin.schema = {
     type: 'object',
     properties: {
-      cenario: { type: 'string', title: 'Cenário', enum: Object.keys(CENARIOS), default: 'inverno-navegar' },
+      cenario: { type: 'string', title: 'Cenário', enum: Object.keys(CENARIOS), default: 'navegar-demo' },
       msPorHora: { type: 'number', title: 'Milissegundos reais por hora simulada', default: 2000 },
       inicio: { type: 'string', title: 'Início da simulação (data/hora ISO)', default: '2026-01-10T08:00:00' },
       servico: { type: 'string', title: 'ID do banco de serviço', default: 'servico' },
@@ -27,9 +28,11 @@ module.exports = function (app) {
   let temporizador = null
 
   plugin.start = function (props) {
-    const o = { cenario: 'inverno-navegar', msPorHora: 2000, inicio: '2026-01-10T08:00:00', servico: 'servico', motor: 'motor', ...props }
+    const o = { cenario: 'navegar-demo', msPorHora: 2000, inicio: '2026-01-10T08:00:00', servico: 'servico', motor: 'motor', ...props }
     const cenario = CENARIOS[o.cenario]
     if (!cenario) return app.setPluginError(`cenário desconhecido: ${o.cenario}`)
+
+    if (cenario.tempoReal) return comecarTempoReal(o, cenario)
 
     const PASSO_MIN = 1
     let m = criarModelo(cenario.opcoes, new Date(o.inicio).getTime())
@@ -53,6 +56,25 @@ module.exports = function (app) {
       }
     }, o.msPorHora / 60 * PASSO_MIN)
 
+    app.setPluginStatus(`A simular "${o.cenario}": ${cenario.descricao}`)
+  }
+
+  // Navegação + energia ao ritmo do relógio (1 passo por segundo), para o ecrã.
+  function comecarTempoReal (o, cenario) {
+    let nav = criarNavegacao({}, Date.now())
+    let m = criarModelo(cenario.opcoes, Date.now())
+    let segundos = 0
+    temporizador = setInterval(() => {
+      const r = avancarNav(nav, 1000)
+      nav = r.estado
+      const en = avancar(m, 1000, { ...cenario.passos[0], motor: r.motor })
+      m = en.modelo
+      for (const d of r.deltas) app.handleMessage(plugin.id, d)
+      app.handleMessage(plugin.id, deltaDaLeitura(en.leitura, o))
+      if (++segundos % 30 === 0) {
+        app.setPluginStatus(`${o.cenario} · ${r.motor ? 'a motor' : 'à vela'} · SOG ${(r.sog * 3600 / 1852).toFixed(1)} nós · serviço ${Math.round(en.leitura.soc * 100)}%`)
+      }
+    }, 1000)
     app.setPluginStatus(`A simular "${o.cenario}": ${cenario.descricao}`)
   }
 

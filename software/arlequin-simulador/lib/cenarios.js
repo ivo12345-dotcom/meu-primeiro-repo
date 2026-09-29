@@ -3,6 +3,14 @@
 // motor: true | false | 'auto' (liga a 55% e desliga a 85%, como o Ivo faria).
 
 const CENARIOS = {
+  // Tempo real, para o ecrã da roda: a navegar de Peniche para a Nazaré, com
+  // vento, AIS (um navio em rota de colisão) e o motor 5 min em cada 25.
+  'navegar-demo': {
+    descricao: 'a navegar Peniche → Nazaré em tempo real (ecrã da roda)',
+    tempoReal: true,
+    opcoes: { socInicial: 0.8 },
+    passos: [{ horas: 1e6, navegar: true, frigorifico: true }]
+  },
   // Um dia no porto com o Pi sempre ligado, depois quatro dias a navegar
   // de inverno com o frigorífico, carregando com o motor quando o alarme pede.
   'inverno-navegar': {

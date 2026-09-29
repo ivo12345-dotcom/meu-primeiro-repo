@@ -1,0 +1,10 @@
+{
+  "name": "signalk-arlequin-ais",
+  "version": "0.1.0",
+  "description": "Alarme de colisão AIS (CPA/TCPA) do veleiro Arlequin",
+  "main": "index.js",
+  "keywords": ["signalk-node-server-plugin", "signalk-category-ais"],
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": { "test": "node --test \"test/*.test.mjs\"" }
+}

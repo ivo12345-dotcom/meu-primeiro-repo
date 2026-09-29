@@ -132,6 +132,21 @@ module.exports = function (app) {
     app.setPluginStatus(`A vigiar o banco "${opcoes.servico}" · ${Math.round(sessao.runTimeS / 3600)} h de motor`)
   }
 
+  // Para o ecrã: as últimas sessões de carga (mais recente primeiro).
+  plugin.registerWithRouter = function (router) {
+    router.get('/sessoes', (req, res) => {
+      let linhas = []
+      try {
+        linhas = fs.readFileSync(ficheiroSessoes, 'utf8').trim().split('\n').filter(Boolean)
+      } catch { /* ainda não há sessões */ }
+      const n = Math.min(Number(req.query?.n) || 10, 100)
+      res.json({
+        runTimeS: sessao ? Math.round(sessao.runTimeS) : 0,
+        sessoes: linhas.slice(-n).reverse().map(l => JSON.parse(l))
+      })
+    })
+  }
+
   plugin.stop = function () {
     unsubscribes.forEach(f => f())
     unsubscribes = []
