@@ -1,0 +1,10 @@
+{
+  "name": "signalk-arlequin-porto",
+  "version": "0.1.0",
+  "description": "Monitorização do Arlequin no porto: porão, fumo, intrusão, deriva; alarmes e comandos pelo Telegram",
+  "main": "index.js",
+  "keywords": ["signalk-node-server-plugin", "signalk-category-notifications"],
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": { "test": "node --test \"test/*.test.js\"" }
+}
