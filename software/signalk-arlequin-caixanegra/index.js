@@ -112,8 +112,11 @@ module.exports = function (app) {
     const simulado = est.simuladoRecente(estado, agora)
     const eEstavel = !est.simuladoRecente(estado, agora, estavel.JANELA_MS + 15000) &&
       estavel.estavel(janela, { longeDoPorto: !!perto && perto.mn > 0.5 })
+    // As velas são estado do próprio plugin (só publicadas quando mudam), não
+    // um sensor: não podem caducar pela regra dos 15 s do `v` normal.
+    const vLinha = (c) => c === 'sails.grande.rizos' ? velas.grandeRizos : c === 'sails.genoa.percentagem' ? velas.genoaPct : v(c)
     try {
-      tabela.escrever(path.join(base, 'tabela'), agora, tabela.linha({ v, agora, rajadaMs: estavel.rajada(janela), simulado, estavel: eEstavel }))
+      tabela.escrever(path.join(base, 'tabela'), agora, tabela.linha({ v: vLinha, agora, rajadaMs: estavel.rajada(janela), simulado, estavel: eEstavel }))
       ultimaLinha = agora
     } catch (e) { erros++; app.error(`tabela: ${e.message}`) }
     const rps = v('propulsion.main.revolutions')
@@ -176,7 +179,7 @@ module.exports = function (app) {
 
   plugin.start = function (props) {
     o = { pasta: '~/arlequin-dados', limiteAviso: 80, limiteParar: 95, portos: PORTOS, ...props }
-    base = o.pasta.startsWith('~') ? path.join(os.homedir(), o.pasta.slice(1)) : o.pasta
+    base = path.resolve(o.pasta.startsWith('~') ? path.join(os.homedir(), o.pasta.slice(1)) : o.pasta)
     for (const d of ['bruto', 'tabela', 'saidas', 'previsoes', 'entrada']) fs.mkdirSync(path.join(base, d), { recursive: true })
     dirPlugin = app.getDataDirPath()
     fs.mkdirSync(dirPlugin, { recursive: true })

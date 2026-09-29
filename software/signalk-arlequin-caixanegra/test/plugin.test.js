@@ -96,7 +96,24 @@ test('velas: POST muda, publica e sobrevive a um reinício; inválido dá 400', 
   assert.equal(app2.valores['sails.genoa.percentagem'], 70)
   const est = await chamar(rotas(p2).get['/estado'], {})
   assert.deepEqual(est.velas, { grandeRizos: 1, genoaPct: 70 })
+  assert.ok(path.isAbsolute(est.pasta), 'pasta deve ser absoluta')
   p2.stop()
+})
+
+test('a tabela mostra as velas guardadas no plugin, que não caducam aos 15 s como um sensor', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 50
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  await chamar(rotas(p).post['/velas'], { grandeRizos: 1, genoaPct: 70 })
+  correr(t, app, 60, 'nmea0183.GP')
+  p.stop()
+  const linhas = csv(path.join(app.dir, 'dados', 'tabela', '2026-09-29.csv.gz'))
+  const cab = linhas[0]
+  const ultima = linhas[linhas.length - 1]
+  assert.equal(ultima[cab.indexOf('grandeRizos')], '1')
+  assert.equal(ultima[cab.indexOf('genoaPct')], '70')
 })
 
 test('lembrete das velas quando o vento sobe 60% durante mais de 1 h', async (t) => {
