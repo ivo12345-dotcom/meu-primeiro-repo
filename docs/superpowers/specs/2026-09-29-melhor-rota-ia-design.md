@@ -160,8 +160,19 @@ Todos são LightGBM com **regressão por quantis: P10, P50 e P90** (pessimista, 
 
 ### Decisão
 
-- **Custo** = horas de viagem + 1,5 × horas de noite + 1,0 × horas ao leme (só eu) + penalização de rajadas acima de 20 + penalização de ondas acima de 2 m + 0,5 × horas contra o vento.
+- **Custo** = horas de viagem + 0,25 × horas de espera até partir + 1,5 × horas de noite + 1,0 × horas ao leme (só eu) + 0,5 × (rajada máxima − 20, se positivo) + 2 × (onda máxima − 2 m, se positivo) + 0,5 × horas contra o vento.
   - **Esperar ganha quando poupa mais risco do que tempo.**
+  - **Horas ao leme:** sem piloto, contam **todas** as horas, à vela e a motor.
+- **Exemplo (29/09, só eu):**
+  - partir agora por fora: 14,3 + 0 + 15,6 + 14,3 + 3,5 + 1,2 + 0 = **48,9**;
+  - amanhã às 08:00 a motor: 12,2 + 4,1 + 1,4 + 12,2 + 0 + 0 + 0 = **29,9**;
+  - resultado: amanhã ganha.
+- **Questão em aberto (a decidir pelo Ivo):**
+  - sem piloto, qualquer passagem Lisboa–Peniche passa das 8 h ao leme, incluindo a motor em calma, e por isso é sempre "não recomendada sozinho";
+  - hipóteses:
+    - (a) manter assim, que é a mensagem honesta: piloto ou tripulação;
+    - (b) contar a metade as horas a motor em calma (vento < 10 nós, ondas < 1,5 m), se a roda puder ser travada para pausas curtas;
+    - (c) subir o limite.
 - **Mostra as 3 de menor custo.**
 - **Veredicto:**
   - **Segue:** a melhor parte agora e não é "não recomendada".
