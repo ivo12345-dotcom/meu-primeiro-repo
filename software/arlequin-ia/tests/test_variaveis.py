@@ -1,0 +1,82 @@
+import gzip
+import json
+
+import numpy as np
+import pandas as pd
+
+from arlequin_ia.dados import ler_previsoes, ler_saidas, ler_tabela
+from arlequin_ia.variaveis import balanco, dif_angulo, juntar_previsao, sessoes, tendencia_pressao
+
+
+def escrever_tabela(pasta, nome, linhas, cab='t,lat,lon,stw,simulado,estavel'):
+    (pasta / 'tabela').mkdir(parents=True, exist_ok=True)
+    (pasta / 'tabela' / nome).write_bytes(gzip.compress(('\n'.join([cab] + linhas) + '\n').encode()))
+
+
+def tabela(n, inicio='2026-06-01T10:00:00Z', passo=10, **cols):
+    t = pd.Timestamp(inicio) + pd.to_timedelta(np.arange(n) * passo, unit='s')
+    return pd.DataFrame({'t': t, **{k: (v if np.ndim(v) else np.full(n, v)) for k, v in cols.items()}})
+
+
+def test_ler_tabela_junta_os_dias_por_ordem_e_ignora_danificados(tmp_path):
+    escrever_tabela(tmp_path, '2026-06-02.csv.gz', ['2026-06-02T00:00:00.000Z,39,-9,5,0,1'])
+    escrever_tabela(tmp_path, '2026-06-01.csv.gz', ['2026-06-01T23:59:50.000Z,39,-9,4,0,1', '2026-06-01T23:59:50.000Z,39,-9,4,0,1'])
+    (tmp_path / 'tabela' / '2026-06-03.csv.gz.danificado-2026-06-03T00-00-00Z').write_bytes(b'lixo')
+    df = ler_tabela(tmp_path)
+    assert list(df['stw']) == [4, 5]
+    assert str(df['t'].dt.tz) == 'UTC'
+
+
+def test_ler_saidas_e_previsoes(tmp_path):
+    (tmp_path / 'saidas').mkdir()
+    (tmp_path / 'saidas' / 'a.json').write_text(json.dumps({'inicio': '2026-06-01T10:00:00.000Z', 'fim': '2026-06-01T12:00:00.000Z'}))
+    (tmp_path / 'saidas' / 'mau.json').write_text('{')
+    (tmp_path / 'previsoes').mkdir()
+    (tmp_path / 'previsoes' / 'p.json.gz').write_bytes(gzip.compress(json.dumps(
+        {'obtida': '2026-06-01T09:00:00Z', 'lat': 39, 'lon': -9.6, 'horas': ['2026-06-01T09:00Z'], 'tws': [10]}).encode()))
+    assert ler_saidas(tmp_path) == [(pd.Timestamp('2026-06-01T10:00:00Z'), pd.Timestamp('2026-06-01T12:00:00Z'))]
+    p = ler_previsoes(tmp_path)
+    assert len(p) == 1 and p[0]['tws'] == [10] and p[0]['horas'][0] == pd.Timestamp('2026-06-01T09:00Z')
+
+
+def test_sessoes_pelas_saidas_ou_pelos_buracos():
+    df = tabela(6, passo=3600)  # 10h, 11h, … 15h
+    saidas = [(pd.Timestamp('2026-06-01T10:30Z'), pd.Timestamp('2026-06-01T12:30Z')),
+              (pd.Timestamp('2026-06-01T14:00Z'), pd.Timestamp('2026-06-01T15:00Z'))]
+    assert list(sessoes(df, saidas)) == [-1, 0, 0, -1, 1, 1]
+    df2 = pd.concat([tabela(3), tabela(3, inicio='2026-06-01T13:00:00Z')], ignore_index=True)
+    assert list(sessoes(df2, [])) == [0, 0, 0, 1, 1, 1]
+
+
+def test_balanco_e_o_desvio_padrao_de_2_min_e_recomeca_depois_de_um_buraco():
+    adorno = np.array([0, 10] * 6 + [0, 10] * 6, dtype=float)
+    df = pd.concat([tabela(12, adorno=adorno[:12], caimento=0.0),
+                    tabela(12, inicio='2026-06-01T11:00:00Z', adorno=adorno[12:], caimento=0.0)], ignore_index=True)
+    b = balanco(df)
+    assert b['balAdorno'].iloc[:11].isna().all()
+    assert abs(b['balAdorno'].iloc[11] - np.std([0, 10] * 6, ddof=1)) < 1e-9
+    assert b['balAdorno'].iloc[12:23].isna().all()  # recomeça depois do buraco de 1 h
+    assert b['balCaimento'].iloc[11] == 0
+
+
+def test_tendencia_da_pressao_em_3_h():
+    df = tabela(4, passo=3600, pressao=[1015.0, 1014.0, 1013.0, 1011.0])
+    t = tendencia_pressao(df)
+    assert t.iloc[:3].isna().all()
+    assert t.iloc[3] == -4.0
+
+
+def test_juntar_previsao_interpola_usa_a_mais_recente_e_respeita_idade_e_distancia():
+    df = tabela(4, passo=1800, lat=39.0, lon=-9.6)  # 10:00 10:30 11:00 11:30
+    df.loc[3, 'lat'] = 40.0  # a 60 MN do ponto da previsão
+    horas = pd.to_datetime(['2026-06-01T10:00Z', '2026-06-01T11:00Z', '2026-06-01T12:00Z'], utc=True)
+    antiga = {'obtida': pd.Timestamp('2026-05-31T20:00Z'), 'lat': 39.0, 'lon': -9.6, 'horas': horas, 'tws': [1, 1, 1], 'twd': [0, 0, 0]}
+    boa = {'obtida': pd.Timestamp('2026-06-01T09:00Z'), 'lat': 39.0, 'lon': -9.6, 'horas': horas,
+           'tws': [10, 14, 20], 'twd': [350, 10, 30], 'ondas': [1, 2, 3]}
+    j = juntar_previsao(df, [antiga, boa])
+    assert list(j['prevTws'].iloc[:3]) == [10, 12, 14]
+    assert abs(dif_angulo(j['prevTwd'].iloc[1], 0)) < 1e-6  # entre 350° e 10° é 0°, não 180°
+    assert list(j['idadePrevH'].iloc[:3]) == [1, 1.5, 2]
+    assert np.isnan(j['prevTws'].iloc[3])
+    velha = juntar_previsao(df, [antiga])
+    assert velha['prevTws'].isna().all()  # obtida há mais de 12 h
