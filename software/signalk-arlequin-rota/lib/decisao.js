@@ -80,7 +80,7 @@ const hora = (t, fuso = 'Europe/Lisbon') => new Intl.DateTimeFormat('pt-PT', { t
 
 const recomendada = (c, tripulacao) => !c.excluida && !(tripulacao === 'so' && c.naoRecomendada)
 
-// Ordena e escolhe as 3 melhores.
+// Ordena e escolhe as 3 melhores. Decisão (controlador, revisão da Task 10): os "3 melhores por custo, entre as não excluídas" do desenho, com as recomendadas à frente das não recomendadas.
 function melhores (candidatos, { tripulacao, sairAgora = false, n = 3 } = {}) {
   const ok = candidatos.filter(c => !c.excluida)
   const chave = (c) => (sairAgora ? 0 : (recomendada(c, tripulacao) ? 0 : 1))
