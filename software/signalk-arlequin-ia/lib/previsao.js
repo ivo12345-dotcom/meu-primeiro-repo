@@ -9,6 +9,7 @@ const path = require('node:path')
 const zlib = require('node:zlib')
 
 const MIN = 60000
+const TEMPO_LIMITE_MS = 30000
 
 function urls (lat, lon) {
   const q = `latitude=${lat}&longitude=${lon}&timezone=UTC&forecast_days=2`
@@ -41,11 +42,12 @@ async function descarregar (lat, lon, agora, fetchFn = fetch) {
   const la = Math.round(lat * 1000) / 1000
   const lo = Math.round(lon * 1000) / 1000
   const u = urls(la, lo)
-  const r = await fetchFn(u.vento)
+  // sem resposta em 30 s desiste (uma rede presa não deixa o plugin à espera para sempre)
+  const r = await fetchFn(u.vento, { signal: AbortSignal.timeout(TEMPO_LIMITE_MS) })
   if (!r.ok) throw new Error(`Open-Meteo respondeu ${r.status}`)
   const vento = await r.json()
   let mar = null
-  try { const rm = await fetchFn(u.mar); if (rm.ok) mar = await rm.json() } catch { mar = null }
+  try { const rm = await fetchFn(u.mar, { signal: AbortSignal.timeout(TEMPO_LIMITE_MS) }); if (rm.ok) mar = await rm.json() } catch { mar = null }
   return compor(la, lo, agora, vento, mar)
 }
 
@@ -54,7 +56,12 @@ const nomeFicheiro = (obtida) => new Date(obtida).toISOString().slice(0, 16).rep
 function guardar (pasta, registo) {
   fs.mkdirSync(pasta, { recursive: true })
   const f = path.join(pasta, nomeFicheiro(registo.obtida))
-  fs.writeFileSync(f + '.tmp', zlib.gzipSync(JSON.stringify(registo)))
+  // .tmp com fsync e só depois a troca: um corte de luz não deixa meia previsão
+  const fd = fs.openSync(f + '.tmp', 'w')
+  try {
+    fs.writeSync(fd, zlib.gzipSync(JSON.stringify(registo)))
+    fs.fsyncSync(fd)
+  } finally { fs.closeSync(fd) }
   fs.renameSync(f + '.tmp', f)
   return f
 }

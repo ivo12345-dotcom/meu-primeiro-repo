@@ -89,3 +89,54 @@ test('processo: lê uma linha JSON por modelo; falha e tempo esgotado dão erro 
   await assert.rejects(lancarTreino({ comando: js('setTimeout(()=>{},5000)'), nice: false, timeoutMs: 200 }), /passou de 0 min e foi parado/)
   await assert.rejects(lancarTreino({ comando: ['nao-existe-este-programa'], nice: false }), /não consegui lançar o treino/)
 })
+
+test('processo: linhas do stdout que não são JSON (avisos do LightGBM) saltam-se sem perder os resultados', async () => {
+  const js = (codigo) => [process.execPath, '-e', codigo]
+  const r = await lancarTreino({ comando: js('console.log("[LightGBM] [Warning] No further splits");console.log(JSON.stringify({modelo:"velocidade"}));console.log("lixo {");console.log(JSON.stringify({modelo:"consumo"}))'), nice: false })
+  assert.deepEqual(r.map(x => x.modelo), ['velocidade', 'consumo'])
+})
+
+// Um processo filho falso: só fecha quando o teste quiser.
+function filhoFalso () {
+  const { EventEmitter } = require('node:events')
+  const p = new EventEmitter()
+  p.stdout = new EventEmitter()
+  p.stderr = new EventEmitter()
+  p.sinais = []
+  p.kill = (s) => { p.sinais.push(s ?? 'SIGTERM') }
+  return p
+}
+
+test('processo: no tempo esgotado mata o filho e só rejeita depois de ele fechar (e insiste com SIGKILL)', async () => {
+  const p = filhoFalso()
+  let rejeitou = null
+  const pr = lancarTreino({ comando: ['python3'], nice: false, timeoutMs: 20, esperaKillMs: 60, spawnFn: () => p }).catch(e => { rejeitou = e })
+  await new Promise(r => setTimeout(r, 40))
+  assert.deepEqual(p.sinais, ['SIGTERM'])
+  assert.equal(rejeitou, null, 'ainda não fechou: o treino continua ocupado')
+  await new Promise(r => setTimeout(r, 60))
+  assert.deepEqual(p.sinais, ['SIGTERM', 'SIGKILL'])
+  assert.equal(rejeitou, null)
+  p.emit('close', null)
+  await pr
+  assert.match(rejeitou.message, /passou de 0 min e foi parado/)
+})
+
+test('descarregar: cada pedido leva um sinal de tempo limite (30 s)', async () => {
+  const opcoes = []
+  await prev.descarregar(39, -9, 0, async (u, op) => { opcoes.push(op); return { ok: true, json: async () => (u.includes('marine') ? MAR : VENTO) } })
+  assert.equal(opcoes.length, 2)
+  for (const op of opcoes) assert.ok(op?.signal instanceof AbortSignal)
+})
+
+test('guardar: escreve com fsync antes de trocar o .tmp', (t) => {
+  const chamadas = []
+  const original = fs.fsyncSync
+  fs.fsyncSync = (fd) => { chamadas.push(fd); return original(fd) }
+  t.after(() => { fs.fsyncSync = original })
+  const p = fs.mkdtempSync(path.join(os.tmpdir(), 'arlequin-prev-'))
+  const f = prev.guardar(path.join(p, 'previsoes'), prev.compor(39, -9.6, Date.UTC(2026, 8, 29, 14, 5), VENTO, MAR))
+  assert.equal(chamadas.length, 1)
+  assert.equal(JSON.parse(zlib.gunzipSync(fs.readFileSync(f))).tws[0], 12)
+  assert.deepEqual(fs.readdirSync(path.join(p, 'previsoes')), ['2026-09-29T14-05.json.gz'])
+})
