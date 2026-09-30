@@ -1199,7 +1199,7 @@ node software/ferramentas/sincronizar/sincronizar.mjs --host pi@arlequin
   - guarda a previsão Open-Meteo para a posição do barco sempre que há rede (de hora a hora a navegar, de 3 em 3 h parado);
   - depois de cada saída, quando o barco está parado há 1 h, treina os modelos com prioridade baixa.
 - **O que aprende:**
-  - a velocidade real do Arlequin contigo ao leme, **só à vela**: precisa das velas marcadas na página **Velas** (a grande arriada e a genoa enrolada contam como "a motor", mesmo sem rotações do motor);
+  - a velocidade real do Arlequin contigo ao leme, **só à vela**: precisa das velas marcadas na página **Velas** (com a grande arriada e a genoa enrolada nunca conta como vela, mesmo sem rotações do motor);
   - em quanto a previsão do vento falha (força e direção);
   - o gasóleo real, **só quando o motor dá o caudal medido** (PGN 65266 do MDI). A estimativa pela curva da Volvo não ensina nada: era a própria curva.
   - O simulador nunca ensina.
