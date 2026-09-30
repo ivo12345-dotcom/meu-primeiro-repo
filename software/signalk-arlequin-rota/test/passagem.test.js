@@ -32,7 +32,10 @@ test('reproduz o simular.mjs de 29/09 (Algés → Peniche, partida 15:32): resum
   assert.ok(Math.abs(r.resumo.duracaoH / ref.duracaoH - 1) < 0.02)
   // e na verdade é igual, número a número, com os mesmos eventos e os mesmos pontos
   assert.deepEqual(JSON.parse(JSON.stringify(r.resumo)), ref)
-  assert.deepEqual(JSON.parse(JSON.stringify(r.pontos)), gz('simular-2026-09-29-passagem.json.gz'))
+  // pontos: igual ao de referência, tirando o `periodo` novo (Task 8, fix da revisão: cada ponto
+  // passa a guardar o periodo da previsão, para a Task 9 calcular as horas de leme equivalentes)
+  const semPeriodo = (p) => { const { periodo, ...resto } = p; return resto }
+  assert.deepEqual(JSON.parse(JSON.stringify(r.pontos)).map(semPeriodo), gz('simular-2026-09-29-passagem.json.gz'))
   assert.equal(ref.chegada, '2026-09-30T05:00:00.000Z')
   assert.ok(ms < 2000, `${ms} ms`)
 })
@@ -171,6 +174,12 @@ test('o consumo recebe o rumo e a posição, como a velocidade à vela, para o m
   assert.equal(vistos[0].lon, r.pontos[0].lon)
   assert.equal(vistos[0].w.ondasDir, 270) // a direção das ondas previstas, entra em w tal como sempre
   assert.equal(vistos[0].rpm, PADRAO.rpmCruzeiro)
+})
+
+test('cada ponto guarda o periodo da previsão (a par de ondas/tws), para a Task 9 calcular horas de leme equivalentes', () => {
+  const r = simularPassagem(base())
+  assert.equal(r.pontos[0].periodo, 8) // o periodo do ventoFixo() de teste
+  assert.equal('motor' in r.pontos[0], true) // o sinal motor/vela já existe, não é preciso acrescentar
 })
 
 test('corrente e maré somam à velocidade no fundo; chuva, noite e nascer do sol dão eventos', () => {

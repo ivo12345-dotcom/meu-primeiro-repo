@@ -209,7 +209,10 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
     if (!visAnunciada && w.visibilidade != null && w.visibilidade < 3000) { visAnunciada = true; ev(`Chuva e visibilidade ${virgula(w.visibilidade / 1000)} km: radar ligado`, 'tempo') }
     if (!frenteAnunciada && pontos.length && pontos[pontos.length - 1].tws > 12 && w.tws < 8) { frenteAnunciada = true; ev(`Passagem da frente: o vento cai de ${Math.round(pontos[pontos.length - 1].tws)} para ${Math.round(w.tws)} nós e roda para ${rumo3(w.twd)}°. Fica o mar (${virgula(w.ondas ?? 0)} m)`, 'tempo') }
     const costa = distanciaCosta ? distanciaCosta(pos) : null
-    pontos.push({ t, costa, lat: pos.lat, lon: pos.lon, proa, cog, sog, stw, tws: w.tws, rajada: w.rajada, twd: w.twd, ondas: w.ondas, chuva: w.chuva, vis: w.visibilidade, motor, soc, gasoleo, rizos, noite: eNoite, wp: ROTA[wp].nome ?? null, mare: mare.v })
+    // periodo: a par de ondas/tws, para a Task 9 (seguranca.js) calcular as horas de leme
+    // equivalentes ("motor em calmaria conta metade"; calmaria usa o periodo — onda ≤ 3 m com
+    // periodo ≥ 9 s ainda conta calma). `motor` já serve de sinal motor/vela, não duplicado.
+    pontos.push({ t, costa, lat: pos.lat, lon: pos.lon, proa, cog, sog, stw, tws: w.tws, rajada: w.rajada, twd: w.twd, ondas: w.ondas, periodo: w.periodo, chuva: w.chuva, vis: w.visibilidade, motor, soc, gasoleo, rizos, noite: eNoite, wp: ROTA[wp].nome ?? null, mare: mare.v })
     contaCosta.push(!ROTA[wp].costaLivre)
     const chegouWp = vetor(pos, ROTA[wp]).mn < o.chegadaWpMn || (o.chegadaPassagem && wp < ROTA.length - 1 && passou(ROTA[wp - 1], ROTA[wp], pos))
     if (chegouWp) { if (ROTA[wp].nome) ev(`${ROTA[wp].nome}: ${virgula(milhas)} MN feitas`, 'wp'); wp++ }
@@ -236,6 +239,9 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
     ondasMax: pontos.reduce((m, p) => Math.max(m, p.ondas ?? -Infinity), -Infinity),
     viragens,
     cambadelas,
+    // Nome enganador (mantido: cherry-picks futuros dependem dele) — é o total de horas à vela,
+    // não horas seguidas de leme. A regra das horas de leme equivalentes (motor em calmaria conta
+    // metade) é da Task 9 (lib/seguranca.js), calculada a partir de pontos[].motor/ondas/periodo.
     horasLemeSeguidas: horasLeme,
     // Fora das aproximações (costaLivre), que são perto de terra de propósito.
     costaMinMn: distanciaCosta ? pontos.reduce((m, p, i) => (contaCosta[i] ? Math.min(m, p.costa) : m), Infinity) : null
