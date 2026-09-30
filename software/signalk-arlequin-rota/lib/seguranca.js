@@ -56,6 +56,9 @@ const PADRAO = Object.freeze({
 
 const virgula = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toFixed(d).replace('.', ',')
 const inteiro = (x) => String(Math.round(x))
+// Para baixo, para o que fica abaixo de um mínimo (39,6 L nunca diz "40 L"); a folga de 1e-9 só
+// tira o erro da vírgula flutuante (0,29 × 100 = 28,999…).
+const inteiroAbaixo = (x) => String(Math.floor(x + 1e-9))
 const metros = (x) => (Number.isInteger(x) ? String(x) : virgula(x))
 
 // Os campos da previsão (lib/previsao.js) em português, para os motivos e avisos.
@@ -220,9 +223,9 @@ function avaliar ({ alternativa, pessimista, provavel, destino, tripulacao, sair
   const fica = gasoleoInicial - r.gasoleoGasto
   if (!Number.isFinite(gasoleoInicial)) desconhecido.push('gasóleo inicial desconhecido: confirma o depósito')
   else if (!Number.isFinite(fica)) desconhecido.push('gasóleo à chegada desconhecido')
-  else if (fica < o.gasoleoMinL) vermelho.push(`chegas com ${inteiro(Math.max(0, fica))} L de gasóleo no pior caso (mínimo ${o.gasoleoMinL} L)`)
+  else if (fica < o.gasoleoMinL) vermelho.push(`chegas com ${inteiroAbaixo(Math.max(0, fica))} L de gasóleo no pior caso (mínimo ${o.gasoleoMinL} L)`)
   if (!Number.isFinite(r.socFinal)) desconhecido.push('bateria à chegada desconhecida')
-  else if (r.socFinal * 100 < o.bateriaMinPct) vermelho.push(`chegas com a bateria a ${inteiro(r.socFinal * 100)}% no pior caso (mínimo ${o.bateriaMinPct}%)`)
+  else if (r.socFinal * 100 < o.bateriaMinPct) vermelho.push(`chegas com a bateria a ${inteiroAbaixo(Math.max(0, r.socFinal * 100))}% no pior caso (mínimo ${o.bateriaMinPct}%)`)
   if (vermelho.length) {
     if (sairAgora) out.avisosVermelhos.push(...vermelho)
     else { out.excluida = true; out.motivos.push(...vermelho) }

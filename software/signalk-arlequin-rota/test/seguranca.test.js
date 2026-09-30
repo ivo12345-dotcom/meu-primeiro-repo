@@ -351,3 +351,13 @@ test('gasóleo inicial ou bateria à chegada desconhecidos: aviso vermelho (não
   // com os dois conhecidos e bons, nenhum aviso vermelho
   assert.deepEqual(s.avaliar(base()).avisosVermelhos, [])
 })
+
+test('gasóleo e bateria à chegada arredondados para baixo: 39,6 L excluído nunca diz "40 L"', () => {
+  const gas = s.avaliar(base({ gasoleoInicial: 100, pessimista: passagem({ resumo: { gasoleoGasto: 60.4 } }) }))
+  assert.equal(gas.excluida, true)
+  assert.deepEqual(gas.motivos, ['chegas com 39 L de gasóleo no pior caso (mínimo 40 L)'])
+  const bat = s.avaliar(base({ pessimista: passagem({ resumo: { socFinal: 0.496 } }) }))
+  assert.deepEqual(bat.motivos, ['chegas com a bateria a 49% no pior caso (mínimo 50%)'])
+  // sem erros de vírgula flutuante (0,29 × 100 = 28,999…): 29%
+  assert.deepEqual(s.avaliar(base({ pessimista: passagem({ resumo: { socFinal: 0.29 } }) })).motivos, ['chegas com a bateria a 29% no pior caso (mínimo 50%)'])
+})
