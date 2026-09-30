@@ -33,7 +33,11 @@ const PASTA_DADOS = path.join(__dirname, '..', 'dados')
 
 const norm = (a) => ((a % 360) + 360) % 360
 const dif = (a, b) => { let d = norm(a - b); if (d > 180) d -= 360; return d } // graus, −180…180
-const P = (x) => Array.isArray(x) ? { lat: x[0], lon: x[1] } : { lat: x.lat, lon: x.lon }
+function P (x) {
+  const p = Array.isArray(x) ? { lat: x[0], lon: x[1] } : { lat: x?.lat, lon: x?.lon }
+  if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) throw new Error(`coordenadas inválidas: ${JSON.stringify(x)}`)
+  return p
+}
 
 // Distância (MN) e rumo (graus verdadeiros) de a para b, no plano local de a.
 function vetor (a, b) {
@@ -293,6 +297,7 @@ function juntar (linha, p, sentido, { de = sentido > 0 ? 0 : linha.total, ate = 
 // Pontos de rota ao longo da linha de s1 a s2 (qualquer sentido), com troços ≤ passoMax MN
 // e sem se afastar da linha mais do que `tolerancia` MN nos vértices saltados.
 function seguirLinha (linha, s1, s2, { passoMax = 2, tolerancia = 0.02 } = {}) {
+  if (s1 === s2) { const q = posicao(linha, s1); return [{ lat: q.lat, lon: q.lon, s: q.s }] }
   const sentido = s2 >= s1 ? 1 : -1
   // vértices estritamente entre s1 e s2, no sentido da viagem
   const cand = [posicao(linha, s1)]
@@ -350,14 +355,17 @@ function criarCosta ({ terra, linhas = {}, zonas = [], destinos = [] }, { celula
     return null
   }
 
-  // Os troços da aproximação de um destino (do largo ao cais). A partir da `entrada`
-  // (a boca do porto ou da barra) a terra não se verifica: o OSM fecha rios e bacias.
+  // Os troços da aproximação de um destino (do largo ao cais). A terra verifica-se em TODOS os
+  // troços por omissão; só a partir da `entrada` (a boca do porto ou da barra) se dispensa, e só
+  // nos destinos com `portoFechadoOsm: true` (o OSM fecha o rio/doca/bacia com terra ali dentro).
   function verificarAproximacao (destino) {
     const ap = destino.aproximacao.map(P)
-    const entrada = Number.isInteger(destino.entrada) ? destino.entrada : ap.length - 1
+    const entradaValida = Number.isInteger(destino.entrada) && destino.entrada >= 1 && destino.entrada <= ap.length - 1
+    const entrada = entradaValida ? destino.entrada : ap.length - 1
     const problemas = []
+    if (!entradaValida) problemas.push({ motivo: 'entrada inválida' })
     for (let i = 1; i < ap.length; i++) {
-      const r = verificarTroco(ap[i - 1], ap[i], { terra: i <= entrada })
+      const r = verificarTroco(ap[i - 1], ap[i], { terra: i <= entrada || !destino.portoFechadoOsm })
       if (r) problemas.push({ troco: i, ...r })
     }
     return problemas
