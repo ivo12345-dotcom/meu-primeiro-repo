@@ -2,7 +2,10 @@
 // Geometria de cada alternativa (desenho 3a, "Geração das rotas"), para cada
 // afastamento d (3, 5 ou 8 MN):
 //   1. saída: a aproximação do porto de partida ao contrário (do cais ao largo),
-//      ou a posição atual se o barco estiver a mais de 0,5 MN de qualquer porto;
+//      ou a posição atual se o barco estiver a mais de 0,5 MN de qualquer porto; se a
+//      posição estiver a ≤ 0,5 MN de um troço da aproximação de um porto (ex.: no canal do
+//      Tejo), vai ao ponto mais perto dela e segue-a até ao largo (ou até ao cais, se esse
+//      porto for o destino: uma só alternativa, `direto`);
 //   2. juntar-se à linha de d MN à frente, no sentido da viagem;
 //   3. seguir a linha até ao ponto mais perto do largo do destino (pontos de ≤ 2 MN);
 //   4. entrada: a aproximação do destino (do largo ao cais);
@@ -86,6 +89,49 @@ function pontosEntrada (destino) {
     if (i === ap.length - 1) p.nome = destino.nome
     return p
   })
+}
+
+// A aproximação (de um destino da lista, ou do próprio destino) com um troço a ≤ raioMn da
+// posição: { destino, ap, i, q } (q = o ponto mais perto no troço i, de ap[i-1] a ap[i]), a do
+// destino primeiro, senão a mais perto. Só aproximações sem problemas e com o troço da posição
+// até q livre (a terra dispensa-se só dentro dos portos que o OSM fecha).
+function naAproximacao (costa, pos, destino, raioMn) {
+  const lista = [...(destino?.aproximacao && !destino.porConfirmar ? [destino] : []), ...costa.destinos.filter(d => d !== destino)]
+  let melhor = null
+  for (const d of lista) {
+    const ap = d.aproximacao.map(c.P)
+    const entrada = entradaDe(d)
+    let aqui = null
+    for (let i = 1; i < ap.length; i++) {
+      const { mn, t } = c.distanciaSegmento(pos, ap[i - 1], ap[i])
+      if (mn <= raioMn && (!aqui || mn < aqui.mn)) aqui = { destino: d, ap, i, t, mn, entrada }
+    }
+    if (!aqui) continue
+    if (costa.verificarAproximacao(d).length) continue
+    const a = aqui.ap[aqui.i - 1]; const b = aqui.ap[aqui.i]
+    aqui.q = { lat: a.lat + (b.lat - a.lat) * aqui.t, lon: a.lon + (b.lon - a.lon) * aqui.t }
+    const dentroDoPorto = aqui.i > entrada && d.portoFechadoOsm
+    if (costa.verificarTroco(pos, aqui.q, { terra: !dentroDoPorto })) continue
+    if (d === destino) return aqui
+    if (!melhor || aqui.mn < melhor.mn) melhor = aqui
+  }
+  return melhor
+}
+
+// Os pontos da aproximação a partir do ponto q (sem a posição): 'fora' até ao largo, 'dentro'
+// até ao cais. O troço da posição até q conta como parte do troço i da aproximação.
+function pontosAproximacaoDesde ({ destino, ap, i, t, q, entrada }, sentido) {
+  const out = []
+  const perto = (a, b) => c.distanciaMn(a, b) < 0.01
+  if (sentido === 'fora') {
+    if (!perto(q, ap[i - 1])) out.push({ ...q, perna: pernaDe(i, entrada) })
+    for (let k = i - 1; k >= 0; k--) out.push({ ...ap[k], perna: pernaDe(k + 1, entrada), ...(k === 0 ? { nome: `Largo de ${destino.nome}` } : {}) })
+  } else {
+    if (!perto(q, ap[i])) out.push({ ...q, perna: pernaDe(i, entrada) })
+    for (let k = i; k < ap.length; k++) out.push({ ...ap[k], perna: pernaDe(k, entrada), ...(k === ap.length - 1 ? { nome: destino.nome } : {}) })
+  }
+  for (const p of out) p.costaLivre = true
+  return out
 }
 
 function milhasDe (pontos) {
@@ -206,7 +252,7 @@ function descreverProblema (r) {
 // twd: direção do vento previsto (número, ou função (lat, lon[, t]) → graus), só para os 3 MN;
 // horaPartida (ms, opcional): com ela a função recebe a hora estimada de passagem em cada ponto.
 function gerarRota (costa, { partida, destino, afastamento, twd, horaPartida, opcoes = {} }) {
-  const o = { anguloMax: 60, maxAvancoMn: 5, passoMn: 0.25, passoMax: 2, tolerancia: 0.02, toleranciaVento: 60, afastamentoVentoTerra: 3, nosEta: 5, ...opcoes }
+  const o = { anguloMax: 60, maxAvancoMn: 5, passoMn: 0.25, passoMax: 2, tolerancia: 0.02, toleranciaVento: 60, afastamentoVentoTerra: 3, nosEta: 5, raioAproximacao: RAIO_PORTO_MN, ...opcoes }
   const nomeA = partida.nome || 'a posição atual'
   const nomeB = destino.nome
   const alt = { afastamento, pontos: [], milhas: 0, excluida: false, avisos: [] }
@@ -224,7 +270,19 @@ function gerarRota (costa, { partida, destino, afastamento, twd, horaPartida, op
       inicio = pontosSaida(partida)
     } else {
       if (costa.emTerra(partida)) return excluir('a posição atual fica em terra')
-      inicio = [{ lat: partida.lat, lon: partida.lon, nome: 'Posição atual', perna: null }]
+      const pos = { lat: partida.lat, lon: partida.lon, nome: 'Posição atual', perna: null }
+      // dentro da aproximação de um porto (ex.: no canal do Tejo): segue-a, não parte a direito
+      const na = naAproximacao(costa, pos, destino, o.raioAproximacao)
+      if (na && na.destino === destino) {
+        // já na aproximação do destino: segue-a para dentro, até ao cais
+        const pontos = [pos, ...pontosAproximacaoDesde(na, 'dentro')]
+        alt.afastamento = null
+        alt.direto = true
+        alt.avisos.push(`já na aproximação de ${destino.nome}: segue-a até ao cais`)
+        for (const p of pontos) p.costaLivre = true
+        return { ...alt, pontos, milhas: milhasDe(pontos), costaMinMn: null, sentido: null, linha: { de: null, ate: null } }
+      }
+      inicio = na ? [pos, ...pontosAproximacaoDesde(na, 'fora')] : [pos]
     }
     // 4. entrada (verifica-se já)
     if (!destino.porConfirmar) {

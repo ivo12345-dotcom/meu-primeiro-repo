@@ -142,6 +142,29 @@ test('salto curto entre portos vizinhos: UMA alternativa direta, com a distânci
   assert.equal(so.afastamento, null)
 })
 
+test('partida dentro da aproximação de um porto (no Tejo): segue a aproximação até ao largo', () => {
+  const pos = { lat: 38.69, lon: -9.26 } // no canal do Tejo, a 1,2 MN do CNA
+  assert.equal(r.portoDePartida(real, pos), null)
+  const sines = r.gerarRotas(real, { posicao: pos, destino: D('sines'), twd: 45 })
+  for (const a of sines) assert.doesNotMatch(a.motivo || '', /não há passagem/, `${a.afastamento}: ${a.motivo}`)
+  const a5 = sines.find(a => a.afastamento === 5)
+  assert.equal(a5.excluida, false, a5.motivo)
+  assert.equal(a5.pontos[0].nome, 'Posição atual')
+  // do ponto mais perto da aproximação de Algés, para fora, até ao largo (pela Barra Norte)
+  const largo = a5.pontos.findIndex(p => p.nome === 'Largo de Algés (CNA)')
+  assert.ok(largo > 1, 'passa pelo largo de Algés')
+  for (let i = 1; i <= largo; i++) assert.ok(['aproximacao', 'porto'].includes(a5.pontos[i].perna), `p[${i}].perna = ${a5.pontos[i].perna}`)
+  assert.ok(c.distanciaMn(a5.pontos[0], a5.pontos[1]) < 0.5)
+  for (let i = 1; i < a5.pontos.length; i++) assert.equal(real.verificarTroco(a5.pontos[i - 1], a5.pontos[i], { terra: true, zonas: true }), null, `troço ${i}`)
+  // para o próprio Algés: segue a aproximação para dentro, até ao cais (não sai à barra)
+  const alges = r.gerarRotas(real, { posicao: pos, destino: D('alges'), twd: 45 })
+  assert.equal(alges.length, 1)
+  assert.equal(alges[0].excluida, false, alges[0].motivo)
+  assert.equal(alges[0].direto, true)
+  assert.equal(alges[0].pontos.at(-1).nome, 'Algés (CNA)')
+  assert.ok(alges[0].milhas < 2, `${alges[0].milhas} MN`)
+})
+
 // Costa inventada: costa N-S em 9,0 W com um cabo fino para oeste a 39,0 N (até 9,08 W),
 // um ilhéu junto à linha e uma lagoa fechada; a "linha de 5 MN" é uma reta em 9,15 W.
 const terra = {
