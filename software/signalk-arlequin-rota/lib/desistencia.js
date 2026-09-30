@@ -3,13 +3,20 @@
 // (os pontos da linha de costa onde o rumo roda mais de 30°). Em cada um:
 //   - o abrigo mais perto da lista (abrigo: true), pela rota do mar (lib/rotas.js a 5 MN,
 //     ou 8 MN, com o vento previsto à hora do ponto: a rota direta perto da costa só com vento
-//     de terra; ou direto se o troço não tocar em terra nem em zonas e o rotas.js não o recusou
-//     pelo vento de terra), a distância, a hora a
+//     de terra; ou direto se o troço não tocar em terra nem em zonas), a distância, a hora a
 //     que lá se chega a motor (rpmCruzeiro, cenário provável: quem chama dá a função eta) e
 //     o ângulo ao vento previsto nessa perna ("a favor", "de través", "contra");
 //   - voltar à partida (se a partida é um porto da lista), da mesma maneira.
+// Fugas junto à costa (decisão do Ivo de 30/09, "Mostrar sempre"): primeiro a fuga pela linha
+// dos 5 MN (ou 8, ou o troço reto) que passa a regra do vento de terra; se só houver a fuga junto
+// à costa (< 3 MN / direta) com vento do mar, aparece na mesma, NUNCA escondida, com o
+// avisoVermelho "fuga junto à costa com vento do mar (a sotavento) — só em último recurso: …".
+// As exclusões duras (terra, zonas a evitar) continuam: sem fuga nenhuma, o ponto diz porquê
+// (semAbrigo / semVolta: "sem fuga possível daqui: …").
 // Resumo: "até às HH:MM ainda voltas a X com vento a favor" — o último ponto em que voltar à
-// partida tem vento a favor ou de través.
+// partida (no mar: ao abrigo do 1.º ponto) tem vento a favor ou de través, por uma fuga sem aviso.
+// Os pontos antes dele sem essa fuga (junto à costa, ou sem fuga nenhuma) não se saltam em
+// silêncio: "…, exceto junto ao Cabo Raso às 07:30, onde a fuga é junto à costa com vento do mar".
 //
 // O vento da perna: |TWA| entre a direção do vento (corrigida, P50) no ponto e à hora, e o
 // rumo direto do ponto ao porto do abrigo (o fim da aproximação; o largo pode já ter ficado para trás). < 60° contra; 60°–120° de través; > 120° a favor.
@@ -24,6 +31,10 @@ const c = require('./costa')
 const rotas = require('./rotas')
 
 const PADRAO = Object.freeze({ passoMn: 5, anguloCabo: 30, janelaCaboMn: 2, amostraCaboMn: 0.5, candidatos: 2, fuso: 'Europe/Lisbon' })
+
+const AVISO_COSTA = 'fuga junto à costa com vento do mar (a sotavento) — só em último recurso'
+const AVISO_COSTA_SEM_VENTO = 'fuga junto à costa sem vento previsto — só em último recurso'
+const SEM_FUGA = 'sem fuga possível daqui'
 
 // Posições aproximadas (conhecimento geral; só servem para dar nome ao cabo).
 const CABOS = Object.freeze([
@@ -105,39 +116,105 @@ function marcos (pontosRota, passoMn) {
   return out.filter(m => acum - m.milhas >= passoMn / 2)
 }
 
-// A rota do mar de p até ao destino d (5 MN, 8 MN ou direta). twd(lat, lon, t), horaPartida (a
-// hora no ponto) e log vão para o rotas.gerarRota, como no cálculo: a rota direta perto da costa
-// só com vento de terra. Sem rota do rotas.js, o troço reto do ponto ao largo — mas nunca quando
-// o rotas.js a recusou pelo vento de terra (o troço reto contornava a regra).
-// → { pontos, milhas } | null
+// O aviso vermelho de uma fuga que a regra do vento de terra recusava (motivo: o texto do rotas.js).
+function avisoCosta (motivo) {
+  const aviso = /não há vento previsto/.test(motivo) ? AVISO_COSTA_SEM_VENTO : AVISO_COSTA
+  return `${aviso}: ${motivo.replace(/^vento do mar em parte da rota: /, '')}`
+}
+
+// O troço reto de recurso: do ponto ao largo de d e a aproximação. Só se não tocar em terra nem
+// em zonas; a regra do vento de terra corre nele como na rota direta do rotas.js (ventoDoMar,
+// com a distância mínima à terra no troço do ponto ao largo). → { pontos, milhas, motivoVento } | null
+function trocoReto (costa, p, d, { twd, horaPartida }) {
+  const largo = c.P(d.largo)
+  if (costa.verificarTroco(p, largo)) return null
+  const ap = d.aproximacao.map(c.P)
+  const pontos = [{ ...p, perna: null, nome: 'Desistência' }, ...ap.map((q, i) => ({ ...q, perna: i === 0 ? 'ligacao' : 'aproximacao', costaLivre: true, nome: i === ap.length - 1 ? d.nome : undefined }))]
+  let milhas = 0
+  for (let i = 1; i < pontos.length; i++) milhas += c.distanciaMn(pontos[i - 1], pontos[i])
+  const n = Math.max(1, Math.ceil(c.distanciaMn(p, largo) / 0.1))
+  let costaMinMn = Infinity
+  for (let k = 0; k <= n; k++) costaMinMn = Math.min(costaMinMn, costa.distanciaTerra({ lat: p.lat + (largo.lat - p.lat) * k / n, lon: p.lon + (largo.lon - p.lon) * k / n }, 50))
+  const motivoVento = rotas.ventoDoMar(costa, { direto: true, pontos, costaMinMn }, { twd, horaPartida })
+  return { pontos, milhas, motivoVento }
+}
+
+// A fuga de p até ao destino d. twd(lat, lon, t), horaPartida (a hora no ponto) e log vão para o
+// rotas.gerarRota, como no cálculo. Por esta ordem:
+//   1. a rota do rotas.js a 5 MN, ou a 8 MN, com a regra do vento de terra (a direta perto da
+//      costa só com vento de terra);
+//   2. o troço reto de recurso, se passar a mesma regra;
+//   3. só se a regra do vento a recusou: a mesma rota sem a regra (junto à costa), com o aviso
+//      vermelho — nunca escondida (decisão do Ivo de 30/09); ou o troço reto com o aviso;
+//   4. sem fuga: o porquê (as exclusões duras do rotas.js: terra, zonas a evitar, sem passagem).
+// → { pontos, milhas, avisoVermelho: null | texto } | { semFuga: motivo }
 function rotaAte (costa, p, d, { twd, horaPartida, log } = {}) {
-  let porVento = false
+  const motivos = []
+  let motivoVento = null
   for (const af of [5, 8]) {
     const r = rotas.gerarRota(costa, { partida: p, destino: d, afastamento: af, twd, horaPartida, log })
-    if (!r.excluida) return { pontos: r.pontos, milhas: r.milhas }
-    if (r.porVento) porVento = true
+    if (!r.excluida) return { pontos: r.pontos, milhas: r.milhas, avisoVermelho: null }
+    if (r.porVento) motivoVento ??= r.motivo
+    else motivos.push(r.motivo)
   }
-  if (porVento) return null
-  const largo = c.P(d.largo)
-  if (!costa.verificarTroco(p, largo)) {
-    const ap = d.aproximacao.map(c.P)
-    const pontos = [{ ...p, perna: null, nome: 'Desistência' }, ...ap.map((q, i) => ({ ...q, perna: i === 0 ? 'ligacao' : 'aproximacao', costaLivre: true, nome: i === ap.length - 1 ? d.nome : undefined }))]
-    let milhas = 0
-    for (let i = 1; i < pontos.length; i++) milhas += c.distanciaMn(pontos[i - 1], pontos[i])
-    return { pontos, milhas }
+  const reto = trocoReto(costa, p, d, { twd, horaPartida })
+  if (reto && !reto.motivoVento) return { pontos: reto.pontos, milhas: reto.milhas, avisoVermelho: null }
+  if (motivoVento) {
+    // sem a regra (afastamentoVentoTerra 0): as outras verificações do rotas.js ficam todas
+    for (const af of [5, 8]) {
+      const r = rotas.gerarRota(costa, { partida: p, destino: d, afastamento: af, twd, horaPartida, log, opcoes: { afastamentoVentoTerra: 0 } })
+      if (!r.excluida) return { pontos: r.pontos, milhas: r.milhas, avisoVermelho: avisoCosta(motivoVento) }
+    }
   }
-  return null
+  if (reto) return { pontos: reto.pontos, milhas: reto.milhas, avisoVermelho: avisoCosta(reto.motivoVento) }
+  return { semFuga: [...new Set(motivos)].join('; ') || 'não há rota' }
 }
 
 // Para um ponto e hora: ir para o destino d. eta(pontos, t) → ms da chegada; twd(lat, lon, t); log.
+// → a fuga { id, nome, milhas, chegada, rumo, twa, vento, avisoVermelho } | { semFuga: motivo }
 function irPara (costa, p, t, d, { eta, twd, log }) {
   const r = rotaAte(costa, p, d, { twd, horaPartida: t, log })
-  if (!r) return null
+  if (r.semFuga) return r
   const rumo = c.vetor(p, c.P(d.aproximacao.at(-1))).rumo // direto ao porto (o largo pode ficar para trás)
   const v = ventoNaPerna(twd(p.lat, p.lon, t), rumo)
   let chegada = null
   try { chegada = eta(r.pontos, t) } catch { chegada = null }
-  return { id: d.id, nome: d.nome, milhas: r.milhas, chegada: Number.isFinite(chegada) ? new Date(chegada).toISOString() : null, rumo, twa: v.twa, vento: v.texto }
+  return { id: d.id, nome: d.nome, milhas: r.milhas, chegada: Number.isFinite(chegada) ? new Date(chegada).toISOString() : null, rumo, twa: v.twa, vento: v.texto, avisoVermelho: r.avisoVermelho }
+}
+
+// A melhor de duas fugas: a sem aviso vermelho primeiro (a linha dos 5 MN antes da costa), depois a mais curta.
+const melhorFuga = (a, b) => !b || (!!a.avisoVermelho - !!b.avisoVermelho || a.milhas - b.milhas) < 0
+
+// Onde fica um ponto, para o resumo: "junto ao Cabo Raso às 07:30", "às 08:31 (10 MN feitas)".
+function ondeFica (x) {
+  if (x.tipo === 'cabo') return x.nome ? `junto ${/^(Ponta|Nazaré)/.test(x.nome) ? 'à' : 'ao'} ${x.nome} às ${x.hora}` : `num cabo às ${x.hora}`
+  return `às ${x.hora} (${String(Math.round(x.milhas * 10) / 10).replace('.', ',')} MN feitas)`
+}
+
+// Porque é que um ponto não tem uma fuga sem aviso: r a fuga (com aviso) ou null; sem o semAbrigo/semVolta.
+function porqueBuraco (r, sem) {
+  if (r) return r.avisoVermelho.startsWith(AVISO_COSTA_SEM_VENTO) ? 'a fuga é junto à costa sem vento previsto' : 'a fuga é junto à costa com vento do mar'
+  return `não há fuga possível: ${String(sem).replace(`${SEM_FUGA}: `, '')}`
+}
+
+// O resumo. itens: [{ x (o ponto), r (a fuga que conta: voltar, ou no mar o abrigo), sem }]; alvo: o nome.
+function resumir (itens, alvo) {
+  if (!itens.length) return 'sem pontos de desistência nesta rota'
+  const limpa = (r) => r && !r.avisoVermelho
+  const buracos = (lista) => lista.filter(({ r }) => !limpa(r)).map(({ x, r, sem }) => ({ onde: ondeFica(x), porque: porqueBuraco(r, sem) }))
+  const atencao = (lista) => { const b = buracos(lista); return b.length ? `; atenção: ${b.map(k => `${k.onde} ${k.porque}`).join('; ')}` : '' }
+  if (!alvo) return `${SEM_FUGA} para nenhum abrigo (${itens[0].sem.replace(`${SEM_FUGA}: `, '')})`
+  const doAlvo = itens.filter(({ r }) => limpa(r) && r.nome === alvo)
+  const bons = doAlvo.filter(({ r }) => r.vento === 'a favor' || r.vento === 'de través')
+  if (bons.length) {
+    const ult = bons.at(-1)
+    const b = buracos(itens.slice(0, itens.indexOf(ult)))
+    return `até às ${ult.x.hora} ainda voltas a ${alvo} com vento ${ult.r.vento}${b.length ? `, exceto ${b.map(k => `${k.onde}, onde ${k.porque}`).join('; e ')}` : ''}`
+  }
+  if (doAlvo.length) return `voltar a ${alvo} é sempre contra o vento${atencao(itens)}`
+  if (itens.some(({ r }) => r && r.nome === alvo)) return `para ${alvo} só há fuga junto à costa, em último recurso${atencao(itens.filter(({ r }) => !r))}`
+  const primeiro = itens.find(({ r }) => !r)
+  return `${SEM_FUGA} para ${alvo}: ${primeiro.sem.replace(`${SEM_FUGA}: `, '')}`
 }
 
 // costa; rota: a alternativa (lib/rotas.js: { pontos, afastamento, linha: { de, ate } });
@@ -145,7 +222,9 @@ function irPara (costa, p, t, d, { eta, twd, log }) {
 // lista) ou null; eta(pontos, t) e twd(lat, lon, t) do cenário provável; log(msg, erro) (o registo
 // dos erros de programação da geometria; no plugin, app.error).
 // Assíncrona: cede o event loop em cada ponto (cada um gera várias rotas), para o SignalK não parar.
-// → Promise<{ pontos: [{ t, hora, tipo: 'marco' | 'cabo', nome?, lat, lon, milhas, abrigo, voltar }], resumo }>
+// → Promise<{ pontos: [{ t, hora, tipo: 'marco' | 'cabo', nome?, lat, lon, milhas, abrigo, voltar, semAbrigo, semVolta }], resumo }>
+//   abrigo/voltar: a fuga (com avisoVermelho null ou o texto) ou null; semAbrigo/semVolta: null ou
+//   "sem fuga possível daqui: …" (voltar null e semVolta null: não há partida para onde voltar).
 async function pontosDesistencia ({ costa, rota, linhaTempo, partida = null, destino = null, eta, twd, log, opcoes = {} }) {
   const o = { ...PADRAO, ...opcoes }
   const hm = (t) => new Intl.DateTimeFormat('pt-PT', { timeZone: o.fuso, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(t)
@@ -168,26 +247,32 @@ async function pontosDesistencia ({ costa, rota, linhaTempo, partida = null, des
     const p = { lat: s.lat, lon: s.lon }
     const perto = abrigos.map(d => ({ d, mn: c.distanciaMn(p, c.P(d.largo)) })).sort((a, b) => a.mn - b.mn).slice(0, o.candidatos)
     let abrigo = null
+    const semMotivos = []
     for (const { d } of perto) {
       const r = irPara(costa, p, s.t, d, { eta, twd, log })
-      if (r && (!abrigo || r.milhas < abrigo.milhas)) abrigo = r
+      if (r.semFuga) semMotivos.push(r.semFuga)
+      else if (melhorFuga(r, abrigo)) abrigo = r
     }
-    const voltar = partida ? irPara(costa, p, s.t, partida, { eta, twd, log }) : null
+    const volta = partida ? irPara(costa, p, s.t, partida, { eta, twd, log }) : null
     const milhasFeitas = s.milhas ?? null
-    out.push({ t: new Date(s.t).toISOString(), hora: hm(s.t), tipo: s.tipo, nome: s.nome ?? null, lat: s.lat, lon: s.lon, milhas: milhasFeitas, abrigo, voltar })
+    out.push({
+      t: new Date(s.t).toISOString(),
+      hora: hm(s.t),
+      tipo: s.tipo,
+      nome: s.nome ?? null,
+      lat: s.lat,
+      lon: s.lon,
+      milhas: milhasFeitas,
+      abrigo,
+      voltar: volta && !volta.semFuga ? volta : null,
+      semAbrigo: abrigo ? null : `${SEM_FUGA}: ${[...new Set(semMotivos)].join('; ') || 'não há abrigos na lista'}`,
+      semVolta: volta?.semFuga ? `${SEM_FUGA}: ${volta.semFuga}` : null
+    })
   }
-  // o resumo
-  let resumo
-  const alvo = partida?.nome || out[0]?.abrigo?.nome || null
-  const lista = partida ? out.map(x => ({ x, r: x.voltar })) : out.map(x => ({ x, r: x.abrigo && x.abrigo.nome === alvo ? x.abrigo : null }))
-  const bons = lista.filter(({ r }) => r && (r.vento === 'a favor' || r.vento === 'de través'))
-  if (!alvo) resumo = 'Sem abrigo conhecido perto da rota.'
-  else if (bons.length) {
-    const ult = bons.at(-1)
-    resumo = `até às ${ult.x.hora} ainda voltas a ${alvo} com vento ${ult.r.vento === 'a favor' ? 'a favor' : 'de través'}`
-  } else if (lista.some(({ r }) => r)) resumo = `voltar a ${alvo} é sempre contra o vento`
-  else resumo = `não há como voltar a ${alvo} pela costa`
-  return { pontos: out, resumo }
+  // o resumo: a volta à partida; no mar, o abrigo do 1.º ponto que o tenha
+  const alvo = partida?.nome || out.find(x => x.abrigo)?.abrigo.nome || null
+  const itens = partida ? out.map(x => ({ x, r: x.voltar, sem: x.semVolta })) : out.map(x => ({ x, r: x.abrigo, sem: x.semAbrigo }))
+  return { pontos: out, resumo: resumir(itens, alvo) }
 }
 
 module.exports = { PADRAO, CABOS, ventoNaPerna, cabos, cabosDaRota, marcos, rotaAte, pontosDesistencia }
