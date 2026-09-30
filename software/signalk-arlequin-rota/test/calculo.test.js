@@ -7,6 +7,8 @@ const zlib = require('node:zlib')
 const c = require('../lib/costa')
 const prev = require('../lib/previsao')
 const base = require('../lib/base')
+const rotas = require('../lib/rotas')
+const decisao = require('../lib/decisao')
 const { calcular } = require('../lib/calculo')
 
 const H = 3600000
@@ -19,7 +21,11 @@ const ALGES = c.P(costa.destinos.find(d => d.id === 'alges').aproximacao.at(-1))
 const AGORA = Date.parse('2026-09-29T14:32:00Z') // 15:32 em Lisboa
 const ORDEM = { segue: 0, volta: 1, espera: 1, 'nao-recomendado': 2 } // menor = melhor
 
+const de = (id) => c.P(costa.destinos.find(d => d.id === id).aproximacao.at(-1))
+// uma cópia da previsão de 29/09 com cada ponto mudado por f(ponto, índice)
+const mudar = (P, f) => { const x = structuredClone(P); x.pontos.forEach(f); return x }
 const deps = (o = {}) => ({ costa, polar, modelos: {}, versoes: { velocidade: null }, obterPrevisao: async () => ({ previsao: P29, obtida: P29.obtida, idadeH: 0.5, aviso: null }), ...o })
+const comPrevisao = (P, o = {}) => deps({ obterPrevisao: async () => ({ previsao: P, obtida: P.obtida, idadeH: 0.5, aviso: null }), ...o })
 const entrada = (o = {}) => ({ instrumentos: { posicao: ALGES, socPct: 90, gasoleoL: 124 }, destino: 'peniche', tripulacao: 'so', sairAgora: false, agora: AGORA, ...o })
 
 // Os cálculos pesados fazem-se uma vez e os testes leem daqui.
@@ -37,7 +43,7 @@ test('29/09, Algés → Peniche, só eu, 15:32: "Não recomendado sozinho" ou "E
   assert.deepEqual(Object.keys(r.veredicto), ['tipo', 'texto', 'porque'])
   assert.equal(r.alternativas.length, 3)
   for (const a of r.alternativas) {
-    for (const k of ['id', 'nome', 'afastamento', 'partida', 'propulsao', 'chegada', 'milhas', 'horas', 'maximos', 'gasoleoL', 'bateriaMin', 'chegadaNoite', 'excluida', 'naoRecomendada', 'motivos', 'rota', 'eventos', 'avisos', 'precaucoes']) assert.ok(k in a, `alternativa sem ${k}`)
+    for (const k of ['id', 'nome', 'afastamento', 'partida', 'propulsao', 'chegada', 'milhas', 'horas', 'maximos', 'gasoleoL', 'bateriaMin', 'chegadaNoite', 'excluida', 'naoRecomendada', 'motivos', 'rota', 'eventos', 'avisos', 'precaucoes', 'avisosVermelhos', 'avisosRota', 'direto', 'canal', 'nota']) assert.ok(k in a, `alternativa sem ${k}`)
     assert.deepEqual(Object.keys(a.chegada), ['p10', 'p50', 'p90'])
     assert.ok(Date.parse(a.chegada.p10) <= Date.parse(a.chegada.p50) && Date.parse(a.chegada.p50) <= Date.parse(a.chegada.p90))
     for (const k of ['vela', 'motor', 'noite', 'leme']) assert.ok(Number.isFinite(a.horas[k]), k)
@@ -104,6 +110,7 @@ test('sem dados do mar: calcula com a corrente da barra do Tejo a 0 e avisa', as
   const r = await correr('semMar', entrada({ sairAgora: true }), deps({ obterPrevisao: async () => ({ previsao: P29_SEM_MAR, obtida: P29_SEM_MAR.obtida, idadeH: 7, aviso: 'aviso', texto: 'Previsão guardada há 7 h (sem rede)' }) }))
   assert.equal(r.erro, undefined, r.erro)
   assert.ok(r.avisos.includes('Sem dados do mar: a corrente de maré na barra do Tejo fica a 0'))
+  assert.ok(r.avisos.includes('Sem previsão do mar (ondas e corrente): as ondas ficam desconhecidas, e desconhecido não conta como calmo'))
   assert.ok(r.avisos.includes('Previsão guardada há 7 h (sem rede)'))
   assert.equal(r.previsao.aviso, 'aviso')
   assert.equal(r.previsao.idadeH, 7)
@@ -131,5 +138,112 @@ test('no mar (a mais de 0,5 MN de um porto): parte da posição atual; sem SoC n
   assert.deepEqual(r.alternativas[0].rota[0], [38.97, -9.53])
   assert.ok(r.avisos.includes('Sem estado da bateria: assumi 80%'))
   assert.ok(r.avisos.includes('Sem nível do gasóleo: assumi 100 L'))
+  // o gasóleo inicial desconhecido é um aviso vermelho em cada alternativa (a regra corre com os 100 L assumidos)
+  for (const a of r.alternativas) assert.ok(a.avisosVermelhos.includes('gasóleo inicial desconhecido: confirma o depósito (assumi 100 L)'), JSON.stringify(a.avisosVermelhos))
   assert.equal(r.desistenciaResumo.includes('Algés'), false) // sem porto de partida: volta ao abrigo mais perto
+})
+
+test('alternativas pelo rotas.gerarAlternativas em cada partida (hora da partida, vento previsto e o registo): Peniche → Nazaré tem a variante pelo Canal da Berlenga', async () => {
+  const orig = rotas.gerarAlternativas
+  const chamadas = []
+  rotas.gerarAlternativas = (costa, args) => { chamadas.push(args); return orig(costa, args) }
+  const log = () => {}
+  let cands = []
+  try {
+    const r = await calcular(entrada({ instrumentos: { posicao: de('peniche'), socPct: 90, gasoleoL: 124 }, destino: 'nazare' }), deps({ log, aoCandidatos: l => { cands = l } }))
+    assert.equal(r.erro, undefined, r.erro)
+  } finally { rotas.gerarAlternativas = orig }
+  const partidas = decisao.partidas(AGORA, { fim: P29.fim })
+  assert.ok(chamadas.length > 0)
+  for (const a of chamadas) {
+    assert.ok(partidas.includes(a.horaPartida), `${a.horaPartida}`)
+    assert.equal(typeof a.twd, 'function')
+    assert.ok(Number.isFinite(a.twd(39.4, -9.5, a.horaPartida)))
+    assert.equal(a.log, log)
+  }
+  // a regra dos 3 MN depende do vento à hora da partida: a de 3 MN gera-se em cada partida
+  assert.deepEqual([...new Set(chamadas.filter(a => a.afastamento === 3).map(a => a.horaPartida))], partidas)
+  assert.ok(cands.some(k => k.canal === 'Canal da Berlenga'), 'sem a variante pelo canal')
+  assert.equal(new Set(cands.map(k => k.id)).size, cands.length, 'ids repetidos')
+})
+
+test('a variante pelo Canal da Berlenga no texto da alternativa: nome, canal, nota e o aviso "por confirmar na carta"', async () => {
+  const calmo = mudar(P29, p => { p.ondas = p.ondas.map(x => (x == null ? null : x * 0.6)) })
+  const r = await calcular(entrada({ instrumentos: { posicao: de('peniche'), socPct: 90, gasoleoL: 124 }, destino: 'nazare', tripulacao: 'acompanhado' }), comPrevisao(calmo))
+  assert.equal(r.erro, undefined, r.erro)
+  const k = r.alternativas.find(a => a.canal)
+  assert.ok(k, JSON.stringify(r.alternativas.map(a => a.nome)))
+  assert.equal(k.canal, 'Canal da Berlenga')
+  assert.match(k.nome, /, 5 MN pelo Canal da Berlenga, (vela e motor|só motor)$/)
+  assert.match(k.id, /^\d{8}T\d{4}-5mn-canal-(vela|motor)$/)
+  assert.equal(k.nota, 'Canal da Berlenga: terra dos dois lados; só com ondas < 3 m — por confirmar na carta')
+  assert.ok(k.avisosRota.includes('Canal da Berlenga por confirmar na carta'))
+  for (const a of r.alternativas.filter(a => !a.canal)) { assert.equal(a.canal, null); assert.equal(a.nota, null) }
+})
+
+test('rota direta (salto curto) Cascais → Algés: uma por partida, com id e nome com sentido; o vento de terra é o da hora de cada partida', async () => {
+  let cands = []
+  const r = await calcular(entrada({ instrumentos: { posicao: de('cascais'), socPct: 90, gasoleoL: 124 }, destino: 'alges' }), deps({ aoCandidatos: l => { cands = l } }))
+  assert.equal(r.erro, undefined, r.erro)
+  assert.ok(r.alternativas.length >= 1)
+  for (const a of r.alternativas) {
+    assert.equal(a.direto, true)
+    assert.equal(a.afastamento, null)
+    assert.match(a.id, /^\d{8}T\d{4}-direto-(vela|motor)$/)
+    assert.match(a.nome, /, direta \(salto curto\), (vela e motor|só motor)$/)
+    assert.ok(a.avisosRota.includes('salto curto entre portos vizinhos: rota direta junto à costa'))
+  }
+  assert.doesNotMatch(JSON.stringify({ v: r.veredicto, a: r.alternativas.map(a => [a.id, a.nome]) }), /null ?mn/i)
+  // uma só direta por partida e propulsão (a mesma a 3, 5 e 8 MN)
+  const chaves = cands.map(k => `${k.partida}|${k.propulsao}`)
+  assert.equal(new Set(chaves).size, chaves.length)
+  // agora o vento é do mar (excluída), mais tarde já é de terra: calculado à hora de cada partida
+  assert.match(r.veredicto.porque[0], /^Agora: vento do mar em parte da rota/)
+  assert.ok(cands.some(k => k.partida > AGORA && !k.excluida))
+})
+
+test('a energia entra na simulação (a bateria à chegada é conhecida) e os avisos da segurança passam para a alternativa', async () => {
+  const r = await correr('so', entrada(), deps())
+  for (const a of r.alternativas) {
+    assert.ok(Number.isFinite(a.bateriaMin), `${a.bateriaMin}`)
+    assert.ok(!a.avisosVermelhos.some(x => /bateria/.test(x)), JSON.stringify(a.avisosVermelhos))
+  }
+  // rajadas só no primeiro ponto de previsão: nos outros vêm aproximadas (seguranca.avaliar → avisos[])
+  const aprox = mudar(P29, (p, i) => { if (i > 0) p.rajada = p.rajada.map(() => null) })
+  const r2 = await calcular(entrada({ sairAgora: true }), comPrevisao(aprox))
+  assert.equal(r2.erro, undefined, r2.erro)
+  assert.ok(r2.alternativas[0].avisosRota.includes('previsão de rajadas aproximada em parte da rota (de um ponto de previsão mais longe)'), JSON.stringify(r2.alternativas[0].avisosRota))
+})
+
+test('"Sair agora": inclui as não recomendadas e os avisos vermelhos (previsão em falta, gasóleo), nunca as exclusões duras', async () => {
+  // gasóleo curto: em "sair agora" é aviso vermelho; sem "sair agora" exclui
+  const pouco = entrada({ instrumentos: { posicao: ALGES, socPct: 90, gasoleoL: 45 } })
+  const s = await calcular({ ...pouco, sairAgora: true }, deps())
+  assert.equal(s.erro, undefined, s.erro)
+  assert.ok(s.alternativas.length >= 1)
+  assert.ok(s.alternativas.some(a => a.avisosVermelhos.some(x => / L de gasóleo no pior caso/.test(x))), JSON.stringify(s.alternativas.map(a => a.avisosVermelhos)))
+  let cands = []
+  const n = await calcular(pouco, deps({ aoCandidatos: l => { cands = l } }))
+  const semGasoleo = cands.filter(k => k.motivos.some(x => / L de gasóleo no pior caso/.test(x)))
+  assert.ok(semGasoleo.length > 0 && semGasoleo.every(k => k.excluida))
+  assert.ok(n.alternativas.every(a => !semGasoleo.some(k => k.id === a.id)))
+  // sem previsão de rajadas: em "sair agora" aviso vermelho; sem "sair agora" todas excluídas
+  const semRajada = mudar(P29, p => { p.rajada = p.rajada.map(() => null) })
+  const sr = await calcular(entrada({ sairAgora: true }), comPrevisao(semRajada))
+  assert.equal(sr.erro, undefined, sr.erro)
+  assert.ok(sr.alternativas.length >= 1)
+  for (const a of sr.alternativas) assert.ok(a.avisosVermelhos.some(x => /^sem previsão de rajadas em parte da rota/.test(x)), JSON.stringify(a.avisosVermelhos))
+  const nr = await calcular(entrada(), comPrevisao(semRajada))
+  assert.equal(nr.alternativas.length, 0)
+  assert.equal(nr.veredicto.tipo, 'nao-recomendado')
+  // exclusão dura (o Canal da Berlenga com ondas ≥ 3 m): nunca aparece, nem em "sair agora"
+  const mar = mudar(P29, p => { p.ondas = p.ondas.map(x => (x == null ? null : Math.max(x, 3.2))) })
+  let cc = []
+  const k = await calcular(entrada({ instrumentos: { posicao: de('peniche'), socPct: 90, gasoleoL: 124 }, destino: 'nazare', sairAgora: true }), comPrevisao(mar, { aoCandidatos: l => { cc = l } }))
+  assert.equal(k.erro, undefined, k.erro)
+  const canal = cc.filter(x => x.canal)
+  assert.ok(canal.length > 0 && canal.every(x => x.excluida), JSON.stringify(canal.map(x => x.motivos)))
+  assert.ok(k.alternativas.length >= 1)
+  for (const a of k.alternativas) { assert.equal(a.excluida, false); assert.equal(a.canal, null) }
+  assert.ok(k.alternativas.some(a => a.naoRecomendada)) // ondas > 3 m: não recomendadas, mas mostradas
 })

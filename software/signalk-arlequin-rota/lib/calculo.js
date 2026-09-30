@@ -16,7 +16,15 @@
 //   costa (lib/costa.js), polar (lib/base.js), modelos: { velocidade, ventoForca, ventoDirecao, consumo },
 //   versoes: { nome: 'v0001' | null },
 //   obterPrevisao: async ({ pontos, desde, ate, agora }) → { previsao, obtida, idadeH, aviso, texto } | { erro },
-//   opcoes: ver PADRAO, progresso(f, texto), aoCandidatos(lista) (diagnóstico: todos os candidatos avaliados) }
+//   opcoes: ver PADRAO, progresso(f, texto), aoCandidatos(lista) (diagnóstico: todos os candidatos avaliados),
+//   log(msg, erro)? (o registo dos erros de programação da geometria; no plugin, app.error) }
+//
+// As alternativas vêm de lib/rotas.js gerarAlternativas (a linha de cada afastamento e as variantes
+// por canais, hoje o Canal da Berlenga; a rota direta dos saltos curtos; a saída pelo canal de
+// aproximação quando o barco já está nele), com a hora da partida e o vento previsto (P50 corrigido)
+// à hora estimada de passagem em cada ponto. A regra do vento de terra (3 MN e a rota direta perto
+// da costa) depende da hora da partida: essas geram-se de novo em cada partida. As de 5 e 8 MN
+// pela linha não dependem do vento: geram-se uma vez.
 
 const c = require('./costa')
 const rotas = require('./rotas')
@@ -91,6 +99,14 @@ function simular3 (ctx, alt, partida, prop, { guardarPontos = true } = {}) {
   return out
 }
 
+// O id de uma alternativa: "20260930T0530-5mn-vela", "…-5mn-canal-motor", "…-direto-vela"
+// (a rota direta não tem afastamento: nunca "nullmn").
+function idAlternativa (partida, alt, prop) {
+  const quando = new Date(partida).toISOString().slice(0, 16).replace(/[-:]/g, '')
+  const onde = alt.direto || !Number.isFinite(alt.afastamento) ? 'direto' : `${alt.afastamento}mn${alt.canal ? '-canal' : ''}`
+  return `${quando}-${onde}-${prop}`
+}
+
 // Avalia uma geometria numa partida e propulsão → candidato (sem a linha do tempo, que pesa).
 function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
   const sims = simular3(ctx, alt, partida, prop)
@@ -98,23 +114,31 @@ function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
   if (!pe.resumo.chegou || !pr.resumo.chegou || !ot.resumo.chegou) return { foraDaPrevisao: false, naoChega: true }
   if (Date.parse(pe.resumo.chegada) > ctx.previsao.fim) return { foraDaPrevisao: true }
   const seg = seguranca.avaliar({ alternativa: alt, pessimista: pe, provavel: pr, destino: ctx.destino, tripulacao: ctx.tripulacao, sairAgora: ctx.sairAgora, gasoleoInicial: ctx.gasoleoInicial, costaMinMn, opcoes: { afastamentoMinimo: ctx.o.afastamentoMinimo } })
+  // sem nível do depósito a regra corre com o valor assumido, mas nunca em silêncio: aviso vermelho
+  const avisosVermelhos = ctx.gasoleoAssumido ? [...seg.avisosVermelhos, `gasóleo inicial desconhecido: confirma o depósito (assumi ${ctx.gasoleoInicial} L)`] : seg.avisosVermelhos
+  // as horas equivalentes ao leme vêm só de lib/seguranca.js (a mesma regra da calma para o custo e para os limites)
   const lemeEqProvavel = seguranca.horasLemeEquivalentes(pr.pontos)
   const contraVentoH = decisao.horasContraVento(pr.pontos)
   const esperaH = (partida - ctx.agora) / H
   const custo = decisao.custo({ resumo: pr.resumo, esperaH, tripulacao: ctx.tripulacao, lemeEq: lemeEqProvavel, contraVentoH })
   const socMinPe = pe.resumo.socMin
   return {
-    id: `${new Date(partida).toISOString().slice(0, 16).replace(/[-:]/g, '')}-${alt.afastamento}mn-${prop}`,
+    id: idAlternativa(partida, alt, prop),
     partida,
     esperaH,
     afastamento: alt.afastamento,
+    direto: !!alt.direto,
+    canal: alt.canal || null,
     propulsao: prop,
     milhas: alt.milhas,
     geometria: alt,
     excluida: seg.excluida,
     naoRecomendada: seg.naoRecomendada,
     motivos: seg.motivos,
-    avisosVermelhos: seg.avisosVermelhos,
+    avisosVermelhos,
+    // os avisos que não excluem: os da geometria (lib/rotas.js: salto curto, canal por confirmar,
+    // rota ativa) e os da segurança (previsão aproximada ou sem dados em campos não críticos)
+    avisosRota: [...(alt.avisos || []), ...seg.avisos],
     costaMinMn: seg.costaMinMn,
     horasLemeEq: { pessimista: seg.horasLemeEq, provavel: lemeEqProvavel },
     contraVentoH,
@@ -125,9 +149,12 @@ function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
   }
 }
 
+// "Amanhã às 06:30, 5 MN, só motor", "Agora, 5 MN pelo Canal da Berlenga, vela e motor",
+// "Às 18:30, direta (salto curto), só motor".
 const nomeAlternativa = (cand, agora, fuso) => {
   const q = cand.partida === agora ? 'Agora' : decisao.quando(cand.partida, agora, fuso).replace(/^às/, 'Às').replace(/^amanhã/, 'Amanhã').replace(/^dia/, 'Dia')
-  return `${q}, ${cand.afastamento} MN, ${cand.propulsao === 'motor' ? 'só motor' : 'vela e motor'}`
+  const onde = cand.direto || !Number.isFinite(cand.afastamento) ? 'direta (salto curto)' : `${cand.afastamento} MN${cand.canal ? ` pelo ${cand.canal}` : ''}`
+  return `${q}, ${onde}, ${cand.propulsao === 'motor' ? 'só motor' : 'vela e motor'}`
 }
 
 function eventosComHora (eventos, fuso) {
@@ -144,6 +171,9 @@ function montarAlternativa (ctx, cand, desistenciaResumo) {
     id: cand.id,
     nome: nomeAlternativa(cand, ctx.agora, ctx.o.fuso),
     afastamento: cand.afastamento,
+    direto: cand.direto,
+    canal: cand.canal,
+    nota: cand.geometria.nota || null,
     partida: iso(cand.partida),
     esperaH: r2(cand.esperaH),
     propulsao: cand.propulsao,
@@ -160,6 +190,7 @@ function montarAlternativa (ctx, cand, desistenciaResumo) {
     naoRecomendada: cand.naoRecomendada,
     motivos: cand.motivos,
     avisosVermelhos: cand.avisosVermelhos,
+    avisosRota: cand.avisosRota,
     costaMinMn: r2(cand.costaMinMn),
     custo: { total: r2(cand.custo.total), partes: Object.fromEntries(Object.entries(cand.custo.partes).map(([k, v]) => [k, r2(v)])) },
     rota: cand.geometria.pontos.map(p => [Math.round(p.lat * 1e5) / 1e5, Math.round(p.lon * 1e5) / 1e5]),
@@ -168,7 +199,6 @@ function montarAlternativa (ctx, cand, desistenciaResumo) {
     avisos: avisos.avisosDaPassagem({ passagem: pr, destino: ctx.destino, tripulacao: ctx.tripulacao, opcoes: { fuso: ctx.o.fuso } }),
     precaucoes: avisos.precaucoes({ passagem: pr, tripulacao: ctx.tripulacao, sairAgora: ctx.sairAgora, desistenciaResumo })
   }
-  if (cand.geometria.avisos?.length) alt.avisosRota = cand.geometria.avisos
   return { alt, sims }
 }
 
@@ -216,7 +246,7 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   const previsao = pv.previsao
   const tempoBruto = prev.criarTempo(previsao)
   const temMar = previsao.pontos.some(p => p.ondas?.some(x => x != null))
-  if (!temMar) avisosGerais.push('Sem previsão do mar (ondas e corrente): as ondas não entram nos limites nem no custo')
+  if (!temMar) avisosGerais.push('Sem previsão do mar (ondas e corrente): as ondas ficam desconhecidas, e desconhecido não conta como calmo')
 
   // maré na barra do Tejo (sem dados do mar: corrente 0, com aviso)
   const nivel = prev.nivelDoMar(previsao)
@@ -240,24 +270,32 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   let soc = Number.isFinite(inst.socPct) ? inst.socPct / 100 : null
   if (soc == null) { soc = o.socDesconhecido; avisosGerais.push(`Sem estado da bateria: assumi ${Math.round(soc * 100)}%`) }
   let gasoleoInicial = Number.isFinite(inst.gasoleoL) ? inst.gasoleoL : null
-  if (gasoleoInicial == null) { gasoleoInicial = o.gasoleoDesconhecidoL; avisosGerais.push(`Sem nível do gasóleo: assumi ${gasoleoInicial} L`) }
+  const gasoleoAssumido = gasoleoInicial == null
+  if (gasoleoAssumido) { gasoleoInicial = o.gasoleoDesconhecidoL; avisosGerais.push(`Sem nível do gasóleo: assumi ${gasoleoInicial} L`) }
 
-  const ctx = { o, agora, destino, tripulacao, sairAgora, previsao, cenarios, correnteExtra, noite, soc, gasoleoInicial }
+  const ctx = { o, agora, destino, tripulacao, sairAgora, previsao, cenarios, correnteExtra, noite, soc, gasoleoInicial, gasoleoAssumido }
+  // o vento previsto (a direção P50 corrigida, a mesma nos três cenários) para a regra do vento de terra
+  const twd = (lat, lon, t) => cenarios.provavel.tempo(lat, lon, t).twd
+  const log = typeof deps.log === 'function' ? deps.log : undefined
 
   // ---------- as alternativas ----------
   const horas = decisao.partidas(agora, { sairAgora, horas: o.horasPartidas, passoH: o.passoPartidasH, fim: previsao.fim })
-  const geometrias = new Map() // afastamento → { alt, costaMinMn } (a de 3 MN depende do vento da partida)
-  const geometria = (d, tp) => {
-    const twd = (lat, lon) => cenarios.provavel.tempo(lat, lon, tp).twd
-    if (d <= seguranca.PADRAO.afastamentoVentoTerra) {
-      const alt = rotas.gerarRota(costa, { partida: partidaGeo, destino, afastamento: d, twd })
-      return { alt, costaMinMn: alt.excluida ? null : seguranca.distanciaRotaCosta(costa, alt.pontos)?.mn ?? null }
-    }
-    if (!geometrias.has(d)) {
-      const alt = rotas.gerarRota(costa, { partida: partidaGeo, destino, afastamento: d, twd })
-      geometrias.set(d, { alt, costaMinMn: alt.excluida ? null : seguranca.distanciaRotaCosta(costa, alt.pontos)?.mn ?? null })
-    }
-    return geometrias.get(d)
+  // As alternativas de um afastamento numa partida (lib/rotas.js gerarAlternativas). As que não
+  // dependem do vento (acima dos 3 MN e sem rota direta) ficam guardadas; a distância à costa de
+  // cada geometria mede-se uma vez (é a mesma em todas as partidas).
+  const fixas = new Map() // afastamento → [alt]
+  const distancias = new Map() // geometria → costaMinMn
+  const distancia = (alt) => {
+    if (alt.excluida) return null
+    const k = alt.pontos.map(p => `${p.lat},${p.lon}`).join(';')
+    if (!distancias.has(k)) distancias.set(k, seguranca.distanciaRotaCosta(costa, alt.pontos)?.mn ?? null)
+    return distancias.get(k)
+  }
+  const alternativasDe = (d, tp) => {
+    if (fixas.has(d)) return fixas.get(d)
+    const alts = rotas.gerarAlternativas(costa, { partida: partidaGeo, destino, afastamento: d, twd, horaPartida: tp, log })
+    if (d > seguranca.PADRAO.afastamentoVentoTerra && !alts.some(a => a.direto)) fixas.set(d, alts)
+    return alts
   }
   const candidatos = []
   const excluidasAgora = []
@@ -266,22 +304,25 @@ async function calcularSemRede (entrada = {}, deps = {}) {
     const tp = horas[k]
     progresso(0.05 + 0.75 * k / horas.length, `a simular a partida ${decisao.quando(tp, agora, o.fuso)} (${k + 1} de ${horas.length})`)
     await ceder()
+    let direta = false // a rota direta é a mesma a qualquer afastamento: só uma vez por partida
     for (const d of o.afastamentos) {
-      const { alt, costaMinMn } = geometria(d, tp)
-      if (alt.excluida) {
-        estat.excluidasRota++
-        if (tp === agora) excluidasAgora.push(alt.motivo)
-        continue
-      }
-      for (const prop of ['vela', 'motor']) {
-        estat.simuladas++
-        const cand = avaliarCandidato(ctx, alt, tp, prop, costaMinMn)
-        if (cand.foraDaPrevisao) { estat.foraDaPrevisao++; continue }
-        if (cand.naoChega) { estat.naoChega++; continue }
-        // "vela e motor" que nunca chega a pôr as velas (vento fraco em todos os cenários) é a
-        // mesma passagem que "só motor": fica só a de motor, para as 3 melhores não se repetirem
-        if (prop === 'vela' && CENARIOS.every(n => cand.resumos[n].horasVela === 0)) { estat.velaSemVela++; continue }
-        candidatos.push(cand)
+      for (const alt of alternativasDe(d, tp)) {
+        if (alt.direto) { if (direta) continue; direta = true }
+        if (alt.excluida) {
+          estat.excluidasRota++
+          if (tp === agora) excluidasAgora.push(alt.motivo)
+          continue
+        }
+        for (const prop of ['vela', 'motor']) {
+          estat.simuladas++
+          const cand = avaliarCandidato(ctx, alt, tp, prop, distancia(alt))
+          if (cand.foraDaPrevisao) { estat.foraDaPrevisao++; continue }
+          if (cand.naoChega) { estat.naoChega++; continue }
+          // "vela e motor" que nunca chega a pôr as velas (vento fraco em todos os cenários) é a
+          // mesma passagem que "só motor": fica só a de motor, para as 3 melhores não se repetirem
+          if (prop === 'vela' && CENARIOS.every(n => cand.resumos[n].horasVela === 0)) { estat.velaSemVela++; continue }
+          candidatos.push(cand)
+        }
       }
     }
   }
@@ -301,9 +342,9 @@ async function calcularSemRede (entrada = {}, deps = {}) {
     if (perto) {
       const ctxA = { ...ctx, destino: perto.d }
       for (const af of [5, 8]) {
-        const alt = rotas.gerarRota(costa, { partida: partidaGeo, destino: perto.d, afastamento: af })
+        const alt = rotas.gerarRota(costa, { partida: partidaGeo, destino: perto.d, afastamento: af, twd, horaPartida: agora, log })
         if (alt.excluida) continue
-        const cand = avaliarCandidato(ctxA, alt, agora, 'vela', seguranca.distanciaRotaCosta(costa, alt.pontos)?.mn ?? null)
+        const cand = avaliarCandidato(ctxA, alt, agora, 'vela', distancia(alt))
         if (cand.resumos) { abrigo = { destino: perto.d, candidato: cand }; break }
       }
     }
