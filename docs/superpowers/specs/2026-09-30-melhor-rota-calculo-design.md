@@ -32,7 +32,7 @@ Um plugin SignalK, `signalk-arlequin-rota`, que, dado um destino e a tripulaçã
 ## Ajustes à Parte 2 (AI), incluídos neste plano
 
 1. **Modelos de planeamento** em `software/arlequin-ia/arlequin_ia/treino.py`:
-   - **velocidade**: variáveis `prevTws` (vento previsto corrigido, em nós), `twaAbs`, `prevRajada`, `prevOndas`, `prevPeriodo`, `ondasAnguloRel`, `grandeRizos`, `genoaPct`. Saem `tws` medido, `rajada` medida, `adornoAbs`, `balAdorno` e `balCaimento`.
+   - **velocidade**: variáveis `prevTws` (vento previsto em bruto, em nós), `twaAbs`, `prevRajada`, `prevOndas`, `prevPeriodo`, `ondasAnguloRel`, `grandeRizos`, `genoaPct`. Saem `tws` medido, `rajada` medida, `adornoAbs`, `balAdorno` e `balCaimento`.
      - Para aprender com a velocidade real contra o vento previsto, o treino usa o `prevTws` da linha, que é a **previsão em bruto**, sem a correção da AI.
      - Linhas sem previsão não entram no treino. Assim a AI aprende "com esta previsão, andaste X".
      - No planeamento, este modelo recebe também a **previsão em bruto**. A correção do vento (`ventoForca`/`ventoDirecao`) serve para a polar, as regras de segurança, a decisão do motor e o que se mostra ao Ivo, mas **não entra no modelo da velocidade**, para não ser contada duas vezes.
