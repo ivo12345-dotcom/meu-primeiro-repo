@@ -88,6 +88,11 @@ test('vento abaixo de 7 nós: motor a 2100 rpm e 4,3 nós; velocidade à vela < 
   assert.equal(PADRAO.rpmCruzeiro, 2100)
   const lenta = simularPassagem(base({ velocidadeVela: () => 3 })) // 3 × 0,85 < 3
   assert.equal(lenta.resumo.horasVela, 0)
+  // o consumo recebe também a proa (para o ângulo às ondas do modelo do consumo)
+  const vistos = []
+  simularPassagem(base({ tempo: ventoFixo(5, 270), consumo: (x) => { vistos.push(x); return 2 } }))
+  assert.equal(vistos[0].rpm, 2100)
+  assert.ok(Math.abs(vistos[0].rumo) < 1e-9 || Math.abs(vistos[0].rumo - 360) < 1e-9) // rota para norte
   // o mar tira velocidade: ondas de 3 m → 0,92
   const mar = simularPassagem(base({ tempo: ventoFixo(5, 270, { ondas: 3 }) }))
   assert.ok(Math.abs(mar.pontos[0].stw - 4.3 * 0.92) < 1e-12)
