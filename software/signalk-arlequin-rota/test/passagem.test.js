@@ -19,7 +19,7 @@ const gz = (f) => JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(FIXTURES,
 // ---------- o simular.mjs de 29/09 (resultado de referência gravado com o código antigo) ----------
 
 test('reproduz o simular.mjs de 29/09 (Algés → Peniche, partida 15:32): resumo e linha do tempo iguais', async () => {
-  const { simular, parsePartida } = await import('file://' + path.join(SW, 'ferramentas', 'passagem', 'simular.mjs').replace(/\\/g, '/'))
+  const { simular, parsePartida, ROTA, COSTA } = await import('file://' + path.join(SW, 'ferramentas', 'passagem', 'simular.mjs').replace(/\\/g, '/'))
   const met = gz('meteo-simular-2026-09-29.json.gz')
   const ref = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'simular-2026-09-29-resumo.json'), 'utf8'))
   const partida = parsePartida('2026-09-29T15:32') // hora de Lisboa, como o comando da Task 4
@@ -37,6 +37,16 @@ test('reproduz o simular.mjs de 29/09 (Algés → Peniche, partida 15:32): resum
   const semPeriodo = (p) => { const { periodo, ...resto } = p; return resto }
   assert.deepEqual(JSON.parse(JSON.stringify(r.pontos)).map(semPeriodo), gz('simular-2026-09-29-passagem.json.gz'))
   assert.equal(ref.chegada, '2026-09-30T05:00:00.000Z')
+  // rota.json (só nome/lat/lon + COSTA): igual ao gravado. Barato de comparar porque ROTA/COSTA
+  // são exportados e não dependem da meteorologia nem da partida (principal() escreve o mesmo).
+  const rotaJson = { ROTA: ROTA.map(({ nome, lat, lon }) => ({ nome, lat, lon })), COSTA }
+  const rotaRef = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'simular-rota.json'), 'utf8'))
+  assert.deepEqual(rotaJson, rotaRef)
+  // stdout do `principal()` não se testa aqui: o seu texto é só console.log de r.resumo, já
+  // coberto pelo deepEqual acima, e correr principal() em si exige simular um processo à parte
+  // (o argv-guard `PRINCIPAL` e a escrita de ficheiros), o que não é barato e reestruturar
+  // simular.mjs para o tornar testável em processo está fora do âmbito desta ronda (simular.mjs
+  // só muda no cabeçalho).
   // limite largo (era 2000 ms): não pode marcar falso num Raspberry Pi sob carga
   assert.ok(ms < 10000, `${ms} ms`)
 })
