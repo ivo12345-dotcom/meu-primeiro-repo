@@ -277,6 +277,7 @@ test('"Sair agora" com vento sem previsão em parte da rota (cenários + passage
   const { criarCenarios } = require('../lib/cenarios')
   const { simularPassagem } = require('../lib/passagem')
   const { carregarPolar } = require('../lib/base')
+  const { criarEnergia } = require('../lib/energia')
   // 12 nós de través até 39,05°; daí para norte a previsão não tem vento nem rajada
   const tempoBruto = (lat) => (lat < 39.05
     ? { tws: 12, rajada: 15, twd: 270, chuva: 0, visibilidade: 20000, radiacao: 0, ondas: 1, periodo: 8, ondasDir: 270, corrente: 0, correnteDir: 0 }
@@ -285,7 +286,7 @@ test('"Sair agora" com vento sem previsão em parte da rota (cenários + passage
   const alternativa = { afastamento: 5, excluida: false, avisos: [], pontos: [{ nome: 'A', lat: 39, lon: -9.5, costaLivre: true }, { nome: 'B', lat: 39 + 10 / 60, lon: -9.5, perna: 'linha' }] }
   const sim = {}
   for (const n of ['pessimista', 'provavel']) {
-    sim[n] = simularPassagem({ rota: alternativa.pontos, partida: Date.UTC(2026, 8, 29, 12), tempo: k[n].tempo, velocidadeVela: k[n].velocidadeVela, consumo: k[n].consumo, noite: () => false, opcoes: { motorNasAproximacoes: false } })
+    sim[n] = simularPassagem({ rota: alternativa.pontos, partida: Date.UTC(2026, 8, 29, 12), tempo: k[n].tempo, velocidadeVela: k[n].velocidadeVela, consumo: k[n].consumo, noite: () => false, energia: criarEnergia({ socInicial: 0.9 }), opcoes: { motorNasAproximacoes: false } })
   }
   const pe = sim.pessimista
   assert.equal(pe.resumo.chegou, true)
@@ -330,4 +331,23 @@ test('alternativa não direta com a distância à costa desconhecida (null): exc
   // a direta (sem linha) não tem esta regra
   const direta = { ...semLinha, afastamento: null, direto: true, costaMinMn: 1.2 }
   assert.equal(s.avaliar(base({ alternativa: direta, costa: null, costaMinMn: null })).excluida, false)
+})
+
+test('gasóleo inicial ou bateria à chegada desconhecidos: aviso vermelho (não se salta a regra em silêncio)', () => {
+  for (const sairAgora of [false, true]) {
+    const semGasoleo = s.avaliar(base({ sairAgora, gasoleoInicial: undefined }))
+    assert.equal(semGasoleo.excluida, false)
+    assert.deepEqual(semGasoleo.avisosVermelhos, ['gasóleo inicial desconhecido: confirma o depósito'])
+    assert.deepEqual(semGasoleo.motivos, [])
+    const semBateria = s.avaliar(base({ sairAgora, pessimista: passagem({ resumo: { socFinal: null } }) }))
+    assert.equal(semBateria.excluida, false)
+    assert.deepEqual(semBateria.avisosVermelhos, ['bateria à chegada desconhecida'])
+    // o gasto do pessimista não é número: o gasóleo à chegada também é desconhecido
+    const semGasto = s.avaliar(base({ sairAgora, pessimista: passagem({ resumo: { gasoleoGasto: NaN } }) }))
+    assert.deepEqual(semGasto.avisosVermelhos, ['gasóleo à chegada desconhecido'])
+    assert.ok(!JSON.stringify(semGasto.avisosVermelhos).match(/NaN|null/))
+  }
+  assert.deepEqual(s.avaliar(base({ gasoleoInicial: null })).avisosVermelhos, ['gasóleo inicial desconhecido: confirma o depósito'])
+  // com os dois conhecidos e bons, nenhum aviso vermelho
+  assert.deepEqual(s.avaliar(base()).avisosVermelhos, [])
 })

@@ -26,7 +26,8 @@
 //     do provável) de vento, rajada ou ondas em parte da rota — desconhecido não é calmo. Outros
 //     campos sem dados, e os `aproximado` (vieram de um ponto de previsão mais longe), só dão um
 //     aviso (avisos[]);
-//   - gasóleo < 40 L ou bateria < 50% à chegada, no cenário pessimista.
+//   - gasóleo < 40 L ou bateria < 50% à chegada, no cenário pessimista. O gasóleo inicial ou a
+//     bateria à chegada desconhecidos (não números) dão sempre um aviso vermelho, sem excluir.
 // "Não recomendada sozinho" (só com tripulação "so"), no cenário pessimista:
 //   - vento médio > 22 nós, rajadas > 30 ou ondas > 3 m;
 //   - mais de 8 h equivalentes ao leme: todas as horas contam, à vela e a motor, e o motor
@@ -214,15 +215,19 @@ function avaliar ({ alternativa, pessimista, provavel, destino, tripulacao, sair
   if (outros.length) out.avisos.push(`sem previsão de ${lista(outros)} em parte da rota`)
   if (inc.aproximado.size) out.avisos.push(`previsão de ${lista([...inc.aproximado])} aproximada em parte da rota (de um ponto de previsão mais longe)`)
   // gasóleo e bateria à chegada, no pessimista
-  if (Number.isFinite(gasoleoInicial)) {
-    const fica = gasoleoInicial - r.gasoleoGasto
-    if (fica < o.gasoleoMinL) vermelho.push(`chegas com ${inteiro(Math.max(0, fica))} L de gasóleo no pior caso (mínimo ${o.gasoleoMinL} L)`)
-  }
-  if (Number.isFinite(r.socFinal) && r.socFinal * 100 < o.bateriaMinPct) vermelho.push(`chegas com a bateria a ${inteiro(r.socFinal * 100)}% no pior caso (mínimo ${o.bateriaMinPct}%)`)
+  // (desconhecidos: aviso vermelho sempre, que não exclui — o Ivo confirma-os a bordo)
+  const desconhecido = []
+  const fica = gasoleoInicial - r.gasoleoGasto
+  if (!Number.isFinite(gasoleoInicial)) desconhecido.push('gasóleo inicial desconhecido: confirma o depósito')
+  else if (!Number.isFinite(fica)) desconhecido.push('gasóleo à chegada desconhecido')
+  else if (fica < o.gasoleoMinL) vermelho.push(`chegas com ${inteiro(Math.max(0, fica))} L de gasóleo no pior caso (mínimo ${o.gasoleoMinL} L)`)
+  if (!Number.isFinite(r.socFinal)) desconhecido.push('bateria à chegada desconhecida')
+  else if (r.socFinal * 100 < o.bateriaMinPct) vermelho.push(`chegas com a bateria a ${inteiro(r.socFinal * 100)}% no pior caso (mínimo ${o.bateriaMinPct}%)`)
   if (vermelho.length) {
     if (sairAgora) out.avisosVermelhos.push(...vermelho)
     else { out.excluida = true; out.motivos.push(...vermelho) }
   }
+  out.avisosVermelhos.push(...desconhecido)
   out.horasLemeEq = horasLemeEquivalentes(pessimista.pontos, o)
   const ultimoPe = pessimista.pontos.at(-1)
   const ultimoPr = provavel?.pontos?.at(-1)
