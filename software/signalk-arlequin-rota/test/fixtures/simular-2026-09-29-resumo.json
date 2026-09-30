@@ -1,0 +1,130 @@
+{
+  "partida": "2026-09-29T14:32:00.000Z",
+  "chegada": "2026-09-30T05:00:00.000Z",
+  "chegou": true,
+  "duracaoH": 14.466666666666667,
+  "milhas": 61.350643898820216,
+  "horasVela": 8.966666666666667,
+  "horasMotor": 5.5,
+  "horasNoite": 10.616666666666667,
+  "gasoleoGasto": 7.149999999998187,
+  "socFinal": 0.9885962888492729,
+  "socMin": 0.9020762720470504,
+  "ventoMax": 18.575687499582337,
+  "rajadaMax": 26.377606907510042,
+  "ondasMax": 2.68,
+  "viragens": 0,
+  "cambadelas": 4,
+  "horasLemeSeguidas": 8.966666666666692,
+  "costaMinMn": 1.07704672148117,
+  "eventos": [
+    {
+      "t": 1790692320000,
+      "texto": "Partida de Algés a motor (15:32). Maré: enchente fraca contra até ao estofo (~17:20)",
+      "tipo": "partida"
+    },
+    {
+      "t": 1790696580000,
+      "texto": "Barra Norte: 4,1 MN feitas",
+      "tipo": "wp"
+    },
+    {
+      "t": 1790696640000,
+      "texto": "Rizar: 1 rizo (vento 12 nós, rajadas 24)",
+      "tipo": "vela"
+    },
+    {
+      "t": 1790696640000,
+      "texto": "Motor desligado, à vela (vento 12 nós de 181°)",
+      "tipo": "motor"
+    },
+    {
+      "t": 1790697900000,
+      "texto": "Largo de Carcavelos: 5,7 MN feitas",
+      "tipo": "wp"
+    },
+    {
+      "t": 1790701500000,
+      "texto": "Largo de Cascais: 10,5 MN feitas",
+      "tipo": "wp"
+    },
+    {
+      "t": 1790703600000,
+      "texto": "Largar rizo: 0 rizos (vento 9 nós, rajadas 20)",
+      "tipo": "vela"
+    },
+    {
+      "t": 1790706180000,
+      "texto": "Pôr do sol (19:23): ecrã em modo noite, luzes de navegação",
+      "tipo": "noite"
+    },
+    {
+      "t": 1790707380000,
+      "texto": "Largo do Cabo Raso: 17,9 MN feitas",
+      "tipo": "wp"
+    },
+    {
+      "t": 1790710740000,
+      "texto": "Rizar: 1 rizo (vento 14 nós, rajadas 20)",
+      "tipo": "vela"
+    },
+    {
+      "t": 1790712300000,
+      "texto": "Largo da Roca: 23,8 MN feitas",
+      "tipo": "wp"
+    },
+    {
+      "t": 1790722500000,
+      "texto": "Largo da Ericeira: 36,4 MN feitas",
+      "tipo": "wp"
+    },
+    {
+      "t": 1790727660000,
+      "texto": "Motor ligado (vento 9 nós: sem vento para andar)",
+      "tipo": "motor"
+    },
+    {
+      "t": 1790727960000,
+      "texto": "Largar rizo: 0 rizos (vento 8 nós, rajadas 20)",
+      "tipo": "vela"
+    },
+    {
+      "t": 1790727960000,
+      "texto": "Motor desligado, à vela (vento 8 nós de 231°)",
+      "tipo": "motor"
+    },
+    {
+      "t": 1790729220000,
+      "texto": "Motor ligado (vento 7 nós: sem vento para andar)",
+      "tipo": "motor"
+    },
+    {
+      "t": 1790731800000,
+      "texto": "Largo de Santa Cruz: 46,5 MN feitas",
+      "tipo": "wp"
+    },
+    {
+      "t": 1790739840000,
+      "texto": "Largo de Peniche: 55,8 MN feitas",
+      "tipo": "wp"
+    },
+    {
+      "t": 1790743020000,
+      "texto": "Peniche Sul: 59,7 MN feitas",
+      "tipo": "wp"
+    },
+    {
+      "t": 1790744340000,
+      "texto": "Peniche (porto): 61,4 MN feitas",
+      "tipo": "wp"
+    },
+    {
+      "t": 1790744400000,
+      "texto": "Chegada a Peniche (06:00)",
+      "tipo": "chegada"
+    }
+  ],
+  "meteoObtida": "2026-09-30T08:28:13.907Z",
+  "porDoSol": 1790706180000,
+  "nascer": 1790749920000
+}

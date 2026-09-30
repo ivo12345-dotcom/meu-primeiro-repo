@@ -1,10 +1,14 @@
 // Simulação de uma passagem do Arlequin com a meteorologia REAL (Open-Meteo):
 // vento, rajadas, ondas, corrente, chuva/visibilidade, maré no Tejo (aprox.),
 // polar do Arlequin, leme à mão (sem piloto), motor, energia e alarmes do sistema.
-//   node simular.mjs [partida ISO local]  → passagem.json + resumo.json
+//   node simular.mjs [partida ISO local] [--dia AAAA-MM-DD] [--meteo f.json[.gz]] [--guardar-meteo f.json[.gz]]
+//     → passagem.json + resumo.json
+//   --dia: previsão de um dia passado (arquivo da Open-Meteo, esse dia e o seguinte)
+//   --meteo: corre com a meteorologia gravada (sem rede); --guardar-meteo: grava a que usou
 // Tudo o que é estimativa está assinalado no resumo.
 
 import { readFileSync, writeFileSync } from 'node:fs'
+import { gzipSync, gunzipSync } from 'node:zlib'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -16,6 +20,16 @@ const { lerPolar, velocidadeAlvo } = await import('file://' + path.join(sw, 'arl
 const { criarModelo, avancar } = require(path.join(sw, 'arlequin-simulador/lib/modelo.js'))
 const { novoEstado, avaliar } = require(path.join(sw, 'signalk-arlequin-energia/lib/regras.js'))
 const { litrosHora } = require(path.join(sw, 'signalk-arlequin-j1939/lib/consumo.js'))
+
+// Argumentos: [partida] --dia AAAA-MM-DD --meteo f --guardar-meteo f
+const ARGS = {}
+for (let i = 2; i < process.argv.length; i++) {
+  const a = process.argv[i]
+  if (a === '--dia') ARGS.dia = process.argv[++i]
+  else if (a === '--meteo') ARGS.meteo = process.argv[++i]
+  else if (a === '--guardar-meteo') ARGS.guardarMeteo = process.argv[++i]
+  else ARGS.partida = a
+}
 
 const NO = 1852 / 3600
 const GRAU = Math.PI / 180
@@ -77,12 +91,26 @@ function vetor (a, b) {
 // Meteorologia ao largo, onde a rota passa (vento e ondas lá fora são maiores).
 const PONTOS = [{ lat: 38.68, lon: -9.35 }, { lat: 38.78, lon: -9.62 }, { lat: 38.97, lon: -9.55 }, { lat: 39.30, lon: -9.47 }]
 async function meteorologia () {
+  if (ARGS.meteo) return lerJson(ARGS.meteo)
   const lat = PONTOS.map(p => p.lat).join(',')
   const lon = PONTOS.map(p => p.lon).join(',')
-  const v = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,visibility,cloud_cover&wind_speed_unit=kn&timezone=Europe%2FLisbon&forecast_days=2`)).json()
-  const m = await (await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height,wave_period,wave_direction,ocean_current_velocity,ocean_current_direction&timezone=Europe%2FLisbon&forecast_days=2`)).json()
-  const s = await (await fetch('https://api.open-meteo.com/v1/forecast?latitude=38.9&longitude=-9.45&daily=sunrise,sunset&timezone=Europe%2FLisbon&forecast_days=2')).json()
-  return { v, m, s, obtida: new Date().toISOString() }
+  // dias: os próximos 2, ou (--dia) esse dia e o seguinte, do arquivo de previsões da Open-Meteo
+  const dias = ARGS.dia ? `start_date=${ARGS.dia}&end_date=${new Date(Date.parse(ARGS.dia) + 86400000).toISOString().slice(0, 10)}` : 'forecast_days=2'
+  const v = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,visibility,cloud_cover&wind_speed_unit=kn&timezone=Europe%2FLisbon&${dias}`)).json()
+  const m = await (await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height,wave_period,wave_direction,ocean_current_velocity,ocean_current_direction&timezone=Europe%2FLisbon&${dias}`)).json()
+  const s = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=38.9&longitude=-9.45&daily=sunrise,sunset&timezone=Europe%2FLisbon&${dias}`)).json()
+  const met = { v, m, s, obtida: new Date().toISOString() }
+  if (ARGS.guardarMeteo) escreverJson(ARGS.guardarMeteo, met)
+  return met
+}
+
+function lerJson (f) {
+  const b = readFileSync(f)
+  return JSON.parse(f.endsWith('.gz') ? gunzipSync(b) : b)
+}
+function escreverJson (f, o) {
+  const b = Buffer.from(JSON.stringify(o))
+  writeFileSync(f, f.endsWith('.gz') ? gzipSync(b) : b)
 }
 
 // Interpola no tempo (hora) e no espaço (latitude entre os 4 pontos).
@@ -240,7 +268,7 @@ async function simular (partida) {
   return { resumo, pontos }
 }
 
-const partida = process.argv[2] ? new Date(process.argv[2]).getTime() : Date.now() + 3600000
+const partida = ARGS.partida ? new Date(ARGS.partida).getTime() : Date.now() + 3600000
 const r = await simular(partida)
 writeFileSync(path.join(aqui, 'passagem.json'), JSON.stringify(r.pontos))
 writeFileSync(path.join(aqui, 'resumo.json'), JSON.stringify(r.resumo, null, 2))
