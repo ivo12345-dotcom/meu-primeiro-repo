@@ -1185,17 +1185,25 @@ node software/ferramentas/sincronizar/sincronizar.mjs --host pi@arlequin
 ### AI a bordo (plugin `signalk-arlequin-ia` + pacote `software/arlequin-ia`)
 
 - **Instalar no Pi** (uma vez):
+  - **Onde ficam as coisas:** o repositório clonado no Pi (por exemplo em `~/arlequin`) e os plugins instalados a partir dele, no `~/.signalk`, com `npm install <caminho>` (dependência `file:`) ou com um atalho (symlink) para a pasta do plugin. Assim o plugin `signalk-arlequin-ia` encontra o pacote Python em `../arlequin-ia` e o ecrã a polar em `arlequin-ecra/public/`, ao lado.
+  - Se copiares o plugin para outro sítio, põe na configuração do plugin **`pastaIa`** = a pasta `software/arlequin-ia` do repositório. Sem isso, o plugin diz "não encontro o pacote arlequin-ia em …: configura pastaIa" e não treina (o arquivo da previsão continua).
+  - O ambiente do Python:
 
-  ```
-  python3 -m venv ~/arlequin-ia-venv && ~/arlequin-ia-venv/bin/pip install -r software/arlequin-ia/requirements.txt
-  ```
+    ```
+    python3 -m venv ~/arlequin-ia-venv && ~/arlequin-ia-venv/bin/pip install -r ~/arlequin/software/arlequin-ia/requirements.txt
+    ```
 
-  Depois, na configuração do plugin, pôr `python` = `/home/pi/arlequin-ia-venv/bin/python`.
+    Depois, na configuração do plugin, pôr **`python`** = o Python do venv, `~/arlequin-ia-venv/bin/python` escrito por inteiro (ex.: `/home/pi/arlequin-ia-venv/bin/python`). **`/home/pi` pode ser outro:** é a pasta do utilizador que corre o SignalK (`echo $HOME`).
+  - As versões testadas estão fixas no `requirements.txt` (LightGBM 4.7.0, pandas 3.0.3, numpy 2.4.6).
 - **O que faz sozinho:**
   - guarda a previsão Open-Meteo para a posição do barco sempre que há rede (de hora a hora a navegar, de 3 em 3 h parado);
   - depois de cada saída, quando o barco está parado há 1 h, treina os modelos com prioridade baixa.
-- **O que aprende:** a velocidade real do Arlequin contigo ao leme, em quanto a previsão do vento falha (força e direção) e o gasóleo real. O simulador nunca ensina.
-- **Quando começa a valer:** precisa de pelo menos 5 h de navegação estável e 2 saídas. Até lá o ecrã diz "a aprender" e usa-se a polar de origem.
-- **No ecrã:** no Diário, o cartão "AI" mostra a versão em uso e o que aprendeu. Tem "Treinar agora" e "Voltar atrás", se um modelo novo te parecer pior.
+- **O que aprende:**
+  - a velocidade real do Arlequin contigo ao leme, **só à vela**: precisa das velas marcadas na página **Velas** (a grande arriada e a genoa enrolada contam como "a motor", mesmo sem rotações do motor);
+  - em quanto a previsão do vento falha (força e direção);
+  - o gasóleo real, **só quando o motor dá o caudal medido** (PGN 65266 do MDI). A estimativa pela curva da Volvo não ensina nada: era a própria curva.
+  - O simulador nunca ensina.
+- **Quando começa a valer:** precisa de pelo menos 5 h de navegação estável e 2 saídas. Até lá o ecrã diz "a aprender" e usa-se a polar de origem. O 1.º modelo da velocidade pode precisar de **umas 8 h de vela variada** (ventos e ângulos diferentes) até errar menos do que a polar e entrar em uso. A última saída serve de teste; se tiver menos de 1 h, junta-se a anterior.
+- **No ecrã:** no Diário, o cartão "AI" mostra a versão em uso, o que aprendeu e o estado da previsão ("previsão: última HH:MM" ou "sem rede"). Tem "Treinar agora" e, quando há uma versão anterior que esteve em uso, "Voltar atrás", se um modelo novo te parecer pior.
 
 **Velas:** na página **Velas** do ecrã, toca no estado da grande e da genoa sempre que mudares. A AI precisa disto para aprender, e o ecrã lembra-te se o vento mudar muito.

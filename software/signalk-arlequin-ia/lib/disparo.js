@@ -5,6 +5,7 @@
 const NO = 1852 / 3600
 const HORA = 3600000
 
+// sog em m/s; rpm é o propulsion.main.revolutions, em Hz (5 Hz = 300 rpm), null sem leitura.
 function avaliarDisparo (e0, { agora, sog, rpm, ultimaSaidaMs, ultimoTreinoMs }) {
   const parado = !((sog ?? 0) >= 0.5 * NO) && !(rpm > 5)
   const e = { paradoDesde: parado ? (e0.paradoDesde ?? agora) : null }

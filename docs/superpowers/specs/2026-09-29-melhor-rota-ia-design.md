@@ -58,7 +58,7 @@ Plugin SignalK. Grava **desde o primeiro dia** em `~/arlequin-dados/`:
 | `saidas/` | resumo por saída (deteção: motor ligado e o barco a mais de 0,5 MN do porto) | JSON |
 
 - **Subscreve tudo o que passa no servidor**, e não só as ligações de entrada, porque os valores calculados pelos plugins também contam. O registo de dados de raiz do SignalK pode ficar ligado em paralelo para guardar o NMEA em bruto.
-- **Colunas da tabela:** hora, lat, lon, proa, COG, SOG, STW, TWS, TWA, TWD, AWS, AWA, rajada (máximo de 2 min), adorno, caimento, pressão, rotação do motor, consumo L/h, estado das velas (`grandeRizos`, `genoaPct`), previsão para o sítio e a hora (vento, rajada, direção, ondas, período, direção das ondas, corrente), profundidade, SoC, `simulado`, `estavel`.
+- **Colunas da tabela:** hora, lat, lon, proa, COG, SOG, STW, TWS, TWA, TWD, AWS, AWA, rajada (máximo de 2 min), adorno, caimento, pressão, rotação do motor, consumo L/h, estado das velas (`grandeRizos`, `genoaPct`), previsão para o sítio e a hora (vento, rajada, direção, ondas, período, direção das ondas, corrente), profundidade, SoC, `simulado`, `estavel` e, no fim (desde 30/09), `consumoMedido` (1 = consumo medido pelo MDI, 0 = estimado pela curva, vazio = sem origem).
 - **`estavel`:** 2 min seguidos com a proa a variar menos de 10°, sem viragem ou cambadela, STW acima de 1 nó, a mais de 0,5 MN de qualquer porto e sem alarme de sensor.
 - **`simulado`:** fica verdadeiro quando os dados vêm do `arlequin-simulador`, pela fonte ou porque o plugin está ativo. **Nunca entra no treino.**
 - **Estado das velas:** novos botões grandes na página "Velas":
@@ -118,7 +118,7 @@ Todos são LightGBM com **regressão por quantis: P10, P50 e P90** (pessimista, 
 
 ### Treino
 
-- Usa só linhas com `estavel` verdadeiro, `simulado` falso e sensores sem alarme.
+- Usa só linhas com `estavel` verdadeiro, `simulado` falso e sensores sem alarme (implementado como: proa, STW e TWS com valores frescos na janela de 2 min do `estavel`).
 - **Quando:**
   - sozinho, no porto, com o motor parado há 1 h e dados novos desde o último treino;
   - ou com o botão **"Treinar agora"** (cartão AI no Diário).
@@ -127,7 +127,7 @@ Todos são LightGBM com **regressão por quantis: P10, P50 e P90** (pessimista, 
 - **Aceitação:** o modelo novo só passa a ser o atual se o erro P50 (MAE) na última saída for **≤** ao do modelo atual. Se não, fica guardado mas não é usado.
 - **Arranque do zero:** o 1.º modelo precisa de pelo menos 5 h de dados estáveis. Antes disso usa-se a polar de origem.
 - **Versões:**
-  - `modelos/<nome>/v0001.json`, … e `modelos/<nome>/atual` (aponta para a versão em uso);
+  - `modelos/<nome>/v0001.json.gz`, … e `modelos/<nome>/atual` (aponta para a versão em uso);
   - `modelos/registo.json` com a data, as horas de dados, as métricas e se foi aceite;
   - voltar a uma versão anterior é um toque no cartão AI.
 - **Revisão pelo Claude:** pelo Tailscale, com o histórico todo. Pode limpar dados, criar variáveis e treinar de novo. O modelo que fizer passa **pelo mesmo teste de aceitação**.

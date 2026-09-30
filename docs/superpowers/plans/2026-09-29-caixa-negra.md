@@ -2106,7 +2106,7 @@ Depois de 3 minutos:
 - `curl -s http://localhost:3000/plugins/signalk-arlequin-caixanegra/estado`
   - Expected: `bruto.ficheiros ≥ 1`, `ultimaLinha` recente, `erros: 0`, `disco.usadoPct` real.
 - `node -e "const z=require('zlib'),fs=require('fs');const f=fs.readdirSync('arlequin-dados/tabela')[0];const l=z.gunzipSync(fs.readFileSync('arlequin-dados/tabela/'+f)).toString().trim().split('\n');console.log(l.length,l[0]);console.log(l.at(-1))"`
-  - Expected: cabeçalho com as 24 colunas e a última linha com `simulado=1` e `estavel=0`, porque o simulador está ligado.
+  - Expected: cabeçalho com as 24 colunas (25 desde 30/09, com `consumoMedido` no fim) e a última linha com `simulado=1` e `estavel=0`, porque o simulador está ligado.
 
 - [ ] **Step 3: Ecrã: os botões das velas ao vivo**
 
