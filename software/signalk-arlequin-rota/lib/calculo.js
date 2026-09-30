@@ -33,7 +33,7 @@ const c = require('./costa')
 const rotas = require('./rotas')
 const prev = require('./previsao')
 const mare = require('./mare')
-const { simularPassagem, noitePeloSol } = require('./passagem')
+const passagem = require('./passagem') // passagem.simularPassagem pelo módulo (os testes contam as simulações)
 const { criarEnergia } = require('./energia')
 const { nasceresPores } = require('./sol')
 const { criarCenarios, notaIa, NOMES: CENARIOS } = require('./cenarios')
@@ -82,28 +82,32 @@ function resolverDestino (costa, destino) {
   return { erro: 'falta o destino' }
 }
 
-// Simula as 3 passagens (cenários) de uma geometria. prop: 'vela' | 'motor'.
-function simular3 (ctx, alt, partida, prop, { guardarPontos = true } = {}) {
-  const out = {}
-  for (const nome of CENARIOS) {
-    const k = ctx.cenarios[nome]
-    const opcoes = { ...ctx.o.passagem, rpmCruzeiro: ctx.o.rpmCruzeiro, gasoleoInicial: ctx.gasoleoInicial, fuso: ctx.o.fuso, nomeChegada: ctx.destino.nome }
-    if (prop === 'motor') opcoes.limiarVentoMotor = Infinity // só motor
-    const r = simularPassagem({
-      rota: alt.pontos,
-      partida,
-      tempo: k.tempo,
-      correnteExtra: ctx.correnteExtra,
-      velocidadeVela: k.velocidadeVela,
-      consumo: k.consumo,
-      noite: ctx.noite,
-      energia: criarEnergia({ ...ctx.o.energia, socInicial: ctx.soc }),
-      opcoes
-    })
-    out[nome] = guardarPontos ? r : { resumo: r.resumo, pontos: r.pontos }
-  }
-  return out
+// Simula a passagem de uma geometria num cenário (nome). prop: 'vela' | 'motor'.
+function simular (ctx, alt, partida, prop, nome) {
+  const k = ctx.cenarios[nome]
+  const opcoes = { ...ctx.o.passagem, rpmCruzeiro: ctx.o.rpmCruzeiro, gasoleoInicial: ctx.gasoleoInicial, fuso: ctx.o.fuso, nomeChegada: ctx.destino.nome }
+  if (prop === 'motor') opcoes.limiarVentoMotor = Infinity // só motor
+  return passagem.simularPassagem({
+    rota: alt.pontos,
+    partida,
+    tempo: k.tempo,
+    correnteExtra: ctx.correnteExtra,
+    velocidadeVela: k.velocidadeVela,
+    consumo: k.consumo,
+    noite: ctx.noite,
+    energia: criarEnergia({ ...ctx.o.energia, socInicial: ctx.soc }),
+    opcoes
+  })
 }
+
+// As 3 passagens (cenários) de uma geometria.
+function simular3 (ctx, alt, partida, prop) {
+  return Object.fromEntries(CENARIOS.map(nome => [nome, simular(ctx, alt, partida, prop, nome)]))
+}
+
+// O rasto provável de um candidato, simulado outra vez (os candidatos não guardam os rastos, que
+// pesam): só para as 3 melhores (a linha do tempo, e a desistência da 1.ª).
+const simularProvavel = (ctx, cand) => simular(ctx, cand.geometria, cand.partida, cand.propulsao, 'provavel')
 
 // O id de uma alternativa: "20260930T0530-5mn-vela", "…-5mn-canal-motor", "…-direto-vela"
 // (a rota direta não tem afastamento: nunca "nullmn").
@@ -212,10 +216,9 @@ function eventosComHora (eventos, fuso) {
   return eventos.map(e => ({ t: iso(e.t), hora: hm.format(e.t), tipo: e.tipo, texto: e.texto }))
 }
 
-// O objeto de uma alternativa para o resultado (com a linha do tempo do provável simulada de novo).
-function montarAlternativa (ctx, cand, desistenciaResumo) {
-  const sims = simular3(ctx, cand.geometria, cand.partida, cand.propulsao)
-  const pr = sims.provavel
+// O objeto de uma alternativa para o resultado. pr: o rasto provável (simularProvavel), para a linha
+// do tempo, os avisos e as precauções.
+function montarAlternativa (ctx, cand, pr, desistenciaResumo) {
   const R = cand.resumos
   const alt = {
     id: cand.id,
@@ -249,7 +252,7 @@ function montarAlternativa (ctx, cand, desistenciaResumo) {
     avisos: avisos.avisosDaPassagem({ passagem: pr, destino: ctx.destino, tripulacao: ctx.tripulacao, opcoes: { fuso: ctx.o.fuso } }),
     precaucoes: avisos.precaucoes({ passagem: pr, tripulacao: ctx.tripulacao, sairAgora: ctx.sairAgora, desistenciaResumo })
   }
-  return { alt, sims }
+  return alt
 }
 
 async function calcular (entrada, deps) {
@@ -311,7 +314,7 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   // noite pelo nascer e pôr do sol calculados (a meio caminho)
   const meio = { lat: (pos.lat + destino.largo[0]) / 2, lon: (pos.lon + destino.largo[1]) / 2 }
   const sol = nasceresPores(meio.lat, meio.lon, agora, Math.max(previsao.fim, agora) + 36 * H)
-  const noite = noitePeloSol(sol.nasceres, sol.pores)
+  const noite = passagem.noitePeloSol(sol.nasceres, sol.pores)
 
   const modelos = deps.modelos || {}
   const obtida = Date.parse(pv.obtida || previsao.obtida)
@@ -407,33 +410,32 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   // ---------- desistência (da melhor) e o objeto de cada alternativa ----------
   let desistencia = []
   let desistenciaResumo = null
-  let primeira = null
+  const rastos = new Map() // cand → o rasto provável (o da 1.ª serve a desistência e a alternativa)
   if (top.length) {
     progresso(0.9, 'pontos de desistência')
     await ceder()
-    const sims0 = simular3(ctx, top[0].geometria, top[0].partida, top[0].propulsao)
+    rastos.set(top[0], simularProvavel(ctx, top[0]))
     const etaMotor = (pontosRota, t0) => {
-      const r = simularPassagem({
+      const r = passagem.simularPassagem({
         rota: pontosRota, partida: t0, tempo: cenarios.provavel.tempo, correnteExtra, velocidadeVela: cenarios.provavel.velocidadeVela, consumo: cenarios.provavel.consumo, noite,
         opcoes: { ...o.passagem, rpmCruzeiro: o.rpmCruzeiro, limiarVentoMotor: Infinity, fuso: o.fuso, maxHoras: 24 }
       })
       return r.resumo.chegou ? Date.parse(r.resumo.chegada) : null
     }
     const d = await pontosDesistencia({
-      costa, rota: top[0].geometria, linhaTempo: sims0.provavel.pontos, partida: porto, destino, eta: etaMotor,
+      costa, rota: top[0].geometria, linhaTempo: rastos.get(top[0]).pontos, partida: porto, destino, eta: etaMotor,
       twd, log, opcoes: { fuso: o.fuso }
     })
     desistencia = d.pontos.map(p => ({ ...p, lat: Math.round(p.lat * 1e4) / 1e4, lon: Math.round(p.lon * 1e4) / 1e4, milhas: r1(p.milhas), abrigo: p.abrigo && { ...p.abrigo, milhas: r1(p.abrigo.milhas), rumo: Math.round(p.abrigo.rumo), twa: p.abrigo.twa == null ? null : Math.round(p.abrigo.twa) }, voltar: p.voltar && { ...p.voltar, milhas: r1(p.voltar.milhas), rumo: Math.round(p.voltar.rumo), twa: p.voltar.twa == null ? null : Math.round(p.voltar.twa) } }))
     desistenciaResumo = d.resumo
-    primeira = sims0
   }
   progresso(0.95, 'avisos e precauções')
   const alternativas = []
   for (const cand of top) {
     await ceder()
-    alternativas.push(montarAlternativa(ctx, cand, desistenciaResumo).alt)
+    alternativas.push(montarAlternativa(ctx, cand, rastos.get(cand) || simularProvavel(ctx, cand), desistenciaResumo))
   }
-  if (sairAgora && primeira && alternativas[0]?.avisosVermelhos?.length) avisosGerais.push(...alternativas[0].avisosVermelhos)
+  if (sairAgora && alternativas[0]?.avisosVermelhos?.length) avisosGerais.push(...alternativas[0].avisosVermelhos)
 
   const versoes = deps.versoes || {}
   const resultado = {

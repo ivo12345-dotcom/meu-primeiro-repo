@@ -349,3 +349,15 @@ test('o cálculo cede o event loop entre partidas e na desistência, e acaba', a
   assert.ok(r.desistencia.length >= 10)
   assert.ok(voltas >= r.estatisticas.partidas + r.desistencia.length, `${voltas} voltas do event loop (${r.estatisticas.partidas} partidas, ${r.desistencia.length} pontos de desistência)`)
 })
+
+test('sem simulações repetidas: 3 cenários por candidato e só o provável outra vez para cada uma das 3 melhores (a 1.ª também serve a desistência)', async () => {
+  const passagem = require('../lib/passagem')
+  const orig = passagem.simularPassagem
+  let n = 0
+  // as da desistência (a hora de chegada a motor a cada abrigo) têm maxHoras 24: não contam
+  passagem.simularPassagem = (a) => { if (a.opcoes?.maxHoras !== 24) n++; return orig(a) }
+  let r
+  try { r = await calcular(entrada(), deps()) } finally { passagem.simularPassagem = orig }
+  assert.equal(r.erro, undefined, r.erro)
+  assert.equal(n, 3 * r.estatisticas.simuladas + r.alternativas.length)
+})
