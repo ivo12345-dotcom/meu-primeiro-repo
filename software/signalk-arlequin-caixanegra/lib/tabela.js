@@ -18,7 +18,10 @@ const num = (x, casas) => Number.isFinite(x) ? x.toFixed(casas) : ''
 const rumo360 = (rad) => Number.isFinite(rad) ? ((rad * GRAU) % 360 + 360) % 360 : NaN
 const angulo180 = (rad) => { const d = rumo360(rad); return d > 180 ? d - 360 : d }
 
-function linha ({ v, agora, rajadaMs, simulado, estavel }) {
+function linha ({ v: valor, agora, rajadaMs, simulado, estavel }) {
+  // null no SignalK é "desconhecido" (ex.: sem rotações do motor há 5 s): em branco,
+  // nunca 0 (null * 60 dava 0, e um motor desconhecido parecia parado, à vela).
+  const v = (c) => { const x = valor(c); return x === null ? undefined : x }
   const pos = v('navigation.position') || {}
   const att = v('navigation.attitude') || {}
   const campos = {
@@ -34,7 +37,7 @@ function linha ({ v, agora, rajadaMs, simulado, estavel }) {
     twd: num(rumo360(v('environment.wind.directionTrue')), 1),
     aws: num(v('environment.wind.speedApparent') / NO, 2),
     awa: num(angulo180(v('environment.wind.angleApparent')), 1),
-    rajada: num(rajadaMs / NO, 2),
+    rajada: num(rajadaMs === null ? NaN : rajadaMs / NO, 2),
     adorno: num(att.roll * GRAU, 1),
     caimento: num(att.pitch * GRAU, 1),
     pressao: num(v('environment.outside.pressure') / 100, 1),

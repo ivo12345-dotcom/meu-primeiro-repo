@@ -84,6 +84,16 @@ test('linha da tabela em unidades de gente; vazio quando falta', () => {
   assert.equal(texto.split(',').length, tabela.COLUNAS.length)
 })
 
+test('um valor null do SignalK (desconhecido) fica em branco, nunca 0', () => {
+  const valores = { 'propulsion.main.revolutions': null, 'propulsion.main.fuel.rate': null, 'navigation.speedOverGround': null }
+  const texto = tabela.linha({ v: (c) => valores[c], agora: Date.UTC(2026, 8, 29, 14, 0, 0), rajadaMs: null, simulado: false, estavel: false })
+  const campos = Object.fromEntries(tabela.COLUNAS.map((c, i) => [c, texto.split(',')[i]]))
+  assert.equal(campos.rpm, '')
+  assert.equal(campos.litrosHora, '')
+  assert.equal(campos.sog, '')
+  assert.equal(campos.rajada, '')
+})
+
 test('ficheiro por dia: cabeçalho só no início, dia novo → ficheiro novo', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arlequin-tabela-'))
   const d1 = Date.UTC(2026, 8, 29, 23, 59, 50)

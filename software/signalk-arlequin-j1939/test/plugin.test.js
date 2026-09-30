@@ -52,7 +52,7 @@ test('tramas do simulador → valores SignalK a 1 Hz, estado e consumo estimado'
   assert.ok(Math.abs(app.valores['propulsion.main.fuel.rate'] * 3600 * 1000 - 2.0) < 1e-9) // 2400 rpm → 2,0 L/h
 })
 
-test('sem EEC1 há 5 s: motor parado (ignição desligada)', (t) => {
+test('sem EEC1 há 5 s: rotações desconhecidas (null) e motor parado (ignição desligada ou CAN em baixo)', (t) => {
   t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
   const app = appFalso()
   const p = criar(app)
@@ -60,9 +60,26 @@ test('sem EEC1 há 5 s: motor parado (ignição desligada)', (t) => {
   enviar(app, 61444, 'FFFFFF004BFFFFFF')
   t.mock.timers.tick(1000)
   assert.equal(app.valores['propulsion.main.state'], 'started')
-  t.mock.timers.tick(6000)
+  for (let s = 0; s < 6; s++) t.mock.timers.tick(1000)
+  assert.equal(app.valores['propulsion.main.revolutions'], null)
+  assert.equal(app.valores['propulsion.main.state'], 'stopped')
+  enviar(app, 61444, 'FFFFFF004BFFFFFF') // as tramas voltam: rotações reais outra vez
+  t.mock.timers.tick(1000)
   p.stop()
-  assert.equal(app.valores['propulsion.main.revolutions'], 0)
+  assert.equal(app.valores['propulsion.main.revolutions'], 40)
+})
+
+test('sem nenhuma EEC1 desde o arranque as rotações publicam-se como null, nunca 0', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ fonte: 'simulador' })
+  const vistos = []
+  const handle = app.handleMessage
+  app.handleMessage = (id, d) => { for (const u of d.updates) for (const v of u.values) if (v.path === 'propulsion.main.revolutions') vistos.push(v.value); handle(id, d) }
+  for (let s = 0; s < 3; s++) t.mock.timers.tick(1000)
+  p.stop()
+  assert.deepEqual(vistos, [null, null, null])
   assert.equal(app.valores['propulsion.main.state'], 'stopped')
 })
 

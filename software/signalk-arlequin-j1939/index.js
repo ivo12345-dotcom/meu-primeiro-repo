@@ -11,7 +11,12 @@ const { novoEstadoMotor, avaliarMotor } = require('./lib/motor')
 const { novaDescoberta, registar, alarmesDoMapa } = require('./lib/descoberta')
 const { criarDetetor, estavel, novaCurva, amostra, resumo } = require('./lib/curva')
 
-const RPM_VELHO = 5000 // sem EEC1 há 5 s = motor parado (ignição desligada)
+// Sem EEC1 há 5 s: as rotações passam a desconhecidas (null), nunca 0. Tanto pode
+// ser a ignição desligada (a ECU cala-se) como o adaptador USB-CAN solto ou o
+// candump em baixo; quem lê trata null como "motor não está a trabalhar", mas a
+// AI não pode ler isto como "à vela" (ver arlequin-ia/treino.py). O estado do
+// motor fica "stopped", como antes.
+const RPM_VELHO = 5000
 
 module.exports = function (app) {
   const plugin = {
@@ -88,7 +93,7 @@ module.exports = function (app) {
   // A 1 Hz: publica os valores, o estado, o consumo estimado e os alarmes calculados.
   function publicar () {
     const agora = Date.now()
-    if (agora - rpmEm > RPM_VELHO) { valores['propulsion.main.revolutions'] = 0; rpmAtual = 0 }
+    if (agora - rpmEm > RPM_VELHO) { valores['propulsion.main.revolutions'] = null; rpmAtual = 0 }
     const rpm = (valores['propulsion.main.revolutions'] ?? 0) * 60
     const r = avaliarMotor(estado, { rpm, temp: valores['propulsion.main.temperature'], volt: valores['propulsion.main.alternatorVoltage'] }, agora)
     estado = r.estado
