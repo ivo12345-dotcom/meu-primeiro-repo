@@ -139,6 +139,8 @@ test('no mar (a mais de 0,5 MN de um porto): parte da posição atual; sem SoC n
   assert.ok(r.avisos.includes('Sem nível do gasóleo: assumi 100 L'))
   // o gasóleo inicial desconhecido é um aviso vermelho em cada alternativa (a regra corre com os 100 L assumidos)
   for (const a of r.alternativas) assert.ok(a.avisosVermelhos.includes('gasóleo inicial desconhecido: confirma o depósito (assumi 100 L)'), JSON.stringify(a.avisosVermelhos))
+  // em "sair agora" os avisos vermelhos da 1.ª passam aos gerais, mas o gasóleo assumido só uma vez
+  assert.equal(r.avisos.filter(x => /assumi 100 L/.test(x)).length, 1, JSON.stringify(r.avisos))
   assert.equal(r.desistenciaResumo.includes('Algés'), false) // sem porto de partida: volta ao abrigo mais perto
 })
 

@@ -60,6 +60,7 @@ const PADRAO = Object.freeze({
 const iso = (t) => new Date(t).toISOString()
 const r2 = (x) => (Number.isFinite(x) ? Math.round(x * 100) / 100 : null)
 const r1 = (x) => (Number.isFinite(x) ? Math.round(x * 10) / 10 : null)
+const avisoGasoleoAssumido = (L) => `gasóleo inicial desconhecido: confirma o depósito (assumi ${L} L)`
 
 function resolverDestino (costa, destino) {
   if (typeof destino === 'string') {
@@ -172,7 +173,7 @@ function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
   // sem nível do depósito a regra corre com o valor assumido, mas nunca em silêncio: aviso vermelho
   const avisosVermelhos = [...seg.avisosVermelhos]
   if (passaDaPrevisao) avisosVermelhos.push(`a previsão acaba antes da chegada (${decisao.hora(Date.parse(chegadas.p90), ctx.o.fuso)}): o fim da passagem é sem previsão`)
-  if (ctx.gasoleoAssumido) avisosVermelhos.push(`gasóleo inicial desconhecido: confirma o depósito (assumi ${ctx.gasoleoInicial} L)`)
+  if (ctx.gasoleoAssumido) avisosVermelhos.push(avisoGasoleoAssumido(ctx.gasoleoInicial))
   // as horas equivalentes ao leme vêm só de lib/seguranca.js (a mesma regra da calma para o custo e para os limites)
   const lemeEqProvavel = seguranca.horasLemeEquivalentes(pr.pontos)
   const contraVentoH = decisao.horasContraVento(pr.pontos)
@@ -449,7 +450,9 @@ async function calcularSemRede (entrada = {}, deps = {}) {
     await ceder()
     alternativas.push(montarAlternativa(ctx, cand, rastos.get(cand) || simularProvavel(ctx, cand), desistenciaResumo))
   }
-  if (sairAgora && alternativas[0]?.avisosVermelhos?.length) avisosGerais.push(...alternativas[0].avisosVermelhos)
+  // em "Sair agora" os avisos vermelhos da 1.ª vão também para os gerais (o gasóleo assumido já lá
+  // está, "Sem nível do gasóleo: assumi … L": não se repete)
+  if (sairAgora && alternativas[0]?.avisosVermelhos?.length) avisosGerais.push(...alternativas[0].avisosVermelhos.filter(x => !(gasoleoAssumido && x === avisoGasoleoAssumido(gasoleoInicial))))
 
   const versoes = deps.versoes || {}
   const resultado = {
