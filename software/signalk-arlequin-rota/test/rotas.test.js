@@ -212,6 +212,38 @@ test('a ligação que passa num ilhéu avança pela linha até ficar livre (≤ 
   assert.equal(inventada.cruzaTerra(p, liga), false)
 })
 
+test('no mar entre as Berlengas e o continente: a projeção na linha não dá a volta às ilhas', () => {
+  // a 39,39 N 9,45 W (no canal da Berlenga) a linha de 5 MN passa perto duas vezes: a norte
+  // (antes de contornar as ilhas) e a sul (depois); ir para Peniche não pode dar a volta às ilhas
+  const pos = { lat: 39.39, lon: -9.45 }
+  const alts = r.gerarRotas(real, { posicao: pos, destino: D('peniche'), twd: 90 })
+  const gc = c.distanciaMn(pos, c.P(D('peniche').aproximacao.at(-1)))
+  for (const a of alts) {
+    if (a.excluida) continue
+    assert.ok(a.milhas <= 3.5 * gc, `${a.afastamento}: ${a.milhas} MN para ${gc} MN`)
+    assert.ok(a.pontos.every(p => p.lon > -9.55), `${a.afastamento}: passa a oeste das Berlengas`)
+  }
+  const a5 = r.gerarRota(real, { partida: pos, destino: D('peniche'), afastamento: 5, twd: 90 })
+  assert.ok(a5.excluida || a5.milhas < 15, `${a5.milhas} MN`)
+  assert.ok(a5.excluida || a5.pontos.every(p => p.lon > -9.55))
+})
+
+test('rota absurda (muito mais comprida do que a distância em linha reta): excluída com o motivo', () => {
+  // do lado sul do cabo para o lado norte: 1,2 MN em linha reta, mas pela linha de 5 MN dá a volta
+  const NORTE_DO_CABO = porto('ncabo', 'Norte do Cabo', [39.01, -9.02], [39.01, -9.01])
+  const alt = r.gerarRota(inventada, { partida: SUL_DO_CABO, destino: NORTE_DO_CABO, afastamento: 5 })
+  assert.equal(alt.excluida, true)
+  assert.match(alt.motivo, /^rota absurda: \d+,\d MN para 1,2 MN em linha reta$/)
+  assert.deepEqual(alt.pontos, [])
+  // o limite é 3,5 × a linha reta: as voltas verdadeiras da costa passam (Algés → Setúbal pelo
+  // Espichel dá 3,1 ×, Peniche → Nazaré pelas Berlengas 3,0 ×); os erros de projeção davam ≥ 4,5 ×
+  for (const [a, b] of [['alges', 'setubal'], ['alges', 'sesimbra'], ['peniche', 'nazare']]) {
+    const x = r.gerarRota(real, { partida: D(a), destino: D(b), afastamento: 5 })
+    assert.equal(x.excluida, false, `${a} → ${b}: ${x.motivo}`)
+    assert.ok(x.milhas > 2.5 * c.distanciaMn(x.pontos[0], x.pontos.at(-1)))
+  }
+})
+
 test('sem passagem: excluída com o motivo em português', () => {
   const alt = r.gerarRota(inventada, { partida: NORTE, destino: LAGOA, afastamento: 5 })
   assert.equal(alt.excluida, true)

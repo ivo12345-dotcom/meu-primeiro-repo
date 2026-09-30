@@ -14,6 +14,9 @@
 // Um troço de ligação que corte terra tenta os pontos seguintes da linha até 5 MN;
 // se nenhum servir, tenta ligar mais de lado (até à perpendicular); sem forma, a
 // alternativa fica excluída com o motivo.
+// Onde a linha passa perto duas vezes (dá a volta às Berlengas), a partida e o destino
+// projetam-se em cada passagem e fica o par mais curto compatível com a viagem; e nenhuma
+// alternativa pode ter mais de 3,5 × a distância em linha reta ("rota absurda").
 //
 // Cada ponto da rota: { lat, lon, nome?, perna, costaLivre? }. `perna` é o troço
 // que CHEGA a esse ponto: 'porto' (dentro da entrada), 'aproximacao', 'ligacao'
@@ -240,6 +243,96 @@ function distanciaMinimaTerra (costa, pontos, passo = 0.1) {
   return Number.isFinite(mn) ? mn : null
 }
 
+// As projeções de p na linha que valem a pena: os mínimos locais da distância (a linha pode
+// passar perto duas vezes, ex.: antes e depois de contornar as Berlengas), até `margem` MN pior
+// do que o mais perto, no máximo `max`, do mais perto para o mais longe.
+function projecoes (linha, p, { passo = 0.25, margem = 4, max = 3 } = {}) {
+  const n = Math.max(1, Math.ceil(linha.total / passo))
+  const d = new Float64Array(n + 1)
+  for (let k = 0; k <= n; k++) d[k] = c.distanciaMn(p, c.posicao(linha, linha.total * k / n))
+  const minimos = []
+  for (let k = 0; k <= n; k++) {
+    if ((k > 0 && d[k] > d[k - 1]) || (k < n && d[k] >= d[k + 1])) continue
+    const s = linha.total * k / n
+    minimos.push(c.projetar(linha, p, { de: s - passo, ate: s + passo }))
+  }
+  minimos.sort((a, b) => a.dist - b.dist)
+  return minimos.filter(m => m.dist <= minimos[0].dist + margem).slice(0, max)
+}
+
+// A geometria de uma alternativa (passos 2 a 5): de inicio (a saída, o último ponto é onde se
+// deixa a aproximação) a entrada (o primeiro ponto é o largo do destino). Tenta os pares de
+// projeções compatíveis com a viagem (o troço de linha entre eles não passa de o.fatorAbsurdo ×
+// a distância em linha reta, mais a ida e volta à linha) e fica com o mais curto que sirva.
+// → { pontos, direto, j, l, sentido } ou { problema } (o do par mais natural: os mais perto).
+function tracar (costa, linha, inicio, entrada, afastamento, o) {
+  const pA = inicio.at(-1)
+  const pB = entrada[0]
+  const candA = projecoes(linha, pA)
+  const candB = projecoes(linha, pB)
+  const folga = o.fatorAbsurdo * c.distanciaMn(pA, pB) + 2 * afastamento + 2
+  let pares = []
+  for (const a of candA) for (const b of candB) if (Math.abs(b.s - a.s) <= folga) pares.push([a.s, b.s])
+  if (!pares.length) pares = [[candA[0].s, candB[0].s]]
+  let melhor = null
+  let primeiroProblema = null
+  for (const [sA, sB] of pares) {
+    const r = tracarPar(costa, linha, pA, pB, sA, sB, afastamento, o)
+    if (r.problema) { primeiroProblema ||= r.problema; continue }
+    const pontos = [...inicio.map(p => ({ ...p })), ...r.meio, ...entrada.map(p => ({ ...p }))]
+    const problema = verificarTrocos(costa, pontos)
+    if (problema) { primeiroProblema ||= problema; continue }
+    const milhas = milhasDe(pontos)
+    if (!melhor || milhas < melhor.milhas) melhor = { pontos, milhas, direto: !r.meio.length, j: r.j, l: r.l, sentido: r.sentido }
+  }
+  return melhor || { problema: primeiroProblema }
+}
+
+// Um par de projeções: juntar-se à linha à frente (entre sA e sB), sair dela para o largo do
+// destino, e os pontos da linha entre as duas (vazio se a linha seguida fica com ≤ 0,5 MN: vai
+// direto de largo a largo).
+function tracarPar (costa, linha, pA, pB, sA, sB, afastamento, o) {
+  const sentido = sB >= sA ? 1 : -1
+  // 2. juntar-se à linha (à frente, entre a partida e o destino)
+  const j = ligar(costa, linha, pA, sentido, { de: sA, ate: sB }, o, false)
+  // 3. sair da linha para o largo do destino (olhando para trás a partir do destino)
+  const l = j && ligar(costa, linha, pB, -sentido, { de: sB, ate: j.s }, o, true)
+  if (!j || !l) return { problema: { motivo: 'terra' } }
+  if ((l.s - j.s) * sentido > 0.5) return { meio: pontosLinha(linha, j.s, l.s, afastamento, o), j, l, sentido }
+  // partida e destino perto um do outro na linha (a saída da linha ficava antes da entrada
+  // nela): vai direto de largo a largo
+  if (costa.verificarTroco(pA, pB)) return { problema: { motivo: 'terra' } }
+  return { meio: [], j, l, sentido }
+}
+
+// Os pontos da linha de s1 a s2 (troços ≤ o.passoMax); o primeiro chega pela ligação.
+function pontosLinha (linha, s1, s2, afastamento, o) {
+  const meio = c.seguirLinha(linha, s1, s2, { passoMax: o.passoMax, tolerancia: o.tolerancia })
+    .map((q, i) => ({ lat: q.lat, lon: q.lon, s: q.s, perna: i === 0 ? 'ligacao' : 'linha' }))
+  meio[0].nome = `Linha de ${afastamento} MN`
+  return meio
+}
+
+// 5. verificação final dos troços fora dos portos (ligações, linha, canal): o primeiro problema
+// ({ motivo: 'terra' | 'zona', zona? }) ou null. As aproximações verificam-se à parte
+// (verificarAproximacao); a última ligação da rota ativa avulsa também se verifica aqui.
+function verificarTrocos (costa, pontos) {
+  for (let i = 1; i < pontos.length; i++) {
+    const perna = pontos[i].perna
+    if (perna === 'porto' || perna === 'aproximacao') continue
+    const r = costa.verificarTroco(pontos[i - 1], pontos[i])
+    if (r) return r
+  }
+  return null
+}
+
+// Mais de o.fatorAbsurdo vezes a distância em linha reta do primeiro ao último ponto: o motivo.
+function rotaAbsurda (pontos, o) {
+  const milhas = milhasDe(pontos)
+  const reta = c.distanciaMn(pontos[0], pontos.at(-1))
+  return milhas > o.fatorAbsurdo * reta ? `rota absurda: ${fmtMn(milhas)} MN para ${fmtMn(reta)} MN em linha reta` : null
+}
+
 function descreverProblema (r) {
   if (r.motivo === 'zona') return `passa na zona a evitar "${r.zona}"`
   if (r.motivo === 'entrada inválida') return 'tem a entrada mal definida nos dados'
@@ -252,7 +345,7 @@ function descreverProblema (r) {
 // twd: direção do vento previsto (número, ou função (lat, lon[, t]) → graus), só para os 3 MN;
 // horaPartida (ms, opcional): com ela a função recebe a hora estimada de passagem em cada ponto.
 function gerarRota (costa, { partida, destino, afastamento, twd, horaPartida, opcoes = {} }) {
-  const o = { anguloMax: 60, maxAvancoMn: 5, passoMn: 0.25, passoMax: 2, tolerancia: 0.02, toleranciaVento: 60, afastamentoVentoTerra: 3, nosEta: 5, raioAproximacao: RAIO_PORTO_MN, ...opcoes }
+  const o = { anguloMax: 60, maxAvancoMn: 5, passoMn: 0.25, passoMax: 2, tolerancia: 0.02, toleranciaVento: 60, afastamentoVentoTerra: 3, nosEta: 5, raioAproximacao: RAIO_PORTO_MN, fatorAbsurdo: 3.5, ...opcoes }
   const nomeA = partida.nome || 'a posição atual'
   const nomeB = destino.nome
   const alt = { afastamento, pontos: [], milhas: 0, excluida: false, avisos: [] }
@@ -293,42 +386,10 @@ function gerarRota (costa, { partida, destino, afastamento, twd, horaPartida, op
 
     const linha = costa.linha(afastamento)
     if (!linha) return excluir(`não há linha de costa a ${afastamento} MN`)
-    const pA = inicio.at(-1)
-    const pB = entrada[0]
-    const sA = c.projetar(linha, pA).s
-    const sB = c.projetar(linha, pB).s
-    const sentido = sB >= sA ? 1 : -1
     const semPassagem = `não há passagem a ${afastamento} MN entre ${nomeA} e ${nomeB}`
-
-    // 2. juntar-se à linha (à frente, entre a partida e o destino)
-    const j = ligar(costa, linha, pA, sentido, { de: sA, ate: sB }, o, false)
-    // 3. sair da linha para o largo do destino (olhando para trás a partir do destino)
-    const l = j && ligar(costa, linha, pB, -sentido, { de: sB, ate: j.s }, o, true)
-
-    if (!j || !l) return excluir(semPassagem)
-    let meio
-    if ((l.s - j.s) * sentido > 0.5) {
-      meio = c.seguirLinha(linha, j.s, l.s, { passoMax: o.passoMax, tolerancia: o.tolerancia })
-        .map((q, i) => ({ lat: q.lat, lon: q.lon, s: q.s, perna: i === 0 ? 'ligacao' : 'linha' }))
-      meio[0].nome = `Linha de ${afastamento} MN`
-    } else {
-      // partida e destino perto um do outro na linha (a saída da linha ficava antes da
-      // entrada nela): vai direto de largo a largo
-      if (costa.verificarTroco(pA, pB)) return excluir(semPassagem)
-      meio = []
-    }
-
-    const direto = !meio.length
-    const pontos = [...inicio, ...meio, ...entrada]
-    // 5. verificação final dos troços fora dos portos (ligações e linha)
-    for (let i = 1; i < pontos.length; i++) {
-      const perna = pontos[i].perna
-      if (perna === 'porto' || perna === 'aproximacao') continue // já verificadas acima
-      // a última ligação da rota ativa avulsa também se verifica (terra e zonas)
-      const r = costa.verificarTroco(pontos[i - 1], pontos[i])
-      if (r) return excluir(r.motivo === 'terra' ? semPassagem : `a rota a ${afastamento} MN ${descreverProblema(r)}`)
-    }
-    const costaMinMn = distanciaMinimaTerra(costa, pontos)
+    const t = tracar(costa, linha, inicio, entrada, afastamento, o)
+    if (t.problema) return excluir(t.problema.motivo === 'terra' ? semPassagem : `a rota a ${afastamento} MN ${descreverProblema(t.problema)}`)
+    const { pontos, direto, j, l, sentido } = t
     if (direto) {
       // salto curto (a linha seguida ficava com ≤ 0,5 MN): uma só alternativa, a mesma a qualquer
       // afastamento, marcada `direto`, com a distância real à terra; perto da costa (< 3 MN) só com
@@ -336,6 +397,14 @@ function gerarRota (costa, { partida, destino, afastamento, twd, horaPartida, op
       alt.afastamento = null
       alt.direto = true
       alt.avisos.push(partida.aproximacao ? NOTA_DIRETO : NOTA_DIRETO_MAR)
+    }
+    // rede de segurança contra voltas da linha (ilhas, cabos): nunca mais de o.fatorAbsurdo × a
+    // distância em linha reta do início ao fim
+    const absurda = rotaAbsurda(pontos, o)
+    if (absurda) return excluir(absurda)
+
+    const costaMinMn = distanciaMinimaTerra(costa, pontos)
+    if (direto) {
       if (costaMinMn < o.afastamentoVentoTerra) {
         const motivo = ventoDoMarNoDireto(costa, pontos, costaMinMn, { twd, horaPartida }, o)
         if (motivo) return excluir(motivo)
