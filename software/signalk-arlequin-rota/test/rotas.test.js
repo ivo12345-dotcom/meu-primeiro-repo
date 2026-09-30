@@ -240,18 +240,66 @@ test('no mar entre as Berlengas e o continente: a projeção na linha não dá a
 
 test('rota absurda (muito mais comprida do que a distância em linha reta): excluída com o motivo', () => {
   // do lado sul do cabo para o lado norte: 1,2 MN em linha reta, mas pela linha de 5 MN dá a volta
+  // (11,9 × — um erro de projeção real, bem longe do limite)
   const NORTE_DO_CABO = porto('ncabo', 'Norte do Cabo', [39.01, -9.02], [39.01, -9.01])
   const alt = r.gerarRota(inventada, { partida: SUL_DO_CABO, destino: NORTE_DO_CABO, afastamento: 5 })
   assert.equal(alt.excluida, true)
   assert.match(alt.motivo, /^rota absurda: \d+,\d MN para 1,2 MN em linha reta$/)
   assert.deepEqual(alt.pontos, [])
-  // o limite é 3,5 × a linha reta: as voltas verdadeiras da costa passam (Algés → Setúbal pelo
-  // Espichel dá 3,1 ×, Peniche → Nazaré pelas Berlengas 3,0 ×); os erros de projeção davam ≥ 4,5 ×
+  const reta = c.distanciaMn(c.P(NORTE_DO_CABO.largo), c.P(SUL_DO_CABO.largo))
+  // não fica perto do limite: o erro de projeção passa longe de qualquer fator razoável
+  assert.ok(Number(alt.motivo.match(/^rota absurda: (\d+,\d) MN/)[1].replace(',', '.')) > 4.5 * reta, alt.motivo)
+  // o limite é 4,0 × a linha reta: as voltas verdadeiras da costa passam (Algés → Setúbal pelo
+  // Espichel dá 3,1 ×, Peniche → Nazaré pelas Berlengas 3,0 ×)
   for (const [a, b] of [['alges', 'setubal'], ['alges', 'sesimbra'], ['peniche', 'nazare']]) {
     const x = r.gerarRota(real, { partida: D(a), destino: D(b), afastamento: 5 })
     assert.equal(x.excluida, false, `${a} → ${b}: ${x.motivo}`)
     assert.ok(x.milhas > 2.5 * c.distanciaMn(x.pontos[0], x.pontos.at(-1)))
   }
+})
+
+test('fator da "rota absurda" (4,0): nenhum par real de dados/destinos.json a 8 MN passa dele (medido: máx. 3,41 ×)', () => {
+  // Todos os 210 pares ordenados de dados/destinos.json, a 8 MN (o afastamento onde a folga da
+  // "rota absurda" é menor, por ter a menor folga extra de tracar): ou a rota é normal e fica bem
+  // abaixo do fator, ou é um par "dentro do Tejo" (mesma largo — Oeiras ↔ Algés) com o motivo
+  // próprio, nunca "rota absurda". Medido sem opções (fatorAbsurdo real de produção, 4,0).
+  let maxRatio = 0
+  let maxPar = null
+  for (const a of real.destinos) {
+    for (const b of real.destinos) {
+      if (a === b) continue
+      const alt = r.gerarRota(real, { partida: a, destino: b, afastamento: 8 })
+      if (alt.excluida) {
+        assert.match(alt.motivo, /^(sem rota dentro do Tejo|a menos de \d MN da costa)/, `${a.id} → ${b.id}: ${alt.motivo}`)
+        continue
+      }
+      const reta = c.distanciaMn(alt.pontos[0], alt.pontos.at(-1))
+      const ratio = alt.milhas / reta
+      if (ratio > maxRatio) { maxRatio = ratio; maxPar = [a.id, b.id] }
+      assert.ok(ratio < 4.0, `${a.id} → ${b.id}: ${alt.milhas} MN para ${reta} MN (${ratio.toFixed(2)} ×)`)
+    }
+  }
+  // o máximo medido (Algés ↔ Setúbal) fica ≥ 10 % abaixo do fator
+  assert.ok(maxRatio > 3.0 && maxRatio < 4.0 / 1.1, `máx. ${maxRatio.toFixed(3)} × (${maxPar})`)
+})
+
+test('Tejo: Oeiras ↔ Algés (mesmo largo, a Barra Norte) não tem atalho por dentro do rio', () => {
+  const oeiras = D('oeiras')
+  const alges = D('alges')
+  // ambos entram pelo mesmo largo (a Barra Norte do Tejo): sem essa rota, não é "rota absurda"
+  assert.deepEqual(oeiras.largo, alges.largo)
+  const ida = r.gerarRota(real, { partida: oeiras, destino: alges, afastamento: 5 })
+  assert.equal(ida.excluida, true)
+  assert.equal(ida.motivo, 'sem rota dentro do Tejo: sair pela barra ou navegar à vista')
+  assert.deepEqual(ida.pontos, [])
+  const volta = r.gerarRota(real, { partida: alges, destino: oeiras, afastamento: 8 })
+  assert.equal(volta.excluida, true)
+  assert.equal(volta.motivo, 'sem rota dentro do Tejo: sair pela barra ou navegar à vista')
+  // Cascais também tem o mesmo largo, mas Cascais → Algés continua uma rota direta normal (fica
+  // perto da barra, não faz a volta toda como Oeiras ↔ Algés)
+  const cascaisAlges = r.gerarRota(real, { partida: D('cascais'), destino: alges, afastamento: 5, twd: 0 })
+  assert.equal(cascaisAlges.excluida, false, cascaisAlges.motivo)
+  assert.notEqual(cascaisAlges.motivo, 'sem rota dentro do Tejo: sair pela barra ou navegar à vista')
 })
 
 // Distância (MN) de p a uma zona: 0 dentro, senão à aresta mais perto.

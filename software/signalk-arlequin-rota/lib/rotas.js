@@ -16,11 +16,14 @@
 // alternativa fica excluída com o motivo.
 // Onde a linha passa perto duas vezes (dá a volta às Berlengas), a partida e o destino
 // projetam-se em cada passagem e fica o par mais curto compatível com a viagem; e nenhuma
-// alternativa pode ter mais de 3,5 × a distância em linha reta ("rota absurda").
+// alternativa pode ter mais de 4,0 × a distância em linha reta ("rota absurda").
 // Onde a linha dá a volta às Berlengas, gerarAlternativas junta uma variante "via Canal da
 // Berlenga" (dados/canais.json, decisão do Ivo de 30/09), marcada com `canal` e `ondasMax`; os
 // troços do canal (terra dos dois lados) ficam FORA da regra do vento de terra (só as ondas
 // decidem, Task 9), mas a linha antes/depois do canal continua sujeita a ela.
+// Dois portos com a mesma "largo" (ex.: Cascais/Oeiras/Algés, todos pela Barra Norte do Tejo) não
+// têm atalho por dentro do rio entre as suas aproximações: em vez de "rota absurda", o motivo é
+// "sem rota dentro do Tejo".
 //
 // Cada ponto da rota: { lat, lon, nome?, perna, costaLivre? }. `perna` é o troço
 // que CHEGA a esse ponto: 'porto' (dentro da entrada), 'aproximacao', 'ligacao',
@@ -39,6 +42,7 @@ const MOTIVO_COORDENADAS = 'coordenadas inválidas: a posição ou um ponto da r
 const MOTIVO_SEM_ROTA_ATIVA = 'não há rota ativa no OpenCPN'
 const MOTIVO_SEM_POSICAO = 'sem posição do GPS: não sei de onde parte o barco'
 const MOTIVO_VENTO_MAR = 'vento do mar em parte da rota: a 3 MN ficava perto de uma costa a sotavento'
+const MOTIVO_SEM_ROTA_TEJO = 'sem rota dentro do Tejo: sair pela barra ou navegar à vista'
 const H_MS = 3600e3
 const NOTA_DIRETO = 'salto curto entre portos vizinhos: rota direta junto à costa'
 const NOTA_DIRETO_MAR = 'destino perto da posição atual: rota direta'
@@ -432,6 +436,14 @@ function verificarTrocos (costa, pontos) {
   return null
 }
 
+// Dois portos com a mesma "largo" (≤ 0,05 MN): não há atalho por dentro do rio/baía entre as suas
+// aproximações, só sair até ao largo comum e voltar a entrar (ex.: Oeiras ↔ Algés, ambos pela
+// Barra Norte do Tejo, dá 4,5 × a reta). Não é uma rota absurda (erro de projeção): é mesmo assim,
+// e o Ivo decide (sair pela barra ou ir à vista) — motivo à parte, não "rota absurda".
+function mesmoLargo (a, b) {
+  return !!(a?.largo && b?.largo) && c.distanciaMn(c.P(a.largo), c.P(b.largo)) < 0.05
+}
+
 // Mais de o.fatorAbsurdo vezes a distância em linha reta do primeiro ao último ponto: o motivo.
 function rotaAbsurda (pontos, o) {
   const milhas = milhasDe(pontos)
@@ -463,7 +475,13 @@ function gerarAlternativas (costa, args) {
 }
 
 function gerar (costa, { partida, destino, afastamento, twd, horaPartida, opcoes = {}, log = logPadrao }, comVariantes) {
-  const o = { anguloMax: 60, maxAvancoMn: 5, passoMn: 0.25, passoMax: 2, tolerancia: 0.02, toleranciaVento: 60, afastamentoVentoTerra: 3, nosEta: 5, raioAproximacao: RAIO_PORTO_MN, fatorAbsurdo: 3.5, canais: CANAIS, raioCanalMn: 10, ganhoCanalMinMn: 5, ...opcoes }
+  // fatorAbsurdo: medido em TODOS os pares de dados/destinos.json (3/5/8 MN, os dois sentidos) —
+  // a rota verdadeira mais comprida é Algés ↔ Setúbal a 8 MN, 3,41 × a reta; o caso mais perto do
+  // lado absurdo é Oeiras ↔ Algés (a volta ao largo comum do Tejo — tratada à parte por
+  // MOTIVO_SEM_ROTA_TEJO/mesmoLargo, não por este fator), 4,52 ×; o erro de projeção do cabo
+  // inventado (teste "rota absurda") dá 11,9 ×. 4,0 fica a ≥ 10 % dos dois lados
+  // (3,41 × 1,1 = 3,75; 4,52 / 1,1 = 4,11).
+  const o = { anguloMax: 60, maxAvancoMn: 5, passoMn: 0.25, passoMax: 2, tolerancia: 0.02, toleranciaVento: 60, afastamentoVentoTerra: 3, nosEta: 5, raioAproximacao: RAIO_PORTO_MN, fatorAbsurdo: 4.0, canais: CANAIS, raioCanalMn: 10, ganhoCanalMinMn: 5, ...opcoes }
   const alt = { afastamento, pontos: [], milhas: 0, excluida: false, avisos: [] }
   const excluir = (motivo) => [{ ...alt, excluida: true, motivo }]
   // nada escapa daqui (motivoDoErro): nunca pode derrubar o servidor
@@ -537,7 +555,11 @@ function gerar (costa, { partida, destino, afastamento, twd, horaPartida, opcoes
       // rede de segurança contra voltas da linha (ilhas, cabos): nunca mais de o.fatorAbsurdo × a
       // distância em linha reta do início ao fim
       const absurda = rotaAbsurda(pontos, o)
-      if (absurda) return fora(absurda)
+      if (absurda) {
+        // dentro do Tejo (mesmo largo dos dois lados): não é um erro de projeção, é mesmo assim
+        if (t.direto && partida.aproximacao && destino.aproximacao && !destino.porConfirmar && mesmoLargo(partida, destino)) return fora(MOTIVO_SEM_ROTA_TEJO)
+        return fora(absurda)
+      }
       const costaMinMn = distanciaMinimaTerra(costa, pontos)
       if (t.direto) {
         if (costaMinMn < o.afastamentoVentoTerra) {
