@@ -143,6 +143,23 @@ test('a velocidade à vela recebe twaPrevAbs = |TWD previsto em bruto − rumo| 
   assert.ok(Math.abs(vistos[0].twaPrevAbs - 90) < 1e-9, `${vistos[0].twaPrevAbs}`)
 })
 
+test('sem prevTwd, a queda para a twd só é segura se o cenário não se disser corrigido (w.corrigido)', () => {
+  // w.corrigido === true sem prevTwd: a correção entraria a dobrar, em silêncio, no modelo da
+  // velocidade — é um erro interno do cenário, não um valor a assumir
+  assert.throws(() => {
+    simularPassagem(base({ tempo: ventoFixo(12, 270, { corrigido: true }) }))
+  }, /prevTwd/)
+  // w.corrigido === true COM prevTwd: continua a usar-se o prevTwd, normalmente
+  const vistos = []
+  const velocidadeVela = (x) => { vistos.push(x); return 6 }
+  simularPassagem(base({ tempo: ventoFixo(12, 270, { corrigido: true, prevTwd: 300 }), velocidadeVela }))
+  assert.ok(Math.abs(vistos[0].twaPrevAbs - 60) < 1e-9, `${vistos[0].twaPrevAbs}`)
+  // sem corrigido (contrato antigo, ex.: simular.mjs), a ausência de prevTwd continua a cair para a twd
+  vistos.length = 0
+  simularPassagem(base({ tempo: ventoFixo(12, 270), velocidadeVela }))
+  assert.ok(Math.abs(vistos[0].twaPrevAbs - 90) < 1e-9, `${vistos[0].twaPrevAbs}`)
+})
+
 test('o consumo recebe o rumo e a posição, como a velocidade à vela, para o modelo calcular ondasAnguloRel', () => {
   const vistos = []
   const consumo = (x) => { vistos.push(x); return 2 }

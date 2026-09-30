@@ -13,9 +13,12 @@
 // a motor com opcoes.motorNasAproximacoes. costaLivre: fora do mínimo à costa.
 //
 // Entradas (todas funções, para os cenários trocarem o que quiserem):
-//   tempo(lat, lon, t) → { tws, rajada, twd, chuva, visibilidade, radiacao, ondas, periodo, ondasDir, corrente, correnteDir, prevTwd? }
-//     (tws/rajada/twd são o vento que decide: o corrigido do cenário; `w` inteiro vai para a velocidade;
-//     prevTwd é a direção prevista EM BRUTO, quando o cenário corrige a direção — sem ela, a twd)
+//   tempo(lat, lon, t) → { tws, rajada, twd, chuva, visibilidade, radiacao, ondas, periodo, ondasDir, corrente, correnteDir, prevTwd?, corrigido? }
+//     (tws/rajada/twd são o vento que decide: o corrigido do cenário; `w` inteiro vai para a velocidade
+//     e para o consumo; prevTwd é a direção prevista EM BRUTO, quando o cenário corrige a direção.
+//     Sem prevTwd, cai-se na twd — mas só quando o cenário não se declara corrigido, isto é,
+//     w.corrigido !== true; um cenário que corrige a direção (w.corrigido === true) e omite
+//     prevTwd é um erro interno do cenário, não um valor a assumir: ver prevTwdDe)
 //   correnteExtra(lat, lon, t) → { v, dir }   (a maré na barra do Tejo, lib/mare.js)
 //   velocidadeVela({ twa, twaPrevAbs, tws, twd, rizos, w, t, lat, lon, rumo }) → STW em nós
 //     (antes do fator do leme, do mar e dos rizos, que o motor aplica). twa: ângulo ao vento que
@@ -77,6 +80,16 @@ function passou (a, b, p) {
   const perna = vetor(a, b)
   const desde = vetor(a, p)
   return desde.mn * Math.cos((desde.rumo - perna.rumo) * GRAU) >= perna.mn
+}
+
+// A direção prevista EM BRUTO para o twaPrevAbs: prevTwd quando o cenário a dá; senão a twd, mas
+// só quando o cenário não se declara corrigido (w.corrigido !== true). Um cenário que corrige a
+// direção e omite prevTwd é um erro interno — cair para a twd corrigida duplicava a correção em
+// silêncio no modelo da velocidade (AI).
+function prevTwdDe (w) {
+  if (w.prevTwd != null) return w.prevTwd
+  if (w.corrigido === true) throw new Error('tempo(): w.corrigido é true mas falta w.prevTwd (o previsto em bruto é obrigatório quando o cenário corrige a direção)')
+  return w.twd
 }
 
 // noite(t) pelo nascer e pôr do sol de cada dia (listas em ms, pela mesma ordem).
@@ -154,7 +167,7 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
       const twa = dif(w.twd, rumoAlvo)
       const rizosAgora = w.rajada > o.rizo2.rajada || w.tws > o.rizo2.tws ? 2 : (w.rajada > o.rizo1.rajada || w.tws > o.rizo1.tws ? 1 : 0)
       if (rizosAgora !== rizos) { ev(`${rizosAgora > rizos ? 'Rizar' : 'Largar rizo'}: ${rizosAgora} rizo${rizosAgora === 1 ? '' : 's'} (vento ${Math.round(w.tws)} nós, rajadas ${Math.round(w.rajada)})`, 'vela'); rizos = rizosAgora }
-      const twaPrevAbs = Math.abs(dif(w.prevTwd ?? w.twd, rumoAlvo))
+      const twaPrevAbs = Math.abs(dif(prevTwdDe(w), rumoAlvo))
       stw = velocidadeVela({ twa, twaPrevAbs, tws: w.tws, twd: w.twd, rizos, w, t, lat: pos.lat, lon: pos.lon, rumo: rumoAlvo }) * o.fatorLeme * (o.fatorMarVela ? fatorMar : 1)
       stw *= o.fatoresRizos[rizos]
       if (stw < o.stwMinVela) motor = true
