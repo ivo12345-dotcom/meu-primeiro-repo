@@ -109,11 +109,15 @@ function simular3 (ctx, alt, partida, prop) {
 // pesam): só para as 3 melhores (a linha do tempo, e a desistência da 1.ª).
 const simularProvavel = (ctx, cand) => simular(ctx, cand.geometria, cand.partida, cand.propulsao, 'provavel')
 
-// O id de uma alternativa: "20260930T0530-5mn-vela", "…-5mn-canal-motor", "…-direto-vela"
-// (a rota direta não tem afastamento: nunca "nullmn").
+// "Canal da Berlenga" → "canal-da-berlenga" (sem acentos, minúsculas, hífenes).
+const slug = (texto) => String(texto).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+
+// O id de uma alternativa: "20260930T0530-5mn-vela", "…-5mn-canal-da-berlenga-motor", "…-direto-vela"
+// (a rota direta não tem afastamento: nunca "nullmn"; o nome do canal, para os ids não se repetirem
+// com mais canais no mesmo afastamento).
 function idAlternativa (partida, alt, prop) {
   const quando = new Date(partida).toISOString().slice(0, 16).replace(/[-:]/g, '')
-  const onde = alt.direto || !Number.isFinite(alt.afastamento) ? 'direto' : `${alt.afastamento}mn${alt.canal ? '-canal' : ''}`
+  const onde = alt.direto || !Number.isFinite(alt.afastamento) ? 'direto' : `${alt.afastamento}mn${alt.canal ? `-${slug(alt.canal)}` : ''}`
   return `${quando}-${onde}-${prop}`
 }
 

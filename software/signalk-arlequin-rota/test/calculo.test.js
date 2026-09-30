@@ -180,7 +180,7 @@ test('a variante pelo Canal da Berlenga no texto da alternativa: nome, canal, no
   assert.ok(k, JSON.stringify(r.alternativas.map(a => a.nome)))
   assert.equal(k.canal, 'Canal da Berlenga')
   assert.match(k.nome, /, 5 MN pelo Canal da Berlenga, (vela e motor|só motor)$/)
-  assert.match(k.id, /^\d{8}T\d{4}-5mn-canal-(vela|motor)$/)
+  assert.match(k.id, /^\d{8}T\d{4}-5mn-canal-da-berlenga-(vela|motor)$/) // o nome do canal no id (com mais canais, não se repetem)
   assert.equal(k.nota, 'Canal da Berlenga: terra dos dois lados; só com ondas < 3 m — por confirmar na carta')
   assert.ok(k.avisosRota.includes('Canal da Berlenga por confirmar na carta'))
   for (const a of r.alternativas.filter(a => !a.canal)) { assert.equal(a.canal, null); assert.equal(a.nota, null) }
