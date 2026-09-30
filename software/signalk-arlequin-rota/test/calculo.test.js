@@ -45,7 +45,6 @@ test('29/09, Algés → Peniche, só eu, 15:32: "Não recomendado sozinho" ou "E
   for (const a of r.alternativas) {
     for (const k of ['id', 'nome', 'afastamento', 'partida', 'propulsao', 'chegada', 'milhas', 'horas', 'maximos', 'gasoleoL', 'bateriaMin', 'chegadaNoite', 'excluida', 'naoRecomendada', 'motivos', 'rota', 'eventos', 'avisos', 'precaucoes', 'avisosVermelhos', 'avisosRota', 'direto', 'canal', 'nota']) assert.ok(k in a, `alternativa sem ${k}`)
     assert.deepEqual(Object.keys(a.chegada), ['p10', 'p50', 'p90'])
-    assert.ok(Date.parse(a.chegada.p10) <= Date.parse(a.chegada.p50) && Date.parse(a.chegada.p50) <= Date.parse(a.chegada.p90))
     for (const k of ['vela', 'motor', 'noite', 'leme']) assert.ok(Number.isFinite(a.horas[k]), k)
     for (const k of ['vento', 'rajada', 'ondas']) assert.ok(Number.isFinite(a.maximos[k]), k)
     assert.ok(a.gasoleoL.p90 >= a.gasoleoL.p50)
@@ -296,4 +295,22 @@ test('a regra do vento de terra (3 MN) volta a verificar-se à hora a que o barc
   assert.equal(motor.motivos[0], VENTO_DO_MAR)
   assert.ok(!vela.motivos.includes(VENTO_DO_MAR), JSON.stringify(vela.motivos))
   assert.ok(r.alternativas.every(a => a.id !== motor.id))
+})
+
+test('chegada { p10, p50, p90 } por ordem de hora: Peniche → Cascais, onde o otimista (menos vento, mais motor) chega depois do pessimista', async () => {
+  let cands = []
+  const r = await calcular(entrada({ instrumentos: { posicao: de('peniche'), socPct: 90, gasoleoL: 124 }, destino: 'cascais' }), deps({ aoCandidatos: l => { cands = l } }))
+  assert.equal(r.erro, undefined, r.erro)
+  // o caso invertido existe: um candidato cujo otimista chega depois do pessimista
+  assert.ok(cands.some(k => Date.parse(k.resumos.otimista.chegada) > Date.parse(k.resumos.pessimista.chegada)))
+  for (const a of r.alternativas) {
+    const k = cands.find(x => x.id === a.id)
+    const t = ['otimista', 'provavel', 'pessimista'].map(n => Date.parse(k.resumos[n].chegada))
+    assert.ok(Date.parse(a.chegada.p10) <= Date.parse(a.chegada.p50) && Date.parse(a.chegada.p50) <= Date.parse(a.chegada.p90), `${a.id} ${JSON.stringify(a.chegada)}`)
+    assert.equal(Date.parse(a.chegada.p10), Math.min(...t))
+    assert.equal(Date.parse(a.chegada.p50), t[1]) // o provável, que fica sempre entre as duas pontas
+    assert.equal(Date.parse(a.chegada.p90), Math.max(...t))
+  }
+  // o corte do fim da previsão é pela chegada mais tarde dos três cenários
+  for (const k of cands) assert.ok(Math.max(...['otimista', 'provavel', 'pessimista'].map(n => Date.parse(k.resumos[n].chegada))) <= P29.fim, k.id)
 })

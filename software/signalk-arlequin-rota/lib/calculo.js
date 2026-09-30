@@ -138,12 +138,22 @@ function ventoDoMarNosRastos (ctx, alt, sims) {
   return null
 }
 
+// As chegadas dos três cenários como intervalo por ordem de hora: p10 a mais cedo, p90 a mais
+// tarde, p50 a do provável (que fica sempre entre as duas). Os cenários NÃO são monótonos na hora
+// de chegada: o otimista tem menos vento, e com menos vento vai mais a motor e pode chegar depois
+// do pessimista (Peniche → Cascais, 29/09). O corte do fim da previsão é pela p90 (a mais tarde).
+function ordenarChegadas (sims) {
+  const t = CENARIOS.map(n => Date.parse(sims[n].resumo.chegada))
+  return { p10: iso(Math.min(...t)), p50: sims.provavel.resumo.chegada, p90: iso(Math.max(...t)) }
+}
+
 // Avalia uma geometria numa partida e propulsão → candidato (sem a linha do tempo, que pesa).
 function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
   const sims = simular3(ctx, alt, partida, prop)
   const pe = sims.pessimista; const pr = sims.provavel; const ot = sims.otimista
   if (!pe.resumo.chegou || !pr.resumo.chegou || !ot.resumo.chegou) return { foraDaPrevisao: false, naoChega: true }
-  if (Date.parse(pe.resumo.chegada) > ctx.previsao.fim) return { foraDaPrevisao: true }
+  const chegadas = ordenarChegadas(sims)
+  if (Date.parse(chegadas.p90) > ctx.previsao.fim) return { foraDaPrevisao: true }
   const seg = seguranca.avaliar({ alternativa: alt, pessimista: pe, provavel: pr, destino: ctx.destino, tripulacao: ctx.tripulacao, sairAgora: ctx.sairAgora, gasoleoInicial: ctx.gasoleoInicial, costaMinMn, opcoes: { afastamentoMinimo: ctx.o.afastamentoMinimo } })
   // exclusão dura (também em "sair agora"), como no rotas.js
   const ventoMar = ventoDoMarNosRastos(ctx, alt, sims)
@@ -179,6 +189,7 @@ function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
     chegadaNoite: !!pr.pontos.at(-1)?.noite,
     bateriaMinPct: Number.isFinite(socMinPe) ? socMinPe * 100 : null,
     resumos: { pessimista: pe.resumo, provavel: pr.resumo, otimista: ot.resumo },
+    chegadas,
     custo
   }
 }
@@ -211,7 +222,7 @@ function montarAlternativa (ctx, cand, desistenciaResumo) {
     partida: iso(cand.partida),
     esperaH: r2(cand.esperaH),
     propulsao: cand.propulsao,
-    chegada: { p10: R.otimista.chegada, p50: R.provavel.chegada, p90: R.pessimista.chegada },
+    chegada: cand.chegadas,
     milhas: r2(cand.milhas),
     milhasSimuladas: r2(R.provavel.milhas),
     horas: { total: r2(R.provavel.duracaoH), vela: r2(R.provavel.horasVela), motor: r2(R.provavel.horasMotor), noite: r2(R.provavel.horasNoite), leme: r2(cand.horasLemeEq.provavel), lemePessimista: r2(cand.horasLemeEq.pessimista) },
