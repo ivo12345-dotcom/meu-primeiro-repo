@@ -10,7 +10,10 @@
 //     e isso é o barco a navegar, não a rota que se escolhe (ronda B, ponto 4).
 //     A rota de 3 MN é a exceção do desenho ("3 MN só com vento de terra", que o rotas.js
 //     já só gera com vento de terra): para ela o mínimo é 3 MN. Tolerância de 0,1 MN
-//     (as linhas estão a d ± 0,05 MN da terra).
+//     (as linhas estão a d ± 0,05 MN da terra; nos dados reais até 0,055 MN por dentro).
+//     A rota direta (salto curto, `direto`, afastamento null) não tem linha: não se lhe aplica
+//     este mínimo (o rotas.js já só a deixa perto de terra com vento de terra) e a distância
+//     que fica é a real, costaMinMn do rotas.js.
 // Excluída, ou aviso vermelho em "Sair agora mesmo assim": gasóleo < 40 L ou bateria < 50%
 //   à chegada, no cenário pessimista.
 // "Não recomendada sozinho" (só com tripulação "so"), no cenário pessimista:
@@ -70,9 +73,11 @@ function distanciaRotaCosta (costa, pontos, opcoes = {}) {
   return melhor
 }
 
-// O mínimo à costa que se aplica a uma alternativa.
+// O mínimo à costa que se aplica a uma alternativa. Sem afastamento (null: nunca devia chegar
+// aqui fora de uma rota direta), o mínimo por omissão — nunca 0 por coerção de null.
 function minimoCosta (afastamento, opcoes = {}) {
   const o = { ...PADRAO, ...opcoes }
+  if (!Number.isFinite(afastamento)) return o.afastamentoMinimo
   return afastamento <= o.afastamentoVentoTerra ? Math.min(afastamento, o.afastamentoMinimo) : o.afastamentoMinimo
 }
 
@@ -91,12 +96,18 @@ function avaliar ({ alternativa, pessimista, provavel, destino, tripulacao, sair
     out.motivos.push(alternativa.motivo || 'rota impossível')
     return out
   }
-  const minimo = minimoCosta(alternativa.afastamento, o)
-  const dCosta = costaMinMn !== undefined ? costaMinMn : distanciaRotaCosta(costa, alternativa.pontos, o)?.mn ?? null
-  out.costaMinMn = dCosta
-  if (dCosta != null && dCosta < minimo - o.toleranciaMn) {
-    out.excluida = true
-    out.motivos.push(`a rota passa a ${virgula(dCosta)} MN da costa (mínimo ${inteiro(minimo)} MN)`)
+  if (alternativa.direto) {
+    // rota direta (salto curto, lib/rotas.js): afastamento null e sem linha; a distância é a real
+    // à terra (costaMinMn do rotas.js), e o rotas.js já só a deixa a < 3 MN com vento de terra
+    out.costaMinMn = Number.isFinite(alternativa.costaMinMn) ? alternativa.costaMinMn : (Number.isFinite(costaMinMn) ? costaMinMn : null)
+  } else {
+    const minimo = minimoCosta(alternativa.afastamento, o)
+    const dCosta = costaMinMn !== undefined ? costaMinMn : distanciaRotaCosta(costa, alternativa.pontos, o)?.mn ?? null
+    out.costaMinMn = dCosta
+    if (dCosta != null && dCosta < minimo - o.toleranciaMn) {
+      out.excluida = true
+      out.motivos.push(`a rota passa a ${virgula(dCosta)} MN da costa (mínimo ${inteiro(minimo)} MN)`)
+    }
   }
   if (!pessimista) return out
   const r = pessimista.resumo

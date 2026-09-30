@@ -116,3 +116,60 @@ test('chegada de noite a um porto desconhecido (no pessimista ou no provável)',
   assert.equal(s.avaliar(base({ destino: { nome: 'Peniche', conhecido: true }, pessimista: noite(passagem()) })).naoRecomendada, false)
   assert.equal(s.avaliar(base({ destino: desconhecido })).naoRecomendada, false)
 })
+
+test('rota direta (afastamento null, rotas.js): sem mínimo pelo afastamento, fica a distância real à costa; afastamento null sem direto usa o mínimo por omissão', () => {
+  // salto curto junto à costa: todos os troços são aproximação ou ligação (costaLivre)
+  const direta = {
+    afastamento: null,
+    direto: true,
+    costaMinMn: 1.2,
+    excluida: false,
+    avisos: [],
+    pontos: [
+      { lat: 38.9, lon: aW(0.5, 38.9), perna: null, costaLivre: true },
+      { lat: 39.0, lon: aW(1.2), perna: 'ligacao', costaLivre: true },
+      { lat: 39.1, lon: aW(0.3, 39.1), perna: 'aproximacao', costaLivre: true }
+    ]
+  }
+  const r = s.avaliar(base({ alternativa: direta }))
+  assert.equal(r.excluida, false)
+  assert.deepEqual(r.motivos, [])
+  assert.equal(r.costaMinMn, 1.2)
+  // o calculo passa a distância medida na linha (null numa rota direta): fica a do rotas.js
+  assert.equal(s.avaliar(base({ alternativa: direta, costa: null, costaMinMn: null })).costaMinMn, 1.2)
+  // nenhum texto fala de "null" ou "NaN"
+  assert.ok(!JSON.stringify(r).match(/null MN|NaN/))
+  // afastamento em falta sem ser direta: o mínimo por omissão (5 MN), nunca 0
+  assert.equal(s.minimoCosta(null), 5)
+  assert.equal(s.minimoCosta(undefined, { afastamentoMinimo: 8 }), 8)
+  const semAf = { ...rota(4), afastamento: null }
+  const x = s.avaliar(base({ alternativa: semAf }))
+  assert.equal(x.excluida, true)
+  assert.deepEqual(x.motivos, ['a rota passa a 4,0 MN da costa (mínimo 5 MN)'])
+})
+
+test('tolerância de 0,1 MN: as linhas pré-calculadas reais ficam até 0,055 MN por dentro de d, e uma alternativa normal de 5 ou 8 MN não é excluída', () => {
+  const r = require('../lib/rotas')
+  const real = c.carregarCosta()
+  const D = (id) => real.destinos.find(d => d.id === id)
+  assert.ok(s.PADRAO.toleranciaMn >= 0.1)
+  let porDentro = 0
+  for (const [a, b, d] of [['alges', 'peniche', 5], ['alges', 'peniche', 8], ['peniche', 'nazare', 5], ['viana', 'lagos', 5]]) {
+    const alt = r.gerarRota(real, { partida: D(a), destino: D(b), afastamento: d, twd: 90 })
+    assert.equal(alt.excluida, false, alt.motivo)
+    const m = s.distanciaRotaCosta(real, alt.pontos).mn
+    assert.ok(m > d - 0.06, `${a}→${b} ${d} MN: ${m}`)
+    if (m < d) porDentro++
+    // o mínimo por omissão (5 MN, desenho 3a) e também o mínimo = d (a 8 MN, "mais perto do que d")
+    for (const opcoes of [{}, { afastamentoMinimo: d }]) {
+      const v = s.avaliar(base({ alternativa: alt, costa: real, opcoes }))
+      assert.equal(v.excluida, false, `${a}→${b} ${d} MN: ${v.motivos}`)
+      assert.deepEqual(v.motivos, [])
+    }
+    // sem tolerância, as que ficam por dentro de d seriam excluídas (a tolerância é o que as salva)
+    if (m < d) assert.equal(s.avaliar(base({ alternativa: alt, costa: real, opcoes: { afastamentoMinimo: d, toleranciaMn: 0 } })).excluida, true)
+  }
+  assert.ok(porDentro > 0) // o caso existe mesmo nos dados reais
+  // no limite inventado: 0,055 MN por dentro passa
+  assert.equal(s.avaliar(base({ alternativa: rota(5, { desvio: 4.945 }) })).excluida, false)
+})
