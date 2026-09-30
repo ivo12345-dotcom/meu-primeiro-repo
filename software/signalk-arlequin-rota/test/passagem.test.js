@@ -1,0 +1,252 @@
+'use strict'
+// O simular.mjs dá o mesmo em qualquer fuso do sistema (a partida sem fuso é hora de Lisboa,
+// as horas da Open-Meteo lêem-se do texto): este teste não fixa o TZ, para o provar no Pi (UTC)
+// e no portátil (Europe/Lisbon).
+const test = require('node:test')
+const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
+const zlib = require('node:zlib')
+const { simularPassagem, noitePeloSol, PADRAO } = require('../lib/passagem')
+const { criarEnergia } = require('../lib/energia')
+
+const H = 3600000
+const MIN = 60000
+const FIXTURES = path.join(__dirname, 'fixtures')
+const SW = path.join(__dirname, '..', '..')
+const gz = (f) => JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(FIXTURES, f))))
+
+// ---------- o simular.mjs de 29/09 (resultado de referência gravado com o código antigo) ----------
+
+test('reproduz o simular.mjs de 29/09 (Algés → Peniche, partida 15:32): resumo e linha do tempo iguais', async () => {
+  const { simular, parsePartida } = await import('file://' + path.join(SW, 'ferramentas', 'passagem', 'simular.mjs').replace(/\\/g, '/'))
+  const met = gz('meteo-simular-2026-09-29.json.gz')
+  const ref = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'simular-2026-09-29-resumo.json'), 'utf8'))
+  const partida = parsePartida('2026-09-29T15:32') // hora de Lisboa, como o comando da Task 4
+  assert.equal(partida, Date.parse('2026-09-29T14:32Z'))
+  const t0 = performance.now()
+  const r = await simular(partida, met)
+  const ms = performance.now() - t0
+  // o que o desenho pede: ±2% na distância e na hora de chegada (duração)
+  assert.ok(Math.abs(r.resumo.milhas / ref.milhas - 1) < 0.02)
+  assert.ok(Math.abs(r.resumo.duracaoH / ref.duracaoH - 1) < 0.02)
+  // e na verdade é igual, número a número, com os mesmos eventos e os mesmos pontos
+  assert.deepEqual(JSON.parse(JSON.stringify(r.resumo)), ref)
+  assert.deepEqual(JSON.parse(JSON.stringify(r.pontos)), gz('simular-2026-09-29-passagem.json.gz'))
+  assert.equal(ref.chegada, '2026-09-30T05:00:00.000Z')
+  assert.ok(ms < 2000, `${ms} ms`)
+})
+
+// ---------- o motor com um ambiente inventado ----------
+
+const reta = (mn, extra = {}) => [{ nome: 'A', lat: 39, lon: -9.5 }, { nome: 'B', lat: 39 + mn / 60, lon: -9.5, ...extra }]
+const ventoFixo = (tws, twd, extra = {}) => () => ({ tws, rajada: tws * 1.2, twd, chuva: 0, visibilidade: 20000, radiacao: 0, ondas: 1, periodo: 8, ondasDir: twd, corrente: 0, correnteDir: 0, ...extra })
+const base = (o = {}) => ({
+  rota: reta(10),
+  partida: Date.UTC(2026, 8, 29, 12),
+  tempo: ventoFixo(12, 270),
+  velocidadeVela: () => 6,
+  consumo: ({ rpm }) => rpm / 1000, // L/h
+  ...o
+})
+
+test('través com 12 nós: vai à vela a 6 × 0,85 nós, sem motor, e chega', () => {
+  const r = simularPassagem(base())
+  assert.equal(r.resumo.chegou, true)
+  assert.equal(r.resumo.horasMotor, 0)
+  assert.ok(Math.abs(r.pontos[0].stw - 6 * 0.85) < 1e-12)
+  assert.ok(Math.abs(r.resumo.duracaoH - 10 / 5.1) < 0.05, `${r.resumo.duracaoH} h`)
+  assert.ok(Math.abs(r.resumo.milhas - 10) < 0.2)
+  assert.equal(r.resumo.gasoleoGasto, 0)
+  assert.ok(Math.abs(r.resumo.horasLemeSeguidas - r.resumo.horasVela) < 1e-9)
+  assert.equal(r.eventos[0].texto, 'Partida de A (13:00)') // hora de Lisboa
+  assert.equal(r.eventos.at(-1).tipo, 'chegada')
+  assert.match(r.eventos.at(-1).texto, /^Chegada a B \(\d\d:\d\d\)$/)
+  assert.equal(r.resumo.socFinal, null) // sem energia
+  assert.equal(r.resumo.costaMinMn, null) // sem costa
+})
+
+test('vento abaixo de 7 nós: motor a 2100 rpm e 4,3 nós; velocidade à vela < 3 nós: também motor', () => {
+  const r = simularPassagem(base({ tempo: ventoFixo(5, 270) }))
+  assert.equal(r.resumo.horasVela, 0)
+  assert.ok(Math.abs(r.pontos[0].stw - 4.3) < 1e-12)
+  assert.ok(Math.abs(r.resumo.gasoleoGasto - 2.1 * r.resumo.horasMotor) < 1e-9)
+  assert.equal(PADRAO.rpmCruzeiro, 2100)
+  const lenta = simularPassagem(base({ velocidadeVela: () => 3 })) // 3 × 0,85 < 3
+  assert.equal(lenta.resumo.horasVela, 0)
+  // o mar tira velocidade: ondas de 3 m → 0,92
+  const mar = simularPassagem(base({ tempo: ventoFixo(5, 270, { ondas: 3 }) }))
+  assert.ok(Math.abs(mar.pontos[0].stw - 4.3 * 0.92) < 1e-12)
+})
+
+test('portos e aproximações a motor; o rio a 4,8 nós; o evento diz porquê', () => {
+  const rota = [{ nome: 'Cais', lat: 39, lon: -9.5 }, { lat: 39 + 1 / 60, lon: -9.5, perna: 'porto' }, { nome: 'Largo', lat: 39 + 3 / 60, lon: -9.5, perna: 'aproximacao' }, { nome: 'Fim', lat: 39 + 8 / 60, lon: -9.5, perna: 'linha' }]
+  const r = simularPassagem(base({ rota }))
+  assert.ok(Math.abs(r.pontos[0].stw - 4.8) < 1e-12)
+  const naAprox = r.pontos.find(p => p.wp === 'Largo')
+  assert.equal(naAprox.motor, true)
+  assert.ok(Math.abs(naAprox.stw - 4.3) < 1e-12)
+  assert.equal(r.pontos.at(-1).motor, false)
+  assert.ok(r.eventos.some(e => /^Motor desligado, à vela \(vento 12 nós de 270°\)$/.test(e.texto)))
+  // um ponto sem nome não dá evento de chegada
+  assert.equal(r.eventos.filter(e => e.tipo === 'wp').map(e => e.texto.split(':')[0]).join(','), 'Largo,Fim')
+  const semAprox = simularPassagem(base({ rota, opcoes: { motorNasAproximacoes: false } }))
+  assert.equal(semAprox.pontos.find(p => p.wp === 'Largo').motor, false)
+  const liga = simularPassagem(base({ rota: [rota[0], { ...rota[2], perna: 'linha' }, { ...rota[3], perna: 'aproximacao' }] }))
+  assert.ok(liga.eventos.some(e => e.texto === 'Motor ligado (aproximação)'))
+})
+
+test('contra o vento bordeja no corredor de ±0,7 MN; em popa cambeia (sem passar os 155°)', () => {
+  const contra = simularPassagem(base({ tempo: ventoFixo(12, 0) }))
+  assert.ok(contra.resumo.viragens >= 2, `${contra.resumo.viragens} viragens`)
+  assert.equal(contra.resumo.chegou, true)
+  for (const p of contra.pontos) assert.ok(Math.abs((p.lon + 9.5) * 60 * Math.cos(39 * Math.PI / 180)) < 0.85)
+  assert.ok(contra.resumo.milhas > 12)
+  const popa = simularPassagem(base({ tempo: ventoFixo(12, 180) }))
+  assert.ok(popa.resumo.cambadelas >= 1)
+  for (const p of popa.pontos) assert.ok(Math.abs(((p.proa - 180 + 540) % 360) - 180) <= 155 + 1e-9)
+})
+
+test('rizos pelas rajadas (20 e 27 nós) com os fatores 0,95 e 0,9, e evento', () => {
+  const r1 = simularPassagem(base({ tempo: () => ({ ...ventoFixo(14, 270)(), rajada: 22 }) }))
+  assert.equal(r1.pontos[0].rizos, 1)
+  assert.ok(Math.abs(r1.pontos[0].stw - 6 * 0.85 * 0.95) < 1e-12)
+  assert.equal(r1.eventos[1].texto, 'Rizar: 1 rizo (vento 14 nós, rajadas 22)')
+  const r2 = simularPassagem(base({ tempo: () => ({ ...ventoFixo(18, 270)(), rajada: 28 }) }))
+  assert.equal(r2.pontos[0].rizos, 2)
+  // a velocidade à vela recebe os rizos já decididos
+  const vistos = []
+  simularPassagem(base({ tempo: () => ({ ...ventoFixo(18, 270)(), rajada: 28 }), velocidadeVela: (x) => { vistos.push(x.rizos); return 6 } }))
+  assert.equal(vistos[0], 2)
+})
+
+test('função pura: as mesmas entradas dão o mesmo resultado e não mexe na rota nem nas opções', () => {
+  const rota = Object.freeze(reta(10).map(p => Object.freeze(p)))
+  const opcoes = Object.freeze({ maxHoras: 5 })
+  const a = simularPassagem(base({ rota, opcoes, tempo: ventoFixo(12, 0), energia: criarEnergia({ socInicial: 0.7 }) }))
+  const b = simularPassagem(base({ rota, opcoes, tempo: ventoFixo(12, 0), energia: criarEnergia({ socInicial: 0.7 }) }))
+  assert.deepEqual(a, b)
+  assert.deepEqual(rota, reta(10))
+})
+
+test('a velocidade à vela recebe twaPrevAbs = |TWD previsto em bruto − rumo| (não o ângulo ao vento do cenário)', () => {
+  // rota para norte (rumo 0°); o vento que decide vem de 270°, o previsto em bruto de 300°
+  const vistos = []
+  const velocidadeVela = (x) => { vistos.push(x); return 6 }
+  simularPassagem(base({ tempo: ventoFixo(12, 270, { prevTwd: 300 }), velocidadeVela }))
+  assert.ok(Math.abs(vistos[0].twaPrevAbs - 60) < 1e-9, `${vistos[0].twaPrevAbs}`)
+  assert.ok(Math.abs(vistos[0].twa - -90) < 1e-9, `${vistos[0].twa}`) // a polar continua no vento do cenário
+  assert.equal('twaAbs' in vistos[0], false) // o |TWA| medido não entra no planeamento
+  // sem prevTwd, o vento do cenário é o previsto
+  vistos.length = 0
+  simularPassagem(base({ velocidadeVela }))
+  assert.ok(Math.abs(vistos[0].twaPrevAbs - 90) < 1e-9, `${vistos[0].twaPrevAbs}`)
+})
+
+test('corrente e maré somam à velocidade no fundo; chuva, noite e nascer do sol dão eventos', () => {
+  const corrente = simularPassagem(base({ tempo: ventoFixo(12, 270, { corrente: 1, correnteDir: 0 }), correnteExtra: () => ({ v: 0.5, dir: 0 }) }))
+  assert.ok(Math.abs(corrente.pontos[0].sog - (5.1 + 1.5)) < 1e-9)
+  assert.equal(corrente.pontos[0].mare, 0.5)
+  const partida = Date.UTC(2026, 8, 29, 17, 0)
+  const noite = noitePeloSol([Date.UTC(2026, 8, 29, 6, 31), Date.UTC(2026, 8, 30, 6, 32)], [Date.UTC(2026, 8, 29, 18, 23), Date.UTC(2026, 8, 30, 18, 22)])
+  const r = simularPassagem(base({ rota: reta(70), partida, noite, tempo: ventoFixo(12, 270, { visibilidade: 2500 }), opcoes: { maxHoras: 20 } }))
+  const textos = r.eventos.map(e => e.texto)
+  assert.ok(textos.includes('Pôr do sol (19:23): ecrã em modo noite, luzes de navegação'))
+  assert.ok(textos.includes('Nascer do sol (07:32): ecrã em modo dia'))
+  assert.ok(textos.includes('Chuva e visibilidade 2,5 km: radar ligado'))
+  assert.ok(Math.abs(r.resumo.horasNoite - (12 * 60 + 9) / 60) < 0.02)
+  // noitePeloSol fora dos dias dados: o dia mais perto, deslocado
+  assert.equal(noite(Date.UTC(2026, 9, 5, 12)), false)
+  assert.equal(noite(Date.UTC(2026, 9, 5, 23)), true)
+  const deNoite = simularPassagem(base({ partida: Date.UTC(2026, 8, 29, 22), noite }))
+  assert.equal(deNoite.eventos[1].texto, 'Partida de noite (23:00): ecrã em modo noite, luzes de navegação')
+})
+
+test('passagem da frente, energia, costa e "não chegou"', () => {
+  let n = 0
+  const frente = simularPassagem(base({ tempo: () => (n++ < 30 ? ventoFixo(15, 270)() : ventoFixo(6, 330, { ondas: 2.2 })()) }))
+  assert.ok(frente.eventos.some(e => e.texto === 'Passagem da frente: o vento cai de 15 para 6 nós e roda para 330°. Fica o mar (2,2 m)'))
+  const e = simularPassagem(base({ energia: criarEnergia({ socInicial: 0.5 }), distanciaCosta: (p) => 3 + (p.lat - 39) * 60 }))
+  assert.ok(e.resumo.socFinal < 0.5 && e.resumo.socFinal > 0.45)
+  assert.equal(e.resumo.socMin, e.resumo.socFinal)
+  assert.ok(Math.abs(e.resumo.costaMinMn - 3) < 0.1)
+  const alarmes = simularPassagem(base({ energia: { inicio: () => 0, passo: (s, ctx) => ({ estado: s + 1, soc: 0.5, eventos: s === 3 ? [{ texto: 'Bateria baixa' }] : [] }) } }))
+  assert.deepEqual(alarmes.eventos.filter(x => x.tipo === 'alarme').map(x => x.texto), ['Bateria baixa'])
+  const longe = simularPassagem(base({ rota: reta(100), opcoes: { maxHoras: 2 } }))
+  assert.equal(longe.resumo.chegou, false)
+  assert.equal(longe.eventos.at(-1).texto, 'Não chegou dentro de 2 h')
+  assert.equal(longe.resumo.duracaoH, 2)
+})
+
+test('um ponto de rota passado ao lado (a mais de 0,15 MN) conta como passado', () => {
+  const rota = [{ nome: 'A', lat: 39, lon: -9.5 }, { nome: 'Meio', lat: 39 + 5 / 60, lon: -9.5 }, { nome: 'Fim', lat: 39 + 10 / 60, lon: -9.5 }]
+  // corrente de través de 1 nó empurra para leste e o barco não corrige
+  const r = simularPassagem(base({ rota, velocidadeVela: () => 6, tempo: ventoFixo(12, 270, { corrente: 1, correnteDir: 90 }) }))
+  assert.ok(r.eventos.some(e => e.texto.startsWith('Meio:')))
+  assert.equal(r.resumo.chegou, true)
+})
+
+// ---------- os três cenários com a previsão real de 29/09 ----------
+
+test('29/09, Algés → Peniche a 5 MN: pessimista, provável e otimista por ordem', async () => {
+  const c = require('../lib/costa')
+  const rotas = require('../lib/rotas')
+  const prev = require('../lib/previsao')
+  const mare = require('../lib/mare')
+  const modelos = require('signalk-arlequin-ia/lib/modelos')
+  const { litrosHora } = require(path.join(SW, 'signalk-arlequin-j1939', 'lib', 'consumo.js'))
+  const { lerPolar, velocidadeAlvo } = await import('file://' + path.join(SW, 'arlequin-ecra', 'public', 'lib', 'polar.js').replace(/\\/g, '/'))
+  const polar = lerPolar(fs.readFileSync(path.join(SW, 'arlequin-ecra', 'public', 'polar-arlequin.csv'), 'utf8'))
+  const NO = 1852 / 3600
+  const polarNos = (twa, tws) => velocidadeAlvo(polar, twa * Math.PI / 180, Math.min(tws, 20) * NO) / NO
+
+  const f = gz('previsao-2026-09-29.json.gz')
+  const p29 = prev.interpretar(f.pontos.map(c.P), f.forecast, f.marine, f.obtidaSimulada)
+  const tempoBruto = prev.criarTempo(p29)
+  const nivel = prev.nivelDoMar(p29)
+  const correnteExtra = mare.criarMareTejo(mare.preiaMares(nivel.t, nivel.nivel))
+  const costa = c.carregarCosta()
+  const D = (id) => costa.destinos.find(d => d.id === id)
+  const alt = rotas.gerarRota(costa, { partida: D('alges'), destino: D('peniche'), afastamento: 5 })
+  assert.equal(alt.excluida, false)
+  const noite = noitePeloSol(f.sol.daily.sunrise.map(x => Date.parse(x + 'Z')), f.sol.daily.sunset.map(x => Date.parse(x + 'Z')))
+
+  // Cenário: o vento que decide (rizos, motor, máximos) é o do cenário (pessimista = mais vento);
+  // a velocidade à vela é modelos.preverVelocidade (sem modelo = a polar) no vento do quantil
+  // de velocidade (pessimista = menos vento a empurrar). O gasóleo no quantil do cenário.
+  const cenarios = {
+    pessimista: { vento: 1.1, velVento: 0.9, q: 'p10', qGasoleo: 'p90' },
+    provavel: { vento: 1, velVento: 1, q: 'p50', qGasoleo: 'p50' },
+    otimista: { vento: 0.9, velVento: 1.1, q: 'p90', qGasoleo: 'p10' }
+  }
+  const res = {}
+  const tempos = []
+  for (const [nome, k] of Object.entries(cenarios)) {
+    const tempo = (lat, lon, t) => { const w = tempoBruto(lat, lon, t); return { ...w, tws: w.tws * k.vento, rajada: w.rajada * k.vento, prevTws: w.tws, prevRajada: w.rajada, prevTwd: w.twd } }
+    const t0 = performance.now()
+    res[nome] = simularPassagem({
+      rota: alt.pontos,
+      partida: Date.parse('2026-09-29T14:32Z'),
+      tempo,
+      correnteExtra,
+      velocidadeVela: ({ twa, twaPrevAbs, w, rizos }) => modelos.preverVelocidade(null, { prevTws: w.prevTws, twaPrevAbs, prevRajada: w.prevRajada, prevOndas: w.ondas, prevPeriodo: w.periodo, ondasAnguloRel: null, grandeRizos: rizos, genoaPct: 100 }, polarNos(twa, w.prevTws * k.velVento))[k.q],
+      consumo: ({ rpm }) => modelos.preverConsumo(null, { rpm }, litrosHora(rpm))[k.qGasoleo],
+      noite,
+      energia: criarEnergia({ socInicial: 0.9 }),
+      distanciaCosta: (p) => costa.distanciaTerra(p)
+    }).resumo
+    tempos.push(performance.now() - t0)
+  }
+  const { pessimista: pe, provavel: pr, otimista: ot } = res
+  for (const r of [pe, pr, ot]) assert.equal(r.chegou, true)
+  assert.ok(pe.duracaoH > pr.duracaoH && pr.duracaoH > ot.duracaoH, `${pe.duracaoH} > ${pr.duracaoH} > ${ot.duracaoH}`)
+  assert.ok(pe.gasoleoGasto >= pr.gasoleoGasto && pr.gasoleoGasto >= ot.gasoleoGasto)
+  assert.ok(pe.ventoMax > pr.ventoMax && pr.ventoMax > ot.ventoMax)
+  // a rota tem ~63,6 MN (as aproximações de Algés e de Peniche pelo canal da carta, dados/destinos.json)
+  // e a simulação faz o mesmo mais os bordos e cambadelas
+  assert.ok(Math.abs(alt.milhas - 63.6) < 0.5, `${alt.milhas}`)
+  for (const r of [pe, pr, ot]) assert.ok(r.milhas > alt.milhas - 0.5 && r.milhas < alt.milhas + 3)
+  // cada passagem simulada em menos de 200 ms (~900 passos de 1 min)
+  assert.ok(Math.max(...tempos.slice(1)) < 200, tempos.join(', '))
+  if (process.env.ROTA_MOSTRAR) console.log(JSON.stringify({ milhasRota: alt.milhas, pe, pr, ot, tempos }, null, 1))
+})

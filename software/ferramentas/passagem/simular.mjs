@@ -1,6 +1,8 @@
 // Simulação de uma passagem do Arlequin com a meteorologia REAL (Open-Meteo):
 // vento, rajadas, ondas, corrente, chuva/visibilidade, maré no Tejo (aprox.),
 // polar do Arlequin, leme à mão (sem piloto), motor, energia e alarmes do sistema.
+// O motor da simulação é o do plugin da rota (signalk-arlequin-rota/lib/passagem.js);
+// aqui ficam a rota, a meteorologia deste caso, a energia do simulador e os alarmes.
 //   node simular.mjs [partida ISO local] [--dia AAAA-MM-DD] [--meteo f.json[.gz]] [--guardar-meteo f.json[.gz]]
 //     → passagem.json + resumo.json
 //   --dia: previsão de um dia passado (arquivo da Open-Meteo, esse dia e o seguinte)
@@ -35,6 +37,8 @@ const { lerPolar, velocidadeAlvo } = await import('file://' + path.join(sw, 'arl
 const { criarModelo, avancar } = require(path.join(sw, 'arlequin-simulador/lib/modelo.js'))
 const { novoEstado, avaliar } = require(path.join(sw, 'signalk-arlequin-energia/lib/regras.js'))
 const { litrosHora } = require(path.join(sw, 'signalk-arlequin-j1939/lib/consumo.js'))
+const { simularPassagem } = require(path.join(sw, 'signalk-arlequin-rota/lib/passagem.js'))
+const { criarMareTejo } = require(path.join(sw, 'signalk-arlequin-rota/lib/mare.js'))
 
 function erroFatal (err) {
   process.stderr.write(`Erro: ${err.message}\n`)
@@ -42,9 +46,11 @@ function erroFatal (err) {
 }
 
 // Argumentos: [partida] --dia AAAA-MM-DD --meteo f --guardar-meteo f
+const PRINCIPAL = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 const ARGS = {}
+// (só quando corre como programa: importado — pelo teste do plugin da rota — não lê argumentos)
 try {
-  for (let i = 2; i < process.argv.length; i++) {
+  for (let i = 2; PRINCIPAL && i < process.argv.length; i++) {
     const a = process.argv[i]
     const valorDe = (flag) => {
       const v = process.argv[++i]
@@ -61,11 +67,14 @@ try {
 // ---------- fuso horário: partida sem "Z"/offset = hora local de Lisboa ----------
 // Devolve o desvio (em minutos, tal que hora de Lisboa = hora UTC + desvio) de
 // Europe/Lisbon no instante dado, com WEST(+60)/WET(+0) corretos para esse dia.
+// (o formatador cria-se uma vez, e as horas da meteorologia convertem-se uma vez em horasDe:
+// fazê-lo a cada minuto simulado levava a passagem de 29/09 de ~40 ms a ~3,4 s)
+const FMT_LISBOA = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Europe/Lisbon', hour12: false,
+  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
+})
 function desvioLisboaMin (utcMs) {
-  const partes = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Europe/Lisbon', hour12: false,
-    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
-  }).formatToParts(new Date(utcMs))
+  const partes = FMT_LISBOA.formatToParts(new Date(utcMs))
   const m = {}
   for (const p of partes) m[p.type] = p.value
   const comoUTC = Date.UTC(+m.year, +m.month - 1, +m.day, m.hour === '24' ? 0 : +m.hour, +m.minute, +m.second)
@@ -121,8 +130,9 @@ function horaInteira (s) {
   return +m[1]
 }
 // HH:MM em hora de Lisboa, para os textos dos eventos (independente do fuso do sistema).
+const FMT_HORA_LISBOA = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Lisbon', hourCycle: 'h23', hour: '2-digit', minute: '2-digit' })
 function horaLisboa (utcMs) {
-  return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Lisbon', hourCycle: 'h23', hour: '2-digit', minute: '2-digit' }).format(new Date(utcMs))
+  return FMT_HORA_LISBOA.format(new Date(utcMs))
 }
 // `arlequin-simulador/lib/modelo.js` (energia) calcula a hora do dia (sol/noite)
 // com `new Date(t).getHours()` — a hora LOCAL DO SISTEMA, não a de Lisboa (não é
@@ -147,16 +157,17 @@ export const ROTA = [
   // Rio: canal da barra norte. Depois de Cascais afasta-se para ~5 MN dos cabos
   // e da costa (pedido do Ivo: ir por fora, não junto à costa).
   { nome: 'Algés (partida)', lat: 38.6955, lon: -9.2330 },
-  { nome: 'Barra Norte', lat: 38.6680, lon: -9.3150 },
-  { nome: 'Largo de Carcavelos', lat: 38.6630, lon: -9.3500 },
+  // perna 'porto': a motor no rio (4,8 nós); costaLivre: fora do mínimo à costa
+  { nome: 'Barra Norte', lat: 38.6680, lon: -9.3150, perna: 'porto', costaLivre: true },
+  { nome: 'Largo de Carcavelos', lat: 38.6630, lon: -9.3500, costaLivre: true },
   { nome: 'Largo de Cascais', lat: 38.6500, lon: -9.4500 },
   { nome: 'Largo do Cabo Raso', lat: 38.6900, lon: -9.6000 },
   { nome: 'Largo da Roca', lat: 38.7800, lon: -9.6200 },
   { nome: 'Largo da Ericeira', lat: 38.9650, lon: -9.5400 },
   { nome: 'Largo de Santa Cruz', lat: 39.1300, lon: -9.5000 },
   { nome: 'Largo de Peniche', lat: 39.2800, lon: -9.4500 },
-  { nome: 'Peniche Sul', lat: 39.3300, lon: -9.3950 },
-  { nome: 'Peniche (porto)', lat: 39.3530, lon: -9.3770 }
+  { nome: 'Peniche Sul', lat: 39.3300, lon: -9.3950, costaLivre: true },
+  { nome: 'Peniche (porto)', lat: 39.3530, lon: -9.3770, costaLivre: true }
 ]
 
 // Costa APROXIMADA (pontos conhecidos), só para verificar a distância a terra.
@@ -177,19 +188,6 @@ function distanciaCostaMn (p) {
     min = Math.min(min, Math.hypot(px - (ax + t * (bx - ax)), py - (ay + t * (by - ay))))
   }
   return min
-}
-
-// Distância ao lado da perna (MN): + = à direita (EB) de quem vai para o WP.
-function xte (a, b, p) {
-  const perna = vetor(a, b)
-  const desde = vetor(a, p)
-  return desde.mn * Math.sin((desde.rumo - perna.rumo) * GRAU)
-}
-
-function vetor (a, b) {
-  const dx = (b.lon - a.lon) * 60 * Math.cos(a.lat * GRAU)
-  const dy = (b.lat - a.lat) * 60
-  return { mn: Math.hypot(dx, dy), rumo: norm(Math.atan2(dx, dy) / GRAU) }
 }
 
 // ---------- meteorologia ----------
@@ -227,9 +225,17 @@ function escreverJson (f, o) {
   writeFileSync(f, f.endsWith('.gz') ? gzipSync(b) : b)
 }
 
+// As horas (UTC) da meteorologia, calculadas uma vez por meteorologia (não a cada minuto).
+const HORAS_MET = new WeakMap()
+function horasDe (met) {
+  let h = HORAS_MET.get(met)
+  if (!h) { h = met.v[0].hourly.time.map(horaMeteoParaUTC); HORAS_MET.set(met, h) }
+  return h
+}
+
 // Interpola no tempo (hora) e no espaço (latitude entre os 4 pontos).
 function tempoAqui (met, lat, t) {
-  const horas = met.v[0].hourly.time.map(horaMeteoParaUTC)
+  const horas = horasDe(met)
   let i = horas.findIndex(h => h > t) - 1
   if (i < 0) i = 0
   const f = Math.min(1, Math.max(0, (t - horas[i]) / 3600000))
@@ -258,142 +264,72 @@ function tempoAqui (met, lat, t) {
 // (coef. 90), que nesse dia é WEST = UTC+01:00 (fuso explícito abaixo, para dar
 // sempre o MESMO instante independentemente do fuso do sistema onde isto corre).
 // Estofo ~45 min depois; vazante positiva (sai a 250°), até ~1,8 nó na barra.
-// Só a leste de 9°25'W.
+// Só a leste de 9°25'W. É a corrente de lib/mare.js do plugin da rota (com uma só
+// preia-mar, o modelo de sempre tal e qual).
 const PREIA_MAR = new Date('2026-09-29T16:37:00+01:00').getTime()
-function mareTejo (lat, lon, t) {
-  if (lon < -9.42) return { v: 0, dir: 0 }
-  const fase = 2 * Math.PI * (t - (PREIA_MAR + 45 * MIN)) / (12.42 * 3600000)
-  const v = 1.8 * Math.sin(fase)
-  return v >= 0 ? { v, dir: 250 } : { v: -v, dir: 70 }
-}
+const mareTejo = criarMareTejo([{ t: PREIA_MAR }])
 
 // ---------- simulação ----------
-async function simular (partida) {
-  const met = await meteorologia()
+// Energia: o modelo do simulador (bancos de 440 Ah, frigorífico) com os alarmes do plugin da energia.
+// As horas do sol vêm do texto da Open-Meteo (hora de Lisboa) e o instante inicial do
+// modelo passa por paraModeloEnergia (ver acima): o mesmo resultado em qualquer fuso.
+function energiaSimulador (met) {
+  return {
+    inicio: (t) => ({ modelo: criarModelo({ socInicial: 0.95, nascer: horaInteira(met.s.daily.sunrise[0]) + 0.5, por: horaDoDia(met.s.daily.sunset[0]), horasSolPico: 3.5 }, paraModeloEnergia(t)), alarmes: novoEstado() }),
+    passo (estado, { t, dtMs, motor, noite, sog }) {
+      const e = avancar(estado.modelo, dtMs, { navegar: true, motor, frigorifico: true })
+      // Alarmes de energia (as regras do plugin do Arlequin)
+      const a = avaliar(estado.alarmes, { soc: e.leitura.soc, socEm: t, vMotor: e.leitura.vMotor, rpm: motor ? 33 : 0, sog: sog * NO, modo: noite ? 'night' : 'day' }, t)
+      const eventos = a.notificacoes.filter(n => n.state !== 'normal').map(n => ({ texto: `Alarme do sistema: ${n.message}${n.method.includes('sound') ? ' (com som)' : ''}`, tipo: 'alarme' }))
+      return { estado: { modelo: e.modelo, alarmes: a.estado }, soc: e.leitura.soc, eventos }
+    }
+  }
+}
+
+export async function simular (partida, met) {
+  met = met || await meteorologia()
   const polar = lerPolar(readFileSync(path.join(sw, 'arlequin-ecra/public/polar-arlequin.csv'), 'utf8'))
   const porDoSol = horaMeteoParaUTC(met.s.daily.sunset[0])
   const nascer = horaMeteoParaUTC(met.s.daily.sunrise[1])
-  let pos = { lat: ROTA[0].lat, lon: ROTA[0].lon }
-  let wp = 1
-  let t = partida
-  let proa = vetor(pos, ROTA[1]).rumo
-  let amura = null // 'EB' | 'BB' quando bordeja ou cambeia
-  let energia = criarModelo({ socInicial: 0.95, nascer: horaInteira(met.s.daily.sunrise[0]) + 0.5, por: horaDoDia(met.s.daily.sunset[0]), horasSolPico: 3.5 }, paraModeloEnergia(t))
-  let alarmesEnergia = novoEstado()
-  let gasoleo = 124
-  let milhas = 0
-  const pontos = []
-  const eventos = []
-  const ev = (texto, tipo = 'info') => eventos.push({ t, texto, tipo })
-  let motorAntes = null
-  let rizos = 0
-  let viragens = 0
-  let cambadelas = 0
-  let horasLeme = 0
-  let noiteAnunciada = false
-  let visAnunciada = false
-  let frenteAnunciada = false
-  ev(`Partida de Algés a motor (${horaLisboa(t)}). Maré: enchente fraca contra até ao estofo (~17:20)`, 'partida')
-
-  while (wp < ROTA.length && t < partida + 30 * 3600000) {
-    const w = tempoAqui(met, pos.lat, t)
-    const alvo = vetor(pos, ROTA[wp])
-    const noRio = wp <= 1
-    const noite = t >= porDoSol && t < nascer
-    // Vela ou motor
-    const twaWp = dif(w.twd, alvo.rumo) // + = vento por EB
-    let motor = noRio || w.tws < 7
-    let rumoAlvo = alvo.rumo
-    let stw
-    const fatorLeme = 0.85 // leme à mão, sozinho
-    const fatorMar = Math.max(0.8, 1 - 0.04 * Math.max(0, w.ondas - 1))
-    if (!motor) {
-      const aTwa = Math.abs(twaWp)
-      // Bordejar (< 45°) ou cambar em popa (> 155°, sem piloto): o timoneiro
-      // mantém-se num corredor de ±0,7 MN à volta da perna e muda de bordo nos limites.
-      const perna = xte(ROTA[wp - 1], ROTA[wp], pos)
-      const corredor = 0.7
-      const escolher = (eb, bb, deQueLado) => {
-        if (!amura) amura = Math.abs(dif(alvo.rumo, eb)) < Math.abs(dif(alvo.rumo, bb)) ? 'EB' : 'BB'
-        const rumo = amura === 'EB' ? eb : bb
-        const lado = dif(rumo, alvo.rumo) // + = este bordo afasta para a direita da perna
-        if ((lado > 0 && perna > corredor) || (lado < 0 && perna < -corredor)) { amura = amura === 'EB' ? 'BB' : 'EB'; deQueLado() }
-        return amura === 'EB' ? eb : bb
-      }
-      if (aTwa < 45) {
-        rumoAlvo = escolher(norm(w.twd - 45), norm(w.twd + 45), () => viragens++)
-      } else if (aTwa > 155) {
-        rumoAlvo = escolher(norm(w.twd + 180 + 25), norm(w.twd + 180 - 25), () => cambadelas++)
-      } else {
-        amura = null
-      }
-      const twa = dif(w.twd, rumoAlvo)
-      stw = velocidadeAlvo(polar, twa * GRAU, Math.min(w.tws, 20) * NO) / NO * fatorLeme * fatorMar
-      const rizosAgora = w.rajada > 27 || w.tws > 22 ? 2 : (w.rajada > 20 || w.tws > 16 ? 1 : 0)
-      if (rizosAgora !== rizos) { ev(`${rizosAgora > rizos ? 'Rizar' : 'Largar rizo'}: ${rizosAgora} rizo${rizosAgora === 1 ? '' : 's'} (vento ${Math.round(w.tws)} nós, rajadas ${Math.round(w.rajada)})`, 'vela'); rizos = rizosAgora }
-      stw *= rizos === 2 ? 0.9 : rizos === 1 ? 0.95 : 1
-      if (stw < 3) motor = true
+  const r = simularPassagem({
+    rota: ROTA,
+    partida,
+    tempo: (lat, lon, t) => tempoAqui(met, lat, t),
+    correnteExtra: mareTejo,
+    velocidadeVela: ({ twa, tws }) => velocidadeAlvo(polar, twa * GRAU, Math.min(tws, 20) * NO) / NO,
+    consumo: ({ rpm }) => litrosHora(rpm),
+    noite: (t) => t >= porDoSol && t < nascer,
+    energia: energiaSimulador(met),
+    distanciaCosta: distanciaCostaMn,
+    opcoes: {
+      rpmCruzeiro: 2000, // a simulação de 29/09 usava 2000 rpm (o plugin usa 2100 por omissão)
+      motorNasAproximacoes: false, // só o rio (perna 'porto') vai a motor
+      chegadaPassagem: false, // os pontos de rota só contam a 0,15 MN, como antes
+      gasoleoInicial: 124,
+      maxHoras: 30,
+      fuso: 'Europe/Lisbon', // as horas dos textos são as de Lisboa, seja qual for o fuso do sistema
+      textoPartida: `Partida de Algés a motor (${horaLisboa(partida)}). Maré: enchente fraca contra até ao estofo (~17:20)`,
+      nomeChegada: 'Peniche'
     }
-    if (motor) { rumoAlvo = alvo.rumo; stw = (noRio ? 4.8 : 4.3) * fatorMar; amura = null }
-    if (motor !== motorAntes) {
-      if (motorAntes !== null) ev(motor ? `Motor ligado (vento ${Math.round(w.tws)} nós: sem vento para andar)` : `Motor desligado, à vela (vento ${Math.round(w.tws)} nós de ${String(Math.round(w.twd)).padStart(3, '0')}°)`, 'motor')
-      motorAntes = motor
-    }
-    proa = rumoAlvo
-    // Corrente: oceânica (modelo) + maré no Tejo (aproximada)
-    const mare = mareTejo(pos.lat, pos.lon, t)
-    const cx = w.corrente * Math.sin(w.correnteDir * GRAU) + mare.v * Math.sin(mare.dir * GRAU)
-    const cy = w.corrente * Math.cos(w.correnteDir * GRAU) + mare.v * Math.cos(mare.dir * GRAU)
-    const vx = stw * Math.sin(proa * GRAU) + cx
-    const vy = stw * Math.cos(proa * GRAU) + cy
-    const sog = Math.hypot(vx, vy)
-    const cog = norm(Math.atan2(vx, vy) / GRAU)
-    // Avança 1 min
-    const passoMn = sog / 60
-    pos = { lat: pos.lat + vy / 60 / 60, lon: pos.lon + vx / 60 / 60 / Math.cos(pos.lat * GRAU) }
-    milhas += passoMn
-    if (motor) gasoleo -= litrosHora(2000) / 60
-    else horasLeme += 1 / 60
-    const e = avancar(energia, MIN, { navegar: true, motor, frigorifico: true })
-    energia = e.modelo
-    // Alarmes de energia (as regras do plugin do Arlequin)
-    const a = avaliar(alarmesEnergia, { soc: e.leitura.soc, socEm: t, vMotor: e.leitura.vMotor, rpm: motor ? 33 : 0, sog: sog * NO, modo: noite ? 'night' : 'day' }, t)
-    alarmesEnergia = a.estado
-    for (const n of a.notificacoes) if (n.state !== 'normal') ev(`Alarme do sistema: ${n.message}${n.method.includes('sound') ? ' (com som)' : ''}`, 'alarme')
-    // Marcos
-    if (!noiteAnunciada && noite) { noiteAnunciada = true; ev(`Pôr do sol (${horaLisboa(porDoSol)}): ecrã em modo noite, luzes de navegação`, 'noite') }
-    if (!visAnunciada && w.visibilidade < 3000) { visAnunciada = true; ev(`Chuva e visibilidade ${(w.visibilidade / 1000).toFixed(1).replace('.', ',')} km: radar ligado`, 'tempo') }
-    if (!frenteAnunciada && pontos.length && pontos[pontos.length - 1].tws > 12 && w.tws < 8) { frenteAnunciada = true; ev(`Passagem da frente: o vento cai de ${Math.round(pontos[pontos.length - 1].tws)} para ${Math.round(w.tws)} nós e roda para ${String(Math.round(w.twd)).padStart(3, '0')}°. Fica o mar (${w.ondas.toFixed(1).replace('.', ',')} m)`, 'tempo') }
-    const costa = distanciaCostaMn(pos)
-    pontos.push({ t, costa, lat: pos.lat, lon: pos.lon, proa, cog, sog, stw, tws: w.tws, rajada: w.rajada, twd: w.twd, ondas: w.ondas, chuva: w.chuva, vis: w.visibilidade, motor, soc: e.leitura.soc, gasoleo, rizos, noite, wp: ROTA[wp].nome, mare: mare.v })
-    if (vetor(pos, ROTA[wp]).mn < 0.15) { ev(`${ROTA[wp].nome}: ${milhas.toFixed(1).replace('.', ',')} MN feitas`, 'wp'); wp++ }
-    t += MIN
-  }
-  const chegou = wp >= ROTA.length
-  ev(chegou ? `Chegada a Peniche (${horaLisboa(t)})` : 'Não chegou dentro de 30 h', 'chegada')
-  const duracaoH = (t - partida) / 3600000
-  const resumo = {
-    partida: new Date(partida).toISOString(), chegada: new Date(t).toISOString(), chegou, duracaoH, milhas,
-    horasVela: pontos.filter(p => !p.motor).length / 60, horasMotor: pontos.filter(p => p.motor).length / 60,
-    horasNoite: pontos.filter(p => p.noite).length / 60, gasoleoGasto: 124 - gasoleo,
-    socFinal: pontos[pontos.length - 1].soc, socMin: Math.min(...pontos.map(p => p.soc)),
-    ventoMax: Math.max(...pontos.map(p => p.tws)), rajadaMax: Math.max(...pontos.map(p => p.rajada)), ondasMax: Math.max(...pontos.map(p => p.ondas)),
-    viragens, cambadelas, horasLemeSeguidas: horasLeme,
-    // Fora do canal da Barra Norte e da entrada de Peniche, que são perto de terra de propósito.
-    costaMinMn: Math.min(...pontos.filter(p => !['Barra Norte', 'Largo de Carcavelos', 'Peniche (porto)', 'Peniche Sul'].includes(p.wp)).map(p => p.costa)), eventos, meteoObtida: met.obtida, porDoSol, nascer
-  }
-  return { resumo, pontos }
+  })
+  const resumo = { ...r.resumo, eventos: r.eventos, meteoObtida: met.obtida, porDoSol, nascer }
+  return { resumo, pontos: r.pontos }
 }
 
-try {
-  const partida = ARGS.partida ? parsePartida(ARGS.partida) : Date.now() + 3600000
-  const r = await simular(partida)
-  writeFileSync(path.join(aqui, 'passagem.json'), JSON.stringify(r.pontos))
-  writeFileSync(path.join(aqui, 'resumo.json'), JSON.stringify(r.resumo, null, 2))
-  writeFileSync(path.join(aqui, 'rota.json'), JSON.stringify({ ROTA, COSTA }))
-  const f = (x, d = 1) => x.toFixed(d).replace('.', ',')
-  console.log(`Chegada: ${new Date(r.resumo.chegada).toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon' })} · ${f(r.resumo.duracaoH)} h · ${f(r.resumo.milhas)} MN · vela ${f(r.resumo.horasVela)} h · motor ${f(r.resumo.horasMotor)} h · noite ${f(r.resumo.horasNoite)} h`)
-  console.log(`Mínimo à costa (fora do rio e da chegada): ${f(r.resumo.costaMinMn)} MN`)
-  console.log(`Gasóleo ${f(r.resumo.gasoleoGasto)} L · SoC final ${Math.round(r.resumo.socFinal * 100)}% (mín ${Math.round(r.resumo.socMin * 100)}%) · vento máx ${Math.round(r.resumo.ventoMax)} nós, rajadas ${Math.round(r.resumo.rajadaMax)} · ondas ${f(r.resumo.ondasMax)} m · viragens ${r.resumo.viragens} · cambadelas ${r.resumo.cambadelas}`)
-  for (const e of r.resumo.eventos) console.log(horaLisboa(e.t), e.tipo.padEnd(8), e.texto)
-} catch (err) { erroFatal(err) }
+async function principal () {
+  try {
+    const partida = ARGS.partida ? parsePartida(ARGS.partida) : Date.now() + 3600000
+    const r = await simular(partida)
+    writeFileSync(path.join(aqui, 'passagem.json'), JSON.stringify(r.pontos))
+    writeFileSync(path.join(aqui, 'resumo.json'), JSON.stringify(r.resumo, null, 2))
+    // só nome/lat/lon (o perna/costaLivre é do motor): o rota.json fica igual ao de sempre
+    writeFileSync(path.join(aqui, 'rota.json'), JSON.stringify({ ROTA: ROTA.map(({ nome, lat, lon }) => ({ nome, lat, lon })), COSTA }))
+    const f = (x, d = 1) => x.toFixed(d).replace('.', ',')
+    console.log(`Chegada: ${new Date(r.resumo.chegada).toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon' })} · ${f(r.resumo.duracaoH)} h · ${f(r.resumo.milhas)} MN · vela ${f(r.resumo.horasVela)} h · motor ${f(r.resumo.horasMotor)} h · noite ${f(r.resumo.horasNoite)} h`)
+    console.log(`Mínimo à costa (fora do rio e da chegada): ${f(r.resumo.costaMinMn)} MN`)
+    console.log(`Gasóleo ${f(r.resumo.gasoleoGasto)} L · SoC final ${Math.round(r.resumo.socFinal * 100)}% (mín ${Math.round(r.resumo.socMin * 100)}%) · vento máx ${Math.round(r.resumo.ventoMax)} nós, rajadas ${Math.round(r.resumo.rajadaMax)} · ondas ${f(r.resumo.ondasMax)} m · viragens ${r.resumo.viragens} · cambadelas ${r.resumo.cambadelas}`)
+    for (const e of r.resumo.eventos) console.log(horaLisboa(e.t), e.tipo.padEnd(8), e.texto)
+  } catch (err) { erroFatal(err) }
+}
+
+if (PRINCIPAL) await principal()
