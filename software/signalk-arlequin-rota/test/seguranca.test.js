@@ -232,3 +232,34 @@ test('canal com ondasMax (Canal da Berlenga, decisão do Ivo): excluída quando 
   // uma alternativa sem ondasMax não tem esta regra
   assert.equal(s.avaliar(base({ pessimista: rasto(rota(5), () => 3), tripulacao: 'acompanhado' })).excluida, false)
 })
+
+test('previsão sem dados (semDados de lib/previsao.js) de ondas, rajada ou vento: desconhecido não é calmo → excluída; aproximado ou outros campos sem dados → só aviso', () => {
+  const comPonto = (extra, qual = 'pessimista') => {
+    const p = passagem()
+    Object.assign(p.pontos[100], extra)
+    return base({ [qual]: p, tripulacao: 'acompanhado' })
+  }
+  const ondas = s.avaliar(comPonto({ semDados: ['ondas'] }))
+  assert.equal(ondas.excluida, true)
+  assert.deepEqual(ondas.motivos, ['sem previsão de ondas em parte da rota: desconhecido não conta como calmo'])
+  const vento = s.avaliar(comPonto({ semDados: ['tws', 'rajada', 'corrente'] }))
+  assert.equal(vento.excluida, true)
+  assert.deepEqual(vento.motivos, ['sem previsão de vento e rajadas em parte da rota: desconhecido não conta como calmo'])
+  assert.deepEqual(vento.avisos, ['sem previsão de corrente em parte da rota'])
+  // também no cenário provável (a mesma previsão)
+  assert.equal(s.avaliar(comPonto({ semDados: ['rajada'] }, 'provavel')).excluida, true)
+  // em "sair agora" também (não é um aviso vermelho: o tempo é desconhecido)
+  assert.equal(s.avaliar({ ...comPonto({ semDados: ['ondas'] }), sairAgora: true }).excluida, true)
+  // outros campos sem dados: não exclui, fica um aviso
+  const corrente = s.avaliar(comPonto({ semDados: ['corrente', 'correnteDir'] }))
+  assert.equal(corrente.excluida, false)
+  assert.deepEqual(corrente.motivos, [])
+  assert.deepEqual(corrente.avisos, ['sem previsão de corrente e direção da corrente em parte da rota'])
+  // aproximado (o ponto de previsão mais perto sem dado, veio do seguinte): só um aviso
+  const aprox = s.avaliar(comPonto({ aproximado: ['ondas', 'tws'] }))
+  assert.equal(aprox.excluida, false)
+  assert.equal(aprox.naoRecomendada, false)
+  assert.deepEqual(aprox.avisos, ['previsão de ondas e vento aproximada em parte da rota (de um ponto de previsão mais longe)'])
+  // uma passagem com a previsão completa não tem avisos
+  assert.deepEqual(s.avaliar(base()).avisos, [])
+})

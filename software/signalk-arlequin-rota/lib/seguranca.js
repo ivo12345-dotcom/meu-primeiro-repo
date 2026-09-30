@@ -20,6 +20,10 @@
 //   pontos do rasto a ≤ corredorCanalMn desses troços (o corredor dos bordos é de 0,7 MN); um rasto
 //   sem posições (ou sem nenhum ponto perto) conta a rota toda. Sem ondas previstas num desses
 //   pontos é "desconhecido", nunca calmo: também excluída.
+// Excluída sempre: a previsão sem dados (`semDados` de lib/previsao.js, nos pontos do rasto do
+//   pessimista ou do provável) de vento, rajada ou ondas em parte da rota — desconhecido não é
+//   calmo. Outros campos sem dados, e os `aproximado` (vieram de um ponto de previsão mais longe),
+//   só dão um aviso (avisos[]).
 // Excluída, ou aviso vermelho em "Sair agora mesmo assim": gasóleo < 40 L ou bateria < 50%
 //   à chegada, no cenário pessimista.
 // "Não recomendada sozinho" (só com tripulação "so"), no cenário pessimista:
@@ -51,6 +55,31 @@ const PADRAO = Object.freeze({
 const virgula = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toFixed(d).replace('.', ',')
 const inteiro = (x) => String(Math.round(x))
 const metros = (x) => (Number.isInteger(x) ? String(x) : virgula(x))
+
+// Os campos da previsão (lib/previsao.js) em português, para os motivos e avisos.
+const NOMES_CAMPOS = Object.freeze({
+  tws: 'vento', rajada: 'rajadas', twd: 'direção do vento', chuva: 'chuva', visibilidade: 'visibilidade', radiacao: 'radiação solar',
+  ondas: 'ondas', periodo: 'período das ondas', ondasDir: 'direção das ondas', corrente: 'corrente', correnteDir: 'direção da corrente'
+})
+// Sem estes, a segurança não sabe o que conta (limites, calma): desconhecido → excluída.
+const CAMPOS_CRITICOS = Object.freeze(['tws', 'rajada', 'ondas'])
+const lista = (campos) => {
+  const n = campos.map(k => NOMES_CAMPOS[k] || k)
+  return n.length > 1 ? `${n.slice(0, -1).join(', ')} e ${n.at(-1)}` : n[0]
+}
+
+// Os campos sem dados e aproximados nos pontos dos rastos dados. → { semDados: Set, aproximado: Set }
+function previsaoIncompleta (passagens) {
+  const semDados = new Set()
+  const aproximado = new Set()
+  for (const x of passagens) {
+    for (const p of x?.pontos || []) {
+      for (const k of p.semDados || []) semDados.add(k)
+      for (const k of p.aproximado || []) aproximado.add(k)
+    }
+  }
+  return { semDados, aproximado }
+}
 
 // Horas equivalentes ao leme numa linha do tempo de 1 min (lib/passagem.js).
 function horasLemeEquivalentes (pontos, opcoes = {}) {
@@ -128,10 +157,11 @@ function minimoCosta (afastamento, opcoes = {}) {
 //   destino: { nome, conhecido }; tripulacao: 'so' | 'acompanhado'; sairAgora: bool
 //   gasoleoInicial (L); costa (para a distância à terra; opcional se costaMinMn vier dado)
 //   costaMinMn: a distância já medida (a geometria de 5 e 8 MN é a mesma em todas as partidas)
-// → { excluida, naoRecomendada, motivos[], avisosVermelhos[], horasLemeEq, costaMinMn, chegadaNoite }
+// → { excluida, naoRecomendada, motivos[], avisosVermelhos[], avisos[], horasLemeEq, costaMinMn, chegadaNoite }
+//   (avisos: linhas de aviso que não excluem, ex.: a previsão aproximada)
 function avaliar ({ alternativa, pessimista, provavel, destino, tripulacao, sairAgora = false, gasoleoInicial, costa, costaMinMn, opcoes = {} }) {
   const o = { ...PADRAO, ...opcoes }
-  const out = { excluida: false, naoRecomendada: false, motivos: [], avisosVermelhos: [], horasLemeEq: null, costaMinMn: null, chegadaNoite: false }
+  const out = { excluida: false, naoRecomendada: false, motivos: [], avisosVermelhos: [], avisos: [], horasLemeEq: null, costaMinMn: null, chegadaNoite: false }
   if (alternativa.excluida) {
     out.excluida = true
     out.motivos.push(alternativa.motivo || 'rota impossível')
@@ -165,6 +195,16 @@ function avaliar ({ alternativa, pessimista, provavel, destino, tripulacao, sair
       out.motivos.push(`${nome}: ondas até ${virgula(k.max)} m no pior caso (${limite})`)
     }
   }
+  // previsão incompleta ao longo da rota (a mesma previsão nos dois cenários)
+  const inc = previsaoIncompleta([pessimista, provavel])
+  const criticos = [...inc.semDados].filter(k => CAMPOS_CRITICOS.includes(k))
+  const outros = [...inc.semDados].filter(k => !CAMPOS_CRITICOS.includes(k))
+  if (criticos.length) {
+    out.excluida = true
+    out.motivos.push(`sem previsão de ${lista(criticos)} em parte da rota: desconhecido não conta como calmo`)
+  }
+  if (outros.length) out.avisos.push(`sem previsão de ${lista(outros)} em parte da rota`)
+  if (inc.aproximado.size) out.avisos.push(`previsão de ${lista([...inc.aproximado])} aproximada em parte da rota (de um ponto de previsão mais longe)`)
   // gasóleo e bateria à chegada, no pessimista
   const vermelho = []
   if (Number.isFinite(gasoleoInicial)) {
@@ -192,4 +232,4 @@ function avaliar ({ alternativa, pessimista, provavel, destino, tripulacao, sair
   return out
 }
 
-module.exports = { PADRAO, horasLemeEquivalentes, distanciaRotaCosta, minimoCosta, trocosCanal, ondasNoCanal, avaliar }
+module.exports = { PADRAO, CAMPOS_CRITICOS, horasLemeEquivalentes, distanciaRotaCosta, minimoCosta, trocosCanal, ondasNoCanal, previsaoIncompleta, avaliar }

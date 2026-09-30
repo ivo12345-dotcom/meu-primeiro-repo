@@ -306,3 +306,15 @@ test('29/09, Algés → Peniche a 5 MN: pessimista, provável e otimista por ord
   assert.ok(Math.max(...tempos.slice(1)) < 2000, tempos.join(', '))
   if (process.env.ROTA_MOSTRAR) console.log(JSON.stringify({ milhasRota: alt.milhas, pe, pr, ot, tempos }, null, 1))
 })
+
+test('a linha do tempo leva o semDados e o aproximado da previsão (lib/previsao.js) só quando os há, para a segurança', () => {
+  const sem = simularPassagem(base())
+  assert.equal('semDados' in sem.pontos[0], false)
+  assert.equal('aproximado' in sem.pontos[0], false)
+  let n = 0
+  const tempo = (lat, lon, t) => ({ ...ventoFixo(12, 270)(), ...(n++ === 5 ? { semDados: ['ondas'], aproximado: ['tws'] } : {}) })
+  const r = simularPassagem(base({ tempo }))
+  assert.deepEqual(r.pontos[5].semDados, ['ondas'])
+  assert.deepEqual(r.pontos[5].aproximado, ['tws'])
+  assert.equal('semDados' in r.pontos[4], false)
+})

@@ -13,7 +13,7 @@
 // a motor com opcoes.motorNasAproximacoes. costaLivre: fora do mínimo à costa.
 //
 // Entradas (todas funções, para os cenários trocarem o que quiserem):
-//   tempo(lat, lon, t) → { tws, rajada, twd, chuva, visibilidade, radiacao, ondas, periodo, ondasDir, corrente, correnteDir, prevTwd?, corrigido? }
+//   tempo(lat, lon, t) → { tws, rajada, twd, chuva, visibilidade, radiacao, ondas, periodo, ondasDir, corrente, correnteDir, prevTwd?, corrigido?, semDados?, aproximado? }
 //     (tws/rajada/twd são o vento que decide: o corrigido do cenário; `w` inteiro vai para a velocidade
 //     e para o consumo; prevTwd é a direção prevista EM BRUTO, quando o cenário corrige a direção.
 //     Sem prevTwd, cai-se na twd — mas só quando o cenário não se declara corrigido, isto é,
@@ -90,6 +90,14 @@ function prevTwdDe (w) {
   if (w.prevTwd != null) return w.prevTwd
   if (w.corrigido === true) throw new Error('tempo(): w.corrigido é true mas falta w.prevTwd (o previsto em bruto é obrigatório quando o cenário corrige a direção)')
   return w.twd
+}
+
+// Os campos da previsão sem dados ou aproximados (lib/previsao.js) do ponto, só quando os há.
+function previsaoIncompleta (w) {
+  const out = {}
+  if (Array.isArray(w.semDados) && w.semDados.length) out.semDados = w.semDados
+  if (Array.isArray(w.aproximado) && w.aproximado.length) out.aproximado = w.aproximado
+  return out
 }
 
 // noite(t) pelo nascer e pôr do sol de cada dia (listas em ms, pela mesma ordem).
@@ -209,10 +217,12 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
     if (!visAnunciada && w.visibilidade != null && w.visibilidade < 3000) { visAnunciada = true; ev(`Chuva e visibilidade ${virgula(w.visibilidade / 1000)} km: radar ligado`, 'tempo') }
     if (!frenteAnunciada && pontos.length && pontos[pontos.length - 1].tws > 12 && w.tws < 8) { frenteAnunciada = true; ev(`Passagem da frente: o vento cai de ${Math.round(pontos[pontos.length - 1].tws)} para ${Math.round(w.tws)} nós e roda para ${rumo3(w.twd)}°. Fica o mar (${virgula(w.ondas ?? 0)} m)`, 'tempo') }
     const costa = distanciaCosta ? distanciaCosta(pos) : null
+    // semDados/aproximado da previsão (lib/previsao.js), só quando os há: a segurança trata o
+    // desconhecido como desconhecido (nunca calmo) e avisa do aproximado.
     // periodo: a par de ondas/tws, para a Task 9 (seguranca.js) calcular as horas de leme
     // equivalentes ("motor em calmaria conta metade"; calmaria usa o periodo — onda ≤ 3 m com
     // periodo ≥ 9 s ainda conta calma). `motor` já serve de sinal motor/vela, não duplicado.
-    pontos.push({ t, costa, lat: pos.lat, lon: pos.lon, proa, cog, sog, stw, tws: w.tws, rajada: w.rajada, twd: w.twd, ondas: w.ondas, periodo: w.periodo, chuva: w.chuva, vis: w.visibilidade, motor, soc, gasoleo, rizos, noite: eNoite, wp: ROTA[wp].nome ?? null, mare: mare.v })
+    pontos.push({ t, costa, lat: pos.lat, lon: pos.lon, proa, cog, sog, stw, tws: w.tws, rajada: w.rajada, twd: w.twd, ondas: w.ondas, periodo: w.periodo, chuva: w.chuva, vis: w.visibilidade, motor, soc, gasoleo, rizos, noite: eNoite, wp: ROTA[wp].nome ?? null, mare: mare.v, ...previsaoIncompleta(w) })
     contaCosta.push(!ROTA[wp].costaLivre)
     const chegouWp = vetor(pos, ROTA[wp]).mn < o.chegadaWpMn || (o.chegadaPassagem && wp < ROTA.length - 1 && passou(ROTA[wp - 1], ROTA[wp], pos))
     if (chegouWp) { if (ROTA[wp].nome) ev(`${ROTA[wp].nome}: ${virgula(milhas)} MN feitas`, 'wp'); wp++ }
