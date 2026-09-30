@@ -143,6 +143,19 @@ test('a velocidade à vela recebe twaPrevAbs = |TWD previsto em bruto − rumo| 
   assert.ok(Math.abs(vistos[0].twaPrevAbs - 90) < 1e-9, `${vistos[0].twaPrevAbs}`)
 })
 
+test('o consumo recebe o rumo e a posição, como a velocidade à vela, para o modelo calcular ondasAnguloRel', () => {
+  const vistos = []
+  const consumo = (x) => { vistos.push(x); return 2 }
+  // vento fraco: motor desde o 1º minuto
+  const r = simularPassagem(base({ tempo: ventoFixo(5, 270), consumo }))
+  assert.ok(vistos.length > 0)
+  assert.equal(vistos[0].rumo, r.pontos[0].proa) // o mesmo rumo que decidiu o ponto (rumoAlvo)
+  assert.equal(vistos[0].lat, r.pontos[0].lat) // a mesma posição (pos, já avançada este minuto) que o ponto guarda
+  assert.equal(vistos[0].lon, r.pontos[0].lon)
+  assert.equal(vistos[0].w.ondasDir, 270) // a direção das ondas previstas, entra em w tal como sempre
+  assert.equal(vistos[0].rpm, PADRAO.rpmCruzeiro)
+})
+
 test('corrente e maré somam à velocidade no fundo; chuva, noite e nascer do sol dão eventos', () => {
   const corrente = simularPassagem(base({ tempo: ventoFixo(12, 270, { corrente: 1, correnteDir: 0 }), correnteExtra: () => ({ v: 0.5, dir: 0 }) }))
   assert.ok(Math.abs(corrente.pontos[0].sog - (5.1 + 1.5)) < 1e-9)

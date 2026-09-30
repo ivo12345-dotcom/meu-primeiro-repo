@@ -21,7 +21,9 @@
 //     (antes do fator do leme, do mar e dos rizos, que o motor aplica). twa: ângulo ao vento que
 //     decide (para a polar); twaPrevAbs: |TWD previsto em bruto − rumo| (0–180), o do modelo da
 //     velocidade da AI (signalk-arlequin-ia/lib/modelos.js: só o que se sabe antes de partir)
-//   consumo({ rpm, w, t }) → L/h
+//   consumo({ rpm, w, t, lat, lon, rumo }) → L/h
+//     (lat/lon/rumo tal como velocidadeVela recebe, para o modelo do consumo poder calcular
+//     ondasAnguloRel = |direção das ondas previstas (w.ondasDir) − rumo| (0–180) e usar prevOndas/w)
 //   noite(t) → bool
 //   energia: { inicio(t) → estado, passo(estado, { t, dtMs, motor, noite, sog, w }) → { estado, soc, eventos? } }
 //   distanciaCosta({ lat, lon }) → MN (opcional)
@@ -178,7 +180,7 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
     const passoMn = sog / 60
     pos = { lat: pos.lat + vy / 60 / 60, lon: pos.lon + vx / 60 / 60 / Math.cos(pos.lat * GRAU) }
     milhas += passoMn
-    if (motor) gasoleo -= consumo({ rpm: o.rpmCruzeiro, w, t }) / 60
+    if (motor) gasoleo -= consumo({ rpm: o.rpmCruzeiro, w, t, lat: pos.lat, lon: pos.lon, rumo: rumoAlvo }) / 60
     else horasLeme += 1 / 60
     let soc = null
     if (energia) {
