@@ -67,6 +67,7 @@ module.exports = function (app, deps = {}) {
   let aBuscar = false
   let disparo = {}
   let estado = estadoValido({})
+  let semPacote = null // mensagem quando a pastaIa não tem o pacote arlequin-ia
 
   const pastaModelos = () => path.join(base, 'modelos')
   const ficheiroEstado = () => path.join(dirPlugin, 'estado.json')
@@ -82,7 +83,7 @@ module.exports = function (app, deps = {}) {
   }
 
   function treinar (motivo) {
-    if (emTreino) return false
+    if (emTreino || semPacote) return false
     const comando = deps.comando || [o.python, '-m', 'arlequin_ia', 'treinar', '--dados', base]
     app.setPluginStatus(`A treinar (${motivo})…`)
     emTreino = lancarTreino({ comando, cwd: o.pastaIa, nice: deps.nice })
@@ -121,24 +122,38 @@ module.exports = function (app, deps = {}) {
     } catch (e) { app.error(`disparo: ${e.message}`) }
   }
 
+  // Se cada versão esteve em uso (aceite), guardado por nome|versão|mtime: as
+  // versões nunca se reescrevem, por isso cada uma só se abre uma vez.
+  const cacheAceite = new Map()
+  function foiAceite (nome, versao) {
+    try {
+      const chave = `${nome}|${versao}|${fs.statSync(path.join(pastaModelos(), nome, `${versao}.json.gz`)).mtimeMs}`
+      if (!cacheAceite.has(chave)) cacheAceite.set(chave, !!mod.lerVersao(pastaModelos(), nome, versao).aceite)
+      return cacheAceite.get(chave)
+    } catch { return false }
+  }
+  // A versão anterior à em uso que tenha estado em uso (a mais recente), ou undefined.
+  const versaoAnterior = (nome, atual, versoes) => versoes.filter(x => atual && x < atual).reverse().find(x => foiAceite(nome, x))
+
   // O resumo de cada modelo em uso, guardado por nome|versão|mtime: o /ia não
   // descomprime o modelo inteiro a cada pedido. Uma entrada por modelo.
   const cacheResumo = new Map()
   function resumoModelo (nome) {
     const versao = mod.versaoAtual(pastaModelos(), nome)
     const versoes = mod.versoes(pastaModelos(), nome)
-    if (!versao) return { versao: null, versoes }
+    if (!versao) return { versao: null, versoes, podeVoltar: false }
+    const podeVoltar = !!versaoAnterior(nome, versao, versoes)
     let chave
-    try { chave = `${nome}|${versao}|${fs.statSync(path.join(pastaModelos(), nome, `${versao}.json.gz`)).mtimeMs}` } catch (e) { return { versao, versoes, erro: e.message } }
+    try { chave = `${nome}|${versao}|${fs.statSync(path.join(pastaModelos(), nome, `${versao}.json.gz`)).mtimeMs}` } catch (e) { return { versao, versoes, podeVoltar, erro: e.message } }
     const guardado = cacheResumo.get(nome)
-    if (guardado?.chave === chave) return { versao, versoes, ...guardado.dados }
+    if (guardado?.chave === chave) return { versao, versoes, podeVoltar, ...guardado.dados }
     let dados
     try {
       const m = mod.lerVersao(pastaModelos(), nome, versao)
       dados = { criado: m.criado, horas: m.horas, mae: m.mae, maeBase: m.maeBase, frases: m.frases || [] }
     } catch (e) { dados = { erro: e.message } }
     cacheResumo.set(nome, { chave, dados })
-    return { versao, versoes, ...dados }
+    return { versao, versoes, podeVoltar, ...dados }
   }
 
   function resumo () {
@@ -159,9 +174,14 @@ module.exports = function (app, deps = {}) {
       estado = estadoValido(lido)
     }
     disparo = {}
+    // O plugin corre o Python a partir do repositório clonado no Pi (ver NAVEGACAO.md, "AI a bordo").
+    // Sem o pacote, não se treina (o arquivo da previsão continua) e diz-se porquê, em vez de um ENOENT.
+    const pastaIa = path.resolve(o.pastaIa)
+    semPacote = fs.existsSync(pastaIa) && fs.existsSync(path.join(pastaIa, 'arlequin_ia')) ? null
+      : `não encontro o pacote arlequin-ia em ${pastaIa}: configura pastaIa`
     if (temporizador) clearInterval(temporizador)
     temporizador = setInterval(minuto, 60000)
-    app.setPluginStatus(resumo())
+    app.setPluginStatus(semPacote || resumo())
   }
 
   // Um treino a correr não é parado: acaba sozinho (no máximo 30 min, lib/processo.js).
@@ -184,6 +204,7 @@ module.exports = function (app, deps = {}) {
     })
     router.post('/treinar', (req, res) => {
       if (!base) return desligada(res)
+      if (semPacote) return res.status(409).json({ ok: false, erro: semPacote })
       if (!treinar('pedido no ecrã')) return res.status(409).json({ ok: false, erro: 'já está a treinar' })
       res.status(202).json({ ok: true })
     })
@@ -194,8 +215,7 @@ module.exports = function (app, deps = {}) {
       const nome = req.body?.modelo
       if (!mod.NOMES.includes(nome)) return res.status(400).json({ ok: false, erro: 'modelo desconhecido' })
       const atual = mod.versaoAtual(pastaModelos(), nome)
-      const anteriores = mod.versoes(pastaModelos(), nome).filter(x => atual && x < atual).reverse()
-      const alvo = anteriores.find(x => { try { return mod.lerVersao(pastaModelos(), nome, x).aceite } catch { return false } })
+      const alvo = versaoAnterior(nome, atual, mod.versoes(pastaModelos(), nome))
       if (!alvo) return res.status(409).json({ ok: false, erro: 'não há versão anterior que tenha estado em uso' })
       const registo = path.join(pastaModelos(), 'registo.json')
       // Sem registo começa-se um; ilegível fica como está (não se apaga o histórico).

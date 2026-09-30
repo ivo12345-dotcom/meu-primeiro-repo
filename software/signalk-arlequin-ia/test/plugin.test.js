@@ -127,6 +127,8 @@ test('/ia mostra o modelo em uso; "voltar atrás" repõe a versão anterior que 
   assert.deepEqual(ia.modelos.velocidade.versoes, ['v0001', 'v0002', 'v0003'])
   assert.deepEqual(ia.modelos.velocidade.frases, ['a 60° com 12 nós andas 5,6 nós (a polar dizia 6,2)'])
   assert.equal(ia.modelos.consumo.versao, null)
+  assert.equal(ia.modelos.velocidade.podeVoltar, true) // a v0001 esteve em uso
+  assert.equal(ia.modelos.consumo.podeVoltar, false)
   assert.equal((await chamar(r.post['/voltar'], { modelo: 'nada' })).code, 400)
   const v = await chamar(r.post['/voltar'], { modelo: 'velocidade' })
   assert.equal(v.versao, 'v0001') // a v0002 nunca esteve em uso
@@ -134,7 +136,47 @@ test('/ia mostra o modelo em uso; "voltar atrás" repõe a versão anterior que 
   const registo = JSON.parse(fs.readFileSync(path.join(app.dir, 'dados', 'modelos', 'registo.json'), 'utf8'))
   assert.match(registo.at(-1).motivo, /voltou atrás à mão \(estava v0003\)/)
   assert.equal((await chamar(r.post['/voltar'], { modelo: 'velocidade' })).code, 409)
+  assert.equal((await chamar(r.get['/ia'])).modelos.velocidade.podeVoltar, false) // já está na primeira
   p.stop()
+})
+
+test('/ia: podeVoltar só com uma versão anterior que tenha estado em uso (aceite)', async () => {
+  const app = appFalso()
+  const pv = path.join(app.dir, 'dados', 'modelos', 'velocidade')
+  fs.mkdirSync(pv, { recursive: true })
+  fs.writeFileSync(path.join(pv, 'v0001.json.gz'), zlib.gzipSync(JSON.stringify({ ...fixture.modelo, versao: 'v0001', aceite: false })))
+  fs.writeFileSync(path.join(pv, 'v0002.json.gz'), zlib.gzipSync(JSON.stringify({ ...fixture.modelo, versao: 'v0002', aceite: true })))
+  fs.writeFileSync(path.join(pv, 'atual'), 'v0002')
+  const p = criar(app, { comando: UMA_LINHA, nice: false })
+  p.start({ pasta: path.join(app.dir, 'dados'), treinoAutomatico: false })
+  const ia = await chamar(rotas(p).get['/ia'])
+  p.stop()
+  assert.deepEqual(ia.modelos.velocidade.versoes, ['v0001', 'v0002'])
+  assert.equal(ia.modelos.velocidade.podeVoltar, false)
+})
+
+test('sem o pacote arlequin-ia na pastaIa: estado claro, "Treinar agora" dá 409 e a previsão continua', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: Date.now() })
+  for (const pastaIa of ['pasta-que-nao-existe', '.']) {
+    const app = appFalso()
+    let pedidos = 0
+    const p = criar(app, { fetch: async (u) => { pedidos++; return { ok: true, json: async () => (u.includes('marine') ? { hourly: { time: [] } } : VENTO) } }, nice: false })
+    const onde = path.resolve(app.dir, pastaIa)
+    p.start({ pasta: path.join(app.dir, 'dados'), pastaIa: onde })
+    t.after(() => p.stop())
+    const msg = `não encontro o pacote arlequin-ia em ${onde}: configura pastaIa`
+    assert.equal(app.estado, msg)
+    const r = await chamar(rotas(p).post['/treinar'], {})
+    assert.deepEqual({ code: r.code, ok: r.ok, erro: r.erro }, { code: 409, ok: false, erro: msg })
+    app.self['navigation.position'] = { latitude: 39.1, longitude: -9.6 }
+    app.self['navigation.speedOverGround'] = 0
+    fs.mkdirSync(path.join(app.dir, 'dados', 'saidas'), { recursive: true })
+    fs.writeFileSync(path.join(app.dir, 'dados', 'saidas', '2026-09-29T10-00.json'), '{}')
+    minutos(t, 61) // parado 1 h depois de uma saída: o treino automático também não arranca
+    await esperar(() => pedidos === 2)
+    assert.equal((await chamar(rotas(p).get['/ia'])).emTreino, false)
+    assert.equal((await chamar(rotas(p).get['/ia'])).ultimoTreino, null)
+  }
 })
 
 test('antes de ligar, as três rotas respondem 503 e o processo não cai', async () => {
@@ -248,13 +290,15 @@ test('/ia não volta a abrir o modelo em uso se o ficheiro não mudou', async (t
   const r = rotas(p)
   assert.equal((await chamar(r.get['/ia'])).modelos.velocidade.versao, 'v0002')
   assert.equal((await chamar(r.get['/ia'])).modelos.velocidade.versao, 'v0002')
-  assert.deepEqual(lidos, ['velocidade|v0002'])
+  // a v0001 (para o podeVoltar) e o em uso (resumo), cada um uma vez só
+  assert.deepEqual(lidos, ['velocidade|v0001', 'velocidade|v0002'])
   fs.utimesSync(path.join(pv, 'v0002.json.gz'), new Date(2020, 0, 1), new Date(2020, 0, 1))
   await chamar(r.get['/ia'])
-  assert.deepEqual(lidos, ['velocidade|v0002', 'velocidade|v0002'], 'ficheiro mudado → lê outra vez')
+  assert.deepEqual(lidos, ['velocidade|v0001', 'velocidade|v0002', 'velocidade|v0002'], 'ficheiro mudado → lê outra vez')
   fs.writeFileSync(path.join(pv, 'atual'), 'v0001')
   assert.equal((await chamar(r.get['/ia'])).modelos.velocidade.versao, 'v0001')
-  assert.deepEqual(lidos, ['velocidade|v0002', 'velocidade|v0002', 'velocidade|v0001'])
+  await chamar(r.get['/ia'])
+  assert.deepEqual(lidos, ['velocidade|v0001', 'velocidade|v0002', 'velocidade|v0002', 'velocidade|v0001'])
 })
 
 test('start duas vezes seguidas não deixa um temporizador a correr depois do stop', async (t) => {

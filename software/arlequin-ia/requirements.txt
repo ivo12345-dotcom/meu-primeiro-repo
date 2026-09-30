@@ -1,4 +1,4 @@
-lightgbm>=4.3
-pandas>=2.2
-numpy>=1.26
+lightgbm==4.7.0
+pandas==3.0.3
+numpy==2.4.6
 pytest>=8
