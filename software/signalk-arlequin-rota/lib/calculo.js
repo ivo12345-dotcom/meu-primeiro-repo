@@ -24,7 +24,9 @@
 // aproximação quando o barco já está nele), com a hora da partida e o vento previsto (P50 corrigido)
 // à hora estimada de passagem em cada ponto. A regra do vento de terra (3 MN e a rota direta perto
 // da costa) depende da hora da partida: essas geram-se de novo em cada partida. As de 5 e 8 MN
-// pela linha não dependem do vento: geram-se uma vez.
+// pela linha não dependem do vento: geram-se uma vez. Depois de simuladas, a mesma regra
+// (rotas.ventoDoMar) volta a verificar-se com a hora a que o barco passa em cada ponto nos rastos
+// pessimista e provável (a estimativa a 5 nós do rotas.js é otimista): se falhar, fica excluída.
 
 const c = require('./costa')
 const rotas = require('./rotas')
@@ -111,6 +113,31 @@ function idAlternativa (partida, alt, prop) {
   return `${quando}-${onde}-${prop}`
 }
 
+// A hora (ms) a que um rasto simulado passa mais perto de (lat, lon).
+function horaNoRasto (pontos, lat, lon) {
+  const k = Math.cos(lat * Math.PI / 180)
+  let melhor = null; let d = Infinity
+  for (const p of pontos) {
+    const dx = (p.lon - lon) * k; const dy = p.lat - lat
+    const di = dx * dx + dy * dy
+    if (di < d) { d = di; melhor = p }
+  }
+  return melhor ? melhor.t : NaN
+}
+
+// A regra do vento de terra (3 MN e rota direta perto da costa) outra vez, agora com a hora a que o
+// barco passa de facto em cada ponto no rasto pessimista e no provável: o rotas.js só a verifica à
+// hora estimada a 5 nós, e o barco anda mais devagar (sobretudo no pessimista). A mesma função e os
+// mesmos motivos do rotas.js (ventoDoMar). → o motivo, ou null.
+function ventoDoMarNosRastos (ctx, alt, sims) {
+  for (const nome of ['pessimista', 'provavel']) {
+    const pontos = sims[nome].pontos
+    const motivo = rotas.ventoDoMar(ctx.costa, alt, { twd: (lat, lon) => ctx.twd(lat, lon, horaNoRasto(pontos, lat, lon)) })
+    if (motivo) return motivo
+  }
+  return null
+}
+
 // Avalia uma geometria numa partida e propulsão → candidato (sem a linha do tempo, que pesa).
 function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
   const sims = simular3(ctx, alt, partida, prop)
@@ -118,6 +145,9 @@ function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
   if (!pe.resumo.chegou || !pr.resumo.chegou || !ot.resumo.chegou) return { foraDaPrevisao: false, naoChega: true }
   if (Date.parse(pe.resumo.chegada) > ctx.previsao.fim) return { foraDaPrevisao: true }
   const seg = seguranca.avaliar({ alternativa: alt, pessimista: pe, provavel: pr, destino: ctx.destino, tripulacao: ctx.tripulacao, sairAgora: ctx.sairAgora, gasoleoInicial: ctx.gasoleoInicial, costaMinMn, opcoes: { afastamentoMinimo: ctx.o.afastamentoMinimo } })
+  // exclusão dura (também em "sair agora"), como no rotas.js
+  const ventoMar = ventoDoMarNosRastos(ctx, alt, sims)
+  if (ventoMar) { seg.excluida = true; seg.motivos = [ventoMar, ...seg.motivos] }
   // sem nível do depósito a regra corre com o valor assumido, mas nunca em silêncio: aviso vermelho
   const avisosVermelhos = ctx.gasoleoAssumido ? [...seg.avisosVermelhos, `gasóleo inicial desconhecido: confirma o depósito (assumi ${ctx.gasoleoInicial} L)`] : seg.avisosVermelhos
   // as horas equivalentes ao leme vêm só de lib/seguranca.js (a mesma regra da calma para o custo e para os limites)
@@ -277,9 +307,9 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   const gasoleoAssumido = gasoleoInicial == null
   if (gasoleoAssumido) { gasoleoInicial = o.gasoleoDesconhecidoL; avisosGerais.push(`Sem nível do gasóleo: assumi ${gasoleoInicial} L`) }
 
-  const ctx = { o, agora, destino, tripulacao, sairAgora, previsao, cenarios, correnteExtra, noite, soc, gasoleoInicial, gasoleoAssumido }
   // o vento previsto (a direção P50 corrigida, a mesma nos três cenários) para a regra do vento de terra
   const twd = (lat, lon, t) => cenarios.provavel.tempo(lat, lon, t).twd
+  const ctx = { o, agora, costa, destino, tripulacao, sairAgora, previsao, cenarios, correnteExtra, noite, soc, gasoleoInicial, gasoleoAssumido, twd }
   const log = typeof deps.log === 'function' ? deps.log : undefined
 
   // ---------- as alternativas ----------

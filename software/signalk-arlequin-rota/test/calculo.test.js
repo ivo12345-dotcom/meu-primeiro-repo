@@ -276,3 +276,24 @@ test('o cálculo nunca lança: previsão estragada, sem rota ativa, posição nu
   assert.match((await calcular(entrada({ instrumentos: { posicao: null } }), deps())).erro, /^Sem GPS/)
   assert.match((await calcular(entrada(), deps({ obterPrevisao: async () => ({ previsao: { pontos: null } }) }))).erro, /^(erro no cálculo|Sem previsão)/)
 })
+
+test('a regra do vento de terra (3 MN) volta a verificar-se à hora a que o barco passa nos rastos simulados, não só à hora estimada a 5 nós', async () => {
+  // Nazaré → Figueira a 3 MN, agora (15:32): vento de leste (de terra) até às 00:45 de Lisboa e
+  // depois de oeste (do mar). A 5 nós o rotas.js estima o último ponto da linha às 23:00: passa.
+  // A motor o barco só lá chega por volta da 01:25 (os dois rastos, provável e pessimista), já
+  // com o vento do mar: excluída, com o motivo do rotas.js. À vela chega às 00:11 no pior caso:
+  // antes de rodar, fica.
+  const roda = Date.parse('2026-09-29T23:45:00Z')
+  const P = mudar(P29, p => { p.twd = p.t.map(t => (t < roda ? 90 : 270)) })
+  let cands = []
+  const r = await calcular(entrada({ instrumentos: { posicao: de('nazare'), socPct: 90, gasoleoL: 124 }, destino: 'figueira', tripulacao: 'acompanhado' }), comPrevisao(P, { aoCandidatos: l => { cands = l } }))
+  assert.equal(r.erro, undefined, r.erro)
+  const VENTO_DO_MAR = 'vento do mar em parte da rota: a 3 MN ficava perto de uma costa a sotavento'
+  const motor = cands.find(k => k.id === '20260929T1432-3mn-motor')
+  const vela = cands.find(k => k.id === '20260929T1432-3mn-vela')
+  assert.ok(motor && vela, JSON.stringify(cands.filter(k => k.partida === AGORA).map(k => k.id)))
+  assert.equal(motor.excluida, true)
+  assert.equal(motor.motivos[0], VENTO_DO_MAR)
+  assert.ok(!vela.motivos.includes(VENTO_DO_MAR), JSON.stringify(vela.motivos))
+  assert.ok(r.alternativas.every(a => a.id !== motor.id))
+})

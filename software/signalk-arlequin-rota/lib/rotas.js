@@ -25,9 +25,11 @@
 // têm atalho por dentro do rio entre as suas aproximações: em vez de "rota absurda", o motivo é
 // "sem rota dentro do Tejo".
 //
-// Cada ponto da rota: { lat, lon, nome?, perna, costaLivre? }. `perna` é o troço
+// Cada ponto da rota: { lat, lon, nome?, perna, costaLivre?, s? }. `perna` é o troço
 // que CHEGA a esse ponto: 'porto' (dentro da entrada), 'aproximacao', 'ligacao',
 // 'linha' ou 'canal'. costaLivre: fora da regra do afastamento mínimo (tudo menos a linha).
+// s: a posição (MN) na linha seguida, só nos pontos da linha (para ventoDoMar voltar a
+// verificar a regra do vento de terra numa alternativa já traçada).
 
 const fs = require('node:fs')
 const path = require('node:path')
@@ -46,6 +48,9 @@ const NOTA_DIRETO = 'salto curto entre portos vizinhos: rota direta junto à cos
 const NOTA_DIRETO_MAR = 'destino perto da posição atual: rota direta'
 const fmtMn = (x) => x.toFixed(1).replace('.', ',')
 const logPadrao = (...a) => console.error(...a)
+// A regra do vento de terra (os 3 MN e a rota direta perto da costa): nosEta, os nós da hora
+// estimada de passagem em cada ponto; passoMax, as amostras (MN) nos troços da rota direta.
+const VENTO = Object.freeze({ toleranciaVento: 60, afastamentoVentoTerra: 3, nosEta: 5, passoMax: 2 })
 
 // Um canal só entra na lista se tiver nome, ≥ 2 pontos com lat/lon finitos e ondasMax (usado pela
 // Task 9); um canal inválido fica de fora (registado), sem impedir os outros.
@@ -304,6 +309,22 @@ function ventoDoMarNoDireto (costa, pontos, costaMinMn, { twd, horaPartida }, o)
   return null
 }
 
+// A regra do vento de terra de uma alternativa já traçada: a da linha a ≤ afastamentoVentoTerra
+// (ventoDoMarNaRota) e a rota direta a menos de afastamentoVentoTerra da costa (ventoDoMarNoDireto).
+// → o motivo da exclusão (os mesmos textos do gerar), ou null. O gerar usa-a com a hora estimada a
+// o.nosEta nós; lib/calculo.js volta a usá-la com a hora a que o barco passa de facto em cada ponto
+// nos rastos simulados (sem horaPartida, twd(lat, lon): quem chama fecha a hora).
+function ventoDoMar (costa, alt, { twd, horaPartida } = {}, opcoes = {}) {
+  const o = { ...VENTO, ...opcoes }
+  if (!alt || alt.excluida) return null
+  if (alt.direto) {
+    if (alt.costaMinMn == null || !(alt.costaMinMn < o.afastamentoVentoTerra)) return null
+    return ventoDoMarNoDireto(costa, alt.pontos, alt.costaMinMn, { twd, horaPartida }, o)
+  }
+  if (!(alt.afastamento <= o.afastamentoVentoTerra)) return null
+  return ventoDoMarNaRota(costa, costa.linha(alt.afastamento), alt.pontos, { twd, horaPartida }, o)
+}
+
 // A distância mínima (MN) à terra nos troços fora das aproximações (ligações, linha, canal),
 // de `passo` em `passo` MN; null se a rota é toda aproximação.
 function distanciaMinimaTerra (costa, pontos, passo = 0.1) {
@@ -495,6 +516,7 @@ function descreverProblema (r) {
 // twd: direção do vento previsto (número, ou função (lat, lon[, t]) → graus), só para os 3 MN;
 // horaPartida (ms, opcional): com ela a função recebe a hora estimada de passagem em cada ponto.
 // costaMinMn: a distância mínima à terra nos troços fora das aproximações (null se não há).
+// Excluída pela regra do vento de terra (ventoDoMar): também `porVento: true`.
 // gerarRota dá só a alternativa da linha; gerarAlternativas dá também as variantes por canais
 // (hoje só o Canal da Berlenga), a seguir a ela.
 function gerarRota (costa, args) {
@@ -512,7 +534,7 @@ function gerar (costa, { partida, destino, afastamento, twd, horaPartida, opcoes
   // MOTIVO_SEM_ROTA_TEJO/mesmoLargo, não por este fator), 4,52 ×; o erro de projeção do cabo
   // inventado (teste "rota absurda") dá 11,9 ×. 4,0 fica a ≥ 10 % dos dois lados
   // (3,41 × 1,1 = 3,75; 4,52 / 1,1 = 4,11).
-  const o = { anguloMax: 60, maxAvancoMn: 5, passoMn: 0.25, passoMax: 2, tolerancia: 0.02, toleranciaVento: 60, afastamentoVentoTerra: 3, nosEta: 5, raioAproximacao: RAIO_PORTO_MN, fatorAbsurdo: 4.0, canais: CANAIS, raioCanalMn: 10, ganhoCanalMinMn: 5, ...opcoes }
+  const o = { ...VENTO, anguloMax: 60, maxAvancoMn: 5, passoMn: 0.25, tolerancia: 0.02, raioAproximacao: RAIO_PORTO_MN, fatorAbsurdo: 4.0, canais: CANAIS, raioCanalMn: 10, ganhoCanalMinMn: 5, ...opcoes }
   const alt = { afastamento, pontos: [], milhas: 0, excluida: false, avisos: [] }
   const excluir = (motivo) => [{ ...alt, excluida: true, motivo }]
   // nada escapa daqui (motivoDoErro): nunca pode derrubar o servidor
@@ -594,17 +616,11 @@ function gerar (costa, { partida, destino, afastamento, twd, horaPartida, opcoes
         return fora(absurda)
       }
       const costaMinMn = distanciaMinimaTerra(costa, pontos)
-      if (t.direto) {
-        if (costaMinMn != null && costaMinMn < o.afastamentoVentoTerra) {
-          const motivo = ventoDoMarNoDireto(costa, pontos, costaMinMn, { twd, horaPartida }, o)
-          if (motivo) return fora(motivo)
-        }
-      } else if (afastamento <= o.afastamentoVentoTerra) {
-        // 3 MN só com vento de terra, em TODOS os pontos da linha seguida (não só à saída)
-        const motivo = ventoDoMarNaRota(costa, linha, pontos, { twd, horaPartida }, o)
-        if (motivo) return fora(motivo)
-      }
-      for (const p of pontos) { delete p.s; if (p.perna === 'linha') delete p.costaLivre; else p.costaLivre = true }
+      // 3 MN só com vento de terra, em TODOS os pontos da linha seguida (não só à saída); a rota
+      // direta a menos de 3 MN da costa também (ventoDoMar)
+      const motivo = ventoDoMar(costa, { ...a, pontos, costaMinMn }, { twd, horaPartida }, o)
+      if (motivo) return { ...fora(motivo), porVento: true }
+      for (const p of pontos) { if (p.perna === 'linha') delete p.costaLivre; else p.costaLivre = true }
       return { ...a, pontos, milhas: milhasDe(pontos), costaMinMn, sentido: t.sentido, linha: linhaSeguida }
     })
   } catch (e) {
@@ -642,4 +658,4 @@ function gerarRotas (costa, { posicao, destino, afastamentos = [3, 5, 8], twd, h
   }
 }
 
-module.exports = { RAIO_PORTO_MN, AVISO_ROTA_ATIVA, CANAIS, carregarCanais, portoDePartida, destinoDaRotaAtiva, rumoParaTerra, ventoDeTerra, ventoDoMarNoDireto, gerarRota, gerarAlternativas, gerarRotas }
+module.exports = { RAIO_PORTO_MN, AVISO_ROTA_ATIVA, CANAIS, carregarCanais, portoDePartida, destinoDaRotaAtiva, rumoParaTerra, ventoDeTerra, ventoDoMarNoDireto, ventoDoMar, gerarRota, gerarAlternativas, gerarRotas }

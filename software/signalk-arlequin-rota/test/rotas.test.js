@@ -583,3 +583,26 @@ test('vento na rota direta: só se aplica onde a costa fica mesmo perto (< afast
   const soPertoMau = (lat, lon) => (lon < -9.10 ? 90 : 270)
   assert.match(r.ventoDoMarNoDireto(inventada, pontos, inventada.distanciaTerra(perto, 50), { twd: soPertoMau }, o), /^vento do mar em parte da rota/)
 })
+
+test('ventoDoMar: a mesma regra do vento de terra numa alternativa já traçada (para o cálculo a voltar a verificar com a hora dos rastos)', () => {
+  const VENTO_DO_MAR = 'vento do mar em parte da rota: a 3 MN ficava perto de uma costa a sotavento'
+  // Nazaré → Figueira a 3 MN com vento de leste (de terra): passa no gerar
+  const alt = r.gerarRota(real, { partida: D('nazare'), destino: D('figueira'), afastamento: 3, twd: 90 })
+  assert.equal(alt.excluida, false, alt.motivo)
+  assert.equal(r.ventoDoMar(real, alt, { twd: 90 }), null)
+  // o mesmo vento do mar que o gerar recusa, com o mesmo motivo
+  assert.equal(r.ventoDoMar(real, alt, { twd: 270 }), VENTO_DO_MAR)
+  assert.equal(r.gerarRota(real, { partida: D('nazare'), destino: D('figueira'), afastamento: 3, twd: 270 }).motivo, VENTO_DO_MAR)
+  // sem horaPartida, a função recebe só (lat, lon): quem chama escolhe a hora de cada ponto
+  const args = []
+  assert.equal(r.ventoDoMar(real, alt, { twd: (...a) => { args.push(a.length); return 90 } }), null)
+  assert.ok(args.length >= 10 && args.every(n => n === 2), `${args.length}`)
+  // a 5 MN (e excluídas) não há regra do vento de terra
+  const a5 = r.gerarRota(real, { partida: D('nazare'), destino: D('figueira'), afastamento: 5 })
+  assert.equal(r.ventoDoMar(real, a5, { twd: 270 }), null)
+  // a rota direta perto da costa (Cascais → Algés, a < 3 MN da costa): a mesma regra da direta
+  const [dir] = r.gerarRotas(real, { posicao: c.P(D('cascais').aproximacao.at(-1)), destino: D('alges'), twd: 0 })
+  assert.equal(dir.excluida, false, dir.motivo)
+  assert.equal(r.ventoDoMar(real, dir, { twd: 0 }), null)
+  assert.match(r.ventoDoMar(real, dir, { twd: 180 }), /^vento do mar em parte da rota: a rota direta passa a \d+,\d MN de uma costa a sotavento$/)
+})
