@@ -72,7 +72,13 @@ function serie (resp, variaveis) {
   for (const [campo, v] of Object.entries(CAMPOS)) {
     if (!variaveis.includes(v) || !h[v]) continue
     const u = resp.hourly_units?.[v]
-    const f = (v === 'wind_speed_10m' || v === 'wind_gusts_10m' || v === 'ocean_current_velocity') ? (PARA_NOS[u] ?? 1) : 1
+    const ehVelocidade = v === 'wind_speed_10m' || v === 'wind_gusts_10m' || v === 'ocean_current_velocity'
+    // Nunca assumir nós silenciosamente: os pedidos pedem sempre wind_speed_unit=kn (ver
+    // urls()), por isso uma resposta válida traz sempre 'kn' em hourly_units — uma unidade
+    // em falta ou desconhecida é sinal de a Open-Meteo ter mudado de comportamento, e um
+    // fator errado dava ventos/correntes errados sem aviso nenhum.
+    if (ehVelocidade && PARA_NOS[u] === undefined) throw new Error(`unidade desconhecida da Open-Meteo: ${u ?? '(nenhuma)'}`)
+    const f = ehVelocidade ? PARA_NOS[u] : 1
     out[campo] = h[v].map(x => (x == null ? null : x * f))
   }
   return out

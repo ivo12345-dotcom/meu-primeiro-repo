@@ -59,6 +59,21 @@ test('interpretar: 9 pontos da fixture de 29/09, horas UTC, corrente em nós, o 
   assert.throws(() => prev.interpretar(PONTOS, FIX.forecast.slice(1), FIX.marine, 0), /8 pontos em vez de 9/)
 })
 
+test('unidade desconhecida (ou em falta) da Open-Meteo: erro em vez de assumir nós', () => {
+  const desconhecida = { utc_offset_seconds: 0, hourly_units: { wind_speed_10m: 'furlongs/fortnight' }, hourly: { time: ['2026-09-29T15:00'], wind_speed_10m: [10] } }
+  assert.throws(
+    () => prev.interpretar([{ lat: 39, lon: -9 }], desconhecida, null, 0),
+    /unidade desconhecida da Open-Meteo: furlongs\/fortnight/
+  )
+  const semChave = { utc_offset_seconds: 0, hourly_units: {}, hourly: { time: ['2026-09-29T15:00'], wind_speed_10m: [10] } }
+  assert.throws(
+    () => prev.interpretar([{ lat: 39, lon: -9 }], semChave, null, 0),
+    /unidade desconhecida da Open-Meteo/
+  )
+  // as respostas reais (pedidas com wind_speed_unit=kn) nunca disparam isto
+  assert.doesNotThrow(() => prev.interpretar(PONTOS, FIX.forecast, FIX.marine, 0))
+})
+
 test('tempo: o ponto mais perto, linear no tempo, ângulos por seno e cosseno', () => {
   const tempo = prev.criarTempo(P29)
   const p = P29.pontos[5] // linha 5 MN 5, ao largo de Santa Cruz
