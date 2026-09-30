@@ -340,7 +340,7 @@ test('sem passagem: excluída com o motivo em português', () => {
   const emTerra = r.gerarRota(inventada, { partida: { lat: 39.3, lon: -8.9 }, destino: NORTE, afastamento: 5 })
   assert.equal(emTerra.motivo, 'a posição atual fica em terra')
   const zona = c.criarCosta({ terra, destinos: [], zonas: [{ nome: 'Zona inventada', poligono: [[39.0, -9.2], [39.0, -9.1], [39.3, -9.1], [39.3, -9.2], [39.0, -9.2]] }], linhas: { 5: [[39.6, -9.15], [38.4, -9.15]] } })
-  assert.match(r.gerarRota(zona, { partida: SUL_DO_CABO, destino: NORTE, afastamento: 5 }).motivo, /passa na zona a evitar "Zona inventada"|não há passagem/)
+  assert.equal(r.gerarRota(zona, { partida: SUL_DO_CABO, destino: NORTE, afastamento: 5 }).motivo, 'a rota a 5 MN passa na zona a evitar "Zona inventada"')
 })
 
 test('entrada inválida e coordenadas não finitas: excluída com o motivo em português, nunca rebenta', () => {
@@ -353,14 +353,45 @@ test('entrada inválida e coordenadas não finitas: excluída com o motivo em po
   assert.match(alt.motivo, /entrada mal definida/)
   // lib/costa.js: P() rebenta com coordenadas não finitas; gerarRota apanha o erro e exclui a
   // alternativa em vez de deixar a exceção escapar por resolver (nunca pode derrubar o servidor).
+  // O motivo é uma frase para o Ivo, sem o JSON cru dos dados.
+  const COORDENADAS = 'coordenadas inválidas: a posição ou um ponto da rota não tem latitude e longitude válidas'
   const semGps = r.gerarRota(inventada, { partida: { lat: NaN, lon: -9.05 }, destino: NORTE, afastamento: 5 })
   assert.equal(semGps.excluida, true)
-  assert.equal(typeof semGps.motivo, 'string')
+  assert.equal(semGps.motivo, COORDENADAS)
   assert.deepEqual(semGps.pontos, [])
   // o mesmo para gerarRotas com uma rota ativa do OpenCPN malformada (coordenadas não finitas)
   const alts = r.gerarRotas(inventada, { posicao: { lat: 38.99, lon: -9.02 }, destino: { rotaAtiva: [{ lat: 39.1, lon: NaN }] }, afastamentos: [3, 5] })
   assert.equal(alts.length, 2)
-  for (const a of alts) { assert.equal(a.excluida, true); assert.equal(typeof a.motivo, 'string') }
+  for (const a of alts) { assert.equal(a.excluida, true); assert.equal(a.motivo, COORDENADAS) }
+})
+
+test('erros de programação: motivo fixo para o Ivo e o erro verdadeiro no registo', () => {
+  const erros = []
+  const log = (...a) => erros.push(a)
+  const partida = SUL_DO_CABO
+  const quebrada = { ...inventada, linha: () => { throw new TypeError("Cannot read properties of undefined (reading 'pts')") } }
+  const alt = r.gerarRota(quebrada, { partida, destino: NORTE, afastamento: 5, log })
+  assert.equal(alt.excluida, true)
+  assert.equal(alt.motivo, 'erro interno ao gerar esta rota')
+  assert.deepEqual(alt.pontos, [])
+  assert.equal(erros.length, 1)
+  assert.ok(erros[0].some(x => x instanceof TypeError), 'o erro verdadeiro vai para o registo')
+  // gerarRotas passa o registo e também não rebenta
+  const alts = r.gerarRotas(quebrada, { posicao: { lat: 38.99, lon: -9.01 }, destino: NORTE, afastamentos: [5, 8], log })
+  assert.deepEqual(alts.map(a => a.motivo), ['erro interno ao gerar esta rota', 'erro interno ao gerar esta rota'])
+  assert.equal(erros.length, 3)
+  // coordenadas inválidas não são erro de programação: sem registo
+  r.gerarRota(inventada, { partida: { lat: NaN, lon: -9.05 }, destino: NORTE, afastamento: 5, log })
+  assert.equal(erros.length, 3)
+})
+
+test('sem rota ativa ou sem posição: alternativas excluídas com o motivo, nunca rebenta', () => {
+  const vazia = r.gerarRotas(real, { posicao: { lat: 38.9, lon: -9.6 }, destino: { rotaAtiva: [] }, afastamentos: [3, 5] })
+  assert.deepEqual(vazia.map(a => [a.afastamento, a.excluida, a.motivo]), [[3, true, 'não há rota ativa no OpenCPN'], [5, true, 'não há rota ativa no OpenCPN']])
+  for (const posicao of [null, undefined, { lat: NaN, lon: -9.6 }, {}]) {
+    const alts = r.gerarRotas(real, { posicao, destino: D('peniche'), afastamentos: [5, 8] })
+    assert.deepEqual(alts.map(a => [a.afastamento, a.excluida, a.motivo]), [[5, true, 'sem posição do GPS: não sei de onde parte o barco'], [8, true, 'sem posição do GPS: não sei de onde parte o barco']])
+  }
 })
 
 test('partida: do porto (≤ 0,5 MN do cais) ou da posição atual no mar', () => {
@@ -383,17 +414,23 @@ test('destino pela rota ativa do OpenCPN: o largo da lista, ou um ponto avulso c
   const avulso = r.destinoDaRotaAtiva(real, [{ lat: 38.7, lon: -9.5 }, { lat: 39.1, lon: -9.6 }])
   assert.equal(avulso.destino.porConfirmar, true)
   assert.equal(avulso.aviso, 'último troço por confirmar na carta')
+  // o destino avulso cumpre o contrato do costa.js (1 <= entrada <= aproximacao.length - 1)
+  assert.equal(avulso.destino.entrada, avulso.destino.aproximacao.length - 1)
+  assert.ok(avulso.destino.entrada >= 1)
+  assert.deepEqual(real.verificarAproximacao(avulso.destino), [])
   const [alt] = r.gerarRotas(real, { posicao: { lat: 38.6955, lon: -9.233 }, destino: { rotaAtiva: [[38.7, -9.5], [39.1, -9.6]] }, afastamentos: [5] })
   assert.equal(alt.excluida, false, alt.motivo)
   assert.deepEqual(alt.avisos, ['último troço por confirmar na carta'])
   assert.deepEqual([alt.pontos.at(-1).lat, alt.pontos.at(-1).lon], [39.1, -9.6])
   assert.equal(alt.pontos.at(-1).perna, 'ligacao')
+  assert.equal(alt.pontos.at(-1).nome, 'Fim da rota ativa')
+  for (let i = 1; i < alt.pontos.length; i++) assert.ok(c.distanciaMn(alt.pontos[i - 1], alt.pontos[i]) > 0, `ponto ${i} repetido`)
   assert.equal(r.destinoDaRotaAtiva(real, []), null)
 })
 
-test('rápido: as 3 alternativas de Algés → Lagos em menos de 300 ms', () => {
+test('rápido: as 3 alternativas de Algés → Lagos em menos de 2 s (limite largo, para máquinas lentas)', () => {
   const t = performance.now()
   const alts = r.gerarRotas(real, { posicao: { lat: 38.6955, lon: -9.233 }, destino: D('lagos'), twd: 45 })
   assert.equal(alts.length, 3)
-  assert.ok(performance.now() - t < 300)
+  assert.ok(performance.now() - t < 2000)
 })

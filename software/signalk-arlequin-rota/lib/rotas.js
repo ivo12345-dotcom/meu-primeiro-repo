@@ -32,6 +32,20 @@ const RAIO_PORTO_MN = 0.5
 // Canais entre ilhas e o continente que a linha contorna por fora (dados/canais.json).
 const CANAIS = JSON.parse(fs.readFileSync(path.join(c.PASTA_DADOS, 'canais.json'), 'utf8'))
 const AVISO_ROTA_ATIVA = 'último troço por confirmar na carta'
+const MOTIVO_ERRO_INTERNO = 'erro interno ao gerar esta rota'
+const MOTIVO_COORDENADAS = 'coordenadas inválidas: a posição ou um ponto da rota não tem latitude e longitude válidas'
+const MOTIVO_SEM_ROTA_ATIVA = 'não há rota ativa no OpenCPN'
+const MOTIVO_SEM_POSICAO = 'sem posição do GPS: não sei de onde parte o barco'
+
+// Uma exceção a gerar uma rota nunca escapa (não pode derrubar o servidor): coordenadas não finitas
+// (lib/costa.js, `P()`) dão um motivo em português sem o JSON cru; qualquer outra é um erro de
+// programação: motivo fixo para o Ivo e o erro verdadeiro no registo.
+function motivoDoErro (e, log) {
+  if (/^coordenadas inválidas/.test(e?.message)) return MOTIVO_COORDENADAS
+  try { log('signalk-arlequin-rota: erro ao gerar uma rota', e) } catch { /* o registo não pode rebentar */ }
+  return MOTIVO_ERRO_INTERNO
+}
+const logPadrao = (...a) => console.error(...a)
 
 // O porto de onde se parte: o destino da lista com o cais a ≤ 0,5 MN da posição.
 function portoDePartida (costa, posicao, raioMn = RAIO_PORTO_MN) {
@@ -53,7 +67,9 @@ function destinoDaRotaAtiva (costa, pontos, raioMn = RAIO_PORTO_MN) {
     if (c.distanciaMn(fim, c.P(d.largo)) <= raioMn || c.distanciaMn(fim, c.P(d.aproximacao.at(-1))) <= raioMn) return { destino: d, aviso: null }
   }
   return {
-    destino: { id: null, nome: 'Fim da rota ativa', abrigo: false, conhecido: false, largo: [fim.lat, fim.lon], aproximacao: [[fim.lat, fim.lon]], entrada: 0, porConfirmar: true },
+    // aproximação de 2 pontos iguais para a `entrada` ser válida (1 = o último índice), como o
+    // costa.js exige; pontosEntrada junta os pontos repetidos
+    destino: { id: null, nome: 'Fim da rota ativa', abrigo: false, conhecido: false, largo: [fim.lat, fim.lon], aproximacao: [[fim.lat, fim.lon], [fim.lat, fim.lon]], entrada: 1, porConfirmar: true },
     aviso: AVISO_ROTA_ATIVA
   }
 }
@@ -92,12 +108,16 @@ function pontosSaida (porto) {
 function pontosEntrada (destino) {
   const ap = destino.aproximacao.map(c.P)
   const entrada = entradaDe(destino)
-  return ap.map((q, i) => {
+  const out = []
+  ap.forEach((q, i) => {
     const p = { ...q, perna: i === 0 ? 'ligacao' : pernaDe(i, entrada), costaLivre: true }
     if (i === 0 && ap.length > 1) p.nome = `Largo de ${destino.nome}`
     if (i === ap.length - 1) p.nome = destino.nome
-    return p
+    // um ponto repetido (o destino avulso da rota ativa) junta-se ao anterior, com o nome dele
+    const antes = out.at(-1)
+    if (antes && antes.lat === p.lat && antes.lon === p.lon) { if (p.nome) antes.nome = p.nome } else out.push(p)
   })
+  return out
 }
 
 // A aproximação (de um destino da lista, ou do próprio destino) com um troço a ≤ raioMn da
@@ -428,15 +448,14 @@ function gerarAlternativas (costa, args) {
   return gerar(costa, args, true)
 }
 
-function gerar (costa, { partida, destino, afastamento, twd, horaPartida, opcoes = {} }, comVariantes) {
+function gerar (costa, { partida, destino, afastamento, twd, horaPartida, opcoes = {}, log = logPadrao }, comVariantes) {
   const o = { anguloMax: 60, maxAvancoMn: 5, passoMn: 0.25, passoMax: 2, tolerancia: 0.02, toleranciaVento: 60, afastamentoVentoTerra: 3, nosEta: 5, raioAproximacao: RAIO_PORTO_MN, fatorAbsurdo: 3.5, canais: CANAIS, raioCanalMn: 10, ganhoCanalMinMn: 5, ...opcoes }
-  const nomeA = partida.nome || 'a posição atual'
-  const nomeB = destino.nome
   const alt = { afastamento, pontos: [], milhas: 0, excluida: false, avisos: [] }
   const excluir = (motivo) => [{ ...alt, excluida: true, motivo }]
-  // Coordenadas não finitas (posição sem GPS, rota ativa malformada, dados corrompidos) fazem
-  // lib/costa.js rebentar (`P()`); aqui isso não pode escapar por resolver, fica excluída com o motivo.
+  // nada escapa daqui (motivoDoErro): nunca pode derrubar o servidor
   try {
+    const nomeA = partida.nome || 'a posição atual'
+    const nomeB = destino.nome
     if (destino.porConfirmar) alt.avisos.push(AVISO_ROTA_ATIVA)
 
     // 1. saída
@@ -514,35 +533,38 @@ function gerar (costa, { partida, destino, afastamento, twd, horaPartida, opcoes
       return { ...a, pontos, milhas: milhasDe(pontos), costaMinMn, sentido: t.sentido, linha: linhaSeguida }
     })
   } catch (e) {
-    return excluir(e.message)
+    return excluir(motivoDoErro(e, log))
   }
 }
 
-// As alternativas para cada afastamento. posicao: { lat, lon } do barco; destino: da lista
-// (ou { rotaAtiva: [[lat, lon] | {lat, lon}, …] } para usar o fim da rota ativa do OpenCPN).
-function gerarRotas (costa, { posicao, destino, afastamentos = [3, 5, 8], twd, horaPartida, opcoes }) {
-  let dest = destino
-  if (destino?.rotaAtiva) {
-    let r
-    try {
-      r = destinoDaRotaAtiva(costa, destino.rotaAtiva)
-    } catch (e) {
-      // pontos da rota ativa malformados (coordenadas não finitas): nenhuma alternativa possível
-      return afastamentos.map(afastamento => ({ afastamento, pontos: [], milhas: 0, excluida: true, motivo: e.message, avisos: [] }))
+// As alternativas para cada afastamento (e as variantes por canais, a seguir à de cada um; a
+// direta só uma vez). posicao: { lat, lon } do barco; destino: da lista (ou { rotaAtiva:
+// [[lat, lon] | {lat, lon}, …] } para usar o fim da rota ativa do OpenCPN). log(msg, erro): o
+// registo dos erros de programação (por omissão console.error; no plugin, app.error).
+function gerarRotas (costa, { posicao, destino, afastamentos = [3, 5, 8], twd, horaPartida, opcoes, log = logPadrao }) {
+  const todas = (motivo) => afastamentos.map(afastamento => ({ afastamento, pontos: [], milhas: 0, excluida: true, motivo, avisos: [] }))
+  try {
+    if (!Number.isFinite(posicao?.lat) || !Number.isFinite(posicao?.lon)) return todas(MOTIVO_SEM_POSICAO)
+    let dest = destino
+    if (destino?.rotaAtiva) {
+      const r = destinoDaRotaAtiva(costa, destino.rotaAtiva)
+      if (!r) return todas(MOTIVO_SEM_ROTA_ATIVA)
+      dest = r.destino
     }
-    if (!r) return []
-    dest = r.destino
-  }
-  const partida = portoDePartida(costa, posicao) || { lat: posicao.lat, lon: posicao.lon }
-  const alts = []
-  for (const d of afastamentos) {
-    for (const a of gerarAlternativas(costa, { partida, destino: dest, afastamento: d, twd, horaPartida, opcoes })) {
-      // a rota direta é a mesma a qualquer afastamento: só uma vez
-      if (a.direto && alts.some(x => x.direto)) continue
-      alts.push(a)
+    const partida = portoDePartida(costa, posicao) || { lat: posicao.lat, lon: posicao.lon }
+    const alts = []
+    for (const d of afastamentos) {
+      for (const a of gerarAlternativas(costa, { partida, destino: dest, afastamento: d, twd, horaPartida, opcoes, log })) {
+        // a rota direta é a mesma a qualquer afastamento: só uma vez
+        if (a.direto && alts.some(x => x.direto)) continue
+        alts.push(a)
+      }
     }
+    return alts
+  } catch (e) {
+    // ex.: pontos da rota ativa malformados (coordenadas não finitas)
+    return todas(motivoDoErro(e, log))
   }
-  return alts
 }
 
 module.exports = { RAIO_PORTO_MN, AVISO_ROTA_ATIVA, CANAIS, portoDePartida, destinoDaRotaAtiva, rumoParaTerra, ventoDeTerra, gerarRota, gerarAlternativas, gerarRotas }
