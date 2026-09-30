@@ -229,6 +229,14 @@ function escreverAtomico (f, dados) {
     fs.fsyncSync(fd)
   } finally { fs.closeSync(fd) }
   fs.renameSync(f + '.tmp', f)
+  // fsync do directório-mãe: sem isto, nalguns sistemas de ficheiros um corte de luz
+  // logo a seguir ao rename pode não persistir a troca de nome (mesmo com o .tmp já
+  // sincronizado). No Windows abrir um directório com fs.openSync costuma falhar
+  // (sem suporte) — ignora-se só esse erro, não se finge que o fsync aconteceu.
+  try {
+    const dfd = fs.openSync(path.dirname(f), 'r')
+    try { fs.fsyncSync(dfd) } finally { fs.closeSync(dfd) }
+  } catch { /* plataforma sem fsync de directório (ex.: Windows) */ }
 }
 
 // Um ficheiro por ponto: previsoes/AAAA-MM-DDTHH-MM-<lat>_<lon>.json.gz. Devolve os caminhos.
@@ -248,9 +256,13 @@ function lerArquivo (pasta, { pontos, desde, ate, agora = Date.now(), raioMn = 1
   let nomes = []
   try { nomes = fs.readdirSync(pasta).filter(n => /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}.*\.json(\.gz)?$/.test(n)) } catch { nomes = [] }
   const obtidaDoNome = (n) => Date.parse(`${n.slice(0, 13)}:${n.slice(14, 16)}:00Z`)
-  const cand = nomes.map(n => ({ n, obtida: obtidaDoNome(n) }))
-    .filter(x => x.obtida <= agora && agora - x.obtida <= maxIdadeH * H)
+  // todos os candidatos (só exclui datas no futuro) e, dentro deles, os que cumprem o tecto
+  // de maxIdadeH: uma previsão mais velha do que isso não cobre de forma fiável uma travessia
+  // planeada, mas guarda-se `todos` para se poder dizer *porque* falhou (idade vs. cobertura).
+  const todos = nomes.map(n => ({ n, obtida: obtidaDoNome(n) }))
+    .filter(x => x.obtida <= agora)
     .sort((a, b) => b.obtida - a.obtida || (a.n < b.n ? -1 : 1))
+  const cand = todos.filter(x => agora - x.obtida <= maxIdadeH * H)
   const lidos = new Map()
   const ler = (n) => {
     if (!lidos.has(n)) {
@@ -261,11 +273,10 @@ function lerArquivo (pasta, { pontos, desde, ate, agora = Date.now(), raioMn = 1
     }
     return lidos.get(n)
   }
-  const escolhidos = []
-  for (const p of pontos) {
-    // a obtenção mais recente que sirva e, dentro dela, o ponto mais perto
+  // a obtenção mais recente (de `lista`) que sirva para `p` e, dentro dela, o ponto mais perto
+  const escolher = (lista, p) => {
     let achou = null
-    for (const x of cand) {
+    for (const x of lista) {
       if (achou && x.obtida < achou.obtida) break
       const r = ler(x.n)
       if (!r || !Array.isArray(r.horas) || !r.horas.length) continue
@@ -275,7 +286,21 @@ function lerArquivo (pasta, { pontos, desde, ate, agora = Date.now(), raioMn = 1
       if (t0 > desde || t1 < ate) continue
       if (!achou || d < achou.d) achou = { ...x, r, d }
     }
-    if (!achou) return { erro: 'não há previsão guardada que cubra a rota' }
+    return achou
+  }
+  const escolhidos = []
+  for (const p of pontos) {
+    const achou = escolher(cand, p)
+    if (!achou) {
+      // nada dentro do tecto de maxIdadeH: se sem esse tecto havia uma previsão que serviria
+      // (posição e horas OK), a razão é mesmo a idade — dizer isso, não o genérico
+      const semTecto = escolher(todos, p)
+      if (semTecto) {
+        const h = Math.round((agora - semTecto.obtida) / H)
+        return { erro: `a última previsão guardada tem ${h} h (mais de ${maxIdadeH} h): sem previsão válida` }
+      }
+      return { erro: 'não há previsão guardada que cubra a rota' }
+    }
     if (!escolhidos.some(e => e.n === achou.n)) escolhidos.push(achou)
   }
   const obtida = Math.min(...escolhidos.map(e => e.obtida))

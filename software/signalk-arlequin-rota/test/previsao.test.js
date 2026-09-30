@@ -190,3 +190,35 @@ test('sem rede: a mais recente que cubra a rota, com a idade e os avisos; sem ne
   fs.writeFileSync(path.join(ia, '2026-09-29T14-00.json.gz'), zlib.gzipSync(JSON.stringify(prev.registoParte2(P29.obtida, P29.pontos[3]))))
   assert.equal(prev.lerArquivo(ia, { pontos: [PONTOS[3]], desde, ate, agora: T('2026-09-29T15:00Z') }).previsao.pontos.length, 1)
 })
+
+test('lerArquivo: só há uma previsão com mais de 48 h → a razão diz a idade, não o genérico', () => {
+  const pasta = temp()
+  const velha = { ...P29, obtida: '2026-09-27T10:00:00.000Z' } // 57 h antes do "agora" abaixo
+  prev.guardarArquivo(pasta, velha)
+  const rota = [PONTOS[0]]
+  const desde = T('2026-09-29T15:00Z'); const ate = T('2026-09-30T06:00Z')
+  const agora = T('2026-09-29T19:00Z')
+  const r = prev.lerArquivo(pasta, { pontos: rota, desde, ate, agora })
+  assert.equal(r.erro, 'a última previsão guardada tem 57 h (mais de 48 h): sem previsão válida')
+  // se além da idade também não cobrir (posição/horas), continua o erro genérico
+  assert.equal(
+    prev.lerArquivo(pasta, { pontos: [{ lat: 41, lon: -9 }], desde, ate, agora }).erro,
+    'não há previsão guardada que cubra a rota'
+  )
+})
+
+test('escreverAtomico (via guardarArquivo): tenta fsync do directório-mãe depois do rename, ignorando erro', () => {
+  const pasta = temp()
+  const real = fs.openSync
+  let tentouAbrirPasta = false
+  fs.openSync = (p, ...resto) => {
+    if (p === pasta) { tentouAbrirPasta = true; const e = new Error('EISDIR: directório, não é possível abrir'); e.code = 'EISDIR'; throw e }
+    return real(p, ...resto)
+  }
+  try {
+    const fs1 = prev.guardarArquivo(pasta, P29)
+    assert.ok(tentouAbrirPasta, 'devia tentar abrir o directório-mãe para fsync')
+    assert.ok(fs.existsSync(fs1[0]))
+    assert.deepEqual(fs.readdirSync(pasta).filter(n => n.endsWith('.tmp')), [])
+  } finally { fs.openSync = real }
+})
