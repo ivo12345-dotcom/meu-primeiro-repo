@@ -40,8 +40,9 @@ def test_encontra_o_barco_mais_lento_aos_60_graus(treinado):
     d, _ = treinado
     m = carregar(d / 'modelos' / 'velocidade', 'v0001')
     x = pd.DataFrame([{v: np.nan for v in m['variaveis']}])
-    x.loc[0, ['tws', 'twaAbs', 'rajada', 'grandeRizos', 'genoaPct', 'rpm', 'adornoAbs']] = [12, 60, 15.6, 0, 100, 0, 9.6]
-    x.loc[0, ['prevOndas', 'prevPeriodo', 'ondasAnguloRel', 'balAdorno', 'balCaimento']] = [1.5, 8, 100, 1.5, 2]
+    # o modelo recebe a previsão em bruto: nos dados inventados é o vento real / 1,2 (12 nós reais → 10 previstos)
+    x.loc[0, ['prevTws', 'twaAbs', 'prevRajada', 'grandeRizos', 'genoaPct']] = [10, 60, 13, 0, 100]
+    x.loc[0, ['prevOndas', 'prevPeriodo', 'ondasAnguloRel']] = [1.5, 8, 100]
     previsto = prever_guardado(m, x)[0]
     verdade = float(verdade_stw(POLAR, [60], [12])[0])
     assert abs(previsto - verdade) / verdade < 0.04, (previsto, verdade)
@@ -58,10 +59,10 @@ def test_vento_e_consumo_aprendem_o_desvio_da_previsao_e_da_volvo(treinado):
 def test_quantis_por_ordem_em_media(treinado):
     d, _ = treinado
     m = carregar(d / 'modelos' / 'velocidade', 'v0001')
-    x = pd.DataFrame({'tws': np.linspace(5, 20, 30), 'twaAbs': np.linspace(45, 170, 30)})
-    for v in m['variaveis']:
-        if v not in x:
-            x[v] = np.nan
+    # no planeamento as 8 variáveis são todas conhecidas (vêm da previsão e das velas escolhidas)
+    ptws = np.linspace(5, 20, 30)
+    x = pd.DataFrame({'prevTws': ptws, 'twaAbs': np.linspace(45, 170, 30), 'prevRajada': ptws * 1.3, 'prevOndas': 1.5,
+                      'prevPeriodo': 8.0, 'ondasAnguloRel': 100.0, 'grandeRizos': 0, 'genoaPct': 100})[m['variaveis']]
     p10, p50, p90 = (prever_guardado(m, x, q).mean() for q in ('p10', 'p50', 'p90'))
     assert p10 < p50 < p90
 
@@ -362,7 +363,7 @@ def test_velocidade_so_a_vela_com_pelo_menos_uma_vela_em_cima():
         ((np.nan, np.nan, np.nan), False),
         ((1800, 0, 100), False),    # motor a trabalhar com velas em cima
     ]
-    d = pd.DataFrame([dict(rpm=r, grandeRizos=g, genoaPct=p, tws=10.0, twaAbs=90.0, stw=5.0) for (r, g, p), _ in casos])
+    d = pd.DataFrame([dict(rpm=r, grandeRizos=g, genoaPct=p, tws=10.0, prevTws=8.0, twaAbs=90.0, stw=5.0) for (r, g, p), _ in casos])
     assert list(MODELOS['velocidade']['filtro'](d)) == [c for _, c in casos]
 
 
@@ -396,3 +397,38 @@ def test_consumo_de_ficheiros_antigos_sem_a_origem_nao_ensina(tmp_path):
         f.write_bytes(gzip.compress(df.to_csv(index=False).encode()))
     r = treinar(tmp_path, POLAR, agora=AGORA, modelos=['consumo'])[0]
     assert r['versao'] is None and r['motivo'].startswith('poucos dados (0,0 h'), r
+
+
+def test_variaveis_de_planeamento_so_o_que_se_sabe_antes_de_partir():
+    from arlequin_ia.treino import MODELOS
+    assert MODELOS['velocidade']['variaveis'] == ['prevTws', 'twaAbs', 'prevRajada', 'prevOndas', 'prevPeriodo',
+                                                  'ondasAnguloRel', 'grandeRizos', 'genoaPct']
+    assert MODELOS['consumo']['variaveis'] == ['rpm', 'prevOndas', 'ondasAnguloRel']
+
+
+def test_velocidade_so_aprende_com_previsao_arquivada():
+    from arlequin_ia.treino import MODELOS
+    d = pd.DataFrame({'rpm': [0.0, 0.0], 'grandeRizos': [0, 0], 'genoaPct': [100, 100], 'tws': [10.0, 10.0],
+                      'twaAbs': [90.0, 90.0], 'stw': [5.0, 5.0], 'prevTws': [8.0, np.nan]})
+    assert list(MODELOS['velocidade']['filtro'](d)) == [True, False]
+
+
+def test_sem_previsoes_a_velocidade_nao_aprende_mas_o_consumo_sim(tmp_path):
+    gerar(tmp_path, POLAR)
+    for f in (tmp_path / 'previsoes').glob('*.json'):
+        f.unlink()
+    r = {x['modelo']: x for x in treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade', 'consumo'])}
+    assert r['velocidade']['versao'] is None and r['velocidade']['motivo'].startswith('poucos dados (0,0 h'), r
+    assert r['consumo']['versao'] == 'v0001', r
+
+
+def test_celulas_pelo_vento_previsto_em_bruto():
+    # o planeador chama pesoCelula (lib/modelos.js) com o vento previsto em bruto: as células têm de ser do prevTws
+    from arlequin_ia.treino import celulas
+    d = pd.DataFrame({'tws': [12.0] * 360 + [12.0] * 720, 'prevTws': [9.5] * 360 + [10.9] * 720, 'twaAbs': [61.0] * 1080})
+    assert celulas(d) == {'10|60': 2.0, '8|60': 1.0}
+
+
+def test_frases_da_velocidade_falam_do_vento_previsto(treinado):
+    _, r = treinado
+    assert all(re.search(r'com \d+ nós previstos', f) for f in r['velocidade']['frases']), r['velocidade']['frases']

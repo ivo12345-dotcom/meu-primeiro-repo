@@ -40,13 +40,21 @@ def a_vela(d):
     return vela_em_cima & (d['rpm'].isna() | (d['rpm'] <= MOTOR_PARADO_RPM))
 
 VARS_VENTO = ['latCel', 'lonCel', 'prevTws', 'prevTwd', 'horaDia', 'idadePrevH', 'tendPressao3h']
+# Os modelos da velocidade e do consumo servem para planear (Parte 3): só usam o que se sabe antes de partir.
+# O que só se mede no mar (vento e rajada medidos, adorno, balanço, a STW no consumo) fica de fora.
 MODELOS = {
     'velocidade': {
         'alvo': 'stw',
-        'variaveis': ['tws', 'twaAbs', 'rajada', 'prevOndas', 'prevPeriodo', 'ondasAnguloRel', 'balAdorno',
-                      'balCaimento', 'adornoAbs', 'grandeRizos', 'genoaPct'],
-        # só à vela: a motor a polar não quer dizer nada
-        'filtro': lambda d: d['tws'].notna() & d['twaAbs'].notna() & d['stw'].notna() & a_vela(d),
+        # o vento é a previsão EM BRUTO (prevTws, prevRajada), sem a correção da AI: a AI aprende "com esta
+        # previsão, andaste X". No planeamento recebe também a previsão em bruto (a correção do vento serve a
+        # polar e as regras, e não entra aqui para não ser contada duas vezes)
+        'variaveis': ['prevTws', 'twaAbs', 'prevRajada', 'prevOndas', 'prevPeriodo', 'ondasAnguloRel',
+                      'grandeRizos', 'genoaPct'],
+        # só à vela (a motor a polar não quer dizer nada) e só em horas com previsão arquivada.
+        # O tws medido continua a ser preciso para a comparação com a polar (a base)
+        'filtro': lambda d: (d['tws'].notna() & d['prevTws'].notna() & d['twaAbs'].notna() & d['stw'].notna()
+                             & a_vela(d)),
+        # a origem é a polar no vento medido: a melhor estimativa do vento corrigido que o planeador lhe dá
         'base': lambda d, polar: stw_polar(polar, d['twaAbs'], d['tws']),
     },
     'ventoForca': {
@@ -60,7 +68,7 @@ MODELOS = {
         'base': lambda d, polar: np.zeros(len(d)),
     },
     'consumo': {
-        'alvo': 'litrosHora', 'variaveis': ['rpm', 'stw', 'prevOndas', 'ondasAnguloRel', 'balCaimento'],
+        'alvo': 'litrosHora', 'variaveis': ['rpm', 'prevOndas', 'ondasAnguloRel'],
         # só o caudal medido pelo MDI: a estimativa do plugin J1939 é a própria curva da Volvo (seria circular)
         'filtro': lambda d: (d['rpm'] > MOTOR_PARADO_RPM) & d['litrosHora'].notna() & (d['consumoMedido'] == 1),
         'base': lambda d, polar: litros_volvo(d['rpm']),
@@ -81,10 +89,15 @@ def treinar_quantis(x, y):
             for q, a in QUANTIS.items()}
 
 
+def chave_celula(d):
+    """'nós|graus' da célula de 2 nós de vento previsto em bruto (prevTws) × 15° de ângulo: o mesmo vento
+    que o modelo recebe e com que o planeador chama pesoCelula (signalk-arlequin-ia/lib/modelos.js)."""
+    return (d['prevTws'] // 2 * 2).astype(int).astype(str) + '|' + (d['twaAbs'] // 15 * 15).astype(int).astype(str)
+
+
 def celulas(d):
-    """Horas de dados por célula de 2 nós de vento × 15° de ângulo (para o peso da AI no Node)."""
-    chave = (d['tws'] // 2 * 2).astype(int).astype(str) + '|' + (d['twaAbs'] // 15 * 15).astype(int).astype(str)
-    return {k: round(v * SEGUNDOS_POR_LINHA / 3600, 3) for k, v in chave.value_counts().items()}
+    """Horas de dados por célula (ver chave_celula), para o peso da AI no Node."""
+    return {k: round(v * SEGUNDOS_POR_LINHA / 3600, 3) for k, v in chave_celula(d).value_counts().items()}
 
 
 def frases(nome, d, x, p50, polar):
@@ -93,15 +106,16 @@ def frases(nome, d, x, p50, polar):
         vela = d[a_vela(d)].copy()
         if vela.empty:
             return []
-        vela['cel'] = (vela['tws'] // 2 * 2).astype(int).astype(str) + '|' + (vela['twaAbs'] // 15 * 15).astype(int).astype(str)
+        vela['cel'] = chave_celula(vela)
         out = []
         for cel in vela['cel'].value_counts().index[:3]:
             g = vela[vela['cel'] == cel]
             linha = g[x.columns].median().to_frame().T
             v = float(p50.predict(linha)[0])
-            pol = float(stw_polar(polar, linha['twaAbs'], linha['tws'])[0])
-            out.append(f'a {linha["twaAbs"].iloc[0]:.0f}° com {linha["tws"].iloc[0]:.0f} nós andas {virgula(v)} nós '
-                       f'(a polar dizia {virgula(pol)})')
+            tws = float(g['tws'].median())  # o vento que houve de facto com esta previsão
+            pol = float(stw_polar(polar, linha['twaAbs'], [tws])[0])
+            out.append(f'a {linha["twaAbs"].iloc[0]:.0f}° com {linha["prevTws"].iloc[0]:.0f} nós previstos andas '
+                       f'{virgula(v)} nós (houve {tws:.0f} nós; a polar dizia {virgula(pol)})')
         return out
     if nome == 'consumo':
         c = d.assign(r=(d['rpm'] / 100).round() * 100)

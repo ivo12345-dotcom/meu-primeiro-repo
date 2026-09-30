@@ -37,18 +37,19 @@ test('quantis sempre por ordem', () => {
   }
 })
 
-test('velocidade: sem dados na célula manda a polar; com 2 h manda a AI; sempre entre 40% e 120% da polar', () => {
+test('velocidade: a célula é a do vento previsto em bruto (prevTws); sem dados na célula manda a polar; com 2 h manda a AI; sempre entre 40% e 120% da polar', () => {
   const mod = { quantis: { p10: fixa(3), p50: fixa(4), p90: fixa(9) }, celulas: { '12|60': 1, '14|60': 2 } }
-  assert.deepEqual(m.preverVelocidade(mod, { tws: 8, twaAbs: 90 }, 6), { peso: 0, p10: 6, p50: 6, p90: 6 })
-  const meio = m.preverVelocidade(mod, { tws: 12.5, twaAbs: 61 }, 6)
+  assert.deepEqual(m.preverVelocidade(mod, { prevTws: 8, twaAbs: 90 }, 6), { peso: 0, p10: 6, p50: 6, p90: 6 })
+  const meio = m.preverVelocidade(mod, { prevTws: 12.5, twaAbs: 61 }, 6)
   assert.equal(meio.peso, 0.5)
   assert.equal(meio.p50, 5)
-  const cheio = m.preverVelocidade(mod, { tws: 14, twaAbs: 60 }, 6)
+  const cheio = m.preverVelocidade(mod, { prevTws: 14, twaAbs: 60 }, 6)
   assert.equal(cheio.peso, 1)
   assert.equal(cheio.p10, 3)
   assert.equal(cheio.p50, 4)
   assert.ok(Math.abs(cheio.p90 - 7.2) < 1e-9) // 9 limitado a 120% de 6
-  assert.deepEqual(m.preverVelocidade(null, { tws: 14, twaAbs: 60 }, 6), { p10: 6, p50: 6, p90: 6, peso: 0 })
+  assert.deepEqual(m.preverVelocidade(null, { prevTws: 14, twaAbs: 60 }, 6), { p10: 6, p50: 6, p90: 6, peso: 0 })
+  assert.equal(m.preverVelocidade(mod, { tws: 14, twaAbs: 60 }, 6).peso, 0) // o vento medido não escolhe a célula
 })
 
 test('vento: razão entre 0,5 e 1,5 e direção até ±40°; sem modelo fica a previsão', () => {
