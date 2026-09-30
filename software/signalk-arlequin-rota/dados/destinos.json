@@ -1,0 +1,502 @@
+[
+ {
+  "id": "viana",
+  "nome": "Viana do Castelo",
+  "abrigo": true,
+  "conhecido": false,
+  "largo": [
+   41.655,
+   -8.86
+  ],
+  "aproximacao": [
+   [
+    41.655,
+    -8.86
+   ],
+   [
+    41.6705,
+    -8.8405
+   ],
+   [
+    41.678,
+    -8.839
+   ],
+   [
+    41.684,
+    -8.836
+   ],
+   [
+    41.693,
+    -8.833
+   ]
+  ],
+  "entrada": 2,
+  "notas": "Barra do rio Lima (entrada pelo sul, entre o molhe oeste e a margem) e doca de recreio a montante. Com mar grosso de W a barra pode ficar má.",
+  "fonte": "coordenadas aproximadas preparadas pelo Claude (conhecimento geral das barras e marinas, verificadas contra terra.geojson do OSM: pontos no mar e troços sem cortar terra); por confirmar na carta",
+  "confirmado": false
+ },
+ {
+  "id": "leixoes",
+  "nome": "Leixões",
+  "abrigo": true,
+  "conhecido": false,
+  "largo": [
+   41.16,
+   -8.715
+  ],
+  "aproximacao": [
+   [
+    41.16,
+    -8.715
+   ],
+   [
+    41.169,
+    -8.704
+   ],
+   [
+    41.1745,
+    -8.704
+   ],
+   [
+    41.1835,
+    -8.7035
+   ]
+  ],
+  "entrada": 2,
+  "notas": "Porto de abrigo de todo o tempo, entrada pelo sul entre os molhes; Marina Porto Atlântico no canto noroeste. Muito tráfego comercial.",
+  "fonte": "coordenadas aproximadas preparadas pelo Claude (conhecimento geral das barras e marinas, verificadas contra terra.geojson do OSM: pontos no mar e troços sem cortar terra); por confirmar na carta",
+  "confirmado": false
+ },
+ {
+  "id": "figueira",
+  "nome": "Figueira da Foz",
+  "abrigo": false,
+  "conhecido": false,
+  "largo": [
+   40.13,
+   -8.92
+  ],
+  "aproximacao": [
+   [
+    40.13,
+    -8.92
+   ],
+   [
+    40.1415,
+    -8.879
+   ],
+   [
+    40.1415,
+    -8.868
+   ],
+   [
+    40.1475,
+    -8.8605
+   ]
+  ],
+  "entrada": 1,
+  "notas": "Barra do Mondego: fecha com ondulação forte (ver avisos da capitania). Não contar com ela como abrigo.",
+  "fonte": "coordenadas aproximadas preparadas pelo Claude (conhecimento geral das barras e marinas, verificadas contra terra.geojson do OSM: pontos no mar e troços sem cortar terra); por confirmar na carta",
+  "confirmado": false
+ },
+ {
+  "id": "nazare",
+  "nome": "Nazaré",
+  "abrigo": true,
+  "conhecido": false,
+  "largo": [
+   39.575,
+   -9.11
+  ],
+  "aproximacao": [
+   [
+    39.575,
+    -9.11
+   ],
+   [
+    39.585,
+    -9.083
+   ],
+   [
+    39.586,
+    -9.079
+   ],
+   [
+    39.5855,
+    -9.076
+   ]
+  ],
+  "entrada": 2,
+  "notas": "Porto de abrigo a sul da vila, entrada fácil com quase todos os tempos (o canhão da Nazaré acalma a barra).",
+  "fonte": "coordenadas aproximadas preparadas pelo Claude (conhecimento geral das barras e marinas, verificadas contra terra.geojson do OSM: pontos no mar e troços sem cortar terra); por confirmar na carta",
+  "confirmado": false
+ },
+ {
+  "id": "peniche",
+  "nome": "Peniche",
+  "abrigo": true,
+  "conhecido": true,
+  "largo": [
+   39.31,
+   -9.42
+  ],
+  "aproximacao": [
+   [
+    39.31,
+    -9.42
+   ],
+   [
+    39.33,
+    -9.395
+   ],
+   [
+    39.353,
+    -9.377
+   ]
+  ],
+  "entrada": 1,
+  "notas": "Entrada pelo sul (Peniche Sul), abrigada das nortadas. Cais: marina/porto de pesca.",
+  "fonte": "coordenadas aproximadas preparadas pelo Claude (conhecimento geral das barras e marinas, verificadas contra terra.geojson do OSM: pontos no mar e troços sem cortar terra); por confirmar na carta",
+  "confirmado": false
+ },
+ {
+  "id": "cascais",
+  "nome": "Cascais",
+  "abrigo": true,
+  "conhecido": true,
+  "largo": [
+   38.65,
+   -9.45
+  ],
+  "aproximacao": [
+   [
+    38.65,
+    -9.45
+   ],
+   [
+    38.68,
+    -9.413
+   ],
+   [
+    38.69,
+    -9.4145
+   ],
+   [
+    38.6925,
+    -9.417
+   ]
+  ],
+  "entrada": 2,
+  "notas": "Marina de Cascais; entrada pelo lado da baía (nordeste do molhe).",
+  "fonte": "coordenadas aproximadas preparadas pelo Claude (conhecimento geral das barras e marinas, verificadas contra terra.geojson do OSM: pontos no mar e troços sem cortar terra); por confirmar na carta",
+  "confirmado": false
+ },
+ {
+  "id": "oeiras",
+  "nome": "Oeiras",
+  "abrigo": true,
+  "conhecido": false,
+  "largo": [
+   38.65,
+   -9.45
+  ],
+  "aproximacao": [
+   [
+    38.65,
+    -9.45
+   ],
+   [
+    38.663,
+    -9.35
+   ],
+   [
+    38.668,
+    -9.315
+   ],
+   [
+    38.6735,
+    -9.316
+   ],
+   [
+    38.6763,
+    -9.3186
+   ]
+  ],
+  "entrada": 3,
+  "notas": "Porto de recreio de Oeiras (38,6763 N 9,3186 W), pela Barra Norte, como Algés.",
+  "fonte": "coordenadas aproximadas preparadas pelo Claude (conhecimento geral das barras e marinas, verificadas contra terra.geojson do OSM: pontos no mar e troços sem cortar terra); por confirmar na carta",
+  "confirmado": false
+ },
+ {
+  "id": "alges",
+  "nome": "Algés (CNA)",
+  "abrigo": true,
+  "conhecido": true,
+  "largo": [
+   38.65,
+   -9.45
+  ],
+  "aproximacao": [
+   [
+    38.65,
+    -9.45
+   ],
+   [
+    38.663,
+    -9.35
+   ],
+   [
+    38.668,
+    -9.315
+   ],
+   [
+    38.6955,
+    -9.233
+   ]
+  ],
+  "entrada": 2,
+  "notas": "Pela Barra Norte: Largo de Cascais → Largo de Carcavelos → Barra Norte → Algés (Clube Naval de Algés).",
+  "fonte": "coordenadas aproximadas preparadas pelo Claude (conhecimento geral das barras e marinas, verificadas contra terra.geojson do OSM: pontos no mar e troços sem cortar terra); por confirmar na carta",
+  "confirmado": false
+ },
+ {
+  "id": "sesimbra",
+  "nome": "Sesimbra",
+  "abrigo": true,
+  "conhecido": false,
+  "largo": [
+   38.41,
+   -9.12
+  ],
+  "aproximacao": [
+   [
+    38.41,
+    -9.12
+   ],
+   [
+    38.433,
+    -9.106
+   ],
+   [
+    38.4385,
+    -9.1045
+   ]
+  ],
+  "entrada": 2,
+  "notas": "Porto de abrigo a oeste da vila, protegido das nortadas; aberto a sul.",
+  "fonte": "coordenadas aproximadas preparadas pelo Claude (conhecimento geral das barras e marinas, verificadas contra terra.geojson do OSM: pontos no mar e troços sem cortar terra); por confirmar na carta",
+  "confirmado": false
+ },
+ {
+  "id": "setubal",
+  "nome": "Setúbal",
+  "abrigo": true,
+  "conhecido": false,
+  "largo": [
+   38.41,
+   -8.975
+  ],
+  "aproximacao": [
+   [
+    38.41,
+    -8.975
+   ],
+   [
+    38.45,
+    -8.948
+   ],
+   [
+    38.483,
+    -8.923
+   ],
+   [
+    38.505,
+    -8.906
+   ],
+   [
+    38.519,
+    -8.896
+   ]
+  ],
+  "entrada": 4,
+  "notas": "Barra do Sado pelo canal balizado entre o Outão e Tróia; doca de recreio das Fontainhas. Vazante forte na barra.",
+  "fonte": "coordenadas aproximadas preparadas pelo Claude (conhecimento geral das barras e marinas, verificadas contra terra.geojson do OSM: pontos no mar e troços sem cortar terra); por confirmar na carta",
+  "confirmado": false
+ },
+ {
+  "id": "sines",
+  "nome": "Sines",
+  "abrigo": true,
+  "conhecido": false,
+  "largo": [
+   37.92,
+   -8.9
+  ],
+  "aproximacao": [
+   [
+    37.92,
+    -8.9
+   ],
+   [
+    37.941,
+    -8.872
+   ],
+   [
+    37.947,
+    -8.868
+   ],
+   [
+    37.949,
+    -8.8665
+   ]
+  ],
+  "entrada": 3,
+  "notas": "Porto de recreio junto à praia Vasco da Gama, atrás do molhe leste do porto de pesca. Porto de abrigo de todo o tempo.",
+  "fonte": "coordenadas aproximadas preparadas pelo Claude (conhecimento geral das barras e marinas, verificadas contra terra.geojson do OSM: pontos no mar e troços sem cortar terra); por confirmar na carta",
+  "confirmado": false
+ },
+ {
+  "id": "lagos",
+  "nome": "Lagos",
+  "abrigo": true,
+  "conhecido": false,
+  "largo": [
+   37.07,
+   -8.63
+  ],
+  "aproximacao": [
+   [
+    37.07,
+    -8.63
+   ],
+   [
+    37.0955,
+    -8.665
+   ],
+   [
+    37.0985,
+    -8.669
+   ],
+   [
+    37.105,
+    -8.6718
+   ]
+  ],
+  "entrada": 1,
+  "notas": "Marina de Lagos no rio Bensafrim, entrada entre os molhes junto à Meia Praia.",
+  "fonte": "coordenadas aproximadas preparadas pelo Claude (conhecimento geral das barras e marinas, verificadas contra terra.geojson do OSM: pontos no mar e troços sem cortar terra); por confirmar na carta",
+  "confirmado": false
+ },
+ {
+  "id": "portimao",
+  "nome": "Portimão",
+  "abrigo": true,
+  "conhecido": false,
+  "largo": [
+   37.08,
+   -8.53
+  ],
+  "aproximacao": [
+   [
+    37.08,
+    -8.53
+   ],
+   [
+    37.1065,
+    -8.527
+   ],
+   [
+    37.1135,
+    -8.527
+   ],
+   [
+    37.117,
+    -8.526
+   ]
+  ],
+  "entrada": 1,
+  "notas": "Barra do Arade entre os molhes; marina na margem oeste (Praia da Rocha).",
+  "fonte": "coordenadas aproximadas preparadas pelo Claude (conhecimento geral das barras e marinas, verificadas contra terra.geojson do OSM: pontos no mar e troços sem cortar terra); por confirmar na carta",
+  "confirmado": false
+ },
+ {
+  "id": "vilamoura",
+  "nome": "Vilamoura",
+  "abrigo": true,
+  "conhecido": false,
+  "largo": [
+   37.045,
+   -8.12
+  ],
+  "aproximacao": [
+   [
+    37.045,
+    -8.12
+   ],
+   [
+    37.069,
+    -8.12
+   ],
+   [
+    37.072,
+    -8.1195
+   ],
+   [
+    37.0745,
+    -8.1175
+   ]
+  ],
+  "entrada": 1,
+  "notas": "Marina de Vilamoura; entrada virada a sul entre os molhes.",
+  "fonte": "coordenadas aproximadas preparadas pelo Claude (conhecimento geral das barras e marinas, verificadas contra terra.geojson do OSM: pontos no mar e troços sem cortar terra); por confirmar na carta",
+  "confirmado": false
+ },
+ {
+  "id": "olhao",
+  "nome": "Olhão",
+  "abrigo": false,
+  "conhecido": false,
+  "largo": [
+   36.93,
+   -7.87
+  ],
+  "aproximacao": [
+   [
+    36.93,
+    -7.87
+   ],
+   [
+    36.9585,
+    -7.8697
+   ],
+   [
+    36.966,
+    -7.8697
+   ],
+   [
+    36.976,
+    -7.8715
+   ],
+   [
+    36.985,
+    -7.866
+   ],
+   [
+    36.995,
+    -7.856
+   ],
+   [
+    37.012,
+    -7.848
+   ],
+   [
+    37.0225,
+    -7.842
+   ]
+  ],
+  "entrada": 5,
+  "notas": "Pela barra Faro-Olhão (entre a Barreta e a Culatra, ~200 m de largura) e o canal de Olhão; bancos móveis e corrente forte: não é abrigo de todo o tempo. Pontos dentro da ria aproximados.",
+  "fonte": "coordenadas aproximadas preparadas pelo Claude (conhecimento geral das barras e marinas, verificadas contra terra.geojson do OSM: pontos no mar e troços sem cortar terra); por confirmar na carta",
+  "confirmado": false
+ }
+]
