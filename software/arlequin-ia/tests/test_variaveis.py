@@ -80,3 +80,52 @@ def test_juntar_previsao_interpola_usa_a_mais_recente_e_respeita_idade_e_distanc
     assert np.isnan(j['prevTws'].iloc[3])
     velha = juntar_previsao(df, [antiga])
     assert velha['prevTws'].isna().all()  # obtida há mais de 12 h
+
+
+def membros(*textos):
+    """Um .csv.gz como a caixa negra o escreve: um membro gzip por cada escrita."""
+    return b''.join(gzip.compress(t.encode()) for t in textos)
+
+
+def test_ler_tabela_recupera_os_membros_inteiros_de_um_ficheiro_cortado(tmp_path, capsys):
+    escrever_tabela(tmp_path, '2026-06-02.csv.gz', ['2026-06-02T00:00:00.000Z,39,-9,5,0,1'])
+    cortado = membros('t,lat,lon,stw,simulado,estavel\n2026-06-01T10:00:00.000Z,39,-9,4,0,1\n',
+                      '2026-06-01T10:00:10.000Z,39,-9,7,0,1\n', '2026-06-01T10:00:20.000Z,39,-9,8,0,1\n')
+    n1 = len(membros('t,lat,lon,stw,simulado,estavel\n2026-06-01T10:00:00.000Z,39,-9,4,0,1\n'))
+    n2 = len(membros('2026-06-01T10:00:10.000Z,39,-9,7,0,1\n'))
+    (tmp_path / 'tabela' / '2026-06-01.csv.gz').write_bytes(cortado[:n1 + n2 // 2])  # corte a meio do 2.º membro
+    df = ler_tabela(tmp_path)
+    assert list(df['stw']) == [4, 5]
+    err = capsys.readouterr().err
+    assert '2026-06-01.csv.gz' in err and 'cortado' in err
+
+
+def test_ler_tabela_salta_um_ficheiro_ilegivel_com_aviso(tmp_path, capsys):
+    escrever_tabela(tmp_path, '2026-06-02.csv.gz', ['2026-06-02T00:00:00.000Z,39,-9,5,0,1'])
+    (tmp_path / 'tabela' / '2026-06-01.csv.gz').write_bytes(b'isto nao e gzip')
+    assert list(ler_tabela(tmp_path)['stw']) == [5]
+    assert '2026-06-01.csv.gz' in capsys.readouterr().err
+
+
+def test_ler_previsoes_salta_cortadas_e_com_listas_de_tamanhos_diferentes(tmp_path, capsys):
+    (tmp_path / 'previsoes').mkdir()
+    boa = {'obtida': '2026-06-01T09:00:00Z', 'lat': 39, 'lon': -9.6, 'horas': ['2026-06-01T09:00Z', '2026-06-01T10:00Z'],
+           'tws': [10, 11], 'ondas': [None, 1.0]}
+    (tmp_path / 'previsoes' / 'a.json.gz').write_bytes(gzip.compress(json.dumps(boa).encode()))
+    (tmp_path / 'previsoes' / 'cortada.json.gz').write_bytes(gzip.compress(json.dumps(boa).encode())[:30])
+    (tmp_path / 'previsoes' / 'torta.json').write_text(json.dumps({**boa, 'twd': [1, 2, 3]}))
+    (tmp_path / 'previsoes' / 'vazia.json').write_text(json.dumps({**boa, 'horas': [], 'tws': []}))
+    p = ler_previsoes(tmp_path)
+    assert len(p) == 1 and p[0]['tws'] == [10, 11]
+    err = capsys.readouterr().err
+    for nome in ('cortada.json.gz', 'torta.json', 'vazia.json'):
+        assert nome in err, err
+
+
+def test_ler_saidas_avisa_do_ficheiro_ilegivel(tmp_path, capsys):
+    (tmp_path / 'saidas').mkdir()
+    (tmp_path / 'saidas' / 'mau.json').write_text('{')
+    (tmp_path / 'saidas' / 'lista.json').write_text('[1]')
+    assert ler_saidas(tmp_path) == []
+    err = capsys.readouterr().err
+    assert 'mau.json' in err and 'lista.json' in err

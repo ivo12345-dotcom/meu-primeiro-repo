@@ -235,3 +235,36 @@ def test_o_primeiro_modelo_pior_do_que_a_origem_fica_guardado_mas_nao_entra_em_u
     assert r['versao'] == 'v0001' and r['aceite'] is False and r['mae'] >= r['maeBase'], r
     assert (tmp_path / 'modelos' / 'consumo' / 'v0001.json.gz').exists()
     assert not (tmp_path / 'modelos' / 'consumo' / 'atual').exists()
+
+
+def cortar_primeiro_dia(pasta):
+    """Reescreve o 1.º dia da tabela em 2 membros gzip (como a caixa negra) e corta o 2.º a meio."""
+    f = sorted((pasta / 'tabela').glob('*.csv.gz'))[0]
+    linhas = gzip.decompress(f.read_bytes()).decode().splitlines(keepends=True)
+    m1 = gzip.compress(''.join(linhas[:len(linhas) // 2]).encode())
+    m2 = gzip.compress(''.join(linhas[len(linhas) // 2:]).encode())
+    f.write_bytes(m1 + m2[:len(m2) // 2])
+    return f
+
+
+def test_um_dia_da_tabela_cortado_nao_impede_o_treino(tmp_path, capsys):
+    gerar(tmp_path, POLAR)
+    f = cortar_primeiro_dia(tmp_path)
+    r = treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])[0]
+    assert r['versao'] == 'v0001' and not r['motivo'].startswith('erro'), r
+    assert f.name in capsys.readouterr().err
+
+
+def test_uma_previsao_cortada_ou_torta_nao_impede_o_treino(tmp_path, capsys):
+    gerar(tmp_path, POLAR)
+    ps = sorted((tmp_path / 'previsoes').glob('*.json'))
+    texto = ps[0].read_text(encoding='utf-8')
+    ps[0].unlink()
+    (tmp_path / 'previsoes' / (ps[0].name + '.gz')).write_bytes(gzip.compress(texto.encode())[:40])
+    torta = json.loads(ps[1].read_text(encoding='utf-8'))
+    torta['tws'] = torta['tws'][:-1]
+    ps[1].write_text(json.dumps(torta), encoding='utf-8')
+    r = treinar(tmp_path, POLAR, agora=AGORA, modelos=['ventoForca'])[0]
+    assert r['versao'] == 'v0001' and not r['motivo'].startswith('erro'), r
+    err = capsys.readouterr().err
+    assert ps[0].name + '.gz' in err and ps[1].name in err
