@@ -14,6 +14,12 @@
 //     A rota direta (salto curto, `direto`, afastamento null) não tem linha: não se lhe aplica
 //     este mínimo (o rotas.js já só a deixa perto de terra com vento de terra) e a distância
 //     que fica é a real, costaMinMn do rotas.js.
+// Excluída sempre, numa variante por um canal com `ondasMax` (lib/rotas.js: o Canal da Berlenga,
+//   decisão do Ivo de 30/09, só com ondas < 3 m): a onda máxima do cenário pessimista nos troços
+//   do canal (perna 'canal' e as ligações que chegam a ele e saem dele) ≥ ondasMax. Contam os
+//   pontos do rasto a ≤ corredorCanalMn desses troços (o corredor dos bordos é de 0,7 MN); um rasto
+//   sem posições (ou sem nenhum ponto perto) conta a rota toda. Sem ondas previstas num desses
+//   pontos é "desconhecido", nunca calmo: também excluída.
 // Excluída, ou aviso vermelho em "Sair agora mesmo assim": gasóleo < 40 L ou bateria < 50%
 //   à chegada, no cenário pessimista.
 // "Não recomendada sozinho" (só com tripulação "so"), no cenário pessimista:
@@ -23,6 +29,8 @@
 //     dados do mar) nunca é calma;
 //   - chegada de noite a um porto com `conhecido: false`. Conta a chegada de noite no
 //     cenário pessimista OU no provável (a chegada mais provável de noite também conta).
+
+const c = require('./costa')
 
 const PADRAO = Object.freeze({
   afastamentoMinimo: 5,
@@ -35,12 +43,14 @@ const PADRAO = Object.freeze({
   rajadaMax: 30,
   ondasMax: 3,
   lemeMaxH: 8,
+  corredorCanalMn: 1,
   calmaVento: 10,
   calmaOndas: 1.5
 })
 
 const virgula = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toFixed(d).replace('.', ',')
 const inteiro = (x) => String(Math.round(x))
+const metros = (x) => (Number.isInteger(x) ? String(x) : virgula(x))
 
 // Horas equivalentes ao leme numa linha do tempo de 1 min (lib/passagem.js).
 function horasLemeEquivalentes (pontos, opcoes = {}) {
@@ -71,6 +81,37 @@ function distanciaRotaCosta (costa, pontos, opcoes = {}) {
     }
   }
   return melhor
+}
+
+// Os troços do canal de uma variante (lib/rotas.js): os que chegam a um ponto 'canal', a ligação
+// que chega ao primeiro e a que sai do último. → [[a, b], …]
+function trocosCanal (pontos) {
+  const out = []
+  for (let i = 1; i < pontos.length; i++) {
+    const noCanal = pontos[i].perna === 'canal'
+    const entra = pontos[i].perna === 'ligacao' && pontos[i + 1]?.perna === 'canal'
+    const sai = pontos[i - 1].perna === 'canal' && !noCanal
+    if (noCanal || entra || sai) out.push([pontos[i - 1], pontos[i]])
+  }
+  return out
+}
+
+// A onda máxima do rasto (pontos de lib/passagem.js) nos troços do canal da alternativa.
+// → { max (m | null), semOndas (algum ponto sem ondas previstas), isolado (false: a rota toda) }
+function ondasNoCanal (alternativa, rasto, opcoes = {}) {
+  const o = { ...PADRAO, ...opcoes }
+  const trocos = trocosCanal(alternativa.pontos || [])
+  const comPos = rasto.filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lon))
+  const perto = trocos.length ? comPos.filter(p => trocos.some(([a, b]) => c.distanciaSegmento(p, a, b).mn <= o.corredorCanalMn)) : []
+  const isolado = perto.length > 0
+  const usar = isolado ? perto : rasto
+  let max = null
+  let semOndas = usar.length === 0
+  for (const p of usar) {
+    if (Number.isFinite(p.ondas)) max = max == null ? p.ondas : Math.max(max, p.ondas)
+    else semOndas = true
+  }
+  return { max, semOndas, isolado }
 }
 
 // O mínimo à costa que se aplica a uma alternativa. Sem afastamento (null: nunca devia chegar
@@ -111,6 +152,19 @@ function avaliar ({ alternativa, pessimista, provavel, destino, tripulacao, sair
   }
   if (!pessimista) return out
   const r = pessimista.resumo
+  // canal com ondasMax: só com ondas abaixo dele, no pessimista (sempre, sozinho ou acompanhado)
+  if (Number.isFinite(alternativa.ondasMax)) {
+    const nome = alternativa.canal || 'canal'
+    const limite = `só com ondas abaixo de ${metros(alternativa.ondasMax)} m`
+    const k = ondasNoCanal(alternativa, pessimista.pontos || [], o)
+    if (k.semOndas) {
+      out.excluida = true
+      out.motivos.push(`${nome}: sem previsão de ondas no canal (desconhecido não conta como calmo; ${limite})`)
+    } else if (k.max >= alternativa.ondasMax) {
+      out.excluida = true
+      out.motivos.push(`${nome}: ondas até ${virgula(k.max)} m no pior caso (${limite})`)
+    }
+  }
   // gasóleo e bateria à chegada, no pessimista
   const vermelho = []
   if (Number.isFinite(gasoleoInicial)) {
@@ -138,4 +192,4 @@ function avaliar ({ alternativa, pessimista, provavel, destino, tripulacao, sair
   return out
 }
 
-module.exports = { PADRAO, horasLemeEquivalentes, distanciaRotaCosta, minimoCosta, avaliar }
+module.exports = { PADRAO, horasLemeEquivalentes, distanciaRotaCosta, minimoCosta, trocosCanal, ondasNoCanal, avaliar }

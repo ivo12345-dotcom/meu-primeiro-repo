@@ -173,3 +173,62 @@ test('tolerância de 0,1 MN: as linhas pré-calculadas reais ficam até 0,055 MN
   // no limite inventado: 0,055 MN por dentro passa
   assert.equal(s.avaliar(base({ alternativa: rota(5, { desvio: 4.945 }) })).excluida, false)
 })
+
+// Uma variante por um canal (rotas.js): linha, ligação ao canal, o canal, ligação de volta à linha.
+function rotaCanal () {
+  const pontos = [
+    { lat: 38.9, lon: aW(0.5, 38.9), perna: null, costaLivre: true },
+    { lat: 38.95, lon: aW(1.5, 38.95), perna: 'aproximacao', costaLivre: true },
+    { lat: 39.0, lon: aW(5, 39.0), perna: 'ligacao', costaLivre: true },
+    { lat: 39.1, lon: aW(5, 39.1), perna: 'linha' },
+    { lat: 39.15, lon: aW(5, 39.15), perna: 'ligacao', costaLivre: true, nome: 'Canal da Berlenga' },
+    { lat: 39.25, lon: aW(5, 39.25), perna: 'canal', costaLivre: true },
+    { lat: 39.35, lon: aW(5, 39.35), perna: 'canal', costaLivre: true },
+    { lat: 39.4, lon: aW(5, 39.4), perna: 'ligacao', costaLivre: true },
+    { lat: 39.8, lon: aW(5, 39.8), perna: 'linha' },
+    { lat: 39.85, lon: aW(1, 39.85), perna: 'ligacao', costaLivre: true },
+    { lat: 39.86, lon: aW(0.2, 39.86), perna: 'aproximacao', costaLivre: true }
+  ]
+  return { afastamento: 5, pontos, excluida: false, avisos: [], canal: 'Canal da Berlenga', ondasMax: 3 }
+}
+// O rasto simulado ao longo da rota (10 pontos por troço), com as ondas dadas por ondasEm(lat).
+function rasto (alt, ondasEm) {
+  const pontos = []
+  for (let i = 1; i < alt.pontos.length; i++) {
+    const a = alt.pontos[i - 1]; const b = alt.pontos[i]
+    for (let k = 0; k < 10; k++) {
+      const lat = a.lat + (b.lat - a.lat) * k / 10; const lon = a.lon + (b.lon - a.lon) * k / 10
+      pontos.push({ t: pontos.length * 60000, lat, lon, motor: false, tws: 15, rajada: 18, ondas: ondasEm(lat), periodo: 8, noite: false })
+    }
+  }
+  return { pontos, resumo: { ventoMax: 15, rajadaMax: 18, ondasMax: Math.max(...pontos.map(p => p.ondas ?? -Infinity)), gasoleoGasto: 5, socFinal: 0.9 } }
+}
+
+test('canal com ondasMax (Canal da Berlenga, decisão do Ivo): excluída quando a onda máxima do pessimista nos troços do canal é ≥ ondasMax', () => {
+  const alt = rotaCanal()
+  // tudo a 2 m: passa (os troços do canal não contam para o mínimo à costa)
+  const bom = s.avaliar(base({ alternativa: alt, pessimista: rasto(alt, () => 2), tripulacao: 'acompanhado' }))
+  assert.equal(bom.excluida, false)
+  assert.deepEqual(bom.motivos, [])
+  // 3 m no canal (≥ 3): excluída, também acompanhado
+  const noCanal = (h) => (lat) => (lat >= 39.2 && lat <= 39.35 ? h : 2)
+  const r = s.avaliar(base({ alternativa: alt, pessimista: rasto(alt, noCanal(3)), tripulacao: 'acompanhado' }))
+  assert.equal(r.excluida, true)
+  assert.deepEqual(r.motivos, ['Canal da Berlenga: ondas até 3,0 m no pior caso (só com ondas abaixo de 3 m)'])
+  assert.equal(s.avaliar(base({ alternativa: alt, pessimista: rasto(alt, noCanal(2.9)) })).excluida, false)
+  // as ligações ao canal também contam (a de entrada, perto de 39,12°)
+  assert.equal(s.avaliar(base({ alternativa: alt, pessimista: rasto(alt, (lat) => (lat > 39.11 && lat < 39.14 ? 3.2 : 2)) })).excluida, true)
+  // ondas grandes longe do canal (a 39,6°, a mais de 10 MN dele) não são do canal: não exclui por isso
+  const longe = s.avaliar(base({ alternativa: alt, pessimista: rasto(alt, (lat) => (lat > 39.55 && lat < 39.7 ? 3.5 : 2)), tripulacao: 'acompanhado' }))
+  assert.equal(longe.excluida, false)
+  // sem ondas previstas no canal: desconhecido não é calmo → excluída
+  const semOndas = s.avaliar(base({ alternativa: alt, pessimista: rasto(alt, noCanal(null)) }))
+  assert.equal(semOndas.excluida, true)
+  assert.deepEqual(semOndas.motivos, ['Canal da Berlenga: sem previsão de ondas no canal (desconhecido não conta como calmo; só com ondas abaixo de 3 m)'])
+  // um rasto sem posições (não dá para isolar o canal): conta a onda máxima da rota toda
+  const semPos = passagem({ min: 300 })
+  semPos.pontos[10].ondas = 3.1
+  assert.equal(s.avaliar(base({ alternativa: alt, pessimista: semPos })).excluida, true)
+  // uma alternativa sem ondasMax não tem esta regra
+  assert.equal(s.avaliar(base({ pessimista: rasto(rota(5), () => 3), tripulacao: 'acompanhado' })).excluida, false)
+})
