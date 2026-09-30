@@ -23,6 +23,12 @@
 //     Ver `horaMeteoParaUTC` / `horaDoDia`.
 //   - os textos dos eventos mostram sempre a hora de Lisboa (`horaLisboa`), não a
 //     hora local do sistema onde o script corre.
+//
+// Eventos de noite: para a partida golden (29/09 15:32, chegada 05:00 antes do nascer do sol)
+// não há "Nascer do sol" nem "Partida de noite" nos eventos — por isso o golden não os mostra.
+// Outras partidas (mais cedo, mais tarde, ou viagens mais longas) PODEM emitir esses eventos
+// (lib/passagem.js: noitePeloSol), o que é esperado e não é "sem mudar resultados" para elas;
+// é só invisível no golden de 29/09.
 
 import { readFileSync, writeFileSync } from 'node:fs'
 import { gzipSync, gunzipSync } from 'node:zlib'
