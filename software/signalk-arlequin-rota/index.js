@@ -9,6 +9,7 @@
 //   GET  /resultado/:id → { estado: 'a calcular' | 'pronto' | 'erro', progresso, texto, resultado?, erro? }
 //   GET  /destinos, POST /destinos { nome, lat, lon | posicaoAtual: true, conhecido, abrigo }
 //   POST /ativar { id, alternativa } (alternativa: índice 0–2 ou o id) → grava e ativa a rota
+//        → { ok, rota, href, via, alternativa, nota } (nota: a do canal, se a rota passar por um)
 //
 // O destino do /calcular: o id de um destino da lista (dados/destinos.json ou os do Ivo),
 // 'rota-ativa' (o fim da rota ativa no SignalK/OpenCPN), ou { lat, lon, nome }.
@@ -179,7 +180,9 @@ module.exports = function (app, deps = {}) {
           afastamentoMinimo: o.afastamentoMinimo, rpmCruzeiro: o.rpmCruzeiro, energia: o.energia,
           socDesconhecido: o.socDesconhecido, gasoleoDesconhecidoL: o.gasoleoDesconhecidoL
         },
-        progresso: (f, texto) => { t.progresso = Math.round(f * 100) / 100; t.texto = texto }
+        progresso: (f, texto) => { t.progresso = Math.round(f * 100) / 100; t.texto = texto },
+        // o registo dos erros de programação da geometria (lib/rotas.js: log(msg, erro))
+        log: (msg, e) => app.error(e && e.message ? `${msg}: ${e.message}` : String(msg))
       })
     if (r.erro) { t.estado = 'erro'; t.erro = r.erro; return }
     t.estado = 'pronto'
@@ -190,14 +193,17 @@ module.exports = function (app, deps = {}) {
 
   // Grava a rota na API de recursos v2 e ativa-a na API de rumo v2. Primeiro a API dentro do
   // servidor (app.resourcesApi e app.activateRoute); sem ela, HTTP para o próprio servidor.
+  // A rota direta (salto curto) não tem afastamento: diz "direta (salto curto)", nunca "null MN";
+  // uma variante por um canal leva a nota do canal (terra dos dois lados, por confirmar na carta).
   async function ativarRota (alt, destinoNome) {
     const pts = alt.pontosRota
     const id = crypto.randomUUID()
     const href = `/resources/routes/${id}`
+    const onde = alt.direto || !Number.isFinite(alt.afastamento) ? 'direta (salto curto)' : `${alt.afastamento} MN${alt.canal ? ` pelo ${alt.canal}` : ''}`
     const dados = {
       name: `Arlequin → ${destinoNome} (${alt.nome})`,
-      description: `Melhor rota: ${alt.afastamento} MN, ${alt.propulsao === 'motor' ? 'só motor' : 'vela e motor'}, partida ${alt.partida}, chegada prevista ${alt.chegada.p50}`,
-      distance: Math.round(alt.milhas * 1852),
+      description: `Melhor rota: ${onde}, ${alt.propulsao === 'motor' ? 'só motor' : 'vela e motor'}, partida ${alt.partida}, chegada prevista ${alt.chegada.p50}${alt.nota ? `. ${alt.nota}` : ''}`,
+      ...(Number.isFinite(alt.milhas) ? { distance: Math.round(alt.milhas * 1852) } : {}),
       feature: {
         type: 'Feature',
         geometry: { type: 'LineString', coordinates: pts.map(p => [p.lon, p.lat]) },
@@ -331,7 +337,7 @@ module.exports = function (app, deps = {}) {
       const alt = Number.isInteger(b.alternativa) ? lista[b.alternativa] : lista.find(a => a.id === b.alternativa)
       if (!alt) return res.status(404).json({ ok: false, erro: 'alternativa desconhecida' })
       ativarRota(alt, t.resultado.destino.nome)
-        .then(r => res.json({ ok: true, ...r, alternativa: alt.id }))
+        .then(r => res.json({ ok: true, ...r, alternativa: alt.id, nota: alt.nota || null }))
         .catch(e => res.status(502).json({ ok: false, erro: `não ativei a rota: ${e.message}` }))
         .catch(e => app.error(`ativar: ${e.message}`))
     })

@@ -239,3 +239,46 @@ test('destino "rota-ativa": o fim da rota ativa no SignalK', async () => {
   assert.equal(x.estado, 'pronto', x.erro)
   assert.equal(x.resultado.destino.id, 'peniche') // o fim é o largo de Peniche
 })
+
+test('o cálculo recebe o registo (app.error); /ativar de uma rota direta e de uma pelo Canal da Berlenga: nomes sem "null", a nota do canal', async () => {
+  const calculo = require('../lib/calculo')
+  const original = calculo.calcular
+  let depsVistas = null
+  const pts = [{ lat: 39.35, lon: -9.38, nome: 'Peniche (partida)' }, { lat: 39.4, lon: -9.45, nome: 'Canal da Berlenga' }, { lat: 39.59, lon: -9.08, nome: 'Nazaré' }]
+  const comum = { partida: '2026-09-29T14:32:00.000Z', chegada: { p10: '2026-09-29T20:00:00.000Z', p50: '2026-09-29T20:30:00.000Z', p90: '2026-09-29T21:00:00.000Z' }, propulsao: 'vela', pontosRota: pts, rota: pts.map(p => [p.lat, p.lon]) }
+  const direta = { ...comum, id: 'direto-vela', nome: 'Agora, direta (salto curto), vela e motor', afastamento: null, direto: true, canal: null, nota: null, milhas: 7.2 }
+  const nota = 'Canal da Berlenga: terra dos dois lados; só com ondas < 3 m — por confirmar na carta'
+  const canal = { ...comum, id: '0-5mn-canal-da-berlenga-vela', nome: 'Agora, 5 MN pelo Canal da Berlenga, vela e motor', afastamento: 5, direto: false, canal: 'Canal da Berlenga', nota, milhas: 30.4 }
+  calculo.calcular = async (entrada, deps) => {
+    depsVistas = deps
+    return { veredicto: { tipo: 'segue', texto: 'Segue agora', porque: [] }, destino: { id: 'nazare', nome: 'Nazaré' }, alternativas: [direta, canal] }
+  }
+  try {
+    const app = appFalso()
+    app.leiturasFalhadas = 0
+    const { p, r } = plugin(app)
+    p.start({ pasta: path.join(app.dir, 'dados') })
+    const id = (await chamar(r.post['/calcular'], { body: { destino: 'nazare', tripulacao: 'so' } })).id
+    assert.equal((await esperarResultado(r, id)).estado, 'pronto')
+    // o registo dos erros da geometria vai para app.error, com a mensagem do erro
+    assert.equal(typeof depsVistas.log, 'function')
+    depsVistas.log('signalk-arlequin-rota: erro ao gerar uma rota', new Error('ponto inválido'))
+    depsVistas.log('signalk-arlequin-rota: canal inválido')
+    assert.deepEqual(app.erros, ['signalk-arlequin-rota: erro ao gerar uma rota: ponto inválido', 'signalk-arlequin-rota: canal inválido'])
+    // a direta: sem "null MN" no nome nem na descrição
+    const a = await chamar(r.post['/ativar'], { body: { id, alternativa: 0 } })
+    assert.equal(a.code, 200, a.erro)
+    const d0 = app.recursos.get(`routes/${a.rota}`)
+    assert.equal(d0.name, 'Arlequin → Nazaré (Agora, direta (salto curto), vela e motor)')
+    assert.match(d0.description, /^Melhor rota: direta \(salto curto\), vela e motor, /)
+    assert.ok(!JSON.stringify(d0).match(/null|NaN|undefined/), JSON.stringify(d0))
+    assert.equal(a.nota, null)
+    // pelo canal: a nota vai na rota gravada e na resposta
+    const b = await chamar(r.post['/ativar'], { body: { id, alternativa: canal.id } })
+    assert.equal(b.code, 200, b.erro)
+    const d1 = app.recursos.get(`routes/${b.rota}`)
+    assert.match(d1.description, /^Melhor rota: 5 MN pelo Canal da Berlenga, vela e motor, /)
+    assert.ok(d1.description.endsWith(`. ${nota}`), d1.description)
+    assert.equal(b.nota, nota)
+  } finally { calculo.calcular = original }
+})
