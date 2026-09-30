@@ -155,6 +155,7 @@ function ondasNoCanal (alternativa, rasto, opcoes = {}) {
 function minimoCosta (afastamento, opcoes = {}) {
   const o = { ...PADRAO, ...opcoes }
   if (!Number.isFinite(afastamento)) return o.afastamentoMinimo
+  // decisão (desenho 3a): min(afastamento, 5) só na de ≤ 3 MN (vento de terra); todas as outras 5 MN
   return afastamento <= o.afastamentoVentoTerra ? Math.min(afastamento, o.afastamentoMinimo) : o.afastamentoMinimo
 }
 
@@ -201,6 +202,7 @@ function avaliar ({ alternativa, pessimista, provavel, destino, tripulacao, sair
     const limite = `só com ondas abaixo de ${metros(alternativa.ondasMax)} m`
     const k = ondasNoCanal(alternativa, pessimista.pontos || [], o)
     if (k.semOndas) {
+      // exclusão dura também em "sair agora" (decisão): a regra do Ivo é "só com ondas < 3 m", desconhecido ≠ < 3, e há a volta por fora
       out.excluida = true
       out.motivos.push(`${nome}: sem previsão de ondas no canal (desconhecido não conta como calmo; ${limite})`)
     } else if (k.max >= alternativa.ondasMax) {

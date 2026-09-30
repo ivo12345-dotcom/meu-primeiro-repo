@@ -32,6 +32,7 @@ const H = 3600000
 const norm = (a) => ((a % 360) + 360) % 360
 const dif = (a, b) => { let d = norm(a - b); if (d > 180) d -= 360; return d }
 
+// decisão (relatório C do protótipo, ponto 7): o vento que decide é o P90 e a polar lê-se no quantil contrário (P10)
 const CENARIOS = Object.freeze({
   pessimista: Object.freeze({ vento: 'p90', ventoPolar: 'p10', velocidade: 'p10', gasoleo: 'p90' }),
   provavel: Object.freeze({ vento: 'p50', ventoPolar: 'p50', velocidade: 'p50', gasoleo: 'p50' }),
