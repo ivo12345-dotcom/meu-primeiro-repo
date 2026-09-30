@@ -98,6 +98,18 @@ test('vento abaixo de 7 nós: motor a 2100 rpm e 4,3 nós; velocidade à vela < 
   assert.ok(Math.abs(mar.pontos[0].stw - 4.3 * 0.92) < 1e-12)
 })
 
+test('ondas desconhecidas (ondas null): fatorMar conservador como no pior caso do armador (3 m), nunca mar chão', () => {
+  const semOndas = simularPassagem(base({ tempo: ventoFixo(5, 270, { ondas: null }) }))
+  const ondas1 = simularPassagem(base({ tempo: ventoFixo(5, 270, { ondas: 1 }) }))
+  const ondas3 = simularPassagem(base({ tempo: ventoFixo(5, 270, { ondas: 3 }) }))
+  assert.equal(Number.isNaN(semOndas.pontos[0].stw), false)
+  // nunca mais rápido do que com 1 m de onda conhecida (mar chão seria o melhor caso possível)
+  assert.ok(semOndas.pontos[0].stw <= ondas1.pontos[0].stw, `${semOndas.pontos[0].stw} > ${ondas1.pontos[0].stw}`)
+  // e exatamente como o pior caso assumido (3 m), não um valor arbitrário
+  assert.ok(Math.abs(semOndas.pontos[0].stw - ondas3.pontos[0].stw) < 1e-12)
+  assert.equal(semOndas.resumo.chegou, true)
+})
+
 test('portos e aproximações a motor; o rio a 4,8 nós; o evento diz porquê', () => {
   const rota = [{ nome: 'Cais', lat: 39, lon: -9.5 }, { lat: 39 + 1 / 60, lon: -9.5, perna: 'porto' }, { nome: 'Largo', lat: 39 + 3 / 60, lon: -9.5, perna: 'aproximacao' }, { nome: 'Fim', lat: 39 + 8 / 60, lon: -9.5, perna: 'linha' }]
   const r = simularPassagem(base({ rota }))

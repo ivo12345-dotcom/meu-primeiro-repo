@@ -38,6 +38,12 @@ const norm = (a) => ((a % 360) + 360) % 360
 const dif = (a, b) => { let d = norm(a - b); if (d > 180) d -= 360; return d } // graus
 const virgula = (x, d = 1) => x.toFixed(d).replace('.', ',')
 const rumo3 = (x) => String(Math.round(x)).padStart(3, '0')
+// Ondas sem previsão (w.ondas null, semDados): desconhecido não é mar chão. Assume-se o pior caso
+// ainda plausível, o limite de ondas do armador (lib/seguranca.js: ondasMax = 3 m) — nunca 0, que
+// daria o fatorMar mais otimista possível. A alternativa já fica excluída ou com aviso vermelho
+// pelo semDados (lib/seguranca.js); isto só evita que os números mostrados (duração, gasóleo,
+// horas de leme) pareçam melhores do que são por assumirem mar chão em silêncio.
+const ONDAS_DESCONHECIDAS_M = 3
 
 const PADRAO = Object.freeze({
   rpmCruzeiro: 2100,
@@ -159,7 +165,7 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
     let motor = noPorto || (o.motorNasAproximacoes && perna === 'aproximacao') || semVento || w.tws < o.limiarVentoMotor
     let rumoAlvo = alvo.rumo
     let stw
-    const fatorMar = Math.max(0.8, 1 - 0.04 * Math.max(0, (w.ondas ?? 0) - 1))
+    const fatorMar = Math.max(0.8, 1 - 0.04 * Math.max(0, (Number.isFinite(w.ondas) ? w.ondas : ONDAS_DESCONHECIDAS_M) - 1))
     if (!motor) {
       const aTwa = Math.abs(twaWp)
       // Bordejar (< 45°) ou cambar em popa (> 155°, sem piloto): o timoneiro
