@@ -18,7 +18,7 @@
 //   correnteExtra(lat, lon, t) → { v, dir }   (a maré na barra do Tejo, lib/mare.js)
 //   velocidadeVela({ twa, twaAbs, tws, twd, rizos, w, t, lat, lon, rumo }) → STW em nós
 //     (antes do fator do leme, do mar e dos rizos, que o motor aplica)
-//   consumo({ rpm, w, t }) → L/h
+//   consumo({ rpm, w, t, rumo }) → L/h   (rumo = a proa, para o ângulo às ondas)
 //   noite(t) → bool
 //   energia: { inicio(t) → estado, passo(estado, { t, dtMs, motor, noite, sog, w }) → { estado, soc, eventos? } }
 //   distanciaCosta({ lat, lon }) → MN (opcional)
@@ -174,7 +174,7 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
     const passoMn = sog / 60
     pos = { lat: pos.lat + vy / 60 / 60, lon: pos.lon + vx / 60 / 60 / Math.cos(pos.lat * GRAU) }
     milhas += passoMn
-    if (motor) gasoleo -= consumo({ rpm: o.rpmCruzeiro, w, t }) / 60
+    if (motor) gasoleo -= consumo({ rpm: o.rpmCruzeiro, w, t, rumo: proa }) / 60
     else horasLeme += 1 / 60
     let soc = null
     if (energia) {
