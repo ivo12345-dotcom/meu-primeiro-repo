@@ -16,8 +16,10 @@
 // "Não recomendada sozinho" (só com tripulação "so"), no cenário pessimista:
 //   - vento médio > 22 nós, rajadas > 30 ou ondas > 3 m;
 //   - mais de 8 h equivalentes ao leme: todas as horas contam, à vela e a motor, e o motor
-//     em calma (vento < 10 nós e ondas < 1,5 m) conta metade. Sem ondas previstas (sem
-//     dados do mar) nunca é calma;
+//     em calma conta metade. Calma (decisão do Ivo, 30/09, ronda C2): vento < 10 nós E
+//     (ondas < 2 m, OU ondas ≤ 3 m com período ≥ 9 s — ondulação comprida, que a roda com
+//     travão aguenta). Sem ondas previstas (sem dados do mar) nunca é calma; acima de 2 m
+//     sem período conhecido também não;
 //   - chegada de noite a um porto com `conhecido: false`. Conta a chegada de noite no
 //     cenário pessimista OU no provável (a chegada mais provável de noite também conta).
 
@@ -32,21 +34,28 @@ const PADRAO = Object.freeze({
   rajadaMax: 30,
   ondasMax: 3,
   lemeMaxH: 8,
-  calmaVento: 10,
-  calmaOndas: 1.5
+  calmaVento: 10, // nós (menos do que isto)
+  calmaOndas: 2, // m (menos do que isto, com qualquer período)
+  calmaOndasLongas: 3, // m (até isto, se o período for comprido)
+  calmaPeriodo: 9 // s (período mínimo da ondulação comprida)
 })
 
 const virgula = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toFixed(d).replace('.', ',')
 const inteiro = (x) => String(Math.round(x))
 
-// Horas equivalentes ao leme numa linha do tempo de 1 min (lib/passagem.js).
+// Um minuto da linha do tempo (lib/passagem.js: { motor, tws, ondas, periodo }) é "motor em calma".
+function emCalma (p, opcoes = {}) {
+  const o = { ...PADRAO, ...opcoes }
+  if (!p.motor || !(p.tws < o.calmaVento) || p.ondas == null) return false
+  if (p.ondas < o.calmaOndas) return true
+  return p.ondas <= o.calmaOndasLongas && p.periodo != null && p.periodo >= o.calmaPeriodo
+}
+
+// Horas equivalentes ao leme numa linha do tempo de 1 min: o motor em calma conta metade.
 function horasLemeEquivalentes (pontos, opcoes = {}) {
   const o = { ...PADRAO, ...opcoes }
   let min = 0
-  for (const p of pontos) {
-    const calma = p.motor && p.tws < o.calmaVento && p.ondas != null && p.ondas < o.calmaOndas
-    min += calma ? 0.5 : 1
-  }
+  for (const p of pontos) min += emCalma(p, o) ? 0.5 : 1
   return min / 60
 }
 
@@ -127,4 +136,4 @@ function avaliar ({ alternativa, pessimista, provavel, destino, tripulacao, sair
   return out
 }
 
-module.exports = { PADRAO, horasLemeEquivalentes, distanciaRotaCosta, minimoCosta, avaliar }
+module.exports = { PADRAO, emCalma, horasLemeEquivalentes, distanciaRotaCosta, minimoCosta, avaliar }

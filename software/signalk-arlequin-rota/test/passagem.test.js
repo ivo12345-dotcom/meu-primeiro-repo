@@ -31,7 +31,10 @@ test('reproduz o simular.mjs de 29/09 (Algés → Peniche, partida 15:32): resum
   assert.ok(Math.abs(r.resumo.duracaoH / ref.duracaoH - 1) < 0.02)
   // e na verdade é igual, número a número, com os mesmos eventos e os mesmos pontos
   assert.deepEqual(JSON.parse(JSON.stringify(r.resumo)), ref)
-  assert.deepEqual(JSON.parse(JSON.stringify(r.pontos)), gz('simular-2026-09-29-passagem.json.gz'))
+  // (o período das ondas entrou na linha do tempo na ronda C2, para a regra da calma; a referência
+  // foi gravada com o código antigo, sem ele: compara-se o resto, ponto a ponto)
+  assert.ok(r.pontos.every(p => Number.isFinite(p.periodo)))
+  assert.deepEqual(JSON.parse(JSON.stringify(r.pontos.map(({ periodo, ...p }) => p))), gz('simular-2026-09-29-passagem.json.gz'))
   assert.equal(ref.chegada, '2026-09-30T05:00:00.000Z')
   assert.ok(ms < 2000, `${ms} ms`)
 })

@@ -4,7 +4,8 @@
 //
 // Custo = horas + 0,25 × horas de espera + 1,5 × horas de noite + 1,0 × horas ao leme (só eu)
 //       + 0,5 × (rajada máxima − 20)⁺ + 2 × (onda máxima − 2)⁺ + 0,5 × horas contra o vento
-//   - horas ao leme: as equivalentes (o motor em calma conta metade; lib/seguranca.js), só com "so";
+//   - horas ao leme: as equivalentes (o motor em calma conta metade; a calma está definida em
+//     lib/seguranca.js, emCalma), só com "so";
 //   - horas contra o vento: minutos com vento de 7 nós ou mais a ≤ 50° da proa (bolina, bordos,
 //     ou motor contra o vento e o mar). Interpretação nossa: o desenho não a define.
 //
