@@ -1,0 +1,13 @@
+{
+  "name": "signalk-arlequin-rota",
+  "version": "0.1.0",
+  "description": "Melhor rota do Arlequin: gera e simula as alternativas ao longo da costa (afastamento, hora de partida, propulsão) com a previsão, a maré, a costa e os modelos da AI",
+  "main": "index.js",
+  "keywords": ["signalk-node-server-plugin", "signalk-category-utility"],
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "dependencies": {
+    "signalk-arlequin-ia": "file:../signalk-arlequin-ia"
+  },
+  "scripts": { "test": "node --test \"test/*.test.js\"" }
+}
