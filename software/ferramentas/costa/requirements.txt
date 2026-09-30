@@ -1,0 +1,5 @@
+numpy>=2
+shapely>=2.1
+pyshp>=3
+pytest>=8
+geographiclib>=2  # só nos testes (confirma a projeção com distâncias geodésicas)
