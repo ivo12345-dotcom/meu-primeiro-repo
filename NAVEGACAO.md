@@ -1207,3 +1207,67 @@ node software/ferramentas/sincronizar/sincronizar.mjs --host pi@arlequin
 - **No ecrã:** no Diário, o cartão "AI" mostra a versão em uso, o que aprendeu e o estado da previsão ("previsão: última HH:MM" ou "sem rede"). Tem "Treinar agora" e, quando há uma versão anterior que esteve em uso, "Voltar atrás", se um modelo novo te parecer pior.
 
 **Velas:** na página **Velas** do ecrã, toca no estado da grande e da genoa sempre que mudares. A AI precisa disto para aprender, e o ecrã lembra-te se o vento mudar muito.
+
+### Melhor rota (cálculo) (plugin `signalk-arlequin-rota`)
+
+Desenho completo em `docs/superpowers/specs/2026-09-30-melhor-rota-calculo-design.md`. Esta
+parte (3a) é só o cálculo; o ecrã, o mapa e os avisos durante a viagem (3b) ainda não existem.
+
+- **O que faz:** cobre a costa continental, de Caminha a Vila Real de Santo António. Para um
+  destino e a tripulação ("só eu" ou "acompanhado"), gera as alternativas por afastamento à
+  costa (3, 5 ou 8 MN) × hora de partida × vela ou motor, simula cada uma em três cenários
+  (pessimista, provável, otimista), e devolve as **3 melhores**, o **veredicto** ("Segue" /
+  "Espera até às HH:MM" / "Não recomendado sozinho" / "Volta ou abriga-te em X"), o **"Sair agora
+  mesmo assim"** (inclui as não recomendadas, para quando o Ivo quer sair na mesma) e os
+  **pontos de desistência** ao longo da rota.
+- **No Pi:** ativar o plugin `@signalk/resources-provider` no SignalK. Sem ele, o `/ativar` dá
+  404 — não há onde gravar a rota nem ativá-la.
+- **Caminho da polar:** `software/arlequin-ecra/public/polar-arlequin.csv`, do próprio
+  repositório.
+- **Zonas e portos: estão por confirmar.** Antes de confiar no cálculo, o Ivo tem de ver na
+  carta:
+  - os separadores de tráfego (geometria oficial da DGRM);
+  - os Cachopos (barra do Tejo), desenhados à mão a partir da carta do IH n.º 26303;
+  - o Largo de Carcavelos, que fica dentro dos 10 m do Cachopo do Norte: ver o canal da Barra
+    Norte;
+  - as aproximações e entradas de todos os portos;
+  - quais destinos são abrigo e quais são conhecidos;
+  - o **Canal da Berlenga** (`dados/canais.json`): eixo desenhado à mão entre o Cabo Carvoeiro e
+    a Berlenga a partir do OSM, com os fundos, as correntes e as Estelas/Farilhões por
+    confirmar.
+- **Como marcar como confirmado:** editar `dados/destinos.json`, `dados/zonas.json` e
+  `dados/canais.json`, pondo `"confirmado": true` no que já foi visto na carta.
+- **Regra da calma para as horas ao leme:** vento < 10 nós **e** (ondas < 2 m, **ou** ondulação
+  comprida ≤ 3 m com período ≥ 9 s).
+
+**O que convém saber sobre o comportamento do cálculo:**
+- A alternativa de 3 MN só existe com **vento de terra ao longo de toda a linha seguida**
+  (verificado à hora estimada de passagem, e voltado a verificar-se nos rastos dos 3 cenários
+  simulados); perto da costa (< 3 MN), a rota direta segue a mesma regra. Sem vento de terra,
+  essa alternativa fica de fora do cálculo normal — só pode aparecer no "Sair agora mesmo
+  assim".
+- Entre dois portos vizinhos com um **salto curto**, há uma só alternativa "direta", junto à
+  costa, com a distância real à terra (nunca "a null MN" nos nomes).
+- Se o barco já estiver dentro da aproximação de um porto (por exemplo, no canal do Tejo), a
+  rota segue essa aproximação até ao largo, em vez de traçar a direito.
+- Entre portos com o mesmo largo dentro do Tejo (por exemplo, Oeiras e Algés), **não há rota
+  calculada**: "sem rota dentro do Tejo: sair pela barra ou navegar à vista".
+- O **Canal da Berlenga** só entra como alternativa quando a linha dá a volta às Berlengas, e só
+  com ondas previstas abaixo de 3 m no cenário pessimista (tem terra dos dois lados, por isso
+  fica fora da regra do vento de terra — aí só as ondas decidem).
+- Previsão em falta (vento, rajadas ou ondas) numa parte da rota **exclui** a alternativa —
+  desconhecido nunca conta como calmo; só no "Sair agora" fica, com aviso vermelho. Ondas
+  desconhecidas contam como 3 m para a velocidade a motor; distância à costa desconhecida também
+  exclui; gasóleo ou bateria desconhecidos à chegada dão sempre aviso vermelho, sem excluir.
+- Os pontos de desistência **aparecem sempre**: primeiro tenta a fuga pela linha dos 5 MN; se só
+  houver uma fuga junto à costa com vento do mar, aparece na mesma, com aviso vermelho — nunca
+  fica escondida. O resumo diz onde é que essa fuga "limpa" falha.
+- As horas de chegada dos 3 cenários **não seguem sempre a mesma ordem** (o otimista, com menos
+  vento, pode ir mais a motor e chegar depois do pessimista); o intervalo mostrado é sempre por
+  ordem de hora (o mais cedo, o provável, o mais tarde), não literalmente "o pessimista"/"o
+  otimista".
+- "Sair agora mesmo assim" pode mostrar uma passagem que acaba depois do fim da previsão — fica
+  na mesma, com aviso vermelho, porque o Ivo pediu para sair mesmo assim.
+- As 3 melhores: primeiro as recomendadas, depois por custo.
+- Perto da costa (alternativa a ≤ 3 MN), o mínimo à terra é o próprio afastamento (3 MN), não os
+  5 MN de omissão das outras alternativas.

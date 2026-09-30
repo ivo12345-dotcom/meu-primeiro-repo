@@ -149,7 +149,7 @@ Para cada afastamento d ∈ {3, 5, 8} MN:
 - **Excluída** (em "Sair agora" passa a aviso vermelho): gasóleo < 40 L ou bateria < 50% à chegada, no **cenário pessimista**.
 - **"Não recomendada sozinho"** (só com "só eu"):
   - vento médio > 22 nós, rajadas > 30 ou ondas > 3 m, no **cenário pessimista**;
-  - mais de 8 h equivalentes ao leme (o motor em calma, com vento < 10 nós e ondas < 1,5 m, conta metade);
+  - mais de 8 h equivalentes ao leme (o motor em calma, com vento < 10 nós e (ondas < 2 m, ou ondas ≤ 3 m com período ≥ 9 s — ondulação comprida), conta metade; regra do Ivo, 30/09);
   - chegada de noite a um porto com `conhecido: false`.
 
 ## Decisão (`lib/decisao.js`)
@@ -223,3 +223,123 @@ Para cada afastamento d ∈ {3, 5, 8} MN:
 - A correção do mar real contra o previsto, com a IMU.
 - As rotas fora da costa continental.
 - As isócronas.
+
+## Notas de implementação (30/09)
+
+Desvios aprovados ou decididos pelo Ivo durante o protótipo, entre este desenho e o que ficou
+nos commits do ramo `prototipo-3a`.
+
+**Dados e geometria:**
+- Cada destino (`dados/destinos.json`) tem um campo `entrada` (o índice, na `aproximacao`, a
+  partir do qual já se está dentro do porto). O OSM fecha os rios e as marinas como polígonos de
+  terra; da `entrada` para dentro a verificação de terra não se aplica, senão a doca/marina
+  "fechada" excluía sempre a própria aproximação (`portoFechadoOsm`).
+- O motor entra em toda a perna `aproximacao` (e sempre dentro do porto, perna `porto`), não só
+  quando o vento cai abaixo de 7 nós ou a velocidade à vela prevista fica abaixo de 3 nós
+  (`lib/passagem.js`, opção `motorNasAproximacoes`).
+- A distância mínima à costa de uma alternativa mede-se na **geometria da rota** (os troços da
+  linha seguida, `costaLivre` falso), não no rasto simulado — o rasto tem os bordos e as
+  cambadelas no corredor de ±0,7 MN, e isso é o barco a navegar, não a rota que se escolhe
+  (`lib/seguranca.js`, `distanciaRotaCosta`).
+- O mínimo à costa é `min(afastamento, 5)` MN só na alternativa a ≤ 3 MN (a única sujeita à regra
+  do vento de terra hoje); todas as outras usam sempre 5 MN (`lib/seguranca.js`, `minimoCosta`).
+  É a forma exata da nota do brief "a alternativa de 3 MN mede o mínimo a 3 MN".
+- A regra "3 MN só com vento de terra" (decisão do Ivo de 30/09) verifica-se em **todos os
+  pontos da linha seguida** (não só à saída), à hora estimada de passagem (5 nós), e volta a
+  verificar-se, já no cálculo, nos rastos dos 3 cenários simulados (`lib/rotas.js`,
+  `ventoDoMar`/`ventoDoMarNaRota`; `lib/calculo.js`, `ventoDoMarNosRastos` — os 3 e não só o
+  pessimista/provável, porque os cenários não são monótonos na velocidade). A rota direta (salto
+  curto entre portos vizinhos) segue a mesma regra sempre que passa a menos de 3 MN da costa
+  (`ventoDoMarNoDireto`).
+- Salto curto entre dois portos vizinhos (a linha seguida ficaria com ≤ 0,5 MN): **uma só**
+  alternativa `direto` (sem afastamento, `afastamento: null`), junto à costa, com a distância
+  real à terra — nunca "a null MN" nos nomes (`nomeRota`, `lib/decisao.js`; `/ativar` diz
+  "direta (salto curto)").
+- Partir de dentro da aproximação de um porto (ex.: o barco já no canal do Tejo): a rota segue
+  essa aproximação até ao largo, em vez de traçar a direito (`lib/rotas.js`, `naAproximacao`).
+- "Rota absurda": mais de 4,0× a distância em linha reta do primeiro ao último ponto. O fator foi
+  medido em todos os pares de `dados/destinos.json` (3/5/8 MN, os dois sentidos): a rota
+  verdadeira mais comprida é Algés ↔ Setúbal a 8 MN (3,41×); 4,0 fica a ≥ 10% dos dois lados do
+  caso mais próximo. Entre dois portos com o mesmo `largo` dentro do Tejo (ex.: Oeiras ↔ Algés,
+  ambos pela Barra Norte, 4,52× — não é erro de projeção, é mesmo assim), o motivo não é "rota
+  absurda": é "sem rota dentro do Tejo: sair pela barra ou navegar à vista" (`mesmoLargo`,
+  `MOTIVO_SEM_ROTA_TEJO`).
+- **Canal da Berlenga, permitido pelo Ivo (30/09):** onde a linha seguida dá a volta às
+  Berlengas, `gerarAlternativas` acrescenta uma variante pelo eixo de `dados/canais.json` (por
+  confirmar na carta), marcada com `canal` e `ondasMax: 3`. Como há terra dos dois lados do
+  canal (não há "lado do mar"), a regra do vento de terra nunca se aplica aos seus troços — só a
+  onda máxima do cenário pessimista decide, em `lib/seguranca.js` (ver "Segurança e decisão"
+  abaixo); a linha antes/depois do canal continua sujeita à regra normal.
+
+**Previsão e maré:**
+- Sem dados de nível do mar (sem preia-mares detetadas), a corrente na barra do Tejo fica a 0
+  nó, com o aviso "Sem dados do mar: a corrente de maré na barra do Tejo fica a 0" em
+  `avisosGerais` (`lib/calculo.js`, `lib/mare.js`).
+- A fixture de 29/09 (`test/fixtures/previsao-2026-09-29.json.gz`) vem do **arquivo histórico
+  "cosido" da Open-Meteo**, não da emissão em tempo real das 14h UTC desse dia — os valores mais
+  antigos da janela horária de cada previsão arquivada vêm de emissões anteriores, coladas umas
+  às outras. É a previsão que o plugin da rota teria arquivado, não uma reconstrução da emissão
+  única das 14h.
+- O plugin lê tanto os seus próprios ficheiros de arquivo (um por ponto da rota) como os do
+  plugin da AI mais antigo (um só ponto, sem o sufixo de latitude/longitude no nome): a mesma
+  pasta `previsoes/` serve os dois formatos, para a previsão sem rede aproveitar o que já lá
+  estiver (`lib/previsao.js`, `lerArquivo`).
+
+**Simulação, cenários e segurança:**
+- Os cenários, tal como ficaram no código (`lib/cenarios.js`): pessimista = velocidade P10,
+  vento P90, gasóleo P90; provável = P50 de tudo; otimista = velocidade P90, vento P10,
+  gasóleo P10. **O vento que decide** (rizos, motor abaixo de 7 nós, limites de segurança,
+  máximos) é sempre o do próprio cenário (P90 no pessimista), mas **a polar lê-se no quantil
+  contrário** (`twsPolar`): no pessimista, a velocidade à vela vem da polar no vento **P10**.
+  Sem isto, mais vento no pessimista dava mais velocidade na polar, e o pessimista andava mais
+  depressa do que devia.
+- 2 rizos entram com rajadas **> 27** nós (não > 26, como ainda diz a secção "Simulação" acima);
+  1 rizo com rajadas > 20 nós (`lib/passagem.js`, `PADRAO.rizo2`).
+- Regra da calma (`emCalma`, 30/09, decisão do Ivo): motor com vento < 10 nós **e** (ondas < 2 m,
+  **ou** ondas ≤ 3 m com período ≥ 9 s — ondulação comprida, que a roda com travão aguenta).
+  Desconhecido nunca é calma (sem vento ou sem ondas previstos, ou ondas entre 2 e 3 m sem
+  período conhecido). Corrigida também na secção "Segurança" acima (ver nota no topo do
+  documento).
+- "Horas contra o vento" (usadas no custo) = minutos com vento ≥ 7 nós a ≤ 50° da proa,
+  somados em horas (`lib/decisao.js`, `horasContraVento`; interpretação nossa — o desenho
+  original não a definia).
+- Chegada de noite = o último ponto do rasto do cenário pessimista **ou** do provável tem
+  `noite: true` (conta a chegada mais provável de noite mesmo que o pessimista chegue de dia,
+  `lib/seguranca.js`).
+- Previsão sem dados de vento, rajada ou ondas (`semDados`) numa parte da rota: **exclui** a
+  alternativa, e nunca conta como calma; noutros campos (direção, chuva, corrente…) só dá um
+  aviso. Só em "Sair agora mesmo assim" a exclusão vira aviso vermelho. Ondas desconhecidas
+  entram como 3 m no fator de mar da velocidade a motor (`lib/cenarios.js`/`lib/passagem.js`,
+  `fatorMar`); a distância à costa desconhecida também exclui sempre (falha para o lado
+  seguro); gasóleo inicial ou bateria à chegada desconhecidos nunca excluem, mas dão sempre um
+  aviso vermelho (`lib/seguranca.js`).
+- `simularPassagem` (a função pura, `lib/passagem.js`) não recebe `{ previsao, mare, modelos,
+  polar, barco, cenario }` como este desenho descrevia: recebe as **funções já fechadas**
+  `tempo(lat, lon, t)`, `velocidadeVela(...)`, `consumo(...)`, `noite(t)`, `energia` e
+  `distanciaCosta(...)` — quem chama (`lib/cenarios.js`/`lib/calculo.js`) é que fecha a previsão,
+  a maré e os modelos da AI sobre essas funções antes de simular.
+
+**Decisão e desistência:**
+- As chegadas dos 3 cenários não são monótonas na hora (o otimista tem menos vento, vai mais a
+  motor e pode chegar depois do pessimista — visto com a previsão real de 29/09, Peniche →
+  Cascais). Por isso `chegada` é sempre um intervalo por ordem: `p10` a mais cedo (o mínimo dos
+  três), `p50` a do cenário provável, `p90` a mais tarde (o máximo), e não literalmente "o
+  pessimista"/"o otimista" (`lib/calculo.js`, `ordenarChegadas`).
+- "Sair agora mesmo assim" mantém uma passagem que acaba depois do fim da previsão (com aviso
+  vermelho "a previsão acaba antes da chegada…"); fora do "Sair agora", essa alternativa fica de
+  fora (`lib/calculo.js`, `avaliarCandidato`).
+- As 3 melhores (`lib/decisao.js`, `melhores`): entre as não excluídas, as recomendadas sempre à
+  frente das "não recomendadas sozinho", e dentro de cada grupo por custo. Em "Sair agora" é só
+  por custo, com as não recomendadas incluídas.
+- Os pontos de desistência **aparecem sempre** (decisão do Ivo, 30/09, "Mostrar sempre"): a
+  ordem é a fuga pela linha dos 5 MN (ou 8, ou o troço reto) primeiro; se só houver fuga junto à
+  costa (< 3 MN, ou a rota direta) com vento do mar, aparece na mesma, **nunca escondida**, com
+  `avisoVermelho` a explicar porquê; só as exclusões duras do `rotas.js` (terra, zonas a evitar,
+  sem passagem nenhuma) ficam sem fuga (`semAbrigo`/`semVolta`). Os campos vêm em
+  `abrigo.avisoVermelho` e `voltar.avisoVermelho` em cada ponto — ainda não há ecrã (3b) para os
+  mostrar, mas a API já os dá. O resumo nomeia os pontos onde a fuga "limpa" falha, em vez de
+  saltá-los em silêncio.
+- O teste do desenho "a melhor chega de dia" (secção "Testes e validação") não se confirmou com a
+  previsão real de 29/09: foi substituído por "a melhor parte a 30/09" — com só eu, a melhor
+  alternativa não parte antes de 30/09 (hora de Lisboa); os limites e os pesos não foram mexidos
+  por causa disto (`test/calculo.test.js`).
