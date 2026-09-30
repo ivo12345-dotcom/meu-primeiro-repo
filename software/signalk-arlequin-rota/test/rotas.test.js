@@ -216,18 +216,26 @@ test('a ligação que passa num ilhéu avança pela linha até ficar livre (≤ 
 
 test('no mar entre as Berlengas e o continente: a projeção na linha não dá a volta às ilhas', () => {
   // a 39,39 N 9,45 W (no canal da Berlenga) a linha de 5 MN passa perto duas vezes: a norte
-  // (antes de contornar as ilhas) e a sul (depois); ir para Peniche não pode dar a volta às ilhas
+  // (antes de contornar as ilhas) e a sul (depois); ir para Peniche não pode dar a volta às ilhas.
+  // Determinístico: cada uma das 3 alternativas verificada por si (nada de "se excluída, salta" —
+  // se a janela de projeção for desativada, a de 5 MN passa a "rota absurda" e isto falha).
   const pos = { lat: 39.39, lon: -9.45 }
-  const alts = r.gerarRotas(real, { posicao: pos, destino: D('peniche'), twd: 90 })
-  const gc = c.distanciaMn(pos, c.P(D('peniche').aproximacao.at(-1)))
-  for (const a of alts) {
-    if (a.excluida) continue
-    assert.ok(a.milhas <= 3.5 * gc, `${a.afastamento}: ${a.milhas} MN para ${gc} MN`)
-    assert.ok(a.pontos.every(p => p.lon > -9.55), `${a.afastamento}: passa a oeste das Berlengas`)
-  }
-  const a5 = r.gerarRota(real, { partida: pos, destino: D('peniche'), afastamento: 5, twd: 90 })
-  assert.ok(a5.excluida || a5.milhas < 15, `${a5.milhas} MN`)
-  assert.ok(a5.excluida || a5.pontos.every(p => p.lon > -9.55))
+  const alts = r.gerarRotas(real, { posicao: pos, destino: D('peniche'), afastamentos: [3, 5, 8], twd: 90 })
+  assert.equal(alts.length, 3, JSON.stringify(alts.map(a => [a.afastamento, a.direto, a.excluida])))
+  const a3 = alts.find(a => a.afastamento === 3)
+  assert.equal(a3.excluida, false, a3.motivo)
+  assert.ok(a3.milhas > 9 && a3.milhas < 11, `3 MN: ${a3.milhas} MN`)
+  assert.ok(a3.pontos.every(p => p.lon > -9.55), '3 MN: passa a oeste das Berlengas')
+  const a5 = alts.find(a => a.afastamento === 5)
+  assert.equal(a5.excluida, false, a5.motivo)
+  assert.ok(a5.milhas > 12 && a5.milhas < 14.5, `5 MN: ${a5.milhas} MN`)
+  assert.ok(a5.pontos.every(p => p.lon > -9.55), '5 MN: passa a oeste das Berlengas')
+  // a direta (8 MN, mesma rota a qualquer afastamento) fica excluída: a menos de 3 MN da costa
+  // (a Berlenga) com vento do mar
+  const dir = alts.find(a => a.direto)
+  assert.ok(dir, 'devia haver uma alternativa direta')
+  assert.equal(dir.excluida, true)
+  assert.match(dir.motivo, /^vento do mar em parte da rota: a rota direta passa a 1,\d MN de uma costa a sotavento$/)
 })
 
 test('rota absurda (muito mais comprida do que a distância em linha reta): excluída com o motivo', () => {
