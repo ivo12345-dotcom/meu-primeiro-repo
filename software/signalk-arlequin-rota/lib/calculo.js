@@ -26,7 +26,8 @@
 // da costa) depende da hora da partida: essas geram-se de novo em cada partida. As de 5 e 8 MN
 // pela linha não dependem do vento: geram-se uma vez. Depois de simuladas, a mesma regra
 // (rotas.ventoDoMar) volta a verificar-se com a hora a que o barco passa em cada ponto nos rastos
-// pessimista e provável (a estimativa a 5 nós do rotas.js é otimista): se falhar, fica excluída.
+// dos 3 cenários (a estimativa a 5 nós do rotas.js é otimista; e o cenário otimista pode ser o mais
+// lento): se falhar em qualquer um, fica excluída.
 
 const { setImmediate: ceder } = require('node:timers/promises')
 const c = require('./costa')
@@ -135,11 +136,13 @@ function horaNoRasto (pontos, lat, lon) {
 }
 
 // A regra do vento de terra (3 MN e rota direta perto da costa) outra vez, agora com a hora a que o
-// barco passa de facto em cada ponto no rasto pessimista e no provável: o rotas.js só a verifica à
-// hora estimada a 5 nós, e o barco anda mais devagar (sobretudo no pessimista). A mesma função e os
-// mesmos motivos do rotas.js (ventoDoMar). → o motivo, ou null.
+// barco passa de facto em cada ponto nos rastos dos 3 cenários: o rotas.js só a verifica à hora
+// estimada a 5 nós, e o barco anda mais devagar. Os 3, e não só o pessimista e o provável: os
+// cenários não são monótonos na hora (o otimista tem menos vento, vai mais a motor e pode ser o mais
+// lento; ver ordenarChegadas). A mesma função e os mesmos motivos do rotas.js (ventoDoMar).
+// → o motivo, ou null.
 function ventoDoMarNosRastos (ctx, alt, sims) {
-  for (const nome of ['pessimista', 'provavel']) {
+  for (const nome of CENARIOS) {
     const pontos = sims[nome].pontos
     const motivo = rotas.ventoDoMar(ctx.costa, alt, { twd: (lat, lon) => ctx.twd(lat, lon, horaNoRasto(pontos, lat, lon)) })
     if (motivo) return motivo
@@ -474,4 +477,4 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   return resultado
 }
 
-module.exports = { PADRAO, calcular, resolverDestino }
+module.exports = { PADRAO, calcular, resolverDestino, ventoDoMarNosRastos }

@@ -9,7 +9,7 @@ const prev = require('../lib/previsao')
 const base = require('../lib/base')
 const rotas = require('../lib/rotas')
 const decisao = require('../lib/decisao')
-const { calcular } = require('../lib/calculo')
+const { calcular, ventoDoMarNosRastos } = require('../lib/calculo')
 
 const H = 3600000
 const FIX = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(__dirname, 'fixtures', 'previsao-2026-09-29.json.gz'))))
@@ -303,6 +303,21 @@ test('a regra do vento de terra (3 MN) volta a verificar-se à hora a que o barc
   assert.equal(motor.motivos[0], VENTO_DO_MAR)
   assert.ok(!vela.motivos.includes(VENTO_DO_MAR), JSON.stringify(vela.motivos))
   assert.ok(r.alternativas.every(a => a.id !== motor.id))
+})
+
+test('a regra do vento de terra verifica-se nos rastos dos 3 cenários: também no otimista, que pode ser o mais lento', () => {
+  // Nazaré → Figueira a 3 MN (a costa a leste): vento de leste (de terra) até rodar para oeste (do mar).
+  // O pessimista e o provável passam antes de rodar; o otimista (menos vento, mais motor: Peniche →
+  // Cascais, 29/09, chega depois do pessimista) passa já com o vento do mar.
+  const alt = rotas.gerarRota(costa, { partida: costa.destinos.find(d => d.id === 'nazare'), destino: costa.destinos.find(d => d.id === 'figueira'), afastamento: 3, twd: 90 })
+  assert.equal(alt.excluida, false, alt.motivo)
+  const roda = AGORA + 10 * H
+  const ctx = { costa, twd: (lat, lon, t) => (t < roda ? 90 : 270) }
+  const rasto = (atraso) => ({ pontos: alt.pontos.map((q, i) => ({ lat: q.lat, lon: q.lon, t: AGORA + atraso + i * 60000 })) })
+  const cedo = rasto(0)
+  const VENTO_DO_MAR = 'vento do mar em parte da rota: a 3 MN ficava perto de uma costa a sotavento'
+  assert.equal(ventoDoMarNosRastos(ctx, alt, { pessimista: cedo, provavel: cedo, otimista: cedo }), null)
+  assert.equal(ventoDoMarNosRastos(ctx, alt, { pessimista: cedo, provavel: cedo, otimista: rasto(12 * H) }), VENTO_DO_MAR)
 })
 
 test('chegada { p10, p50, p90 } por ordem de hora: Peniche → Cascais, onde o otimista (menos vento, mais motor) chega depois do pessimista', async () => {
