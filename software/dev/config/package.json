@@ -12,6 +12,8 @@
     "signalk-arlequin-gasoleo": "file:../../signalk-arlequin-gasoleo",
     "signalk-arlequin-agua": "file:../../signalk-arlequin-agua",
     "signalk-arlequin-caixanegra": "file:../../signalk-arlequin-caixanegra",
-    "signalk-arlequin-ia": "file:../../signalk-arlequin-ia"
+    "signalk-arlequin-ia": "file:../../signalk-arlequin-ia",
+    "signalk-arlequin-rota": "file:../../signalk-arlequin-rota",
+    "@signalk/resources-provider": "1.5.2"
   }
 }
