@@ -76,6 +76,20 @@ test('origem do consumo: "medido" com a PGN 65266 do MDI, "estimado" pela curva;
   assert.equal('propulsion.main.fuel.rateOrigem' in app2.valores, false)
 })
 
+test('consumo "medido" só dura enquanto a PGN 65266 for recente; sem ela há 5 s, volta a "estimado"', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ fonte: 'simulador' })
+  enviar(app, 61444, 'FFFFFF0040FFFFFF') // 2048 rpm
+  enviar(app, 65266, '2800FFFFFFFFFFFF') // 2,0 L/h medidos
+  t.mock.timers.tick(1000)
+  assert.equal(app.valores['propulsion.main.fuel.rateOrigem'], 'medido')
+  for (let s = 0; s < 6; s++) t.mock.timers.tick(1000) // 6 s sem nova 65266
+  p.stop()
+  assert.equal(app.valores['propulsion.main.fuel.rateOrigem'], 'estimado')
+})
+
 test('sem EEC1 há 5 s: rotações desconhecidas (null) e motor parado (ignição desligada ou CAN em baixo)', (t) => {
   t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
   const app = appFalso()

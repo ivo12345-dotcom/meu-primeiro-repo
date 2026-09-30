@@ -18,6 +18,10 @@ const { criarDetetor, estavel, novaCurva, amostra, resumo } = require('./lib/cur
 // motor fica "stopped", como antes.
 const RPM_VELHO = 5000
 
+// Sem PGN 65266 há 5 s: o último valor medido deixa de ser "medido" (senão fica-se com um
+// valor arrastado do MDI para sempre) e passa a "estimado" pela curva, como sem medição nenhuma.
+const LFE_VELHO = 5000
+
 module.exports = function (app) {
   const plugin = {
     id: 'signalk-arlequin-j1939',
@@ -56,7 +60,7 @@ module.exports = function (app) {
   let temporizador = null
   let ouvinte = null
   let valores = {} // caminho → valor (último)
-  let estado, desc, ativosMapa, rpmEm, rpmAtual, ficheiroDesc, vistasTotal
+  let estado, desc, ativosMapa, rpmEm, rpmAtual, lfeEm, ficheiroDesc, vistasTotal
   let detetor, curva, ficheiroCurva, ultimaGravacao
   let mudancas = [] // últimas 50 mudanças das PGN proprietárias (o ficheiro guarda todas)
 
@@ -68,6 +72,9 @@ module.exports = function (app) {
     if (t.pgn === 61444 && typeof valores['propulsion.main.revolutions'] === 'number') {
       rpmEm = Date.now()
       rpmAtual = valores['propulsion.main.revolutions'] * 60
+    }
+    if (t.pgn === 65266 && typeof valores['propulsion.main.fuel.rate'] === 'number') {
+      lfeEm = Date.now()
     }
     const r = registar(desc, t, rpmAtual)
     desc = r.d
@@ -94,6 +101,7 @@ module.exports = function (app) {
   function publicar () {
     const agora = Date.now()
     if (agora - rpmEm > RPM_VELHO) { valores['propulsion.main.revolutions'] = null; rpmAtual = 0 }
+    if (agora - lfeEm > LFE_VELHO) delete valores['propulsion.main.fuel.rate']
     const rpm = (valores['propulsion.main.revolutions'] ?? 0) * 60
     const r = avaliarMotor(estado, { rpm, temp: valores['propulsion.main.temperature'], volt: valores['propulsion.main.alternatorVoltage'] }, agora)
     estado = r.estado
@@ -161,6 +169,7 @@ module.exports = function (app) {
     ativosMapa = {}
     rpmEm = 0
     rpmAtual = 0
+    lfeEm = 0
     vistasTotal = 0
     const dir = app.getDataDirPath()
     fs.mkdirSync(dir, { recursive: true })

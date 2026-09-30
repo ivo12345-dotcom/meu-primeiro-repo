@@ -29,6 +29,9 @@ def membros_inteiros(dados):
     Devolve (texto, cortado): cortado é True se sobrou alguma coisa que não se leu."""
     partes = []
     while dados:
+        dados = dados.lstrip(b'\0')  # um corte de luz pode deixar zeros entre membros; não escondem o resto do dia
+        if not dados:
+            break
         d = zlib.decompressobj(31)
         try:
             texto = d.decompress(dados) + d.flush()

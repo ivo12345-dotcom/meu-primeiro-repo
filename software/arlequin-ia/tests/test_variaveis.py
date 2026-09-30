@@ -100,6 +100,16 @@ def test_ler_tabela_recupera_os_membros_inteiros_de_um_ficheiro_cortado(tmp_path
     assert '2026-06-01.csv.gz' in err and 'cortado' in err
 
 
+def test_ler_tabela_recupera_membros_apos_zeros_entre_blocos(tmp_path, capsys):
+    escrever_tabela(tmp_path, '2026-06-02.csv.gz', ['2026-06-02T00:00:00.000Z,39,-9,5,0,1'])
+    m1 = membros('t,lat,lon,stw,simulado,estavel\n2026-06-01T10:00:00.000Z,39,-9,4,0,1\n')
+    m2 = membros('2026-06-01T10:00:10.000Z,39,-9,7,0,1\n')
+    (tmp_path / 'tabela' / '2026-06-01.csv.gz').write_bytes(m1 + b'\0' * 64 + m2)  # corte de luz deixa zeros entre membros
+    df = ler_tabela(tmp_path)
+    assert list(df['stw']) == [4, 7, 5]
+    assert 'cortado' not in capsys.readouterr().err
+
+
 def test_ler_tabela_salta_um_ficheiro_ilegivel_com_aviso(tmp_path, capsys):
     escrever_tabela(tmp_path, '2026-06-02.csv.gz', ['2026-06-02T00:00:00.000Z,39,-9,5,0,1'])
     (tmp_path / 'tabela' / '2026-06-01.csv.gz').write_bytes(b'isto nao e gzip')
