@@ -274,7 +274,9 @@ async function calcular (entrada, deps) {
 
 async function calcularSemRede (entrada = {}, deps = {}) {
   const o = { ...PADRAO, ...(deps.opcoes || {}) }
-  const progresso = (f, texto) => { try { deps.progresso?.(f, texto) } catch { /* o progresso nunca derruba o cálculo */ } }
+  // o progresso nunca derruba o cálculo: nem a lançar, nem a rejeitar (um callback async; sem o
+  // await, uma rejeição ficava por tratar e derrubava o processo do SignalK)
+  const progresso = async (f, texto) => { try { await deps.progresso?.(f, texto) } catch { /* só informa */ } }
   const agora = Number.isFinite(entrada.agora) ? entrada.agora : Date.now()
   const { costa, polar } = deps
   if (!costa) return { erro: 'sem dados da costa' }
@@ -297,7 +299,7 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   const partidaGeo = porto || { lat: pos.lat, lon: pos.lon, nome: 'Posição atual' }
 
   // ---------- previsão ----------
-  progresso(0.02, 'a obter a previsão')
+  await progresso(0.02, 'a obter a previsão')
   const pontosPrev = prev.pontosPrevisao(costa.linha(5), { partida: pos, destino: c.P(destino.largo) })
   let pv
   try {
@@ -364,7 +366,7 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   const estat = { partidas: horas.length, simuladas: 0, excluidasRota: 0, foraDaPrevisao: 0, naoChega: 0, velaSemVela: 0 }
   for (let k = 0; k < horas.length; k++) {
     const tp = horas[k]
-    progresso(0.05 + 0.75 * k / horas.length, `a simular a partida ${decisao.quando(tp, agora, o.fuso)} (${k + 1} de ${horas.length})`)
+    await progresso(0.05 + 0.75 * k / horas.length, `a simular a partida ${decisao.quando(tp, agora, o.fuso)} (${k + 1} de ${horas.length})`)
     await ceder()
     let direta = false // a rota direta é a mesma a qualquer afastamento: só uma vez por partida
     for (const d of o.afastamentos) {
@@ -393,12 +395,12 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   // foram excluídas e segue para o veredicto "Não recomendado" com o motivo
   if (!candidatos.length && estat.simuladas > 0) return { erro: semPassagens(estat, { fim: previsao.fim, agora, o, nome: destino.nome }) }
 
-  try { deps.aoCandidatos?.(candidatos) } catch { /* só para diagnóstico */ }
+  try { await deps.aoCandidatos?.(candidatos) } catch { /* só para diagnóstico (também se rejeitar) */ }
 
   // ---------- no mar: o abrigo mais perto (para "Volta ou abriga-te em X") ----------
   let abrigo = null
   if (emMar && !sairAgora) {
-    progresso(0.82, 'a ver o abrigo mais perto')
+    await progresso(0.82, 'a ver o abrigo mais perto')
     const perto = costa.destinos.filter(d => d.abrigo && d.id !== destino.id).map(d => ({ d, mn: c.distanciaMn(pos, c.P(d.largo)) })).sort((a, b) => a.mn - b.mn)[0]
     if (perto) {
       const ctxA = { ...ctx, destino: perto.d }
@@ -412,7 +414,7 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   }
 
   // ---------- decisão ----------
-  progresso(0.85, 'a escolher as 3 melhores')
+  await progresso(0.85, 'a escolher as 3 melhores')
   const { top, veredicto } = decisao.decidir({ candidatos, agora, tripulacao, sairAgora, emMar, abrigo, fuso: o.fuso, excluidasAgora })
 
   // ---------- desistência (da melhor) e o objeto de cada alternativa ----------
@@ -420,7 +422,7 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   let desistenciaResumo = null
   const rastos = new Map() // cand → o rasto provável (o da 1.ª serve a desistência e a alternativa)
   if (top.length) {
-    progresso(0.9, 'pontos de desistência')
+    await progresso(0.9, 'pontos de desistência')
     await ceder()
     rastos.set(top[0], simularProvavel(ctx, top[0]))
     const etaMotor = (pontosRota, t0) => {
@@ -437,7 +439,7 @@ async function calcularSemRede (entrada = {}, deps = {}) {
     desistencia = d.pontos.map(p => ({ ...p, lat: Math.round(p.lat * 1e4) / 1e4, lon: Math.round(p.lon * 1e4) / 1e4, milhas: r1(p.milhas), abrigo: p.abrigo && { ...p.abrigo, milhas: r1(p.abrigo.milhas), rumo: Math.round(p.abrigo.rumo), twa: p.abrigo.twa == null ? null : Math.round(p.abrigo.twa) }, voltar: p.voltar && { ...p.voltar, milhas: r1(p.voltar.milhas), rumo: Math.round(p.voltar.rumo), twa: p.voltar.twa == null ? null : Math.round(p.voltar.twa) } }))
     desistenciaResumo = d.resumo
   }
-  progresso(0.95, 'avisos e precauções')
+  await progresso(0.95, 'avisos e precauções')
   const alternativas = []
   for (const cand of top) {
     await ceder()
@@ -461,7 +463,7 @@ async function calcularSemRede (entrada = {}, deps = {}) {
     avisos: avisosGerais,
     estatisticas: { ...estat, candidatos: candidatos.length, recomendadas: candidatos.filter(x => decisao.recomendada(x, tripulacao)).length }
   }
-  progresso(1, 'pronto')
+  await progresso(1, 'pronto')
   return resultado
 }
 

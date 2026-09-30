@@ -374,3 +374,16 @@ test('sem nenhuma passagem: a mensagem diz a causa verdadeira (previsão curta, 
   const curta = { ...P29, fim: AGORA + 2 * H }
   assert.equal((await calcular(entrada(), comPrevisao(curta))).erro, 'A previsão acaba às 17:32: não cobre nenhuma passagem até Peniche.')
 })
+
+test('um progresso ou aoCandidatos assíncrono que rejeita não derruba o processo (nem o cálculo)', async () => {
+  const rejeicoes = []
+  const apanhar = (e) => rejeicoes.push(e)
+  process.on('unhandledRejection', apanhar)
+  try {
+    const r = await calcular(entrada({ sairAgora: true }), deps({ progresso: async () => { throw new Error('progresso') }, aoCandidatos: async () => { throw new Error('candidatos') } }))
+    assert.equal(r.erro, undefined, r.erro)
+    assert.ok(r.veredicto)
+    await new Promise(resolve => setImmediate(resolve))
+    assert.deepEqual(rejeicoes.map(e => e.message), [])
+  } finally { process.off('unhandledRejection', apanhar) }
+})
