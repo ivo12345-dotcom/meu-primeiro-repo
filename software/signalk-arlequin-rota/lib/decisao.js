@@ -136,7 +136,7 @@ function decidir ({ candidatos, agora, tripulacao, sairAgora = false, emMar = fa
   } else {
     const melhor = top[0]
     const porque = []
-    if (melhor) porque.push(`${sairAgora ? 'A melhor para sair agora' : 'Nenhuma partida nas próximas 48 h passa nos limites; a melhor'} (${nomeRota(melhor)}, ${quando(melhor.partida, agora, fuso)}): ${juntar(melhor.motivos)}.`)
+    if (melhor) porque.push(`${sairAgora ? 'A melhor para sair agora' : 'Nenhuma partida nas próximas 48 h passa nos limites; a melhor'} (${nomeRota(melhor)}, ${melhor.partida === agora ? 'agora' : quando(melhor.partida, agora, fuso)}): ${juntar(melhor.motivos)}.`)
     else porque.push(porqueAgora())
     if (sairAgora && melhor) porque.push('Se saíres mesmo assim, revê as precauções e os pontos de desistência.')
     else if (melhor && melhor.partida !== agora) porque.push(porqueAgora())

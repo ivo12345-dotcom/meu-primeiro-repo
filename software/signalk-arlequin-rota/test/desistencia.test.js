@@ -49,6 +49,11 @@ test('Algés → Peniche a 5 MN: marcos, o Cabo Raso, o abrigo mais perto, volta
   assert.deepEqual(marcos.map(p => p.milhas), [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60])
   const cabo = r.pontos.find(p => p.tipo === 'cabo')
   assert.equal(cabo.nome, 'Cabo Raso')
+  assert.equal(r.pontos.filter(p => p.tipo === 'cabo').length, 1)
+  // a 3 MN a linha contorna o Raso aos bocados (3 voltas > 30°): conta como um cabo só
+  const a3 = rotas.gerarRota(costa, { partida: dest('alges'), destino: dest('peniche'), afastamento: 3, twd: 45 })
+  assert.deepEqual(D.cabosDaRota(a3.pontos).map(k => k.nome), ['Cabo Raso'])
+  assert.equal(D.cabos(c.prepararLinha(a3.pontos.slice(3, -2)), 0, 20, { juntarCaboMn: 0 }).filter(k => k.nome === 'Cabo Raso').length > 1, true)
   // por ordem de hora
   for (let i = 1; i < r.pontos.length; i++) assert.ok(r.pontos[i].t >= r.pontos[i - 1].t)
   // o 1.º marco (5 MN, no rio): um dos portos da barra (as aproximações de Algés, Oeiras e
