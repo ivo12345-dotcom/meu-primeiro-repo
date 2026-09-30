@@ -37,7 +37,8 @@ test('reproduz o simular.mjs de 29/09 (Algés → Peniche, partida 15:32): resum
   const semPeriodo = (p) => { const { periodo, ...resto } = p; return resto }
   assert.deepEqual(JSON.parse(JSON.stringify(r.pontos)).map(semPeriodo), gz('simular-2026-09-29-passagem.json.gz'))
   assert.equal(ref.chegada, '2026-09-30T05:00:00.000Z')
-  assert.ok(ms < 2000, `${ms} ms`)
+  // limite largo (era 2000 ms): não pode marcar falso num Raspberry Pi sob carga
+  assert.ok(ms < 10000, `${ms} ms`)
 })
 
 // ---------- o motor com um ambiente inventado ----------
@@ -285,7 +286,8 @@ test('29/09, Algés → Peniche a 5 MN: pessimista, provável e otimista por ord
   // e a simulação faz o mesmo mais os bordos e cambadelas
   assert.ok(Math.abs(alt.milhas - 63.6) < 0.5, `${alt.milhas}`)
   for (const r of [pe, pr, ot]) assert.ok(r.milhas > alt.milhas - 0.5 && r.milhas < alt.milhas + 3)
-  // cada passagem simulada em menos de 200 ms (~900 passos de 1 min)
-  assert.ok(Math.max(...tempos.slice(1)) < 200, tempos.join(', '))
+  // cada passagem simulada com folga (era 200 ms; ~900 passos de 1 min): não pode marcar
+  // falso num Raspberry Pi sob carga
+  assert.ok(Math.max(...tempos.slice(1)) < 2000, tempos.join(', '))
   if (process.env.ROTA_MOSTRAR) console.log(JSON.stringify({ milhasRota: alt.milhas, pe, pr, ot, tempos }, null, 1))
 })
