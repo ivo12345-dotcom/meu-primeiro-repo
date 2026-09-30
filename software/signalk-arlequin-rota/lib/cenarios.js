@@ -40,6 +40,9 @@ const CENARIOS = Object.freeze({
 })
 const NOMES = Object.keys(CENARIOS)
 const RAZAO_SEM_MODELO = Object.freeze({ p10: 0.9, p50: 1, p90: 1.1 })
+// sem previsão (null): fica null, nunca 0 (calma) por coerção de null × razão; a rajada em falta
+// não cai no vento médio. Quem consome trata o null como desconhecido.
+const vezes = (x, f) => (Number.isFinite(x) ? x * f : null)
 const GENOA_POR_RIZOS = [100, 70, 50] // % de genoa com 0, 1 e 2 rizos na grande (planeamento)
 
 // A correção do vento num ponto e hora: { razao: {p10, p50, p90}, twd }.
@@ -84,9 +87,6 @@ function criarCenarios ({ tempoBruto, modelos = {}, polar, obtida, tendPressao3h
     const tempo = (lat, lon, t) => {
       const { w, razao, twd, corrigido } = correcao(lat, lon, t)
       const r = razao[q.vento]
-      // sem previsão (null): fica null, nunca 0 (calma) por coerção de null × razão; a rajada em
-      // falta não cai no vento médio. Quem consome trata o null como desconhecido.
-      const vezes = (x, f) => (Number.isFinite(x) ? x * f : null)
       return {
         ...w,
         tws: vezes(w.tws, r),
