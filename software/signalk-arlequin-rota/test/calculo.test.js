@@ -247,3 +247,32 @@ test('"Sair agora": inclui as não recomendadas e os avisos vermelhos (previsão
   for (const a of k.alternativas) { assert.equal(a.excluida, false); assert.equal(a.canal, null) }
   assert.ok(k.alternativas.some(a => a.naoRecomendada)) // ondas > 3 m: não recomendadas, mas mostradas
 })
+
+test('o cálculo nunca lança: previsão estragada, sem rota ativa, posição null, entrada e dependências em falta', async () => {
+  const casos = [
+    [entrada(), deps({ obterPrevisao: async () => ({ previsao: { pontos: null } }) })],
+    [entrada(), deps({ obterPrevisao: async () => ({ previsao: 'lixo' }) })],
+    [entrada(), deps({ obterPrevisao: async () => ({ previsao: { ...P29, pontos: [{ lat: 39, lon: -9.4, t: null }] } }) })],
+    [entrada(), deps({ obterPrevisao: async () => ({ previsao: { ...P29, fim: NaN, obtida: 'ontem' } }) })],
+    [entrada(), deps({ obterPrevisao: async () => null })],
+    [entrada(), deps({ obterPrevisao: () => { throw new Error('síncrono') } })],
+    [entrada(), deps({ obterPrevisao: 'não é função' })],
+    [entrada({ destino: { rotaAtiva: [] } }), deps()],
+    [entrada({ destino: { rotaAtiva: null } }), deps()],
+    [entrada({ destino: { rotaAtiva: [[NaN, 1]] } }), deps()],
+    [entrada({ destino: null }), deps()],
+    [entrada({ instrumentos: { posicao: null } }), deps()],
+    [entrada({ instrumentos: null }), deps()],
+    [null, deps()],
+    [undefined, undefined],
+    [entrada(), null]
+  ]
+  for (const [e, d] of casos) {
+    const r = await calcular(e, d)
+    assert.ok(r && (typeof r.erro === 'string' || r.veredicto), JSON.stringify(r).slice(0, 200))
+  }
+  assert.equal((await calcular(entrada({ destino: { rotaAtiva: [] } }), deps())).erro, 'não há rota ativa no OpenCPN')
+  assert.equal((await calcular(entrada({ destino: { rotaAtiva: null } }), deps())).erro, 'não há rota ativa no OpenCPN')
+  assert.match((await calcular(entrada({ instrumentos: { posicao: null } }), deps())).erro, /^Sem GPS/)
+  assert.match((await calcular(entrada(), deps({ obterPrevisao: async () => ({ previsao: { pontos: null } }) }))).erro, /^(erro no cálculo|Sem previsão)/)
+})

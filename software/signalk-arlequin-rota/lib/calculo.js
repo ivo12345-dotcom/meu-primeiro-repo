@@ -40,6 +40,7 @@ const { pontosDesistencia } = require('./desistencia')
 const avisos = require('./avisos')
 
 const H = 3600000
+const MOTIVO_SEM_ROTA_ATIVA = 'não há rota ativa no OpenCPN'
 const PADRAO = Object.freeze({
   afastamentoMinimo: 5,
   afastamentos: [3, 5, 8],
@@ -63,9 +64,12 @@ function resolverDestino (costa, destino) {
     const d = costa.destinos.find(x => x.id === destino)
     return d ? { destino: d, aviso: null } : { erro: `destino desconhecido: ${destino}` }
   }
-  if (destino && Array.isArray(destino.rotaAtiva)) {
+  if (destino && 'rotaAtiva' in destino) {
+    if (!Array.isArray(destino.rotaAtiva) || !destino.rotaAtiva.length) return { erro: MOTIVO_SEM_ROTA_ATIVA }
     const r = rotas.destinoDaRotaAtiva(costa, destino.rotaAtiva)
-    return r ? { destino: r.destino, aviso: r.aviso } : { erro: 'a rota ativa não tem pontos' }
+    if (!r) return { erro: MOTIVO_SEM_ROTA_ATIVA }
+    if (!r.destino.largo.every(Number.isFinite)) return { erro: 'o fim da rota ativa não tem latitude e longitude válidas' }
+    return { destino: r.destino, aviso: r.aviso }
   }
   if (destino && Number.isFinite(destino.lat) && Number.isFinite(destino.lon)) {
     return {
