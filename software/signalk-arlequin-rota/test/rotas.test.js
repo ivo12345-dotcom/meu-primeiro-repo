@@ -1,6 +1,8 @@
 'use strict'
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
 const c = require('../lib/costa')
 const r = require('../lib/rotas')
 
@@ -242,6 +244,90 @@ test('rota absurda (muito mais comprida do que a distância em linha reta): excl
     assert.equal(x.excluida, false, `${a} → ${b}: ${x.motivo}`)
     assert.ok(x.milhas > 2.5 * c.distanciaMn(x.pontos[0], x.pontos.at(-1)))
   }
+})
+
+// Distância (MN) de p a uma zona: 0 dentro, senão à aresta mais perto.
+function distanciaZona (p, z) {
+  if (c.dentroAnel(p, z.poligono)) return 0
+  const an = z.poligono.map(c.P)
+  let mn = Infinity
+  for (let i = 1; i < an.length; i++) mn = Math.min(mn, c.distanciaSegmento(p, an[i - 1], an[i]).mn)
+  return mn
+}
+
+test('dados/canais.json: o Canal da Berlenga fica no mar, a ≥ 2 MN de terra e ≥ 0,5 MN das zonas', () => {
+  const canais = JSON.parse(fs.readFileSync(path.join(c.PASTA_DADOS, 'canais.json'), 'utf8'))
+  assert.ok(Array.isArray(canais) && canais.length >= 1)
+  const berlenga = canais.find(k => k.nome === 'Canal da Berlenga')
+  assert.ok(berlenga)
+  for (const k of canais) {
+    assert.equal(typeof k.nome, 'string')
+    assert.equal(typeof k.fonte, 'string')
+    assert.equal(k.confirmado, false)
+    assert.ok(Number.isFinite(k.ondasMax))
+    assert.ok(k.pontos.length >= 2)
+    const pts = k.pontos.map(c.P)
+    for (let i = 1; i < pts.length; i++) {
+      assert.equal(real.verificarTroco(pts[i - 1], pts[i]), null, `${k.nome}: troço ${i}`)
+      const n = Math.ceil(c.distanciaMn(pts[i - 1], pts[i]) / 0.05)
+      for (let m = 0; m <= n; m++) {
+        const q = { lat: pts[i - 1].lat + (pts[i].lat - pts[i - 1].lat) * m / n, lon: pts[i - 1].lon + (pts[i].lon - pts[i - 1].lon) * m / n }
+        assert.ok(real.distanciaTerra(q) >= 2, `${k.nome}: ${q.lat} ${q.lon} a ${real.distanciaTerra(q)} MN de terra`)
+        for (const z of real.zonas) assert.ok(distanciaZona(q, z) >= 0.5, `${k.nome}: a ${distanciaZona(q, z)} MN de ${z.nome}`)
+      }
+    }
+  }
+  assert.equal(berlenga.ondasMax, 3)
+  // do sul (lado de Peniche) para norte, entre o Cabo Carvoeiro e a Berlenga
+  assert.ok(berlenga.pontos[0][0] < berlenga.pontos.at(-1)[0])
+  for (const [lat, lon] of berlenga.pontos) assert.ok(lat > 39.3 && lat < 39.48 && lon > -9.52 && lon < -9.38, `${lat} ${lon}`)
+})
+
+test('Canal da Berlenga: a variante corta a volta às ilhas quando a linha a dá', () => {
+  const alts = r.gerarAlternativas(real, { partida: D('peniche'), destino: D('nazare'), afastamento: 5 })
+  assert.equal(alts.length, 2)
+  const [volta, canal] = alts
+  assert.equal(volta.excluida, false, volta.motivo)
+  assert.equal(volta.canal, undefined)
+  assert.ok(volta.milhas > 55 && volta.milhas < 64, `${volta.milhas} MN`)
+  assert.ok(volta.pontos.some(p => p.lon < -9.55), 'a volta passa a oeste das Berlengas')
+  assert.equal(canal.excluida, false, canal.motivo)
+  assert.equal(canal.canal, 'Canal da Berlenga')
+  assert.equal(canal.ondasMax, 3)
+  assert.equal(canal.afastamento, 5)
+  // ~35 MN: do largo de Peniche direto à ponta sul do canal, o canal (8 MN) e da ponta norte de
+  // volta à linha de 5 MN até à Nazaré (19,8 MN em linha reta de cais a cais)
+  assert.ok(canal.milhas > 30 && canal.milhas < 38 && canal.milhas < 0.65 * volta.milhas, `${canal.milhas} MN`)
+  assert.equal(canal.pontos[canal.pontos.findIndex(p => p.nome === 'Canal da Berlenga') - 1].nome, 'Largo de Peniche')
+  assert.ok(canal.pontos.every(p => p.lon > -9.52), 'não vai a oeste da Berlenga')
+  assert.ok(canal.avisos.includes('Canal da Berlenga por confirmar na carta'))
+  // passa por todos os pontos do canal, por ordem (de sul para norte), fora da regra do afastamento
+  const k = JSON.parse(fs.readFileSync(path.join(c.PASTA_DADOS, 'canais.json'), 'utf8')).find(x => x.nome === 'Canal da Berlenga')
+  const idx = k.pontos.map(([lat, lon]) => canal.pontos.findIndex(p => p.lat === lat && p.lon === lon))
+  assert.ok(idx.every((x, i) => x > 0 && (i === 0 || x === idx[i - 1] + 1)), JSON.stringify(idx))
+  assert.equal(canal.pontos[idx[0]].nome, 'Canal da Berlenga')
+  for (const x of idx.slice(1)) assert.equal(canal.pontos[x].perna, 'canal')
+  for (const x of idx) assert.equal(canal.pontos[x].costaLivre, true)
+  // nenhum troço fora das aproximações toca em terra ou em zonas
+  for (let i = 1; i < canal.pontos.length; i++) if (!['porto', 'aproximacao'].includes(canal.pontos[i].perna)) assert.equal(real.verificarTroco(canal.pontos[i - 1], canal.pontos[i]), null, `troço ${i}`)
+  // no sentido contrário (Nazaré → Peniche) também, com o canal percorrido de norte para sul
+  const inv = r.gerarAlternativas(real, { partida: D('nazare'), destino: D('peniche'), afastamento: 5 })
+  const cInv = inv.find(a => a.canal)
+  assert.ok(cInv && !cInv.excluida && cInv.milhas < 38, JSON.stringify(inv.map(a => [a.canal, a.milhas, a.motivo])))
+  const idxInv = k.pontos.map(([lat, lon]) => cInv.pontos.findIndex(p => p.lat === lat && p.lon === lon))
+  assert.ok(idxInv.every((x, i) => i === 0 || x === idxInv[i - 1] - 1), JSON.stringify(idxInv))
+  // gerarRotas junta as variantes; gerarRota dá só a da linha
+  const todas = r.gerarRotas(real, { posicao: c.P(D('peniche').aproximacao.at(-1)), destino: D('nazare'), afastamentos: [5] })
+  assert.deepEqual(todas.map(a => a.canal || null), [null, 'Canal da Berlenga'])
+  assert.equal(r.gerarRota(real, { partida: D('peniche'), destino: D('nazare'), afastamento: 5 }).canal, undefined)
+})
+
+test('Canal da Berlenga: sem variante quando a rota não dá a volta às ilhas', () => {
+  const alts = r.gerarAlternativas(real, { partida: D('alges'), destino: D('peniche'), afastamento: 5 })
+  assert.equal(alts.length, 1)
+  assert.equal(alts[0].canal, undefined)
+  assert.equal(r.gerarAlternativas(real, { partida: D('peniche'), destino: D('cascais'), afastamento: 8 }).length, 1)
+  assert.equal(r.gerarAlternativas(real, { partida: D('nazare'), destino: D('figueira'), afastamento: 5 }).length, 1)
 })
 
 test('sem passagem: excluída com o motivo em português', () => {

@@ -17,14 +17,20 @@
 // Onde a linha passa perto duas vezes (dá a volta às Berlengas), a partida e o destino
 // projetam-se em cada passagem e fica o par mais curto compatível com a viagem; e nenhuma
 // alternativa pode ter mais de 3,5 × a distância em linha reta ("rota absurda").
+// Onde a linha dá a volta às Berlengas, gerarAlternativas junta uma variante "via Canal da
+// Berlenga" (dados/canais.json, decisão do Ivo de 30/09), marcada com `canal` e `ondasMax`.
 //
 // Cada ponto da rota: { lat, lon, nome?, perna, costaLivre? }. `perna` é o troço
-// que CHEGA a esse ponto: 'porto' (dentro da entrada), 'aproximacao', 'ligacao'
-// ou 'linha'. costaLivre: fora da regra do afastamento mínimo (tudo menos a linha).
+// que CHEGA a esse ponto: 'porto' (dentro da entrada), 'aproximacao', 'ligacao',
+// 'linha' ou 'canal'. costaLivre: fora da regra do afastamento mínimo (tudo menos a linha).
 
+const fs = require('node:fs')
+const path = require('node:path')
 const c = require('./costa')
 
 const RAIO_PORTO_MN = 0.5
+// Canais entre ilhas e o continente que a linha contorna por fora (dados/canais.json).
+const CANAIS = JSON.parse(fs.readFileSync(path.join(c.PASTA_DADOS, 'canais.json'), 'utf8'))
 const AVISO_ROTA_ATIVA = 'último troço por confirmar na carta'
 
 // O porto de onde se parte: o destino da lista com o cais a ≤ 0,5 MN da posição.
@@ -313,6 +319,72 @@ function pontosLinha (linha, s1, s2, afastamento, o) {
   return meio
 }
 
+// Variantes por canais: onde a linha seguida dá a volta a ilhas (as Berlengas), sai da linha (ou
+// da saída, ex.: o largo de Peniche) para a ponta do canal, segue os pontos do canal e volta à
+// linha (ou vai direto ao largo do destino) do outro lado. Escolhe os pontos de ligação com o
+// maior ganho em milhas sobre a linha; só há variante se o ganho for ≥ o.ganhoCanalMinMn (ou
+// seja, se a rota passar mesmo pela volta). As ligações e os troços do canal ficam livres de
+// terra e de zonas, e uma ligação não se chega mais a terra do que as suas pontas (nem do que o
+// afastamento): assim não corta caminho por dentro da linha. → [{ pontos, canal }].
+function variantesCanal (costa, linha, inicio, entrada, { j, l }, afastamento, o) {
+  const pA = inicio.at(-1)
+  const pB = entrada[0]
+  // pontos candidatos a ligar ao canal, com u = milhas ao longo da rota desde pA
+  const uJ = c.distanciaMn(pA, j)
+  const amostras = [{ p: pA, u: 0, s: null }]
+  const nA = Math.max(1, Math.ceil(Math.abs(l.s - j.s) / 0.5))
+  for (let k = 0; k <= nA; k++) {
+    const s = j.s + (l.s - j.s) * k / nA
+    amostras.push({ p: c.posicao(linha, s), u: uJ + Math.abs(s - j.s), s })
+  }
+  amostras.push({ p: pB, u: uJ + Math.abs(l.s - j.s) + c.distanciaMn(l, pB), s: null })
+  amostras.forEach((a, i) => { a.i = i })
+  // a ligação p–q não se chega mais a terra do que as suas pontas (nem do que o afastamento)
+  const naoCorta = (p, q) => {
+    const exigida = Math.min(afastamento, costa.distanciaTerra(p, 50), costa.distanciaTerra(q, 50)) - 0.1
+    const n = Math.max(1, Math.ceil(c.distanciaMn(p, q) / 0.25))
+    for (let k = 1; k < n; k++) if (costa.distanciaTerra({ lat: p.lat + (q.lat - p.lat) * k / n, lon: p.lon + (q.lon - p.lon) * k / n }, 50) < exigida) return false
+    return true
+  }
+  const out = []
+  for (const canal of o.canais || []) {
+    const kp = canal.pontos.map(c.P)
+    if (kp.some((q, i) => i > 0 && costa.verificarTroco(kp[i - 1], q))) continue
+    const comprimento = milhasDe(kp)
+    let melhor = null
+    for (const pts of [kp, [...kp].reverse()]) { // nos dois sentidos
+      const E = pts[0]; const X = pts.at(-1)
+      const pares = []
+      for (const a of amostras) {
+        if (c.distanciaMn(a.p, E) > o.raioCanalMn) continue
+        for (const b of amostras) {
+          if (b.u <= a.u || c.distanciaMn(b.p, X) > o.raioCanalMn) continue
+          const ganho = (b.u - a.u) - (c.distanciaMn(a.p, E) + comprimento + c.distanciaMn(X, b.p))
+          if (ganho >= o.ganhoCanalMinMn && (!melhor || ganho > melhor.ganho)) pares.push({ ganho, a, b })
+        }
+      }
+      pares.sort((x, y) => y.ganho - x.ganho)
+      const ok = new Map()
+      const serve = (q, ponta, chave) => {
+        if (!ok.has(chave)) ok.set(chave, !costa.verificarTroco(q, ponta) && naoCorta(q, ponta))
+        return ok.get(chave)
+      }
+      for (const par of pares) {
+        if (serve(par.a.p, E, `a${par.a.i}`) && serve(par.b.p, X, `b${par.b.i}`)) { melhor = { ...par, pts }; break }
+      }
+    }
+    if (!melhor) continue
+    const { a, b, pts } = melhor
+    const antes = a.s == null ? [] : pontosLinha(linha, j.s, a.s, afastamento, o)
+    const noCanal = pts.map((q, i) => ({ lat: q.lat, lon: q.lon, perna: i === 0 ? 'ligacao' : 'canal', ...(i === 0 ? { nome: canal.nome } : {}) }))
+    const depois = b.s == null ? [] : pontosLinha(linha, b.s, l.s, afastamento, o)
+    const pontos = [...inicio.map(p => ({ ...p })), ...antes, ...noCanal, ...depois, ...entrada.map(p => ({ ...p }))]
+    if (verificarTrocos(costa, pontos)) continue
+    out.push({ pontos, canal })
+  }
+  return out
+}
+
 // 5. verificação final dos troços fora dos portos (ligações, linha, canal): o primeiro problema
 // ({ motivo: 'terra' | 'zona', zona? }) ou null. As aproximações verificam-se à parte
 // (verificarAproximacao); a última ligação da rota ativa avulsa também se verifica aqui.
@@ -339,17 +411,29 @@ function descreverProblema (r) {
   return 'toca em terra'
 }
 
-// Uma alternativa: { afastamento, pontos, milhas, excluida, motivo?, avisos[] }.
+// Uma alternativa: { afastamento, pontos, milhas, costaMinMn, excluida, motivo?, avisos[],
+// direto?, canal?, ondasMax? }.
 // partida: um destino da lista (porto de partida) ou { lat, lon } (no mar);
 // destino: um destino da lista (ou o avulso da rota ativa);
 // twd: direção do vento previsto (número, ou função (lat, lon[, t]) → graus), só para os 3 MN;
 // horaPartida (ms, opcional): com ela a função recebe a hora estimada de passagem em cada ponto.
-function gerarRota (costa, { partida, destino, afastamento, twd, horaPartida, opcoes = {} }) {
-  const o = { anguloMax: 60, maxAvancoMn: 5, passoMn: 0.25, passoMax: 2, tolerancia: 0.02, toleranciaVento: 60, afastamentoVentoTerra: 3, nosEta: 5, raioAproximacao: RAIO_PORTO_MN, fatorAbsurdo: 3.5, ...opcoes }
+// costaMinMn: a distância mínima à terra nos troços fora das aproximações (null se não há).
+// gerarRota dá só a alternativa da linha; gerarAlternativas dá também as variantes por canais
+// (hoje só o Canal da Berlenga), a seguir a ela.
+function gerarRota (costa, args) {
+  return gerar(costa, args, false)[0]
+}
+
+function gerarAlternativas (costa, args) {
+  return gerar(costa, args, true)
+}
+
+function gerar (costa, { partida, destino, afastamento, twd, horaPartida, opcoes = {} }, comVariantes) {
+  const o = { anguloMax: 60, maxAvancoMn: 5, passoMn: 0.25, passoMax: 2, tolerancia: 0.02, toleranciaVento: 60, afastamentoVentoTerra: 3, nosEta: 5, raioAproximacao: RAIO_PORTO_MN, fatorAbsurdo: 3.5, canais: CANAIS, raioCanalMn: 10, ganhoCanalMinMn: 5, ...opcoes }
   const nomeA = partida.nome || 'a posição atual'
   const nomeB = destino.nome
   const alt = { afastamento, pontos: [], milhas: 0, excluida: false, avisos: [] }
-  const excluir = (motivo) => ({ ...alt, excluida: true, motivo })
+  const excluir = (motivo) => [{ ...alt, excluida: true, motivo }]
   // Coordenadas não finitas (posição sem GPS, rota ativa malformada, dados corrompidos) fazem
   // lib/costa.js rebentar (`P()`); aqui isso não pode escapar por resolver, fica excluída com o motivo.
   try {
@@ -373,7 +457,7 @@ function gerarRota (costa, { partida, destino, afastamento, twd, horaPartida, op
         alt.direto = true
         alt.avisos.push(`já na aproximação de ${destino.nome}: segue-a até ao cais`)
         for (const p of pontos) p.costaLivre = true
-        return { ...alt, pontos, milhas: milhasDe(pontos), costaMinMn: null, sentido: null, linha: { de: null, ate: null } }
+        return [{ ...alt, pontos, milhas: milhasDe(pontos), costaMinMn: null, sentido: null, linha: { de: null, ate: null } }]
       }
       inicio = na ? [pos, ...pontosAproximacaoDesde(na, 'fora')] : [pos]
     }
@@ -389,8 +473,7 @@ function gerarRota (costa, { partida, destino, afastamento, twd, horaPartida, op
     const semPassagem = `não há passagem a ${afastamento} MN entre ${nomeA} e ${nomeB}`
     const t = tracar(costa, linha, inicio, entrada, afastamento, o)
     if (t.problema) return excluir(t.problema.motivo === 'terra' ? semPassagem : `a rota a ${afastamento} MN ${descreverProblema(t.problema)}`)
-    const { pontos, direto, j, l, sentido } = t
-    if (direto) {
+    if (t.direto) {
       // salto curto (a linha seguida ficava com ≤ 0,5 MN): uma só alternativa, a mesma a qualquer
       // afastamento, marcada `direto`, com a distância real à terra; perto da costa (< 3 MN) só com
       // vento de terra, como os 3 MN
@@ -398,24 +481,38 @@ function gerarRota (costa, { partida, destino, afastamento, twd, horaPartida, op
       alt.direto = true
       alt.avisos.push(partida.aproximacao ? NOTA_DIRETO : NOTA_DIRETO_MAR)
     }
-    // rede de segurança contra voltas da linha (ilhas, cabos): nunca mais de o.fatorAbsurdo × a
-    // distância em linha reta do início ao fim
-    const absurda = rotaAbsurda(pontos, o)
-    if (absurda) return excluir(absurda)
-
-    const costaMinMn = distanciaMinimaTerra(costa, pontos)
-    if (direto) {
-      if (costaMinMn < o.afastamentoVentoTerra) {
-        const motivo = ventoDoMarNoDireto(costa, pontos, costaMinMn, { twd, horaPartida }, o)
-        if (motivo) return excluir(motivo)
+    const linhaSeguida = { de: t.direto ? null : t.j.s, ate: t.direto ? null : t.l.s }
+    const geometrias = [{ pontos: t.pontos, extra: {}, avisos: [] }]
+    if (comVariantes && !t.direto) {
+      for (const v of variantesCanal(costa, linha, inicio, entrada, t, afastamento, o)) {
+        // NOTA para lib/seguranca.js: uma alternativa com `ondasMax` fica EXCLUÍDA quando a onda
+        // máxima do cenário pessimista nos troços do canal (perna 'canal' e as ligações a ele)
+        // for ≥ ondasMax (decisão do Ivo de 30/09: o Canal da Berlenga só com ondas < 3 m).
+        const avisos = v.canal.confirmado === false ? [`${v.canal.nome} por confirmar na carta`] : []
+        geometrias.push({ pontos: v.pontos, extra: { canal: v.canal.nome, ondasMax: v.canal.ondasMax }, avisos })
       }
-    } else if (afastamento <= o.afastamentoVentoTerra) {
-      // 3 MN só com vento de terra, em TODOS os pontos da linha seguida (não só à saída)
-      const motivo = ventoDoMarNaRota(costa, linha, pontos, { twd, horaPartida }, o)
-      if (motivo) return excluir(motivo)
     }
-    for (const p of pontos) { delete p.s; if (p.perna === 'linha') delete p.costaLivre; else p.costaLivre = true }
-    return { ...alt, pontos, milhas: milhasDe(pontos), costaMinMn, sentido, linha: { de: direto ? null : j.s, ate: direto ? null : l.s } }
+    return geometrias.map(({ pontos, extra, avisos }) => {
+      const a = { ...alt, ...extra, avisos: [...alt.avisos, ...avisos] }
+      const fora = (motivo) => ({ ...a, excluida: true, motivo })
+      // rede de segurança contra voltas da linha (ilhas, cabos): nunca mais de o.fatorAbsurdo × a
+      // distância em linha reta do início ao fim
+      const absurda = rotaAbsurda(pontos, o)
+      if (absurda) return fora(absurda)
+      const costaMinMn = distanciaMinimaTerra(costa, pontos)
+      if (t.direto) {
+        if (costaMinMn < o.afastamentoVentoTerra) {
+          const motivo = ventoDoMarNoDireto(costa, pontos, costaMinMn, { twd, horaPartida }, o)
+          if (motivo) return fora(motivo)
+        }
+      } else if (afastamento <= o.afastamentoVentoTerra) {
+        // 3 MN só com vento de terra, em TODOS os pontos da linha seguida (não só à saída)
+        const motivo = ventoDoMarNaRota(costa, linha, pontos, { twd, horaPartida }, o)
+        if (motivo) return fora(motivo)
+      }
+      for (const p of pontos) { delete p.s; if (p.perna === 'linha') delete p.costaLivre; else p.costaLivre = true }
+      return { ...a, pontos, milhas: milhasDe(pontos), costaMinMn, sentido: t.sentido, linha: linhaSeguida }
+    })
   } catch (e) {
     return excluir(e.message)
   }
@@ -439,12 +536,13 @@ function gerarRotas (costa, { posicao, destino, afastamentos = [3, 5, 8], twd, h
   const partida = portoDePartida(costa, posicao) || { lat: posicao.lat, lon: posicao.lon }
   const alts = []
   for (const d of afastamentos) {
-    const a = gerarRota(costa, { partida, destino: dest, afastamento: d, twd, horaPartida, opcoes })
-    // a rota direta é a mesma a qualquer afastamento: só uma vez
-    if (a.direto && alts.some(x => x.direto)) continue
-    alts.push(a)
+    for (const a of gerarAlternativas(costa, { partida, destino: dest, afastamento: d, twd, horaPartida, opcoes })) {
+      // a rota direta é a mesma a qualquer afastamento: só uma vez
+      if (a.direto && alts.some(x => x.direto)) continue
+      alts.push(a)
+    }
   }
   return alts
 }
 
-module.exports = { RAIO_PORTO_MN, AVISO_ROTA_ATIVA, portoDePartida, destinoDaRotaAtiva, rumoParaTerra, ventoDeTerra, gerarRota, gerarRotas }
+module.exports = { RAIO_PORTO_MN, AVISO_ROTA_ATIVA, CANAIS, portoDePartida, destinoDaRotaAtiva, rumoParaTerra, ventoDeTerra, gerarRota, gerarAlternativas, gerarRotas }

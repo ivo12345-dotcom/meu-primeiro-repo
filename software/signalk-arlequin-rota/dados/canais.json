@@ -1,0 +1,19 @@
+[
+ {
+  "nome": "Canal da Berlenga",
+  "pontos": [
+   [39.337, -9.4968],
+   [39.3513, -9.4858],
+   [39.3657, -9.4748],
+   [39.3798, -9.4634],
+   [39.3931, -9.4502],
+   [39.4067, -9.4377],
+   [39.4206, -9.4259],
+   [39.4351, -9.4153],
+   [39.4505, -9.4064]
+  ],
+  "ondasMax": 3,
+  "confirmado": false,
+  "fonte": "eixo do canal entre o Cabo Carvoeiro (Peniche) e a Berlenga, derivado de dados/terra.geojson.gz (OSM): em secções de 1 em 1 MN perpendiculares ao rumo 032°, o ponto mais longe de terra; fica a 2,7 MN de terra no sítio mais estreito, a 2,4 MN da zona das Berlengas e a 3,6 MN das Estelas e Farilhões. Pontos de sul (lado de Peniche) para norte. Permitido pelo Ivo (30/09) só com ondas máximas abaixo de 3 m (ondasMax). Por confirmar na carta (fundos, correntes, as Estelas e o ilhéu da Berlenga)"
+ }
+]
