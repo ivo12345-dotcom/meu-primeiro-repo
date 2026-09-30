@@ -56,21 +56,48 @@ test('Algés → Peniche a 5 MN: do cais ao cais, e depois do largo de Cascais n
   assert.equal(p.filter(x => x.costaLivre).length, p.filter(x => x.perna !== 'linha').length)
 })
 
-test('3 MN só com vento de terra; os 5 e 8 MN não dependem do vento', () => {
-  // Peniche → Nazaré: à saída a linha de 3 MN rodeia a península de Peniche, com a terra a NE
-  const com = r.gerarRota(real, { partida: D('peniche'), destino: D('nazare'), afastamento: 3, twd: 45 })
+const VENTO_DO_MAR = 'vento do mar em parte da rota: a 3 MN ficava perto de uma costa a sotavento'
+
+test('3 MN só com vento de terra EM TODA a linha seguida; os 5 e 8 MN não dependem do vento', () => {
+  // Nazaré → Figueira: costa oeste direita, a normal para terra fica entre 085° e 115° em toda a linha
+  const com = r.gerarRota(real, { partida: D('nazare'), destino: D('figueira'), afastamento: 3, twd: 90 })
   assert.equal(com.excluida, false, com.motivo)
-  const mar = r.gerarRota(real, { partida: D('peniche'), destino: D('nazare'), afastamento: 3, twd: 280 })
+  const mar = r.gerarRota(real, { partida: D('nazare'), destino: D('figueira'), afastamento: 3, twd: 280 })
   assert.equal(mar.excluida, true)
-  assert.equal(mar.motivo, 'a 3 MN só com vento de terra: à saída o vento vem de 280°, do lado do mar')
-  const fn = r.gerarRota(real, { partida: D('peniche'), destino: D('nazare'), afastamento: 3, twd: (lat, lon) => (lat > 39 && lon < -9 ? 60 : 270) })
-  assert.equal(fn.excluida, false)
-  assert.match(r.gerarRota(real, { partida: D('peniche'), destino: D('nazare'), afastamento: 3 }).motivo, /não há vento previsto/)
-  assert.equal(r.gerarRota(real, { partida: D('peniche'), destino: D('nazare'), afastamento: 5, twd: 280 }).excluida, false)
+  assert.equal(mar.motivo, VENTO_DO_MAR)
+  assert.match(r.gerarRota(real, { partida: D('nazare'), destino: D('figueira'), afastamento: 3 }).motivo, /não há vento previsto/)
+  assert.equal(r.gerarRota(real, { partida: D('nazare'), destino: D('figueira'), afastamento: 5, twd: 280 }).excluida, false)
   // a normal para terra na linha de 5 MN à latitude da Ericeira aponta para leste
   const L = real.linha(5)
   const s = c.projetar(L, { lat: 38.96, lon: -9.53 }).s
   assert.ok(Math.abs(c.dif(r.rumoParaTerra(real, L, s), 90)) < 30)
+})
+
+test('3 MN: o vento de terra à saída não chega, conta a linha toda (costa a sotavento mais à frente)', () => {
+  // Algés → Peniche com NW: à saída (Cascais, terra a norte) o vento é de terra, mas na costa
+  // oeste vem do mar
+  assert.equal(r.gerarRota(real, { partida: D('alges'), destino: D('peniche'), afastamento: 3, twd: 315 }).motivo, VENTO_DO_MAR)
+  // Lagos → Sines com W: de terra em parte da costa sul, do mar na costa alentejana
+  assert.equal(r.gerarRota(real, { partida: D('lagos'), destino: D('sines'), afastamento: 3, twd: 270 }).motivo, VENTO_DO_MAR)
+  // o vento pode mudar ao longo da rota: com a hora de partida, a função recebe a hora estimada
+  // de passagem em cada ponto (a 5 nós desde a partida)
+  const T0 = Date.parse('2026-09-30T08:00:00Z')
+  const horas = []
+  const fn = (lat, lon, t) => { horas.push(t); return 90 }
+  const alt = r.gerarRota(real, { partida: D('nazare'), destino: D('figueira'), afastamento: 3, twd: fn, horaPartida: T0 })
+  assert.equal(alt.excluida, false, alt.motivo)
+  assert.ok(horas.length >= 10, `${horas.length} pontos`)
+  for (let i = 1; i < horas.length; i++) assert.ok(horas[i] > horas[i - 1])
+  assert.ok(horas[0] > T0 && horas[0] < T0 + 3600e3, 'o primeiro ponto da linha fica a menos de 5 MN da partida')
+  const ultimaH = (horas.at(-1) - T0) / 3600e3
+  assert.ok(ultimaH > 0.8 * alt.milhas / 5 && ultimaH < alt.milhas / 5, `${ultimaH} h para ${alt.milhas} MN`)
+  // o vento roda para o mar ao fim de 3 h (a ~15 MN): excluída
+  const roda = (lat, lon, t) => (t < T0 + 3 * 3600e3 ? 90 : 270)
+  assert.equal(r.gerarRota(real, { partida: D('nazare'), destino: D('figueira'), afastamento: 3, twd: roda, horaPartida: T0 }).motivo, VENTO_DO_MAR)
+  // sem hora de partida, a função é chamada só com (lat, lon): a previsão da hora de partida
+  const args = []
+  r.gerarRota(real, { partida: D('nazare'), destino: D('figueira'), afastamento: 3, twd: (...a) => { args.push(a.length); return 90 } })
+  assert.ok(args.length > 0 && args.every(n => n === 2))
 })
 
 // Costa inventada: costa N-S em 9,0 W com um cabo fino para oeste a 39,0 N (até 9,08 W),

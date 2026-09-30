@@ -20,7 +20,6 @@ const c = require('./costa')
 
 const RAIO_PORTO_MN = 0.5
 const AVISO_ROTA_ATIVA = 'último troço por confirmar na carta'
-const fmtRumo = (x) => String(Math.round(c.norm(x)) % 360).padStart(3, '0')
 
 // O porto de onde se parte: o destino da lista com o cais a ≤ 0,5 MN da posição.
 function portoDePartida (costa, posicao, raioMn = RAIO_PORTO_MN) {
@@ -125,6 +124,35 @@ function ligar (costa, linha, p, sentido, janela, { anguloMax, maxAvancoMn, pass
   return null
 }
 
+const MOTIVO_VENTO_MAR = 'vento do mar em parte da rota: a 3 MN ficava perto de uma costa a sotavento'
+const H_MS = 3600e3
+
+// O vento previsto (de onde vem) num ponto: twd é um número (o mesmo em toda a parte) ou uma
+// função. Com horaPartida (ms), a função recebe também a hora estimada de passagem no ponto
+// (horaPartida + milhas desde a partida a o.nosEta nós); sem ela, só (lat, lon): quem chama fecha
+// a função sobre a hora de partida (a previsão da partida em toda a rota).
+function ventoEm (twd, p, milhasDesdePartida, horaPartida, o) {
+  if (typeof twd !== 'function') return twd
+  if (!Number.isFinite(horaPartida)) return twd(p.lat, p.lon)
+  return twd(p.lat, p.lon, horaPartida + milhasDesdePartida / o.nosEta * H_MS)
+}
+
+// A regra dos 3 MN (desenho: "3 MN só com vento de terra", decisão do Ivo de 30/09): em cada ponto
+// da linha seguida (os que têm `s`), o vento previsto tem de vir do lado de terra da linha (a normal
+// que aponta para terra, ±o.toleranciaVento). Devolve o motivo da exclusão, ou null.
+function ventoDoMarNaRota (costa, linha, pontos, { twd, horaPartida }, o) {
+  let milhas = 0
+  for (let i = 0; i < pontos.length; i++) {
+    if (i > 0) milhas += c.distanciaMn(pontos[i - 1], pontos[i])
+    const p = pontos[i]
+    if (!Number.isFinite(p.s)) continue
+    const vento = ventoEm(twd, p, milhas, horaPartida, o)
+    if (!Number.isFinite(vento)) return `a ${o.afastamentoVentoTerra} MN só com vento de terra, e não há vento previsto para a rota`
+    if (!ventoDeTerra(costa, linha, p.s, vento, o.toleranciaVento)) return MOTIVO_VENTO_MAR
+  }
+  return null
+}
+
 function descreverProblema (r) {
   if (r.motivo === 'zona') return `passa na zona a evitar "${r.zona}"`
   if (r.motivo === 'entrada inválida') return 'tem a entrada mal definida nos dados'
@@ -134,9 +162,10 @@ function descreverProblema (r) {
 // Uma alternativa: { afastamento, pontos, milhas, excluida, motivo?, avisos[] }.
 // partida: um destino da lista (porto de partida) ou { lat, lon } (no mar);
 // destino: um destino da lista (ou o avulso da rota ativa);
-// twd: direção do vento previsto à saída (número, ou função (lat, lon) → graus), só para os 3 MN.
-function gerarRota (costa, { partida, destino, afastamento, twd, opcoes = {} }) {
-  const o = { anguloMax: 60, maxAvancoMn: 5, passoMn: 0.25, passoMax: 2, tolerancia: 0.02, toleranciaVento: 60, afastamentoVentoTerra: 3, ...opcoes }
+// twd: direção do vento previsto (número, ou função (lat, lon[, t]) → graus), só para os 3 MN;
+// horaPartida (ms, opcional): com ela a função recebe a hora estimada de passagem em cada ponto.
+function gerarRota (costa, { partida, destino, afastamento, twd, horaPartida, opcoes = {} }) {
+  const o = { anguloMax: 60, maxAvancoMn: 5, passoMn: 0.25, passoMax: 2, tolerancia: 0.02, toleranciaVento: 60, afastamentoVentoTerra: 3, nosEta: 5, ...opcoes }
   const nomeA = partida.nome || 'a posição atual'
   const nomeB = destino.nome
   const alt = { afastamento, pontos: [], milhas: 0, excluida: false, avisos: [] }
@@ -181,14 +210,8 @@ function gerarRota (costa, { partida, destino, afastamento, twd, opcoes = {} }) 
     let meio
     if ((l.s - j.s) * sentido > 0.5) {
       meio = c.seguirLinha(linha, j.s, l.s, { passoMax: o.passoMax, tolerancia: o.tolerancia })
-        .map((q, i) => ({ lat: q.lat, lon: q.lon, perna: i === 0 ? 'ligacao' : 'linha' }))
+        .map((q, i) => ({ lat: q.lat, lon: q.lon, s: q.s, perna: i === 0 ? 'ligacao' : 'linha' }))
       meio[0].nome = `Linha de ${afastamento} MN`
-      // 3 MN só com vento de terra no troço inicial
-      if (afastamento <= o.afastamentoVentoTerra) {
-        const vento = typeof twd === 'function' ? twd(j.lat, j.lon) : twd
-        if (!Number.isFinite(vento)) return excluir(`a ${afastamento} MN só com vento de terra, e não há vento previsto para a saída`)
-        if (!ventoDeTerra(costa, linha, j.s, vento, o.toleranciaVento)) return excluir(`a ${afastamento} MN só com vento de terra: à saída o vento vem de ${fmtRumo(vento)}°, do lado do mar`)
-      }
     } else {
       // partida e destino perto um do outro na linha (a saída da linha ficava antes da
       // entrada nela): vai direto de largo a largo
@@ -205,7 +228,12 @@ function gerarRota (costa, { partida, destino, afastamento, twd, opcoes = {} }) 
       const r = costa.verificarTroco(pontos[i - 1], pontos[i])
       if (r) return excluir(r.motivo === 'terra' ? semPassagem : `a rota a ${afastamento} MN ${descreverProblema(r)}`)
     }
-    for (const p of pontos) if (p.perna === 'linha') delete p.costaLivre; else p.costaLivre = true
+    // 3 MN só com vento de terra, em TODOS os pontos da linha seguida (não só à saída)
+    if (meio.length && afastamento <= o.afastamentoVentoTerra) {
+      const motivo = ventoDoMarNaRota(costa, linha, pontos, { twd, horaPartida }, o)
+      if (motivo) return excluir(motivo)
+    }
+    for (const p of pontos) { delete p.s; if (p.perna === 'linha') delete p.costaLivre; else p.costaLivre = true }
     return { ...alt, pontos, milhas: milhasDe(pontos), sentido, linha: { de: meio.length ? j.s : null, ate: meio.length ? l.s : null } }
   } catch (e) {
     return excluir(e.message)
@@ -214,7 +242,7 @@ function gerarRota (costa, { partida, destino, afastamento, twd, opcoes = {} }) 
 
 // As alternativas para cada afastamento. posicao: { lat, lon } do barco; destino: da lista
 // (ou { rotaAtiva: [[lat, lon] | {lat, lon}, …] } para usar o fim da rota ativa do OpenCPN).
-function gerarRotas (costa, { posicao, destino, afastamentos = [3, 5, 8], twd, opcoes }) {
+function gerarRotas (costa, { posicao, destino, afastamentos = [3, 5, 8], twd, horaPartida, opcoes }) {
   let dest = destino
   if (destino?.rotaAtiva) {
     let r
@@ -228,7 +256,7 @@ function gerarRotas (costa, { posicao, destino, afastamentos = [3, 5, 8], twd, o
     dest = r.destino
   }
   const partida = portoDePartida(costa, posicao) || { lat: posicao.lat, lon: posicao.lon }
-  return afastamentos.map(d => gerarRota(costa, { partida, destino: dest, afastamento: d, twd, opcoes }))
+  return afastamentos.map(d => gerarRota(costa, { partida, destino: dest, afastamento: d, twd, horaPartida, opcoes }))
 }
 
 module.exports = { RAIO_PORTO_MN, AVISO_ROTA_ATIVA, portoDePartida, destinoDaRotaAtiva, rumoParaTerra, ventoDeTerra, gerarRota, gerarRotas }
