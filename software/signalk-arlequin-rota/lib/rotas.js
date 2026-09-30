@@ -18,7 +18,9 @@
 // projetam-se em cada passagem e fica o par mais curto compatível com a viagem; e nenhuma
 // alternativa pode ter mais de 3,5 × a distância em linha reta ("rota absurda").
 // Onde a linha dá a volta às Berlengas, gerarAlternativas junta uma variante "via Canal da
-// Berlenga" (dados/canais.json, decisão do Ivo de 30/09), marcada com `canal` e `ondasMax`.
+// Berlenga" (dados/canais.json, decisão do Ivo de 30/09), marcada com `canal` e `ondasMax`; os
+// troços do canal (terra dos dois lados) ficam FORA da regra do vento de terra (só as ondas
+// decidem, Task 9), mas a linha antes/depois do canal continua sujeita a ela.
 //
 // Cada ponto da rota: { lat, lon, nome?, perna, costaLivre? }. `perna` é o troço
 // que CHEGA a esse ponto: 'porto' (dentro da entrada), 'aproximacao', 'ligacao',
@@ -519,8 +521,14 @@ function gerar (costa, { partida, destino, afastamento, twd, horaPartida, opcoes
         // NOTA para lib/seguranca.js: uma alternativa com `ondasMax` fica EXCLUÍDA quando a onda
         // máxima do cenário pessimista nos troços do canal (perna 'canal' e as ligações a ele)
         // for ≥ ondasMax (decisão do Ivo de 30/09: o Canal da Berlenga só com ondas < 3 m).
+        // Terra dos dois lados do canal (não há "o lado do mar"): a regra do vento de terra nunca
+        // poderia servir aí, por isso não se aplica — decisão do Ivo, não um esquecimento. Os
+        // pontos do canal (perna 'canal') não têm `s`, por isso ventoDoMarNaRota salta-os
+        // sozinha; a linha antes/depois do canal continua com `s` e fica sujeita à regra dos 3 MN
+        // como qualquer outra alternativa.
         const avisos = v.canal.confirmado === false ? [`${v.canal.nome} por confirmar na carta`] : []
-        geometrias.push({ pontos: v.pontos, extra: { canal: v.canal.nome, ondasMax: v.canal.ondasMax }, avisos })
+        const nota = `${v.canal.nome}: terra dos dois lados; só com ondas < ${v.canal.ondasMax} m — por confirmar na carta`
+        geometrias.push({ pontos: v.pontos, extra: { canal: v.canal.nome, ondasMax: v.canal.ondasMax, nota }, avisos })
       }
     }
     return geometrias.map(({ pontos, extra, avisos }) => {

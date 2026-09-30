@@ -301,6 +301,8 @@ test('Canal da Berlenga: a variante corta a volta às ilhas quando a linha a dá
   assert.equal(canal.pontos[canal.pontos.findIndex(p => p.nome === 'Canal da Berlenga') - 1].nome, 'Largo de Peniche')
   assert.ok(canal.pontos.every(p => p.lon > -9.52), 'não vai a oeste da Berlenga')
   assert.ok(canal.avisos.includes('Canal da Berlenga por confirmar na carta'))
+  // nota: terra dos dois lados do canal — decisão do Ivo (30/09), não uma falha da regra do vento
+  assert.equal(canal.nota, 'Canal da Berlenga: terra dos dois lados; só com ondas < 3 m — por confirmar na carta')
   // passa por todos os pontos do canal, por ordem (de sul para norte), fora da regra do afastamento
   const k = JSON.parse(fs.readFileSync(path.join(c.PASTA_DADOS, 'canais.json'), 'utf8')).find(x => x.nome === 'Canal da Berlenga')
   const idx = k.pontos.map(([lat, lon]) => canal.pontos.findIndex(p => p.lat === lat && p.lon === lon))
@@ -328,6 +330,25 @@ test('Canal da Berlenga: sem variante quando a rota não dá a volta às ilhas',
   assert.equal(alts[0].canal, undefined)
   assert.equal(r.gerarAlternativas(real, { partida: D('peniche'), destino: D('cascais'), afastamento: 8 }).length, 1)
   assert.equal(r.gerarAlternativas(real, { partida: D('nazare'), destino: D('figueira'), afastamento: 5 }).length, 1)
+})
+
+test('Canal da Berlenga: terra dos dois lados não é vento de terra (decisão do Ivo, 30/09) — mas a linha antes/depois do canal continua sujeita à regra dos 3 MN', () => {
+  // com vento de terra em toda a parte (twd 90, como o resto dos testes do canal): a variante de
+  // 3 MN passa, mesmo com os pontos do canal a só 2,7 MN de terra (não são verificados)
+  const uniforme = r.gerarAlternativas(real, { partida: D('peniche'), destino: D('nazare'), afastamento: 3, twd: 90 })
+  const canalUniforme = uniforme.find(a => a.canal)
+  assert.equal(canalUniforme.excluida, false, canalUniforme.motivo)
+  // vento do mar só no troço da linha depois do canal (lado da Nazaré, lat > 39,45 — fora do
+  // canal): a variante fica excluída pelo motivo do vento, tal como a alternativa normal de 3 MN,
+  // mesmo sem nenhuma regra de vento nos pontos do canal em si
+  const twdNazare = (lat) => (lat > 39.45 ? 270 : 90)
+  const misto = r.gerarAlternativas(real, { partida: D('peniche'), destino: D('nazare'), afastamento: 3, twd: twdNazare })
+  const linha = misto.find(a => !a.canal)
+  const canal = misto.find(a => a.canal)
+  assert.equal(linha.excluida, true)
+  assert.equal(linha.motivo, VENTO_DO_MAR)
+  assert.equal(canal.excluida, true, 'a linha antes/depois do canal também tem de ser verificada')
+  assert.equal(canal.motivo, VENTO_DO_MAR)
 })
 
 test('sem passagem: excluída com o motivo em português', () => {
