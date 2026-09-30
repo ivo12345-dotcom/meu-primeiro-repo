@@ -332,3 +332,22 @@ def test_registo_ilegivel_avisa_nao_lhe_toca_e_devolve_os_resultados(tmp_path, c
         assert len(r) == 4
         assert registo.read_text(encoding='utf-8') == conteudo
         assert 'registo.json' in capsys.readouterr().err
+
+
+def test_ultima_saida_curta_junta_as_anteriores_ao_teste_ate_1_h(tmp_path):
+    gerar(tmp_path, POLAR)  # 3 saídas com 4 h à vela
+    gerar(tmp_path, POLAR, sessoes=1, inicio='2026-06-10T08:00:00Z', horas_motor=0, horas_vela=0.5, semente=2)  # 30 min
+    r = treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])[0]
+    assert r['versao'] == 'v0001', r
+    assert r['nTeste'] == 180 + 1440  # a saída curta mais a anterior (a mais recente primeiro)
+    m = carregar(tmp_path / 'modelos' / 'velocidade', 'v0001')
+    assert m['nTeste'] == 180 + 1440
+    assert m['ultimaSaida'] == '2026-06-10T08:00:00+00:00'  # a guarda continua a ser a saída mais recente
+
+
+def test_saida_de_teste_curta_sem_outras_para_juntar_nao_grava_versao(tmp_path):
+    gerar(tmp_path, POLAR, sessoes=1, horas_motor=0, horas_vela=6)
+    gerar(tmp_path, POLAR, sessoes=1, inicio='2026-06-10T08:00:00Z', horas_motor=0, horas_vela=0.5, semente=2)
+    r = treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])[0]
+    assert r['versao'] is None and r['aceite'] is False and r['motivo'] == 'saída de teste curta (<1 h)', r
+    assert not list((tmp_path / 'modelos' / 'velocidade').glob('v*.json.gz'))

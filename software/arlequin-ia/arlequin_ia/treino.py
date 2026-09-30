@@ -1,5 +1,5 @@
 """Treino dos modelos (LightGBM por quantis P10/P50/P90), teste com a última
-saída, aceitação só se errar menos do que o modelo em uso (ou, no 1.º modelo,
+saída (com as anteriores juntas até o teste ter 1 h), aceitação só se errar menos do que o modelo em uso (ou, no 1.º modelo,
 do que a polar/curva de origem), versões em modelos/<nome>/vNNNN.json.gz e o
 registo de tudo em modelos/registo.json."""
 
@@ -25,6 +25,7 @@ PARAMETROS = {'objective': 'quantile', 'num_leaves': 15, 'learning_rate': 0.05, 
 RONDAS = 200
 HORAS_MINIMAS = 5.0
 SEGUNDOS_POR_LINHA = 10
+LINHAS_TESTE_MINIMAS = 3600 // SEGUNDOS_POR_LINHA  # o teste tem de ter pelo menos 1 h (360 linhas de 10 s)
 # rpm em falta (NaN) conta como motor parado: a ECU do motor está desligada quando o motor está parado
 MOTOR_PARADO_RPM = 300
 
@@ -183,9 +184,15 @@ def treinar_um(nome, d, pasta_modelos, agora, polar):
     sess = sorted(linhas['sessao'].unique())
     if len(sess) < 2:
         return {**res, 'motivo': 'só uma saída: são precisas pelo menos 2 (uma fica para o teste)'}
-    teste = linhas[linhas['sessao'] == sess[-1]]
-    treino = linhas[linhas['sessao'] != sess[-1]]
-    ultima_saida = teste['t'].min()
+    # teste: a última saída; se tiver menos de 1 h, juntam-se as anteriores (a mais recente primeiro),
+    # deixando sempre pelo menos uma para o treino
+    k = 1
+    while k < len(sess) - 1 and linhas['sessao'].isin(sess[-k:]).sum() < LINHAS_TESTE_MINIMAS:
+        k += 1
+    no_teste = linhas['sessao'].isin(sess[-k:])
+    teste = linhas[no_teste]
+    treino = linhas[~no_teste]
+    ultima_saida = linhas.loc[linhas['sessao'] == sess[-1], 't'].min()  # a guarda é sempre a saída mais recente
     pasta = Path(pasta_modelos, nome)
     pasta.mkdir(parents=True, exist_ok=True)
     atual = versao_atual(pasta)
@@ -198,6 +205,8 @@ def treinar_um(nome, d, pasta_modelos, agora, polar):
     referencia = recente if recente is not None and recente.get('ultimaSaida') else em_uso
     if referencia is not None and referencia.get('ultimaSaida') and pd.Timestamp(referencia['ultimaSaida']) >= ultima_saida:
         return {**res, 'motivo': 'sem saída nova para testar desde a última versão'}
+    if len(teste) < LINHAS_TESTE_MINIMAS:
+        return {**res, 'motivo': 'saída de teste curta (<1 h)'}
     x_tr, x_te = treino[spec['variaveis']], teste[spec['variaveis']]
     novo = treinar_quantis(x_tr, treino[spec['alvo']])
     mae_novo = mae(novo['p50'].predict(x_te), teste[spec['alvo']])
@@ -209,7 +218,7 @@ def treinar_um(nome, d, pasta_modelos, agora, polar):
     modelo = {
         'modelo': nome, 'versao': versao, 'criado': agora.isoformat(), 'alvo': spec['alvo'],
         'variaveis': spec['variaveis'], 'horas': res['horas'], 'n': res['n'], 'sessoes': len(sess),
-        'ultimaSaida': ultima_saida.isoformat(),
+        'ultimaSaida': ultima_saida.isoformat(), 'nTeste': int(len(teste)),
         'mae': round(mae_novo, 4), 'maeAtual': None if mae_atual is None else round(mae_atual, 4),
         'maeBase': round(mae_base, 4), 'aceite': aceite,
         'quantis': {q: b.dump_model() for q, b in final.items()},
@@ -222,7 +231,7 @@ def treinar_um(nome, d, pasta_modelos, agora, polar):
         escrever(pasta / 'atual', versao.encode('utf-8'))
     motivo = ('erra menos do que ' + ('a versão em uso' if em_uso is not None else 'a polar/curva de origem')) if aceite \
         else ('erra mais do que ' + ('a versão em uso' if em_uso is not None else 'a polar/curva de origem'))
-    return {**res, 'versao': versao, 'aceite': aceite, 'motivo': motivo, 'mae': modelo['mae'],
+    return {**res, 'versao': versao, 'aceite': aceite, 'motivo': motivo, 'nTeste': modelo['nTeste'], 'mae': modelo['mae'],
             'maeAtual': modelo['maeAtual'], 'maeBase': modelo['maeBase'], 'frases': modelo['frases']}
 
 
