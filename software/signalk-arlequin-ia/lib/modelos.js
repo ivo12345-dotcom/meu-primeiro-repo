@@ -4,44 +4,44 @@
 // tabela da caixa negra (nós, graus, rpm, m). Sem modelo, fica o que se sabia
 // antes: a polar, a previsão tal e qual, a curva da Volvo.
 //
-// CONTRATO PARA A PARTE 3 (quem planear rotas com isto). Tirado de
+// CONTRATO PARA A PARTE 3 (o planeador de rotas, signalk-arlequin-rota). Tirado de
 // arlequin-ia/arlequin_ia/treino.py (MODELOS) e variaveis.py; o `x` de cada
-// função é { nomeDaVariavel: número | null } com estes nomes e unidades:
+// função é { nomeDaVariavel: número | null } com estes nomes e unidades.
+// Os modelos da velocidade e do consumo são de PLANEAMENTO: só usam o que se
+// sabe antes de partir (nada medido no mar: nem vento medido, nem adorno, nem balanço).
 //
 // velocidade → STW em nós (velocidade na água, NÃO a SOG: a corrente fica de fora)
-//   tws            nós   vento real medido
-//   twaAbs         graus |TWA| (0–180)
-//   rajada         nós   MEDIDA: o máximo do TWS medido nos últimos 2 min (não a rajada prevista)
-//   prevOndas      m     altura das ondas prevista (Open-Meteo)
+//   prevTws        nós   vento previsto EM BRUTO (Open-Meteo, sem a correção da AI)
+//   twaAbs         graus |TWA| (0–180): no planeamento, o ângulo entre o rumo e o vento corrigido
+//   prevRajada     nós   rajada prevista EM BRUTO
+//   prevOndas      m     altura das ondas prevista
 //   prevPeriodo    s     período das ondas previsto
 //   ondasAnguloRel graus |direção das ondas prevista − proa| (0–180)
-//   balAdorno      graus MEDIDO: desvio padrão do adorno nos últimos 2 min (IMU)
-//   balCaimento    graus MEDIDO: desvio padrão do caimento nos últimos 2 min (IMU)
-//   adornoAbs      graus MEDIDO: |adorno|
-//   grandeRizos    −1 arriada, 0 inteira, 1 ou 2 rizos (página Velas)
+//   grandeRizos    −1 arriada, 0 inteira, 1 ou 2 rizos (no planeamento: os limiares da simulação)
 //   genoaPct       %     0 enrolada … 100 toda aberta
+//   Quem dá o quê: o planeador passa a previsão em bruto do ponto e hora (lib/previsao.js) e as velas que
+//   decidiu; o `stwPolar` de preverVelocidade é a polar no vento CORRIGIDO (preverVento, P50 ou o do
+//   cenário). A correção entra só pela polar: o modelo aprendeu "com esta previsão em bruto, andaste X",
+//   por isso dar-lhe o vento corrigido contava a correção duas vezes.
+//   O peso da AI (pesoCelula) é por célula de 2 nós de prevTws × 15° de twaAbs, como treino.chave_celula.
 // ventoForca → razão TWS medido / TWS previsto; ventoDirecao → TWD medido − previsto (graus, −180…180)
 //   latCel, lonCel graus  quadrícula de 0,1° (floor(lat × 10) / 10)
-//   prevTws        nós    TWS previsto
-//   prevTwd        graus  TWD previsto (de onde vem)
+//   prevTws        nós    TWS previsto em bruto
+//   prevTwd        graus  TWD previsto em bruto (de onde vem)
 //   horaDia        horas  hora do dia em UTC (0–24, com decimais), NÃO a hora local
 //   idadePrevH     horas  há quanto tempo a previsão foi obtida; treinado só com 0–12 h
-//   tendPressao3h  hPa    MEDIDA: pressão agora − há 3 h
+//   tendPressao3h  hPa    MEDIDA: pressão agora − há 3 h (no planeamento: a do barómetro à partida, ou null)
 // consumo → L/h de gasóleo (só aprendido com o caudal medido pelo MDI)
 //   rpm            rpm   (atenção: não Hz como o propulsion.main.revolutions)
-//   stw            nós   MEDIDA
-//   prevOndas, ondasAnguloRel, balCaimento  como acima
+//   prevOndas, ondasAnguloRel  como acima
 //
 // Cuidados:
-// - As variáveis MEDIDAS (adornoAbs, balAdorno, balCaimento, rajada e, no
-//   consumo, stw) existiram sempre no treino. Um planeador que as passe null
-//   (porque ainda não navegou ali) recebe respostas enviesadas: o LightGBM
-//   manda o null pelo ramo por omissão, que não quer dizer "valor típico".
-//   Tem de as estimar (p.ex. da previsão ou das últimas horas) ou aceitar o viés.
+// - A velocidade só aprende em horas com previsão arquivada (as linhas sem previsão ficam fora do treino).
+// - Um null vai pelo ramo por omissão do LightGBM, que não quer dizer "valor típico": o planeador deve
+//   passar as 8 variáveis da velocidade (todas conhecidas antes de partir).
 // - idadePrevH fora de 0–12 h é extrapolação.
 // - Com peso 0 (célula sem horas), preverVelocidade devolve a polar em P10, P50
 //   e P90: não há banda de incerteza, não quer dizer certeza.
-// Isto é o contrato de hoje, não um desenho fechado: a Parte 3 decide com o Ivo.
 
 const fs = require('node:fs')
 const path = require('node:path')
@@ -83,16 +83,16 @@ function preverQuantis (modelo, x) {
   return { p10: v[0], p50: v[1], p90: v[2] }
 }
 
-// Peso da AI numa célula de 2 nós × 15°: cresce até 1 com 2 h de dados.
-function pesoCelula (modelo, tws, twaAbs) {
-  const h = modelo?.celulas?.[`${Math.floor(tws / 2) * 2}|${Math.floor(twaAbs / 15) * 15}`] ?? 0
+// Peso da AI numa célula de 2 nós de vento previsto em bruto × 15°: cresce até 1 com 2 h de dados.
+function pesoCelula (modelo, prevTws, twaAbs) {
+  const h = modelo?.celulas?.[`${Math.floor(prevTws / 2) * 2}|${Math.floor(twaAbs / 15) * 15}`] ?? 0
   return Math.min(1, h / 2)
 }
 
 // Velocidade na água (nós): mistura com a polar pelo peso da célula e fica entre 40% e 120% da polar.
 function preverVelocidade (modelo, x, stwPolar) {
   if (!modelo) return { p10: stwPolar, p50: stwPolar, p90: stwPolar, peso: 0 }
-  const peso = pesoCelula(modelo, x.tws, x.twaAbs)
+  const peso = pesoCelula(modelo, x.prevTws, x.twaAbs) // a célula é do vento previsto em bruto
   const ai = preverQuantis(modelo, x)
   const out = { peso }
   for (const q of ['p10', 'p50', 'p90']) out[q] = limitar(peso * ai[q] + (1 - peso) * stwPolar, 0.4 * stwPolar, 1.2 * stwPolar)

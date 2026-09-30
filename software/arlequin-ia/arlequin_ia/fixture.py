@@ -24,13 +24,13 @@ def main(saida):
         treinar(d, polar, agora=pd.Timestamp('2026-06-20T12:00:00Z'), modelos=['velocidade'])
         m = carregar(Path(d, 'modelos', 'velocidade'), 'v0001')
     rng = np.random.default_rng(3)
-    x = pd.DataFrame({'tws': rng.uniform(3, 26, 60), 'twaAbs': rng.uniform(30, 180, 60), 'rajada': rng.uniform(4, 34, 60),
+    # as variáveis de planeamento da velocidade (treino.MODELOS): o vento é a previsão em bruto
+    ptws = rng.uniform(3, 26, 60)
+    x = pd.DataFrame({'prevTws': ptws, 'twaAbs': rng.uniform(30, 180, 60), 'prevRajada': ptws * rng.uniform(1.1, 1.6, 60),
                       'prevOndas': rng.uniform(0, 4, 60), 'prevPeriodo': rng.uniform(4, 14, 60),
-                      'ondasAnguloRel': rng.uniform(0, 180, 60), 'balAdorno': rng.uniform(0, 5, 60),
-                      'balCaimento': rng.uniform(0, 5, 60), 'adornoAbs': rng.uniform(0, 25, 60),
-                      'grandeRizos': rng.integers(-1, 3, 60), 'genoaPct': rng.choice([0, 50, 70, 100], 60),
-                      'rpm': rng.choice([0, 0, 0, 1800, 2200], 60)})[m['variaveis']].astype(float)
-    for col, cada in (('prevOndas', 3), ('balAdorno', 4), ('tws', 11), ('rpm', 7)):
+                      'ondasAnguloRel': rng.uniform(0, 180, 60), 'grandeRizos': rng.integers(-1, 3, 60),
+                      'genoaPct': rng.choice([0, 50, 70, 100], 60)})[m['variaveis']].astype(float)
+    for col, cada in (('prevOndas', 3), ('prevRajada', 4), ('prevTws', 11), ('genoaPct', 7)):
         if col in x.columns:
             x.loc[x.index[::cada], col] = np.nan
     casos = [{'x': {k: (None if pd.isna(v) else float(v)) for k, v in linha.items()},
