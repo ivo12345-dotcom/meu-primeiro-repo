@@ -26,8 +26,18 @@ RONDAS = 200
 HORAS_MINIMAS = 5.0
 SEGUNDOS_POR_LINHA = 10
 LINHAS_TESTE_MINIMAS = 3600 // SEGUNDOS_POR_LINHA  # o teste tem de ter pelo menos 1 h (360 linhas de 10 s)
-# rpm em falta (NaN) conta como motor parado: a ECU do motor está desligada quando o motor está parado
+# Abaixo disto o motor está parado. O plugin J1939 publica as rotações como null (aqui NaN) quando não
+# chega nenhuma trama EEC1 há 5 s: tanto é a ignição desligada (a ECU cala-se) como o adaptador USB-CAN
+# solto ou o candump em baixo. Por isso NaN sozinho não quer dizer "à vela": só conta com uma vela em cima.
 MOTOR_PARADO_RPM = 300
+
+
+def a_vela(d):
+    """À vela: pelo menos uma vela em cima (grande não arriada ou genoa aberta, como marcado na página Velas)
+    e rotações conhecidas ≤ MOTOR_PARADO_RPM, ou sem leitura (com a ignição desligada confia-se nas velas).
+    A motor com as velas em baixo nunca é vela."""
+    vela_em_cima = (d['grandeRizos'] >= 0) | (d['genoaPct'] > 0)
+    return vela_em_cima & (d['rpm'].isna() | (d['rpm'] <= MOTOR_PARADO_RPM))
 
 VARS_VENTO = ['latCel', 'lonCel', 'prevTws', 'prevTwd', 'horaDia', 'idadePrevH', 'tendPressao3h']
 MODELOS = {
@@ -35,9 +45,8 @@ MODELOS = {
         'alvo': 'stw',
         'variaveis': ['tws', 'twaAbs', 'rajada', 'prevOndas', 'prevPeriodo', 'ondasAnguloRel', 'balAdorno',
                       'balCaimento', 'adornoAbs', 'grandeRizos', 'genoaPct'],
-        # só à vela: a motor a polar não quer dizer nada (e o rpm é sempre 0 à vela)
-        'filtro': lambda d: (d['tws'].notna() & d['twaAbs'].notna() & d['stw'].notna()
-                              & (d['rpm'].fillna(0) <= MOTOR_PARADO_RPM)),
+        # só à vela: a motor a polar não quer dizer nada
+        'filtro': lambda d: d['tws'].notna() & d['twaAbs'].notna() & d['stw'].notna() & a_vela(d),
         'base': lambda d, polar: stw_polar(polar, d['twaAbs'], d['tws']),
     },
     'ventoForca': {
@@ -80,7 +89,7 @@ def celulas(d):
 def frases(nome, d, x, p50, polar):
     """Até 3 frases simples sobre o que o modelo aprendeu."""
     if nome == 'velocidade':
-        vela = d[(d['rpm'].fillna(0) <= MOTOR_PARADO_RPM)].copy()
+        vela = d[a_vela(d)].copy()
         if vela.empty:
             return []
         vela['cel'] = (vela['tws'] // 2 * 2).astype(int).astype(str) + '|' + (vela['twaAbs'] // 15 * 15).astype(int).astype(str)

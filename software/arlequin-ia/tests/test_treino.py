@@ -351,3 +351,29 @@ def test_saida_de_teste_curta_sem_outras_para_juntar_nao_grava_versao(tmp_path):
     r = treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])[0]
     assert r['versao'] is None and r['aceite'] is False and r['motivo'] == 'saída de teste curta (<1 h)', r
     assert not list((tmp_path / 'modelos' / 'velocidade').glob('v*.json.gz'))
+
+
+def test_velocidade_so_a_vela_com_pelo_menos_uma_vela_em_cima():
+    from arlequin_ia.treino import MODELOS
+    casos = [  # (rpm, grandeRizos, genoaPct) → conta como vela?
+        ((0, 0, 100), True), ((200, 1, 0), True), ((np.nan, 0, 0), True), ((np.nan, -1, 70), True),
+        ((0, -1, 0), False),        # velas em baixo: nunca é vela
+        ((np.nan, -1, 0), False),   # sem rotações (ignição desligada ou CAN em baixo) e velas em baixo
+        ((np.nan, np.nan, np.nan), False),
+        ((1800, 0, 100), False),    # motor a trabalhar com velas em cima
+    ]
+    d = pd.DataFrame([dict(rpm=r, grandeRizos=g, genoaPct=p, tws=10.0, twaAbs=90.0, stw=5.0) for (r, g, p), _ in casos])
+    assert list(MODELOS['velocidade']['filtro'](d)) == [c for _, c in casos]
+
+
+def test_sem_rotacoes_e_velas_em_baixo_nao_ensina_a_velocidade(tmp_path):
+    gerar(tmp_path, POLAR)  # 2 h a motor + 4 h à vela por saída
+    for f in (tmp_path / 'tabela').glob('*.csv.gz'):  # o CAN do motor em baixo: a motor não há rotações
+        df = pd.read_csv(f, compression='gzip')
+        motor = df['rpm'] > 0
+        df.loc[motor, ['rpm', 'litrosHora']] = np.nan
+        df.loc[motor, 'grandeRizos'] = -1
+        df.loc[motor, 'genoaPct'] = 0
+        f.write_bytes(gzip.compress(df.to_csv(index=False).encode()))
+    r = treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])[0]
+    assert r['horas'] == pytest.approx(3 * 4.0, abs=0.01), r  # só as horas à vela
