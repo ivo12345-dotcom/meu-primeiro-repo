@@ -387,3 +387,14 @@ test('um progresso ou aoCandidatos assíncrono que rejeita não derruba o proces
     assert.deepEqual(rejeicoes.map(e => e.message), [])
   } finally { process.off('unhandledRejection', apanhar) }
 })
+
+test('no mar, sem "sair agora": continuar agora não é recomendado e o abrigo mais perto é → "Volta ou abriga-te em Cascais"', async () => {
+  // ao largo de Cascais (a mais de 0,5 MN de qualquer porto), a caminho de Peniche, só eu, 15:32 de 29/09
+  const r = await calcular(entrada({ instrumentos: { posicao: { lat: 38.66, lon: -9.47 }, socPct: 90, gasoleoL: 124 } }), deps())
+  assert.equal(r.erro, undefined, r.erro)
+  assert.equal(r.partida.emMar, true)
+  assert.equal(r.veredicto.tipo, 'volta')
+  assert.equal(r.veredicto.texto, 'Volta ou abriga-te em Cascais')
+  assert.match(r.veredicto.porque[0], /^Agora: /)
+  assert.match(r.veredicto.porque[1], /^Até Cascais são \d+,\d MN: chegas às \d\d:\d\d \(de (dia|noite)\)/)
+})
