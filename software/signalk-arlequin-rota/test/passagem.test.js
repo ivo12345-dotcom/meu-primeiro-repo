@@ -35,6 +35,7 @@ test('reproduz o simular.mjs de 29/09 (Algés → Peniche, partida 15:32): resum
   // pontos: igual ao de referência, tirando o `periodo` novo (Task 8, fix da revisão: cada ponto
   // passa a guardar o periodo da previsão, para a Task 9 calcular as horas de leme equivalentes)
   const semPeriodo = (p) => { const { periodo, ...resto } = p; return resto }
+  assert.ok(r.pontos.every(p => Number.isFinite(p.periodo)))
   assert.deepEqual(JSON.parse(JSON.stringify(r.pontos)).map(semPeriodo), gz('simular-2026-09-29-passagem.json.gz'))
   assert.equal(ref.chegada, '2026-09-30T05:00:00.000Z')
   // rota.json (só nome/lat/lon + COSTA): igual ao gravado. Barato de comparar porque ROTA/COSTA

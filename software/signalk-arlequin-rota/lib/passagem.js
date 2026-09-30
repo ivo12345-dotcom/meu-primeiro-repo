@@ -232,9 +232,9 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
     const costa = distanciaCosta ? distanciaCosta(pos) : null
     // semDados/aproximado da previsão (lib/previsao.js), só quando os há: a segurança trata o
     // desconhecido como desconhecido (nunca calmo) e avisa do aproximado.
-    // periodo: a par de ondas/tws, para a Task 9 (seguranca.js) calcular as horas de leme
-    // equivalentes ("motor em calmaria conta metade"; calmaria usa o periodo — onda ≤ 3 m com
-    // periodo ≥ 9 s ainda conta calma). `motor` já serve de sinal motor/vela, não duplicado.
+    // periodo: a par de ondas/tws, para a regra da calma (lib/seguranca.js, emCalma: o motor em
+    // calma conta metade das horas ao leme; calma = vento < 10 nós e (ondas < 2 m, ou ondas ≤ 3 m
+    // com período ≥ 9 s)). `motor` já serve de sinal motor/vela, não duplicado.
     pontos.push({ t, costa, lat: pos.lat, lon: pos.lon, proa, cog, sog, stw, tws: w.tws, rajada: w.rajada, twd: w.twd, ondas: w.ondas, periodo: w.periodo, chuva: w.chuva, vis: w.visibilidade, motor, soc, gasoleo, rizos, noite: eNoite, wp: ROTA[wp].nome ?? null, mare: mare.v, ...previsaoIncompleta(w) })
     contaCosta.push(!ROTA[wp].costaLivre)
     const chegouWp = vetor(pos, ROTA[wp]).mn < o.chegadaWpMn || (o.chegadaPassagem && wp < ROTA.length - 1 && passou(ROTA[wp - 1], ROTA[wp], pos))
@@ -264,8 +264,8 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
     viragens,
     cambadelas,
     // Nome enganador (mantido: cherry-picks futuros dependem dele) — é o total de horas à vela,
-    // não horas seguidas de leme. A regra das horas de leme equivalentes (motor em calmaria conta
-    // metade) é da Task 9 (lib/seguranca.js), calculada a partir de pontos[].motor/ondas/periodo.
+    // não horas seguidas de leme. A regra das horas de leme equivalentes (motor em calma conta
+    // metade) está em lib/seguranca.js (emCalma), calculada a partir de pontos[].motor/tws/ondas/periodo.
     horasLemeSeguidas: horasLeme,
     // Fora das aproximações (costaLivre), que são perto de terra de propósito.
     costaMinMn: distanciaCosta ? pontos.reduce((m, p, i) => (contaCosta[i] ? Math.min(m, p.costa) : m), Infinity) : null

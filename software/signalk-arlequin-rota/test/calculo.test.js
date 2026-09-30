@@ -81,13 +81,17 @@ test('29/09 com "acompanhado": o veredicto é igual ou melhor', async () => {
   assert.equal(ac.alternativas[0].custo.partes.leme, 0)
 })
 
-// O desenho diz que, com a previsão de 29/09, a melhor alternativa chega de dia. Com os dados reais da
-// fixture (ondas de 2,5–3 m em todo o período, por isso nunca há "motor em calma") o custo do desenho
-// escolhe a partida de 30/09 às 06:30 a motor, que chega às 21:22 (de noite, 3 h depois do pôr do sol):
-// ver o relatório C. Fica como "todo" para o Ivo decidir (não se mexe nos limites nem nos pesos).
-test('29/09: a melhor alternativa (só eu) chega de dia', { todo: 'com os dados reais a melhor chega às 21:22, de noite — decisão do Ivo' }, async () => {
+// Expectativa do Ivo (ronda C2, conhecendo a previsão real): com só eu, esperar ganha — a melhor
+// alternativa não parte antes de 30/09 (hora de Lisboa): "Espera até amanhã às 06:30". Substitui a
+// do desenho ("a melhor chega de dia"), que com os dados reais não se cumpre: a melhor (30/09 06:30,
+// 5 MN a motor) chega às 21:46, de noite. Os limites e os pesos não foram mexidos por causa disto.
+test('29/09 (só eu): esperar ganha — "Espera até amanhã às 06:30", a melhor parte a 30/09', async () => {
   const r = await correr('so', entrada(), deps())
-  assert.equal(r.alternativas[0].chegadaNoite, false, `${r.alternativas[0].nome} chega ${r.alternativas[0].chegada.p50}`)
+  assert.equal(r.veredicto.texto, 'Espera até amanhã às 06:30')
+  const dia = (t) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon' }).format(Date.parse(t))
+  const melhor = r.alternativas[0]
+  assert.ok(dia(melhor.partida) >= '2026-09-30', `${melhor.nome} parte ${melhor.partida}`)
+  assert.ok(melhor.esperaH > 0)
 })
 
 test('"Sair agora mesmo assim": só a partida de agora, com as não recomendadas, precauções reforçadas e desistência', async () => {

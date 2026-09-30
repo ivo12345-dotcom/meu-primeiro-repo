@@ -4,7 +4,8 @@
 //
 // Custo = horas + 0,25 × horas de espera + 1,5 × horas de noite + 1,0 × horas ao leme (só eu)
 //       + 0,5 × (rajada máxima − 20)⁺ + 2 × (onda máxima − 2)⁺ + 0,5 × horas contra o vento
-//   - horas ao leme: as equivalentes (o motor em calma conta metade; lib/seguranca.js), só com "so";
+//   - horas ao leme: as equivalentes (o motor em calma conta metade; a calma está definida em
+//     lib/seguranca.js, emCalma), só com "so";
 //   - horas contra o vento: minutos com vento de 7 nós ou mais a ≤ 50° da proa (bolina, bordos,
 //     ou motor contra o vento e o mar). Interpretação nossa: o desenho não a define.
 //
@@ -138,7 +139,7 @@ function decidir ({ candidatos, agora, tripulacao, sairAgora = false, emMar = fa
   } else {
     const melhor = top[0]
     const porque = []
-    if (melhor) porque.push(`${sairAgora ? 'A melhor para sair agora' : 'Nenhuma partida nas próximas 48 h passa nos limites; a melhor'} (${nomeRota(melhor)}, ${quando(melhor.partida, agora, fuso)}): ${juntar(melhor.motivos)}.`)
+    if (melhor) porque.push(`${sairAgora ? 'A melhor para sair agora' : 'Nenhuma partida nas próximas 48 h passa nos limites; a melhor'} (${nomeRota(melhor)}, ${melhor.partida === agora ? 'agora' : quando(melhor.partida, agora, fuso)}): ${juntar(melhor.motivos)}.`)
     else porque.push(porqueAgora())
     if (sairAgora && melhor) porque.push('Se saíres mesmo assim, revê as precauções e os pontos de desistência.')
     else if (melhor && melhor.partida !== agora) porque.push(porqueAgora())

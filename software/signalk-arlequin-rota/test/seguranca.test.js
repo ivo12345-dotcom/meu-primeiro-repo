@@ -90,19 +90,48 @@ test('"não recomendada sozinho": vento, rajadas e ondas do pessimista acima dos
   assert.deepEqual(acomp.motivos, [])
 })
 
-test('horas equivalentes ao leme: mais de 8 h; o motor em calma (vento < 10, ondas < 1,5) conta metade', () => {
+test('horas equivalentes ao leme: mais de 8 h; o motor em calma conta metade', () => {
   assert.equal(s.avaliar(base({ pessimista: passagem({ min: 481 }) })).naoRecomendada, true)
   assert.equal(s.avaliar(base({ pessimista: passagem({ min: 480 }) })).naoRecomendada, false)
-  const calma = passagem({ min: 900, ponto: { motor: true, tws: 6, ondas: 1 } })
+  const calma = passagem({ min: 900, ponto: { motor: true, tws: 6, ondas: 1, periodo: 5 } })
   assert.equal(s.horasLemeEquivalentes(calma.pontos), 7.5)
   assert.equal(s.avaliar(base({ pessimista: calma })).naoRecomendada, false)
-  // com ondas de 1,5 m (ou sem ondas previstas) já não é calma
-  assert.equal(s.horasLemeEquivalentes(passagem({ min: 900, ponto: { motor: true, tws: 6, ondas: 1.5 } }).pontos), 15)
-  assert.equal(s.horasLemeEquivalentes(passagem({ min: 900, ponto: { motor: true, tws: 6, ondas: null } }).pontos), 15)
+  // sem ondas previstas nunca é calma; com vento de 10 nós também não
+  assert.equal(s.horasLemeEquivalentes(passagem({ min: 900, ponto: { motor: true, tws: 6, ondas: null, periodo: 12 } }).pontos), 15)
+  assert.equal(s.horasLemeEquivalentes(passagem({ min: 900, ponto: { motor: true, tws: 10, ondas: 1, periodo: 12 } }).pontos), 15)
   // à vela com pouco vento não é "motor em calma"
-  assert.equal(s.horasLemeEquivalentes(passagem({ min: 60, ponto: { motor: false, tws: 6, ondas: 1 } }).pontos), 1)
+  assert.equal(s.horasLemeEquivalentes(passagem({ min: 60, ponto: { motor: false, tws: 6, ondas: 1, periodo: 12 } }).pontos), 1)
   const r = s.avaliar(base({ pessimista: passagem({ min: 600 }) }))
   assert.deepEqual(r.motivos, ['10,0 h equivalentes ao leme (limite 8 h sozinho)'])
+})
+
+test('calma (decisão do Ivo, C2): vento < 10 nós e (ondas < 2 m, ou ondas ≤ 3 m com período ≥ 9 s)', () => {
+  const eq = (ondas, periodo) => s.horasLemeEquivalentes(passagem({ min: 60, ponto: { motor: true, tws: 8, ondas, periodo } }).pontos)
+  assert.equal(s.emCalma({ motor: true, tws: 8, ondas: 1.9, periodo: null }), true)
+  assert.equal(eq(1.9, 4), 0.5) // 1,9 m com qualquer período → calma
+  assert.equal(eq(1.9, null), 0.5)
+  assert.equal(eq(2.8, 10), 0.5) // 2,8 m de 10 s (ondulação comprida) → calma
+  assert.equal(eq(3, 9), 0.5) // os limites: 3 m e 9 s ainda contam
+  assert.equal(eq(2.8, 6), 1) // 2,8 m de 6 s (mar curto) → não
+  assert.equal(eq(2.8, null), 1) // sem período conhecido acima de 2 m → não
+  assert.equal(eq(3.2, 12), 1) // 3,2 m de 12 s → não
+  assert.equal(eq(2, 8.9), 1)
+  // as fronteiras: vento 9,9 sim, 10 não; ondas 1,99 com mar curto sim, 2 com mar curto não
+  const um = (p) => s.emCalma({ motor: true, tws: 8, ondas: 1, periodo: 6, ...p })
+  assert.equal(um({ tws: 9.9 }), true)
+  assert.equal(um({ tws: 10 }), false)
+  assert.equal(um({ ondas: 1.99, periodo: 4 }), true)
+  assert.equal(um({ ondas: 2, periodo: 4 }), false)
+  assert.equal(um({ ondas: 3.01, periodo: 9 }), false)
+  assert.equal(um({ ondas: 2.5, periodo: 9 }), true)
+  // desconhecido nunca é calma (vento, ondas, ou período quando é ele que decide)
+  for (const x of [null, undefined, NaN]) {
+    assert.equal(um({ tws: x }), false, `tws ${x}`)
+    assert.equal(um({ ondas: x }), false, `ondas ${x}`)
+    assert.equal(um({ ondas: 2.5, periodo: x }), false, `periodo ${x}`)
+  }
+  // a vela nunca é "motor em calma"
+  assert.equal(um({ motor: false }), false)
 })
 
 test('chegada de noite a um porto desconhecido (no pessimista ou no provável)', () => {

@@ -30,7 +30,7 @@ const { setImmediate: ceder } = require('node:timers/promises')
 const c = require('./costa')
 const rotas = require('./rotas')
 
-const PADRAO = Object.freeze({ passoMn: 5, anguloCabo: 30, janelaCaboMn: 2, amostraCaboMn: 0.5, candidatos: 2, fuso: 'Europe/Lisbon' })
+const PADRAO = Object.freeze({ passoMn: 5, anguloCabo: 30, janelaCaboMn: 2, amostraCaboMn: 0.5, juntarCaboMn: 10, candidatos: 2, fuso: 'Europe/Lisbon' })
 
 const AVISO_COSTA = 'fuga junto à costa com vento do mar (a sotavento) — só em último recurso'
 const AVISO_COSTA_SEM_VENTO = 'fuga junto à costa sem vento previsto — só em último recurso'
@@ -75,12 +75,19 @@ function cabos (linha, s1, s2, opcoes = {}) {
       if (grupo && x.s - grupo.fim <= o.amostraCaboMn + 1e-9) { grupo.fim = x.s; if (x.roda > grupo.max.roda) grupo.max = x } else { grupo = { fim: x.s, max: x }; out.push(grupo) }
     }
   }
-  return out.map(g => {
+  const nomeados = out.map(g => {
     const m = g.max
     let nome = null; let d = 10
     for (const k of CABOS) { const dk = c.distanciaMn(m, k); if (dk <= d) { d = dk; nome = k.nome } }
     return { s: m.s, lat: m.lat, lon: m.lon, rodaGraus: m.roda, nome }
   })
+  // o mesmo cabo dobrado em várias voltas seguidas (a linha contorna-o aos bocados): fica a maior
+  const juntos = []
+  for (const k of nomeados) {
+    const ant = juntos.at(-1)
+    if (ant && k.nome && ant.nome === k.nome && Math.abs(k.s - ant.s) <= o.juntarCaboMn) { if (k.rodaGraus > ant.rodaGraus) juntos[juntos.length - 1] = k } else juntos.push(k)
+  }
+  return juntos
 }
 
 // Os cabos da rota: na parte fora dos portos (do largo da partida ao largo do destino: as

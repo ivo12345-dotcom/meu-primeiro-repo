@@ -31,8 +31,10 @@
 // "Não recomendada sozinho" (só com tripulação "so"), no cenário pessimista:
 //   - vento médio > 22 nós, rajadas > 30 ou ondas > 3 m;
 //   - mais de 8 h equivalentes ao leme: todas as horas contam, à vela e a motor, e o motor
-//     em calma (vento < 10 nós e ondas < 1,5 m) conta metade. Sem vento ou sem ondas
-//     previstos (null) nunca é calma;
+//     em calma conta metade. Calma (decisão do Ivo, 30/09, ronda C2; emCalma, abaixo):
+//     vento < 10 nós E (ondas < 2 m, OU ondas ≤ 3 m com período ≥ 9 s — ondulação comprida,
+//     que a roda com travão aguenta). Desconhecido nunca é calma: sem vento ou sem ondas
+//     previstos (null) não é calma; acima de 2 m sem período conhecido também não;
 //   - chegada de noite a um porto com `conhecido: false`. Conta a chegada de noite no
 //     cenário pessimista OU no provável (a chegada mais provável de noite também conta).
 
@@ -50,8 +52,10 @@ const PADRAO = Object.freeze({
   ondasMax: 3,
   lemeMaxH: 8,
   corredorCanalMn: 1,
-  calmaVento: 10,
-  calmaOndas: 1.5
+  calmaVento: 10, // nós (menos do que isto)
+  calmaOndas: 2, // m (menos do que isto, com qualquer período)
+  calmaOndasLongas: 3, // m (até isto, se o período for comprido)
+  calmaPeriodo: 9 // s (período mínimo da ondulação comprida)
 })
 
 const virgula = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toFixed(d).replace('.', ',')
@@ -87,15 +91,22 @@ function previsaoIncompleta (passagens) {
   return { semDados, aproximado }
 }
 
-// Horas equivalentes ao leme numa linha do tempo de 1 min (lib/passagem.js).
+// Um minuto da linha do tempo (lib/passagem.js: { motor, tws, ondas, periodo }) é "motor em calma".
+// Desconhecido nunca é calma: vento ou ondas sem previsão (null, undefined, NaN) → não; o período
+// só conta entre 2 e 3 m, e aí desconhecido → não (abaixo de 2 m qualquer período serve).
+function emCalma (p, opcoes = {}) {
+  const o = { ...PADRAO, ...opcoes }
+  if (!p || !p.motor || !Number.isFinite(p.tws) || !Number.isFinite(p.ondas)) return false
+  if (!(p.tws < o.calmaVento)) return false
+  if (p.ondas < o.calmaOndas) return true
+  return p.ondas <= o.calmaOndasLongas && Number.isFinite(p.periodo) && p.periodo >= o.calmaPeriodo
+}
+
+// Horas equivalentes ao leme numa linha do tempo de 1 min: o motor em calma conta metade.
 function horasLemeEquivalentes (pontos, opcoes = {}) {
   const o = { ...PADRAO, ...opcoes }
   let min = 0
-  for (const p of pontos) {
-    // vento ou ondas sem previsão (null) nunca é calma: conta inteiro
-    const calma = p.motor && Number.isFinite(p.tws) && p.tws < o.calmaVento && Number.isFinite(p.ondas) && p.ondas < o.calmaOndas
-    min += calma ? 0.5 : 1
-  }
+  for (const p of pontos) min += emCalma(p, o) ? 0.5 : 1
   return min / 60
 }
 
@@ -249,4 +260,4 @@ function avaliar ({ alternativa, pessimista, provavel, destino, tripulacao, sair
   return out
 }
 
-module.exports = { PADRAO, CAMPOS_CRITICOS, horasLemeEquivalentes, distanciaRotaCosta, minimoCosta, trocosCanal, ondasNoCanal, previsaoIncompleta, avaliar }
+module.exports = { PADRAO, CAMPOS_CRITICOS, emCalma, horasLemeEquivalentes, distanciaRotaCosta, minimoCosta, trocosCanal, ondasNoCanal, previsaoIncompleta, avaliar }

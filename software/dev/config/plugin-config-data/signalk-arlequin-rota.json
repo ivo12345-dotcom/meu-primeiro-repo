@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "configuration": {
+    "pasta": "arlequin-dados",
+    "polar": "../arlequin-ecra/public/polar-arlequin.csv",
+    "afastamentoMinimo": 5,
+    "rpmCruzeiro": 2100,
+    "previsoes": true,
+    "porta": 3000
+  }
+}
