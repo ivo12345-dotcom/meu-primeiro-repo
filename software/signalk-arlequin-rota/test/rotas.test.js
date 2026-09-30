@@ -511,3 +511,75 @@ test('rápido: as 3 alternativas de Algés → Lagos em menos de 2 s (limite lar
   assert.equal(alts.length, 3)
   assert.ok(performance.now() - t < 2000)
 })
+
+test('canais.json em falta ou mal formado: só desativa as variantes por canal (registado), nunca as alternativas normais', () => {
+  const os = require('node:os')
+  const erros = []
+  const log = (...a) => erros.push(a)
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'arlequin-canais-'))
+  try {
+    // 1) ficheiro em falta
+    assert.deepEqual(r.carregarCanais(pasta, log), [])
+    assert.equal(erros.length, 1)
+    assert.ok(/erro ao ler dados\/canais\.json/.test(erros[0][0]), erros[0][0])
+    // 2) JSON ilegível
+    fs.writeFileSync(path.join(pasta, 'canais.json'), '{ isto não é uma lista')
+    assert.deepEqual(r.carregarCanais(pasta, log), [])
+    assert.equal(erros.length, 2)
+    // 3) uma lista com um canal bom e um mal formado: só o bom fica, o mau é registado
+    const bom = { nome: 'Canal Bom', pontos: [[39.0, -9.0], [39.1, -9.1]], ondasMax: 3, confirmado: false }
+    const semPontos = { nome: 'Canal Sem Pontos', pontos: [[39.0, -9.0]], ondasMax: 3 }
+    const semOndas = { nome: 'Canal Sem Ondas', pontos: [[39.0, -9.0], [39.1, -9.1]] }
+    const semNome = { pontos: [[39.0, -9.0], [39.1, -9.1]], ondasMax: 3 }
+    fs.writeFileSync(path.join(pasta, 'canais.json'), JSON.stringify([bom, semPontos, semOndas, semNome]))
+    const canais = r.carregarCanais(pasta, log)
+    assert.deepEqual(canais.map(k => k.nome), ['Canal Bom'])
+    assert.equal(erros.length, 5) // um registo por canal inválido (3)
+    // um canais.json mal formado (opcoes.canais = []) nunca impede as alternativas normais
+    const alt = r.gerarAlternativas(real, { partida: D('peniche'), destino: D('nazare'), afastamento: 5, opcoes: { canais: [] } })
+    assert.equal(alt.length, 1, 'sem canais: só a alternativa da linha')
+    assert.equal(alt[0].excluida, false, alt[0].motivo)
+  } finally {
+    fs.rmSync(pasta, { recursive: true, force: true })
+  }
+})
+
+test('posição dentro de uma zona a evitar: motivo próprio, não "não há passagem"', () => {
+  // 38,66 N 9,30 W está dentro do Cachopo do Sul e Banco do Bugio (barra do Tejo), no mar (não em
+  // terra)
+  const pos = { lat: 38.66, lon: -9.30 }
+  assert.equal(real.emTerra(pos), false)
+  const alt = r.gerarRota(real, { partida: pos, destino: D('sines'), afastamento: 5 })
+  assert.equal(alt.excluida, true)
+  assert.equal(alt.motivo, 'a posição está dentro de uma zona a evitar (Cachopo do Sul e Banco do Bugio (barra do Tejo))')
+  assert.deepEqual(alt.pontos, [])
+})
+
+test('costaMinMn null: "já na aproximação do destino" não compara null < afastamentoVentoTerra por coerção', () => {
+  // a posição já na aproximação do próprio destino devolve costaMinMn: null; gerar() só chama a
+  // regra do vento de terra da direta quando costaMinMn != null (senão null < 3 seria true por
+  // coerção — null vira 0 — e chamava ventoDoMarNoDireto sem nenhum troço 'ligacao' para verificar)
+  const pos = { lat: 38.69, lon: -9.26 } // no canal do Tejo, perto da aproximação de Algés
+  const [alt] = r.gerarRotas(real, { posicao: pos, destino: D('alges'), twd: 45 })
+  assert.equal(alt.excluida, false, alt.motivo)
+  assert.equal(alt.costaMinMn, null)
+})
+
+test('vento na rota direta: só se aplica onde a costa fica mesmo perto (< afastamentoVentoTerra), não em todo o troço', () => {
+  // na costa inventada (N-S em 9,0 W): um ponto perto da costa (0,93 MN) e outro bem ao largo
+  // (6,62 MN, ≥ 3 MN), ligados por um único troço 'ligacao'
+  const perto = { lat: 39.3, lon: -9.02 }
+  const longe = { lat: 39.3, lon: -9.20 }
+  assert.ok(inventada.distanciaTerra(perto, 50) < 3)
+  assert.ok(inventada.distanciaTerra(longe, 50) >= 3)
+  const o = { passoMax: 2, afastamentoVentoTerra: 3, toleranciaVento: 60, nosEta: 5 }
+  const pontos = [{ ...perto, perna: null }, { ...longe, perna: 'ligacao' }]
+  // vento do mar (270, mau) só longe da costa (lon < 9,10 W), vento de terra (090, bom) perto:
+  // a amostra ruim fica sempre a ≥ 3 MN de terra e é ignorada — nenhum motivo
+  const soLongeMau = (lat, lon) => (lon < -9.10 ? 270 : 90)
+  assert.equal(r.ventoDoMarNoDireto(inventada, pontos, inventada.distanciaTerra(perto, 50), { twd: soLongeMau }, o), null)
+  // ao contrário (mau perto da costa, bom ao largo): a amostra perto da costa continua a ser
+  // verificada e exclui — a regra não desapareceu, só deixou de olhar para o largo
+  const soPertoMau = (lat, lon) => (lon < -9.10 ? 90 : 270)
+  assert.match(r.ventoDoMarNoDireto(inventada, pontos, inventada.distanciaTerra(perto, 50), { twd: soPertoMau }, o), /^vento do mar em parte da rota/)
+})

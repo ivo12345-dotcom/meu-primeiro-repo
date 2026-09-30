@@ -34,8 +34,6 @@ const path = require('node:path')
 const c = require('./costa')
 
 const RAIO_PORTO_MN = 0.5
-// Canais entre ilhas e o continente que a linha contorna por fora (dados/canais.json).
-const CANAIS = JSON.parse(fs.readFileSync(path.join(c.PASTA_DADOS, 'canais.json'), 'utf8'))
 const AVISO_ROTA_ATIVA = 'último troço por confirmar na carta'
 const MOTIVO_ERRO_INTERNO = 'erro interno ao gerar esta rota'
 const MOTIVO_COORDENADAS = 'coordenadas inválidas: a posição ou um ponto da rota não tem latitude e longitude válidas'
@@ -47,6 +45,32 @@ const H_MS = 3600e3
 const NOTA_DIRETO = 'salto curto entre portos vizinhos: rota direta junto à costa'
 const NOTA_DIRETO_MAR = 'destino perto da posição atual: rota direta'
 const fmtMn = (x) => x.toFixed(1).replace('.', ',')
+const logPadrao = (...a) => console.error(...a)
+
+// Um canal só entra na lista se tiver nome, ≥ 2 pontos com lat/lon finitos e ondasMax (usado pela
+// Task 9); um canal inválido fica de fora (registado), sem impedir os outros.
+function canalValido (k, log) {
+  const ok = !!k && typeof k.nome === 'string' && Array.isArray(k.pontos) && k.pontos.length >= 2 &&
+    k.pontos.every(p => Array.isArray(p) && p.length === 2 && Number.isFinite(p[0]) && Number.isFinite(p[1])) &&
+    Number.isFinite(k.ondasMax)
+  if (!ok) { try { log(`signalk-arlequin-rota: canal inválido em canais.json ignorado: ${JSON.stringify(k)}`) } catch { /* nunca rebenta */ } }
+  return ok
+}
+
+// Canais entre ilhas e o continente que a linha contorna por fora (dados/canais.json). Um
+// canais.json em falta, ilegível ou mal formado desativa só as variantes por canal (lista vazia,
+// registado); nunca impede as alternativas normais (o erro não escapa daqui).
+function carregarCanais (pasta = c.PASTA_DADOS, log = logPadrao) {
+  try {
+    const dados = JSON.parse(fs.readFileSync(path.join(pasta, 'canais.json'), 'utf8'))
+    if (!Array.isArray(dados)) throw new Error('canais.json não é uma lista')
+    return dados.filter(k => canalValido(k, log))
+  } catch (e) {
+    try { log('signalk-arlequin-rota: erro ao ler dados/canais.json; variantes por canal desativadas', e) } catch { /* nunca rebenta */ }
+    return []
+  }
+}
+const CANAIS = carregarCanais()
 
 // Uma exceção a gerar uma rota nunca escapa (não pode derrubar o servidor): coordenadas não finitas
 // (lib/costa.js, `P()`) dão um motivo em português sem o JSON cru; qualquer outra é um erro de
@@ -56,7 +80,6 @@ function motivoDoErro (e, log) {
   try { log('signalk-arlequin-rota: erro ao gerar uma rota', e) } catch { /* o registo não pode rebentar */ }
   return MOTIVO_ERRO_INTERNO
 }
-const logPadrao = (...a) => console.error(...a)
 
 // O porto de onde se parte: o destino da lista com o cais a ≤ 0,5 MN da posição.
 function portoDePartida (costa, posicao, raioMn = RAIO_PORTO_MN) {
@@ -83,6 +106,11 @@ function destinoDaRotaAtiva (costa, pontos, raioMn = RAIO_PORTO_MN) {
     destino: { id: null, nome: 'Fim da rota ativa', abrigo: false, conhecido: false, largo: [fim.lat, fim.lon], aproximacao: [[fim.lat, fim.lon], [fim.lat, fim.lon]], entrada: 1, porConfirmar: true },
     aviso: AVISO_ROTA_ATIVA
   }
+}
+
+// A zona a evitar que contém p, ou null.
+function zonaDaPosicao (costa, p) {
+  return costa.zonas.find(z => c.dentroAnel(p, z.poligono)) || null
 }
 
 // A normal à linha em s que aponta para terra (graus): o lado com a terra mais perto.
@@ -251,7 +279,9 @@ function rumoTerraMaisPerto (costa, q) {
 }
 
 // Nos saltos curtos (sem linha): os pontos dos troços fora das aproximações, de 2 em 2 MN no
-// máximo; a normal para terra é o rumo do ponto de terra mais perto.
+// máximo; a normal para terra é o rumo do ponto de terra mais perto. Só interessa o vento onde a
+// costa fica mesmo a menos de afastamentoVentoTerra: mais longe não há "sotavento" a temer nesse
+// ponto (os 3 MN, não os 5/8 da linha — a regra é sempre a de perto de terra).
 function ventoDoMarNoDireto (costa, pontos, costaMinMn, { twd, horaPartida }, o) {
   const motivo = `vento do mar em parte da rota: a rota direta passa a ${fmtMn(costaMinMn)} MN de uma costa a sotavento`
   let milhas = 0
@@ -262,6 +292,7 @@ function ventoDoMarNoDireto (costa, pontos, costaMinMn, { twd, horaPartida }, o)
       const n = Math.max(1, Math.ceil(L / o.passoMax))
       for (let k = 0; k <= n; k++) {
         const q = { lat: a.lat + (b.lat - a.lat) * k / n, lon: a.lon + (b.lon - a.lon) * k / n }
+        if (costa.distanciaTerra(q, 50) >= o.afastamentoVentoTerra) continue
         const vento = ventoEm(twd, q, milhas + L * k / n, horaPartida, o)
         if (!Number.isFinite(vento)) return `a menos de ${o.afastamentoVentoTerra} MN da costa só com vento de terra, e não há vento previsto para a rota`
         const paraTerra = rumoTerraMaisPerto(costa, q)
@@ -498,6 +529,8 @@ function gerar (costa, { partida, destino, afastamento, twd, horaPartida, opcoes
       inicio = pontosSaida(partida)
     } else {
       if (costa.emTerra(partida)) return excluir('a posição atual fica em terra')
+      const zona = zonaDaPosicao(costa, partida)
+      if (zona) return excluir(`a posição está dentro de uma zona a evitar (${zona.nome})`)
       const pos = { lat: partida.lat, lon: partida.lon, nome: 'Posição atual', perna: null }
       // dentro da aproximação de um porto (ex.: no canal do Tejo): segue-a, não parte a direito
       const na = naAproximacao(costa, pos, destino, o.raioAproximacao)
@@ -562,7 +595,7 @@ function gerar (costa, { partida, destino, afastamento, twd, horaPartida, opcoes
       }
       const costaMinMn = distanciaMinimaTerra(costa, pontos)
       if (t.direto) {
-        if (costaMinMn < o.afastamentoVentoTerra) {
+        if (costaMinMn != null && costaMinMn < o.afastamentoVentoTerra) {
           const motivo = ventoDoMarNoDireto(costa, pontos, costaMinMn, { twd, horaPartida }, o)
           if (motivo) return fora(motivo)
         }
@@ -609,4 +642,4 @@ function gerarRotas (costa, { posicao, destino, afastamentos = [3, 5, 8], twd, h
   }
 }
 
-module.exports = { RAIO_PORTO_MN, AVISO_ROTA_ATIVA, CANAIS, portoDePartida, destinoDaRotaAtiva, rumoParaTerra, ventoDeTerra, gerarRota, gerarAlternativas, gerarRotas }
+module.exports = { RAIO_PORTO_MN, AVISO_ROTA_ATIVA, CANAIS, carregarCanais, portoDePartida, destinoDaRotaAtiva, rumoParaTerra, ventoDeTerra, ventoDoMarNoDireto, gerarRota, gerarAlternativas, gerarRotas }
