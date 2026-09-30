@@ -420,7 +420,7 @@ async function calcularSemRede (entrada = {}, deps = {}) {
     }
     const d = pontosDesistencia({
       costa, rota: top[0].geometria, linhaTempo: sims0.provavel.pontos, partida: porto, destino, eta: etaMotor,
-      twd: (lat, lon, t) => cenarios.provavel.tempo(lat, lon, t).twd, opcoes: { fuso: o.fuso }
+      twd, log, opcoes: { fuso: o.fuso }
     })
     desistencia = d.pontos.map(p => ({ ...p, lat: Math.round(p.lat * 1e4) / 1e4, lon: Math.round(p.lon * 1e4) / 1e4, milhas: r1(p.milhas), abrigo: p.abrigo && { ...p.abrigo, milhas: r1(p.abrigo.milhas), rumo: Math.round(p.abrigo.rumo), twa: p.abrigo.twa == null ? null : Math.round(p.abrigo.twa) }, voltar: p.voltar && { ...p.voltar, milhas: r1(p.voltar.milhas), rumo: Math.round(p.voltar.rumo), twa: p.voltar.twa == null ? null : Math.round(p.voltar.twa) } }))
     desistenciaResumo = d.resumo

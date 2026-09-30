@@ -68,7 +68,50 @@ test('Algés → Peniche a 5 MN: marcos, o Cabo Raso, o abrigo mais perto, volta
   assert.equal(s.resumo, 'voltar a Algés (CNA) é sempre contra o vento')
   // vento de oeste que roda para sueste às 3 h de viagem: o resumo é o último ponto antes de rodar
   const rodaW = D.pontosDesistencia({ costa, rota: alt, linhaTempo, partida: dest('alges'), eta, twd: (la, lo, tt) => (tt < t0 + 3 * H ? 270 : 118) })
-  const antes = rodaW.pontos.filter(p => Date.parse(p.t) < t0 + 3 * H).at(-1)
+  // (no Cabo Raso a volta é a rota direta a menos de 3 MN da costa, e com vento de oeste — do
+  // mar — o rotas.js recusa-a: esse ponto fica sem rota para voltar e não conta para o resumo)
+  const caboW = rodaW.pontos.find(p => p.tipo === 'cabo')
+  assert.ok(Date.parse(caboW.t) < t0 + 3 * H)
+  assert.equal(caboW.voltar, null)
+  const antes = rodaW.pontos.filter(p => Date.parse(p.t) < t0 + 3 * H && p.voltar).at(-1)
   assert.equal(rodaW.resumo, `até às ${antes.hora} ainda voltas a Algés (CNA) com vento ${antes.voltar.vento}`)
   assert.equal(antes.voltar.vento, 'a favor')
+})
+
+test('rotaAte com o vento previsto, a hora e o registo: a regra do vento de terra também nas rotas de desistência', () => {
+  // ao largo de Viana, com a costa a 1,3 MN: a rota direta do rotas.js só com vento de terra
+  const p = { lat: 41.615, lon: -8.935 }
+  const viana = dest('viana')
+  const T = Date.UTC(2026, 8, 30, 12)
+  const direta = rotas.gerarRota(costa, { partida: p, destino: viana, afastamento: 5, twd: 90 })
+  assert.ok(direta.direto && direta.costaMinMn < 3, JSON.stringify([direta.direto, direta.costaMinMn]))
+  const horas = []
+  const boa = D.rotaAte(costa, p, viana, { twd: (la, lo, t) => { horas.push(t); return 90 }, horaPartida: T })
+  assert.ok(boa)
+  assert.equal(boa.milhas, direta.milhas)
+  assert.ok(horas.length > 0 && horas.every(t => t >= T), 'a hora estimada de passagem a partir da hora do ponto')
+  // vento do mar: nem a direta, nem o troço reto sem regra (que a contornava)
+  assert.equal(D.rotaAte(costa, p, viana, { twd: () => 270, horaPartida: T }), null)
+})
+
+test('pontosDesistencia passa o vento, a hora de cada ponto e o registo ao rotas.gerarRota', () => {
+  const alt = rotas.gerarRota(costa, { partida: dest('alges'), destino: dest('peniche'), afastamento: 5 })
+  const t0 = Date.UTC(2026, 8, 30, 5, 30)
+  const linhaTempo = alt.pontos.map((q, i) => ({ t: t0 + i * 10 * 60000, lat: q.lat, lon: q.lon }))
+  const orig = rotas.gerarRota
+  const chamadas = []
+  const log = () => {}
+  const twd = () => 0
+  rotas.gerarRota = (k, args) => { chamadas.push(args); return orig(k, args) }
+  let r
+  try {
+    r = D.pontosDesistencia({ costa, rota: alt, linhaTempo, partida: dest('alges'), destino: dest('peniche'), eta: () => null, twd, log })
+  } finally { rotas.gerarRota = orig }
+  assert.ok(chamadas.length > 0)
+  const horas = new Set(r.pontos.map(x => Date.parse(x.t)))
+  for (const a of chamadas) {
+    assert.equal(a.twd, twd)
+    assert.ok(horas.has(a.horaPartida), `${a.horaPartida}`)
+    assert.equal(a.log, log)
+  }
 })

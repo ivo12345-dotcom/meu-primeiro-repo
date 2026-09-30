@@ -144,14 +144,20 @@ test('no mar (a mais de 0,5 MN de um porto): parte da posição atual; sem SoC n
 
 test('alternativas pelo rotas.gerarAlternativas em cada partida (hora da partida, vento previsto e o registo): Peniche → Nazaré tem a variante pelo Canal da Berlenga', async () => {
   const orig = rotas.gerarAlternativas
+  const origRota = rotas.gerarRota
   const chamadas = []
+  const chamadasRota = [] // as da desistência
   rotas.gerarAlternativas = (costa, args) => { chamadas.push(args); return orig(costa, args) }
+  rotas.gerarRota = (costa, args) => { chamadasRota.push(args); return origRota(costa, args) }
   const log = () => {}
   let cands = []
   try {
     const r = await calcular(entrada({ instrumentos: { posicao: de('peniche'), socPct: 90, gasoleoL: 124 }, destino: 'nazare' }), deps({ log, aoCandidatos: l => { cands = l } }))
     assert.equal(r.erro, undefined, r.erro)
-  } finally { rotas.gerarAlternativas = orig }
+  } finally { rotas.gerarAlternativas = orig; rotas.gerarRota = origRota }
+  // a desistência também recebe o vento previsto, a hora de cada ponto e o registo
+  assert.ok(chamadasRota.length > 0)
+  for (const a of chamadasRota) { assert.equal(typeof a.twd, 'function'); assert.ok(Number.isFinite(a.horaPartida)); assert.equal(a.log, log) }
   const partidas = decisao.partidas(AGORA, { fim: P29.fim })
   assert.ok(chamadas.length > 0)
   for (const a of chamadas) {

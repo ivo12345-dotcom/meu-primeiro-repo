@@ -2,7 +2,9 @@
 // Pontos de desistência (desenho 3a): de 5 em 5 MN ao longo da rota e ao passar cada cabo
 // (os pontos da linha de costa onde o rumo roda mais de 30°). Em cada um:
 //   - o abrigo mais perto da lista (abrigo: true), pela rota do mar (lib/rotas.js a 5 MN,
-//     ou 8 MN, ou direto se o troço não tocar em terra nem em zonas), a distância, a hora a
+//     ou 8 MN, com o vento previsto à hora do ponto: a rota direta perto da costa só com vento
+//     de terra; ou direto se o troço não tocar em terra nem em zonas e o rotas.js não o recusou
+//     pelo vento de terra), a distância, a hora a
 //     que lá se chega a motor (rpmCruzeiro, cenário provável: quem chama dá a função eta) e
 //     o ângulo ao vento previsto nessa perna ("a favor", "de través", "contra");
 //   - voltar à partida (se a partida é um porto da lista), da mesma maneira.
@@ -102,12 +104,19 @@ function marcos (pontosRota, passoMn) {
   return out.filter(m => acum - m.milhas >= passoMn / 2)
 }
 
-// A rota do mar de p até ao destino d (5 MN, 8 MN ou direta). → { pontos, milhas } | null
-function rotaAte (costa, p, d) {
+// A rota do mar de p até ao destino d (5 MN, 8 MN ou direta). twd(lat, lon, t), horaPartida (a
+// hora no ponto) e log vão para o rotas.gerarRota, como no cálculo: a rota direta perto da costa
+// só com vento de terra. Sem rota do rotas.js, o troço reto do ponto ao largo — mas nunca quando
+// o rotas.js a recusou pelo vento de terra (o troço reto contornava a regra).
+// → { pontos, milhas } | null
+function rotaAte (costa, p, d, { twd, horaPartida, log } = {}) {
+  let porVento = false
   for (const af of [5, 8]) {
-    const r = rotas.gerarRota(costa, { partida: p, destino: d, afastamento: af })
+    const r = rotas.gerarRota(costa, { partida: p, destino: d, afastamento: af, twd, horaPartida, log })
     if (!r.excluida) return { pontos: r.pontos, milhas: r.milhas }
+    if (r.porVento) porVento = true
   }
+  if (porVento) return null
   const largo = c.P(d.largo)
   if (!costa.verificarTroco(p, largo)) {
     const ap = d.aproximacao.map(c.P)
@@ -119,9 +128,9 @@ function rotaAte (costa, p, d) {
   return null
 }
 
-// Para um ponto e hora: ir para o destino d. eta(pontos, t) → ms da chegada; twd(lat, lon, t).
-function irPara (costa, p, t, d, { eta, twd }) {
-  const r = rotaAte(costa, p, d)
+// Para um ponto e hora: ir para o destino d. eta(pontos, t) → ms da chegada; twd(lat, lon, t); log.
+function irPara (costa, p, t, d, { eta, twd, log }) {
+  const r = rotaAte(costa, p, d, { twd, horaPartida: t, log })
   if (!r) return null
   const rumo = c.vetor(p, c.P(d.aproximacao.at(-1))).rumo // direto ao porto (o largo pode ficar para trás)
   const v = ventoNaPerna(twd(p.lat, p.lon, t), rumo)
@@ -132,9 +141,10 @@ function irPara (costa, p, t, d, { eta, twd }) {
 
 // costa; rota: a alternativa (lib/rotas.js: { pontos, afastamento, linha: { de, ate } });
 // linhaTempo: os pontos do cenário provável (lib/passagem.js); partida: o porto de partida (destino da
-// lista) ou null; eta(pontos, t) e twd(lat, lon, t) do cenário provável.
+// lista) ou null; eta(pontos, t) e twd(lat, lon, t) do cenário provável; log(msg, erro) (o registo
+// dos erros de programação da geometria; no plugin, app.error).
 // → { pontos: [{ t, hora, tipo: 'marco' | 'cabo', nome?, lat, lon, milhas, abrigo, voltar }], resumo }
-function pontosDesistencia ({ costa, rota, linhaTempo, partida = null, destino = null, eta, twd, opcoes = {} }) {
+function pontosDesistencia ({ costa, rota, linhaTempo, partida = null, destino = null, eta, twd, log, opcoes = {} }) {
   const o = { ...PADRAO, ...opcoes }
   const hm = (t) => new Intl.DateTimeFormat('pt-PT', { timeZone: o.fuso, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(t)
   const abrigos = costa.destinos.filter(d => d.abrigo) // o próprio destino também conta, se for abrigo
@@ -156,10 +166,10 @@ function pontosDesistencia ({ costa, rota, linhaTempo, partida = null, destino =
     const perto = abrigos.map(d => ({ d, mn: c.distanciaMn(p, c.P(d.largo)) })).sort((a, b) => a.mn - b.mn).slice(0, o.candidatos)
     let abrigo = null
     for (const { d } of perto) {
-      const r = irPara(costa, p, s.t, d, { eta, twd })
+      const r = irPara(costa, p, s.t, d, { eta, twd, log })
       if (r && (!abrigo || r.milhas < abrigo.milhas)) abrigo = r
     }
-    const voltar = partida ? irPara(costa, p, s.t, partida, { eta, twd }) : null
+    const voltar = partida ? irPara(costa, p, s.t, partida, { eta, twd, log }) : null
     const milhasFeitas = s.milhas ?? null
     out.push({ t: new Date(s.t).toISOString(), hora: hm(s.t), tipo: s.tipo, nome: s.nome ?? null, lat: s.lat, lon: s.lon, milhas: milhasFeitas, abrigo, voltar })
   }
