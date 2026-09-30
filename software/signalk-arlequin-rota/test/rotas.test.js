@@ -1,0 +1,189 @@
+'use strict'
+const test = require('node:test')
+const assert = require('node:assert/strict')
+const c = require('../lib/costa')
+const r = require('../lib/rotas')
+
+const real = c.carregarCosta()
+const D = (id) => real.destinos.find(d => d.id === id)
+
+// Distância mínima à terra ao longo dos troços com perna 'linha', de 0,1 em 0,1 MN.
+function minimoNaLinha (costa, pontos) {
+  let mn = Infinity
+  for (let i = 1; i < pontos.length; i++) {
+    if (pontos[i].perna !== 'linha') continue
+    const a = pontos[i - 1]; const b = pontos[i]
+    const n = Math.ceil(c.distanciaMn(a, b) / 0.1)
+    for (let k = 0; k <= n; k++) mn = Math.min(mn, costa.distanciaTerra({ lat: a.lat + (b.lat - a.lat) * k / n, lon: a.lon + (b.lon - a.lon) * k / n }))
+  }
+  return mn
+}
+
+// Deriva a perna esperada de um ponto da aproximação a partir de `entrada` e do comprimento
+// da lista (a mesma regra do lib/rotas.js), em vez de fixar índices: os dados de destinos.json
+// mudam de tamanho (a Barra Norte de Algés ganhou mais pontos), mas a regra não.
+function pernaEsperadaSaida (destino, k) { // k = índice no array de saída (pontosSaida); 0 = cais
+  const entrada = Number.isInteger(destino.entrada) ? destino.entrada : destino.aproximacao.length - 1
+  const i = destino.aproximacao.length - k
+  return i > entrada ? 'porto' : 'aproximacao'
+}
+function pernaEsperadaEntrada (destino, i) { // i = índice na aproximação; 0 = largo
+  if (i === 0) return 'ligacao'
+  const entrada = Number.isInteger(destino.entrada) ? destino.entrada : destino.aproximacao.length - 1
+  return i > entrada ? 'porto' : 'aproximacao'
+}
+
+test('Algés → Peniche a 5 MN: do cais ao cais, e depois do largo de Cascais nunca a menos de 4,9 MN de terra', () => {
+  const alt = r.gerarRota(real, { partida: D('alges'), destino: D('peniche'), afastamento: 5 })
+  assert.equal(alt.excluida, false, alt.motivo)
+  const p = alt.pontos
+  assert.equal(p[0].nome, 'Algés (CNA) (partida)')
+  assert.equal(p.at(-1).nome, 'Peniche')
+  const alges = D('alges')
+  const largoIdx = alges.aproximacao.length - 1 // último ponto de pontosSaida = o largo
+  for (let k = 1; k <= largoIdx; k++) assert.equal(p[k].perna, pernaEsperadaSaida(alges, k), `p[${k}].perna (saída de Algés)`)
+  assert.equal(p[largoIdx].nome, 'Largo de Algés (CNA)')
+  assert.equal(p[largoIdx + 1].perna, 'ligacao')
+  const peniche = D('peniche')
+  const cauda = p.slice(-peniche.aproximacao.length)
+  cauda.forEach((x, i) => assert.equal(x.perna, pernaEsperadaEntrada(peniche, i), `entrada[${i}].perna (Peniche)`))
+  const mn = minimoNaLinha(real, p)
+  assert.ok(mn >= 4.9, `mínimo ${mn}`)
+  for (let i = 1; i < p.length; i++) if (p[i].perna === 'linha') assert.ok(c.distanciaMn(p[i - 1], p[i]) <= 2 + 1e-6)
+  // nenhuma ligação nem troço da linha toca em terra ou zonas
+  for (let i = 1; i < p.length; i++) if (p[i].perna === 'linha' || p[i].perna === 'ligacao') assert.equal(real.verificarTroco(p[i - 1], p[i]), null)
+  assert.ok(alt.milhas > 58 && alt.milhas < 68, `${alt.milhas} MN`)
+  assert.equal(p.filter(x => x.costaLivre).length, p.filter(x => x.perna !== 'linha').length)
+})
+
+test('3 MN só com vento de terra; os 5 e 8 MN não dependem do vento', () => {
+  // Peniche → Nazaré: à saída a linha de 3 MN rodeia a península de Peniche, com a terra a NE
+  const com = r.gerarRota(real, { partida: D('peniche'), destino: D('nazare'), afastamento: 3, twd: 45 })
+  assert.equal(com.excluida, false, com.motivo)
+  const mar = r.gerarRota(real, { partida: D('peniche'), destino: D('nazare'), afastamento: 3, twd: 280 })
+  assert.equal(mar.excluida, true)
+  assert.equal(mar.motivo, 'a 3 MN só com vento de terra: à saída o vento vem de 280°, do lado do mar')
+  const fn = r.gerarRota(real, { partida: D('peniche'), destino: D('nazare'), afastamento: 3, twd: (lat, lon) => (lat > 39 && lon < -9 ? 60 : 270) })
+  assert.equal(fn.excluida, false)
+  assert.match(r.gerarRota(real, { partida: D('peniche'), destino: D('nazare'), afastamento: 3 }).motivo, /não há vento previsto/)
+  assert.equal(r.gerarRota(real, { partida: D('peniche'), destino: D('nazare'), afastamento: 5, twd: 280 }).excluida, false)
+  // a normal para terra na linha de 5 MN à latitude da Ericeira aponta para leste
+  const L = real.linha(5)
+  const s = c.projetar(L, { lat: 38.96, lon: -9.53 }).s
+  assert.ok(Math.abs(c.dif(r.rumoParaTerra(real, L, s), 90)) < 30)
+})
+
+// Costa inventada: costa N-S em 9,0 W com um cabo fino para oeste a 39,0 N (até 9,08 W),
+// um ilhéu junto à linha e uma lagoa fechada; a "linha de 5 MN" é uma reta em 9,15 W.
+const terra = {
+  type: 'FeatureCollection',
+  features: [
+    { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[-9.0, 38.4], [-8.5, 38.4], [-8.5, 39.6], [-9.0, 39.6], [-9.0, 39.002], [-9.08, 39.002], [-9.08, 38.998], [-9.0, 38.998], [-9.0, 38.4]], [[-8.9, 38.65], [-8.8, 38.65], [-8.8, 38.75], [-8.9, 38.75], [-8.9, 38.65]]] } },
+    { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[-9.088, 39.226], [-9.082, 39.226], [-9.082, 39.232], [-9.088, 39.232], [-9.088, 39.226]]] } }
+  ]
+}
+// aproximacao: [largo, cais], entrada: 1 (o cais é o próprio ponto de entrada; com uma lista de
+// só 2 pontos, entrada tem de ser o último índice — lib/costa.js exige 1 <= entrada <= length-1).
+// O cais fica no mar (a oeste de 9,0 W, tal como o largo): com a `entrada` na lista toda, a terra
+// verifica-se sempre neste troço (só se dispensa com `portoFechadoOsm`), por isso não pode cair
+// dentro da terra inventada como caía na versão antiga do costa.js (que dispensava com entrada 0).
+const porto = (id, nome, largo, cais) => ({ id, nome, abrigo: true, conhecido: true, largo, aproximacao: [largo, cais], entrada: 1 })
+const SUL_DO_CABO = porto('sul', 'Sul do Cabo', [38.99, -9.02], [38.99, -9.01])
+const NORTE = porto('norte', 'Norte', [39.45, -9.05], [39.45, -9.01])
+const JUNTO_ILHEU = porto('ilheu', 'Junto ao Ilhéu', [39.2, -9.02], [39.2, -9.01])
+const LAGOA = porto('lagoa', 'Lagoa', [38.7, -8.85], [38.72, -8.85])
+const inventada = c.criarCosta({ terra, destinos: [SUL_DO_CABO, NORTE, JUNTO_ILHEU, LAGOA], linhas: { 5: [[39.6, -9.15], [38.4, -9.15]] } })
+
+test('a ligação à linha que corta o cabo é corrigida (liga mais de lado, a sul do cabo)', () => {
+  const L = inventada.linha(5)
+  const p = c.P(SUL_DO_CABO.largo)
+  // o ponto "à frente" (≤ 60°) fica a norte do cabo e o troço corta-o
+  const frente = c.juntar(L, p, -1)
+  assert.ok(frente.lat > 39.04)
+  assert.equal(inventada.cruzaTerra(p, frente), true)
+  const alt = r.gerarRota(inventada, { partida: SUL_DO_CABO, destino: NORTE, afastamento: 5 })
+  assert.equal(alt.excluida, false, alt.motivo)
+  const liga = alt.pontos.find(x => x.nome === 'Linha de 5 MN')
+  assert.ok(liga.lat < 38.9985, `liga em ${liga.lat}`) // passa a sul do cabo
+  for (let i = 1; i < alt.pontos.length; i++) if (alt.pontos[i].perna !== 'porto') assert.equal(inventada.cruzaTerra(alt.pontos[i - 1], alt.pontos[i]), false)
+})
+
+test('a ligação que passa num ilhéu avança pela linha até ficar livre (≤ 5 MN)', () => {
+  const L = inventada.linha(5)
+  const p = c.P(JUNTO_ILHEU.largo)
+  const frente = c.juntar(L, p, -1)
+  assert.equal(inventada.cruzaTerra(p, frente), true)
+  const alt = r.gerarRota(inventada, { partida: JUNTO_ILHEU, destino: NORTE, afastamento: 5 })
+  assert.equal(alt.excluida, false, alt.motivo)
+  const liga = alt.pontos.find(x => x.nome === 'Linha de 5 MN')
+  assert.ok(liga.lat > frente.lat && c.distanciaMn(liga, frente) <= 5, `liga em ${liga.lat}`)
+  assert.equal(inventada.cruzaTerra(p, liga), false)
+})
+
+test('sem passagem: excluída com o motivo em português', () => {
+  const alt = r.gerarRota(inventada, { partida: NORTE, destino: LAGOA, afastamento: 5 })
+  assert.equal(alt.excluida, true)
+  assert.equal(alt.motivo, 'não há passagem a 5 MN entre Norte e Lagoa')
+  assert.deepEqual(alt.pontos, [])
+  const semLinha = r.gerarRota(inventada, { partida: NORTE, destino: SUL_DO_CABO, afastamento: 8 })
+  assert.equal(semLinha.motivo, 'não há linha de costa a 8 MN')
+  const emTerra = r.gerarRota(inventada, { partida: { lat: 39.3, lon: -8.9 }, destino: NORTE, afastamento: 5 })
+  assert.equal(emTerra.motivo, 'a posição atual fica em terra')
+  const zona = c.criarCosta({ terra, destinos: [], zonas: [{ nome: 'Zona inventada', poligono: [[39.0, -9.2], [39.0, -9.1], [39.3, -9.1], [39.3, -9.2], [39.0, -9.2]] }], linhas: { 5: [[39.6, -9.15], [38.4, -9.15]] } })
+  assert.match(r.gerarRota(zona, { partida: SUL_DO_CABO, destino: NORTE, afastamento: 5 }).motivo, /passa na zona a evitar "Zona inventada"|não há passagem/)
+})
+
+test('entrada inválida e coordenadas não finitas: excluída com o motivo em português, nunca rebenta', () => {
+  // lib/costa.js: verificarAproximacao reporta 'entrada inválida' (sem rebentar) quando o destino
+  // não tem um índice de entrada válido (1 <= entrada <= aproximacao.length - 1)
+  const semEntrada = { ...NORTE, entrada: 0 }
+  const alt = r.gerarRota(inventada, { partida: SUL_DO_CABO, destino: semEntrada, afastamento: 5 })
+  assert.equal(alt.excluida, true)
+  assert.match(alt.motivo, /^a entrada de Norte /)
+  assert.match(alt.motivo, /entrada mal definida/)
+  // lib/costa.js: P() rebenta com coordenadas não finitas; gerarRota apanha o erro e exclui a
+  // alternativa em vez de deixar a exceção escapar por resolver (nunca pode derrubar o servidor).
+  const semGps = r.gerarRota(inventada, { partida: { lat: NaN, lon: -9.05 }, destino: NORTE, afastamento: 5 })
+  assert.equal(semGps.excluida, true)
+  assert.equal(typeof semGps.motivo, 'string')
+  assert.deepEqual(semGps.pontos, [])
+  // o mesmo para gerarRotas com uma rota ativa do OpenCPN malformada (coordenadas não finitas)
+  const alts = r.gerarRotas(inventada, { posicao: { lat: 38.99, lon: -9.02 }, destino: { rotaAtiva: [{ lat: 39.1, lon: NaN }] }, afastamentos: [3, 5] })
+  assert.equal(alts.length, 2)
+  for (const a of alts) { assert.equal(a.excluida, true); assert.equal(typeof a.motivo, 'string') }
+})
+
+test('partida: do porto (≤ 0,5 MN do cais) ou da posição atual no mar', () => {
+  assert.equal(r.portoDePartida(real, { lat: 38.6955, lon: -9.233 }).id, 'alges')
+  assert.equal(r.portoDePartida(real, { lat: 39.353 + 0.4 / 60, lon: -9.377 }).id, 'peniche')
+  assert.equal(r.portoDePartida(real, { lat: 38.9, lon: -9.6 }), null)
+  const [a3, a5] = r.gerarRotas(real, { posicao: { lat: 38.9, lon: -9.6 }, destino: D('peniche'), afastamentos: [3, 5], twd: 90 })
+  assert.equal(a5.excluida, false, a5.motivo)
+  assert.equal(a5.pontos[0].nome, 'Posição atual')
+  assert.equal(a5.pontos[1].perna, 'ligacao')
+  assert.equal(a3.afastamento, 3)
+  const [doPorto] = r.gerarRotas(real, { posicao: { lat: 38.6955, lon: -9.233 }, destino: D('peniche'), afastamentos: [5] })
+  assert.equal(doPorto.pontos[0].nome, 'Algés (CNA) (partida)')
+})
+
+test('destino pela rota ativa do OpenCPN: o largo da lista, ou um ponto avulso com o aviso', () => {
+  const lista = r.destinoDaRotaAtiva(real, [[38.7, -9.5], [39.31, -9.421]])
+  assert.equal(lista.destino.id, 'peniche')
+  assert.equal(lista.aviso, null)
+  const avulso = r.destinoDaRotaAtiva(real, [{ lat: 38.7, lon: -9.5 }, { lat: 39.1, lon: -9.6 }])
+  assert.equal(avulso.destino.porConfirmar, true)
+  assert.equal(avulso.aviso, 'último troço por confirmar na carta')
+  const [alt] = r.gerarRotas(real, { posicao: { lat: 38.6955, lon: -9.233 }, destino: { rotaAtiva: [[38.7, -9.5], [39.1, -9.6]] }, afastamentos: [5] })
+  assert.equal(alt.excluida, false, alt.motivo)
+  assert.deepEqual(alt.avisos, ['último troço por confirmar na carta'])
+  assert.deepEqual([alt.pontos.at(-1).lat, alt.pontos.at(-1).lon], [39.1, -9.6])
+  assert.equal(alt.pontos.at(-1).perna, 'ligacao')
+  assert.equal(r.destinoDaRotaAtiva(real, []), null)
+})
+
+test('rápido: as 3 alternativas de Algés → Lagos em menos de 300 ms', () => {
+  const t = performance.now()
+  const alts = r.gerarRotas(real, { posicao: { lat: 38.6955, lon: -9.233 }, destino: D('lagos'), twd: 45 })
+  assert.equal(alts.length, 3)
+  assert.ok(performance.now() - t < 300)
+})
