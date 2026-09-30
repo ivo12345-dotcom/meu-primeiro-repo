@@ -10,6 +10,11 @@ const H = 3600000
 
 // [{ t (ms), altura (m) }] das preia-mares, por ordem. Dois máximos a menos de
 // `separacaoH` horas: fica o mais alto (o ruído de uma série quase plana não conta).
+// Um pico exactamente na primeira ou na última amostra da série nunca é reportado: a
+// parábola usa os 3 pontos à volta do máximo (i-1, i, i+1), e nos extremos falta um deles,
+// por isso não há como confirmar que é mesmo um máximo (podia continuar a subir fora da
+// janela). É uma limitação aceite, não um bug — quem chama com uma janela curta (arquivo
+// do plugin da AI, ou um [desde, ate] apertado) pode perder a preia-mar de uma ponta.
 function preiaMares (t, nivel, { separacaoH = 6 } = {}) {
   const out = []
   for (let i = 1; i < nivel.length - 1; i++) {

@@ -41,6 +41,16 @@ test('preia-mares de Cascais na previsão real de 29/09 (Open-Meteo, nível do m
   for (let i = 1; i < pms.length; i++) assert.ok(pms[i].t - pms[i - 1].t > 12 * H && pms[i].t - pms[i - 1].t < 13 * H)
 })
 
+test('preia-mares: um pico exactamente no extremo da série (primeira/última hora) não é reportado, um interior é', () => {
+  // índice 0 (10) e índice 5 (8) são picos "de extremo" — sem os 3 pontos para a parábola,
+  // não há como confirmar que são mesmo o máximo (podiam continuar a subir fora da janela)
+  const t = [0, H, 2 * H, 3 * H, 4 * H, 5 * H]
+  const y = [10, 3, 1, 5, 2, 8]
+  const pms = m.preiaMares(t, y, { separacaoH: 1 })
+  assert.equal(pms.length, 1) // só o pico interior em t[3]
+  assert.ok(pms[0].t > t[2] && pms[0].t < t[4])
+})
+
 test('corrente na barra: estofo 45 min depois da preia-mar, vazante para 250°, enchente para 70°, só a leste de 9°25\'W', () => {
   const pm = Date.UTC(2026, 8, 29, 15, 37)
   const mare = m.criarMareTejo([{ t: pm }])
