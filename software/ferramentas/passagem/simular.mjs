@@ -6,6 +6,21 @@
 //   --dia: previsão de um dia passado (arquivo da Open-Meteo, esse dia e o seguinte)
 //   --meteo: corre com a meteorologia gravada (sem rede); --guardar-meteo: grava a que usou
 // Tudo o que é estimativa está assinalado no resumo.
+//
+// Fusos horários: o resultado tem de ser o MESMO seja qual for o fuso (TZ) do
+// sistema onde o script corre (ex.: TZ=UTC vs. TZ=Europe/Lisbon). Por isso:
+//   - o argumento de partida e o PREIA_MAR de referência: com fuso explícito
+//     ("...Z" ou "...+01:00") usa-se esse instante, tal e qual; sem fuso (ex.:
+//     "2026-09-29T15:32") interpreta-se sempre como hora LOCAL DE LISBOA (não a
+//     do sistema), calculada com Intl.DateTimeFormat({ timeZone: 'Europe/Lisbon' })
+//     para apanhar o horário de verão (WEST +01:00 / WET +00:00) do dia em causa.
+//     Ver `lisboaParaUTC` / `parsePartida`.
+//   - as horas que vêm da Open-Meteo (`hourly.time`, `daily.sunrise/sunset`) são
+//     strings SEM fuso — são já a hora local de Lisboa (pedida com
+//     `timezone=Europe/Lisbon` no URL), nunca `new Date(essaString)` diretamente.
+//     Ver `horaMeteoParaUTC` / `horaDoDia`.
+//   - os textos dos eventos mostram sempre a hora de Lisboa (`horaLisboa`), não a
+//     hora local do sistema onde o script corre.
 
 import { readFileSync, writeFileSync } from 'node:fs'
 import { gzipSync, gunzipSync } from 'node:zlib'
@@ -21,14 +36,104 @@ const { criarModelo, avancar } = require(path.join(sw, 'arlequin-simulador/lib/m
 const { novoEstado, avaliar } = require(path.join(sw, 'signalk-arlequin-energia/lib/regras.js'))
 const { litrosHora } = require(path.join(sw, 'signalk-arlequin-j1939/lib/consumo.js'))
 
+function erroFatal (err) {
+  process.stderr.write(`Erro: ${err.message}\n`)
+  process.exit(1)
+}
+
 // Argumentos: [partida] --dia AAAA-MM-DD --meteo f --guardar-meteo f
 const ARGS = {}
-for (let i = 2; i < process.argv.length; i++) {
-  const a = process.argv[i]
-  if (a === '--dia') ARGS.dia = process.argv[++i]
-  else if (a === '--meteo') ARGS.meteo = process.argv[++i]
-  else if (a === '--guardar-meteo') ARGS.guardarMeteo = process.argv[++i]
-  else ARGS.partida = a
+try {
+  for (let i = 2; i < process.argv.length; i++) {
+    const a = process.argv[i]
+    const valorDe = (flag) => {
+      const v = process.argv[++i]
+      if (v === undefined || v.startsWith('--')) throw new Error(`Falta o valor de ${flag} (ex.: ${flag} ficheiro.json)`)
+      return v
+    }
+    if (a === '--dia') ARGS.dia = valorDe('--dia')
+    else if (a === '--meteo') ARGS.meteo = valorDe('--meteo')
+    else if (a === '--guardar-meteo') ARGS.guardarMeteo = valorDe('--guardar-meteo')
+    else ARGS.partida = a
+  }
+} catch (err) { erroFatal(err) }
+
+// ---------- fuso horário: partida sem "Z"/offset = hora local de Lisboa ----------
+// Devolve o desvio (em minutos, tal que hora de Lisboa = hora UTC + desvio) de
+// Europe/Lisbon no instante dado, com WEST(+60)/WET(+0) corretos para esse dia.
+function desvioLisboaMin (utcMs) {
+  const partes = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Lisbon', hour12: false,
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
+  }).formatToParts(new Date(utcMs))
+  const m = {}
+  for (const p of partes) m[p.type] = p.value
+  const comoUTC = Date.UTC(+m.year, +m.month - 1, +m.day, m.hour === '24' ? 0 : +m.hour, +m.minute, +m.second)
+  return (comoUTC - utcMs) / MIN
+}
+
+// Converte ano/mês/dia/hora/min/seg — a hora de PAREDE em Lisboa — no instante UTC
+// correspondente. Resolve a transição de hora de verão em duas iterações.
+function lisboaParaUTC (ano, mes, dia, hh, mi, ss = 0) {
+  const palpite = Date.UTC(ano, mes - 1, dia, hh, mi, ss)
+  const d1 = desvioLisboaMin(palpite)
+  let utc = palpite - d1 * MIN
+  const d2 = desvioLisboaMin(utc)
+  if (d2 !== d1) utc = palpite - d2 * MIN
+  return utc
+}
+
+// "2026-09-29T15:32" (sem fuso) → hora de Lisboa, nesse dia. "...Z"/"...+01:00" → literal.
+export function parsePartida (s) {
+  if (/Z$|[+-]\d{2}:?\d{2}$/.test(s)) {
+    const t = new Date(s).getTime()
+    if (Number.isNaN(t)) throw new Error(`Data de partida inválida: "${s}"`)
+    return t
+  }
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?$/)
+  if (!m) throw new Error(`Data de partida inválida: "${s}" (usar AAAA-MM-DDThh:mm, opcionalmente com fuso, ex.: ...+01:00 ou ...Z)`)
+  const [, ano, mes, dia, hh = '0', mi = '0', ss = '0'] = m
+  return lisboaParaUTC(+ano, +mes, +dia, +hh, +mi, +ss)
+}
+
+// A Open-Meteo devolve as horas em "AAAA-MM-DDThh:mm" (SEM fuso: é a hora local
+// do parâmetro `timezone=Europe/Lisbon` do pedido). Nunca interpretar isto com
+// `new Date(...)` (cairia na hora local do sistema onde o script corre) — usar
+// sempre isto, que dá o mesmo instante UTC em qualquer TZ do sistema.
+function horaMeteoParaUTC (s) {
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/)
+  if (!m) throw new Error(`Hora da meteorologia inesperada: "${s}"`)
+  const [, ano, mes, dia, hh, mi] = m
+  return lisboaParaUTC(+ano, +mes, +dia, +hh, +mi)
+}
+// Hora do dia (fração, ex.: 7,52) tal como escrita na string — direto do texto,
+// sem passar por Date, por isso é sempre a mesma seja qual for o fuso do sistema.
+function horaDoDia (s) {
+  const m = s.match(/T(\d{2}):(\d{2})$/)
+  if (!m) throw new Error(`Hora da meteorologia inesperada: "${s}"`)
+  return +m[1] + +m[2] / 60
+}
+// Só a hora inteira (sem os minutos) — mantém o comportamento original de
+// `new Date(...).getHours()` (o "nascer" da energia usa isto + uma folga fixa).
+function horaInteira (s) {
+  const m = s.match(/T(\d{2}):/)
+  if (!m) throw new Error(`Hora da meteorologia inesperada: "${s}"`)
+  return +m[1]
+}
+// HH:MM em hora de Lisboa, para os textos dos eventos (independente do fuso do sistema).
+function horaLisboa (utcMs) {
+  return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Lisbon', hourCycle: 'h23', hour: '2-digit', minute: '2-digit' }).format(new Date(utcMs))
+}
+// `arlequin-simulador/lib/modelo.js` (energia) calcula a hora do dia (sol/noite)
+// com `new Date(t).getHours()` — a hora LOCAL DO SISTEMA, não a de Lisboa (não é
+// deste ficheiro; não mexer lá). Para o resultado da energia não depender do fuso
+// do sistema onde este script corre, corrigimos o instante que lhe entregamos: o
+// desvio entre a hora de Lisboa e a do sistema, nesse instante, mantém-se
+// constante ao longo da passagem (o modelo só vai somando os mesmos minutos que o
+// nosso relógio `t`), por isso basta corrigir o instante inicial.
+function paraModeloEnergia (utcMs) {
+  const desvioSistemaMin = -new Date(utcMs).getTimezoneOffset()
+  return utcMs + (desvioLisboaMin(utcMs) - desvioSistemaMin) * MIN
 }
 
 const NO = 1852 / 3600
@@ -105,8 +210,17 @@ async function meteorologia () {
 }
 
 function lerJson (f) {
-  const b = readFileSync(f)
-  return JSON.parse(f.endsWith('.gz') ? gunzipSync(b) : b)
+  let b
+  try {
+    b = readFileSync(f)
+  } catch (err) {
+    throw new Error(`Não consegui ler o ficheiro "${f}": ${err.code === 'ENOENT' ? 'não existe' : err.message}`)
+  }
+  try {
+    return JSON.parse(f.endsWith('.gz') ? gunzipSync(b) : b)
+  } catch (err) {
+    throw new Error(`Ficheiro "${f}" inválido (não é ${f.endsWith('.gz') ? 'gzip+' : ''}JSON válido): ${err.message}`)
+  }
 }
 function escreverJson (f, o) {
   const b = Buffer.from(JSON.stringify(o))
@@ -115,7 +229,7 @@ function escreverJson (f, o) {
 
 // Interpola no tempo (hora) e no espaço (latitude entre os 4 pontos).
 function tempoAqui (met, lat, t) {
-  const horas = met.v[0].hourly.time.map(x => new Date(x).getTime())
+  const horas = met.v[0].hourly.time.map(horaMeteoParaUTC)
   let i = horas.findIndex(h => h > t) - 1
   if (i < 0) i = 0
   const f = Math.min(1, Math.max(0, (t - horas[i]) / 3600000))
@@ -140,9 +254,12 @@ function tempoAqui (met, lat, t) {
   }
 }
 
-// Maré no Tejo (APROXIMADA): Cascais preia-mar 16:37 (coef. 90). Estofo ~45 min
-// depois; vazante positiva (sai a 250°), até ~1,8 nó na barra. Só a leste de 9°25'W.
-const PREIA_MAR = new Date('2026-09-29T16:37:00').getTime()
+// Maré no Tejo (APROXIMADA): Cascais preia-mar 16:37 hora de Lisboa, 29/09/2026
+// (coef. 90), que nesse dia é WEST = UTC+01:00 (fuso explícito abaixo, para dar
+// sempre o MESMO instante independentemente do fuso do sistema onde isto corre).
+// Estofo ~45 min depois; vazante positiva (sai a 250°), até ~1,8 nó na barra.
+// Só a leste de 9°25'W.
+const PREIA_MAR = new Date('2026-09-29T16:37:00+01:00').getTime()
 function mareTejo (lat, lon, t) {
   if (lon < -9.42) return { v: 0, dir: 0 }
   const fase = 2 * Math.PI * (t - (PREIA_MAR + 45 * MIN)) / (12.42 * 3600000)
@@ -154,14 +271,14 @@ function mareTejo (lat, lon, t) {
 async function simular (partida) {
   const met = await meteorologia()
   const polar = lerPolar(readFileSync(path.join(sw, 'arlequin-ecra/public/polar-arlequin.csv'), 'utf8'))
-  const porDoSol = new Date(met.s.daily.sunset[0]).getTime()
-  const nascer = new Date(met.s.daily.sunrise[1]).getTime()
+  const porDoSol = horaMeteoParaUTC(met.s.daily.sunset[0])
+  const nascer = horaMeteoParaUTC(met.s.daily.sunrise[1])
   let pos = { lat: ROTA[0].lat, lon: ROTA[0].lon }
   let wp = 1
   let t = partida
   let proa = vetor(pos, ROTA[1]).rumo
   let amura = null // 'EB' | 'BB' quando bordeja ou cambeia
-  let energia = criarModelo({ socInicial: 0.95, nascer: new Date(met.s.daily.sunrise[0]).getHours() + 0.5, por: new Date(porDoSol).getHours() + new Date(porDoSol).getMinutes() / 60, horasSolPico: 3.5 }, t)
+  let energia = criarModelo({ socInicial: 0.95, nascer: horaInteira(met.s.daily.sunrise[0]) + 0.5, por: horaDoDia(met.s.daily.sunset[0]), horasSolPico: 3.5 }, paraModeloEnergia(t))
   let alarmesEnergia = novoEstado()
   let gasoleo = 124
   let milhas = 0
@@ -176,7 +293,7 @@ async function simular (partida) {
   let noiteAnunciada = false
   let visAnunciada = false
   let frenteAnunciada = false
-  ev(`Partida de Algés a motor (${new Date(t).toTimeString().slice(0, 5)}). Maré: enchente fraca contra até ao estofo (~17:20)`, 'partida')
+  ev(`Partida de Algés a motor (${horaLisboa(t)}). Maré: enchente fraca contra até ao estofo (~17:20)`, 'partida')
 
   while (wp < ROTA.length && t < partida + 30 * 3600000) {
     const w = tempoAqui(met, pos.lat, t)
@@ -244,7 +361,7 @@ async function simular (partida) {
     alarmesEnergia = a.estado
     for (const n of a.notificacoes) if (n.state !== 'normal') ev(`Alarme do sistema: ${n.message}${n.method.includes('sound') ? ' (com som)' : ''}`, 'alarme')
     // Marcos
-    if (!noiteAnunciada && noite) { noiteAnunciada = true; ev(`Pôr do sol (${new Date(porDoSol).toTimeString().slice(0, 5)}): ecrã em modo noite, luzes de navegação`, 'noite') }
+    if (!noiteAnunciada && noite) { noiteAnunciada = true; ev(`Pôr do sol (${horaLisboa(porDoSol)}): ecrã em modo noite, luzes de navegação`, 'noite') }
     if (!visAnunciada && w.visibilidade < 3000) { visAnunciada = true; ev(`Chuva e visibilidade ${(w.visibilidade / 1000).toFixed(1).replace('.', ',')} km: radar ligado`, 'tempo') }
     if (!frenteAnunciada && pontos.length && pontos[pontos.length - 1].tws > 12 && w.tws < 8) { frenteAnunciada = true; ev(`Passagem da frente: o vento cai de ${Math.round(pontos[pontos.length - 1].tws)} para ${Math.round(w.tws)} nós e roda para ${String(Math.round(w.twd)).padStart(3, '0')}°. Fica o mar (${w.ondas.toFixed(1).replace('.', ',')} m)`, 'tempo') }
     const costa = distanciaCostaMn(pos)
@@ -253,7 +370,7 @@ async function simular (partida) {
     t += MIN
   }
   const chegou = wp >= ROTA.length
-  ev(chegou ? `Chegada a Peniche (${new Date(t).toTimeString().slice(0, 5)})` : 'Não chegou dentro de 30 h', 'chegada')
+  ev(chegou ? `Chegada a Peniche (${horaLisboa(t)})` : 'Não chegou dentro de 30 h', 'chegada')
   const duracaoH = (t - partida) / 3600000
   const resumo = {
     partida: new Date(partida).toISOString(), chegada: new Date(t).toISOString(), chegou, duracaoH, milhas,
@@ -268,13 +385,15 @@ async function simular (partida) {
   return { resumo, pontos }
 }
 
-const partida = ARGS.partida ? new Date(ARGS.partida).getTime() : Date.now() + 3600000
-const r = await simular(partida)
-writeFileSync(path.join(aqui, 'passagem.json'), JSON.stringify(r.pontos))
-writeFileSync(path.join(aqui, 'resumo.json'), JSON.stringify(r.resumo, null, 2))
-writeFileSync(path.join(aqui, 'rota.json'), JSON.stringify({ ROTA, COSTA }))
-const f = (x, d = 1) => x.toFixed(d).replace('.', ',')
-console.log(`Chegada: ${new Date(r.resumo.chegada).toLocaleString('pt-PT')} · ${f(r.resumo.duracaoH)} h · ${f(r.resumo.milhas)} MN · vela ${f(r.resumo.horasVela)} h · motor ${f(r.resumo.horasMotor)} h · noite ${f(r.resumo.horasNoite)} h`)
-console.log(`Mínimo à costa (fora do rio e da chegada): ${f(r.resumo.costaMinMn)} MN`)
-console.log(`Gasóleo ${f(r.resumo.gasoleoGasto)} L · SoC final ${Math.round(r.resumo.socFinal * 100)}% (mín ${Math.round(r.resumo.socMin * 100)}%) · vento máx ${Math.round(r.resumo.ventoMax)} nós, rajadas ${Math.round(r.resumo.rajadaMax)} · ondas ${f(r.resumo.ondasMax)} m · viragens ${r.resumo.viragens} · cambadelas ${r.resumo.cambadelas}`)
-for (const e of r.resumo.eventos) console.log(new Date(e.t).toTimeString().slice(0, 5), e.tipo.padEnd(8), e.texto)
+try {
+  const partida = ARGS.partida ? parsePartida(ARGS.partida) : Date.now() + 3600000
+  const r = await simular(partida)
+  writeFileSync(path.join(aqui, 'passagem.json'), JSON.stringify(r.pontos))
+  writeFileSync(path.join(aqui, 'resumo.json'), JSON.stringify(r.resumo, null, 2))
+  writeFileSync(path.join(aqui, 'rota.json'), JSON.stringify({ ROTA, COSTA }))
+  const f = (x, d = 1) => x.toFixed(d).replace('.', ',')
+  console.log(`Chegada: ${new Date(r.resumo.chegada).toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon' })} · ${f(r.resumo.duracaoH)} h · ${f(r.resumo.milhas)} MN · vela ${f(r.resumo.horasVela)} h · motor ${f(r.resumo.horasMotor)} h · noite ${f(r.resumo.horasNoite)} h`)
+  console.log(`Mínimo à costa (fora do rio e da chegada): ${f(r.resumo.costaMinMn)} MN`)
+  console.log(`Gasóleo ${f(r.resumo.gasoleoGasto)} L · SoC final ${Math.round(r.resumo.socFinal * 100)}% (mín ${Math.round(r.resumo.socMin * 100)}%) · vento máx ${Math.round(r.resumo.ventoMax)} nós, rajadas ${Math.round(r.resumo.rajadaMax)} · ondas ${f(r.resumo.ondasMax)} m · viragens ${r.resumo.viragens} · cambadelas ${r.resumo.cambadelas}`)
+  for (const e of r.resumo.eventos) console.log(horaLisboa(e.t), e.tipo.padEnd(8), e.texto)
+} catch (err) { erroFatal(err) }
