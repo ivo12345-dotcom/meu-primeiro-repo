@@ -36,6 +36,11 @@ const MOTIVO_ERRO_INTERNO = 'erro interno ao gerar esta rota'
 const MOTIVO_COORDENADAS = 'coordenadas inválidas: a posição ou um ponto da rota não tem latitude e longitude válidas'
 const MOTIVO_SEM_ROTA_ATIVA = 'não há rota ativa no OpenCPN'
 const MOTIVO_SEM_POSICAO = 'sem posição do GPS: não sei de onde parte o barco'
+const MOTIVO_VENTO_MAR = 'vento do mar em parte da rota: a 3 MN ficava perto de uma costa a sotavento'
+const H_MS = 3600e3
+const NOTA_DIRETO = 'salto curto entre portos vizinhos: rota direta junto à costa'
+const NOTA_DIRETO_MAR = 'destino perto da posição atual: rota direta'
+const fmtMn = (x) => x.toFixed(1).replace('.', ',')
 
 // Uma exceção a gerar uma rota nunca escapa (não pode derrubar o servidor): coordenadas não finitas
 // (lib/costa.js, `P()`) dão um motivo em português sem o JSON cru; qualquer outra é um erro de
@@ -199,12 +204,6 @@ function ligar (costa, linha, p, sentido, janela, { anguloMax, maxAvancoMn, pass
   return null
 }
 
-const MOTIVO_VENTO_MAR = 'vento do mar em parte da rota: a 3 MN ficava perto de uma costa a sotavento'
-const H_MS = 3600e3
-const NOTA_DIRETO = 'salto curto entre portos vizinhos: rota direta junto à costa'
-const NOTA_DIRETO_MAR = 'destino perto da posição atual: rota direta'
-const fmtMn = (x) => x.toFixed(1).replace('.', ',')
-
 // O vento previsto (de onde vem) num ponto: twd é um número (o mesmo em toda a parte) ou uma
 // função. Com horaPartida (ms), a função recebe também a hora estimada de passagem no ponto
 // (horaPartida + milhas desde a partida a o.nosEta nós); sem ela, só (lat, lon): quem chama fecha
@@ -256,7 +255,7 @@ function ventoDoMarNoDireto (costa, pontos, costaMinMn, { twd, horaPartida }, o)
 }
 
 // A distância mínima (MN) à terra nos troços fora das aproximações (ligações, linha, canal),
-// de o.passo em o.passo MN; null se a rota é toda aproximação.
+// de `passo` em `passo` MN; null se a rota é toda aproximação.
 function distanciaMinimaTerra (costa, pontos, passo = 0.1) {
   let mn = Infinity
   for (let i = 1; i < pontos.length; i++) {
