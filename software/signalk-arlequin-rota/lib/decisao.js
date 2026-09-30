@@ -10,7 +10,8 @@
 //
 // Partidas: agora, +3 h, +6 h e de 3 em 3 h até +48 h (a "melhor janela" é a melhor destas).
 // As de +3 h em diante arredondam-se à meia hora. As passagens que acabem depois do fim da
-// previsão ficam de fora (quem chama). Com "Sair agora mesmo assim", só agora.
+// previsão ficam de fora (quem chama; em "Sair agora" ficam, com aviso vermelho). Com "Sair
+// agora mesmo assim", só agora.
 //
 // As 3 melhores: entre as não excluídas, as recomendadas primeiro e depois por custo (com
 // "so", uma "não recomendada" nunca passa à frente de uma recomendada). Em "Sair agora" é

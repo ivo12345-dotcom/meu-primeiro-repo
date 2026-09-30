@@ -314,3 +314,20 @@ test('chegada { p10, p50, p90 } por ordem de hora: Peniche → Cascais, onde o o
   // o corte do fim da previsão é pela chegada mais tarde dos três cenários
   for (const k of cands) assert.ok(Math.max(...['otimista', 'provavel', 'pessimista'].map(n => Date.parse(k.resumos[n].chegada))) <= P29.fim, k.id)
 })
+
+test('"Sair agora" com a previsão a acabar antes da chegada: a passagem fica, com o aviso vermelho (sem "sair agora" continua de fora)', async () => {
+  const hm = (t) => new Intl.DateTimeFormat('pt-PT', { timeZone: 'Europe/Lisbon', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(t)
+  const curta = { ...P29, fim: AGORA + 2 * H }
+  const r = await calcular(entrada({ sairAgora: true }), comPrevisao(curta))
+  assert.equal(r.erro, undefined, r.erro)
+  assert.ok(r.alternativas.length >= 1)
+  for (const a of r.alternativas) {
+    assert.ok(Date.parse(a.chegada.p90) > curta.fim)
+    assert.ok(a.avisosVermelhos.includes(`a previsão acaba antes da chegada (${hm(Date.parse(a.chegada.p90))}): o fim da passagem é sem previsão`), JSON.stringify(a.avisosVermelhos))
+  }
+  // dentro da previsão não há o aviso
+  const dentro = await correr('agora', entrada({ sairAgora: true }), deps())
+  for (const a of dentro.alternativas) assert.ok(!a.avisosVermelhos.some(x => /^a previsão acaba/.test(x)))
+  // sem "sair agora": as passagens que acabam depois da previsão ficam de fora (o erro explica)
+  assert.match((await calcular(entrada(), comPrevisao(curta))).erro, /^A previsão acaba às 17:32/)
+})

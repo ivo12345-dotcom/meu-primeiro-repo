@@ -153,13 +153,18 @@ function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
   const pe = sims.pessimista; const pr = sims.provavel; const ot = sims.otimista
   if (!pe.resumo.chegou || !pr.resumo.chegou || !ot.resumo.chegou) return { foraDaPrevisao: false, naoChega: true }
   const chegadas = ordenarChegadas(sims)
-  if (Date.parse(chegadas.p90) > ctx.previsao.fim) return { foraDaPrevisao: true }
+  // uma passagem que acaba depois do fim da previsão fica de fora; em "Sair agora" (o Ivo quer a
+  // melhor para este momento, mesmo contra as recomendações) fica, com aviso vermelho
+  const passaDaPrevisao = Date.parse(chegadas.p90) > ctx.previsao.fim
+  if (passaDaPrevisao && !ctx.sairAgora) return { foraDaPrevisao: true }
   const seg = seguranca.avaliar({ alternativa: alt, pessimista: pe, provavel: pr, destino: ctx.destino, tripulacao: ctx.tripulacao, sairAgora: ctx.sairAgora, gasoleoInicial: ctx.gasoleoInicial, costaMinMn, opcoes: { afastamentoMinimo: ctx.o.afastamentoMinimo } })
   // exclusão dura (também em "sair agora"), como no rotas.js
   const ventoMar = ventoDoMarNosRastos(ctx, alt, sims)
   if (ventoMar) { seg.excluida = true; seg.motivos = [ventoMar, ...seg.motivos] }
   // sem nível do depósito a regra corre com o valor assumido, mas nunca em silêncio: aviso vermelho
-  const avisosVermelhos = ctx.gasoleoAssumido ? [...seg.avisosVermelhos, `gasóleo inicial desconhecido: confirma o depósito (assumi ${ctx.gasoleoInicial} L)`] : seg.avisosVermelhos
+  const avisosVermelhos = [...seg.avisosVermelhos]
+  if (passaDaPrevisao) avisosVermelhos.push(`a previsão acaba antes da chegada (${decisao.hora(Date.parse(chegadas.p90), ctx.o.fuso)}): o fim da passagem é sem previsão`)
+  if (ctx.gasoleoAssumido) avisosVermelhos.push(`gasóleo inicial desconhecido: confirma o depósito (assumi ${ctx.gasoleoInicial} L)`)
   // as horas equivalentes ao leme vêm só de lib/seguranca.js (a mesma regra da calma para o custo e para os limites)
   const lemeEqProvavel = seguranca.horasLemeEquivalentes(pr.pontos)
   const contraVentoH = decisao.horasContraVento(pr.pontos)
