@@ -158,3 +158,22 @@ test('cenários que corrigem a direção: w.corrigido = true e w.prevTwd em brut
   assert.ok(Math.abs(vistos[0].x.twaPrevAbs - 90) < 1e-6, `twaPrevAbs ${vistos[0].x.twaPrevAbs}`)
   assert.ok(Math.abs(vistos[0].s - base.velocidadePolar(polar, 70, 10)) < 1e-6) // a polar no vento corrigido
 })
+
+test('cenários: vento ou rajada sem previsão (null) fica null — desconhecido nunca é calmo (0) nem a rajada cai no vento médio', () => {
+  const polar = base.carregarPolar()
+  const modelos = { ventoForca: { quantis: { p10: fixa(0.8), p50: fixa(1.2), p90: fixa(1.4) } } }
+  for (const m of [{}, modelos]) {
+    const semVento = criarCenarios({ tempoBruto: tempoFixo({ tws: null, rajada: null, semDados: ['tws', 'rajada'] }), modelos: m, polar, obtida: 0 })
+    const semRajada = criarCenarios({ tempoBruto: tempoFixo({ rajada: null, semDados: ['rajada'] }), modelos: m, polar, obtida: 0 })
+    for (const n of ['pessimista', 'provavel', 'otimista']) {
+      const w = semVento[n].tempo(39, -9.5, 0)
+      assert.equal(w.tws, null, n)
+      assert.equal(w.rajada, null, n)
+      assert.equal(w.twsPolar, null, n)
+      assert.equal(w.prevTws, null, n)
+      const r = semRajada[n].tempo(39, -9.5, 0)
+      assert.ok(Number.isFinite(r.tws) && r.tws > 0, n)
+      assert.equal(r.rajada, null, n) // nem 0, nem o vento médio
+    }
+  }
+})

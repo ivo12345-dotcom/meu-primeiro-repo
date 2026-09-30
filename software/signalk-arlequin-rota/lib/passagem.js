@@ -100,6 +100,10 @@ function previsaoIncompleta (w) {
   return out
 }
 
+// O máximo de um campo dos pontos, sem os que não são número (sem previsão). Nenhum: -Infinity,
+// como antes (pontos todos sem dado ou nenhum ponto).
+const maxFinito = (pontos, k) => pontos.reduce((m, p) => (Number.isFinite(p[k]) ? Math.max(m, p[k]) : m), -Infinity)
+
 // noite(t) pelo nascer e pôr do sol de cada dia (listas em ms, pela mesma ordem).
 // Fora dos dias dados usa o dia mais perto, deslocado de 24 em 24 h.
 function noitePeloSol (nasceres, pores) {
@@ -147,9 +151,12 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
     const perna = ROTA[wp].perna
     const noPorto = perna === 'porto'
     const eNoite = noite ? !!noite(t) : false
-    // Vela ou motor
-    const twaWp = dif(w.twd, alvo.rumo) // + = vento por EB
-    let motor = noPorto || (o.motorNasAproximacoes && perna === 'aproximacao') || w.tws < o.limiarVentoMotor
+    // Vela ou motor. Vento sem previsão (tws ou twd null: lib/cenarios.js nunca o põe a 0) é
+    // desconhecido: a escolha conservadora e simples é o motor, sem mexer nos rizos (só se decidem
+    // à vela), e o desconhecido nunca entra em contas (nada de NaN nem de "0 nós").
+    const semVento = !Number.isFinite(w.tws) || !Number.isFinite(w.twd)
+    const twaWp = semVento ? 0 : dif(w.twd, alvo.rumo) // + = vento por EB
+    let motor = noPorto || (o.motorNasAproximacoes && perna === 'aproximacao') || semVento || w.tws < o.limiarVentoMotor
     let rumoAlvo = alvo.rumo
     let stw
     const fatorMar = Math.max(0.8, 1 - 0.04 * Math.max(0, (w.ondas ?? 0) - 1))
@@ -174,7 +181,7 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
       }
       const twa = dif(w.twd, rumoAlvo)
       const rizosAgora = w.rajada > o.rizo2.rajada || w.tws > o.rizo2.tws ? 2 : (w.rajada > o.rizo1.rajada || w.tws > o.rizo1.tws ? 1 : 0)
-      if (rizosAgora !== rizos) { ev(`${rizosAgora > rizos ? 'Rizar' : 'Largar rizo'}: ${rizosAgora} rizo${rizosAgora === 1 ? '' : 's'} (vento ${Math.round(w.tws)} nós, rajadas ${Math.round(w.rajada)})`, 'vela'); rizos = rizosAgora }
+      if (rizosAgora !== rizos) { ev(`${rizosAgora > rizos ? 'Rizar' : 'Largar rizo'}: ${rizosAgora} rizo${rizosAgora === 1 ? '' : 's'} (vento ${Math.round(w.tws)} nós, rajadas ${Number.isFinite(w.rajada) ? Math.round(w.rajada) : 'sem previsão'})`, 'vela'); rizos = rizosAgora }
       const twaPrevAbs = Math.abs(dif(prevTwdDe(w), rumoAlvo))
       stw = velocidadeVela({ twa, twaPrevAbs, tws: w.tws, twd: w.twd, rizos, w, t, lat: pos.lat, lon: pos.lon, rumo: rumoAlvo }) * o.fatorLeme * (o.fatorMarVela ? fatorMar : 1)
       stw *= o.fatoresRizos[rizos]
@@ -183,7 +190,7 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
     if (motor) { rumoAlvo = alvo.rumo; stw = (noPorto ? o.stwMotorRio : o.stwMotor) * fatorMar; amura = null }
     if (motor !== motorAntes) {
       if (motorAntes !== null) {
-        const porque = noPorto ? 'dentro do porto' : perna === 'aproximacao' && o.motorNasAproximacoes ? 'aproximação' : `vento ${Math.round(w.tws)} nós: sem vento para andar`
+        const porque = noPorto ? 'dentro do porto' : perna === 'aproximacao' && o.motorNasAproximacoes ? 'aproximação' : semVento ? 'sem previsão de vento' : `vento ${Math.round(w.tws)} nós: sem vento para andar`
         ev(motor ? `Motor ligado (${porque})` : `Motor desligado, à vela (vento ${Math.round(w.tws)} nós de ${rumo3(w.twd)}°)`, 'motor')
       }
       motorAntes = motor
@@ -215,7 +222,7 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
     else if (!eNoite && noiteAntes) ev(`Nascer do sol (${hm(t)}): ecrã em modo dia`, 'noite')
     noiteAntes = eNoite
     if (!visAnunciada && w.visibilidade != null && w.visibilidade < 3000) { visAnunciada = true; ev(`Chuva e visibilidade ${virgula(w.visibilidade / 1000)} km: radar ligado`, 'tempo') }
-    if (!frenteAnunciada && pontos.length && pontos[pontos.length - 1].tws > 12 && w.tws < 8) { frenteAnunciada = true; ev(`Passagem da frente: o vento cai de ${Math.round(pontos[pontos.length - 1].tws)} para ${Math.round(w.tws)} nós e roda para ${rumo3(w.twd)}°. Fica o mar (${virgula(w.ondas ?? 0)} m)`, 'tempo') }
+    if (!frenteAnunciada && !semVento && pontos.length && pontos[pontos.length - 1].tws > 12 && w.tws < 8) { frenteAnunciada = true; ev(`Passagem da frente: o vento cai de ${Math.round(pontos[pontos.length - 1].tws)} para ${Math.round(w.tws)} nós e roda para ${rumo3(w.twd)}°. Fica o mar (${virgula(w.ondas ?? 0)} m)`, 'tempo') }
     const costa = distanciaCosta ? distanciaCosta(pos) : null
     // semDados/aproximado da previsão (lib/previsao.js), só quando os há: a segurança trata o
     // desconhecido como desconhecido (nunca calmo) e avisa do aproximado.
@@ -244,9 +251,10 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
     gasoleoGasto: o.gasoleoInicial - gasoleo,
     socFinal: energia && ultimo ? ultimo.soc : null,
     socMin: energia && ultimo ? pontos.reduce((m, p) => Math.min(m, p.soc), Infinity) : null,
-    ventoMax: pontos.reduce((m, p) => Math.max(m, p.tws), -Infinity),
-    rajadaMax: pontos.reduce((m, p) => Math.max(m, p.rajada), -Infinity),
-    ondasMax: pontos.reduce((m, p) => Math.max(m, p.ondas ?? -Infinity), -Infinity),
+    // os máximos ignoram o sem previsão (null); a segurança marca-o pelo semDados
+    ventoMax: maxFinito(pontos, 'tws'),
+    rajadaMax: maxFinito(pontos, 'rajada'),
+    ondasMax: maxFinito(pontos, 'ondas'),
     viragens,
     cambadelas,
     // Nome enganador (mantido: cherry-picks futuros dependem dele) — é o total de horas à vela,

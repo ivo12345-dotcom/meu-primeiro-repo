@@ -29,8 +29,8 @@
 // "Não recomendada sozinho" (só com tripulação "so"), no cenário pessimista:
 //   - vento médio > 22 nós, rajadas > 30 ou ondas > 3 m;
 //   - mais de 8 h equivalentes ao leme: todas as horas contam, à vela e a motor, e o motor
-//     em calma (vento < 10 nós e ondas < 1,5 m) conta metade. Sem ondas previstas (sem
-//     dados do mar) nunca é calma;
+//     em calma (vento < 10 nós e ondas < 1,5 m) conta metade. Sem vento ou sem ondas
+//     previstos (null) nunca é calma;
 //   - chegada de noite a um porto com `conhecido: false`. Conta a chegada de noite no
 //     cenário pessimista OU no provável (a chegada mais provável de noite também conta).
 
@@ -87,7 +87,8 @@ function horasLemeEquivalentes (pontos, opcoes = {}) {
   const o = { ...PADRAO, ...opcoes }
   let min = 0
   for (const p of pontos) {
-    const calma = p.motor && p.tws < o.calmaVento && p.ondas != null && p.ondas < o.calmaOndas
+    // vento ou ondas sem previsão (null) nunca é calma: conta inteiro
+    const calma = p.motor && Number.isFinite(p.tws) && p.tws < o.calmaVento && Number.isFinite(p.ondas) && p.ondas < o.calmaOndas
     min += calma ? 0.5 : 1
   }
   return min / 60

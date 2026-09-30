@@ -18,6 +18,9 @@
 // quantil CONTRÁRIO ao do vento que decide (pessimista: a polar no vento P10). Porquê: sem
 // modelo, P10 = P50 = P90 = a polar; com a polar no vento P90, o pessimista andava MAIS
 // depressa, porque mais vento dá mais velocidade na polar (ronda B).
+// VENTO SEM PREVISÃO (null, `semDados` de lib/previsao.js): tws, rajada e twsPolar ficam null,
+// nunca 0 — desconhecido não é calmo. O lib/passagem.js vai então a motor, sem mexer nos rizos,
+// e o lib/seguranca.js não conta essas horas como calma.
 // SEM MODELO ventoForca: a razão é 0,9 / 1 / 1,1 (vento ±10%). Sem modelo ventoDirecao: a
 // direção prevista tal e qual. Sem modelo da velocidade: a polar. Sem modelo do consumo: a
 // curva da Volvo (lib/base.js). Tudo isto vai escrito na nota da AI do resultado.
@@ -80,17 +83,20 @@ function criarCenarios ({ tempoBruto, modelos = {}, polar, obtida, tendPressao3h
     const tempo = (lat, lon, t) => {
       const { w, razao, twd, corrigido } = correcao(lat, lon, t)
       const r = razao[q.vento]
+      // sem previsão (null): fica null, nunca 0 (calma) por coerção de null × razão; a rajada em
+      // falta não cai no vento médio. Quem consome trata o null como desconhecido.
+      const vezes = (x, f) => (Number.isFinite(x) ? x * f : null)
       return {
         ...w,
-        tws: w.tws * r,
-        rajada: (w.rajada ?? w.tws) * r,
+        tws: vezes(w.tws, r),
+        rajada: vezes(w.rajada, r),
         twd,
         prevTws: w.tws, // em bruto, para o modelo da velocidade
         prevRajada: w.rajada,
         prevTwd: w.twd, // em bruto: o lib/passagem.js tira dela o twaPrevAbs (prevTwdDe)
         // a direção é a corrigida pelo modelo ventoDirecao: o lib/passagem.js exige então a prevTwd
         ...(corrigido ? { corrigido: true } : {}),
-        twsPolar: w.tws * razao[q.ventoPolar] // o vento corrigido em que se lê a polar
+        twsPolar: vezes(w.tws, razao[q.ventoPolar]) // o vento corrigido em que se lê a polar
       }
     }
     const velocidadeVela = ({ twa, twaPrevAbs, rizos, w, rumo }) => {

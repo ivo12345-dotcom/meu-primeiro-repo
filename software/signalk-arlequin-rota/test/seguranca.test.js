@@ -266,3 +266,49 @@ test('previsão sem dados (semDados de lib/previsao.js) de ondas, rajada ou vent
   // uma passagem com a previsão completa não tem avisos
   assert.deepEqual(s.avaliar(base()).avisos, [])
 })
+
+test('vento sem previsão (null) nunca é calma: o motor nessas horas conta inteiro ao leme', () => {
+  // motor, ondas de 1 m, mas o vento é desconhecido: não é "motor em calma"
+  assert.equal(s.horasLemeEquivalentes(passagem({ min: 900, ponto: { motor: true, tws: null, ondas: 1 } }).pontos), 15)
+  assert.equal(s.horasLemeEquivalentes(passagem({ min: 900, ponto: { motor: true, tws: undefined, ondas: 1 } }).pontos), 15)
+})
+
+test('"Sair agora" com vento sem previsão em parte da rota (cenários + passagem + segurança): aviso vermelho, motor sem rizos, horas desconhecidas contam inteiras, sem NaN', () => {
+  const { criarCenarios } = require('../lib/cenarios')
+  const { simularPassagem } = require('../lib/passagem')
+  const { carregarPolar } = require('../lib/base')
+  // 12 nós de través até 39,05°; daí para norte a previsão não tem vento nem rajada
+  const tempoBruto = (lat) => (lat < 39.05
+    ? { tws: 12, rajada: 15, twd: 270, chuva: 0, visibilidade: 20000, radiacao: 0, ondas: 1, periodo: 8, ondasDir: 270, corrente: 0, correnteDir: 0 }
+    : { tws: null, rajada: null, twd: null, chuva: 0, visibilidade: 20000, radiacao: 0, ondas: 1, periodo: 8, ondasDir: 270, corrente: 0, correnteDir: 0, semDados: ['tws', 'rajada', 'twd'] })
+  const k = criarCenarios({ tempoBruto, modelos: {}, polar: carregarPolar(), obtida: 0 })
+  const alternativa = { afastamento: 5, excluida: false, avisos: [], pontos: [{ nome: 'A', lat: 39, lon: -9.5, costaLivre: true }, { nome: 'B', lat: 39 + 10 / 60, lon: -9.5, perna: 'linha' }] }
+  const sim = {}
+  for (const n of ['pessimista', 'provavel']) {
+    sim[n] = simularPassagem({ rota: alternativa.pontos, partida: Date.UTC(2026, 8, 29, 12), tempo: k[n].tempo, velocidadeVela: k[n].velocidadeVela, consumo: k[n].consumo, noite: () => false, opcoes: { motorNasAproximacoes: false } })
+  }
+  const pe = sim.pessimista
+  assert.equal(pe.resumo.chegou, true)
+  const desconhecidos = pe.pontos.filter(p => p.semDados)
+  assert.ok(desconhecidos.length > 30)
+  for (const p of desconhecidos) {
+    assert.equal(p.tws, null) // nunca 0
+    assert.equal(p.rajada, null)
+    assert.equal(p.motor, true) // vento desconhecido: motor
+    assert.equal(p.rizos, 0) // e os rizos ficam como estavam
+  }
+  // nada de NaN no resumo nem nos pontos; os máximos ignoram o desconhecido
+  for (const [chave, v] of Object.entries(pe.resumo)) assert.ok(!Number.isNaN(v), chave)
+  for (const p of pe.pontos) for (const [chave, v] of Object.entries(p)) assert.ok(!Number.isNaN(v), chave)
+  assert.ok(Math.abs(pe.resumo.ventoMax - 13.2) < 1e-9)
+  assert.ok(Math.abs(pe.resumo.rajadaMax - 16.5) < 1e-9)
+  // os eventos não falam de "vento 0 nós" nem de "null"
+  assert.ok(!pe.eventos.some(e => /vento 0 nós|null|NaN/.test(e.texto)), pe.eventos.map(e => e.texto).join(' | '))
+  assert.ok(pe.eventos.some(e => /Motor ligado \(sem previsão de vento\)/.test(e.texto)))
+  // a segurança: aviso vermelho em "sair agora"; todas as horas contam inteiras (nenhuma é calma)
+  const r = s.avaliar({ alternativa, pessimista: pe, provavel: sim.provavel, destino: { nome: 'B', conhecido: true }, tripulacao: 'so', sairAgora: true, gasoleoInicial: 100, costaMinMn: 5 })
+  assert.equal(r.excluida, false)
+  assert.deepEqual(r.avisosVermelhos, ['sem previsão de vento e rajadas em parte da rota: desconhecido não conta como calmo'])
+  assert.equal(r.horasLemeEq, pe.pontos.length / 60)
+  assert.ok(!JSON.stringify(r).match(/null|NaN/))
+})
