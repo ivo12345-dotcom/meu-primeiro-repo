@@ -1,0 +1,154 @@
+'use strict'
+const test = require('node:test')
+const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const os = require('node:os')
+const path = require('node:path')
+const zlib = require('node:zlib')
+const c = require('../lib/costa')
+const prev = require('../lib/previsao')
+
+const H = 3600000
+const FIX = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(__dirname, 'fixtures', 'previsao-2026-09-29.json.gz'))))
+const PONTOS = FIX.pontos.map(c.P)
+const P29 = prev.interpretar(PONTOS, FIX.forecast, FIX.marine, FIX.obtidaSimulada)
+const T = (iso) => Date.parse(iso)
+const temp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'rota-prev-'))
+
+test('urls: vários pontos num pedido, 48 h, UTC, nós; mais de 60 pontos em dois pedidos', () => {
+  const [g] = prev.urls(PONTOS)
+  assert.match(g.forecast, /^https:\/\/api\.open-meteo\.com\/v1\/forecast\?latitude=38\.696,38\.61,/)
+  assert.match(g.forecast, /hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,visibility,shortwave_radiation/)
+  assert.match(g.forecast, /wind_speed_unit=kn&timezone=UTC&forecast_hours=48/)
+  assert.match(g.marine, /^https:\/\/marine-api\.open-meteo\.com\/v1\/marine\?/)
+  assert.match(g.marine, /hourly=wave_height,wave_period,wave_direction,ocean_current_velocity,ocean_current_direction,sea_level_height_msl/)
+  assert.match(g.marine, /cell_selection=sea&wind_speed_unit=kn/)
+  const muitos = Array.from({ length: 61 }, (_, i) => ({ lat: 38 + i / 100, lon: -9.5 }))
+  const gs = prev.urls(muitos)
+  assert.equal(gs.length, 2)
+  assert.equal(gs[1].pontos.length, 1)
+  assert.equal(gs[0].forecast.match(/latitude=([^&]*)/)[1].split(',').length, 60)
+})
+
+test('pontos da previsão: a linha de 5 MN de ~10 em ~10 MN, a partida, o destino e Cascais', () => {
+  const costa = c.carregarCosta()
+  const pts = prev.pontosPrevisao(costa.linha(5), { partida: { lat: 38.6955, lon: -9.233 }, destino: { lat: 39.353, lon: -9.377 } })
+  assert.deepEqual(pts[0], { lat: 38.696, lon: -9.233 })
+  assert.ok(pts.some(p => p.lat === 39.353 && p.lon === -9.377))
+  assert.ok(pts.some(p => p.lat === 38.69 && p.lon === -9.42))
+  assert.ok(pts.length >= 7 && pts.length <= 12, `${pts.length} pontos`)
+  // nenhum par a menos de 1 MN
+  for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) assert.ok(c.distanciaMn(pts[i], pts[j]) >= 1)
+})
+
+test('interpretar: 9 pontos da fixture de 29/09, horas UTC, corrente em nós, o mar junto pela hora', () => {
+  assert.equal(P29.pontos.length, 9)
+  const p = P29.pontos[5]
+  assert.equal(p.t[0], T('2026-09-29T00:00Z'))
+  assert.equal(p.t.length, 72)
+  assert.equal(p.tws[15], FIX.forecast[5].hourly.wind_speed_10m[15])
+  assert.equal(p.ondas[15], FIX.marine[5].hourly.wave_height[15])
+  assert.equal(p.nivel[15], FIX.marine[5].hourly.sea_level_height_msl[15])
+  assert.equal(P29.inicio, T('2026-09-29T00:00Z'))
+  assert.equal(P29.fim, T('2026-10-01T23:00Z'))
+  // um só ponto (objeto, não lista), em km/h e com fuso: converte
+  const um = prev.interpretar([{ lat: 39, lon: -9 }], { utc_offset_seconds: 3600, hourly_units: { wind_speed_10m: 'km/h' }, hourly: { time: ['2026-09-29T15:00'], wind_speed_10m: [18.52] } }, null, 0)
+  assert.equal(um.pontos[0].t[0], T('2026-09-29T14:00Z'))
+  assert.ok(Math.abs(um.pontos[0].tws[0] - 10) < 1e-9)
+  assert.deepEqual(um.pontos[0].ondas, [null])
+  assert.throws(() => prev.interpretar(PONTOS, FIX.forecast.slice(1), FIX.marine, 0), /8 pontos em vez de 9/)
+})
+
+test('tempo: o ponto mais perto, linear no tempo, ângulos por seno e cosseno', () => {
+  const tempo = prev.criarTempo(P29)
+  const p = P29.pontos[5] // linha 5 MN 5, ao largo de Santa Cruz
+  const h15 = T('2026-09-29T15:00Z')
+  const w = tempo(p.lat + 0.01, p.lon, h15)
+  assert.equal(w.tws, p.tws[15])
+  assert.equal(w.rajada, p.rajada[15])
+  assert.equal(w.visibilidade, p.visibilidade[15])
+  const meio = tempo(p.lat, p.lon, h15 + 20 * 60000)
+  assert.ok(Math.abs(meio.tws - (p.tws[15] + (p.tws[16] - p.tws[15]) / 3)) < 1e-9)
+  assert.ok(Math.abs(meio.radiacao - (p.radiacao[15] + (p.radiacao[16] - p.radiacao[15]) / 3)) < 1e-9)
+  // o vento de 29/09 à tarde: S forte, como diz o relatório da fixture
+  assert.ok(w.tws > 18 && w.twd > 150 && w.twd < 220, `${w.tws} nós de ${w.twd}°`)
+  // em Peniche é a série de Peniche
+  assert.equal(tempo(39.35, -9.38, h15).tws, P29.pontos[7].tws[15])
+  // ângulos: 350° → 10° a meio dá 0°, não 180°
+  const sint = { obtida: 0, inicio: 0, fim: H, pontos: [{ lat: 39, lon: -9, t: [0, H], tws: [10, 20], twd: [350, 10], ondasDir: [null, 300], corrente: [null, null] }] }
+  const w2 = prev.criarTempo(sint)(39, -9, H / 2)
+  assert.equal(w2.tws, 15)
+  assert.ok(Math.abs(c.dif(w2.twd, 0)) < 1e-9)
+  assert.equal(w2.ondasDir, 300) // um lado a null: fica o outro
+  assert.equal(w2.corrente, null)
+  assert.equal(w2.chuva, null) // campo que não há
+  // fora das horas: fica na ponta
+  assert.equal(prev.criarTempo(sint)(39, -9, 5 * H).tws, 20)
+})
+
+test('nível do mar de Cascais para a maré', () => {
+  const n = prev.nivelDoMar(P29)
+  assert.equal(n.t.length, 72)
+  assert.deepEqual(n.nivel, FIX.marine[8].hourly.sea_level_height_msl)
+  assert.equal(prev.nivelDoMar({ pontos: [{ lat: 41, lon: -9, t: [0], nivel: [1] }] }), null) // longe de Cascais
+})
+
+test('obterPrevisao: fetch injetado; o mar falhado fica a null; erro do forecast rebenta', async () => {
+  const pedidos = []
+  const fetchOk = async (u) => { pedidos.push(u); return { ok: true, json: async () => (u.includes('marine') ? FIX.marine : FIX.forecast) } }
+  const r = await prev.obterPrevisao({ pontos: PONTOS, agora: T(FIX.obtidaSimulada), fetch: fetchOk })
+  assert.deepEqual(r, P29)
+  assert.equal(pedidos.length, 2)
+  const semMar = await prev.obterPrevisao({ pontos: PONTOS, agora: 0, fetch: async (u) => (u.includes('marine') ? { ok: false, status: 502 } : { ok: true, json: async () => FIX.forecast }) })
+  assert.deepEqual(semMar.pontos[0].ondas.slice(0, 2), [null, null])
+  await assert.rejects(prev.obterPrevisao({ pontos: PONTOS, fetch: async () => ({ ok: false, status: 503 }) }), /503/)
+})
+
+test('arquivo: um ficheiro por ponto no formato da Parte 2, escrita atómica, nomes sem ":"', () => {
+  const pasta = temp()
+  const fs1 = prev.guardarArquivo(pasta, P29)
+  assert.equal(fs1.length, 9)
+  assert.equal(path.basename(fs1[0]), '2026-09-29T14-00-38.696_-9.233.json.gz')
+  assert.equal(path.basename(fs1[1]), '2026-09-29T14-00-38.610_-9.460.json.gz')
+  assert.deepEqual(fs.readdirSync(pasta).filter(n => n.endsWith('.tmp')), [])
+  const r = JSON.parse(zlib.gunzipSync(fs.readFileSync(fs1[5])))
+  assert.deepEqual(Object.keys(r), ['obtida', 'lat', 'lon', 'horas', 'tws', 'rajada', 'twd', 'ondas', 'periodo', 'ondasDir'])
+  assert.equal(r.obtida, '2026-09-29T14:00:00.000Z')
+  assert.equal(r.horas[15], '2026-09-29T15:00:00Z')
+  assert.deepEqual(r.tws, P29.pontos[5].tws)
+})
+
+test('sem rede: a mais recente que cubra a rota, com a idade e os avisos; sem nenhuma, explica', () => {
+  const pasta = temp()
+  prev.guardarArquivo(pasta, P29) // obtida 29/09 14:00
+  // uma mais nova, só com 2 pontos (não cobre Peniche): não serve para Peniche
+  prev.guardarArquivo(pasta, { ...P29, obtida: '2026-09-29T18:00:00.000Z', pontos: P29.pontos.slice(0, 2).map(p => ({ ...p, tws: p.tws.map(x => x + 1) })) })
+  const rota = [PONTOS[0], PONTOS[3], PONTOS[7]]
+  const desde = T('2026-09-29T15:00Z'); const ate = T('2026-09-30T06:00Z')
+  const r = prev.lerArquivo(pasta, { pontos: rota, desde, ate, agora: T('2026-09-29T19:00Z') })
+  assert.equal(r.erro, undefined)
+  assert.equal(r.obtida, '2026-09-29T14:00:00.000Z') // a mais velha das escolhidas
+  assert.equal(r.idadeH, 5)
+  assert.equal(r.aviso, null)
+  assert.equal(r.previsao.pontos.length, 3)
+  assert.equal(r.previsao.pontos[0].t[0], T('2026-09-29T00:00Z'))
+  // o ponto de Algés veio da mais nova (18:00, com +1 nó), e do ponto de Algés, não do outro dela
+  const tempo = prev.criarTempo(r.previsao)
+  assert.equal(tempo(PONTOS[0].lat, PONTOS[0].lon, T('2026-09-29T16:00Z')).tws, P29.pontos[0].tws[16] + 1)
+  assert.equal(r.previsao.pontos[0].lat, PONTOS[0].lat)
+  assert.equal(tempo(PONTOS[0].lat, PONTOS[0].lon, T('2026-09-29T16:00Z')).chuva, null) // não se arquiva
+  const velha = prev.lerArquivo(pasta, { pontos: rota, desde, ate, agora: T('2026-09-29T21:30Z') })
+  assert.equal(velha.aviso, 'aviso')
+  assert.equal(velha.texto, 'Previsão guardada há 8 h (sem rede)')
+  const muito = prev.lerArquivo(pasta, { pontos: rota, desde, ate: T('2026-09-30T20:00Z'), agora: T('2026-09-30T03:00Z') })
+  assert.equal(muito.aviso, 'grande')
+  assert.equal(muito.texto, 'Previsão velha: a mais recente guardada tem 13 h (sem rede)')
+  // não cobre: horas a mais, ponto longe, pasta vazia
+  assert.deepEqual(prev.lerArquivo(pasta, { pontos: rota, desde, ate: T('2026-10-02T06:00Z'), agora: T('2026-09-29T19:00Z') }), { erro: 'não há previsão guardada que cubra a rota' })
+  assert.match(prev.lerArquivo(pasta, { pontos: [{ lat: 41, lon: -9 }], desde, ate, agora: T('2026-09-29T19:00Z') }).erro, /não há previsão/)
+  assert.match(prev.lerArquivo(path.join(pasta, 'nada'), { pontos: rota, desde, ate }).erro, /não há previsão/)
+  // as do plugin da AI (um ponto, nome sem posição) também servem
+  const ia = temp()
+  fs.writeFileSync(path.join(ia, '2026-09-29T14-00.json.gz'), zlib.gzipSync(JSON.stringify(prev.registoParte2(P29.obtida, P29.pontos[3]))))
+  assert.equal(prev.lerArquivo(ia, { pontos: [PONTOS[3]], desde, ate, agora: T('2026-09-29T15:00Z') }).previsao.pontos.length, 1)
+})
