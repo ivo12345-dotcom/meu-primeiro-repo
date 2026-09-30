@@ -230,11 +230,23 @@ function ventoDoMarNaRota (costa, linha, pontos, { twd, horaPartida }, o) {
   return null
 }
 
+// O rumo (graus) do ponto de terra mais perto de q: dos rumos de 5 em 5°, aquele em que o ponto
+// à distância da terra fica mais perto dela. Para os troços que não estão numa linha (a linha
+// mais perto pode ser a do outro lado de um canal).
+function rumoTerraMaisPerto (costa, q) {
+  const d = costa.distanciaTerra(q, 50)
+  if (!Number.isFinite(d) || d === 0) return null
+  let melhor = null
+  for (let rumo = 0; rumo < 360; rumo += 5) {
+    const x = costa.distanciaTerra(c.deslocar(q, rumo, d), 50)
+    if (!melhor || x < melhor.x) melhor = { rumo, x }
+  }
+  return melhor.rumo
+}
+
 // Nos saltos curtos (sem linha): os pontos dos troços fora das aproximações, de 2 em 2 MN no
-// máximo; a normal para terra é a da linha dos 3 MN mais perto de cada ponto.
+// máximo; a normal para terra é o rumo do ponto de terra mais perto.
 function ventoDoMarNoDireto (costa, pontos, costaMinMn, { twd, horaPartida }, o) {
-  const linha = costa.linha(o.afastamentoVentoTerra)
-  if (!linha) return null
   const motivo = `vento do mar em parte da rota: a rota direta passa a ${fmtMn(costaMinMn)} MN de uma costa a sotavento`
   let milhas = 0
   for (let i = 1; i < pontos.length; i++) {
@@ -246,7 +258,8 @@ function ventoDoMarNoDireto (costa, pontos, costaMinMn, { twd, horaPartida }, o)
         const q = { lat: a.lat + (b.lat - a.lat) * k / n, lon: a.lon + (b.lon - a.lon) * k / n }
         const vento = ventoEm(twd, q, milhas + L * k / n, horaPartida, o)
         if (!Number.isFinite(vento)) return `a menos de ${o.afastamentoVentoTerra} MN da costa só com vento de terra, e não há vento previsto para a rota`
-        if (!ventoDeTerra(costa, linha, c.projetar(linha, q).s, vento, o.toleranciaVento)) return motivo
+        const paraTerra = rumoTerraMaisPerto(costa, q)
+        if (paraTerra != null && Math.abs(c.dif(vento, paraTerra)) > o.toleranciaVento) return motivo
       }
     }
     milhas += L
