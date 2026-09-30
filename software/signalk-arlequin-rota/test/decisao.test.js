@@ -1,0 +1,118 @@
+'use strict'
+const test = require('node:test')
+const assert = require('node:assert/strict')
+const d = require('../lib/decisao')
+
+const H = 3600000
+const AGORA = Date.UTC(2026, 8, 29, 14, 32) // 15:32 em Lisboa
+
+test('custo: a fórmula do desenho (os dois exemplos de 29/09 do desenho geral)', () => {
+  // partir agora por fora: 14,3 h, 10,4 h de noite, 14,3 h ao leme, rajada 27, ondas 2,6
+  const agora = d.custo({ resumo: { duracaoH: 14.3, horasNoite: 10.4, rajadaMax: 27, ondasMax: 2.6 }, esperaH: 0, tripulacao: 'so', lemeEq: 14.3, contraVentoH: 0 })
+  assert.ok(Math.abs(agora.total - 48.9) < 1e-9, `${agora.total}`)
+  assert.deepEqual(Object.keys(agora.partes), ['horas', 'espera', 'noite', 'leme', 'rajada', 'ondas', 'contraVento'])
+  // amanhã às 08:00 a motor: 12,2 h, espera 16,4 h, ~0,93 h de noite, 6,1 h equivalentes
+  const depois = d.custo({ resumo: { duracaoH: 12.2, horasNoite: 1.4 / 1.5, rajadaMax: 15, ondasMax: 1.2 }, esperaH: 16.4, tripulacao: 'so', lemeEq: 6.1, contraVentoH: 0 })
+  assert.ok(Math.abs(depois.total - 23.8) < 1e-9, `${depois.total}`)
+  // acompanhado: as horas ao leme não contam; contra o vento conta metade
+  const acomp = d.custo({ resumo: { duracaoH: 10, horasNoite: 0, rajadaMax: 10, ondasMax: 1 }, tripulacao: 'acompanhado', lemeEq: 10, contraVentoH: 4 })
+  assert.equal(acomp.total, 12)
+  // sem ondas previstas (NaN/-Infinity no resumo) não soma nada
+  assert.equal(d.custo({ resumo: { duracaoH: 1, horasNoite: 0, rajadaMax: 0, ondasMax: -Infinity } }).total, 1)
+})
+
+test('horas contra o vento: vento de 7 nós ou mais a ≤ 50° da proa', () => {
+  const p = (proa, twd, tws = 12) => ({ proa, twd, tws })
+  const pontos = [...Array(60).fill(p(0, 45)), ...Array(60).fill(p(0, 90)), ...Array(30).fill(p(10, 0, 5)), ...Array(30).fill(p(350, 30))]
+  assert.equal(d.horasContraVento(pontos), 1.5)
+})
+
+test('partidas: agora, +3, +6 … +48 h arredondadas à meia hora, antes do fim da previsão; sair agora só agora', () => {
+  const l = d.partidas(AGORA)
+  assert.equal(l.length, 17)
+  assert.equal(l[0], AGORA)
+  assert.equal(new Date(l[1]).toISOString(), '2026-09-29T17:30:00.000Z')
+  assert.equal(new Date(l[16]).toISOString(), '2026-10-01T14:30:00.000Z')
+  assert.deepEqual(d.partidas(AGORA, { sairAgora: true }), [AGORA])
+  assert.equal(d.partidas(AGORA, { fim: AGORA + 10 * H }).length, 4)
+  assert.equal(d.quando(AGORA + H, AGORA), 'às 16:32')
+  assert.equal(d.quando(Date.UTC(2026, 8, 30, 7), AGORA), 'amanhã às 08:00')
+  assert.equal(d.quando(Date.UTC(2026, 9, 1, 7), AGORA), 'dia 1 às 08:00')
+})
+
+// Candidato inventado.
+let n = 0
+function cand ({ partida = AGORA, custo = 20, excluida = false, naoRecomendada = false, motivos = [], afastamento = 5, propulsao = 'vela', chegada = partida + 12 * H, noite = false } = {}) {
+  return {
+    id: `c${n++}`, partida, esperaH: (partida - AGORA) / H, afastamento, propulsao, milhas: 60, excluida, naoRecomendada, motivos,
+    custo: { total: custo }, chegadaNoite: noite,
+    resumos: { provavel: { chegada: new Date(chegada).toISOString(), ventoMax: 15, ondasMax: 2 } }
+  }
+}
+
+test('veredicto "Segue": a melhor recomendada parte agora', () => {
+  const r = d.decidir({ candidatos: [cand({ custo: 30 }), cand({ partida: AGORA + 3 * H, custo: 31 }), cand({ custo: 20, afastamento: 8 })], agora: AGORA, tripulacao: 'so' })
+  assert.equal(r.veredicto.tipo, 'segue')
+  assert.equal(r.veredicto.texto, 'Segue')
+  assert.equal(r.veredicto.porque.length, 1)
+  assert.match(r.veredicto.porque[0], /^Parte agora pela rota a 8 MN: chegas amanhã às 03:32 \(de dia\), vento até 15 nós, ondas até 2,0 m\.$/)
+  assert.deepEqual(r.top.map(c => c.custo.total), [20, 30, 31])
+})
+
+test('veredicto "Espera até às HH:MM": a melhor recomendada parte mais tarde; as não recomendadas ficam atrás (sozinho)', () => {
+  const agoraNr = cand({ custo: 10, naoRecomendada: true, motivos: ['rajadas até 34 nós no pior caso (limite 30 sozinho)', '16,5 h equivalentes ao leme (limite 8 h sozinho)'] })
+  const amanha = cand({ partida: Date.UTC(2026, 8, 30, 7), custo: 24 })
+  const excl = cand({ custo: 1, excluida: true, motivos: ['a rota passa a 4,2 MN da costa (mínimo 5 MN)'] })
+  const r = d.decidir({ candidatos: [agoraNr, amanha, excl], agora: AGORA, tripulacao: 'so' })
+  assert.equal(r.veredicto.tipo, 'espera')
+  assert.equal(r.veredicto.texto, 'Espera até amanhã às 08:00')
+  assert.equal(r.veredicto.porque[0], 'Agora: rajadas até 34 nós no pior caso (limite 30 sozinho) e 16,5 h equivalentes ao leme (limite 8 h sozinho).')
+  assert.match(r.veredicto.porque[1], /^Partindo amanhã às 08:00, pela rota a 5 MN: /)
+  assert.deepEqual(r.top.map(c => c.id), [amanha.id, agoraNr.id]) // a excluída nunca aparece
+  // mesmo dia: "Espera até às 18:30"
+  const logo = d.decidir({ candidatos: [agoraNr, cand({ partida: Date.UTC(2026, 8, 29, 17, 30), custo: 30 })], agora: AGORA, tripulacao: 'so' })
+  assert.equal(logo.veredicto.texto, 'Espera até às 18:30')
+  // acompanhado, a "não recomendada" não conta: segue
+  assert.equal(d.decidir({ candidatos: [agoraNr, amanha], agora: AGORA, tripulacao: 'acompanhado' }).veredicto.tipo, 'segue')
+})
+
+test('veredicto "Não recomendado sozinho": nenhuma recomendada; com "sair agora" mostra a de menor custo', () => {
+  const a = cand({ custo: 40, naoRecomendada: true, motivos: ['14,5 h equivalentes ao leme (limite 8 h sozinho)'] })
+  const b = cand({ partida: AGORA + 15 * H, custo: 39, naoRecomendada: true, motivos: ['15,4 h equivalentes ao leme (limite 8 h sozinho)'] })
+  const r = d.decidir({ candidatos: [a, b], agora: AGORA, tripulacao: 'so' })
+  assert.equal(r.veredicto.tipo, 'nao-recomendado')
+  assert.equal(r.veredicto.texto, 'Não recomendado sozinho')
+  assert.equal(r.veredicto.porque.length, 2)
+  assert.match(r.veredicto.porque[0], /^Nenhuma partida nas próximas 48 h passa nos limites; a melhor \(a 5 MN, amanhã às 06:32\): 15,4 h equivalentes/)
+  assert.equal(r.veredicto.porque[1], 'Agora: 14,5 h equivalentes ao leme (limite 8 h sozinho).')
+  // "Sair agora mesmo assim": só a de agora (quem chama já só simulou agora), com as não recomendadas
+  const s = d.decidir({ candidatos: [a, cand({ custo: 45, naoRecomendada: true, motivos: ['x'] }), cand({ custo: 42 })], agora: AGORA, tripulacao: 'so', sairAgora: true })
+  assert.deepEqual(s.top.map(c => c.custo.total), [40, 42, 45]) // só pelo custo
+  assert.equal(s.veredicto.tipo, 'segue') // a melhor recomendada (42) parte agora
+  const s2 = d.decidir({ candidatos: [a], agora: AGORA, tripulacao: 'so', sairAgora: true })
+  assert.equal(s2.veredicto.tipo, 'nao-recomendado')
+  assert.equal(s2.top.length, 1)
+  assert.match(s2.veredicto.porque[1], /pontos de desistência/)
+  // tudo excluído (acompanhado): "Não recomendado" com o motivo
+  const e = d.decidir({ candidatos: [], agora: AGORA, tripulacao: 'acompanhado', excluidasAgora: ['não há passagem a 5 MN entre A e B'] })
+  assert.equal(e.veredicto.texto, 'Não recomendado')
+  assert.equal(e.veredicto.porque[0], 'Agora: não há passagem a 5 MN entre A e B.')
+})
+
+test('veredicto "Volta ou abriga-te em X": só no mar, continuar não é recomendado e o abrigo é', () => {
+  const continuar = cand({ custo: 30, naoRecomendada: true, motivos: ['rajadas até 33 nós no pior caso (limite 30 sozinho)'] })
+  const tarde = cand({ partida: AGORA + 6 * H, custo: 35 })
+  const abrigo = { destino: { nome: 'Cascais' }, candidato: { ...cand({ custo: 5, chegada: AGORA + 2 * H }), milhas: 8.2 } }
+  const r = d.decidir({ candidatos: [continuar, tarde], agora: AGORA, tripulacao: 'so', emMar: true, abrigo })
+  assert.equal(r.veredicto.tipo, 'volta')
+  assert.equal(r.veredicto.texto, 'Volta ou abriga-te em Cascais')
+  assert.equal(r.veredicto.porque[0], 'Agora: rajadas até 33 nós no pior caso (limite 30 sozinho).')
+  assert.match(r.veredicto.porque[1], /^Até Cascais são 8,2 MN: chegas às 17:32/)
+  // no porto não há "volta": espera
+  assert.equal(d.decidir({ candidatos: [continuar, tarde], agora: AGORA, tripulacao: 'so', emMar: false, abrigo }).veredicto.tipo, 'espera')
+  // o abrigo também não recomendado: não é "volta"
+  const mau = { destino: { nome: 'Cascais' }, candidato: { ...abrigo.candidato, naoRecomendada: true } }
+  assert.equal(d.decidir({ candidatos: [continuar, tarde], agora: AGORA, tripulacao: 'so', emMar: true, abrigo: mau }).veredicto.tipo, 'espera')
+  // continuar é recomendado: segue
+  assert.equal(d.decidir({ candidatos: [cand({ custo: 30 })], agora: AGORA, tripulacao: 'so', emMar: true, abrigo }).veredicto.tipo, 'segue')
+})
