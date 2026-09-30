@@ -9,7 +9,8 @@
 // O VENTO QUE DECIDE (rizos, motor abaixo de 7 nós, limites de segurança, máximos) é o
 // previsto em bruto × a razão do quantil do cenário, dada pelo modelo ventoForca
 // (modelos.preverVento), e a direção é a corrigida pelo ventoDirecao (P50). A rajada leva a
-// mesma razão.
+// mesma razão. Com a direção corrigida, o `w` leva corrigido: true e a prevTwd em bruto (o
+// lib/passagem.js lança um erro se faltar: nunca duplica a correção no modelo da velocidade).
 // A VELOCIDADE À VELA é modelos.preverVelocidade(velocidade, x, stwPolar)[quantil], com o x
 // da previsão em bruto (contrato do modelos.js: twaPrevAbs = |TWD previsto EM BRUTO − rumo|,
 // que o lib/passagem.js calcula com a prevTwd, nunca o ângulo ao vento corrigido) e stwPolar =
@@ -46,7 +47,7 @@ function criarCorrecaoVento ({ tempoBruto, modelos = {}, obtida, tendPressao3h =
   const cache = new Map()
   return function correcao (lat, lon, t) {
     const w = tempoBruto(lat, lon, t)
-    if (!mF && !mD) return { w, razao: RAZAO_SEM_MODELO, twd: w.twd }
+    if (!mF && !mD) return { w, razao: RAZAO_SEM_MODELO, twd: w.twd, corrigido: false }
     const latCel = Math.floor(lat * 10) / 10
     const lonCel = Math.floor(lon * 10) / 10
     const k = `${latCel}|${lonCel}|${Math.floor(t / 600000)}`
@@ -61,10 +62,11 @@ function criarCorrecaoVento ({ tempoBruto, modelos = {}, obtida, tendPressao3h =
       }
       const v = modelosJs.preverVento(mF, mD, x, w.tws ?? 0, w.twd ?? 0)
       const razao = mF && w.tws > 0 ? { p10: v.tws.p10 / w.tws, p50: v.tws.p50 / w.tws, p90: v.tws.p90 / w.tws } : RAZAO_SEM_MODELO
-      r = { razao, twd: w.twd == null ? null : v.twd }
+      // a direção só se declara corrigida quando há modelo da direção e direção prevista
+      r = { razao, twd: w.twd == null ? null : v.twd, corrigido: !!mD && w.twd != null }
       cache.set(k, r)
     }
-    return { w, razao: r.razao, twd: r.twd }
+    return { w, razao: r.razao, twd: r.twd, corrigido: r.corrigido }
   }
 }
 
@@ -76,7 +78,7 @@ function criarCenarios ({ tempoBruto, modelos = {}, polar, obtida, tendPressao3h
   const out = {}
   for (const [nome, q] of Object.entries(CENARIOS)) {
     const tempo = (lat, lon, t) => {
-      const { w, razao, twd } = correcao(lat, lon, t)
+      const { w, razao, twd, corrigido } = correcao(lat, lon, t)
       const r = razao[q.vento]
       return {
         ...w,
@@ -85,7 +87,9 @@ function criarCenarios ({ tempoBruto, modelos = {}, polar, obtida, tendPressao3h
         twd,
         prevTws: w.tws, // em bruto, para o modelo da velocidade
         prevRajada: w.rajada,
-        prevTwd: w.twd,
+        prevTwd: w.twd, // em bruto: o lib/passagem.js tira dela o twaPrevAbs (prevTwdDe)
+        // a direção é a corrigida pelo modelo ventoDirecao: o lib/passagem.js exige então a prevTwd
+        ...(corrigido ? { corrigido: true } : {}),
         twsPolar: w.tws * razao[q.ventoPolar] // o vento corrigido em que se lê a polar
       }
     }

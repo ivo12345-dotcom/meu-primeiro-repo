@@ -116,3 +116,45 @@ test('cenários com modelos: a razão do vento e a direção do modelo, os quant
   assert.equal(notaIa(modelos), 'AI em uso')
   assert.match(notaIa({ velocidade }), /^AI em uso, sem alguns modelos: vento previsto ±10%/)
 })
+
+test('cenários que corrigem a direção: w.corrigido = true e w.prevTwd em bruto; o motor da passagem dá ao modelo o twaPrevAbs do previsto em bruto', () => {
+  const { simularPassagem } = require('../lib/passagem')
+  const polar = base.carregarPolar()
+  // sem modelo da direção: a direção é a prevista tal e qual, não se declara corrigida
+  const semDir = criarCenarios({ tempoBruto: tempoFixo({ twd: 270 }), modelos: {}, polar, obtida: 0 })
+  const w0 = semDir.pessimista.tempo(39, -9.5, 0)
+  assert.equal(w0.corrigido, undefined)
+  assert.equal(w0.prevTwd, 270)
+  // com o modelo da direção (+20°): twd corrigida 290, prevTwd 270 (em bruto), corrigido
+  const modelos = { ventoDirecao: { quantis: { p50: fixa(20) } } }
+  const k = criarCenarios({ tempoBruto: tempoFixo({ twd: 270 }), modelos, polar, obtida: 0 })
+  for (const nome of ['pessimista', 'provavel', 'otimista']) {
+    const w = k[nome].tempo(39, -9.5, 0)
+    assert.equal(w.twd, 290)
+    assert.equal(w.prevTwd, 270)
+    assert.equal(w.corrigido, true)
+  }
+  // sem direção prevista (null) não há correção a declarar (o prevTwdDe não pode rebentar)
+  const semTwd = criarCenarios({ tempoBruto: tempoFixo({ twd: null }), modelos, polar, obtida: 0 })
+  assert.notEqual(semTwd.provavel.tempo(39, -9.5, 0).corrigido, true)
+  // pelo motor da passagem: rumo 000°, vento corrigido de 290° (twa −70°, a polar), previsto de 270° (twaPrevAbs 90°)
+  const mod = require('signalk-arlequin-ia/lib/modelos')
+  const orig = mod.preverVelocidade
+  const vistos = []
+  mod.preverVelocidade = (m, x, s) => { vistos.push({ x, s }); return orig(m, x, s) }
+  try {
+    const c = k.provavel
+    simularPassagem({
+      rota: [{ nome: 'A', lat: 39, lon: -9.5 }, { nome: 'B', lat: 39 + 5 / 60, lon: -9.5 }],
+      partida: Date.UTC(2026, 8, 29, 12),
+      tempo: c.tempo,
+      velocidadeVela: c.velocidadeVela,
+      consumo: c.consumo,
+      noite: () => false,
+      opcoes: { motorNasAproximacoes: false }
+    })
+  } finally { mod.preverVelocidade = orig }
+  assert.ok(vistos.length > 0)
+  assert.ok(Math.abs(vistos[0].x.twaPrevAbs - 90) < 1e-6, `twaPrevAbs ${vistos[0].x.twaPrevAbs}`)
+  assert.ok(Math.abs(vistos[0].s - base.velocidadePolar(polar, 70, 10)) < 1e-6) // a polar no vento corrigido
+})
