@@ -233,7 +233,7 @@ test('canal com ondasMax (Canal da Berlenga, decisão do Ivo): excluída quando 
   assert.equal(s.avaliar(base({ pessimista: rasto(rota(5), () => 3), tripulacao: 'acompanhado' })).excluida, false)
 })
 
-test('previsão sem dados (semDados de lib/previsao.js) de ondas, rajada ou vento: desconhecido não é calmo → excluída; aproximado ou outros campos sem dados → só aviso', () => {
+test('previsão sem dados (semDados de lib/previsao.js) de ondas, rajada ou vento: desconhecido não é calmo → excluída (aviso vermelho em "sair agora"); aproximado ou outros campos sem dados → só aviso', () => {
   const comPonto = (extra, qual = 'pessimista') => {
     const p = passagem()
     Object.assign(p.pontos[100], extra)
@@ -248,8 +248,11 @@ test('previsão sem dados (semDados de lib/previsao.js) de ondas, rajada ou vent
   assert.deepEqual(vento.avisos, ['sem previsão de corrente em parte da rota'])
   // também no cenário provável (a mesma previsão)
   assert.equal(s.avaliar(comPonto({ semDados: ['rajada'] }, 'provavel')).excluida, true)
-  // em "sair agora" também (não é um aviso vermelho: o tempo é desconhecido)
-  assert.equal(s.avaliar({ ...comPonto({ semDados: ['ondas'] }), sairAgora: true }).excluida, true)
+  // em "sair agora" não é excluída: passa a aviso vermelho (como o gasóleo e a bateria)
+  const agora = s.avaliar({ ...comPonto({ semDados: ['ondas', 'tws'] }), sairAgora: true })
+  assert.equal(agora.excluida, false)
+  assert.deepEqual(agora.motivos, [])
+  assert.deepEqual(agora.avisosVermelhos, ['sem previsão de vento e ondas em parte da rota: desconhecido não conta como calmo'])
   // outros campos sem dados: não exclui, fica um aviso
   const corrente = s.avaliar(comPonto({ semDados: ['corrente', 'correnteDir'] }))
   assert.equal(corrente.excluida, false)
