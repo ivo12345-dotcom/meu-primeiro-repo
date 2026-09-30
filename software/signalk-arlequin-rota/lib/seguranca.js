@@ -13,7 +13,8 @@
 //     (as linhas estão a d ± 0,05 MN da terra; nos dados reais até 0,055 MN por dentro).
 //     A rota direta (salto curto, `direto`, afastamento null) não tem linha: não se lhe aplica
 //     este mínimo (o rotas.js já só a deixa perto de terra com vento de terra) e a distância
-//     que fica é a real, costaMinMn do rotas.js.
+//     que fica é a real, costaMinMn do rotas.js. Fora da rota direta, a distância desconhecida
+//     (null: não dada, sem costa, sem troços de linha) exclui: "distância à costa desconhecida".
 // Excluída sempre, numa variante por um canal com `ondasMax` (lib/rotas.js: o Canal da Berlenga,
 //   decisão do Ivo de 30/09, só com ondas < 3 m): a onda máxima do cenário pessimista nos troços
 //   do canal (perna 'canal' e as ligações que chegam a ele e saem dele) ≥ ondasMax. Contam os
@@ -175,9 +176,15 @@ function avaliar ({ alternativa, pessimista, provavel, destino, tripulacao, sair
     out.costaMinMn = Number.isFinite(alternativa.costaMinMn) ? alternativa.costaMinMn : (Number.isFinite(costaMinMn) ? costaMinMn : null)
   } else {
     const minimo = minimoCosta(alternativa.afastamento, o)
-    const dCosta = costaMinMn !== undefined ? costaMinMn : distanciaRotaCosta(costa, alternativa.pontos, o)?.mn ?? null
+    const medida = costaMinMn !== undefined ? costaMinMn : (costa ? distanciaRotaCosta(costa, alternativa.pontos, o)?.mn : null)
+    const dCosta = Number.isFinite(medida) ? medida : null
     out.costaMinMn = dCosta
-    if (dCosta != null && dCosta < minimo - o.toleranciaMn) {
+    if (dCosta == null) {
+      // sem distância (não dada, sem costa ou sem troços de linha para medir): desconhecida não
+      // passa o mínimo — falha para o lado seguro
+      out.excluida = true
+      out.motivos.push('distância à costa desconhecida')
+    } else if (dCosta < minimo - o.toleranciaMn) {
       out.excluida = true
       out.motivos.push(`a rota passa a ${virgula(dCosta)} MN da costa (mínimo ${inteiro(minimo)} MN)`)
     }

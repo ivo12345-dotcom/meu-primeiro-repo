@@ -312,3 +312,22 @@ test('"Sair agora" com vento sem previsão em parte da rota (cenários + passage
   assert.equal(r.horasLemeEq, pe.pontos.length / 60)
   assert.ok(!JSON.stringify(r).match(/null|NaN/))
 })
+
+test('alternativa não direta com a distância à costa desconhecida (null): excluída (falha para o lado seguro)', () => {
+  // a distância dada já medida mas null
+  const dada = s.avaliar(base({ costa: null, costaMinMn: null }))
+  assert.equal(dada.excluida, true)
+  assert.deepEqual(dada.motivos, ['distância à costa desconhecida'])
+  assert.equal(dada.costaMinMn, null)
+  // sem costa para medir e sem distância dada: excluída, não rebenta
+  const semCosta = s.avaliar(base({ costa: null }))
+  assert.equal(semCosta.excluida, true)
+  assert.deepEqual(semCosta.motivos, ['distância à costa desconhecida'])
+  // sem troços de linha para medir (todos costaLivre) sem ser direta: excluída
+  const semLinha = rota(5)
+  for (const p of semLinha.pontos) p.costaLivre = true
+  assert.deepEqual(s.avaliar(base({ alternativa: semLinha })).motivos, ['distância à costa desconhecida'])
+  // a direta (sem linha) não tem esta regra
+  const direta = { ...semLinha, afastamento: null, direto: true, costaMinMn: 1.2 }
+  assert.equal(s.avaliar(base({ alternativa: direta, costa: null, costaMinMn: null })).excluida, false)
+})
