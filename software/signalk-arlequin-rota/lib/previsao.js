@@ -139,35 +139,57 @@ function linAngulo (a, b, f) {
   return c.norm(Math.atan2(s, co) * 180 / Math.PI)
 }
 
-// tempo(lat, lon, t) → { tws, rajada, twd, chuva, visibilidade, radiacao, ondas, periodo, ondasDir, corrente, correnteDir }
+// tempo(lat, lon, t) → { tws, rajada, twd, chuva, visibilidade, radiacao, ondas, periodo, ondasDir, corrente, correnteDir,
+//   aproximado?: [campo,...], semDados?: [campo,...] }
 // Fora das horas da previsão fica na primeira ou na última (quem chama vê previsao.inicio/fim).
+// Por variável: se o ponto mais perto no espaço tiver null nessa hora (a Marine API devolve
+// null perto de terra/baías mesmo com cell_selection=sea), tenta o ponto seguinte mais perto
+// (entre os pontos pedidos para esta previsão) até achar um com dado — e marca esse campo em
+// `aproximado`. Se nenhum ponto tiver dado, o campo fica null e entra em `semDados`.
+// IMPORTANTE para quem consome isto (Tarefa 9, regras de segurança): `semDados` a conter
+// 'ondas', 'rajada' ou 'tws' é "desconhecido", nunca "calmo" — falhar para o lado seguro
+// (excluir a alternativa ou avisar), nunca tratar como se não houvesse onda/vento nenhum.
 function criarTempo (previsao) {
   const pts = previsao.pontos
   const cache = new Map()
-  const maisPerto = (lat, lon) => {
+  // os índices dos pontos pedidos, do mais perto de (lat,lon) para o mais longe
+  const ordemPerto = (lat, lon) => {
     const k = `${Math.round(lat * 100)}|${Math.round(lon * 100)}`
-    let i = cache.get(k)
-    if (i === undefined) {
-      let melhor = Infinity
+    let ord = cache.get(k)
+    if (ord === undefined) {
       const p = { lat, lon }
-      pts.forEach((q, j) => { const d = c.distanciaMn(p, q); if (d < melhor) { melhor = d; i = j } })
-      cache.set(k, i)
+      ord = pts.map((_, j) => j).sort((a, b) => c.distanciaMn(p, pts[a]) - c.distanciaMn(p, pts[b]))
+      cache.set(k, ord)
     }
-    return pts[i]
+    return ord
   }
-  return function tempo (lat, lon, t) {
-    const p = maisPerto(lat, lon)
+  const valorNoPonto = (p, campo, t) => {
+    const s = p[campo]
+    if (!s) return null
     const T = p.t
     let i = 0
     if (t >= T.at(-1)) i = T.length - 1
     else if (t > T[0]) { let lo = 0; let hi = T.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= t) lo = m; else hi = m } i = lo }
     const j = Math.min(i + 1, T.length - 1)
     const f = j > i ? Math.max(0, Math.min(1, (t - T[i]) / (T[j] - T[i]))) : 0
+    return ANGULOS.has(campo) ? linAngulo(s[i], s[j], f) : lin(s[i], s[j], f)
+  }
+  return function tempo (lat, lon, t) {
+    const ord = ordemPerto(lat, lon)
     const out = {}
+    const aproximado = []
+    const semDados = []
     for (const campo of DO_TEMPO) {
-      const s = p[campo]
-      out[campo] = s ? (ANGULOS.has(campo) ? linAngulo(s[i], s[j], f) : lin(s[i], s[j], f)) : null
+      let valor = null
+      for (let k = 0; k < ord.length; k++) {
+        valor = valorNoPonto(pts[ord[k]], campo, t)
+        if (valor != null) { if (k > 0) aproximado.push(campo); break }
+      }
+      out[campo] = valor
+      if (valor == null) semDados.push(campo)
     }
+    if (aproximado.length) out.aproximado = aproximado
+    if (semDados.length) out.semDados = semDados
     return out
   }
 }

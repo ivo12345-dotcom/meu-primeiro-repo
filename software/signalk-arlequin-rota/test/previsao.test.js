@@ -86,6 +86,29 @@ test('tempo: o ponto mais perto, linear no tempo, ângulos por seno e cosseno', 
   assert.equal(prev.criarTempo(sint)(39, -9, 5 * H).tws, 20)
 })
 
+test('tempo: ponto mais perto com null → o próximo ponto com dados, marcado aproximado; se nenhum tiver, null e semDados', () => {
+  // A (mais perto de 39,-9) tem ondas null nas duas horas; B (mais longe) tem dados
+  const dois = {
+    obtida: 0,
+    inicio: 0,
+    fim: H,
+    pontos: [
+      { lat: 39, lon: -9, t: [0, H], tws: [10, 12], ondas: [null, null], corrente: [null, null] }, // A: mais perto
+      { lat: 39.5, lon: -9, t: [0, H], tws: [20, 22], ondas: [2, 3], corrente: [null, null] } // B: mais longe
+    ]
+  }
+  const tempo = prev.criarTempo(dois)
+  const w = tempo(39, -9, 0)
+  assert.equal(w.tws, 10) // tws tem dados no ponto mais perto: não mexe
+  assert.equal(w.ondas, 2) // ondas: A é null, cai para B (o próximo mais perto)
+  assert.deepEqual(w.aproximado, ['ondas'])
+  // corrente: null em A e em B (nenhum ponto tem dados) → null e semDados
+  assert.equal(w.corrente, null)
+  assert.ok(w.semDados.includes('corrente'))
+  assert.ok(!w.semDados.includes('ondas'))
+  assert.ok(!w.semDados.includes('tws'))
+})
+
 test('nível do mar de Cascais para a maré', () => {
   const n = prev.nivelDoMar(P29)
   assert.equal(n.t.length, 72)
