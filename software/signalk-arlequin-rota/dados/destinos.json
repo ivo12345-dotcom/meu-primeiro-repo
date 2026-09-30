@@ -35,8 +35,9 @@
    ]
   ],
   "entrada": 2,
+  "portoFechadoOsm": true,
   "notas": "Barra do rio Lima: entra-se pelo sul entre as cabeças do molhe oeste (41,6743 N 8,8443 W, luz vermelha) e do molhe leste (~41,6778 N 8,8373 W), uma boca com ~700 m; doca de recreio a montante. Com mar grosso de W a barra pode ficar má.",
-  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). O OSM fecha o rio Lima à entrada: os troços depois da entrada passam em \"terra\". a aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py (0 m de terra e ≥ 10 m de folga até à entrada, terra dos dois lados da boca, ≥ 0,3 MN das zonas); por confirmar na carta",
+  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). O OSM fecha o rio Lima à entrada: os troços depois da entrada passam em \"terra\". A aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py; por confirmar na carta",
   "confirmado": false
  },
  {
@@ -75,8 +76,9 @@
    ]
   ],
   "entrada": 2,
+  "portoFechadoOsm": true,
   "notas": "Porto de abrigo de todo o tempo. Entra-se de sul, no anteporto entre o quebra-mar (luz vermelha 41,1729 N 8,7081 W) e a cabeça do molhe sul (luz verde 41,1779 N 8,7057 W); Marina Porto Atlântico no canto noroeste. Muito tráfego comercial.",
-  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). O OSM fecha a bacia do porto entre o molhe norte e a cabeça do molhe sul. a aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py (0 m de terra e ≥ 10 m de folga até à entrada, terra dos dois lados da boca, ≥ 0,3 MN das zonas); por confirmar na carta",
+  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). O OSM fecha a bacia do porto entre o molhe norte e a cabeça do molhe sul. A aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py; por confirmar na carta",
   "confirmado": false
  },
  {
@@ -123,8 +125,9 @@
    ]
   ],
   "entrada": 2,
+  "portoFechadoOsm": true,
   "notas": "Barra do Mondego, entre a cabeça do molhe norte (luz vermelha 40,1433 N 8,8784 W) e a do molhe sul (luz verde 40,1431 N 8,8732 W); marina na margem norte. Fecha com ondulação forte (ver avisos da capitania). Não contar com ela como abrigo.",
-  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). O OSM fecha o rio na linha das cabeças dos molhes: a entrada fica ~25 m para fora dela. a aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py (0 m de terra e ≥ 10 m de folga até à entrada, terra dos dois lados da boca, ≥ 0,3 MN das zonas); por confirmar na carta",
+  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). O OSM fecha o rio na linha das cabeças dos molhes: a entrada fica ~25 m para fora dela. A aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py; por confirmar na carta",
   "confirmado": false
  },
  {
@@ -168,7 +171,7 @@
   ],
   "entrada": 2,
   "notas": "Porto de abrigo a sul da vila. A boca está virada a oeste, entre a cabeça do molhe norte e a do molhe sul (que dá a volta para norte). O que ajuda a entrada é haver água funda até à boca, sem barra a rebentar; o canhão da Nazaré, esse, concentra a ondulação na Praia do Norte (a norte da vila), não no porto.",
-  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). a aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py (0 m de terra e ≥ 10 m de folga até à entrada, terra dos dois lados da boca, ≥ 0,3 MN das zonas); por confirmar na carta",
+  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). A aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py; por confirmar na carta",
   "confirmado": false
  },
  {
@@ -208,7 +211,7 @@
   ],
   "entrada": 2,
   "notas": "Entrada pelo sul (Peniche Sul), abrigada das nortadas: a boca está virada a sul-sueste, entre as cabeças do molhe oeste (luz vermelha 39,3480 N 9,3755 W) e do molhe leste (luz verde 39,3497 N 9,3742 W). Cais: marina, por dentro do molhe oeste; contorna-se por norte o pontão flutuante que a protege.",
-  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). a aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py (0 m de terra e ≥ 10 m de folga até à entrada, terra dos dois lados da boca, ≥ 0,3 MN das zonas); por confirmar na carta",
+  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). A aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py; por confirmar na carta",
   "confirmado": false
  },
  {
@@ -248,7 +251,7 @@
   ],
   "entrada": 3,
   "notas": "Marina de Cascais: contorna-se por leste a cabeça do molhe (luz vermelha 38,6938 N 9,4133 W) e entra-se para sudoeste entre ela e o cais norte da marina (luz verde 38,6940 N 9,4146 W).",
-  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). a aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py (0 m de terra e ≥ 10 m de folga até à entrada, terra dos dois lados da boca, ≥ 0,3 MN das zonas); por confirmar na carta",
+  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). A aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py; por confirmar na carta",
   "confirmado": false
  },
  {
@@ -295,8 +298,8 @@
    ]
   ],
   "entrada": 5,
-  "notas": "Porto de recreio de Oeiras pela Barra Norte (como Algés): do largo de Cascais ao eixo do canal (enfiamento Santa Marta–Guia, 104,9°) ao largo da Parede, pelo eixo até ao través de S. Julião e depois para a boca do porto, virada a leste, entre a luz verde do molhe norte (38,6770 N 9,3165 W) e a vermelha do molhe sul (38,6761 N 9,3166 W).",
-  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). Barra Norte: APL, Regulamento de Autoridade Portuária (anexo à Ordem de Serviço n.º 19/2014, portodelisboa.pt), \"Canal da Barra Norte\": eixo definido pelo enfiamento dos faróis de Santa Marta e da Guia (Cascais), cota de serviço 5,2 m, rasto 150 m, sem outro assinalamento, o farol de S. Julião da Barra como resguardo a norte; canal estreito da Ponta da Rana (9° 20,6' W) até à confluência com a Barra Sul, que não deve ser praticado ao mesmo tempo por navios em rumos opostos. Faróis pelo OSM: Guia 38,6956 N 9,4464 W, Santa Marta 38,6904 N 9,4210 W; o enfiamento dá 104,9°/284,9° (a carta 26303 marca 284,7°). Os pontos do canal estão no eixo. a aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py (0 m de terra e ≥ 10 m de folga até à entrada, terra dos dois lados da boca, ≥ 0,3 MN das zonas); por confirmar na carta",
+  "notas": "Porto de recreio de Oeiras pela Barra Norte (como Algés): do largo de Cascais ao eixo do canal (enfiamento Santa Marta–Guia, 104,7°) ao largo da Parede, pelo eixo até ao través de S. Julião e depois para a boca do porto, virada a leste, entre a luz verde do molhe norte (38,6770 N 9,3165 W) e a vermelha do molhe sul (38,6761 N 9,3166 W).",
+  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). Barra Norte: APL, Regulamento de Autoridade Portuária (anexo à Ordem de Serviço n.º 19/2014, portodelisboa.pt), \"Canal da Barra Norte\": eixo definido pelo enfiamento dos faróis de Santa Marta e da Guia (Cascais), cota de serviço 5,2 m, rasto 150 m, sem outro assinalamento, o farol de S. Julião da Barra como resguardo a norte; canal estreito da Ponta da Rana (9° 20,6' W) até à confluência com a Barra Sul, que não deve ser praticado ao mesmo tempo por navios em rumos opostos. Faróis pelo OSM: Guia 38,6956 N 9,4464 W, Santa Marta 38,6904 N 9,4210 W; o enfiamento dá 104,7°/284,7°, como a carta 26303 marca. Os pontos do canal estão no eixo. A aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py; por confirmar na carta",
   "confirmado": false
  },
  {
@@ -351,8 +354,8 @@
    ]
   ],
   "entrada": 8,
-  "notas": "Pela Barra Norte: do largo de Cascais ao eixo do canal (enfiamento Santa Marta–Guia, 104,9°) ao largo da Parede, pelo eixo até passar S. Julião, depois ao longo da margem norte (Paço de Arcos, Caxias) até à doca de Algés, onde se entra para norte entre a Torre VTS (luz vermelha 38,6939 N 9,2342 W) e a cabeça do molhe leste (luz verde 38,6956 N 9,2336 W), deixando a luz verde de 38,6941 N 9,2330 W por estibordo. Atenção: o regulamento da APL (10.13) interdita a navegação num círculo de 0,2' à volta da Torre VTS, salvo autorização.",
-  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). Barra Norte: APL, Regulamento de Autoridade Portuária (anexo à Ordem de Serviço n.º 19/2014, portodelisboa.pt), \"Canal da Barra Norte\": eixo definido pelo enfiamento dos faróis de Santa Marta e da Guia (Cascais), cota de serviço 5,2 m, rasto 150 m, sem outro assinalamento, o farol de S. Julião da Barra como resguardo a norte; canal estreito da Ponta da Rana (9° 20,6' W) até à confluência com a Barra Sul, que não deve ser praticado ao mesmo tempo por navios em rumos opostos. Faróis pelo OSM: Guia 38,6956 N 9,4464 W, Santa Marta 38,6904 N 9,4210 W; o enfiamento dá 104,9°/284,9° (a carta 26303 marca 284,7°). Os pontos do canal estão no eixo. Entre S. Julião e Algés a derrota fica a ≥ 0,4 MN do Cachopo do Sul e a ~0,5–1 km da margem norte. a aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py (0 m de terra e ≥ 10 m de folga até à entrada, terra dos dois lados da boca, ≥ 0,3 MN das zonas); por confirmar na carta",
+  "notas": "Pela Barra Norte: do largo de Cascais ao eixo do canal (enfiamento Santa Marta–Guia, 104,7°) ao largo da Parede, pelo eixo até passar S. Julião, depois ao longo da margem norte (Paço de Arcos, Caxias) até à doca de Algés, onde se entra para norte entre a Torre VTS (luz vermelha 38,6939 N 9,2342 W) e a cabeça do molhe leste (luz verde 38,6956 N 9,2336 W), deixando a luz verde de 38,6941 N 9,2330 W por estibordo. Atenção: o regulamento da APL (10.13) interdita a navegação num círculo de 0,2' à volta da Torre VTS, salvo autorização.",
+  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). Barra Norte: APL, Regulamento de Autoridade Portuária (anexo à Ordem de Serviço n.º 19/2014, portodelisboa.pt), \"Canal da Barra Norte\": eixo definido pelo enfiamento dos faróis de Santa Marta e da Guia (Cascais), cota de serviço 5,2 m, rasto 150 m, sem outro assinalamento, o farol de S. Julião da Barra como resguardo a norte; canal estreito da Ponta da Rana (9° 20,6' W) até à confluência com a Barra Sul, que não deve ser praticado ao mesmo tempo por navios em rumos opostos. Faróis pelo OSM: Guia 38,6956 N 9,4464 W, Santa Marta 38,6904 N 9,4210 W; o enfiamento dá 104,7°/284,7°, como a carta 26303 marca. Os pontos do canal estão no eixo. Entre S. Julião e Algés a derrota fica a ≥ 0,4 MN do Cachopo do Sul e a ~0,5–1 km da margem norte. A aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py; por confirmar na carta",
   "confirmado": false
  },
  {
@@ -388,7 +391,7 @@
   ],
   "entrada": 3,
   "notas": "Porto de abrigo a oeste da vila, protegido das nortadas; a baía é aberta a sul. Entra-se de leste, entre a cabeça do molhe (luz vermelha 38,4383 N 9,1076 W) e o cais a norte.",
-  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). a aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py (0 m de terra e ≥ 10 m de folga até à entrada, terra dos dois lados da boca, ≥ 0,3 MN das zonas); por confirmar na carta",
+  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). A aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py; por confirmar na carta",
   "confirmado": false
  },
  {
@@ -440,7 +443,7 @@
   ],
   "entrada": 5,
   "notas": "Barra do Sado pelo canal balizado entre o Outão e Tróia; doca de recreio das Fontainhas, com a boca a oeste, entre a margem e a cabeça do molhe exterior (luz Iso amarela 38,5181 N 8,9002 W). Vazante forte na barra.",
-  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). a aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py (0 m de terra e ≥ 10 m de folga até à entrada, terra dos dois lados da boca, ≥ 0,3 MN das zonas); por confirmar na carta",
+  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). A aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py; por confirmar na carta",
   "confirmado": false
  },
  {
@@ -476,7 +479,7 @@
   ],
   "entrada": 2,
   "notas": "Porto de recreio junto à praia Vasco da Gama, atrás do molhe leste do porto de pesca: entra-se para norte entre a cabeça do molhe do porto de pesca (luz vermelha 37,9510 N 8,8700 W) e a do molhe do porto de recreio (luz verde 37,9506 N 8,8672 W) e vira-se para leste para a marina. Porto de abrigo de todo o tempo.",
-  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). a aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py (0 m de terra e ≥ 10 m de folga até à entrada, terra dos dois lados da boca, ≥ 0,3 MN das zonas); por confirmar na carta",
+  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). A aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py; por confirmar na carta",
   "confirmado": false
  },
  {
@@ -519,8 +522,9 @@
    ]
   ],
   "entrada": 2,
+  "portoFechadoOsm": true,
   "notas": "Marina de Lagos no rio Bensafrim: boca virada a sueste, junto à Meia Praia, entre a luz vermelha do molhe oeste (37,0987 N 8,6667 W) e a verde do molhe leste (37,0994 N 8,6657 W).",
-  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). O OSM fecha o rio na boca: os troços depois da entrada passam em \"terra\". a aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py (0 m de terra e ≥ 10 m de folga até à entrada, terra dos dois lados da boca, ≥ 0,3 MN das zonas); por confirmar na carta",
+  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). O OSM fecha o rio na boca: os troços depois da entrada passam em \"terra\". A aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py; por confirmar na carta",
   "confirmado": false
  },
  {
@@ -559,8 +563,9 @@
    ]
   ],
   "entrada": 2,
+  "portoFechadoOsm": true,
   "notas": "Barra do Arade entre as cabeças dos molhes (luz vermelha 37,1087 N 8,5295 W, verde 37,1085 N 8,5266 W); marina na margem oeste (Praia da Rocha).",
-  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). O OSM fecha o rio na linha das cabeças dos molhes: a entrada fica ~20 m para fora dela. a aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py (0 m de terra e ≥ 10 m de folga até à entrada, terra dos dois lados da boca, ≥ 0,3 MN das zonas); por confirmar na carta",
+  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). O OSM fecha o rio na linha das cabeças dos molhes: a entrada fica ~20 m para fora dela. A aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py; por confirmar na carta",
   "confirmado": false
  },
  {
@@ -600,7 +605,7 @@
   ],
   "entrada": 2,
   "notas": "Marina de Vilamoura; entrada virada a sul entre as cabeças dos molhes (luz vermelha 37,0695 N 8,1243 W, verde 37,0704 N 8,1230 W) e canal para norte até à bacia.",
-  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). a aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py (0 m de terra e ≥ 10 m de folga até à entrada, terra dos dois lados da boca, ≥ 0,3 MN das zonas); por confirmar na carta",
+  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). A aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py; por confirmar na carta",
   "confirmado": false
  },
  {
@@ -652,7 +657,7 @@
   ],
   "entrada": 2,
   "notas": "Pela barra Faro-Olhão (entre a Barreta e a Culatra, ~200 m entre as cabeças dos molhes: luz vermelha 36,9640 N 7,8709 W, verde 36,9633 N 7,8689 W) e o canal de Olhão; bancos móveis e corrente forte: não é abrigo de todo o tempo. Pontos dentro da ria aproximados (passam entre os ilhéus a sul de Olhão).",
-  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). a aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py (0 m de terra e ≥ 10 m de folga até à entrada, terra dos dois lados da boca, ≥ 0,3 MN das zonas); por confirmar na carta",
+  "fonte": "pontos preparados pelo Claude sobre o OSM de 30/09/2026 (terra.geojson.gz e a terra em bruto, sem simplificar; molhes man_made=breakwater/pier e luzes seamark pela Overpass API). A aproximação entra pela boca e `entrada` é o primeiro ponto dentro dela; validado com software/ferramentas/costa/validar_destinos.py; por confirmar na carta",
   "confirmado": false
  }
 ]

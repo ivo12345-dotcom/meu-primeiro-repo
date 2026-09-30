@@ -5,7 +5,10 @@
     python validar_destinos.py --osm PASTA       # e também com a terra do OSM em bruto (sem simplificar)
 
 `entrada` (índice na `aproximacao`) é o primeiro ponto DENTRO da boca do porto (entre as cabeças dos molhes)
-ou da barra. O plugin só verifica a terra até lá (o OSM fecha docas, rios e bacias); por isso, para cada destino:
+ou da barra. Por omissão a terra conta-se em TODOS os troços, do largo ao cais. O campo opcional
+`portoFechadoOsm: true` de um destino tira essa verificação só dos troços depois da `entrada` (continuam a
+mostrar-se na tabela, entre parênteses); usa-se só onde o OSM fecha a doca, o rio ou a bacia com terra: Viana
+do Castelo, Leixões, Figueira da Foz, Lagos e Portimão. Para cada destino:
 
 1. o largo (= aproximacao[0]) fica no mar;
 2. todos os troços do largo até ao ponto `entrada` (inclusive o troço que lá chega) têm 0 m de terra e passam a
@@ -17,10 +20,12 @@ ou da barra. O plugin só verifica a terra até lá (o OSM fecha docas, rios e b
    cabeças (Figueira, Portimão), onde a entrada tem de ficar um pouco para fora dessa linha. 400 m e não 300: a
    boca mais larga, a de Viana (entre as cabeças dos molhes), tem ~700 m;
 4. nenhum troço da aproximação (nem o largo) passa a menos de 0,3 MN de uma zona a evitar, salvo a zona do
-   próprio porto (o campo opcional `zona` do destino, com o nome dela).
+   próprio porto (o campo opcional `zona` do destino, com o nome dela);
+5. os troços depois da `entrada` também não cortam terra, com uma tolerância de < 1 m (ruído de vírgula
+   flutuante) — salvo nos destinos com `portoFechadoOsm: true`, cujo OSM fecha a doca/rio/bacia com terra e
+   por isso não conta lá dentro.
 
-Os troços de dentro do porto (depois da `entrada`) só se mostram na tabela (metros de terra do OSM entre
-parênteses). Sai com 1 se houver problemas.
+Sai com 1 se houver problemas.
 """
 
 import argparse
@@ -41,6 +46,7 @@ FOLGA_MIN_M = 10.0
 BOCA_RAIO_M = 400.0
 BOCA_SECTOR = (30, 150)  # graus a partir do rumo de chegada, para cada lado
 BOCA_FORA_M = 25.0       # quanto o ponto de entrada pode ficar fora da envolvente convexa da terra à volta
+TERRA_TOL_M = 1.0        # terra tolerada nos troços depois da `entrada` (ruído de vírgula flutuante)
 
 
 def carregar(pasta=gerar.SAIDA):
@@ -95,6 +101,7 @@ def validar(destinos, zonas, terra_m):
         largo_mn = terra_m.distance(largo) / MN
         if terra_m.intersects(largo):
             prob.append('o largo fica em terra')
+        relaxa_porto = bool(d.get('portoFechadoOsm'))
         trocos = []
         for i in range(1, len(pts)):
             seg = LineString([pts[i - 1], pts[i]])
@@ -106,6 +113,9 @@ def validar(destinos, zonas, terra_m):
                 prob.append(f'troço {i} ({i - 1}→{i}) corta terra: {terra:.0f} m')
             elif not porto and folga < FOLGA_MIN_M:
                 prob.append(f'troço {i} ({i - 1}→{i}) passa a {folga:.1f} m da terra (mínimo {FOLGA_MIN_M:.0f} m)')
+            elif porto and not relaxa_porto and terra > TERRA_TOL_M:
+                prob.append(f'troço {i} ({i - 1}→{i}) corta terra: {terra:.0f} m (fora dos portos que o OSM '
+                            f'fecha, sem `portoFechadoOsm`)')
         dx, dy = pts[e][0] - pts[e - 1][0], pts[e][1] - pts[e - 1][1]
         lados = _lados_com_terra(terra_m, pts[e], math.degrees(math.atan2(dx, dy)))
         fora = _fora_da_envolvente(terra_m, pts[e])

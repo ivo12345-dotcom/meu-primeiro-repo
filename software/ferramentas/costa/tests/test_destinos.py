@@ -55,12 +55,37 @@ def test_um_troco_ate_a_entrada_a_menos_de_10_m_da_terra_falha(terra_m):
     assert any(x.startswith('troço 2') and 'mínimo 10 m' in x for x in p), p
 
 
-def test_depois_da_entrada_a_terra_so_se_mostra(terra_m):
-    # o OSM fecha docas e rios: dentro do porto a terra não conta como problema, mas aparece na tabela
-    d = destino('doca', [[39.0, -9.05], [39.0, -9.015], [39.0, -9.008], [39.0, -8.995]], 2)
+def test_portoFechadoOsm_relaxa_a_terra_depois_da_entrada(terra_m):
+    # com portoFechadoOsm: o OSM fecha a doca/rio com terra e isso não conta como problema, só aparece na tabela
+    d = destino('doca', [[39.0, -9.05], [39.0, -9.015], [39.0, -9.008], [39.0, -8.995]], 2, portoFechadoOsm=True)
     r = vd.validar([d], [], terra_m)[0]
     assert r['problemas'] == []
     assert r['trocos'][2]['terra_m'] > 0 and r['trocos'][2]['porto'] is True
+
+
+def test_sem_portoFechadoOsm_a_terra_depois_da_entrada_falha(terra_m):
+    # a mesma geometria, mas sem portoFechadoOsm (omisso = False): a terra depois da entrada já é um problema
+    d = destino('doca', [[39.0, -9.05], [39.0, -9.015], [39.0, -9.008], [39.0, -8.995]], 2)
+    p = problemas(terra_m, d)
+    assert any(x.startswith('troço 3') and 'terra' in x for x in p), p
+
+
+def test_a_geometria_antiga_da_nazare_corta_terra_e_e_reportada():
+    # git show 9e5a14f:software/signalk-arlequin-rota/dados/destinos.json — antes da revisão da entrada,
+    # o troço 3 cortava ~218 m de terra (o molhe sul) depois da entrada e passava sem problemas
+    velha = destino('nazare', [[39.575, -9.11], [39.585, -9.083], [39.586, -9.079], [39.5855, -9.076]], 2)
+    destinos, zonas, terra_m = vd.carregar(gerar.SAIDA)
+    r = vd.validar([velha], zonas, terra_m)[0]
+    assert any(x.startswith('troço 3') and 'terra' in x for x in r['problemas']), r['problemas']
+
+
+def test_uma_entrada_junto_a_praia_reta_com_troco_que_corta_terra_falha(terra_m):
+    # entrada a ~17 m de uma praia reta e sem molhes (longe dos molhes do fixture, lat 38,95): passa na
+    # heurística da boca (< 25 m de fora), mas o troço seguinte atravessa ~865 m de terra e tem de falhar
+    d = destino('praia', [[38.95, -9.05], [38.95, -9.00019624], [38.95, -8.99]], 1)
+    r = vd.validar([d], [], terra_m)[0]
+    assert r['boca'] is True
+    assert any(x.startswith('troço 2') and 'terra' in x for x in r['problemas']), r['problemas']
 
 
 def test_a_entrada_fora_da_boca_falha(terra_m):
