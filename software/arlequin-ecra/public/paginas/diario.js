@@ -41,7 +41,8 @@ function cartaoIa (ia) {
     const m = ia.modelos?.[nome]
     const texto = m?.erro ? `${m.versao} · não consegui ler o modelo: ${esc(m.erro)}`
       : m?.versao ? `${m.versao} · ${virgula(m.horas)} h · ${esc(m.frases?.[0] || '')}` : 'a aprender'
-    const voltar = !m?.erro && m?.versao && m.versoes?.length > 1 ? `<button class="acao" data-acao="ia-voltar" data-modelo="${nome}">Voltar atrás</button>` : ''
+    // o plugin diz se há uma versão anterior que tenha estado em uso (só essas servem para voltar)
+    const voltar = m?.podeVoltar ? `<button class="acao" data-acao="ia-voltar" data-modelo="${nome}">Voltar atrás</button>` : ''
     return `<tr><td>${rotulo}</td><td>${texto}</td><td>${voltar}</td></tr>`
   }).join('')
   const t = ia.ultimoTreino
@@ -49,7 +50,12 @@ function cartaoIa (ia) {
     : !t ? 'ainda não treinou'
       : t.erro ? `último treino falhou: ${esc(t.erro)}`
         : `último treino ${hora(t.em)}: ${t.resultados.filter(r => r.aceite).length} de ${t.resultados.length} modelos melhoraram`
+  const p = ia.previsao
+  const ultima = p?.okEm ? `última ${hora(p.okEm)}` : ''
+  const previsao = p?.erro ? `previsão: sem rede (${esc(p.erro)})${ultima ? ' · ' + ultima : ''}`
+    : ultima ? `previsão: ${ultima}` : 'previsão: ainda nenhuma'
   return `<div class="tile"><div class="lab">AI · o que o barco aprendeu</div><table>${linhas}</table>
+<div class="lab">${previsao}</div>
 <div class="linha"><span class="lab">${ultimo}</span><button class="acao go" data-acao="ia-treinar">Treinar agora</button></div></div>`
 }
 

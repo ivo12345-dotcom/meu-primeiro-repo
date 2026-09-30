@@ -214,7 +214,7 @@ test('Diário: cartão da AI mostra os modelos em uso e manda treinar e voltar a
     emTreino: false,
     ultimoTreino: { em: '2026-09-29T20:00:00Z', resultados: [{ aceite: true }, { aceite: false }] },
     modelos: {
-      velocidade: { versao: 'v0003', versoes: ['v0001', 'v0003'], horas: 12.5, frases: ['a 60° com 12 nós andas 5,6 nós (a polar dizia 6,2)'] },
+      velocidade: { versao: 'v0003', versoes: ['v0001', 'v0003'], podeVoltar: true, horas: 12.5, frases: ['a 60° com 12 nós andas 5,6 nós (a polar dizia 6,2)'] },
       ventoForca: { versao: null, versoes: [] },
       consumo: { versao: 'v0001', versoes: ['v0001'], horas: 6, frases: [] }
     }
@@ -242,6 +242,24 @@ test('Diário: cartão da AI mostra os modelos em uso e manda treinar e voltar a
   assert.equal(ctx.estado.msg, 'Velocidade voltou à v0001')
   const semIa = diario.render(contexto(store, { ia: { erro: 'a AI não responde (o plugin signalk-arlequin-ia está ligado?)' }, iaEm: Date.now() }))
   assert.match(semIa, /AI: a AI não responde/)
+})
+
+test('Diário: "Voltar atrás" só quando o plugin diz podeVoltar', () => {
+  const store = criarStore()
+  const modelo = (podeVoltar) => ({ versao: 'v0002', versoes: ['v0001', 'v0002'], podeVoltar, horas: 6, frases: [] })
+  const html = (podeVoltar) => diario.render(contexto(store, { ia: { modelos: { velocidade: modelo(podeVoltar) } }, iaEm: Date.now() }))
+  assert.doesNotMatch(html(false), /data-acao="ia-voltar"/) // a v0001 nunca esteve em uso
+  assert.match(html(true), /data-acao="ia-voltar" data-modelo="velocidade"/)
+})
+
+test('Diário: o cartão da AI mostra o estado do arquivo da previsão', () => {
+  const store = criarStore()
+  const okEm = new Date(2026, 8, 30, 9, 5).getTime()
+  const html = (previsao) => diario.render(contexto(store, { ia: { modelos: {}, previsao }, iaEm: Date.now() }))
+  assert.match(html({ okEm, tentativaEm: null, erro: null }), /previsão: última 09:05/)
+  assert.match(html({ okEm, tentativaEm: okEm, erro: 'fetch failed' }), /previsão: sem rede \(fetch failed\) · última 09:05/)
+  assert.match(html({ okEm: null, tentativaEm: okEm, erro: '<b>' }), /previsão: sem rede \(&lt;b&gt;\)/)
+  assert.match(html({ okEm: null, tentativaEm: null, erro: null }), /previsão: ainda nenhuma/)
 })
 
 test('Diário: cartão da AI mostra mensagem do plugin quando rejeita com HTTP status', async () => {
