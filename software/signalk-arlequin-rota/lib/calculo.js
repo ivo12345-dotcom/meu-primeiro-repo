@@ -153,7 +153,8 @@ function montarAlternativa (ctx, cand, desistenciaResumo) {
     horas: { total: r2(R.provavel.duracaoH), vela: r2(R.provavel.horasVela), motor: r2(R.provavel.horasMotor), noite: r2(R.provavel.horasNoite), leme: r2(cand.horasLemeEq.provavel), lemePessimista: r2(cand.horasLemeEq.pessimista) },
     maximos: { vento: r1(R.provavel.ventoMax), rajada: r1(R.provavel.rajadaMax), ondas: r1(Number.isFinite(R.provavel.ondasMax) ? R.provavel.ondasMax : null) },
     maximosPessimista: { vento: r1(R.pessimista.ventoMax), rajada: r1(R.pessimista.rajadaMax), ondas: r1(Number.isFinite(R.pessimista.ondasMax) ? R.pessimista.ondasMax : null) },
-    gasoleoL: { p50: r1(R.provavel.gasoleoGasto), p90: r1(R.pessimista.gasoleoGasto) },
+    // P90 do gasóleo: o do pessimista, ou mais se outro cenário gastar mais (o pessimista pode ir mais à vela)
+    gasoleoL: { p50: r1(R.provavel.gasoleoGasto), p90: r1(Math.max(R.pessimista.gasoleoGasto, R.provavel.gasoleoGasto, R.otimista.gasoleoGasto)) },
     bateriaMin: r1(cand.bateriaMinPct),
     chegadaNoite: cand.chegadaNoite,
     excluida: cand.excluida,
