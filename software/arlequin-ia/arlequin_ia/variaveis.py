@@ -51,27 +51,46 @@ def tendencia_pressao(df, horas=3):
     return df['pressao'] - j['pAntes'].reindex(df.index)
 
 
+def escolher_previsao(df, previsoes, max_idade_h=12, max_dist_mn=30):
+    """Para cada linha, o índice (em `previsoes`) da previsão a usar, ou -1: entre as previsões feitas para um
+    ponto a menos de `max_dist_mn` MN e obtidas antes da linha (até `max_idade_h` horas), a de obtenção mais
+    recente; entre as obtidas a essa mesma hora (a rota arquiva um ficheiro por ponto), a do ponto mais perto.
+    Se a mais recente só tiver pontos longe demais, serve a anterior que esteja perto (a idade vai em idadePrevH)."""
+    escolha = np.full(len(df), -1)
+    if not previsoes or df.empty:
+        return escolha
+    ordem = np.argsort(segundos(df['t']), kind='stable')
+    ts = segundos(df['t'])[ordem]
+    lat = df['lat'].to_numpy(dtype=float)[ordem]
+    lon = df['lon'].to_numpy(dtype=float)[ordem]
+    obtidas = segundos(pd.DatetimeIndex([p['obtida'] for p in previsoes]))
+    for o in np.unique(obtidas):  # por ordem crescente: a mais recente escreve por cima
+        ks = np.flatnonzero(obtidas == o)
+        a, b = np.searchsorted(ts, o, 'left'), np.searchsorted(ts, o + max_idade_h * 3600, 'right')
+        if a == b:
+            continue
+        dist = np.stack([np.hypot((lat[a:b] - previsoes[k]['lat']) * MN_POR_GRAU,
+                                  (lon[a:b] - previsoes[k]['lon']) * MN_POR_GRAU * np.cos(np.radians(previsoes[k]['lat'])))
+                         for k in ks])
+        perto = np.argmin(np.where(np.isnan(dist), np.inf, dist), axis=0)
+        serve = dist[perto, np.arange(b - a)] <= max_dist_mn
+        escolha[ordem[a:b][serve]] = ks[perto[serve]]
+    return escolha
+
+
 def juntar_previsao(df, previsoes, max_idade_h=12, max_dist_mn=30):
-    """Para cada linha, a previsão mais recente obtida antes dela (até `max_idade_h`
-    horas) e feita para um ponto a menos de `max_dist_mn` MN, interpolada na hora
-    da linha. Devolve prevTws, prevRajada, prevTwd, prevOndas, prevPeriodo,
+    """Para cada linha, a previsão escolhida por `escolher_previsao` (a mais recente obtida antes dela, até
+    `max_idade_h` horas, feita para um ponto a menos de `max_dist_mn` MN; entre as da mesma hora, a do ponto
+    mais perto), interpolada na hora da linha. Devolve prevTws, prevRajada, prevTwd, prevOndas, prevPeriodo,
     prevOndasDir e idadePrevH (NaN quando não há previsão que sirva)."""
     cols = ['prevTws', 'prevRajada', 'prevTwd', 'prevOndas', 'prevPeriodo', 'prevOndasDir', 'idadePrevH']
     out = pd.DataFrame(np.nan, index=df.index, columns=cols)
     if not previsoes or df.empty:
         return out
-    tab = pd.DataFrame({'t': [p['obtida'] for p in previsoes], 'k': range(len(previsoes))}).sort_values('t')
-    linhas = pd.DataFrame({'t': df['t'], 'i': df.index}).sort_values('t')
-    j = pd.merge_asof(linhas, tab, on='t', direction='backward',
-                      tolerance=pd.Timedelta(hours=max_idade_h)).set_index('i')
-    for k, grupo in j.dropna(subset=['k']).groupby('k'):
+    escolha = pd.Series(escolher_previsao(df, previsoes, max_idade_h, max_dist_mn), index=df.index)
+    for k, grupo in escolha[escolha >= 0].groupby(escolha[escolha >= 0]):
         p = previsoes[int(k)]
         idx = grupo.index
-        dist = np.hypot((df.loc[idx, 'lat'] - p['lat']) * MN_POR_GRAU,
-                        (df.loc[idx, 'lon'] - p['lon']) * MN_POR_GRAU * np.cos(np.radians(p['lat'])))
-        idx = idx[(dist <= max_dist_mn).to_numpy()]
-        if len(idx) == 0:
-            continue
         x = segundos(df.loc[idx, 't'])
         xp = segundos(p['horas'])
         interp = lambda v: np.interp(x, xp, np.asarray(v, dtype=float), left=np.nan, right=np.nan)

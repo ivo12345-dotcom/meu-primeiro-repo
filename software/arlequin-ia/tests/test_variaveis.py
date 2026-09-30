@@ -166,3 +166,26 @@ def test_ler_saidas_avisa_do_ficheiro_ilegivel(tmp_path, capsys):
     assert ler_saidas(tmp_path) == []
     err = capsys.readouterr().err
     assert 'mau.json' in err and 'lista.json' in err
+
+
+def test_juntar_previsao_com_varios_pontos_a_mesma_hora_escolhe_o_mais_perto():
+    # a rota arquiva um ficheiro por ponto, todos com a mesma hora de obtenção
+    df = tabela(3, passo=1800, lat=[39.0, 39.25, 39.45], lon=-9.6)  # 10:00 10:30 11:00
+    horas = pd.to_datetime(['2026-06-01T10:00Z', '2026-06-01T11:00Z', '2026-06-01T12:00Z'], utc=True)
+    obtida = pd.Timestamp('2026-06-01T09:00Z')
+    ponto = lambda lat, v: {'obtida': obtida, 'lat': lat, 'lon': -9.6, 'horas': horas, 'tws': [v, v, v]}
+    j = juntar_previsao(df, [ponto(39.5, 30), ponto(39.0, 10), ponto(39.3, 20)])  # a ordem da lista não conta
+    assert list(j['prevTws']) == [10, 20, 30]
+    assert list(j['idadePrevH']) == [1, 1.5, 2]
+
+
+def test_juntar_previsao_mais_recente_ganha_ao_mais_perto_e_longe_demais_nao_conta():
+    df = tabela(2, passo=1800, lat=39.0, lon=-9.6)  # 10:00 10:30
+    horas = pd.to_datetime(['2026-06-01T10:00Z', '2026-06-01T11:00Z'], utc=True)
+    antiga_perto = {'obtida': pd.Timestamp('2026-06-01T08:00Z'), 'lat': 39.0, 'lon': -9.6, 'horas': horas, 'tws': [5, 5]}
+    recente = {'obtida': pd.Timestamp('2026-06-01T09:00Z'), 'lat': 39.2, 'lon': -9.6, 'horas': horas, 'tws': [15, 15]}
+    assert list(juntar_previsao(df, [antiga_perto, recente])['prevTws']) == [15, 15]  # 12 MN: serve, e é mais recente
+    # a mais recente só tem pontos a mais de 30 MN: fica a mais antiga que sirva (até 12 h)
+    longe = {**recente, 'lat': 39.6}
+    j = juntar_previsao(df, [antiga_perto, longe])
+    assert list(j['prevTws']) == [5, 5] and list(j['idadePrevH']) == [2, 2.5]
