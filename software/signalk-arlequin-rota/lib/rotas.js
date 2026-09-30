@@ -126,6 +126,9 @@ function ligar (costa, linha, p, sentido, janela, { anguloMax, maxAvancoMn, pass
 
 const MOTIVO_VENTO_MAR = 'vento do mar em parte da rota: a 3 MN ficava perto de uma costa a sotavento'
 const H_MS = 3600e3
+const NOTA_DIRETO = 'salto curto entre portos vizinhos: rota direta junto à costa'
+const NOTA_DIRETO_MAR = 'destino perto da posição atual: rota direta'
+const fmtMn = (x) => x.toFixed(1).replace('.', ',')
 
 // O vento previsto (de onde vem) num ponto: twd é um número (o mesmo em toda a parte) ou uma
 // função. Com horaPartida (ms), a função recebe também a hora estimada de passagem no ponto
@@ -151,6 +154,44 @@ function ventoDoMarNaRota (costa, linha, pontos, { twd, horaPartida }, o) {
     if (!ventoDeTerra(costa, linha, p.s, vento, o.toleranciaVento)) return MOTIVO_VENTO_MAR
   }
   return null
+}
+
+// Nos saltos curtos (sem linha): os pontos dos troços fora das aproximações, de 2 em 2 MN no
+// máximo; a normal para terra é a da linha dos 3 MN mais perto de cada ponto.
+function ventoDoMarNoDireto (costa, pontos, costaMinMn, { twd, horaPartida }, o) {
+  const linha = costa.linha(o.afastamentoVentoTerra)
+  if (!linha) return null
+  const motivo = `vento do mar em parte da rota: a rota direta passa a ${fmtMn(costaMinMn)} MN de uma costa a sotavento`
+  let milhas = 0
+  for (let i = 1; i < pontos.length; i++) {
+    const a = pontos[i - 1]; const b = pontos[i]
+    const L = c.distanciaMn(a, b)
+    if (pontos[i].perna === 'ligacao') {
+      const n = Math.max(1, Math.ceil(L / o.passoMax))
+      for (let k = 0; k <= n; k++) {
+        const q = { lat: a.lat + (b.lat - a.lat) * k / n, lon: a.lon + (b.lon - a.lon) * k / n }
+        const vento = ventoEm(twd, q, milhas + L * k / n, horaPartida, o)
+        if (!Number.isFinite(vento)) return `a menos de ${o.afastamentoVentoTerra} MN da costa só com vento de terra, e não há vento previsto para a rota`
+        if (!ventoDeTerra(costa, linha, c.projetar(linha, q).s, vento, o.toleranciaVento)) return motivo
+      }
+    }
+    milhas += L
+  }
+  return null
+}
+
+// A distância mínima (MN) à terra nos troços fora das aproximações (ligações, linha, canal),
+// de o.passo em o.passo MN; null se a rota é toda aproximação.
+function distanciaMinimaTerra (costa, pontos, passo = 0.1) {
+  let mn = Infinity
+  for (let i = 1; i < pontos.length; i++) {
+    const perna = pontos[i].perna
+    if (perna === 'porto' || perna === 'aproximacao') continue
+    const a = pontos[i - 1]; const b = pontos[i]
+    const n = Math.max(1, Math.ceil(c.distanciaMn(a, b) / passo))
+    for (let k = 0; k <= n; k++) mn = Math.min(mn, costa.distanciaTerra({ lat: a.lat + (b.lat - a.lat) * k / n, lon: a.lon + (b.lon - a.lon) * k / n }, 50))
+  }
+  return Number.isFinite(mn) ? mn : null
 }
 
 function descreverProblema (r) {
@@ -219,6 +260,7 @@ function gerarRota (costa, { partida, destino, afastamento, twd, horaPartida, op
       meio = []
     }
 
+    const direto = !meio.length
     const pontos = [...inicio, ...meio, ...entrada]
     // 5. verificação final dos troços fora dos portos (ligações e linha)
     for (let i = 1; i < pontos.length; i++) {
@@ -228,13 +270,25 @@ function gerarRota (costa, { partida, destino, afastamento, twd, horaPartida, op
       const r = costa.verificarTroco(pontos[i - 1], pontos[i])
       if (r) return excluir(r.motivo === 'terra' ? semPassagem : `a rota a ${afastamento} MN ${descreverProblema(r)}`)
     }
-    // 3 MN só com vento de terra, em TODOS os pontos da linha seguida (não só à saída)
-    if (meio.length && afastamento <= o.afastamentoVentoTerra) {
+    const costaMinMn = distanciaMinimaTerra(costa, pontos)
+    if (direto) {
+      // salto curto (a linha seguida ficava com ≤ 0,5 MN): uma só alternativa, a mesma a qualquer
+      // afastamento, marcada `direto`, com a distância real à terra; perto da costa (< 3 MN) só com
+      // vento de terra, como os 3 MN
+      alt.afastamento = null
+      alt.direto = true
+      alt.avisos.push(partida.aproximacao ? NOTA_DIRETO : NOTA_DIRETO_MAR)
+      if (costaMinMn < o.afastamentoVentoTerra) {
+        const motivo = ventoDoMarNoDireto(costa, pontos, costaMinMn, { twd, horaPartida }, o)
+        if (motivo) return excluir(motivo)
+      }
+    } else if (afastamento <= o.afastamentoVentoTerra) {
+      // 3 MN só com vento de terra, em TODOS os pontos da linha seguida (não só à saída)
       const motivo = ventoDoMarNaRota(costa, linha, pontos, { twd, horaPartida }, o)
       if (motivo) return excluir(motivo)
     }
     for (const p of pontos) { delete p.s; if (p.perna === 'linha') delete p.costaLivre; else p.costaLivre = true }
-    return { ...alt, pontos, milhas: milhasDe(pontos), sentido, linha: { de: meio.length ? j.s : null, ate: meio.length ? l.s : null } }
+    return { ...alt, pontos, milhas: milhasDe(pontos), costaMinMn, sentido, linha: { de: direto ? null : j.s, ate: direto ? null : l.s } }
   } catch (e) {
     return excluir(e.message)
   }
@@ -256,7 +310,14 @@ function gerarRotas (costa, { posicao, destino, afastamentos = [3, 5, 8], twd, h
     dest = r.destino
   }
   const partida = portoDePartida(costa, posicao) || { lat: posicao.lat, lon: posicao.lon }
-  return afastamentos.map(d => gerarRota(costa, { partida, destino: dest, afastamento: d, twd, horaPartida, opcoes }))
+  const alts = []
+  for (const d of afastamentos) {
+    const a = gerarRota(costa, { partida, destino: dest, afastamento: d, twd, horaPartida, opcoes })
+    // a rota direta é a mesma a qualquer afastamento: só uma vez
+    if (a.direto && alts.some(x => x.direto)) continue
+    alts.push(a)
+  }
+  return alts
 }
 
 module.exports = { RAIO_PORTO_MN, AVISO_ROTA_ATIVA, portoDePartida, destinoDaRotaAtiva, rumoParaTerra, ventoDeTerra, gerarRota, gerarRotas }

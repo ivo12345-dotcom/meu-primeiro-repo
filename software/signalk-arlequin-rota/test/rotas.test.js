@@ -100,6 +100,48 @@ test('3 MN: o vento de terra à saída não chega, conta a linha toda (costa a s
   assert.ok(args.length > 0 && args.every(n => n === 2))
 })
 
+const NOTA_DIRETO = 'salto curto entre portos vizinhos: rota direta junto à costa'
+
+test('salto curto entre portos vizinhos: UMA alternativa direta, com a distância real à terra', () => {
+  // Cascais → Algés: o largo é o mesmo, não há linha a seguir a nenhum afastamento
+  const ca = r.gerarRotas(real, { posicao: c.P(D('cascais').aproximacao.at(-1)), destino: D('alges'), twd: 0 })
+  assert.equal(ca.length, 1, JSON.stringify(ca.map(a => [a.afastamento, a.direto, a.motivo])))
+  const [d] = ca
+  assert.equal(d.excluida, false, d.motivo)
+  assert.equal(d.direto, true)
+  assert.equal(d.afastamento, null)
+  assert.ok(d.costaMinMn > 2 && d.costaMinMn < 3, `${d.costaMinMn}`)
+  assert.ok(d.avisos.includes(NOTA_DIRETO))
+  assert.equal(d.pontos[0].nome, 'Cascais (partida)')
+  assert.equal(d.pontos.at(-1).nome, 'Algés (CNA)')
+  assert.equal(d.pontos.filter(p => p.perna === 'linha').length, 0)
+  // Lagos → Portimão: a 3 MN segue a linha (é outra rota), a 5 e 8 MN seria a direta repetida
+  // (vento de NNW: de terra em todo o troço direto; no largo de Lagos a terra mais perto é a Ponta
+  // da Piedade, a oeste, por isso o norte puro fica a 71° da normal)
+  const lp = r.gerarRotas(real, { posicao: c.P(D('lagos').aproximacao.at(-1)), destino: D('portimao'), twd: 340 })
+  assert.deepEqual(lp.map(a => [a.afastamento, !!a.direto]), [[3, false], [null, true]])
+  const dir = lp[1]
+  assert.equal(dir.excluida, false, dir.motivo)
+  // a distância mínima real (do largo de Lagos ao de Portimão), não 5 nem 8
+  assert.ok(dir.costaMinMn > 1 && dir.costaMinMn < 2.5, `${dir.costaMinMn}`)
+  let mn = Infinity
+  for (let i = 1; i < dir.pontos.length; i++) {
+    if (dir.pontos[i].perna !== 'ligacao') continue
+    const a = dir.pontos[i - 1]; const b = dir.pontos[i]
+    for (let k = 0; k <= 50; k++) mn = Math.min(mn, real.distanciaTerra({ lat: a.lat + (b.lat - a.lat) * k / 50, lon: a.lon + (b.lon - a.lon) * k / 50 }))
+  }
+  assert.ok(Math.abs(mn - dir.costaMinMn) < 0.05, `${mn} vs ${dir.costaMinMn}`)
+  // a menos de 3 MN da costa: a regra dos 3 MN aplica-se (vento do sul = do mar na costa algarvia)
+  const sul = r.gerarRotas(real, { posicao: c.P(D('lagos').aproximacao.at(-1)), destino: D('portimao'), twd: 180 })
+  const dirSul = sul.find(a => a.direto)
+  assert.equal(dirSul.excluida, true)
+  assert.match(dirSul.motivo, /^vento do mar em parte da rota: a rota direta passa a 1,\d MN de uma costa a sotavento$/)
+  // gerarRota sozinha também marca a direta
+  const so = r.gerarRota(real, { partida: D('cascais'), destino: D('alges'), afastamento: 5, twd: 0 })
+  assert.equal(so.direto, true)
+  assert.equal(so.afastamento, null)
+})
+
 // Costa inventada: costa N-S em 9,0 W com um cabo fino para oeste a 39,0 N (até 9,08 W),
 // um ilhéu junto à linha e uma lagoa fechada; a "linha de 5 MN" é uma reta em 9,15 W.
 const terra = {
