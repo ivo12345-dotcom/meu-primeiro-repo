@@ -19,6 +19,7 @@
 // um cabo largo roda aos poucos). Os nomes vêm de
 // uma lista curta de cabos da costa continental (posições aproximadas; o mais perto a ≤ 10 MN).
 
+const { setImmediate: ceder } = require('node:timers/promises')
 const c = require('./costa')
 const rotas = require('./rotas')
 
@@ -143,8 +144,9 @@ function irPara (costa, p, t, d, { eta, twd, log }) {
 // linhaTempo: os pontos do cenário provável (lib/passagem.js); partida: o porto de partida (destino da
 // lista) ou null; eta(pontos, t) e twd(lat, lon, t) do cenário provável; log(msg, erro) (o registo
 // dos erros de programação da geometria; no plugin, app.error).
-// → { pontos: [{ t, hora, tipo: 'marco' | 'cabo', nome?, lat, lon, milhas, abrigo, voltar }], resumo }
-function pontosDesistencia ({ costa, rota, linhaTempo, partida = null, destino = null, eta, twd, log, opcoes = {} }) {
+// Assíncrona: cede o event loop em cada ponto (cada um gera várias rotas), para o SignalK não parar.
+// → Promise<{ pontos: [{ t, hora, tipo: 'marco' | 'cabo', nome?, lat, lon, milhas, abrigo, voltar }], resumo }>
+async function pontosDesistencia ({ costa, rota, linhaTempo, partida = null, destino = null, eta, twd, log, opcoes = {} }) {
   const o = { ...PADRAO, ...opcoes }
   const hm = (t) => new Intl.DateTimeFormat('pt-PT', { timeZone: o.fuso, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(t)
   const abrigos = costa.destinos.filter(d => d.abrigo) // o próprio destino também conta, se for abrigo
@@ -162,6 +164,7 @@ function pontosDesistencia ({ costa, rota, linhaTempo, partida = null, destino =
   }).filter(s => s.t != null).sort((a, b) => a.t - b.t)
   const out = []
   for (const s of comHora) {
+    await ceder()
     const p = { lat: s.lat, lon: s.lon }
     const perto = abrigos.map(d => ({ d, mn: c.distanciaMn(p, c.P(d.largo)) })).sort((a, b) => a.mn - b.mn).slice(0, o.candidatos)
     let abrigo = null

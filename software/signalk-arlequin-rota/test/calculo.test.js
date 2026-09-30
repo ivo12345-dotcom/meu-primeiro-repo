@@ -337,3 +337,15 @@ test('"Sair agora" com a previsão a acabar antes da chegada: a passagem fica, c
   // sem "sair agora": as passagens que acabam depois da previsão ficam de fora (o erro explica)
   assert.match((await calcular(entrada(), comPrevisao(curta))).erro, /^A previsão acaba às 17:32/)
 })
+
+test('o cálculo cede o event loop entre partidas e na desistência, e acaba', async () => {
+  let voltas = 0
+  let acabou = false
+  const contar = () => { voltas++; if (!acabou) setImmediate(contar) }
+  setImmediate(contar)
+  const r = await calcular(entrada(), deps())
+  acabou = true
+  assert.equal(r.erro, undefined, r.erro)
+  assert.ok(r.desistencia.length >= 10)
+  assert.ok(voltas >= r.estatisticas.partidas + r.desistencia.length, `${voltas} voltas do event loop (${r.estatisticas.partidas} partidas, ${r.desistencia.length} pontos de desistência)`)
+})

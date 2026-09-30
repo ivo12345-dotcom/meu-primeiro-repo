@@ -5,8 +5,8 @@
 //   3 melhores e veredicto → avisos, precauções e pontos de desistência → `resultado`.
 //
 // calcular(entrada, deps) é assíncrona e NUNCA lança: um erro dá { erro: 'mensagem' }.
-// Entre partidas cede o event loop (setImmediate), para o SignalK não parar, e chama
-// deps.progresso(fração 0–1, texto).
+// Entre partidas e em cada ponto de desistência cede o event loop (setImmediate), para o SignalK
+// não parar, e chama deps.progresso(fração 0–1, texto).
 //
 // entrada: {
 //   instrumentos: { posicao: { lat, lon }, socPct?, gasoleoL?, tendPressao3h? },
@@ -28,6 +28,7 @@
 // (rotas.ventoDoMar) volta a verificar-se com a hora a que o barco passa em cada ponto nos rastos
 // pessimista e provável (a estimativa a 5 nós do rotas.js é otimista): se falhar, fica excluída.
 
+const { setImmediate: ceder } = require('node:timers/promises')
 const c = require('./costa')
 const rotas = require('./rotas')
 const prev = require('./previsao')
@@ -56,7 +57,6 @@ const PADRAO = Object.freeze({
   fuso: 'Europe/Lisbon'
 })
 
-const ceder = () => new Promise(resolve => setImmediate(resolve))
 const iso = (t) => new Date(t).toISOString()
 const r2 = (x) => (Number.isFinite(x) ? Math.round(x * 100) / 100 : null)
 const r1 = (x) => (Number.isFinite(x) ? Math.round(x * 10) / 10 : null)
@@ -410,6 +410,7 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   let primeira = null
   if (top.length) {
     progresso(0.9, 'pontos de desistência')
+    await ceder()
     const sims0 = simular3(ctx, top[0].geometria, top[0].partida, top[0].propulsao)
     const etaMotor = (pontosRota, t0) => {
       const r = simularPassagem({
@@ -418,7 +419,7 @@ async function calcularSemRede (entrada = {}, deps = {}) {
       })
       return r.resumo.chegou ? Date.parse(r.resumo.chegada) : null
     }
-    const d = pontosDesistencia({
+    const d = await pontosDesistencia({
       costa, rota: top[0].geometria, linhaTempo: sims0.provavel.pontos, partida: porto, destino, eta: etaMotor,
       twd, log, opcoes: { fuso: o.fuso }
     })
