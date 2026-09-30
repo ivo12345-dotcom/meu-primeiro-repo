@@ -10,9 +10,10 @@ import pandas as pd
 import pytest
 
 from arlequin_ia.base import ler_polar, stw_polar
-from arlequin_ia.dados import ler_tabela
+from arlequin_ia.dados import ler_previsoes, ler_saidas, ler_tabela
 from arlequin_ia.sintetico import COLUNAS, gerar, verdade_stw
 from arlequin_ia.treino import carregar, prever_guardado, treinar
+from arlequin_ia.variaveis import preparar
 
 RAIZ = Path(__file__).resolve().parent.parent
 POLAR = ler_polar(RAIZ.parent / 'arlequin-ecra' / 'public' / 'polar-arlequin.csv')
@@ -41,7 +42,7 @@ def test_encontra_o_barco_mais_lento_aos_60_graus(treinado):
     m = carregar(d / 'modelos' / 'velocidade', 'v0001')
     x = pd.DataFrame([{v: np.nan for v in m['variaveis']}])
     # o modelo recebe a previsão em bruto: nos dados inventados é o vento real / 1,2 (12 nós reais → 10 previstos)
-    x.loc[0, ['prevTws', 'twaAbs', 'prevRajada', 'grandeRizos', 'genoaPct']] = [10, 60, 13, 0, 100]
+    x.loc[0, ['prevTws', 'twaPrevAbs', 'prevRajada', 'grandeRizos', 'genoaPct']] = [10, 60, 13, 0, 100]
     x.loc[0, ['prevOndas', 'prevPeriodo', 'ondasAnguloRel']] = [1.5, 8, 100]
     previsto = prever_guardado(m, x)[0]
     verdade = float(verdade_stw(POLAR, [60], [12])[0])
@@ -61,7 +62,7 @@ def test_quantis_por_ordem_em_media(treinado):
     m = carregar(d / 'modelos' / 'velocidade', 'v0001')
     # no planeamento as 8 variáveis são todas conhecidas (vêm da previsão e das velas escolhidas)
     ptws = np.linspace(5, 20, 30)
-    x = pd.DataFrame({'prevTws': ptws, 'twaAbs': np.linspace(45, 170, 30), 'prevRajada': ptws * 1.3, 'prevOndas': 1.5,
+    x = pd.DataFrame({'prevTws': ptws, 'twaPrevAbs': np.linspace(45, 170, 30), 'prevRajada': ptws * 1.3, 'prevOndas': 1.5,
                       'prevPeriodo': 8.0, 'ondasAnguloRel': 100.0, 'grandeRizos': 0, 'genoaPct': 100})[m['variaveis']]
     p10, p50, p90 = (prever_guardado(m, x, q).mean() for q in ('p10', 'p50', 'p90'))
     assert p10 < p50 < p90
@@ -114,9 +115,10 @@ def test_velocidade_aprende_e_e_testada_so_a_vela(treinado):
     m = carregar(d / 'modelos' / 'velocidade', 'v0001')
     assert 'rpm' not in m['variaveis']
     assert r['velocidade']['mae'] < r['velocidade']['maeBase']
-    df = ler_tabela(d)
+    df = preparar(ler_tabela(d), ler_saidas(d), ler_previsoes(d))
     ultima = df[(df['t'] >= pd.Timestamp('2026-06-03T00:00:00Z')) & (df['rpm'] <= 0)]  # a vela na última saída
-    base_vela = float(np.mean(np.abs(stw_polar(POLAR, ultima['twa'].abs(), ultima['tws']) - ultima['stw'])))
+    # a base é a polar com a previsão em bruto (a mesma informação que o modelo tem), não com o vento medido
+    base_vela = float(np.mean(np.abs(stw_polar(POLAR, ultima['twaPrevAbs'], ultima['prevTws']) - ultima['stw'])))
     assert r['velocidade']['maeBase'] == pytest.approx(base_vela, abs=1e-3)
     assert m['horas'] == pytest.approx(3 * 4.0, abs=0.01)  # só as horas à vela
     assert sum(m['celulas'].values()) == pytest.approx(3 * 4.0, abs=0.01)
@@ -363,7 +365,7 @@ def test_velocidade_so_a_vela_com_pelo_menos_uma_vela_em_cima():
         ((np.nan, np.nan, np.nan), False),
         ((1800, 0, 100), False),    # motor a trabalhar com velas em cima
     ]
-    d = pd.DataFrame([dict(rpm=r, grandeRizos=g, genoaPct=p, tws=10.0, prevTws=8.0, twaAbs=90.0, stw=5.0) for (r, g, p), _ in casos])
+    d = pd.DataFrame([dict(rpm=r, grandeRizos=g, genoaPct=p, prevTws=8.0, twaPrevAbs=90.0, stw=5.0) for (r, g, p), _ in casos])
     assert list(MODELOS['velocidade']['filtro'](d)) == [c for _, c in casos]
 
 
@@ -401,16 +403,27 @@ def test_consumo_de_ficheiros_antigos_sem_a_origem_nao_ensina(tmp_path):
 
 def test_variaveis_de_planeamento_so_o_que_se_sabe_antes_de_partir():
     from arlequin_ia.treino import MODELOS
-    assert MODELOS['velocidade']['variaveis'] == ['prevTws', 'twaAbs', 'prevRajada', 'prevOndas', 'prevPeriodo',
+    assert MODELOS['velocidade']['variaveis'] == ['prevTws', 'twaPrevAbs', 'prevRajada', 'prevOndas', 'prevPeriodo',
                                                   'ondasAnguloRel', 'grandeRizos', 'genoaPct']
     assert MODELOS['consumo']['variaveis'] == ['rpm', 'prevOndas', 'ondasAnguloRel']
 
 
 def test_velocidade_so_aprende_com_previsao_arquivada():
+    # precisa do vento previsto (força e ângulo); o vento medido já não conta (nem para a base)
     from arlequin_ia.treino import MODELOS
-    d = pd.DataFrame({'rpm': [0.0, 0.0], 'grandeRizos': [0, 0], 'genoaPct': [100, 100], 'tws': [10.0, 10.0],
-                      'twaAbs': [90.0, 90.0], 'stw': [5.0, 5.0], 'prevTws': [8.0, np.nan]})
-    assert list(MODELOS['velocidade']['filtro'](d)) == [True, False]
+    d = pd.DataFrame({'rpm': [0.0] * 4, 'grandeRizos': [0] * 4, 'genoaPct': [100] * 4,
+                      'tws': [10.0, 10.0, 10.0, np.nan], 'twaAbs': [90.0, 90.0, 90.0, np.nan], 'stw': [5.0] * 4,
+                      'prevTws': [8.0, np.nan, 8.0, 8.0], 'twaPrevAbs': [85.0, 85.0, np.nan, 85.0]})
+    assert list(MODELOS['velocidade']['filtro'](d)) == [True, False, False, True]
+
+
+def test_base_da_velocidade_e_a_polar_com_a_mesma_informacao_do_modelo():
+    # a origem com que o 1.º modelo se compara é a polar no vento previsto em bruto, não no medido
+    from arlequin_ia.treino import MODELOS
+    d = pd.DataFrame({'tws': [14.0, 20.0], 'twaAbs': [120.0, 150.0], 'prevTws': [8.0, 12.0], 'twaPrevAbs': [60.0, 90.0]})
+    base = MODELOS['velocidade']['base'](d, POLAR)
+    assert np.allclose(base, stw_polar(POLAR, [60.0, 90.0], [8.0, 12.0]))
+    assert not np.allclose(base, stw_polar(POLAR, [120.0, 150.0], [14.0, 20.0]))
 
 
 def test_sem_previsoes_a_velocidade_nao_aprende_mas_o_consumo_sim(tmp_path):
@@ -425,10 +438,22 @@ def test_sem_previsoes_a_velocidade_nao_aprende_mas_o_consumo_sim(tmp_path):
 def test_celulas_pelo_vento_previsto_em_bruto():
     # o planeador chama pesoCelula (lib/modelos.js) com o vento previsto em bruto: as células têm de ser do prevTws
     from arlequin_ia.treino import celulas
-    d = pd.DataFrame({'tws': [12.0] * 360 + [12.0] * 720, 'prevTws': [9.5] * 360 + [10.9] * 720, 'twaAbs': [61.0] * 1080})
+    # ... e do ângulo ao vento previsto (twaPrevAbs), não do medido (twaAbs)
+    d = pd.DataFrame({'tws': [12.0] * 360 + [12.0] * 720, 'prevTws': [9.5] * 360 + [10.9] * 720,
+                      'twaAbs': [100.0] * 1080, 'twaPrevAbs': [61.0] * 1080})
     assert celulas(d) == {'10|60': 2.0, '8|60': 1.0}
 
 
 def test_frases_da_velocidade_falam_do_vento_previsto(treinado):
     _, r = treinado
-    assert all(re.search(r'com \d+ nós previstos', f) for f in r['velocidade']['frases']), r['velocidade']['frases']
+    assert all(re.search(r'^a \d+° do vento previsto com \d+ nós previstos andas \d+,\d nós \(a polar dizia \d+,\d\)$', f)
+               for f in r['velocidade']['frases']), r['velocidade']['frases']
+
+
+def test_velocidade_aguenta_uma_previsao_com_erro(tmp_path):
+    # a previsão em bruto erra (1,5 nós na força e 10° na direção, ao acaso): o 1.º modelo tem de continuar a
+    # bater a polar com a mesma previsão
+    gerar(tmp_path, POLAR, ruido_previsao=(1.5, 10.0))
+    r = treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])[0]
+    assert r['aceite'] is True, r
+    assert r['mae'] < r['maeBase'], r

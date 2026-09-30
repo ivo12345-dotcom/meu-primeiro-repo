@@ -45,17 +45,16 @@ VARS_VENTO = ['latCel', 'lonCel', 'prevTws', 'prevTwd', 'horaDia', 'idadePrevH',
 MODELOS = {
     'velocidade': {
         'alvo': 'stw',
-        # o vento é a previsão EM BRUTO (prevTws, prevRajada), sem a correção da AI: a AI aprende "com esta
-        # previsão, andaste X". No planeamento recebe também a previsão em bruto (a correção do vento serve a
-        # polar e as regras, e não entra aqui para não ser contada duas vezes)
-        'variaveis': ['prevTws', 'twaAbs', 'prevRajada', 'prevOndas', 'prevPeriodo', 'ondasAnguloRel',
+        # o vento é a previsão EM BRUTO (prevTws, prevRajada e o ângulo twaPrevAbs entre a proa e o vento
+        # previsto), sem a correção da AI: a AI aprende "com esta previsão, andaste X". No planeamento recebe
+        # também a previsão em bruto (a correção do vento serve a polar e as regras, e não entra aqui para não
+        # ser contada duas vezes)
+        'variaveis': ['prevTws', 'twaPrevAbs', 'prevRajada', 'prevOndas', 'prevPeriodo', 'ondasAnguloRel',
                       'grandeRizos', 'genoaPct'],
-        # só à vela (a motor a polar não quer dizer nada) e só em horas com previsão arquivada.
-        # O tws medido continua a ser preciso para a comparação com a polar (a base)
-        'filtro': lambda d: (d['tws'].notna() & d['prevTws'].notna() & d['twaAbs'].notna() & d['stw'].notna()
-                             & a_vela(d)),
-        # a origem é a polar no vento medido: a melhor estimativa do vento corrigido que o planeador lhe dá
-        'base': lambda d, polar: stw_polar(polar, d['twaAbs'], d['tws']),
+        # só à vela (a motor a polar não quer dizer nada) e só em horas com previsão arquivada
+        'filtro': lambda d: d['prevTws'].notna() & d['twaPrevAbs'].notna() & d['stw'].notna() & a_vela(d),
+        # a origem é a polar com a mesma informação que o modelo tem: a previsão em bruto
+        'base': lambda d, polar: stw_polar(polar, d['twaPrevAbs'], d['prevTws']),
     },
     'ventoForca': {
         'alvo': 'ventoRazao', 'variaveis': VARS_VENTO,
@@ -90,9 +89,10 @@ def treinar_quantis(x, y):
 
 
 def chave_celula(d):
-    """'nós|graus' da célula de 2 nós de vento previsto em bruto (prevTws) × 15° de ângulo: o mesmo vento
-    que o modelo recebe e com que o planeador chama pesoCelula (signalk-arlequin-ia/lib/modelos.js)."""
-    return (d['prevTws'] // 2 * 2).astype(int).astype(str) + '|' + (d['twaAbs'] // 15 * 15).astype(int).astype(str)
+    """'nós|graus' da célula de 2 nós de vento previsto em bruto (prevTws) × 15° de ângulo ao vento previsto
+    (twaPrevAbs): o mesmo vento que o modelo recebe e com que o planeador chama pesoCelula
+    (signalk-arlequin-ia/lib/modelos.js)."""
+    return (d['prevTws'] // 2 * 2).astype(int).astype(str) + '|' + (d['twaPrevAbs'] // 15 * 15).astype(int).astype(str)
 
 
 def celulas(d):
@@ -112,10 +112,9 @@ def frases(nome, d, x, p50, polar):
             g = vela[vela['cel'] == cel]
             linha = g[x.columns].median().to_frame().T
             v = float(p50.predict(linha)[0])
-            tws = float(g['tws'].median())  # o vento que houve de facto com esta previsão
-            pol = float(stw_polar(polar, linha['twaAbs'], [tws])[0])
-            out.append(f'a {linha["twaAbs"].iloc[0]:.0f}° com {linha["prevTws"].iloc[0]:.0f} nós previstos andas '
-                       f'{virgula(v)} nós (houve {tws:.0f} nós; a polar dizia {virgula(pol)})')
+            pol = float(stw_polar(polar, linha['twaPrevAbs'], linha['prevTws'])[0])  # como a base: com a previsão
+            out.append(f'a {linha["twaPrevAbs"].iloc[0]:.0f}° do vento previsto com {linha["prevTws"].iloc[0]:.0f} '
+                       f'nós previstos andas {virgula(v)} nós (a polar dizia {virgula(pol)})')
         return out
     if nome == 'consumo':
         c = d.assign(r=(d['rpm'] / 100).round() * 100)

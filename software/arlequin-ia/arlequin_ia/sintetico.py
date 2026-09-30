@@ -1,7 +1,9 @@
 """Dados inventados com resposta conhecida, para testar a AI sem barco:
 o barco "verdadeiro" é 8% mais lento do que a polar em geral e mais 10% à volta
 dos 60°, o vento real é 20% mais forte do que a previsão e o motor gasta mais 10%
-do que diz a Volvo. Escreve tabela/, saidas/ e previsoes/ como a caixa negra e o plugin da AI."""
+do que diz a Volvo. Com `ruido_previsao=(nós, graus)` a previsão erra ainda ao acaso (desvio padrão
+na força e na direção, a cada hora prevista). Escreve tabela/, saidas/ e previsoes/ como a caixa negra
+e o plugin da AI."""
 
 import gzip
 import json
@@ -21,8 +23,11 @@ def verdade_stw(polar, twa_abs, tws, fator60=0.9, fator_geral=0.92):
 
 
 def gerar(pasta, polar, sessoes=3, horas_motor=2.0, horas_vela=4.0, inicio='2026-06-01T08:00:00Z',
-          fator60=0.9, fator_geral=0.92, razao_vento=1.2, fator_consumo=1.1, ruido=0.15, simulado=0, semente=1):
+          fator60=0.9, fator_geral=0.92, razao_vento=1.2, fator_consumo=1.1, ruido=0.15, simulado=0, semente=1,
+          ruido_previsao=0):
     rng = np.random.default_rng(semente)
+    rng_prev = np.random.default_rng(semente + 1000)  # à parte: sem erro na previsão, os dados ficam iguais
+    erro_tws, erro_twd = ruido_previsao if ruido_previsao else (0.0, 0.0)
     pasta = Path(pasta)
     for d in ('tabela', 'saidas', 'previsoes'):
         (pasta / d).mkdir(parents=True, exist_ok=True)
@@ -59,9 +64,11 @@ def gerar(pasta, polar, sessoes=3, horas_motor=2.0, horas_vela=4.0, inicio='2026
             obtida = ini + pd.Timedelta(hours=h)
             horas = pd.date_range(obtida.floor('h'), periods=6, freq='h')
             k = np.clip(((horas - ini) / pd.Timedelta(seconds=10)).astype(int), 0, n - 1)
+            p_tws = np.clip(tws[k] / razao_vento + rng_prev.normal(0, erro_tws, len(k)), 0, None)
+            p_twd = (twd[k] + rng_prev.normal(0, erro_twd, len(k))) % 360
             prev = {'obtida': obtida.isoformat(), 'lat': float(lat[k[0]]), 'lon': -9.6,
-                    'horas': [x.isoformat() for x in horas], 'tws': (tws[k] / razao_vento).round(2).tolist(),
-                    'rajada': (tws[k] * 1.3 / razao_vento).round(2).tolist(), 'twd': twd[k].round(1).tolist(),
+                    'horas': [x.isoformat() for x in horas], 'tws': p_tws.round(2).tolist(),
+                    'rajada': (p_tws * 1.3).round(2).tolist(), 'twd': p_twd.round(1).tolist(),
                     'ondas': [1.5] * 6, 'periodo': [8.0] * 6, 'ondasDir': [300.0] * 6}
             (pasta / 'previsoes' / f'{obtida.strftime("%Y-%m-%dT%H-%M")}.json').write_text(json.dumps(prev), encoding='utf-8')
     df = pd.concat(linhas, ignore_index=True)

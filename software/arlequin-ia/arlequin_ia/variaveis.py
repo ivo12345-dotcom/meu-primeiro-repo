@@ -112,7 +112,9 @@ def preparar(df, saidas, previsoes):
     d = d.join(balanco(d))
     d['tendPressao3h'] = tendencia_pressao(d)
     d = d.join(juntar_previsao(d, previsoes))
-    d['twaAbs'] = d['twa'].abs()
+    d['twaAbs'] = d['twa'].abs()  # medido
+    # o ângulo entre a proa e o vento previsto em bruto (0–180°): o único que o planeador conhece antes de partir
+    d['twaPrevAbs'] = np.abs(dif_angulo(d['prevTwd'], d['proa']))
     d['adornoAbs'] = d['adorno'].abs()
     d['ondasAnguloRel'] = np.abs(dif_angulo(d['prevOndasDir'], d['proa']))
     d['horaDia'] = d['t'].dt.hour + d['t'].dt.minute / 60

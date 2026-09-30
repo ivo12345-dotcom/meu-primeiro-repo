@@ -12,18 +12,21 @@
 //
 // velocidade → STW em nós (velocidade na água, NÃO a SOG: a corrente fica de fora)
 //   prevTws        nós   vento previsto EM BRUTO (Open-Meteo, sem a correção da AI)
-//   twaAbs         graus |TWA| (0–180): no planeamento, o ângulo entre o rumo e o vento corrigido
+//   twaPrevAbs     graus |TWD previsto EM BRUTO − rumo planeado| (0–180), NÃO o ângulo ao vento corrigido
+//                        (no treino: |prevTwd − proa|; o |TWA| medido, twaAbs, não entra)
 //   prevRajada     nós   rajada prevista EM BRUTO
 //   prevOndas      m     altura das ondas prevista
 //   prevPeriodo    s     período das ondas previsto
 //   ondasAnguloRel graus |direção das ondas prevista − proa| (0–180)
 //   grandeRizos    −1 arriada, 0 inteira, 1 ou 2 rizos (no planeamento: os limiares da simulação)
 //   genoaPct       %     0 enrolada … 100 toda aberta
-//   Quem dá o quê: o planeador passa a previsão em bruto do ponto e hora (lib/previsao.js) e as velas que
-//   decidiu; o `stwPolar` de preverVelocidade é a polar no vento CORRIGIDO (preverVento, P50 ou o do
-//   cenário). A correção entra só pela polar: o modelo aprendeu "com esta previsão em bruto, andaste X",
-//   por isso dar-lhe o vento corrigido contava a correção duas vezes.
-//   O peso da AI (pesoCelula) é por célula de 2 nós de prevTws × 15° de twaAbs, como treino.chave_celula.
+//   Quem dá o quê: o planeador passa a previsão em bruto do ponto e hora (lib/previsao.js: força, rajada e
+//   o ângulo entre o rumo e a DIREÇÃO em bruto) e as velas que decidiu; o `stwPolar` de preverVelocidade é
+//   a polar no vento CORRIGIDO (preverVento, P50 ou o do cenário). A correção entra só pela polar: o modelo
+//   aprendeu "com esta previsão em bruto, andaste X", por isso dar-lhe o vento corrigido (força ou ângulo)
+//   contava a correção duas vezes. (No treino, a origem com que o modelo se compara é a polar na previsão
+//   em bruto: stw_polar(twaPrevAbs, prevTws).)
+//   O peso da AI é pesoCelula(modelo, prevTws, twaPrevAbs): célula de 2 nós × 15°, como treino.chave_celula.
 // ventoForca → razão TWS medido / TWS previsto; ventoDirecao → TWD medido − previsto (graus, −180…180)
 //   latCel, lonCel graus  quadrícula de 0,1° (floor(lat × 10) / 10)
 //   prevTws        nós    TWS previsto em bruto
@@ -84,15 +87,15 @@ function preverQuantis (modelo, x) {
 }
 
 // Peso da AI numa célula de 2 nós de vento previsto em bruto × 15°: cresce até 1 com 2 h de dados.
-function pesoCelula (modelo, prevTws, twaAbs) {
-  const h = modelo?.celulas?.[`${Math.floor(prevTws / 2) * 2}|${Math.floor(twaAbs / 15) * 15}`] ?? 0
+function pesoCelula (modelo, prevTws, twaPrevAbs) {
+  const h = modelo?.celulas?.[`${Math.floor(prevTws / 2) * 2}|${Math.floor(twaPrevAbs / 15) * 15}`] ?? 0
   return Math.min(1, h / 2)
 }
 
 // Velocidade na água (nós): mistura com a polar pelo peso da célula e fica entre 40% e 120% da polar.
 function preverVelocidade (modelo, x, stwPolar) {
   if (!modelo) return { p10: stwPolar, p50: stwPolar, p90: stwPolar, peso: 0 }
-  const peso = pesoCelula(modelo, x.prevTws, x.twaAbs) // a célula é do vento previsto em bruto
+  const peso = pesoCelula(modelo, x.prevTws, x.twaPrevAbs) // a célula é do vento previsto em bruto
   const ai = preverQuantis(modelo, x)
   const out = { peso }
   for (const q of ['p10', 'p50', 'p90']) out[q] = limitar(peso * ai[q] + (1 - peso) * stwPolar, 0.4 * stwPolar, 1.2 * stwPolar)

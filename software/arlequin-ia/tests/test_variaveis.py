@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from arlequin_ia.dados import NUMERICAS, ler_previsoes, ler_saidas, ler_tabela
-from arlequin_ia.variaveis import balanco, dif_angulo, juntar_previsao, sessoes, tendencia_pressao
+from arlequin_ia.variaveis import balanco, dif_angulo, juntar_previsao, preparar, sessoes, tendencia_pressao
 
 
 def escrever_tabela(pasta, nome, linhas, cab='t,lat,lon,stw,simulado,estavel'):
@@ -189,3 +189,17 @@ def test_juntar_previsao_mais_recente_ganha_ao_mais_perto_e_longe_demais_nao_con
     longe = {**recente, 'lat': 39.6}
     j = juntar_previsao(df, [antiga_perto, longe])
     assert list(j['prevTws']) == [5, 5] and list(j['idadePrevH']) == [2, 2.5]
+
+
+def test_preparar_twa_prev_abs_e_o_angulo_entre_a_proa_e_o_vento_previsto_em_bruto():
+    # o planeador só sabe o rumo e a previsão em bruto: o ângulo ao vento que o modelo aprende é esse (0–180°);
+    # o |TWA| medido (twaAbs) continua lá para outros usos
+    df = tabela(4, passo=1800, lat=[39.0, 39.0, 39.0, 40.0], lon=-9.6, proa=[10.0, 200.0, 170.0, 10.0],
+                twa=-45.0, tws=12.0, twd=0.0, adorno=5.0, caimento=1.0, pressao=1015.0)  # a 4.ª linha a 60 MN
+    horas = pd.to_datetime(['2026-06-01T10:00Z', '2026-06-01T11:00Z', '2026-06-01T12:00Z'], utc=True)
+    prev = {'obtida': pd.Timestamp('2026-06-01T09:00Z'), 'lat': 39.0, 'lon': -9.6, 'horas': horas,
+            'tws': [10, 10, 10], 'twd': [350, 350, 350]}
+    d = preparar(df, [], [prev])
+    assert np.allclose(d['twaPrevAbs'].iloc[:3], [20, 150, 180])
+    assert np.isnan(d['twaPrevAbs'].iloc[3])  # sem previsão que sirva
+    assert list(d['twaAbs']) == [45.0] * 4
