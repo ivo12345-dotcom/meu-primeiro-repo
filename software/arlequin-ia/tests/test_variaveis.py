@@ -4,7 +4,7 @@ import json
 import numpy as np
 import pandas as pd
 
-from arlequin_ia.dados import ler_previsoes, ler_saidas, ler_tabela
+from arlequin_ia.dados import NUMERICAS, ler_previsoes, ler_saidas, ler_tabela
 from arlequin_ia.variaveis import balanco, dif_angulo, juntar_previsao, sessoes, tendencia_pressao
 
 
@@ -105,6 +105,25 @@ def test_ler_tabela_salta_um_ficheiro_ilegivel_com_aviso(tmp_path, capsys):
     (tmp_path / 'tabela' / '2026-06-01.csv.gz').write_bytes(b'isto nao e gzip')
     assert list(ler_tabela(tmp_path)['stw']) == [5]
     assert '2026-06-01.csv.gz' in capsys.readouterr().err
+
+
+def test_ler_tabela_antiga_sem_uma_coluna_da_nan(tmp_path):
+    escrever_tabela(tmp_path, '2026-06-01.csv.gz', ['2026-06-01T10:00:00.000Z,39,-9,4,0,1'])
+    df = ler_tabela(tmp_path)
+    assert 'consumoMedido' in df and df['consumoMedido'].isna().all()
+
+
+def test_ler_tabela_no_dia_da_atualizacao_as_linhas_com_a_coluna_nova_ficam_certas(tmp_path):
+    # o ficheiro do dia começou com o cabeçalho antigo (24 colunas) e a caixa negra nova acrescenta a 25.ª
+    antigas = ['t'] + NUMERICAS[:-1]
+    assert NUMERICAS[-1] == 'consumoMedido'
+    velha = ['2026-06-01T10:00:00.000Z'] + [''] * (len(antigas) - 1)
+    nova = ['2026-06-01T10:00:10.000Z'] + [''] * (len(antigas) - 1) + ['1']
+    velha[antigas.index('stw')], nova[antigas.index('stw')] = '4', '5'
+    escrever_tabela(tmp_path, '2026-06-01.csv.gz', [','.join(velha), ','.join(nova)], cab=','.join(antigas))
+    df = ler_tabela(tmp_path)
+    assert list(df['stw']) == [4, 5]
+    assert np.isnan(df['consumoMedido'].iloc[0]) and df['consumoMedido'].iloc[1] == 1
 
 
 def test_ler_tabela_so_os_dias_pedidos(tmp_path):

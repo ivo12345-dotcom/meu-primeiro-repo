@@ -61,7 +61,8 @@ MODELOS = {
     },
     'consumo': {
         'alvo': 'litrosHora', 'variaveis': ['rpm', 'stw', 'prevOndas', 'ondasAnguloRel', 'balCaimento'],
-        'filtro': lambda d: (d['rpm'] > MOTOR_PARADO_RPM) & d['litrosHora'].notna(),
+        # só o caudal medido pelo MDI: a estimativa do plugin J1939 é a própria curva da Volvo (seria circular)
+        'filtro': lambda d: (d['rpm'] > MOTOR_PARADO_RPM) & d['litrosHora'].notna() & (d['consumoMedido'] == 1),
         'base': lambda d, polar: litros_volvo(d['rpm']),
     },
 }

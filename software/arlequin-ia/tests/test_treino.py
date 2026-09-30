@@ -377,3 +377,22 @@ def test_sem_rotacoes_e_velas_em_baixo_nao_ensina_a_velocidade(tmp_path):
         f.write_bytes(gzip.compress(df.to_csv(index=False).encode()))
     r = treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])[0]
     assert r['horas'] == pytest.approx(3 * 4.0, abs=0.01), r  # só as horas à vela
+
+
+def test_consumo_so_aprende_com_o_caudal_medido(tmp_path):
+    gerar(tmp_path, POLAR)
+    for f in (tmp_path / 'tabela').glob('*.csv.gz'):  # o MDI não manda a PGN 65266: é a estimativa do plugin J1939
+        df = pd.read_csv(f, compression='gzip')
+        df.loc[df['litrosHora'].notna(), 'consumoMedido'] = 0
+        f.write_bytes(gzip.compress(df.to_csv(index=False).encode()))
+    r = treinar(tmp_path, POLAR, agora=AGORA, modelos=['consumo'])[0]
+    assert r['versao'] is None and r['motivo'].startswith('poucos dados (0,0 h'), r
+
+
+def test_consumo_de_ficheiros_antigos_sem_a_origem_nao_ensina(tmp_path):
+    gerar(tmp_path, POLAR)
+    for f in (tmp_path / 'tabela').glob('*.csv.gz'):
+        df = pd.read_csv(f, compression='gzip').drop(columns=['consumoMedido'])
+        f.write_bytes(gzip.compress(df.to_csv(index=False).encode()))
+    r = treinar(tmp_path, POLAR, agora=AGORA, modelos=['consumo'])[0]
+    assert r['versao'] is None and r['motivo'].startswith('poucos dados (0,0 h'), r

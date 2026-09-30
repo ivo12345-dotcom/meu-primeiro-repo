@@ -13,7 +13,10 @@ import pandas as pd
 
 NUMERICAS = ['lat', 'lon', 'proa', 'cog', 'sog', 'stw', 'tws', 'twa', 'twd', 'aws', 'awa', 'rajada',
              'adorno', 'caimento', 'pressao', 'rpm', 'litrosHora', 'grandeRizos', 'genoaPct',
-             'profundidade', 'soc', 'simulado', 'estavel']
+             'profundidade', 'soc', 'simulado', 'estavel', 'consumoMedido']
+# A ordem é a das colunas da caixa negra (lib/tabela.js); as colunas novas acrescentam-se sempre no fim.
+# consumoMedido: 1 = litrosHora medido pelo MDI, 0 = estimado pelo plugin J1939, vazio = sem origem.
+COLUNAS = ['t'] + NUMERICAS
 LISTAS_PREVISAO = ('tws', 'rajada', 'twd', 'ondas', 'periodo', 'ondasDir')
 
 
@@ -38,6 +41,18 @@ def membros_inteiros(dados):
     return b''.join(partes).decode('utf-8'), bool(dados)
 
 
+def nomes_das_colunas(texto):
+    """O cabeçalho do ficheiro, estendido se houver linhas com mais campos: no dia em que a caixa negra
+    passa a escrever uma coluna nova, o ficheiro desse dia já tem o cabeçalho antigo (só se escreve no
+    início) e as linhas novas trazem mais um campo no fim."""
+    linhas = texto.splitlines()
+    cab = linhas[0].split(',')
+    n = max((l.count(',') + 1 for l in linhas[1:] if l), default=len(cab))
+    if n > len(cab) and cab == COLUNAS[:len(cab)] and n <= len(COLUNAS):
+        return COLUNAS[:n]
+    return cab
+
+
 def ler_ficheiro_tabela(f):
     """As linhas de um dia (um DataFrame), ou None se não houver nada que se aproveite."""
     try:
@@ -46,7 +61,7 @@ def ler_ficheiro_tabela(f):
             aviso(f, f'ficheiro cortado ou estragado; aproveito {max(0, texto.count(chr(10)) - 1)} linhas inteiras')
         if not texto.strip():
             return None
-        return pd.read_csv(io.StringIO(texto))
+        return pd.read_csv(io.StringIO(texto), header=None, skiprows=1, names=nomes_das_colunas(texto))
     except Exception as e:
         aviso(f, f'não consegui ler ({e}); fica de fora')
         return None

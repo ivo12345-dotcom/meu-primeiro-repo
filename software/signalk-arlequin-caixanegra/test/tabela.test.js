@@ -81,7 +81,19 @@ test('linha da tabela em unidades de gente; vazio quando falta', () => {
   assert.equal(campos.litrosHora, '')
   assert.equal(campos.simulado, '0')
   assert.equal(campos.estavel, '1')
+  assert.equal(campos.consumoMedido, '')
   assert.equal(texto.split(',').length, tabela.COLUNAS.length)
+})
+
+test('consumoMedido (a última das 25 colunas): 1 medido pelo MDI, 0 estimado pela curva, vazio sem origem', () => {
+  assert.equal(tabela.COLUNAS.length, 25)
+  assert.equal(tabela.COLUNAS.at(-1), 'consumoMedido')
+  const col = (origem) => tabela.linha({ v: (c) => (c === 'propulsion.main.fuel.rateOrigem' ? origem : undefined), agora: 0, rajadaMs: NaN, simulado: false, estavel: false }).split(',').at(-1)
+  assert.equal(col('medido'), '1')
+  assert.equal(col('estimado'), '0')
+  assert.equal(col(undefined), '')
+  assert.equal(col(null), '')
+  assert.equal(col('constructor'), '')
 })
 
 test('um valor null do SignalK (desconhecido) fica em branco, nunca 0', () => {

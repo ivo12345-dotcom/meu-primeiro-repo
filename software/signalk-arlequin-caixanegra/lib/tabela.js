@@ -12,7 +12,11 @@ const GRAU = 180 / Math.PI
 
 const COLUNAS = ['t', 'lat', 'lon', 'proa', 'cog', 'sog', 'stw', 'tws', 'twa', 'twd', 'aws', 'awa', 'rajada',
   'adorno', 'caimento', 'pressao', 'rpm', 'litrosHora', 'grandeRizos', 'genoaPct', 'profundidade', 'soc',
-  'simulado', 'estavel']
+  'simulado', 'estavel', 'consumoMedido']
+// consumoMedido (acrescentada no fim, 30/09): 1 se o litrosHora foi medido pelo MDI
+// (PGN 65266), 0 se é a estimativa do plugin J1939 pela curva da Volvo, vazio sem
+// origem. Os ficheiros antigos não a têm: a AI lê-a como em branco.
+const CONSUMO_MEDIDO = { medido: '1', estimado: '0' }
 
 const num = (x, casas) => Number.isFinite(x) ? x.toFixed(casas) : ''
 const rumo360 = (rad) => Number.isFinite(rad) ? ((rad * GRAU) % 360 + 360) % 360 : NaN
@@ -48,7 +52,8 @@ function linha ({ v: valor, agora, rajadaMs, simulado, estavel }) {
     profundidade: num(v('environment.depth.belowTransducer'), 1),
     soc: num(v('electrical.batteries.servico.capacity.stateOfCharge') * 100, 0),
     simulado: simulado ? '1' : '0',
-    estavel: estavel ? '1' : '0'
+    estavel: estavel ? '1' : '0',
+    consumoMedido: Object.hasOwn(CONSUMO_MEDIDO, v('propulsion.main.fuel.rateOrigem') ?? '') ? CONSUMO_MEDIDO[v('propulsion.main.fuel.rateOrigem')] : ''
   }
   return COLUNAS.map(c => campos[c]).join(',')
 }

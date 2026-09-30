@@ -99,8 +99,13 @@ module.exports = function (app) {
     estado = r.estado
     const vals = Object.entries(valores).map(([p, value]) => ({ path: p, value }))
     // Consumo: o real (PGN 65266) se o MDI o mandar; senão, a estimativa pelas rotações.
-    if (o.estimarConsumo && !('propulsion.main.fuel.rate' in valores)) {
+    // A origem vai em propulsion.main.fuel.rateOrigem ('medido' | 'estimado'): a AI só
+    // aprende o consumo com o medido (a estimativa é a própria curva da Volvo × fator).
+    if ('propulsion.main.fuel.rate' in valores) {
+      vals.push({ path: 'propulsion.main.fuel.rateOrigem', value: 'medido' })
+    } else if (o.estimarConsumo) {
       vals.push({ path: 'propulsion.main.fuel.rate', value: m3s(litrosHora(rpm, o.fatorConsumo)) })
+      vals.push({ path: 'propulsion.main.fuel.rateOrigem', value: 'estimado' })
     }
     vals.push({ path: 'propulsion.main.state', value: estado.ligado ? 'started' : 'stopped' })
 

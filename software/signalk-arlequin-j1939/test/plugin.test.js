@@ -50,6 +50,30 @@ test('tramas do simulador → valores SignalK a 1 Hz, estado e consumo estimado'
   assert.equal(app.valores['propulsion.main.runTime'], 1243.5 * 3600)
   assert.equal(app.valores['propulsion.main.state'], 'started')
   assert.ok(Math.abs(app.valores['propulsion.main.fuel.rate'] * 3600 * 1000 - 2.0) < 1e-9) // 2400 rpm → 2,0 L/h
+  assert.equal(app.valores['propulsion.main.fuel.rateOrigem'], 'estimado')
+})
+
+test('origem do consumo: "medido" com a PGN 65266 do MDI, "estimado" pela curva; sem nenhum dos dois não se publica', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ fonte: 'simulador' })
+  enviar(app, 61444, 'FFFFFF0040FFFFFF') // 2048 rpm
+  t.mock.timers.tick(1000)
+  assert.equal(app.valores['propulsion.main.fuel.rateOrigem'], 'estimado')
+  enviar(app, 65266, '2800FFFFFFFFFFFF') // 2,0 L/h medidos
+  t.mock.timers.tick(1000)
+  p.stop()
+  assert.equal(app.valores['propulsion.main.fuel.rateOrigem'], 'medido')
+  assert.ok(Math.abs(app.valores['propulsion.main.fuel.rate'] * 3600 * 1000 - 2.0) < 1e-9)
+  const app2 = appFalso()
+  const p2 = criar(app2)
+  p2.start({ fonte: 'simulador', estimarConsumo: false })
+  enviar(app2, 61444, 'FFFFFF0040FFFFFF')
+  t.mock.timers.tick(1000)
+  p2.stop()
+  assert.equal('propulsion.main.fuel.rate' in app2.valores, false)
+  assert.equal('propulsion.main.fuel.rateOrigem' in app2.valores, false)
 })
 
 test('sem EEC1 há 5 s: rotações desconhecidas (null) e motor parado (ignição desligada ou CAN em baixo)', (t) => {

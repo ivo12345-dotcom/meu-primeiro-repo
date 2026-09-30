@@ -11,9 +11,7 @@ import numpy as np
 import pandas as pd
 
 from .base import litros_volvo, stw_polar
-from .dados import NUMERICAS
-
-COLUNAS = ['t'] + NUMERICAS
+from .dados import COLUNAS
 
 
 def verdade_stw(polar, twa_abs, tws, fator60=0.9, fator_geral=0.92):
@@ -52,7 +50,7 @@ def gerar(pasta, polar, sessoes=3, horas_motor=2.0, horas_vela=4.0, inicio='2026
             'adorno': -lado * np.minimum(20, tws) * 0.8 + rng.normal(0, 1.5, n), 'caimento': rng.normal(0, 2, n),
             'pressao': 1015 - np.arange(n) / 3000, 'rpm': rpm, 'litrosHora': litros,
             'grandeRizos': np.where(tws > 18, 1, 0), 'genoaPct': 100, 'profundidade': 60, 'soc': 90,
-            'simulado': simulado, 'estavel': 1}))
+            'simulado': simulado, 'estavel': 1, 'consumoMedido': np.where(motor, 1, np.nan)}))
         fim = t[-1]
         (pasta / 'saidas' / f'{ini.strftime("%Y-%m-%dT%H-%M")}.json').write_text(json.dumps(
             {'inicio': ini.isoformat(), 'fim': fim.isoformat(), 'simulado': bool(simulado)}), encoding='utf-8')
