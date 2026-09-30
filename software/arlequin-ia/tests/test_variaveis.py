@@ -107,6 +107,14 @@ def test_ler_tabela_salta_um_ficheiro_ilegivel_com_aviso(tmp_path, capsys):
     assert '2026-06-01.csv.gz' in capsys.readouterr().err
 
 
+def test_ler_tabela_so_os_dias_pedidos(tmp_path):
+    escrever_tabela(tmp_path, '2026-06-01.csv.gz', ['2026-06-01T10:00:00.000Z,39,-9,4,0,1'])
+    escrever_tabela(tmp_path, '2026-06-02.csv.gz', ['2026-06-02T10:00:00.000Z,39,-9,5,0,1'])
+    assert list(ler_tabela(tmp_path, dias={'2026-06-02'})['stw']) == [5]
+    vazia = ler_tabela(tmp_path, dias=set())
+    assert vazia.empty and str(vazia['t'].dt.tz) == 'UTC'
+
+
 def test_ler_previsoes_salta_cortadas_e_com_listas_de_tamanhos_diferentes(tmp_path, capsys):
     (tmp_path / 'previsoes').mkdir()
     boa = {'obtida': '2026-06-01T09:00:00Z', 'lat': 39, 'lon': -9.6, 'horas': ['2026-06-01T09:00Z', '2026-06-01T10:00Z'],

@@ -52,18 +52,30 @@ def ler_ficheiro_tabela(f):
         return None
 
 
-def ler_tabela(base):
-    """Todas as linhas de tabela/*.csv.gz (os .danificado-* ficam de fora), ordenadas no tempo."""
+def tabela_vazia():
+    return pd.DataFrame({'t': pd.Series([], dtype='datetime64[us, UTC]'), **{c: pd.Series(dtype=float) for c in NUMERICAS}})
+
+
+def ler_tabela(base, dias=None):
+    """As linhas de tabela/AAAA-MM-DD.csv.gz (os .danificado-* ficam de fora), ordenadas no tempo.
+    Com `dias` (conjunto de 'AAAA-MM-DD'), só abre os ficheiros desses dias. As colunas que faltem
+    (ficheiros antigos, de antes de a coluna existir) ficam em branco (NaN)."""
     ficheiros = sorted(Path(base, 'tabela').glob('*.csv.gz'))
+    if dias is not None:
+        ficheiros = [f for f in ficheiros if f.name[:-len('.csv.gz')] in dias]
     partes = [p for p in (ler_ficheiro_tabela(f) for f in ficheiros) if p is not None]
     if not partes:
-        return pd.DataFrame(columns=['t'] + NUMERICAS)
+        return tabela_vazia()
     df = pd.concat(partes, ignore_index=True)
     df['t'] = pd.to_datetime(df['t'], utc=True, format='ISO8601')
     for c in NUMERICAS:
-        if c in df:
-            df[c] = pd.to_numeric(df[c], errors='coerce')
+        df[c] = pd.to_numeric(df[c], errors='coerce') if c in df else float('nan')
     return df.sort_values('t').drop_duplicates('t').reset_index(drop=True)
+
+
+def utc(t):
+    t = pd.Timestamp(t)
+    return t.tz_localize('UTC') if t.tzinfo is None else t.tz_convert('UTC')
 
 
 def ler_saidas(base):
@@ -72,7 +84,7 @@ def ler_saidas(base):
     for f in sorted(Path(base, 'saidas').glob('*.json')):
         try:
             s = json.loads(f.read_text(encoding='utf-8'))
-            saidas.append((pd.Timestamp(s['inicio']), pd.Timestamp(s['fim'])))
+            saidas.append((utc(s['inicio']), utc(s['fim'])))
         except Exception as e:
             aviso(f, f'saída ilegível ({e}); fica de fora')
     return saidas

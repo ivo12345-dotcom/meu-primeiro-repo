@@ -11,7 +11,7 @@ import pytest
 
 from arlequin_ia.base import ler_polar, stw_polar
 from arlequin_ia.dados import ler_tabela
-from arlequin_ia.sintetico import gerar, verdade_stw
+from arlequin_ia.sintetico import COLUNAS, gerar, verdade_stw
 from arlequin_ia.treino import carregar, prever_guardado, treinar
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -268,3 +268,67 @@ def test_uma_previsao_cortada_ou_torta_nao_impede_o_treino(tmp_path, capsys):
     assert r['versao'] == 'v0001' and not r['motivo'].startswith('erro'), r
     err = capsys.readouterr().err
     assert ps[0].name + '.gz' in err and ps[1].name in err
+
+
+def test_so_le_os_dias_das_saidas_e_so_as_linhas_de_3_h_antes_ate_ao_fim(tmp_path, monkeypatch):
+    from arlequin_ia import dados, treino
+    gerar(tmp_path, POLAR)  # saídas a 1, 2 e 3 de junho, das 08:00 às 14:00
+    cab = 't,lat,lon,stw,simulado,estavel\n'
+    (tmp_path / 'tabela' / '2026-06-05.csv.gz').write_bytes(gzip.compress((cab + '2026-06-05T10:00:00.000Z,39,-9,4,0,1\n').encode()))
+    f = tmp_path / 'tabela' / '2026-06-01.csv.gz'  # no porto: de madrugada (fora) e às 05:30 (dentro das 3 h antes)
+    porto = pd.DataFrame({c: [np.nan, np.nan] for c in COLUNAS}).assign(
+        t=['2026-06-01T01:00:00.000Z', '2026-06-01T05:30:00.000Z'], simulado=0, estavel=0)
+    f.write_bytes(f.read_bytes() + gzip.compress(porto[COLUNAS].to_csv(index=False, header=False).encode()))
+    abertos, vistos = [], []
+    ler = dados.ler_ficheiro_tabela
+    monkeypatch.setattr(dados, 'ler_ficheiro_tabela', lambda ficheiro: abertos.append(ficheiro.name) or ler(ficheiro))
+    preparar = treino.preparar
+    monkeypatch.setattr(treino, 'preparar', lambda df, *a: vistos.append(df) or preparar(df, *a))
+    treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])
+    assert abertos == ['2026-06-01.csv.gz', '2026-06-02.csv.gz', '2026-06-03.csv.gz']
+    t = vistos[0]['t']
+    assert pd.Timestamp('2026-06-01T05:30:00Z') in set(t) and pd.Timestamp('2026-06-01T01:00:00Z') not in set(t)
+    assert t.min() == pd.Timestamp('2026-06-01T05:30:00Z') and t.max() < pd.Timestamp('2026-06-04T00:00:00Z')
+
+
+def test_saida_que_comeca_depois_da_meia_noite_le_tambem_o_dia_anterior(tmp_path, monkeypatch):
+    from arlequin_ia import dados
+    gerar(tmp_path, POLAR, sessoes=1, inicio='2026-06-02T01:00:00Z')
+    abertos = []
+    ler = dados.ler_ficheiro_tabela
+    monkeypatch.setattr(dados, 'ler_ficheiro_tabela', lambda ficheiro: abertos.append(ficheiro.name) or ler(ficheiro))
+    (tmp_path / 'tabela' / '2026-06-01.csv.gz').write_bytes(gzip.compress(b't,pressao\n2026-06-01T23:00:00.000Z,1015\n'))
+    treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])
+    assert abertos == ['2026-06-01.csv.gz', '2026-06-02.csv.gz']
+
+
+def test_sem_saidas_gravadas_nao_treina_nem_inventa_sessoes(tmp_path):
+    gerar(tmp_path, POLAR)
+    for f in (tmp_path / 'saidas').glob('*.json'):
+        f.unlink()
+    r = treinar(tmp_path, POLAR, agora=AGORA)
+    assert [x['modelo'] for x in r] == ['velocidade', 'ventoForca', 'ventoDirecao', 'consumo']
+    assert all(x['versao'] is None and x['aceite'] is False and x['motivo'] == 'sem saídas gravadas' for x in r), r
+
+
+def test_pasta_vazia_nao_rebenta(tmp_path):
+    r = treinar(tmp_path, POLAR, agora=AGORA)
+    assert all(x['motivo'] == 'sem saídas gravadas' for x in r), r
+
+
+def test_com_saidas_mas_sem_tabela_da_poucos_dados(tmp_path):
+    (tmp_path / 'saidas').mkdir()
+    (tmp_path / 'saidas' / 'a.json').write_text(json.dumps({'inicio': '2026-06-01T08:00:00Z', 'fim': '2026-06-01T14:00:00Z'}))
+    r = treinar(tmp_path, POLAR, agora=AGORA)
+    assert len(r) == 4 and all(x['versao'] is None and x['motivo'].startswith('poucos dados (0,0 h') for x in r), r
+
+
+def test_registo_ilegivel_avisa_nao_lhe_toca_e_devolve_os_resultados(tmp_path, capsys):
+    for conteudo in ('{', '{"a": 1}'):
+        (tmp_path / 'modelos').mkdir(exist_ok=True)
+        registo = tmp_path / 'modelos' / 'registo.json'
+        registo.write_text(conteudo, encoding='utf-8')
+        r = treinar(tmp_path, POLAR, agora=AGORA)
+        assert len(r) == 4
+        assert registo.read_text(encoding='utf-8') == conteudo
+        assert 'registo.json' in capsys.readouterr().err

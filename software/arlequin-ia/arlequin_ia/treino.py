@@ -226,16 +226,55 @@ def treinar_um(nome, d, pasta_modelos, agora, polar):
             'maeAtual': modelo['maeAtual'], 'maeBase': modelo['maeBase'], 'frases': modelo['frases']}
 
 
+MARGEM_ANTES = pd.Timedelta(hours=3)  # antes de cada saída, para a tendência da pressão e o balanço
+
+
+def dias_das_saidas(saidas):
+    """Os dias (UTC, 'AAAA-MM-DD') que cada saída toca, desde 3 h antes do início até ao fim."""
+    dias = set()
+    for ini, fim in saidas:
+        dias.update(pd.date_range((ini - MARGEM_ANTES).floor('D'), fim.floor('D'), freq='D').strftime('%Y-%m-%d'))
+    return dias
+
+
+def so_perto_das_saidas(df, saidas):
+    """Só as linhas entre 3 h antes do início e o fim de alguma saída: o Pi fica ligado no porto
+    (8640 linhas por dia) e isso não pode fazer o treino crescer com o calendário."""
+    dentro = pd.Series(False, index=df.index)
+    for ini, fim in saidas:
+        dentro |= (df['t'] >= ini - MARGEM_ANTES) & (df['t'] <= fim)
+    return df[dentro]
+
+
+def gravar_registo(pasta_modelos, resultados):
+    """Acrescenta ao registo.json. Ilegível (ou sem ser uma lista) fica como está: não se apaga o histórico."""
+    registo = pasta_modelos / 'registo.json'
+    try:
+        antigo = json.loads(registo.read_text(encoding='utf-8')) if registo.exists() else []
+        if not isinstance(antigo, list):
+            raise ValueError('não é uma lista')
+    except Exception as e:
+        print(f'aviso: registo.json ilegível ({e}); não foi alterado', file=sys.stderr)
+        return
+    escrever(registo, json.dumps(antigo + resultados, ensure_ascii=False, indent=1).encode('utf-8'))
+
+
 def treinar(base, polar, agora=None, incluir_simulado=False, modelos=None):
     """Treina todos os modelos com os dados de `base` (a pasta da caixa negra) e devolve o resumo."""
     agora = agora or pd.Timestamp.now(tz='UTC')
-    df = ler_tabela(base)
-    if not incluir_simulado:
-        df = df[df['simulado'] == 0]  # em branco (NaN) também não ensina
-    d = preparar(df.reset_index(drop=True), ler_saidas(base), ler_previsoes(base))  # o balanço usa também as linhas não estáveis
-    d = d[d['estavel'] == 1].reset_index(drop=True)
     pasta_modelos = Path(base, 'modelos')
     pasta_modelos.mkdir(parents=True, exist_ok=True)
+    saidas = ler_saidas(base)
+    if not saidas:  # sem saídas não há como separar treino e teste (nem se inventam sessões pelos buracos)
+        resultados = [{'modelo': n, 'data': agora.isoformat(), 'horas': 0.0, 'n': 0, 'versao': None, 'aceite': False,
+                       'motivo': 'sem saídas gravadas'} for n in (modelos or MODELOS)]
+        gravar_registo(pasta_modelos, resultados)
+        return resultados
+    df = so_perto_das_saidas(ler_tabela(base, dias_das_saidas(saidas)), saidas)
+    if not incluir_simulado:
+        df = df[df['simulado'] == 0]  # em branco (NaN) também não ensina
+    d = preparar(df.reset_index(drop=True), saidas, ler_previsoes(base))  # o balanço usa também as linhas não estáveis
+    d = d[d['estavel'] == 1].reset_index(drop=True)
     resultados = []
     for n in (modelos or MODELOS):
         try:
@@ -244,7 +283,5 @@ def treinar(base, polar, agora=None, incluir_simulado=False, modelos=None):
             print(traceback.format_exc(), file=sys.stderr)
             resultados.append({'modelo': n, 'data': agora.isoformat(), 'horas': None, 'n': None,
                                'versao': None, 'aceite': False, 'motivo': f'erro: {e}'})
-    registo = pasta_modelos / 'registo.json'
-    antigo = json.loads(registo.read_text(encoding='utf-8')) if registo.exists() else []
-    escrever(registo, json.dumps(antigo + resultados, ensure_ascii=False, indent=1).encode('utf-8'))
+    gravar_registo(pasta_modelos, resultados)
     return resultados
