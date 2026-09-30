@@ -255,6 +255,15 @@ function montarAlternativa (ctx, cand, pr, desistenciaResumo) {
   return alt
 }
 
+// A mensagem quando nenhuma das passagens simuladas serve: pelo que lhes aconteceu.
+function semPassagens (estat, { fim, agora, o, nome }) {
+  const quando = decisao.quando(fim, agora, o.fuso)
+  const maxH = String(o.passagem.maxHoras ?? passagem.PADRAO.maxHoras).replace('.', ',')
+  if (!estat.naoChega) return `A previsão acaba ${quando}: não cobre nenhuma passagem até ${nome}.`
+  if (!estat.foraDaPrevisao) return `Nenhuma das ${estat.naoChega} passagens simuladas chega a ${nome} dentro de ${maxH} h.`
+  return `Nenhuma passagem até ${nome}: ${estat.foraDaPrevisao} acabam depois do fim da previsão (${quando}) e ${estat.naoChega} não chegam dentro de ${maxH} h.`
+}
+
 async function calcular (entrada, deps) {
   try {
     return await calcularSemRede(entrada, deps)
@@ -379,11 +388,10 @@ async function calcularSemRede (entrada = {}, deps = {}) {
       }
     }
   }
-  // nenhuma passagem avaliada: por a previsão ser curta (explica-se) ou por todas as rotas serem
-  // impossíveis (segue para o veredicto "Não recomendado" com o motivo)
-  if (!candidatos.length && (estat.foraDaPrevisao > 0 || !excluidasAgora.length)) {
-    return { erro: `A previsão acaba ${decisao.quando(previsao.fim, agora, o.fuso)}: não cobre nenhuma passagem até ${destino.nome}.` }
-  }
+  // nenhuma passagem avaliada: com passagens simuladas, explica-se a causa verdadeira (a previsão
+  // curta, não chegar dentro do tempo simulado, ou as duas); sem nenhuma simulada, todas as rotas
+  // foram excluídas e segue para o veredicto "Não recomendado" com o motivo
+  if (!candidatos.length && estat.simuladas > 0) return { erro: semPassagens(estat, { fim: previsao.fim, agora, o, nome: destino.nome }) }
 
   try { deps.aoCandidatos?.(candidatos) } catch { /* só para diagnóstico */ }
 

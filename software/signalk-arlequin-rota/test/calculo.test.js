@@ -361,3 +361,16 @@ test('sem simulações repetidas: 3 cenários por candidato e só o provável ou
   assert.equal(r.erro, undefined, r.erro)
   assert.equal(n, 3 * r.estatisticas.simuladas + r.alternativas.length)
 })
+
+test('sem nenhuma passagem: a mensagem diz a causa verdadeira (previsão curta, não chega, ou as duas)', async () => {
+  // só "não chega" (2 h de simulação para Algés → Peniche): não é a previsão
+  const nc = await calcular(entrada(), deps({ opcoes: { passagem: { maxHoras: 2 } } }))
+  assert.match(nc.erro, /^Nenhuma das \d+ passagens simuladas chega a Peniche dentro de 2 h\.$/)
+  // as duas: as partidas cedo não chegam em 15,5 h, as que chegam acabam depois da previsão
+  const P = { ...P29, fim: AGORA + 30 * H }
+  const as2 = await calcular(entrada(), comPrevisao(P, { opcoes: { passagem: { maxHoras: 15.5 } } }))
+  assert.match(as2.erro, /^Nenhuma passagem até Peniche: \d+ acabam depois do fim da previsão \(amanhã às 21:32\) e \d+ não chegam dentro de 15,5 h\.$/)
+  // só a previsão curta: a mensagem de sempre
+  const curta = { ...P29, fim: AGORA + 2 * H }
+  assert.equal((await calcular(entrada(), comPrevisao(curta))).erro, 'A previsão acaba às 17:32: não cobre nenhuma passagem até Peniche.')
+})
