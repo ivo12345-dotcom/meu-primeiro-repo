@@ -151,6 +151,26 @@ test('rizos pelas rajadas (20 e 27 nós) com os fatores 0,95 e 0,9, e evento', (
   assert.equal(vistos[0], 2)
 })
 
+test('rizar por tws quando a rajada não tem previsão (null): o evento diz "sem previsão", não "NaN"', () => {
+  // tws=18 > rizo1.tws (16) já riza por si só; rajada null nunca ultrapassa os limiares (não força rizo2)
+  const r = simularPassagem(base({ tempo: () => ({ ...ventoFixo(18, 270)(), rajada: null }) }))
+  assert.equal(r.pontos[0].rizos, 1)
+  assert.equal(r.eventos[1].texto, 'Rizar: 1 rizo (vento 18 nós, rajadas sem previsão)')
+})
+
+test('twd desconhecido (tws/rajada conhecidos): vai a motor por "sem previsão de vento", sem mexer nos rizos', () => {
+  let n = 0
+  // fase 1: vento conhecido e forte o suficiente para rizar 1; fase 2: só a direção desaparece
+  const tempo = (lat, lon, t) => (n++ < 10 ? ventoFixo(18, 270)() : { ...ventoFixo(18, 270)(), twd: null })
+  const r = simularPassagem(base({ tempo }))
+  assert.equal(r.pontos[9].rizos, 1) // rizou na fase 1, à vela
+  const troca = r.pontos.findIndex(p => p.motor === true)
+  assert.ok(troca > 0, 'devia ter passado a motor quando a twd desaparece')
+  assert.equal(Number.isNaN(r.pontos[troca].stw), false)
+  assert.equal(r.pontos[troca].rizos, r.pontos[troca - 1].rizos) // sem mexer nos rizos ao ir a motor
+  assert.ok(r.eventos.some(e => e.texto === 'Motor ligado (sem previsão de vento)'))
+})
+
 test('função pura: as mesmas entradas dão o mesmo resultado e não mexe na rota nem nas opções', () => {
   const rota = Object.freeze(reta(10).map(p => Object.freeze(p)))
   const opcoes = Object.freeze({ maxHoras: 5 })
