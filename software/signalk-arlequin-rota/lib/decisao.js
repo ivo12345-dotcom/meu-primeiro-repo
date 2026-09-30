@@ -93,7 +93,8 @@ function frase (c, agora, fuso) {
   if (Number.isFinite(r.ondasMax)) partes.push(`ondas até ${virgula(r.ondasMax)} m`)
   return partes.join(', ')
 }
-const nomeRota = (c) => `a ${c.afastamento} MN${c.propulsao === 'motor' ? ' a motor' : ''}`
+// A rota direta (salto curto, lib/rotas.js) não tem afastamento (null): "direta", nunca "a null MN".
+const nomeRota = (c) => `${c.direto || !Number.isFinite(c.afastamento) ? 'direta' : `a ${c.afastamento} MN`}${c.canal ? ` pelo ${c.canal}` : ''}${c.propulsao === 'motor' ? ' a motor' : ''}`
 const juntar = (motivos, n = 2) => motivos.slice(0, n).join(' e ')
 
 // candidatos: [{ partida (ms), esperaH, afastamento, propulsao, excluida, naoRecomendada, motivos[],

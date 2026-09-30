@@ -116,3 +116,18 @@ test('veredicto "Volta ou abriga-te em X": só no mar, continuar não é recomen
   // continuar é recomendado: segue
   assert.equal(d.decidir({ candidatos: [cand({ custo: 30 })], agora: AGORA, tripulacao: 'so', emMar: true, abrigo }).veredicto.tipo, 'segue')
 })
+
+test('a rota direta (afastamento null) e a variante por um canal no texto do veredicto: nunca "a null MN"', () => {
+  const direta = { ...cand({ custo: 10 }), afastamento: null, direto: true }
+  const r = d.decidir({ candidatos: [direta], agora: AGORA, tripulacao: 'so' })
+  assert.match(r.veredicto.porque[0], /^Parte agora pela rota direta: /)
+  const canal = { ...cand({ custo: 10, propulsao: 'motor' }), canal: 'Canal da Berlenga' }
+  const k = d.decidir({ candidatos: [canal], agora: AGORA, tripulacao: 'so' })
+  assert.match(k.veredicto.porque[0], /^Parte agora pela rota a 5 MN pelo Canal da Berlenga a motor: /)
+  // "não recomendado" e "espera" também
+  const nr = d.decidir({ candidatos: [{ ...direta, naoRecomendada: true, motivos: ['x'] }], agora: AGORA, tripulacao: 'so' })
+  assert.match(nr.veredicto.porque[0], / \(direta, (às 15:32|agora)\): x\.$/)
+  const es = d.decidir({ candidatos: [{ ...direta, partida: AGORA + 3 * H }], agora: AGORA, tripulacao: 'so' })
+  assert.match(es.veredicto.porque[1], /pela rota direta: /)
+  for (const x of [r, k, nr, es]) assert.doesNotMatch(JSON.stringify(x.veredicto), /null/)
+})
