@@ -12,6 +12,8 @@ Parte do desenho geral `2026-09-29-melhor-rota-ia-design.md` (Parte 4: avisos e 
 | Avisos para o Telegram | **Só os importantes**, e só para o chat do Ivo: recalcula, recursos, previsão com mais de 12 h, barómetro. Os lembretes de evento e o "come e bebe" ficam só no ecrã |
 | Contactos em terra | **Chegada e atrasos automáticos**: "cheguei bem" à chegada, e "ainda a navegar, nova hora de alarme" quando a chegada passa da "mais tarde" do plano (no máximo 1× por hora) |
 | Mudança de rota | Nunca muda a rota sozinho. "Recalcular" é um botão; ativar outra rota substitui o plano |
+| Ver a chegada mesmo em pausa (01/10, revisão) | Em pausa, a chegada ao cais do plano continua a contar (a mesma regra) → "cheguei bem" normal. Em pausa e parado (SOG < 0,5 nó) 30 min a menos de 0,3 MN de **outro** porto da lista, o ecrã pergunta "Chegaste a X? Enviar 'cheguei bem a X'" com um botão; só envia com o toque (`POST /plano-ativo/chegada { destino }`) |
+| Recalcular no mar (01/10, revisão) | A navegar (ou em pausa no mar), o Recalcular pede só a partida imediata (`sairAgora: true`), com o "Volta ou abriga-te em X" e os pontos de desistência; à espera de sair, todas as partidas |
 
 ## Arquitetura
 

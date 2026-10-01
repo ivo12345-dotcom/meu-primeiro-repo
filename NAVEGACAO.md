@@ -1382,9 +1382,11 @@ no Pi**, de minuto a minuto: funciona com o ecrã desligado e continua depois de
 fica gravado em `plano-ativo.json`, na pasta do plugin). **Nunca muda a rota sozinho.**
 
 **O plano ativo:** ao carregar em **Ativar**, a alternativa fica como plano ativo, "à espera de
-sair". Passa a "a navegar" quando o barco fica a mais de 0,5 MN da partida (ou anda a mais de 2 nós
-durante 5 min). Chega quando fica a menos de 0,3 MN do cais do destino, parado (menos de 0,5 nó)
-durante 5 min.
+sair". Passa a "a navegar" quando o barco fica a mais de 0,5 MN da partida (em duas leituras
+seguidas) ou anda a mais de 2 nós durante 5 min. Chega quando fica a menos de 0,3 MN do cais do
+destino, parado (menos de 0,5 nó) durante 5 min, depois de feita pelo menos metade da rota (numa rota
+com menos de 1 MN, depois de 5 min a navegar). Um plano novo começa limpo; os 5 últimos ficam em
+`planos-fechados.json`.
 
 **A faixa no Leme**, por cima do rumo:
 - "próximo: rizar às 22:50 (daqui a 25 min) · +20 min sobre o plano" (os eventos de sítio — rizar,
@@ -1415,7 +1417,8 @@ durante 5 min.
 - "Cheguei bem a Peniche às 10:24. Obrigado!" à chegada (uma vez);
 - "Ainda a navegar, tudo bem. Nova chegada prevista ~HH:MM. Nova hora de alarme: HH:MM (em vez de
   HH:MM)." quando a chegada prevista passa da "mais tarde" do plano; depois, no máximo 1× por hora
-  e só se a chegada escorregar mais 15 min. A nova hora de alarme é a chegada prevista + 2 h;
+  e só se a chegada escorregar mais 15 min. A nova hora de alarme é a chegada prevista + 2 h, e só
+  conta quando chega a terra (o "em vez de" é sempre a última que eles receberam);
 - "Viagem terminada / mudança de planos: estou bem, em <posição> às HH:MM." ao Terminar;
 - o plano novo, com "Este plano substitui o anterior", ao Recalcular → Ativar.
 - Nada mais: os lembretes, os avisos e a rota mudada nunca vão para terra. Sem rede (ou sem o
@@ -1424,12 +1427,16 @@ durante 5 min.
 **Os botões:**
 - **Recalcular**: um cálculo novo de onde estás para o mesmo destino e tripulação; abre o
   Resultado, onde **Ativar** substitui o plano (se o plano antigo tinha sido enviado, o novo segue
-  sozinho para os mesmos contactos). Um cálculo antigo é recusado e o plano antigo fica.
+  sozinho para os mesmos contactos). A navegar (ou em pausa no mar) só conta a partida imediata e,
+  se continuar não for recomendado, diz "Volta ou abriga-te em X"; à espera de sair, todas as
+  partidas. Um cálculo antigo é recusado e o plano antigo fica.
 - **Terminar** (pede confirmação: "Terminar o plano? Os contactos em terra recebem 'viagem
   terminada, estou bem'"): fecha o plano e os avisos.
 - **Rota mudada no OpenCPN** (outra rota ativa, ou nenhuma): o plano fica em pausa e o Leme mostra
-  "a rota ativa já não é a do plano: terminar o plano?" com **Terminar** e **Continuar** (Continuar
-  volta a ativar a rota do plano). Nada segue para terra.
+  "a rota ativa já não é a do plano: terminar o plano?" com **Terminar**, **Continuar** (volta a
+  ativar a rota do plano) e **Recalcular**. Nada segue sozinho para terra, exceto a chegada ao cais
+  do plano (a mesma regra: "cheguei bem"). Parado 30 min noutro porto da lista, o Leme pergunta
+  "Chegaste a X? Enviar 'cheguei bem a X'": só envia se carregares.
 
 **Em casa (dev) — nunca no Pi:** a viagem acelerada Algés → Peniche (`npm run viagem-acelerada` na
 pasta `software/dev`, com o servidor e o `npm run telegram-falso` a correr) faz de GPS, barómetro,
