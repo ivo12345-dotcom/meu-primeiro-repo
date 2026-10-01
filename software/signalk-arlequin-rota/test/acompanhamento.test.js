@@ -208,3 +208,74 @@ test('M6: o previsto P50 de 0 nós (calma): desvioPct null (nunca Infinity), o d
   assert.equal(v.desvioNos, 12)
   assert.equal(v.previsto, 0)
 })
+
+// Tarefa 8.5: os lembretes que faltavam, gerados do plano ativo
+// Uma rota com 3 pernas: 10 MN para norte, 10 MN para leste (viragem de 90° no "Cabo X") e 10 MN a 050°
+// (40° no ponto sem nome: não conta, só > 45°); um ponto dentro do porto à chegada (não conta).
+const B = norte(A, 10)
+const C = c.deslocar(B, 90, 10)
+const D = c.deslocar(C, 50, 10)
+const E = c.deslocar(D, 180, 0.1)
+const ROTA_V = [{ ...A, perna: null }, { ...B, nome: 'Cabo X', perna: 'linha' }, { ...C, nome: null, perna: 'linha' }, { ...D, nome: null, perna: 'porto' }, { ...E, nome: 'Cais', perna: 'porto' }]
+  .map(p => ({ lat: p.lat, lon: p.lon, nome: p.nome ?? null, perna: p.perna }))
+// o rasto a 5 nós ao longo da rota (de 10 em 10 min), com o twd e a visibilidade previstos
+function rastoV ({ twd = () => 0, vis = () => 20000 } = {}) {
+  const linha = c.prepararLinha(ROTA_V)
+  const n = Math.floor(linha.total / (5 / 6))
+  return Array.from({ length: n + 1 }, (_, i) => {
+    const t = T0 + i * 10 * MIN
+    const p = c.posicao(linha, i * 5 / 6)
+    return { lat: p.lat, lon: p.lon, t: iso(t), motor: false, noite: false, twd: twd(i, t), vis: vis(i, t) }
+  })
+}
+const planoV = (rasto, eventos = []) => plano({ alternativa: { pontosRota: ROTA_V, rasto, eventos, chegada: { p10: iso(T0 + 6 * H), p50: iso(T0 + 6 * H), p90: iso(T0 + 6.5 * H) }, partida: iso(T0) } })
+
+test('Tarefa 8.5: viragem — nos pontos da rota onde o rumo muda mais de 45°, um evento de sítio "virar/cambar no <nome do ponto>" à hora do plano nesse ponto (desliza com o atraso); 40° não, e dentro do porto não', () => {
+  const x = ac.lembretesDoPlano(planoV(rastoV()))
+  const vir = x.filter(e => e.tipo === 'viragem')
+  assert.deepEqual(vir.map(e => e.texto), ['Virar/cambar no Cabo X'])
+  // à hora em que o plano passa no Cabo X (10 MN a 5 nós: 2 h)
+  assert.ok(Math.abs(Date.parse(vir[0].t) - (T0 + 2 * H)) <= 10 * MIN, vir[0].t)
+  // é de sítio: desliza com o atraso, e aparece como o próximo evento
+  const r = ac.acompanhar(ac.novoEstado(), { plano: planoV(rastoV()), posicao: A, agora: T0 + 30 * MIN })
+  const ev = r.resultado.eventos.find(e => e.tipo === 'viragem')
+  assert.equal(ev.sitio, true)
+  assert.equal(ev.curto, 'virar/cambar no Cabo X')
+})
+
+test('Tarefa 8.5: rotação do vento — onde o twd do rasto roda mais de 45° em 1 h, um evento de hora fixa "rotação do vento de X° para Y°" (à hora em que começa a rodar, até onde para); 45° em 1 h não, 50° em 2 h não', () => {
+  // o vento de 350° roda para 050° entre as 3 h e as 3 h 50 (60° em 50 min), passando pelo norte
+  const twd = (i) => (i < 18 ? 350 : i <= 23 ? (350 + (i - 18) * 12) % 360 : 50)
+  const x = ac.lembretesDoPlano(planoV(rastoV({ twd })))
+  const ro = x.filter(e => e.tipo === 'vento')
+  assert.equal(ro.length, 1, JSON.stringify(ro))
+  assert.equal(ro[0].texto, 'Rotação do vento de 350° para 50°')
+  // à hora em que começa a rodar (o último ponto ainda a 350°, o das 3 h)
+  assert.equal(ro[0].t, iso(T0 + 3 * H))
+  // 45° em 1 h não conta
+  const lento = (i) => (i < 18 ? 0 : i <= 24 ? (i - 18) * 7.5 : 45)
+  assert.deepEqual(ac.lembretesDoPlano(planoV(rastoV({ twd: lento }))).filter(e => e.tipo === 'vento'), [])
+  // 50° mas em 2 h: não
+  const devagar = (i) => (i < 12 ? 0 : i <= 24 ? (i - 12) * 50 / 12 : 50)
+  assert.deepEqual(ac.lembretesDoPlano(planoV(rastoV({ twd: devagar }))).filter(e => e.tipo === 'vento'), [])
+  // sem twd no rasto (um plano antigo): nada
+  const sem = rastoV().map(({ twd: _t, vis: _v, ...p }) => p)
+  assert.deepEqual(ac.lembretesDoPlano(planoV(sem)).filter(e => e.tipo === 'vento'), [])
+})
+
+test('Tarefa 8.5: chuva e visibilidade — com a visibilidade prevista no rasto, o lembrete é com < 5 km (a 1.ª hora de cada episódio) e substitui o da 3a (< 3 km); sem ela, fica o da 3a', () => {
+  const vis = (i) => (i >= 12 && i < 15 ? 4200 : i >= 24 && i < 26 ? 2500 : 20000)
+  const da3a = { t: iso(T0 + 4 * H), hora: '17:00', tipo: 'tempo', texto: 'Chuva e visibilidade 2,5 km: radar ligado' }
+  const x = ac.lembretesDoPlano(planoV(rastoV({ vis }), [da3a]))
+  assert.deepEqual(x.filter(e => e.tipo === 'tempo').map(e => [e.t, e.texto]), [
+    [iso(T0 + 2 * H), 'Chuva e visibilidade 4,2 km: radar ligado'],
+    [iso(T0 + 4 * H), 'Chuva e visibilidade 2,5 km: radar ligado']
+  ])
+  // nos eventos do acompanhamento: o da 3a sai (está no rasto), ficam os dois do rasto
+  const r = ac.acompanhar(ac.novoEstado(), { plano: planoV(rastoV({ vis }), [da3a]), posicao: A, agora: T0 })
+  assert.equal(r.resultado.eventos.filter(e => /^Chuva/.test(e.texto)).length, 2)
+  // sem a visibilidade no rasto: fica o da 3a
+  const sem = rastoV().map(({ vis: _v, ...p }) => p)
+  const k = ac.acompanhar(ac.novoEstado(), { plano: planoV(sem, [da3a]), posicao: A, agora: T0 })
+  assert.deepEqual(k.resultado.eventos.filter(e => /^Chuva/.test(e.texto)).map(e => e.texto), [da3a.texto])
+})

@@ -14,6 +14,9 @@
 // Eventos (os da 3a, lib/passagem.js, por tipo): os de sítio (partida, wp — cabos, largos, pontos da
 // rota —, vela — rizar e largar rizo —, motor e chegada) deslizam com o atraso; os de hora fixa (noite
 // — pôr e nascer do sol —, tempo — chuva, visibilidade, frente — e os outros) ficam na hora do plano.
+// Mais os lembretes gerados do plano (lembretesDoPlano, Tarefa 8.5): a viragem (> 45° num ponto da
+// rota, de sítio), a rotação do vento previsto (> 45° em 1 h, hora fixa) e a chuva e visibilidade
+// (< 5 km, com a visibilidade prevista no rasto; sem ela, o evento da 3a, < 3 km).
 // O deslize é o atraso arredondado ao minuto.
 // Chegada prevista agora = a chegada provável do plano (chegada.p50) + atraso; de noite ou não, pelo
 // nascer e pôr do sol no cais (lib/sol.js).
@@ -35,7 +38,13 @@ const H = 3600000
 const DIA = 86400000
 const JANELA_MEDIA = 10 * MIN
 const PADRAO = Object.freeze({ recuoMn: 0.5, velMaxNos: 15, avancoMinMn: 2, rpm: 2100 })
-const SITIO = new Set(['partida', 'wp', 'vela', 'motor', 'chegada'])
+const SITIO = new Set(['partida', 'wp', 'vela', 'motor', 'chegada', 'viragem'])
+// os lembretes gerados do plano (Tarefa 8.5)
+const VIRAGEM_GRAUS = 45 // o rumo da rota muda mais do que isto num ponto
+const ROTACAO_GRAUS = 45 // o vento previsto roda mais do que isto…
+const ROTACAO_MS = H // …em 1 h
+const ROTACAO_INICIO_GRAUS = 5 // o início da rotação: o último ponto ainda a ≤ 5° da direção de antes
+const VIS_LEMBRETE_M = 5000 // chuva e visibilidade: < 5 km (o desenho)
 const iso = (t) => new Date(t).toISOString()
 
 // ---------- a rota e o rasto ----------
@@ -101,14 +110,64 @@ function textoCurto (e) {
   return e.tipo === 'wp' ? curto : minuscula(curto)
 }
 
-// [{ id: 'e<i>', tipo, texto, curto, sitio, tPlano, t (deslizada) }]; atraso null: como no plano.
+// [{ id: 'e<i>' (ou o id do evento), tipo, texto, curto, sitio, tPlano, t (deslizada) }]; atraso null: como no plano.
 function deslizarEventos (eventos = [], atraso = null) {
   const desliza = Number.isFinite(atraso) ? Math.round(atraso) * MIN : 0
   return eventos.map((e, i) => {
     const tPlano = Date.parse(e.t)
     const sitio = SITIO.has(e.tipo)
-    return { id: `e${i}`, tipo: e.tipo, texto: e.texto, curto: textoCurto(e), sitio, tPlano: e.t, t: Number.isFinite(tPlano) ? iso(tPlano + (sitio ? desliza : 0)) : e.t }
+    return { id: e.id ?? `e${i}`, tipo: e.tipo, texto: e.texto, curto: textoCurto(e), sitio, tPlano: e.t, t: Number.isFinite(tPlano) ? iso(tPlano + (sitio ? desliza : 0)) : e.t }
   })
+}
+
+// ---------- os lembretes gerados do plano (Tarefa 8.5) ----------
+const difAngulo = (a, b) => Math.abs((((b - a) % 360) + 540) % 360 - 180)
+const grau = (x) => Math.round(((x % 360) + 360) % 360)
+const virgula = (x) => x.toFixed(1).replace('.', ',')
+const daChuva3a = (e) => e.tipo === 'tempo' && /^chuva/i.test(String(e.texto || ''))
+const comVisibilidade = (plano) => (plano.alternativa?.rasto || []).some(p => Number.isFinite(p.vis))
+
+// [{ id, t, tipo, texto }] a partir do plano ativo:
+//   viragem: nos pontos da rota onde o rumo muda mais de 45° (fora do porto), "Virar/cambar no <nome>"
+//     (sem nome, WP<i>), à hora a que o plano passa lá (de sítio: desliza com o atraso);
+//   vento: onde o twd previsto do rasto roda mais de 45° em 1 h, "Rotação do vento de X° para Y°", à hora
+//     em que começa a rodar (X) e até onde para de se afastar (Y) (hora fixa);
+//   tempo: com a visibilidade prevista no rasto, "Chuva e visibilidade X km: radar ligado" no 1.º ponto de
+//     cada troço com menos de 5 km (sem ela no rasto, fica o evento da 3a, com menos de 3 km).
+function lembretesDoPlano (plano, rota = prepararRota(plano)) {
+  const out = []
+  const pts = plano.alternativa?.pontosRota || []
+  // os pontos distintos (sem os repetidos), com o índice na rota
+  const idx = []
+  pts.forEach((p, i) => { if (Number.isFinite(p?.lat) && Number.isFinite(p?.lon) && !(idx.length && c.distanciaMn(pts[idx.at(-1)], p) < 1e-6)) idx.push(i) })
+  for (let k = 1; k < idx.length - 1; k++) {
+    const [a, b, d] = [pts[idx[k - 1]], pts[idx[k]], pts[idx[k + 1]]]
+    if (b.perna === 'porto' || d.perna === 'porto') continue
+    if (difAngulo(c.vetor(a, b).rumo, c.vetor(b, d).rumo) <= VIRAGEM_GRAUS) continue
+    const t = horaNoPlano(rota.tabela, rota.linha.s[idx[k]])
+    if (Number.isFinite(t)) out.push({ id: `v${idx[k]}`, t: iso(t), tipo: 'viragem', texto: `Virar/cambar no ${b.nome || `WP${idx[k]}`}` })
+  }
+  const rasto = (plano.alternativa?.rasto || []).map(p => ({ ...p, t: Date.parse(p.t) })).filter(p => Number.isFinite(p.t))
+  const r = rasto.filter(p => Number.isFinite(p.twd))
+  for (let j = 0; j < r.length; j++) {
+    let k = -1
+    for (let q = j + 1; q < r.length && r[q].t - r[j].t <= ROTACAO_MS; q++) if (difAngulo(r[j].twd, r[q].twd) > ROTACAO_GRAUS) { k = q; break }
+    if (k < 0) continue
+    let a = j
+    while (a + 1 < k && difAngulo(r[j].twd, r[a + 1].twd) <= ROTACAO_INICIO_GRAUS) a++
+    let b = k
+    while (b + 1 < r.length && difAngulo(r[a].twd, r[b + 1].twd) > difAngulo(r[a].twd, r[b].twd)) b++
+    out.push({ id: `r${a}`, t: iso(r[a].t), tipo: 'vento', texto: `Rotação do vento de ${grau(r[a].twd)}° para ${grau(r[b].twd)}°` })
+    j = b
+  }
+  let antes = null
+  for (const [i, p] of rasto.entries()) {
+    if (!Number.isFinite(p.vis)) continue
+    const baixa = p.vis < VIS_LEMBRETE_M
+    if (baixa && !antes) out.push({ id: `c${i}`, t: iso(p.t), tipo: 'tempo', texto: `Chuva e visibilidade ${virgula(p.vis / 1000)} km: radar ligado` })
+    antes = baixa
+  }
+  return out
 }
 
 // O próximo evento depois de agora (sem a partida): { id, texto, hora, tipo } ou null.
@@ -194,7 +253,10 @@ function acompanhar (estado0, entrada) {
   // a hora do plano em que o barco está (antes de sair: o início do plano)
   const inicio = rota.tabela.length ? rota.tabela[0].t : Date.parse(plano.alternativa?.partida)
   const tPlano = Number.isFinite(atraso) ? agora - desliza : inicio
-  const eventos = deslizarEventos(plano.alternativa?.eventos, atraso)
+  // os do plano (sem a chuva da 3a quando o rasto tem a visibilidade) e os lembretes gerados do plano
+  const doPlano = (plano.alternativa?.eventos || []).map((e, i) => ({ ...e, id: `e${i}` }))
+  const vis = comVisibilidade(plano)
+  const eventos = deslizarEventos([...doPlano.filter(e => !(vis && daChuva3a(e))), ...lembretesDoPlano(plano, rota)], atraso)
   const cais = plano.destino?.cais
   const noite = cais ? (t) => chegadaDeNoite(t, cais) : null
   const rec = recursos({ plano, tPlano, gasoleoL: entrada.gasoleoL, socPct: entrada.socPct, energia: entrada.energia, rpm: entrada.rpm, atrasoMs: desliza, noite, radiacao: entrada.radiacao })
@@ -217,4 +279,4 @@ function acompanhar (estado0, entrada) {
   }
 }
 
-module.exports = { PADRAO, SITIO, prepararRota, projetar, horaNoPlano, atrasoMin, juntarAmostra, media, textoCurto, deslizarEventos, proximoEvento, chegadaDeNoite, recursos, desvioVento, novoEstado, acompanhar }
+module.exports = { PADRAO, SITIO, prepararRota, lembretesDoPlano, projetar, horaNoPlano, atrasoMin, juntarAmostra, media, textoCurto, deslizarEventos, proximoEvento, chegadaDeNoite, recursos, desvioVento, novoEstado, acompanhar }

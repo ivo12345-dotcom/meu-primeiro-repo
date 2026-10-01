@@ -4,7 +4,8 @@
 //
 // notifications.rota.lembrete.<id>  alert  30 min antes de cada evento (hora deslizada) e até à hora
 //   dele: rizar ou largar rizo (vela), chuva e visibilidade e passagem da frente (tempo), pôr do sol
-//   (noite) e a chegada de noite. Sem GPS, os de sítio (rizar, chegada) param.
+//   (noite), a chegada de noite, a viragem num ponto da rota e a rotação do vento previsto (Tarefa
+//   8.5). Sem GPS, os de sítio (rizar, viragem, chegada) param.
 // notifications.rota.comer          alert  só com "só eu": de 3 em 3 h desde a saída real, 15 min.
 // notifications.rota.recalcula      warn   atraso (média de 10 min) > 30 min, ou o vento medido (média
 //   de 10 min) afastado do previsto P50 mais de ±30 % E mais de 4 nós durante 30 min seguidos (com a
@@ -80,6 +81,8 @@ function textoLembrete (e, t, agora, { chegadaNoite, destino }) {
   if (e.tipo === 'tempo' && /^chuva/i.test(e.texto)) return `${quando}: chuva e pouca visibilidade — radar ligado e luzes`
   if (e.tipo === 'tempo' && /frente|roda/i.test(e.texto)) return `${quando}: ${e.texto}`
   if (e.tipo === 'chegada' && chegadaNoite) return `${quando}: chegada de noite a ${destino || 'destino'}`
+  // os gerados do plano (Tarefa 8.5): a viragem num ponto da rota e a rotação do vento previsto
+  if (e.tipo === 'viragem' || e.tipo === 'vento') return `${quando}: ${String(e.texto).charAt(0).toLowerCase()}${String(e.texto).slice(1)}`
   return null
 }
 

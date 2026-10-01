@@ -246,3 +246,17 @@ test('M2: os "30 min seguidos" do vento e os "10 min normal" só contam amostras
   assert.equal(st(r, 'recalcula'), 'normal', 'de 5 a 34: 29 min')
   assert.equal(st(correr(r.estado, 35, 35, fora), 'recalcula'), 'warn')
 })
+
+test('Tarefa 8.5: os lembretes novos, 30 min antes: "Às HH:MM: virar/cambar no Cabo X" (de sítio: para sem GPS) e "Às HH:MM: rotação do vento de 350° para 50°"', () => {
+  const eventos = [
+    ev('e9', T0 + H, 'viragem', 'Virar/cambar no Cabo X', true, 'virar/cambar no Cabo X'),
+    ev('e10', T0 + 2 * H, 'vento', 'Rotação do vento de 350° para 50°', false, 'rotação do vento de 350° para 50°')
+  ]
+  const L = (id) => `notifications.rota.lembrete.${id}`
+  const a = av.avaliar(av.novoEstado(), base({ eventos }), T0 + 30 * MIN).avisos
+  assert.deepEqual(a[L('e9')], { state: 'alert', method: METODO, message: 'Às 16:00: virar/cambar no Cabo X' })
+  const b = av.avaliar(av.novoEstado(), base({ eventos }), T0 + 90 * MIN).avisos
+  assert.deepEqual(b[L('e10')], { state: 'alert', method: METODO, message: 'Às 17:00: rotação do vento de 350° para 50°' })
+  // sem GPS, o de sítio para
+  assert.equal(av.avaliar(av.novoEstado(), base({ eventos, semGps: true }), T0 + 30 * MIN).avisos[L('e9')], undefined)
+})

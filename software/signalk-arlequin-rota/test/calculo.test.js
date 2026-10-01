@@ -484,3 +484,15 @@ test('decisão 6 (Ivo): no mar, o Recalcular com "sair agora" (só a partida ime
   for (const a of r.alternativas) assert.equal(Date.parse(a.partida), AGORA)
   assert.ok(r.desistencia.length > 0)
 })
+
+test('Tarefa 8.5: o rasto provável leva a direção do vento previsto (twd, graus) e a visibilidade (vis, m) quando a previsão a tem (para os lembretes de rotação do vento e de chuva a navegar)', async () => {
+  const r = await correr('so', entrada(), deps())
+  const temVis = P29.pontos.some(p => (p.visibilidade || []).some(Number.isFinite))
+  for (const a of r.alternativas) {
+    for (const p of a.rasto) {
+      assert.ok(Number.isInteger(p.twd) && p.twd >= 0 && p.twd < 360, JSON.stringify(p))
+      if (temVis) assert.ok(Number.isFinite(p.vis) && p.vis >= 0, JSON.stringify(p))
+    }
+  }
+  assert.ok(temVis, 'a previsão de 29/09 tem a visibilidade')
+})

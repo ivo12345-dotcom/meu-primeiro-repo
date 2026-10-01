@@ -223,11 +223,17 @@ const nomeAlternativa = (cand, agora, fuso) => {
 }
 
 // O rasto provável para o mini-mapa (desenho 3b-1): de 10 em 10 min desde a partida, mais a chegada
-// (no último ponto da rota, à hora de chegada do resumo). → [{ lat, lon, t, motor, noite }]
+// (no último ponto da rota, à hora de chegada do resumo). → [{ lat, lon, t, motor, noite, twd?, vis? }]
+// twd (graus) e vis (m, à centena): o vento e a visibilidade previstos, quando a previsão os tem (os
+// lembretes da rotação do vento e da chuva a navegar, lib/acompanhamento.js, Tarefa 8.5).
 const PASSO_RASTO = 10 * 60000
 function rastoProvavel (pr, pontosRota) {
   const out = []
-  const ponto = (p, t, lat = p.lat, lon = p.lon) => ({ lat: Math.round(lat * 1e4) / 1e4, lon: Math.round(lon * 1e4) / 1e4, t: iso(t), motor: !!p.motor, noite: !!p.noite })
+  const tempo = (p) => ({
+    ...(Number.isFinite(p.twd) ? { twd: Math.round(((p.twd % 360) + 360) % 360) % 360 } : {}),
+    ...(Number.isFinite(p.vis) ? { vis: Math.round(p.vis / 100) * 100 } : {})
+  })
+  const ponto = (p, t, lat = p.lat, lon = p.lon) => ({ lat: Math.round(lat * 1e4) / 1e4, lon: Math.round(lon * 1e4) / 1e4, t: iso(t), motor: !!p.motor, noite: !!p.noite, ...tempo(p) })
   let alvo = pr.pontos[0]?.t
   for (const p of pr.pontos) if (p.t >= alvo) { out.push(ponto(p, p.t)); alvo = p.t + PASSO_RASTO }
   const ultimo = pr.pontos.at(-1)
