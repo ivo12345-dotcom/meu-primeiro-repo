@@ -126,7 +126,7 @@ body.noite .faixa { outline: 2px solid var(--faixa-texto); outline-offset: -2px;
 body.noite .caixa-erro { color: #ff5a3a; }
 .vermelhos .perigo { font-weight: normal; margin-top: .2rem; }
 .caixas { display: flex; flex-direction: column; gap: .3rem; }
-.caixa { text-align: left; padding: .45rem .6rem; font-size: 1.05rem; }
+.caixa { text-align: left; padding: .7rem .6rem; font-size: 1.05rem; min-height: 44px; } /* para o dedo, ao leme */
 .caixa.marcada { border-color: var(--ok); }
 tr[data-acao] { cursor: pointer; }
 .acao[disabled] { opacity: .4; cursor: not-allowed; }

@@ -19,11 +19,19 @@ function partes (t) {
   return { data: `${p.year}-${p.month}-${p.day}`, dia: p.day, mes: p.month, hm: `${p.hour}:${p.minute}`, semana: DIAS[SEMANA_EN.indexOf(p.weekday)] }
 }
 
+// A data (AAAA-MM-DD) do dia de calendário a seguir a uma data AAAA-MM-DD (não agora + 24 h: os
+// dias da mudança de hora têm 23 ou 25 h).
+function diaSeguinte (data) {
+  const [a, m, d] = data.split('-').map(Number)
+  return new Date(Date.UTC(a, m - 1, d + 1)).toISOString().slice(0, 10)
+}
+
 // O dia de uma hora em relação a agora: '' (hoje), 'amanhã' ou 'sex 02/10'.
 function dia (t, agora) {
   const a = partes(t)
-  if (a.data === partes(agora).data) return ''
-  if (a.data === partes(agora + 86400000).data) return 'amanhã'
+  const hoje = partes(agora).data
+  if (a.data === hoje) return ''
+  if (a.data === diaSeguinte(hoje)) return 'amanhã'
   return `${a.semana} ${a.dia}/${a.mes}`
 }
 

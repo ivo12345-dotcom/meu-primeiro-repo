@@ -21,3 +21,7 @@ test('o mini-mapa tem as cores do mar e da terra de dia e de noite (tokens --mar
     assert.match(bloco, /--terra:\s*#[0-9a-f]{3,6}/)
   }
 })
+
+test('as caixas das precauções têm pelo menos 44 px de altura (para o dedo, ao leme)', () => {
+  assert.match(regra('.caixa'), /min-height:\s*44px/)
+})

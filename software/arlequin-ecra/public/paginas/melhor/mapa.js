@@ -1,5 +1,6 @@
 // Melhor rota, estado Mapa (desenho 3b-1): o mini-mapa (lib/mapa.js) com as 3 alternativas; tocar
-// num cartão destaca essa. "Voltar ao resultado" e os mesmos botões do resultado.
+// num cartão destaca essa. Botões "Voltar ao resultado" e "Ativar esta rota"; o erro do Ativar
+// aparece aqui (caixa vermelha com o motivo).
 
 import { desenharMapa } from '../../lib/mapa.js'
 import { esc, num, horaLisboa, nomeAlternativa } from '../../lib/rota-texto.js'
@@ -18,6 +19,7 @@ export function render (ctx) {
 <div class="col rolar" style="flex:1;">
 ${cartoes}
 <div class="tile lab">Azul: à vela · cinzento: a motor · mais escuro: de noite · ▲ avisos · ● pontos de desistência (da 1.ª) · tracejado vermelho: zonas a evitar</div>
+${e.msg ? `<div class="tile ${e.msgErro ? 'caixa-erro' : ''}">${esc(e.msg)}</div>` : ''}
 <div class="acoes"><button class="acao go" data-acao="rota-voltar">Voltar ao resultado</button><button class="acao" data-acao="rota-ativar">Ativar esta rota</button></div>
 </div>`
 }

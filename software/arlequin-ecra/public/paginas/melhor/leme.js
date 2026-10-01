@@ -54,7 +54,7 @@ ${ctx.estado?.msgAtivar ? `<div class="lab" style="max-width:40rem;">${esc(ctx.e
 ${bordos}
 </div>
 <div class="col estica">
-<div class="tile"><div class="lab">${wp.nome}</div><div class="vv">${distancia(wp.dist)} MN · ${duracao(wp.ttg)}</div><div class="lab">rumo direto ${rumo(wp.rumoWp)}</div></div>
+<div class="tile"><div class="lab">${esc(wp.nome)}</div><div class="vv">${distancia(wp.dist)} MN · ${duracao(wp.ttg)}</div><div class="lab">rumo direto ${rumo(wp.rumoWp)}</div></div>
 <div class="tile"><div class="lab">XTE ${ok(wp.xte) ? `${distancia(Math.abs(wp.xte), 2)} MN ${wp.xte > 0 ? 'EB' : 'BB'}` : '—'}</div>${barraXte(wp.xte)}</div>
 <div class="tile"><div class="lab">VMG ao WP</div><div class="vv">${velocidade(wp.vmg)} nós</div></div>
 <div class="tile"><div class="lab">Vento real</div><div class="vv">${velocidade(tws)} nós de ${rumo(twd)}</div></div>

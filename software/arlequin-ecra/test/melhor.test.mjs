@@ -150,7 +150,8 @@ test('um cálculo já a correr (409): segue esse; o cálculo com erro mostra o m
   assert.equal(ocupado.estado.vista, 'erro')
   const html = melhor.render(ocupado)
   assert.match(html, /class="tile caixa-erro"[^>]*>Sem previsão que cubra a rota: sem rede\. Não calculo sem previsão\./)
-  assert.match(html, /data-acao="rota-repetir"/)
+  // seguiu o cálculo de outro pedido (409): não se sabe o destino dele, só "Novo cálculo"
+  assert.doesNotMatch(html, /data-acao="rota-repetir"/)
   assert.match(html, /data-acao="rota-novo"/)
   limpo(html, 'erro')
 })
@@ -334,4 +335,225 @@ test('rota ativa sem o rumo calculado (o SignalK só manda navigation.course.act
   const ids = [...html.matchAll(/data-acao="rota-destino" data-id="([^"]+)"/g)].map(m => m[1])
   assert.equal(ids[0], 'rota-ativa')
   assert.match(html, /Arlequin → Peniche \(Amanhã/)
+})
+
+// ---------- revisão das Tasks 5–7 ----------
+const ROTA_ATIVA = { 'navigation.course.calcValues.distance': 9000, 'navigation.course.calcValues.bearingTrue': 1, 'navigation.course.nextPoint': { name: 'WP3' }, 'navigation.headingTrue': 1 }
+const CALCULO_PERDIDO = 'este cálculo já não existe no plugin (reiniciado?): calcula outra vez'
+
+test('+ acrescentar: o que se escreve fica no estado (um re-render não o apaga) e o Gravar usa-o; o valor escapa-se', async () => {
+  const novo = { id: 'meu-baleal', nome: 'Baleal', largo: [39.37, -9.34], aproximacao: [[39.37, -9.34], [39.37, -9.34]], meu: true }
+  const ctx = contexto({ respostas: { [`GET ${ROTA}/destinos`]: { destinos: DESTINOS }, [`POST ${ROTA}/destinos`]: { ok: true, destino: novo } } })
+  await melhor.acao('rota-acrescentar', {}, ctx)
+  await melhor.acao('rota-acr-coord', {}, ctx)
+  let html = melhor.render(ctx)
+  for (const id of ['rota-nome', 'rota-lat', 'rota-lon']) assert.match(html, new RegExp(`id="${id}" data-campo="${id}"`), id)
+  await melhor.acao('campo', { campo: 'rota-nome', valor: 'Baleal "norte"' }, ctx)
+  await melhor.acao('campo', { campo: 'rota-lat', valor: '39,37' }, ctx)
+  await melhor.acao('campo', { campo: 'rota-lon', valor: '9,34 W' }, ctx)
+  // tocar no "conheço este sítio" re-renderiza: o texto continua lá
+  await melhor.acao('rota-acr-conhecido', {}, ctx)
+  html = melhor.render(ctx)
+  assert.match(html, /id="rota-nome" data-campo="rota-nome" value="Baleal &quot;norte&quot;"/)
+  assert.match(html, /id="rota-lat" data-campo="rota-lat" value="39,37"/)
+  assert.match(html, /id="rota-lon" data-campo="rota-lon" value="9,34 W"/)
+  assert.match(html, /☑ conheço este sítio/)
+  // o Gravar sem nada nos dados (o ecrã já re-renderizou) usa o estado
+  await melhor.acao('rota-acr-gravar', {}, ctx)
+  assert.deepEqual(ctx.pedidos.find(p => p.method === 'POST').body, { nome: 'Baleal "norte"', lat: 39.37, lon: -9.34, conhecido: true })
+  // gravado: o formulário seguinte começa vazio
+  await melhor.acao('rota-acrescentar', {}, ctx)
+  await melhor.acao('rota-acr-aqui', {}, ctx)
+  assert.match(melhor.render(ctx), /id="rota-nome" data-campo="rota-nome" value=""/)
+  // o Cancelar também limpa
+  await melhor.acao('campo', { campo: 'rota-nome', valor: 'x' }, ctx)
+  await melhor.acao('rota-acr-cancelar', {}, ctx)
+  await melhor.acao('rota-acrescentar', {}, ctx)
+  await melhor.acao('rota-acr-aqui', {}, ctx)
+  assert.match(melhor.render(ctx), /value=""/)
+})
+
+test('"Novo cálculo" por engano com uma rota ativa: o Pedir tem "Voltar ao leme"; voltar à página também repõe o Leme', async () => {
+  const ctx = contexto({ valores: ROTA_ATIVA, respostas: { [`GET ${ROTA}/destinos`]: { destinos: DESTINOS } } })
+  await melhor.acao('rota-novo', {}, ctx)
+  let html = melhor.render(ctx)
+  assert.match(html, /data-acao="rota-voltar-leme"[^>]*>Voltar ao leme</)
+  await melhor.acao('rota-voltar-leme', {}, ctx)
+  assert.match(melhor.render(ctx), /Rumo a seguir/)
+  // sair da página e voltar (aoEntrar) com o Pedir aberto: o Leme volta
+  await melhor.acao('rota-novo', {}, ctx)
+  assert.doesNotMatch(melhor.render(ctx), /Rumo a seguir/)
+  melhor.aoEntrar(ctx)
+  assert.match(melhor.render(ctx), /Rumo a seguir/)
+  // sem rota ativa não há "Voltar ao leme"
+  html = melhor.render(contexto({ respostas: { [`GET ${ROTA}/destinos`]: { destinos: DESTINOS } } }))
+  assert.doesNotMatch(html, /rota-voltar-leme/)
+})
+
+test('Mapa: o erro do Ativar aparece no Mapa (caixa vermelha com o motivo)', async () => {
+  const ctx = contexto({ estado: comResultado(CANAL), respostas: { [`POST ${ROTA}/ativar`]: erroHttp(502, 'não ativei a rota: /x respondeu 500') } })
+  await melhor.acao('rota-mapa', {}, ctx)
+  await melhor.acao('rota-ativar', {}, ctx)
+  const html = melhor.render(ctx)
+  assert.match(html, /<svg class="mapa"/, 'continua no Mapa')
+  assert.match(html, /class="tile caixa-erro"[^>]*>não ativei a rota: \/x respondeu 500/)
+})
+
+test('"Rota ativada": sai quando o SignalK confirma a rota (a partir daí manda a rota ativa) e, quando ela acaba, o ecrã volta ao resultado; sem confirmação em 2 min, explica', async () => {
+  const valores = {}
+  const ctx = contexto({ estado: comResultado(DIRETA), respostas: { [`POST ${ROTA}/ativar`]: { ok: true, rota: 'r1', href: '/resources/routes/r1', alternativa: 'x', nota: null } } })
+  const v0 = ctx.v
+  ctx.v = (p) => (p in valores ? valores[p] : v0(p)) // o SignalK a mudar durante o teste
+  await melhor.acao('rota-ativar', {}, ctx)
+  assert.match(melhor.render(ctx), /Rota ativada/)
+  valores['navigation.course.activeRoute'] = { href: '/resources/routes/r1', name: 'Arlequin → Algés' }
+  assert.match(melhor.render(ctx), /Rota ativa/)
+  assert.equal(ctx.estado.ativada, false)
+  delete valores['navigation.course.activeRoute']
+  const html = melhor.render(ctx)
+  assert.doesNotMatch(html, /Rota ativ/)
+  assert.match(html, /data-acao="rota-ativar"/, 'o resultado outra vez')
+  // ativada mas o SignalK nunca a mostra
+  const sem = contexto({ estado: comResultado(DIRETA), respostas: { [`POST ${ROTA}/ativar`]: { ok: true, rota: 'r1', href: '/resources/routes/r1', alternativa: 'x', nota: null } } })
+  await melhor.acao('rota-ativar', {}, sem)
+  sem.agora += 60000
+  assert.match(melhor.render(sem), /Rota ativada/)
+  sem.agora += 61000
+  const h2 = melhor.render(sem)
+  assert.doesNotMatch(h2, /Rota ativada/)
+  assert.match(h2, /ativei a rota, mas o SignalK não a mostra como ativa/)
+})
+
+test('erros em pt-PT, nunca o código HTTP cru: 404 do resultado = o cálculo já não existe; sem corpo = a explicação do código', async () => {
+  const perdido = contexto({ estado: { escolhido: 'nazare' }, respostas: { [`POST ${ROTA}/calcular`]: { id: 'calc-7' }, [`GET ${ROTA}/resultado/calc-7`]: erroHttp(404, 'cálculo desconhecido') } })
+  await melhor.acao('rota-calcular', {}, perdido)
+  assert.equal(perdido.estado.erro, CALCULO_PERDIDO)
+  assert.match(melhor.render(perdido), /data-acao="rota-repetir"/, 'o pedido é conhecido: dá para tentar outra vez')
+  for (const [status, msg, espera] of [
+    [500, '500', 'o plugin da rota deu um erro (HTTP 500)'],
+    [401, '401', 'o SignalK recusou o pedido (sem sessão iniciada neste ecrã?): entra no SignalK e tenta outra vez'],
+    [404, '404', 'o plugin da rota não responde'],
+    [404, 'cálculo desconhecido', CALCULO_PERDIDO],
+    [404, 'alternativa desconhecida', 'alternativa desconhecida'],
+    [502, 'não ativei a rota: /x respondeu 500', 'não ativei a rota: /x respondeu 500']
+  ]) {
+    const a = contexto({ estado: comResultado(CANAL), respostas: { [`POST ${ROTA}/ativar`]: erroHttp(status, msg), [`POST ${ROTA}/plano-telegram`]: erroHttp(status, msg) } })
+    await melhor.acao('rota-ativar', {}, a)
+    assert.equal(a.estado.msg, espera, `ativar ${status} ${msg}`)
+    await melhor.acao('rota-plano', {}, a)
+    assert.equal(a.estado.plano.motivo, espera, `plano ${status} ${msg}`)
+  }
+  const g = contexto({ respostas: { [`POST ${ROTA}/destinos`]: erroHttp(500, '500') } })
+  await melhor.acao('rota-acrescentar', {}, g)
+  await melhor.acao('rota-acr-aqui', {}, g)
+  await melhor.acao('rota-acr-gravar', { 'rota-nome': 'X' }, g)
+  assert.equal(g.estado.msgDestino, 'o plugin da rota deu um erro (HTTP 500)')
+  const d = contexto({ respostas: { [`GET ${ROTA}/destinos`]: erroHttp(500, '500') } })
+  melhor.aoEntrar(d)
+  await new Promise(resolve => setTimeout(resolve, 0))
+  assert.match(melhor.render(d), /o plugin da rota deu um erro \(HTTP 500\)/)
+  // o envio do plano que o plugin já não conhece (reiniciado)
+  const pl = contexto({ estado: comResultado(CANAL), respostas: { [`POST ${ROTA}/plano-telegram`]: { pedido: 'p-9', avisos: [] }, [`GET ${ROTA}/plano-telegram/p-9`]: erroHttp(404, 'pedido desconhecido') } })
+  await melhor.acao('rota-plano', {}, pl)
+  assert.equal(pl.estado.plano.motivo, 'este envio já não existe no plugin da rota (reiniciado?): confirma com os contactos se receberam')
+})
+
+test('toques duplos: o "Enviar plano" e o "Calcular" só pedem uma vez', async () => {
+  const respostas = { [`POST ${ROTA}/plano-telegram`]: { pedido: 'p-1', avisos: [] }, [`GET ${ROTA}/plano-telegram/p-1`]: { estado: 'a enviar', entregues: [], falhas: [], avisos: [] } }
+  const ctx = contexto({ estado: comResultado(FUGA), respostas })
+  await Promise.all([melhor.acao('rota-plano', {}, ctx), melhor.acao('rota-plano', {}, ctx)])
+  assert.equal(ctx.pedidos.filter(p => p.method === 'POST').length, 1)
+  await melhor.acao('rota-plano', {}, ctx) // ainda "a enviar"
+  assert.equal(ctx.pedidos.filter(p => p.method === 'POST').length, 1)
+  const c = contexto({ estado: { escolhido: 'nazare' }, respostas: { [`POST ${ROTA}/calcular`]: { id: 'calc-9' }, [`GET ${ROTA}/resultado/calc-9`]: { estado: 'a calcular', progresso: 0.1, texto: 'a começar' } } })
+  await Promise.all([melhor.acao('rota-calcular', {}, c), melhor.acao('rota-calcular', {}, c)])
+  assert.equal(c.pedidos.filter(p => p.method === 'POST').length, 1)
+  assert.equal(c.agendados.length, 1, 'uma só cadeia de seguimento')
+  await melhor.acao('rota-calcular', {}, c) // já a calcular
+  assert.equal(c.pedidos.filter(p => p.method === 'POST').length, 1)
+})
+
+test('A calcular tem "Cancelar": deixa de seguir e volta ao Pedir, a dizer que o plugin continua a calcular', async () => {
+  const ctx = contexto({ estado: { escolhido: 'nazare' }, respostas: { [`GET ${ROTA}/destinos`]: { destinos: DESTINOS }, [`POST ${ROTA}/calcular`]: { id: 'calc-9' }, [`GET ${ROTA}/resultado/calc-9`]: { estado: 'a calcular', progresso: 0.3, texto: 'a simular' } } })
+  await melhor.acao('rota-calcular', {}, ctx)
+  const html = melhor.render(ctx)
+  assert.match(html, /data-acao="rota-cancelar"[^>]*>Cancelar</)
+  assert.match(html, /o plugin continua a calcular/)
+  await melhor.acao('rota-cancelar', {}, ctx)
+  const pedidos = ctx.pedidos.length
+  await ctx.agendados.shift().f() // o seguimento que estava marcado já não pede
+  assert.equal(ctx.pedidos.length, pedidos)
+  const pedir = melhor.render(ctx)
+  assert.match(pedir, /Para onde\?/)
+  assert.match(pedir, /o plugin da rota continua a calcular/)
+})
+
+test('Enter nos campos grava (o app.js re-renderiza depois: lib/interacao.js)', async () => {
+  const novo = { id: 'meu-x', nome: 'X', largo: [39.37, -9.34], aproximacao: [[39.37, -9.34], [39.37, -9.34]], meu: true }
+  const ctx = contexto({ respostas: { [`POST ${ROTA}/destinos`]: { ok: true, destino: novo } } })
+  await melhor.acao('rota-acrescentar', {}, ctx)
+  await melhor.acao('rota-acr-aqui', {}, ctx)
+  await melhor.acao('campo', { campo: 'rota-nome', valor: 'X' }, ctx)
+  await melhor.acao('enter', {}, ctx)
+  assert.equal(ctx.estado.escolhido, 'meu-x')
+})
+
+test('precauções: o guardado estragado não rebenta (fica vazio) e só ficam os 10 cálculos mais recentes', async () => {
+  for (const lixo of ['x', [1, 2], 7, null, { 'calc-0': 'lixo', 'calc-y': [1], 'calc-z': { vhf: true } }]) {
+    const ctx = contexto({ estado: comResultado(CANAL) })
+    ctx.guardados['arlequin.precaucoes'] = lixo
+    assert.doesNotThrow(() => melhor.render(ctx))
+    await melhor.acao('rota-precaucao', { id: 'vhf' }, ctx)
+    const g = ctx.guardados['arlequin.precaucoes']
+    assert.deepEqual(g['calc-1'], { vhf: true }, JSON.stringify(lixo))
+    for (const v of Object.values(g)) assert.ok(v && typeof v === 'object' && !Array.isArray(v))
+  }
+  const ctx = contexto({ estado: comResultado(CANAL) })
+  for (let k = 0; k < 12; k++) {
+    ctx.estado.idCalculo = `c${k}`
+    await melhor.acao('rota-precaucao', { id: 'vhf' }, ctx)
+  }
+  assert.deepEqual(Object.keys(ctx.guardados['arlequin.precaucoes']), ['c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9', 'c10', 'c11'])
+  // marcar de novo um antigo passa-o para o fim
+  ctx.estado.idCalculo = 'c3'
+  await melhor.acao('rota-precaucao', { id: 'barra' }, ctx)
+  assert.equal(Object.keys(ctx.guardados['arlequin.precaucoes']).at(-1), 'c3')
+})
+
+test('Leme: o nome do próximo ponto escapa-se (pode vir de um destino escrito à mão)', () => {
+  const ctx = contexto({ valores: { ...ROTA_ATIVA, 'navigation.course.nextPoint': { name: '<b>Praia & "Ursa"</b>' } } })
+  const html = melhor.render(ctx)
+  assert.ok(html.includes('&lt;b&gt;Praia &amp; &quot;Ursa&quot;&lt;/b&gt;'))
+  assert.doesNotMatch(html, /<b>Praia/)
+})
+
+test('409: segue o cálculo que já corria, e o "Sair agora"/"Tentar outra vez" usam o destino desse cálculo (não o escolhido)', async () => {
+  const ctx = contexto({
+    estado: { escolhido: 'nazare' },
+    respostas: {
+      [`POST ${ROTA}/calcular`]: [Object.assign(erroHttp(409, 'já há um cálculo a correr'), { corpo: { id: 'calc-0' } }), { id: 'calc-2' }],
+      [`GET ${ROTA}/resultado/calc-0`]: { estado: 'pronto', resultado: FUGA },
+      [`GET ${ROTA}/resultado/calc-2`]: { estado: 'pronto', resultado: FUGA }
+    }
+  })
+  await melhor.acao('rota-calcular', {}, ctx)
+  assert.equal(ctx.estado.vista, 'resultado')
+  assert.deepEqual(ctx.estado.ultimoPedido, { destino: FUGA.destino.id, tripulacao: FUGA.tripulacao, sairAgora: FUGA.sairAgora })
+  await melhor.acao('rota-sair-agora', {}, ctx)
+  assert.deepEqual(ctx.pedidos.filter(p => p.method === 'POST')[1].body, { destino: FUGA.destino.id, tripulacao: FUGA.tripulacao, sairAgora: true })
+  // o seguido acaba em erro: não há "Tentar outra vez" (não se sabe o destino dele)
+  const e = contexto({ estado: comResultado(CANAL, { escolhido: 'nazare' }), respostas: { [`POST ${ROTA}/calcular`]: Object.assign(erroHttp(409, 'já há um cálculo a correr'), { corpo: { id: 'calc-0' } }), [`GET ${ROTA}/resultado/calc-0`]: { estado: 'erro', erro: 'sem rede' } } })
+  await melhor.acao('rota-calcular', {}, e)
+  const html = melhor.render(e)
+  assert.match(html, /sem rede/)
+  assert.doesNotMatch(html, /rota-repetir/)
+})
+
+test('o aviso do plugin da rota (sem o telefone do Ivo) aparece com o estado do plano', async () => {
+  const AVISO = 'o teu telefone não está na configuração: o plano diz só "liga ao Ivo"'
+  const ctx = contexto({ estado: comResultado(FUGA), respostas: { [`POST ${ROTA}/plano-telegram`]: { pedido: 'p-1', avisos: [AVISO] }, [`GET ${ROTA}/plano-telegram/p-1`]: { estado: 'enviado', entregues: ['Mãe'], falhas: [], avisos: [AVISO] } } })
+  await melhor.acao('rota-plano', {}, ctx)
+  const html = melhor.render(ctx)
+  assert.match(html, /enviado ✓ a 1 contacto/)
+  assert.ok(html.includes(AVISO.replace(/"/g, '&quot;')), html)
 })

@@ -1,4 +1,5 @@
 // Melhor rota, estados A calcular, Resultado e Erro (desenho 3b-1).
+//   A calcular: o progresso, e "Cancelar" (deixa de seguir; o plugin continua a calcular).
 //   Resultado: a faixa do veredicto (cor do tipo) com as frases de porquê, a linha da previsão,
 //   os 3 cartões (a recomendada destacada), os avisos vermelhos (sempre visíveis), a linha do
 //   tempo, as precauções com caixas (guardadas por cálculo), os pontos de desistência, e os botões
@@ -7,17 +8,23 @@
 
 import { esc, num, horaLisboa, margem, nomeAlternativa, corVeredicto, avisosVermelhos, avisosGerais, linhaPrevisao } from '../../lib/rota-texto.js'
 import { barra } from '../../lib/desenho.js'
-import { URL_ROTA, calcular, motivoPlugin } from './pedir.js'
+import { URL_ROTA, calcular, motivoAcao, CANCELADO } from './pedir.js'
 
 const CHAVE_MARCAS = 'arlequin.precaucoes'
 const MAX_CALCULOS_MARCAS = 10
+const PLANO_PERDIDO = 'este envio já não existe no plugin da rota (reiniciado?): confirma com os contactos se receberam'
+const eObjeto = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
 const agora = (ctx) => (Number.isFinite(ctx.agora) ? ctx.agora : Date.now())
 const agendar = (ctx, f, ms) => (ctx.agendar || setTimeout)(f, ms)
 
 // ---------- marcas das precauções (por id de cálculo; no ecrã e no localStorage) ----------
+// O guardado pode vir estragado (outro valor, outra versão): só ficam os cálculos com um objeto.
 function todasMarcas (ctx) {
   const e = ctx.estado
-  if (!e.marcas) e.marcas = (typeof ctx.guardado === 'function' ? ctx.guardado(CHAVE_MARCAS, {}) : null) || {}
+  if (!e.marcas) {
+    const g = typeof ctx.guardado === 'function' ? ctx.guardado(CHAVE_MARCAS, {}) : null
+    e.marcas = eObjeto(g) ? Object.fromEntries(Object.entries(g).filter(([, v]) => eObjeto(v))) : {}
+  }
   return e.marcas
 }
 export function marcas (ctx) {
@@ -86,16 +93,18 @@ function desistencia (ctx, r, i) {
   return `<div>${esc(r.desistenciaResumo || '—')}</div>${linhas ? `<table><tr><th>hora</th><th>abrigo</th><th>volta</th></tr>${linhas}</table>` : ''}`
 }
 
+// O estado do envio do plano, com os avisos do plugin da rota (ex.: sem o telefone do Ivo).
 function estadoPlano (e) {
   const p = e.plano
   if (!p) return ''
-  if (p.estado === 'a enviar') return '<div class="tile">a enviar o plano pelo Telegram…</div>'
+  const avisos = (Array.isArray(p.avisos) ? p.avisos : []).map(a => `<div class="lab atencao">⚠ ${esc(a)}</div>`).join('')
+  if (p.estado === 'a enviar') return `<div class="tile">a enviar o plano pelo Telegram…${avisos}</div>`
   if (p.estado === 'enviado') {
     const n = p.entregues?.length || 0
     const falhas = p.falhas?.length ? `<div class="lab perigo">não chegou a: ${p.falhas.map(f => `${esc(f.nome)} (${esc(f.erro)})`).join('; ')}</div>` : ''
-    return `<div class="tile ok">enviado ✓ a ${n} ${n === 1 ? 'contacto' : 'contactos'}${falhas}</div>`
+    return `<div class="tile ok">enviado ✓ a ${n} ${n === 1 ? 'contacto' : 'contactos'}${falhas}${avisos}</div>`
   }
-  return `<div class="tile perigo">não foi possível enviar: ${esc(p.motivo || p.erro || 'sem explicação')}</div>`
+  return `<div class="tile perigo">não foi possível enviar: ${esc(p.motivo || p.erro || 'sem explicação')}${avisos}</div>`
 }
 
 // ---------- o plano pelo Telegram ----------
@@ -113,7 +122,7 @@ function seguirPlano (ctx) {
         for (const id of ['plano', 'plano-hora']) if (e.resultado?.alternativas?.[e.selecionada]?.precaucoes?.some(p => p.id === id)) marcar(ctx, id, true)
       }
     })
-    .catch(err => { if (e.plano?.pedido === pedido) e.plano = { pedido, estado: 'falhou', motivo: motivoPlugin(err) } })
+    .catch(err => { if (e.plano?.pedido === pedido) e.plano = { ...e.plano, estado: 'falhou', motivo: motivoAcao(err, { se404: PLANO_PERDIDO }) } })
     .finally(() => ctx.refrescar())
 }
 
@@ -126,6 +135,8 @@ export function renderACalcular (ctx) {
 <div class="v">${Math.round(f * 100)}%</div>
 <div style="font-size:1.2rem;margin-top:.4rem;">${esc(c.texto || 'a começar')}</div>
 <div class="lab" style="margin-top:.8rem;">Demora uns segundos: o plugin simula as partidas das próximas 48 h.</div>
+<div class="acoes" style="margin-top:.8rem;"><button class="acao" data-acao="rota-cancelar">Cancelar</button></div>
+<div class="lab">O Cancelar só deixa de seguir: o plugin continua a calcular até ao fim.</div>
 </div>`
 }
 
@@ -187,12 +198,22 @@ export async function acao (nome, dados, ctx) {
   if (nome === 'rota-precaucao') { marcar(ctx, dados.id, !marcas(ctx)[dados.id]); return true }
   if (nome === 'rota-mapa') { if (e.resultado?.mapa) e.vista = 'mapa'; return true }
   if (nome === 'rota-voltar') { e.vista = 'resultado'; return true }
+  if (nome === 'rota-cancelar') {
+    // deixa de seguir (o seguir() vê que já não há cálculo); o plugin continua a calcular
+    e.calculo = null
+    e.vista = 'pedir'
+    e.msg = CANCELADO
+    e.msgErro = false
+    return true
+  }
   if (nome === 'rota-plano') {
+    // um toque duplo não envia o plano duas vezes aos contactos
+    if (e.plano?.estado === 'a enviar') return true
     e.plano = { estado: 'a enviar' }
     try {
       const r = await ctx.pedir(`${URL_ROTA}/plano-telegram`, { method: 'POST', body: { id: e.idCalculo, alternativa: e.selecionada || 0 } })
-      e.plano = { pedido: r.pedido, estado: 'a enviar' }
-    } catch (err) { e.plano = { estado: 'falhou', motivo: err?.status ? err.message : motivoPlugin(err) }; return true }
+      e.plano = { pedido: r.pedido, estado: 'a enviar', avisos: Array.isArray(r.avisos) ? r.avisos : [] }
+    } catch (err) { e.plano = { estado: 'falhou', motivo: motivoAcao(err) }; return true }
     await seguirPlano(ctx)
     return true
   }
@@ -201,9 +222,10 @@ export async function acao (nome, dados, ctx) {
     try {
       const r = await ctx.pedir(`${URL_ROTA}/ativar`, { method: 'POST', body: { id: e.idCalculo, alternativa: e.selecionada || 0 } })
       e.ativada = true
+      e.ativadaEm = agora(ctx)
       e.novo = false
       e.msgAtivar = r?.nota || null
-    } catch (err) { e.msg = err?.status ? err.message : motivoPlugin(err); e.msgErro = true }
+    } catch (err) { e.msg = motivoAcao(err); e.msgErro = true }
     return true
   }
   if (nome === 'rota-sair-agora' || nome === 'rota-repetir') {

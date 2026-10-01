@@ -7,6 +7,7 @@ import { lerPolar } from './lib/polar.js'
 import { criarBarometro, registarPressao, tendencia } from './lib/barometro.js'
 import { novaViagem, acumular } from './lib/viagem.js'
 import { maisGrave, deveTocar, paginaDoAlarme, bipDeLigacao } from './lib/alarmes.js'
+import { podeRedesenhar, aoEnter, aoEscrever } from './lib/interacao.js'
 import carta from './paginas/carta.js'
 import instr from './paginas/instr.js'
 import ais from './paginas/ais.js'
@@ -36,7 +37,8 @@ const app = {
   audio: null,
   bipados: new Set(),
   estavaLigado: null,
-  sons: [] // últimos sons tocados (diagnóstico: window.arlequin.app.sons)
+  sons: [], // últimos sons tocados (diagnóstico: window.arlequin.app.sons)
+  premido: false // um dedo no ecrã (entre o pointerdown e o pointerup)
 }
 
 // ---------- contexto passado às páginas ----------
@@ -125,8 +127,8 @@ function render (forcar = false) {
   const ctx = contexto()
   document.getElementById('barra').innerHTML = barraHtml(ctx)
   const el = document.getElementById('pagina')
-  const aEscrever = !forcar && el.contains(document.activeElement) && document.activeElement.tagName === 'INPUT'
-  if (!aEscrever) el.innerHTML = PAGINAS[app.pagina].render(ctx)
+  const aEscrever = el.contains(document.activeElement) && document.activeElement.tagName === 'INPUT'
+  if (podeRedesenhar({ forcar, aEscrever, premido: app.premido })) el.innerHTML = PAGINAS[app.pagina].render(ctx)
   document.querySelectorAll('#botoes [data-pag]').forEach(b => {
     b.classList.toggle('on', b.dataset.pag === app.pagina)
     if (b.dataset.pag === 'ais') {
@@ -154,10 +156,12 @@ function irPara (pag) {
 
 // ---------- eventos ----------
 document.addEventListener('pointerdown', () => {
+  app.premido = true
   if (!app.audio) {
     try { app.audio = new AudioContext() } catch { /* sem som */ }
   }
 }, { capture: true })
+for (const fim of ['pointerup', 'pointercancel']) document.addEventListener(fim, () => { app.premido = false }, { capture: true })
 
 document.addEventListener('click', async (ev) => {
   const pag = ev.target.closest('[data-pag]')
@@ -184,10 +188,12 @@ document.addEventListener('click', async (ev) => {
 })
 
 document.addEventListener('keydown', (ev) => {
-  if (ev.key === 'Enter' && ev.target.tagName === 'INPUT') {
-    const ctx = contexto()
-    PAGINAS[app.pagina].acao?.('enter', ev.target.dataset, ctx, ev.target)
-  }
+  if (ev.key === 'Enter' && ev.target.tagName === 'INPUT') aoEnter(PAGINAS[app.pagina], contexto(), ev.target, render)
+})
+
+// o que se escreve nos campos com data-campo fica no estado da página (um render não o apaga)
+document.addEventListener('input', (ev) => {
+  if (ev.target.tagName === 'INPUT') aoEscrever(PAGINAS[app.pagina], contexto(), ev.target)
 })
 
 // ---------- ciclo ----------

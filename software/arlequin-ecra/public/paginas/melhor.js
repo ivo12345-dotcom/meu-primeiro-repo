@@ -7,11 +7,28 @@
 //   Erro        — caixa vermelha com o motivo, em pt-PT
 // O estado fica em ctx.estado (vista, resultado, selecionada, …); as marcas das precauções também
 // no armazenamento do ecrã (ctx.guardar), por id de cálculo.
+// "Rota ativada" (e.ativada) só até o SignalK mostrar a rota ativa (daí em diante manda a rota ativa,
+// e quando ela acaba o ecrã volta ao que estava); sem confirmação em 2 min, sai e explica.
 
 import leme from './melhor/leme.js'
 import pedir, { buscarDestinos, rotaAtiva } from './melhor/pedir.js'
 import * as resultado from './melhor/resultado.js'
 import * as mapa from './melhor/mapa.js'
+
+const PRAZO_ATIVADA_MS = 120000
+const SEM_CONFIRMACAO = 'ativei a rota, mas o SignalK não a mostra como ativa: vê no OpenCPN se ela lá está'
+const agora = (ctx) => (Number.isFinite(ctx.agora) ? ctx.agora : Date.now())
+
+function reverAtivada (ctx) {
+  const e = ctx.estado
+  if (!e.ativada) return
+  if (rotaAtiva(ctx)) { e.ativada = false; return }
+  if (agora(ctx) - (e.ativadaEm ?? agora(ctx)) > PRAZO_ATIVADA_MS) {
+    e.ativada = false
+    e.msg = SEM_CONFIRMACAO
+    e.msgErro = true
+  }
+}
 
 export function vista (ctx) {
   const e = ctx.estado
@@ -23,9 +40,14 @@ export function vista (ctx) {
 
 export default {
   aoEntrar (ctx) {
+    const e = ctx.estado
+    reverAtivada(ctx)
+    // voltar à página com o Pedir aberto (um "Novo cálculo" por engano) repõe o Leme
+    if (e.novo && (!e.vista || e.vista === 'pedir')) e.novo = false
     if (vista(ctx) === 'pedir') buscarDestinos(ctx, true)
   },
   render (ctx) {
+    reverAtivada(ctx)
     switch (vista(ctx)) {
       case 'leme': return leme.render(ctx)
       case 'a-calcular': return resultado.renderACalcular(ctx)

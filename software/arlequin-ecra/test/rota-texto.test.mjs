@@ -103,3 +103,16 @@ test('esc: texto seguro para HTML', () => {
   assert.equal(t.esc('<b>"A&B"</b>'), '&lt;b&gt;&quot;A&amp;B&quot;&lt;/b&gt;')
   assert.equal(t.esc(null), '')
 })
+
+test('"amanhã" nos dias da mudança de hora (dias de 23 h e de 25 h): o dia seguinte é o do calendário de Lisboa', () => {
+  // sáb 28/03/2026 23:30 (WET) → dom 29/03 11:00 (WEST): o domingo tem 23 h
+  assert.equal(t.horaLisboa('2026-03-29T10:00:00Z', Date.parse('2026-03-28T23:30:00Z')), 'amanhã 11:00')
+  // dom 25/10/2026 00:30 (WEST) → seg 26/10 09:00 (WET): o domingo tem 25 h
+  assert.equal(t.horaLisboa('2026-10-26T09:00:00Z', Date.parse('2026-10-24T23:30:00Z')), 'amanhã 09:00')
+  assert.equal(t.quandoAs('2026-10-26T09:00:00Z', Date.parse('2026-10-24T23:30:00Z')), 'amanhã às 09:00')
+  // e dois dias depois já não é amanhã
+  assert.equal(t.horaLisboa('2026-10-27T09:00:00Z', Date.parse('2026-10-24T23:30:00Z')), 'ter 27/10 09:00')
+  // fim do mês e do ano
+  assert.equal(t.horaLisboa('2026-11-01T09:00:00Z', Date.parse('2026-10-31T12:00:00Z')), 'amanhã 09:00')
+  assert.equal(t.horaLisboa('2027-01-01T09:00:00Z', Date.parse('2026-12-31T12:00:00Z')), 'amanhã 09:00')
+})
