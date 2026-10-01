@@ -16,7 +16,8 @@
 // pelo chatId, nunca pelo nome) e aos chatIds (o Ivo); um chat pedido que já não está nos
 // contactosPlano vai para as falhas, com o nome do pedido. O GPX só no tipo 'plano'. Uma mensagem com
 // tipo que não seja 'plano' é sempre assim, mesmo sem destinatarios (sem chats, só ao Ivo). Sem tipo e
-// sem destinatarios, como na 3b-1: a todos.
+// sem destinatarios, como na 3b-1: a todos. Uma nova tentativa (tentativa > 1) já não vai ao Ivo, só aos
+// contactos indicados (re-revisão M-5: o Ivo não recebe a mesma mensagem de 2 em 2 min).
 // Os contactosPlano só recebem: as mensagens deles são ignoradas (não comandam). Quem escreve sem
 // estar em nenhuma das listas recebe o código para dar ao Ivo (uma vez por hora) e não fica autorizado.
 // O plano vai a todos os destinatários em paralelo e cada chamada ao Telegram tem um limite de 10 s,
@@ -180,9 +181,12 @@ module.exports = function (app, deps = {}) {
   function destinatariosPlano (ev) {
     const pedidos = restrito(ev) ? (Array.isArray(ev.chats) ? ev.chats : []).map(x => String(x ?? '').trim()) : null
     const so = pedidos ? new Set(pedidos) : null
+    const ivo = chatsAutorizados()
+    // as novas tentativas de uma mensagem para terra (re-revisão M-5) já não vão ao Ivo: só a 1.ª
+    const comIvo = !(pedidos && Number(ev.tentativa) > 1)
     const out = []
-    for (const id of chatsAutorizados()) out.push({ nome: `chat ${id}`, chatId: id, emTerra: false })
-    for (const c of contactosPlano()) if ((!so || so.has(c.chatId)) && !out.some(d => d.chatId === c.chatId)) out.push({ ...c, emTerra: true })
+    if (comIvo) for (const id of ivo) out.push({ nome: `chat ${id}`, chatId: id, emTerra: false })
+    for (const c of contactosPlano()) if ((!so || so.has(c.chatId)) && !ivo.includes(c.chatId) && !out.some(d => d.chatId === c.chatId)) out.push({ ...c, emTerra: true })
     const nomes = Array.isArray(ev?.contactos) ? ev.contactos.map(String) : []
     const faltam = (pedidos || []).map((id, i) => ({ id, i })).filter(({ id }) => id && !contactosPlano().some(c => c.chatId === id))
       .map(({ id, i }) => ({ nome: nomes[i] || `chat ${id}`, erro: FORA_DA_LISTA }))

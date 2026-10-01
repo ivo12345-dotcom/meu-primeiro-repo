@@ -195,3 +195,22 @@ test('8: os caminhos do NUNCA e do SO_ALARME são exatos (um ponto final no fim 
   assert.deepEqual(r.mensagens, ['⚠️ outro aviso', '⚠️ outro da previsão'])
   assert.deepEqual(alarmesAtivos([n('notifications.rota.comerX', 'warn', 'x'), n('notifications.rota.comer', 'alert', 'y')]), ['x'])
 })
+
+test('re-revisão M-5: as novas tentativas de uma mensagem para terra (tentativa > 1) já não vão ao chat do Ivo, só aos contactos indicados; a 1.ª vai', async () => {
+  const tgf = await criarTelegramFalso()
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ telegramToken: 'TESTE', chatIds: ['111'], contactosPlano: [{ nome: 'Mãe', chatId: '222' }, { nome: 'Ivo', chatId: '111' }], telegramBase: tgf.url, pollTimeout: 1 })
+  try {
+    let r = respostaDe(app, 'r1')
+    app.emit('arlequin:plano', { pedido: 'r1', tipo: 'atraso', texto: 'atraso', destinatarios: 'contactos-do-plano', contactos: ['Mãe'], chats: ['222'] })
+    assert.deepEqual((await r).entregues, ['chat 111', 'Mãe'])
+    for (const [i, tentativa] of [2, 3].entries()) {
+      r = respostaDe(app, `r${i + 2}`)
+      app.emit('arlequin:plano', { pedido: `r${i + 2}`, tipo: 'atraso', texto: 'atraso', destinatarios: 'contactos-do-plano', contactos: ['Mãe', 'Ivo'], chats: ['222', '111'], tentativa })
+      assert.deepEqual(await r, { pedido: `r${i + 2}`, entregues: ['Mãe'], contactos: ['Mãe'], chats: ['222'], falhas: [] })
+    }
+    assert.equal(tgf.enviados.filter(m => m.chatId === '111').length, 1, 'o Ivo só na 1.ª')
+    assert.equal(tgf.enviados.filter(m => m.chatId === '222').length, 3)
+  } finally { p.stop(); await tgf.fechar() }
+})
