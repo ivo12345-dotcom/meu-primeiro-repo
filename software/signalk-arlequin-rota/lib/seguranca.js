@@ -15,28 +15,33 @@
 //     este mínimo (o rotas.js já só a deixa perto de terra com vento de terra) e a distância
 //     que fica é a real, costaMinMn do rotas.js. Fora da rota direta, a distância desconhecida
 //     (null: não dada, sem costa, sem troços de linha) exclui: "distância à costa desconhecida".
+// OS RASTOS DOS 3 CENÁRIOS (revisão final, I1): as regras do canal, da previsão sem dados, dos
+//   limites de vento/rajada/ondas e da chegada de noite avaliam-se no pessimista, no provável E no
+//   otimista (o que houver): os cenários não são monótonos na hora (o otimista tem menos vento, vai
+//   mais a motor, pode ser o mais lento e apanhar uma frente ou o canal mais tarde). O gasóleo, a
+//   bateria e as horas ao leme ficam no pessimista.
 // Excluída sempre, numa variante por um canal com `ondasMax` (lib/rotas.js: o Canal da Berlenga,
-//   decisão do Ivo de 30/09, só com ondas < 3 m): a onda máxima do cenário pessimista nos troços
+//   decisão do Ivo de 30/09, só com ondas < 3 m): a onda máxima dos 3 rastos nos troços
 //   do canal (perna 'canal' e as ligações que chegam a ele e saem dele) ≥ ondasMax. Contam os
 //   pontos do rasto a ≤ corredorCanalMn desses troços (o corredor dos bordos é de 0,7 MN); um rasto
 //   sem posições (ou sem nenhum ponto perto) conta a rota toda. Sem ondas previstas num desses
 //   pontos é "desconhecido", nunca calmo: também excluída.
 // Excluída, ou aviso vermelho em "Sair agora mesmo assim" (desenho 3a):
-//   - a previsão sem dados (`semDados` de lib/previsao.js, nos pontos do rasto do pessimista ou
-//     do provável) de vento, rajada ou ondas em parte da rota — desconhecido não é calmo. Outros
+//   - a previsão sem dados (`semDados` de lib/previsao.js, nos pontos dos 3 rastos) de vento, rajada ou ondas em parte da rota — desconhecido não é calmo. Outros
 //     campos sem dados, e os `aproximado` (vieram de um ponto de previsão mais longe), só dão um
 //     aviso (avisos[]);
 //   - gasóleo < 40 L ou bateria < 50% à chegada, no cenário pessimista. O gasóleo inicial ou a
 //     bateria à chegada desconhecidos (não números) dão sempre um aviso vermelho, sem excluir.
-// "Não recomendada sozinho" (só com tripulação "so"), no cenário pessimista:
-//   - vento médio > 22 nós, rajadas > 30 ou ondas > 3 m;
-//   - mais de 8 h equivalentes ao leme: todas as horas contam, à vela e a motor, e o motor
+// "Não recomendada sozinho" (só com tripulação "so"):
+//   - vento médio > 22 nós, rajadas > 30 ou ondas > 3 m (o máximo dos 3 resumos: o vento do
+//     pessimista é o P90, e o máximo só acrescenta os momentos que os outros rastos apanham);
+//   - mais de 8 h equivalentes ao leme (no pessimista): todas as horas contam, à vela e a motor, e o motor
 //     em calma conta metade. Calma (decisão do Ivo, 30/09, ronda C2; emCalma, abaixo):
 //     vento < 10 nós E (ondas < 2 m, OU ondas ≤ 3 m com período ≥ 9 s — ondulação comprida,
 //     que a roda com travão aguenta). Desconhecido nunca é calma: sem vento ou sem ondas
 //     previstos (null) não é calma; acima de 2 m sem período conhecido também não;
-//   - chegada de noite a um porto com `conhecido: false`. Conta a chegada de noite no
-//     cenário pessimista OU no provável (a chegada mais provável de noite também conta).
+//   - chegada de noite a um porto com `conhecido: false`. Conta a chegada de noite em qualquer
+//     um dos 3 cenários (pessimista, provável ou otimista).
 
 const c = require('./costa')
 
@@ -172,13 +177,14 @@ function minimoCosta (afastamento, opcoes = {}) {
 
 // Avalia uma alternativa.
 //   alternativa: a de lib/rotas.js ({ afastamento, pontos, excluida, motivo? })
-//   pessimista, provavel: { resumo, pontos } de simularPassagem (o provável só para a chegada de noite)
+//   pessimista, provavel, otimista: { resumo, pontos } de simularPassagem (o provável e o otimista para o
+//     canal, a previsão sem dados, os limites e a chegada de noite; o gasóleo, a bateria e o leme são do pessimista)
 //   destino: { nome, conhecido }; tripulacao: 'so' | 'acompanhado'; sairAgora: bool
 //   gasoleoInicial (L); costa (para a distância à terra; opcional se costaMinMn vier dado)
 //   costaMinMn: a distância já medida (a geometria de 5 e 8 MN é a mesma em todas as partidas)
 // → { excluida, naoRecomendada, motivos[], avisosVermelhos[], avisos[], horasLemeEq, costaMinMn, chegadaNoite }
 //   (avisos: linhas de aviso que não excluem, ex.: a previsão aproximada)
-function avaliar ({ alternativa, pessimista, provavel, destino, tripulacao, sairAgora = false, gasoleoInicial, costa, costaMinMn, opcoes = {} }) {
+function avaliar ({ alternativa, pessimista, provavel, otimista, destino, tripulacao, sairAgora = false, gasoleoInicial, costa, costaMinMn, opcoes = {} }) {
   const o = { ...PADRAO, ...opcoes }
   const out = { excluida: false, naoRecomendada: false, motivos: [], avisosVermelhos: [], avisos: [], horasLemeEq: null, costaMinMn: null, chegadaNoite: false }
   if (alternativa.excluida) {
@@ -207,11 +213,15 @@ function avaliar ({ alternativa, pessimista, provavel, destino, tripulacao, sair
   }
   if (!pessimista) return out
   const r = pessimista.resumo
-  // canal com ondasMax: só com ondas abaixo dele, no pessimista (sempre, sozinho ou acompanhado)
+  // os rastos dos 3 cenários (os que houver): as regras do canal, dos dados, dos limites e da noite
+  const rastos = [pessimista, provavel, otimista].filter(x => x && x.resumo)
+  // canal com ondasMax: só com ondas abaixo dele, nos 3 rastos (sempre, sozinho ou acompanhado)
   if (Number.isFinite(alternativa.ondasMax)) {
     const nome = alternativa.canal || 'canal'
     const limite = `só com ondas abaixo de ${metros(alternativa.ondasMax)} m`
-    const k = ondasNoCanal(alternativa, pessimista.pontos || [], o)
+    const ks = rastos.map(x => ondasNoCanal(alternativa, x.pontos || [], o))
+    const maxes = ks.map(x => x.max).filter(Number.isFinite)
+    const k = { semOndas: ks.some(x => x.semOndas), max: maxes.length ? Math.max(...maxes) : null }
     if (k.semOndas) {
       // exclusão dura também em "sair agora" (decisão): a regra do Ivo é "só com ondas < 3 m", desconhecido ≠ < 3, e há a volta por fora
       out.excluida = true
@@ -221,8 +231,8 @@ function avaliar ({ alternativa, pessimista, provavel, destino, tripulacao, sair
       out.motivos.push(`${nome}: ondas até ${virgula(k.max)} m no pior caso (${limite})`)
     }
   }
-  // previsão incompleta ao longo da rota (a mesma previsão nos dois cenários)
-  const inc = previsaoIncompleta([pessimista, provavel])
+  // previsão incompleta ao longo da rota (a mesma previsão nos 3 cenários, mas rastos diferentes)
+  const inc = previsaoIncompleta(rastos)
   const criticos = CAMPOS_CRITICOS.filter(k => inc.semDados.has(k))
   const outros = [...inc.semDados].filter(k => !CAMPOS_CRITICOS.includes(k))
   // excluída, ou aviso vermelho em "sair agora" (como o gasóleo e a bateria)
@@ -245,14 +255,15 @@ function avaliar ({ alternativa, pessimista, provavel, destino, tripulacao, sair
   }
   out.avisosVermelhos.push(...desconhecido)
   out.horasLemeEq = horasLemeEquivalentes(pessimista.pontos, o)
-  const ultimoPe = pessimista.pontos.at(-1)
-  const ultimoPr = provavel?.pontos?.at(-1)
-  out.chegadaNoite = !!(ultimoPe?.noite || ultimoPr?.noite)
+  out.chegadaNoite = rastos.some(x => !!x.pontos?.at(-1)?.noite)
+  // os máximos dos 3 resumos (o que for número)
+  const maximo = (k) => { const v = rastos.map(x => x.resumo[k]).filter(Number.isFinite); return v.length ? Math.max(...v) : null }
+  const m = { vento: maximo('ventoMax'), rajada: maximo('rajadaMax'), ondas: maximo('ondasMax') }
   if (tripulacao === 'so') {
     const nr = []
-    if (r.ventoMax > o.ventoMedioMax) nr.push(`vento médio até ${inteiro(r.ventoMax)} nós no pior caso (limite ${o.ventoMedioMax} sozinho)`)
-    if (r.rajadaMax > o.rajadaMax) nr.push(`rajadas até ${inteiro(r.rajadaMax)} nós no pior caso (limite ${o.rajadaMax} sozinho)`)
-    if (r.ondasMax > o.ondasMax) nr.push(`ondas até ${virgula(r.ondasMax)} m no pior caso (limite ${o.ondasMax} m sozinho)`)
+    if (m.vento > o.ventoMedioMax) nr.push(`vento médio até ${inteiro(m.vento)} nós no pior caso (limite ${o.ventoMedioMax} sozinho)`)
+    if (m.rajada > o.rajadaMax) nr.push(`rajadas até ${inteiro(m.rajada)} nós no pior caso (limite ${o.rajadaMax} sozinho)`)
+    if (m.ondas > o.ondasMax) nr.push(`ondas até ${virgula(m.ondas)} m no pior caso (limite ${o.ondasMax} m sozinho)`)
     if (out.horasLemeEq > o.lemeMaxH) nr.push(`${virgula(out.horasLemeEq)} h equivalentes ao leme (limite ${o.lemeMaxH} h sozinho)`)
     if (out.chegadaNoite && destino && destino.conhecido === false) nr.push(`chegada de noite a ${destino.nome}, um porto que não conheces`)
     if (nr.length) { out.naoRecomendada = true; out.motivos.push(...nr) }

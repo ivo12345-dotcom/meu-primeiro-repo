@@ -91,7 +91,9 @@ function melhores (candidatos, { tripulacao, sairAgora = false, n = 3 } = {}) {
 // Frase curta de uma alternativa: "chegas às 06:10 (de noite), vento até 18 nós, ondas até 2,7 m".
 function frase (c, agora, fuso) {
   const r = c.resumos.provavel
-  const partes = [`chegas ${quando(Date.parse(r.chegada), agora, fuso)}${c.chegadaNoite ? ' (de noite)' : ' (de dia)'}`, `vento até ${Math.round(r.ventoMax)} nós`]
+  // chegadaNoite: de noite em qualquer cenário (lib/seguranca.js); a hora é a do provável, que pode chegar de dia
+  const noite = c.chegadaNoite ? (c.chegadaNoiteProvavel === false ? ' (pode ser de noite)' : ' (de noite)') : ' (de dia)'
+  const partes = [`chegas ${quando(Date.parse(r.chegada), agora, fuso)}${noite}`, `vento até ${Math.round(r.ventoMax)} nós`]
   if (Number.isFinite(r.ondasMax)) partes.push(`ondas até ${virgula(r.ondasMax)} m`)
   return partes.join(', ')
 }

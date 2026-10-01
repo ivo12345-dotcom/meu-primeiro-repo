@@ -146,9 +146,10 @@ Para cada afastamento d ∈ {3, 5, 8} MN:
 ## Segurança (`lib/seguranca.js`, regras fixas, a AI não as muda)
 
 - **Excluída sempre:** um troço em terra, numa zona a evitar ou no separador de tráfego, ou mais perto da costa do que o afastamento mínimo (5 MN, configurável) fora das aproximações.
-- **Excluída** (em "Sair agora" passa a aviso vermelho): gasóleo < 40 L ou bateria < 50% à chegada, no **cenário pessimista**.
+- **Excluída** (em "Sair agora" passa a aviso vermelho): gasóleo < 40 L ou bateria < 50% à chegada, no **cenário pessimista**; previsão sem dados de vento, rajada ou ondas nos rastos dos **3 cenários**.
+- **Os rastos dos 3 cenários** (revisão final, 01/10): as ondas no canal, a previsão sem dados, os limites de vento/rajada/ondas e a chegada de noite avaliam-se no pessimista, no provável **e** no otimista; o gasóleo, a bateria e as horas ao leme ficam no pessimista.
 - **"Não recomendada sozinho"** (só com "só eu"):
-  - vento médio > 22 nós, rajadas > 30 ou ondas > 3 m, no **cenário pessimista**;
+  - vento médio > 22 nós, rajadas > 30 ou ondas > 3 m, no **máximo dos 3 cenários** (o vento do pessimista é o P90; o máximo só acrescenta os momentos que os rastos do provável e do otimista apanham — revisão final: os cenários não são monótonos na hora, e o otimista, mais lento, pode apanhar a frente);
   - mais de 8 h equivalentes ao leme (o motor em calma, com vento < 10 nós e (ondas < 2 m, ou ondas ≤ 3 m com período ≥ 9 s — ondulação comprida), conta metade; regra do Ivo, 30/09);
   - chegada de noite a um porto com `conhecido: false`.
 - **O pior caso nunca abaixo da previsão** (revisão final, 01/10): o vento e a rajada do cenário pessimista, que decidem estes limites, são os previstos em bruto × a razão P90 do modelo `ventoForca`, mas essa razão nunca fica abaixo de 1 — um modelo que aprendeu "a previsão exagera" não pode baixar o pior caso abaixo do previsto (`lib/cenarios.js`, `ventoRazaoMin`). O P50, o P10 e a polar ficam com a razão do modelo.
@@ -269,8 +270,8 @@ nos commits do ramo `prototipo-3a`.
   Berlengas, `gerarAlternativas` acrescenta uma variante pelo eixo de `dados/canais.json` (por
   confirmar na carta), marcada com `canal` e `ondasMax: 3`. Como há terra dos dois lados do
   canal (não há "lado do mar"), a regra do vento de terra nunca se aplica aos seus troços — só a
-  onda máxima do cenário pessimista decide, em `lib/seguranca.js` (ver "Segurança e decisão"
-  abaixo); a linha antes/depois do canal continua sujeita à regra normal.
+  onda máxima dos rastos dos 3 cenários decide (revisão final: o otimista, mais lento, pode
+  atravessar o canal mais tarde), em `lib/seguranca.js` (ver "Segurança e decisão" abaixo); a linha antes/depois do canal continua sujeita à regra normal.
 
 **Previsão e maré:**
 - Sem dados de nível do mar (sem preia-mares detetadas), a corrente na barra do Tejo fica a 0
@@ -304,9 +305,11 @@ nos commits do ramo `prototipo-3a`.
 - "Horas contra o vento" (usadas no custo) = minutos com vento ≥ 7 nós a ≤ 50° da proa,
   somados em horas (`lib/decisao.js`, `horasContraVento`; interpretação nossa — o desenho
   original não a definia).
-- Chegada de noite = o último ponto do rasto do cenário pessimista **ou** do provável tem
-  `noite: true` (conta a chegada mais provável de noite mesmo que o pessimista chegue de dia,
-  `lib/seguranca.js`).
+- Chegada de noite = o último ponto do rasto de **qualquer um dos 3 cenários** tem `noite: true`
+  (revisão final: antes só o pessimista ou o provável; o otimista pode ser a chegada mais tarde,
+  `lib/seguranca.js`). A `chegadaNoite` de cada alternativa é esta mesma (não só a do provável);
+  quando o provável chega de dia e outro cenário de noite, a frase do veredicto diz "(pode ser de
+  noite)" (`lib/decisao.js`, `frase`).
 - Previsão sem dados de vento, rajada ou ondas (`semDados`) numa parte da rota: **exclui** a
   alternativa, e nunca conta como calma; noutros campos (direção, chuva, corrente…) só dá um
   aviso. Só em "Sair agora mesmo assim" a exclusão vira aviso vermelho. Ondas desconhecidas

@@ -423,3 +423,23 @@ test('no mar, sem "sair agora": continuar agora não é recomendado e o abrigo m
   assert.match(r.veredicto.porque[0], /^Agora: /)
   assert.match(r.veredicto.porque[1], /^Até Cascais são \d+,\d MN: chegas às \d\d:\d\d \(de (dia|noite)\)/)
 })
+
+test('I1: a segurança recebe os 3 rastos (também o otimista) e a "chegada de noite" da alternativa é a da segurança, não só a do provável', async () => {
+  const seguranca = require('../lib/seguranca')
+  const orig = seguranca.avaliar
+  const vistos = []
+  // a segurança diz "chegada de noite" (como se só o otimista chegasse de noite)
+  seguranca.avaliar = (a) => { vistos.push(a); return { ...orig(a), chegadaNoite: true } }
+  let r
+  let cands = []
+  try { r = await calcular(entrada({ tripulacao: 'acompanhado', sairAgora: true }), deps({ aoCandidatos: l => { cands = l } })) } finally { seguranca.avaliar = orig }
+  assert.equal(r.erro, undefined, r.erro)
+  assert.ok(vistos.length > 0)
+  for (const a of vistos) {
+    assert.ok(a.otimista && Array.isArray(a.otimista.pontos) && a.otimista.resumo, 'otimista')
+    assert.notEqual(a.otimista, a.pessimista)
+  }
+  assert.ok(cands.length > 0)
+  for (const k of cands) assert.equal(k.chegadaNoite, true, k.id)
+  for (const a of r.alternativas) assert.equal(a.chegadaNoite, true, a.id)
+})

@@ -1253,7 +1253,7 @@ parte (3a) é só o cálculo; o ecrã, o mapa e os avisos durante a viagem (3b) 
 - Entre portos com o mesmo largo dentro do Tejo (por exemplo, Oeiras e Algés), **não há rota
   calculada**: "sem rota dentro do Tejo: sair pela barra ou navegar à vista".
 - O **Canal da Berlenga** só entra como alternativa quando a linha dá a volta às Berlengas, e só
-  com ondas previstas abaixo de 3 m no cenário pessimista (tem terra dos dois lados, por isso
+  com ondas previstas abaixo de 3 m nos 3 cenários (tem terra dos dois lados, por isso
   fica fora da regra do vento de terra — aí só as ondas decidem).
 - Previsão em falta (vento, rajadas ou ondas) numa parte da rota **exclui** a alternativa —
   desconhecido nunca conta como calmo; só no "Sair agora" fica, com aviso vermelho. Ondas

@@ -72,7 +72,7 @@ test('gasóleo < 40 L ou bateria < 50% à chegada no pessimista: excluída, ou a
   assert.equal(s.avaliar(base({ pessimista: passagem({ resumo: { gasoleoGasto: 60, socFinal: 0.5 } }) })).excluida, false)
 })
 
-test('"não recomendada sozinho": vento, rajadas e ondas do pessimista acima dos limites; acompanhado não conta', () => {
+test('"não recomendada sozinho": vento, rajadas e ondas acima dos limites; acompanhado não conta', () => {
   const r = s.avaliar(base({ pessimista: passagem({ resumo: { ventoMax: 23, rajadaMax: 31, ondasMax: 3.2 } }) }))
   assert.equal(r.naoRecomendada, true)
   assert.equal(r.excluida, false)
@@ -83,8 +83,8 @@ test('"não recomendada sozinho": vento, rajadas e ondas do pessimista acima dos
   ])
   // no limite exato não conta (é "mais de")
   assert.equal(s.avaliar(base({ pessimista: passagem({ resumo: { ventoMax: 22, rajadaMax: 30, ondasMax: 3 } }) })).naoRecomendada, false)
-  // o provável não conta para os limites
-  assert.equal(s.avaliar(base({ provavel: passagem({ resumo: { rajadaMax: 40 } }) })).naoRecomendada, false)
+  // o provável também conta para os limites (revisão final, I1: o máximo dos 3 rastos)
+  assert.equal(s.avaliar(base({ provavel: passagem({ resumo: { rajadaMax: 40 } }) })).naoRecomendada, true)
   const acomp = s.avaliar(base({ tripulacao: 'acompanhado', pessimista: passagem({ min: 900, resumo: { rajadaMax: 35 } }) }))
   assert.equal(acomp.naoRecomendada, false)
   assert.deepEqual(acomp.motivos, [])
@@ -389,4 +389,45 @@ test('gasóleo e bateria à chegada arredondados para baixo: 39,6 L excluído nu
   assert.deepEqual(bat.motivos, ['chegas com a bateria a 49% no pior caso (mínimo 50%)'])
   // sem erros de vírgula flutuante (0,29 × 100 = 28,999…): 29%
   assert.deepEqual(s.avaliar(base({ pessimista: passagem({ resumo: { socFinal: 0.29 } }) })).motivos, ['chegas com a bateria a 29% no pior caso (mínimo 50%)'])
+})
+
+test('I1: as regras avaliam-se nos rastos dos 3 cenários — só o otimista (mais lento) a passar o limite também conta', () => {
+  // limites "sozinho": vento, rajadas e ondas só no otimista
+  const lim = s.avaliar(base({ otimista: passagem({ resumo: { ventoMax: 23, rajadaMax: 31, ondasMax: 3.2 } }) }))
+  assert.equal(lim.naoRecomendada, true)
+  assert.deepEqual(lim.motivos, [
+    'vento médio até 23 nós no pior caso (limite 22 sozinho)',
+    'rajadas até 31 nós no pior caso (limite 30 sozinho)',
+    'ondas até 3,2 m no pior caso (limite 3 m sozinho)'
+  ])
+  // o máximo dos três (o pessimista com 23 nós, o otimista com rajadas de 32)
+  const mix = s.avaliar(base({ pessimista: passagem({ resumo: { ventoMax: 23 } }), otimista: passagem({ resumo: { rajadaMax: 32 } }) }))
+  assert.deepEqual(mix.motivos, ['vento médio até 23 nós no pior caso (limite 22 sozinho)', 'rajadas até 32 nós no pior caso (limite 30 sozinho)'])
+  // chegada de noite a um porto desconhecido só no otimista
+  const noite = passagem(); noite.pontos.at(-1).noite = true
+  const n = s.avaliar(base({ destino: { nome: 'Figueira da Foz', conhecido: false }, otimista: noite }))
+  assert.equal(n.chegadaNoite, true)
+  assert.deepEqual(n.motivos, ['chegada de noite a Figueira da Foz, um porto que não conheces'])
+  // previsão sem dados de ondas só no rasto do otimista: excluída
+  const sd = passagem(); sd.pontos[50].semDados = ['ondas']
+  const x = s.avaliar(base({ otimista: sd, tripulacao: 'acompanhado' }))
+  assert.equal(x.excluida, true)
+  assert.deepEqual(x.motivos, ['sem previsão de ondas em parte da rota: desconhecido não conta como calmo'])
+  // sem otimista (quem chama não o dá): como antes
+  assert.equal(s.avaliar(base({ otimista: undefined })).naoRecomendada, false)
+})
+
+test('I1: Canal da Berlenga — o otimista que atravessa o canal mais tarde, já com ondas ≥ 3 m (ou sem ondas previstas), exclui', () => {
+  const alt = rotaCanal()
+  const noCanal = (h) => (lat) => (lat >= 39.2 && lat <= 39.35 ? h : 2)
+  const r = s.avaliar(base({ alternativa: alt, pessimista: rasto(alt, () => 2), provavel: rasto(alt, () => 2), otimista: rasto(alt, noCanal(3.1)), tripulacao: 'acompanhado' }))
+  assert.equal(r.excluida, true)
+  assert.deepEqual(r.motivos, ['Canal da Berlenga: ondas até 3,1 m no pior caso (só com ondas abaixo de 3 m)'])
+  const sem = s.avaliar(base({ alternativa: alt, pessimista: rasto(alt, () => 2), provavel: rasto(alt, () => 2), otimista: rasto(alt, noCanal(null)), tripulacao: 'acompanhado' }))
+  assert.equal(sem.excluida, true)
+  assert.match(sem.motivos[0], /^Canal da Berlenga: sem previsão de ondas no canal/)
+  // o provável também conta
+  assert.equal(s.avaliar(base({ alternativa: alt, pessimista: rasto(alt, () => 2), provavel: rasto(alt, noCanal(3)), tripulacao: 'acompanhado' })).excluida, true)
+  // os três abaixo de 3 m: passa
+  assert.equal(s.avaliar(base({ alternativa: alt, pessimista: rasto(alt, () => 2), provavel: rasto(alt, noCanal(2.9)), otimista: rasto(alt, noCanal(2.9)), tripulacao: 'acompanhado' })).excluida, false)
 })

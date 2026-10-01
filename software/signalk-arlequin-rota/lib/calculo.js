@@ -169,7 +169,7 @@ function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
   // melhor para este momento, mesmo contra as recomendações) fica, com aviso vermelho
   const passaDaPrevisao = Date.parse(chegadas.p90) > ctx.previsao.fim
   if (passaDaPrevisao && !ctx.sairAgora) return { foraDaPrevisao: true }
-  const seg = seguranca.avaliar({ alternativa: alt, pessimista: pe, provavel: pr, destino: ctx.destino, tripulacao: ctx.tripulacao, sairAgora: ctx.sairAgora, gasoleoInicial: ctx.gasoleoInicial, costaMinMn, opcoes: { afastamentoMinimo: ctx.o.afastamentoMinimo } })
+  const seg = seguranca.avaliar({ alternativa: alt, pessimista: pe, provavel: pr, otimista: ot, destino: ctx.destino, tripulacao: ctx.tripulacao, sairAgora: ctx.sairAgora, gasoleoInicial: ctx.gasoleoInicial, costaMinMn, opcoes: { afastamentoMinimo: ctx.o.afastamentoMinimo } })
   // exclusão dura (também em "sair agora"), como no rotas.js
   const ventoMar = ventoDoMarNosRastos(ctx, alt, sims)
   if (ventoMar) { seg.excluida = true; seg.motivos = [ventoMar, ...seg.motivos] }
@@ -203,7 +203,9 @@ function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
     costaMinMn: seg.costaMinMn,
     horasLemeEq: { pessimista: seg.horasLemeEq, provavel: lemeEqProvavel },
     contraVentoH,
-    chegadaNoite: !!pr.pontos.at(-1)?.noite,
+    // a da segurança: de noite em qualquer um dos 3 cenários (a mesma do motivo "chegada de noite")
+    chegadaNoite: seg.chegadaNoite,
+    chegadaNoiteProvavel: !!pr.pontos.at(-1)?.noite,
     bateriaMinPct: Number.isFinite(socMinPe) ? socMinPe * 100 : null,
     resumos: { pessimista: pe.resumo, provavel: pr.resumo, otimista: ot.resumo },
     chegadas,

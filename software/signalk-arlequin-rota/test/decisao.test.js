@@ -131,3 +131,14 @@ test('a rota direta (afastamento null) e a variante por um canal no texto do ver
   assert.match(es.veredicto.porque[1], /pela rota direta: /)
   for (const x of [r, k, nr, es]) assert.doesNotMatch(JSON.stringify(x.veredicto), /null/)
 })
+
+test('I1: a frase não contradiz a chegada de noite — o provável chega de dia mas outro cenário de noite: "(pode ser de noite)"', () => {
+  const c = cand({ noite: true })
+  c.chegadaNoiteProvavel = false
+  const r = d.decidir({ candidatos: [c], agora: AGORA, tripulacao: 'acompanhado' })
+  assert.match(r.veredicto.porque[0], /^Parte agora pela rota a 5 MN: chegas amanhã às 03:32 \(pode ser de noite\), /)
+  // o provável de noite: "(de noite)"; nenhum: "(de dia)"
+  const c2 = cand({ noite: true }); c2.chegadaNoiteProvavel = true
+  assert.match(d.decidir({ candidatos: [c2], agora: AGORA, tripulacao: 'acompanhado' }).veredicto.porque[0], /\(de noite\)/)
+  assert.match(d.decidir({ candidatos: [cand()], agora: AGORA, tripulacao: 'acompanhado' }).veredicto.porque[0], /\(de dia\)/)
+})
