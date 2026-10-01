@@ -7,8 +7,17 @@
 //        [--atraso-em 0.3] [--atraso-min 60] [--baro-em 0.5] [--baro-queda 4] [--baro-horas 2]
 //        [--gasoleo 70] [--consumo 2.5] [--soc 0.85] [--pausa <ficheiro>] [--telegram http://localhost:8081]
 //
-// Antes (o plugin da rota com horaSimulada e cicloSegundos 1; o simulador desligado; o porto ligado
-// ao Telegram falso):
+// NUNCA no Pi (nem noutro SignalK que não seja o do dev): injeta posição e hora falsas, manda planos e
+// ativa rotas. O script recusa-se a correr sem a configuração de dev, lida do próprio servidor (GET
+// /plugins/<id>/config): o plugin da rota com modoTeste, horaSimulada (e cicloSegundos 1), e o porto
+// ligado ao Telegram falso (telegramBase em localhost) só com os contactos falsos do dev (chatId 222);
+// com a segurança do SignalK ligada (como no barco), a configuração não se lê e também recusa.
+// Ctrl-C (ou um erro a meio): termina o plano, desativa a rota e repõe a hora (navigation.datetime de
+// agora). No fim do teste, desliga o modoTeste no plugin da rota (as opções de teste ficam desligadas
+// por omissão).
+//
+// Antes (o plugin da rota com modoTeste, horaSimulada e cicloSegundos 1; o simulador desligado; o porto
+// ligado ao Telegram falso):
 //   1. põe o barco no cais de partida, com a hora de agora;
 //   2. calcula "sair agora" até ao destino, envia o plano pelo Telegram (POST /plano-telegram) e ativa
 //      a 1.ª alternativa;
@@ -29,6 +38,44 @@ const MIN = 60000
 const H = 3600000
 const NO = 1852 / 3600
 const GRAU = Math.PI / 180
+// os contactos do plano falsos do dev (config/plugin-config-data/signalk-arlequin-porto.json)
+const FALSOS = new Set(['222'])
+const ROTA_ID = 'signalk-arlequin-rota'
+const PORTO_ID = 'signalk-arlequin-porto'
+
+// O SignalK é o do dev? rota e porto: as configurações (GET /plugins/<id>/config) ou null (não se
+// leram). → [motivo] (vazio: pode correr)
+function verificarDev ({ rota, porto }) {
+  const motivos = []
+  const cr = rota?.configuration
+  if (!cr) motivos.push(`não consegui ler a configuração do plugin da rota (a segurança do SignalK está ligada? isto é o Pi?): só corre no SignalK do dev`)
+  else {
+    if (cr.modoTeste !== true) motivos.push('o plugin da rota não tem o modoTeste ligado (só no dev)')
+    if (cr.horaSimulada !== true) motivos.push('o plugin da rota não tem a horaSimulada ligada (com o modoTeste)')
+  }
+  const cp = porto?.configuration
+  if (!porto) motivos.push('não consegui ler a configuração do plugin porto')
+  else if (porto.enabled !== false) {
+    let base = null
+    try { base = new URL(cp?.telegramBase || 'https://api.telegram.org') } catch { base = null }
+    if (!base || !['localhost', '127.0.0.1', '[::1]'].includes(base.hostname)) motivos.push('o plugin porto não está ligado ao Telegram falso (telegramBase em localhost)')
+    const verdadeiros = (Array.isArray(cp?.contactosPlano) ? cp.contactosPlano : []).filter(c => !FALSOS.has(String(c?.chatId ?? '').trim()))
+    if (verdadeiros.length) motivos.push(`o plugin porto tem contactos do plano verdadeiros: ${verdadeiros.map(c => c?.nome || c?.chatId).join(', ')}`)
+  }
+  return motivos
+}
+
+// Ctrl-C ou um erro a meio: termina o plano, desativa a rota e repõe a hora (um passo que falha não
+// impede os outros).
+async function limpar ({ base, json, enviar, agora = () => Date.now(), log = console.log }) {
+  const passo = async (texto, fn) => { try { await fn() } catch (e) { log(`não consegui ${texto}: ${e.message}`) } }
+  await passo('terminar o plano', () => json(`${base}/plugins/${ROTA_ID}/plano-ativo/terminar`, { method: 'POST' }))
+  await passo('desativar a rota', () => json(`${base}/signalk/v2/api/vessels/self/navigation/course`, { method: 'DELETE' }))
+  await passo('repor a hora', async () => {
+    const t = agora()
+    if (!enviar(t, [{ path: 'navigation.datetime', value: new Date(t).toISOString() }])) throw new Error('sem ligação ao SignalK')
+  })
+}
 
 // ---------- as contas (testadas em test/viagem-acelerada.test.js) ----------
 // A posição no rasto [{ lat, lon, t }] à hora do plano tPlano: { lat, lon, sogNos, cog (rad), fim }.
@@ -119,6 +166,25 @@ async function main () {
     ws.send(JSON.stringify({ context: 'vessels.self', updates: [{ $source: 'viagem-acelerada', timestamp: new Date(t).toISOString(), values: valores }] }))
     return true
   }
+
+  // 0. só no SignalK do dev (nunca no Pi): a configuração lida do servidor
+  const config = async (id) => { try { const r = await json(`${base}/plugins/${id}/config`); return r.status === 200 && r.corpo && typeof r.corpo === 'object' ? r.corpo : null } catch { return null } }
+  const motivos = verificarDev({ rota: await config(ROTA_ID), porto: await config(PORTO_ID) })
+  if (motivos.length) throw new Error(`não corro aqui (só no SignalK do dev):\n  - ${motivos.join('\n  - ')}`)
+
+  // Ctrl-C a meio: termina o plano, desativa a rota e repõe a hora
+  let ativado = false
+  let aLimpar = false
+  const sair = async (codigo) => {
+    if (aLimpar) return
+    aLimpar = true
+    if (ativado) await limpar({ base, json, enviar, log: (x) => log(tAtual, x) })
+    if (ws) { ws.onclose = null; ws.close() }
+    process.exit(codigo)
+  }
+  arrumar = sair
+  process.on('SIGINT', () => { log(tAtual, 'Ctrl-C: termino o plano, desativo a rota e reponho a hora'); sair(130) })
+
   ligar()
   while (!ligado) await new Promise(resolve => setTimeout(resolve, 200))
 
@@ -170,6 +236,7 @@ async function main () {
   log(t, `plano enviado: ${ep.corpo.estado} · entregues ${JSON.stringify(ep.corpo.entregues)} · contactos em terra ${JSON.stringify(ep.corpo.contactos)}`)
   const at = await json(`${rota}/ativar`, { method: 'POST', body: JSON.stringify({ id: c.corpo.id, alternativa: 0 }) })
   if (at.status !== 200) throw new Error(`/ativar respondeu ${at.status}: ${JSON.stringify(at.corpo)}`)
+  ativado = true
   log(t, `ativada: ${at.corpo.href} · plano ativo ${at.corpo.planoAtivo?.estado}`)
 
   // 3. a viagem
@@ -219,8 +286,20 @@ async function main () {
   }
   ws.onclose = null
   ws.close()
+  process.removeAllListeners('SIGINT')
+  arrumar = null
 }
 
-if (require.main === module) main().catch(e => { console.error(e.message); process.exit(1) })
+// o arrumar da viagem em curso (Ctrl-C ou um erro a meio)
+let arrumar = null
 
-module.exports = { posicaoNoRasto, criarCenario }
+if (require.main === module) {
+  main().catch(async e => {
+    console.error(e.message)
+    // um erro a meio da viagem: arruma como no Ctrl-C
+    if (arrumar) await arrumar(1)
+    process.exit(1)
+  })
+}
+
+module.exports = { posicaoNoRasto, criarCenario, verificarDev, limpar, FALSOS }

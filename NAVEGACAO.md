@@ -1431,8 +1431,14 @@ durante 5 min.
   "a rota ativa já não é a do plano: terminar o plano?" com **Terminar** e **Continuar** (Continuar
   volta a ativar a rota do plano). Nada segue para terra.
 
-**Em casa (dev):** a viagem acelerada Algés → Peniche (`npm run viagem-acelerada` na pasta
-`software/dev`, com o servidor e o `npm run telegram-falso` a correr) faz de GPS, barómetro,
-depósito e relógio, a 60× (1 s = 1 min). Precisa, só para o teste, do simulador desligado, do porto
-ligado e, no plugin da rota, de `horaSimulada: true` e `cicloSegundos: 1` (no barco ficam
-`false` e `60`). Com `--pausa <ficheiro>`, a hora pára enquanto o ficheiro existir.
+**Em casa (dev) — nunca no Pi:** a viagem acelerada Algés → Peniche (`npm run viagem-acelerada` na
+pasta `software/dev`, com o servidor e o `npm run telegram-falso` a correr) faz de GPS, barómetro,
+depósito e relógio, a 60× (1 s = 1 min). Injeta posição e hora falsas, manda planos e ativa rotas:
+**nunca a corras no Pi** (nem noutro SignalK que não seja o do portátil). Precisa, só para o teste,
+do simulador desligado, do porto ligado ao Telegram falso (só com o contacto falso do dev, o 222) e,
+no plugin da rota, de `modoTeste: true` com `horaSimulada: true` e `cicloSegundos: 1`. O script lê a
+configuração do servidor e recusa-se a correr sem ela (no Pi, com a segurança do SignalK ligada, nem a
+consegue ler). As opções de teste estão **desligadas por omissão**: `modoTeste` é `false` e, sem ele,
+`horaSimulada` e `cicloSegundos` não contam (no barco, o ciclo é sempre de 60 s); no fim do teste,
+desliga o `modoTeste`. Ctrl-C a meio termina o plano, desativa a rota e repõe a hora. Com
+`--pausa <ficheiro>`, a hora pára enquanto o ficheiro existir.

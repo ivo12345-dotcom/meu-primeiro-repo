@@ -4,7 +4,7 @@
 // plano conta. Só as contas (sem SignalK).
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { posicaoNoRasto, criarCenario } = require('../viagem-acelerada')
+const { posicaoNoRasto, criarCenario, verificarDev, limpar, FALSOS } = require('../viagem-acelerada')
 
 const MIN = 60000
 const H = 3600000
@@ -46,4 +46,40 @@ test('o cenário: parado durante o atraso forçado (a hora do plano não anda), 
   assert.equal(c(T0 + 6 * H).pressaoHpa, 1013)
   assert.equal(c(T0 + 8 * H).pressaoHpa, 1011)
   assert.equal(c(T0 + 9 * H).pressaoHpa, 1011)
+})
+
+// as configurações como o SignalK as devolve (GET /plugins/<id>/config)
+const ROTA_DEV = { enabled: true, configuration: { modoTeste: true, horaSimulada: true, cicloSegundos: 1 } }
+const PORTO_DEV = { enabled: true, configuration: { telegramToken: 'DEV-TELEGRAM-FALSO', telegramBase: 'http://localhost:8081', chatIds: ['111'], contactosPlano: [{ nome: 'Teste em terra', chatId: '222' }] } }
+
+test('10: só corre num SignalK de dev: a rota com modoTeste e horaSimulada, e o porto ligado ao Telegram falso só com os contactos falsos', () => {
+  assert.deepEqual(verificarDev({ rota: ROTA_DEV, porto: PORTO_DEV }), [])
+  assert.ok(FALSOS.has('222'))
+  const motivos = (rota, porto) => verificarDev({ rota, porto }).join(' | ')
+  // sem a configuração (a segurança do SignalK ligada: 401) ou sem o modo de teste: recusa
+  assert.match(motivos(null, PORTO_DEV), /não consegui ler a configuração do plugin da rota/)
+  assert.match(motivos({ configuration: { horaSimulada: true, cicloSegundos: 1 } }, PORTO_DEV), /modoTeste/)
+  assert.match(motivos({ configuration: { modoTeste: true, cicloSegundos: 1 } }, PORTO_DEV), /horaSimulada/)
+  // o porto com o Telegram verdadeiro, ou um contacto verdadeiro: recusa
+  assert.match(motivos(ROTA_DEV, { configuration: { ...PORTO_DEV.configuration, telegramBase: 'https://api.telegram.org' } }), /Telegram falso/)
+  assert.match(motivos(ROTA_DEV, { configuration: { ...PORTO_DEV.configuration, contactosPlano: [{ nome: 'Mãe', chatId: '123456789' }] } }), /contactos do plano verdadeiros: Mãe/)
+  assert.match(motivos(ROTA_DEV, null), /não consegui ler a configuração do plugin porto/)
+  // o porto desligado (sem Telegram nenhum) serve
+  assert.deepEqual(verificarDev({ rota: ROTA_DEV, porto: { enabled: false, configuration: { telegramBase: 'https://api.telegram.org', contactosPlano: [{ nome: 'Mãe', chatId: '1' }] } } }), [])
+})
+
+test('10: limpar (Ctrl-C ou erro a meio): termina o plano, desativa a rota e repõe a hora (o navigation.datetime de agora)', async () => {
+  const pedidos = []
+  const enviados = []
+  const json = async (url, o = {}) => { pedidos.push(`${o.method || 'GET'} ${url}`); return { status: 200, corpo: {} } }
+  await limpar({ base: 'http://localhost:3000', json, enviar: (t, valores) => { enviados.push(valores); return true }, agora: () => T0, log: () => {} })
+  assert.deepEqual(pedidos, [
+    'POST http://localhost:3000/plugins/signalk-arlequin-rota/plano-ativo/terminar',
+    'DELETE http://localhost:3000/signalk/v2/api/vessels/self/navigation/course'
+  ])
+  assert.deepEqual(enviados, [[{ path: 'navigation.datetime', value: iso(T0) }]])
+  // um passo que falha não impede os outros
+  const p2 = []
+  await limpar({ base: 'http://localhost:3000', json: async (url, o = {}) => { p2.push(o.method); throw new Error('sem rede') }, enviar: () => false, agora: () => T0, log: () => {} })
+  assert.deepEqual(p2, ['POST', 'DELETE'])
 })
