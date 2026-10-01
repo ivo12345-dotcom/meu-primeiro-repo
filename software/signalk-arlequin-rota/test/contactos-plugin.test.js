@@ -46,6 +46,8 @@ async function sair (s) {
   assert.equal(s.p.planoAtivo().estado, 'a navegar')
 }
 const plano = (s) => pa.ler(s.app.getDataDirPath()).plano
+// a rota mudada só pausa com ≥ 2 leituras seguidas e ≥ 2 min (Tarefa 8.3): 3 ciclos de minuto a minuto
+async function pausar (s) { for (let m = 0; m < 3; m++) await s.ciclo() }
 // segue o rasto até ao fim (um ponto por minuto: a chegada pede progresso na rota) e fica parado no
 // cais do destino até chegar
 async function chegar (s) {
@@ -208,7 +210,7 @@ test('POST /plano-ativo/continuar: só "pausado" (409 nos outros); volta a ativa
   assert.equal((await chamar(s.r.post['/plano-ativo/continuar'])).code, 409)
   const href = s.app.rotaAtiva
   s.app.rotaAtiva = '/resources/routes/outra'
-  await s.ciclo()
+  await pausar(s)
   assert.equal(s.p.planoAtivo().estado, 'pausado')
   assert.equal((await chamar(s.r.get['/plano-ativo'])).estado, 'pausado')
   const n = s.app.ativacoes.length
@@ -221,7 +223,7 @@ test('POST /plano-ativo/continuar: só "pausado" (409 nos outros); volta a ativa
   assert.equal(plano(s).estado, 'a navegar')
   // a API de rumo a falhar: 502 e continua pausado
   s.app.rotaAtiva = null
-  await s.ciclo()
+  await pausar(s)
   s.app.activateRoute = async () => { throw new Error('a rota já não existe') }
   const e = await chamar(s.r.post['/plano-ativo/continuar'])
   assert.equal(e.code, 502)
@@ -362,7 +364,7 @@ test('decisão 5 (Ivo): a rota do plano desligada à chegada (pausado): o plano 
   // o Ivo limpa a rota no OpenCPN ao entrar no porto
   s.app.rotaAtiva = null
   s.por(s.alt.pontosRota.at(-1), 0)
-  await s.ciclo()
+  await pausar(s)
   assert.equal(s.p.planoAtivo().estado, 'pausado')
   for (let m = 0; m < 6 && s.p.planoAtivo().estado !== 'chegado'; m++) await s.ciclo()
   assert.equal(s.p.planoAtivo().estado, 'chegado')
@@ -398,7 +400,7 @@ test('decisão 5 (Ivo): em pausa no mar, parado 30 min noutro porto da lista →
   const s = await preparar()
   await sair(s)
   s.app.rotaAtiva = null
-  await s.ciclo()
+  await pausar(s)
   assert.equal(s.p.planoAtivo().estado, 'pausado')
   assert.equal((await chamar(s.r.post['/plano-ativo/chegada'], { body: { destino: 'cascais' } })).code, 409, 'sem sugestão ainda')
   s.por(caisDe('cascais'), 0)
@@ -427,7 +429,7 @@ test('M5: Continuar com um ciclo a meio (a rota do plano já voltou durante o pe
   const s = await preparar()
   await sair(s)
   s.app.rotaAtiva = '/resources/routes/outra'
-  await s.ciclo()
+  await pausar(s)
   assert.equal(s.p.planoAtivo().estado, 'pausado')
   const ativar = s.app.activateRoute
   s.app.activateRoute = async (dest) => { await ativar(dest); await s.p.cicloNavegar() }
@@ -525,4 +527,35 @@ test('re-revisão M-3: Recalcular → Ativar com o plano enviado: a hora de alar
   assert.equal(g.envio.alarme, novo)
   assert.equal(plano(s).envio.alarme, novo)
   s.p.stop()
+})
+
+test('Tarefa 8.3 (reinício): a API de rumo sem a rota logo a seguir ao arranque (um null) não pausa o plano nem apaga os avisos ativos ("✓ Resolvido" a dobrar); só uma diferença que dura ≥ 2 ciclos e ≥ 2 min pausa', async () => {
+  const s = await preparar()
+  await sair(s)
+  await s.ciclo(13 * H) // a previsão fica velha: alarm
+  assert.equal(s.app.self['notifications.rota.previsao'].state, 'alarm')
+  s.p.stop()
+  // o servidor reinicia: a API de rumo ainda não repôs a rota no 1.º ciclo
+  const href = s.app.rotaAtiva
+  const q = plugin(s.app, { agendarCiclo: () => 1, pararCiclo: () => {} })
+  q.acertar(s.agora())
+  q.p.start({ pasta: path.join(s.app.dir, 'dados') })
+  s.app.rotaAtiva = null
+  const n = s.app.deltas.length
+  const normais = () => s.app.deltas.slice(n).flatMap(d => d.updates.flatMap(u => u.values)).filter(v => v.path === 'notifications.rota.previsao' && v.value.state === 'normal')
+  q.avancar(60000); await q.p.cicloNavegar()
+  assert.equal(q.p.planoAtivo().estado, 'a navegar', 'um null logo a seguir ao arranque não pausa')
+  s.app.rotaAtiva = href
+  for (let m = 0; m < 3; m++) { q.avancar(60000); await q.p.cicloNavegar() }
+  assert.equal(q.p.planoAtivo().estado, 'a navegar')
+  assert.deepEqual(normais(), [], 'o aviso ativo não passou a normal')
+  // uma rota mudada a sério (≥ 2 ciclos e ≥ 2 min seguidos): pausa
+  s.app.rotaAtiva = '/resources/routes/outra'
+  q.avancar(60000); await q.p.cicloNavegar()
+  assert.equal(q.p.planoAtivo().estado, 'a navegar', '1.º ciclo')
+  q.avancar(60000); await q.p.cicloNavegar()
+  assert.equal(q.p.planoAtivo().estado, 'a navegar', '2 ciclos mas só 1 min')
+  q.avancar(60000); await q.p.cicloNavegar()
+  assert.equal(q.p.planoAtivo().estado, 'pausado', '2 min')
+  q.p.stop()
 })

@@ -121,6 +121,8 @@ test('rota mudada no OpenCPN: "pausado", o acompanhamento para, os avisos voltam
   const href = s.app.rotaAtiva
   s.app.rotaAtiva = '/resources/routes/outra'
   await s.ciclo()
+  assert.equal(s.p.planoAtivo().estado, 'a navegar', 'uma leitura não chega (Tarefa 8.3)')
+  await s.ciclo(); await s.ciclo()
   assert.equal(s.p.planoAtivo().estado, 'pausado')
   assert.equal(pa.ler(s.app.getDataDirPath()).plano.estado, 'pausado')
   assert.deepEqual(ativos(s.app), [])

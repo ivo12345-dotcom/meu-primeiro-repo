@@ -12,8 +12,9 @@
 //   (um destino avulso), o último ponto da rota. O cais é sempre o último ponto da rota (o fim da
 //   aproximação). A desistência só se calcula para a 1.ª alternativa: nas outras fica vazia.
 // Estados: 'a espera de sair' → 'a navegar' → 'chegado'; 'terminado' (botão Terminar); 'pausado'
-//   (a rota ativa deixou de ser a do plano), que volta ao estado de antes (pausadoDe) quando a rota
-//   do plano volta a estar ativa (Continuar, ou o Ivo no OpenCPN).
+//   (a rota ativa deixou de ser a do plano em ≥ 2 leituras seguidas e durante ≥ 2 min: um null da API de
+//   rumo logo a seguir a um reinício não pausa), que volta ao estado de antes (pausadoDe) logo que a
+//   rota do plano volta a estar ativa (Continuar, ou o Ivo no OpenCPN).
 // avaliar(plano, leitura, mem, agora, opcoes?) → { plano, mem, mudou: null | 'saiu' | 'chegou' | 'pausado' | 'retomado' }
 //   leitura: { posicao: { lat, lon } | null (sem GPS), sogNos: número | null, href: string | null
 //   (nenhuma rota ativa) | undefined (não se sabe: a API de rumo não respondeu), milhas: as milhas
@@ -51,7 +52,8 @@ const ESTADOS = Object.freeze({ ESPERA: 'a espera de sair', NAVEGAR: 'a navegar'
 const ABERTOS = new Set([ESTADOS.ESPERA, ESTADOS.NAVEGAR, ESTADOS.PAUSADO])
 const PADRAO = Object.freeze({
   saidaMn: 0.5, saidaSogNos: 2, saidaMin: 5, chegadaMn: 0.3, chegadaSogNos: 0.5, chegadaMin: 5,
-  progresso: 0.5, rotaCurtaMn: 1, navegarMin: 5, outroPortoMin: 30, amostrasMaxMin: 2, afastamentoMn: 1
+  progresso: 0.5, rotaCurtaMn: 1, navegarMin: 5, outroPortoMin: 30, amostrasMaxMin: 2, afastamentoMn: 1,
+  rotaMudadaAmostras: 2, rotaMudadaMin: 2
 })
 
 const iso = (t) => new Date(t).toISOString()
@@ -102,7 +104,8 @@ function criarPlano ({ idCalculo, resultado, indice, href, aproximacao = null, e
 const aberto = (p) => !!p && ABERTOS.has(p.estado)
 // longeDesde: a 1.ª amostra a mais de 0,5 MN da partida; outro: { id, desde } o outro porto onde está
 // parado (em pausa); sugestao: { id, nome, desde } ao fim de 30 min; ultimaT: a hora da última amostra
-const novaMemoria = () => ({ sogAltaDesde: null, paradoDesde: null, longeDesde: null, outro: null, sugestao: null, ultimaT: null })
+// rotaDiferente: { desde, n } a rota ativa diferente da do plano (ainda não pausou)
+const novaMemoria = () => ({ sogAltaDesde: null, paradoDesde: null, longeDesde: null, outro: null, sugestao: null, rotaDiferente: null, ultimaT: null })
 const semJanelas = (m) => Object.assign(m, { sogAltaDesde: null, paradoDesde: null, longeDesde: null, outro: null, sugestao: null })
 
 // o comprimento da rota do plano (MN)
@@ -160,16 +163,21 @@ function avaliar (plano, leitura = {}, mem = novaMemoria(), agora, opcoes = {}) 
   if (!aberto(p)) return fim(null)
   // as janelas "seguidos" só com amostras a ≤ 2 min umas das outras: um salto do relógio (para a frente
   // ou para trás) ou um ciclo que parou recomeçam-nas
-  if (m.ultimaT != null && (agora - m.ultimaT > o.amostrasMaxMin * MIN || agora < m.ultimaT)) semJanelas(m)
+  if (m.ultimaT != null && (agora - m.ultimaT > o.amostrasMaxMin * MIN || agora < m.ultimaT)) { semJanelas(m); m.rotaDiferente = null }
   m.ultimaT = agora
   // a rota ativa: só quando se sabe (undefined: a API de rumo não respondeu)
   if (leitura.href !== undefined) {
     const daPlano = leitura.href === p.href
+    // a rota diferente só pausa se durar ≥ 2 ciclos e ≥ 2 min seguidos (Tarefa 8.3: logo a seguir a um
+    // reinício a API de rumo ainda pode não ter a rota; pausar apagava os avisos e voltava a dá-los)
     if (p.estado !== ESTADOS.PAUSADO && !daPlano) {
-      p.pausadoDe = p.estado
-      p.estado = ESTADOS.PAUSADO
-      return { plano: p, mem: { ...novaMemoria(), ultimaT: agora }, mudou: 'pausado' }
-    }
+      m.rotaDiferente = m.rotaDiferente ? { desde: m.rotaDiferente.desde, n: m.rotaDiferente.n + 1 } : { desde: agora, n: 1 }
+      if (m.rotaDiferente.n >= o.rotaMudadaAmostras && agora - m.rotaDiferente.desde >= o.rotaMudadaMin * MIN) {
+        p.pausadoDe = p.estado
+        p.estado = ESTADOS.PAUSADO
+        return { plano: p, mem: { ...novaMemoria(), ultimaT: agora }, mudou: 'pausado' }
+      }
+    } else m.rotaDiferente = null
     if (p.estado === ESTADOS.PAUSADO && daPlano) {
       p.estado = p.pausadoDe || ESTADOS.ESPERA
       p.pausadoDe = null

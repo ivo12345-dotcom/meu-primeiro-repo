@@ -192,16 +192,31 @@ test('à espera de sair, a chegada não conta (o cais de partida pode ser perto 
   assert.notEqual(r.plano.estado, 'chegado')
 })
 
-test('rota mudada: o href da rota ativa deixa de ser o do plano (outra rota ou nenhuma) → "pausado"; a mesma rota de volta → retoma o estado de antes; sem saber a rota (undefined) não muda', () => {
+// a mesma leitura de minuto a minuto, de t0 até t1 (inclusive) → o último resultado
+function seguidas (p, leitura, mem, t0, t1) {
+  let r = { plano: p, mem }
+  for (let t = t0; t <= t1; t += MIN) r = pa.avaliar(r.plano, leitura, r.mem, t)
+  return r
+}
+
+test('rota mudada: o href da rota ativa deixa de ser o do plano (outra rota ou nenhuma) em ≥ 2 leituras seguidas e ≥ 2 min → "pausado" (Tarefa 8.3); a mesma rota de volta → retoma logo o estado de antes; sem saber a rota (undefined) não muda', () => {
   const p = { ...novo(), estado: 'a navegar', saida: new Date(AGORA).toISOString() }
   const longe = aNorte(PARTIDA, 10)
   let r = pa.avaliar(p, ler(longe, 5, undefined), pa.novaMemoria(), AGORA + 60 * MIN)
   assert.equal(r.plano.estado, 'a navegar')
+  // uma leitura diferente (um null logo a seguir a um reinício) não pausa; nem 2 em 1 min
   r = pa.avaliar(p, ler(longe, 5, '/resources/routes/outra'), pa.novaMemoria(), AGORA + 61 * MIN)
+  assert.equal(r.plano.estado, 'a navegar')
+  assert.equal(r.mudou, null)
+  assert.equal(pa.avaliar(r.plano, ler(longe, 5, '/resources/routes/outra'), r.mem, AGORA + 62 * MIN).plano.estado, 'a navegar')
+  // a do plano de volta recomeça a contagem
+  const volta = pa.avaliar(r.plano, ler(longe, 5, HREF), r.mem, AGORA + 62 * MIN)
+  assert.equal(pa.avaliar(volta.plano, ler(longe, 5, null), volta.mem, AGORA + 63 * MIN).plano.estado, 'a navegar')
+  r = seguidas(p, ler(longe, 5, '/resources/routes/outra'), pa.novaMemoria(), AGORA + 61 * MIN, AGORA + 63 * MIN)
   assert.equal(r.plano.estado, 'pausado')
   assert.equal(r.plano.pausadoDe, 'a navegar')
   assert.equal(r.mudou, 'pausado')
-  const nenhuma = pa.avaliar(p, ler(longe, 5, null), pa.novaMemoria(), AGORA + 61 * MIN)
+  const nenhuma = seguidas(p, ler(longe, 5, null), pa.novaMemoria(), AGORA + 61 * MIN, AGORA + 63 * MIN)
   assert.equal(nenhuma.plano.estado, 'pausado')
   // pausado: nem saída nem chegada; continua pausado com a outra rota
   let s = pa.avaliar(r.plano, ler(CAIS, 0, '/resources/routes/outra'), r.mem, AGORA + 62 * MIN)
@@ -212,7 +227,7 @@ test('rota mudada: o href da rota ativa deixa de ser o do plano (outra rota ou n
   assert.equal(s.plano.pausadoDe, null)
   assert.equal(s.mudou, 'retomado')
   // à espera de sair também pausa, e retoma "a espera de sair"
-  const e = pa.avaliar(novo(), ler(PARTIDA, 0, null), pa.novaMemoria(), AGORA)
+  const e = seguidas(novo(), ler(PARTIDA, 0, null), pa.novaMemoria(), AGORA - 2 * MIN, AGORA)
   assert.equal(e.plano.estado, 'pausado')
   assert.equal(pa.avaliar(e.plano, ler(PARTIDA, 0, HREF), e.mem, AGORA + MIN).plano.estado, 'a espera de sair')
 })
@@ -328,8 +343,9 @@ test('re-revisão I-1 (Ivo): em pausa, o progresso também é o afastamento real
   passo(1, aNorte(PARTIDA, 0.15), HREF)
   assert.equal(Math.round(p.afastamentoMaxMn * 100) / 100, 0.15)
   // a rota limpa: pausado; parado a 0,15 MN da partida (a 0,25 MN do cais): nunca se afastou 0,2 MN, não chega
-  assert.equal(passo(2, aNorte(PARTIDA, 0.15)).mudou, 'pausado')
-  for (let m = 3; m <= 15; m++) passo(m, aNorte(PARTIDA, 0.15))
+  passo(2, aNorte(PARTIDA, 0.15)); passo(3, aNorte(PARTIDA, 0.15))
+  assert.equal(passo(4, aNorte(PARTIDA, 0.15)).mudou, 'pausado')
+  for (let m = 5; m <= 15; m++) passo(m, aNorte(PARTIDA, 0.15))
   assert.equal(p.estado, 'pausado')
   // foi a 0,25 MN da partida e voltou: já houve progresso real; 5 min parado perto do cais → chegou
   passo(16, aNorte(PARTIDA, 0.25))
