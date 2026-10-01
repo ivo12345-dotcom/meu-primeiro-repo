@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "configuration": {
+    "telegramToken": "DEV-TELEGRAM-FALSO",
+    "telegramBase": "http://localhost:8081",
+    "chatIds": [
+      "111"
+    ],
+    "contactosPlano": [
+      {
+        "nome": "Teste em terra",
+        "chatId": "222"
+      }
+    ],
+    "pollTimeout": 5,
+    "batimentoUrl": "",
+    "comandoFoto": ""
+  }
+}

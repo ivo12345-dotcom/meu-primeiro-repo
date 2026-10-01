@@ -1211,7 +1211,8 @@ node software/ferramentas/sincronizar/sincronizar.mjs --host pi@arlequin
 ### Melhor rota (cálculo) (plugin `signalk-arlequin-rota`)
 
 Desenho completo em `docs/superpowers/specs/2026-09-30-melhor-rota-calculo-design.md`. Esta
-parte (3a) é só o cálculo; o ecrã, o mapa e os avisos durante a viagem (3b) ainda não existem.
+parte (3a) é o cálculo; a página do ecrã, o mini-mapa e o plano pelo Telegram (3b-1) estão em
+"No ecrã e pelo Telegram", mais abaixo; os avisos durante a viagem (3b-2) ainda não existem.
 
 - **O que faz:** cobre a costa continental, de Caminha a Vila Real de Santo António. Para um
   destino e a tripulação ("só eu" ou "acompanhado"), gera as alternativas por afastamento à
@@ -1284,3 +1285,56 @@ parte (3a) é só o cálculo; o ecrã, o mapa e os avisos durante a viagem (3b) 
 - As 3 melhores: primeiro as recomendadas, depois por custo.
 - Perto da costa (alternativa a ≤ 3 MN), o mínimo à terra é o próprio afastamento (3 MN), não os
   5 MN de omissão das outras alternativas.
+
+#### No ecrã e pelo Telegram (3b-1)
+
+Desenho em `docs/superpowers/specs/2026-10-01-melhor-rota-ecra-3b1-design.md`; capturas de cada
+estado, de dia e de noite, em `docs/capturas-3b1/`.
+
+**Como usar a página "Melhor rota":**
+- **Com uma rota ativa**, a página mostra o **Leme** (o rumo a seguir, os bordos, VIRA AGORA).
+  **Novo cálculo** volta à escolha do destino; a rota ativa aparece no topo da lista.
+- **Pedir:** toca no destino (os portos vêm do mais perto para o mais longe; "+ acrescentar"
+  grava um destino aqui, com a posição do GPS, ou por coordenadas, ex.: `39,37` e `9,34 W`),
+  escolhe **Só eu** ou **2 ou mais** e carrega em **Calcular**. Sem GPS, o Calcular fica
+  desligado ("sem GPS: não dá para calcular").
+- **A calcular:** a barra de progresso; demora uns segundos.
+- **Resultado:** a faixa do veredicto (verde Segue, amarela Espera, laranja Não recomendado,
+  vermelha Volta/abriga-te), a idade da previsão, os 3 cartões (toca num para o escolher), os
+  **avisos vermelhos** (sempre visíveis), a linha do tempo, as **precauções** (caixas para marcar;
+  não bloqueiam nada e ficam guardadas no ecrã para esse cálculo) e os pontos de desistência
+  (calculados para a 1.ª alternativa).
+- **Mapa:** o mini-mapa das 3 alternativas (azul à vela, cinzento a motor, mais escuro de noite;
+  triângulos nos avisos; bolinhas nos pontos de desistência; tracejado vermelho nas zonas a
+  evitar). Toca num cartão para destacar outra alternativa.
+- **Enviar plano:** manda o plano de navegação (texto com a hora de alarme + o ficheiro GPX) pelo
+  bot do Telegram do plugin porto. Mostra "enviado ✓ a N contactos" e marca a precaução "Plano
+  deixado a alguém em terra"; se o porto não responder em 30 s: "o plugin porto não respondeu
+  (está ligado? tem o token?)".
+- **Ativar esta rota:** grava e ativa a rota no SignalK (o OpenCPN mostra-a) e a página passa ao
+  Leme. **Sair agora mesmo assim** recalcula só para partir já.
+
+**Hora de alarme do plano:** a chegada mais tarde (o pior dos 3 cenários) + 2 h. O texto diz a
+quem o recebe para ligar ao Ivo e, se ele não atender, ao MRCC Lisboa (+351 214 401 919, 24 h, ou
+112), com o barco, a origem, o destino e a hora de saída.
+
+**Juntar contactos do plano** (quem só recebe o plano, sem poder comandar o barco):
+1. A pessoa procura o bot do Arlequin no Telegram e manda **/start** (ou qualquer mensagem).
+2. O bot responde "Para receberes os planos do ARLEQUIN, dá este código ao Ivo: NNNN" (uma vez
+   por hora, no máximo). O número também aparece no estado do plugin porto.
+3. O Ivo junta-a no plugin porto, em **Contactos do plano** (`contactosPlano`: nome + código).
+   Ninguém entra sozinho. Os contactos do plano recebem os planos, mas as mensagens deles são
+   ignoradas (não podem /armar, /posicao, etc.). Os **Chats autorizados** (`chatIds`) também
+   recebem o plano.
+
+**Telefones e barco na configuração** (plugin `signalk-arlequin-rota`):
+- `telefones.ivo` — o teu telemóvel (vazio por omissão: o plano diz só "liga ao Ivo");
+- `telefones.emergencia` — por omissão "+351 214 401 919 (MRCC Lisboa, 24 h) ou 112";
+- `barco` — nome (ARLEQUIN), modelo (Jeanneau Melody 34), cor do casco, MMSI e indicativo; os
+  campos vazios ficam de fora do plano.
+
+**Em casa (dev):** o plugin porto está ligado ao Telegram falso (`npm run telegram-falso` na
+pasta `software/dev`, porta 8081; `GET http://localhost:8081/_enviados` mostra o texto e o GPX
+recebidos). O envio para o Telegram verdadeiro precisa do token do bot, que só o Ivo põe.
+Sem um fornecedor de cálculos de rumo no SignalK (ex.: o plugin `@signalk/course-provider`), não há rumo ao próximo ponto: depois de
+ativar, o Leme fica em "Rota ativada · à espera do rumo do SignalK".

@@ -9,14 +9,13 @@
 // no armazenamento do ecrã (ctx.guardar), por id de cálculo.
 
 import leme from './melhor/leme.js'
-import pedir, { buscarDestinos } from './melhor/pedir.js'
+import pedir, { buscarDestinos, rotaAtiva } from './melhor/pedir.js'
 import * as resultado from './melhor/resultado.js'
 import * as mapa from './melhor/mapa.js'
-import { proximoWp } from './comum.js'
 
 export function vista (ctx) {
   const e = ctx.estado
-  if (e.ativada || (proximoWp(ctx).ativo && !e.novo)) return 'leme'
+  if (e.ativada || (rotaAtiva(ctx) && !e.novo)) return 'leme'
   const v = e.vista || 'pedir'
   if ((v === 'resultado' || v === 'mapa') && !e.resultado) return 'pedir'
   return v

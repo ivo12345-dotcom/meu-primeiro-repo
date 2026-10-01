@@ -20,6 +20,16 @@ export function posicaoGps (ctx) {
   return { lat: p.latitude, lon: p.longitude }
 }
 
+// A rota ativa no SignalK (a do OpenCPN ou a ativada aqui): o rumo calculado (calcValues) ou só a
+// navigation.course.activeRoute (sem um fornecedor de cálculos de rumo, o SignalK não manda o
+// rumo). → { nome, detalhe } ou null
+export function rotaAtiva (ctx) {
+  const wp = proximoWp(ctx)
+  const ar = ctx.v('navigation.course.activeRoute')
+  if (!wp.ativo && !ar?.href) return null
+  return { nome: ar?.name || 'Rota ativa no OpenCPN', detalhe: wp.ativo ? `próximo ponto: ${wp.nome}` : 'rota ativa no OpenCPN' }
+}
+
 // O erro de um pedido ao plugin da rota em pt-PT: o motivo do plugin, ou "não responde".
 export function motivoPlugin (err) {
   if (!err?.status || err.status === 404) return PLUGIN_DESLIGADO
@@ -111,8 +121,8 @@ function listaDestinos (ctx) {
   const e = ctx.estado
   const pos = posicaoGps(ctx)
   const itens = []
-  const wp = proximoWp(ctx)
-  if (wp.ativo) itens.push({ id: 'rota-ativa', nome: 'Rota ativa no OpenCPN', detalhe: `próximo ponto: ${wp.nome}` })
+  const ativa = rotaAtiva(ctx)
+  if (ativa) itens.push({ id: 'rota-ativa', nome: ativa.nome, detalhe: ativa.detalhe })
   const portos = (e.destinos || []).map(d => {
     const p = onde(d)
     return { id: d.id, nome: d.nome, meu: !!d.meu, mn: pos && p ? milhas(pos, p) : null }

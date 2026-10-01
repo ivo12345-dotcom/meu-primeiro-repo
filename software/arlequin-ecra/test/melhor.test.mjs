@@ -319,3 +319,19 @@ test('+ acrescentar: aqui ou por coordenadas, com o POST /destinos; o novo fica 
   assert.match(melhor.render(ctx), /coordenadas inválidas/)
   assert.equal(ctx.pedidos.filter(p => p.method === 'POST').length, 2)
 })
+
+test('rota ativa sem o rumo calculado (o SignalK só manda navigation.course.activeRoute): Leme à espera; "Novo cálculo" põe-na no topo do Pedir', async () => {
+  const valores = { 'navigation.course.activeRoute': { href: '/resources/routes/r1', name: 'Arlequin → Peniche (Amanhã às 08:00, 5 MN, só motor)', pointIndex: 1, pointTotal: 57 } }
+  const ctx = contexto({ valores, respostas: { [`GET ${ROTA}/destinos`]: { destinos: DESTINOS } } })
+  const leme = melhor.render(ctx)
+  assert.match(leme, /Rota ativa/)
+  assert.match(leme, /Arlequin → Peniche \(Amanhã às 08:00, 5 MN, só motor\)/)
+  assert.match(leme, /data-acao="rota-novo"/)
+  limpo(leme, 'leme sem rumo')
+  await melhor.acao('rota-novo', {}, ctx)
+  await new Promise(resolve => setTimeout(resolve, 0))
+  const html = melhor.render(ctx)
+  const ids = [...html.matchAll(/data-acao="rota-destino" data-id="([^"]+)"/g)].map(m => m[1])
+  assert.equal(ids[0], 'rota-ativa')
+  assert.match(html, /Arlequin → Peniche \(Amanhã/)
+})
