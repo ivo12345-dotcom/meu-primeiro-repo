@@ -37,7 +37,7 @@ test('reproduz o simular.mjs de 29/09 (Algés → Peniche, partida 15:32): resum
   const semPeriodo = (p) => { const { periodo, ...resto } = p; return resto }
   assert.ok(r.pontos.every(p => Number.isFinite(p.periodo)))
   assert.deepEqual(JSON.parse(JSON.stringify(r.pontos)).map(semPeriodo), gz('simular-2026-09-29-passagem.json.gz'))
-  assert.equal(ref.chegada, '2026-09-30T05:00:00.000Z')
+  assert.equal(ref.chegada, '2026-09-30T05:01:00.000Z') // 05:00 até 01/10, com a maré do Tejo errada à chegada a Peniche
   // rota.json (só nome/lat/lon + COSTA): igual ao gravado. Barato de comparar porque ROTA/COSTA
   // são exportados e não dependem da meteorologia nem da partida (principal() escreve o mesmo).
   const rotaJson = { ROTA: ROTA.map(({ nome, lat, lon }) => ({ nome, lat, lon })), COSTA }

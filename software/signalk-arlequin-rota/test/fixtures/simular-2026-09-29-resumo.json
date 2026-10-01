@@ -1,14 +1,14 @@
 {
   "partida": "2026-09-29T14:32:00.000Z",
-  "chegada": "2026-09-30T05:00:00.000Z",
+  "chegada": "2026-09-30T05:01:00.000Z",
   "chegou": true,
-  "duracaoH": 14.466666666666667,
-  "milhas": 61.350643898820216,
+  "duracaoH": 14.483333333333333,
+  "milhas": 61.32953624826985,
   "horasVela": 8.966666666666667,
-  "horasMotor": 5.5,
-  "horasNoite": 10.616666666666667,
-  "gasoleoGasto": 7.149999999998187,
-  "socFinal": 0.9885962888492729,
+  "horasMotor": 5.516666666666667,
+  "horasNoite": 10.633333333333333,
+  "gasoleoGasto": 7.171666666664848,
+  "socFinal": 0.9886046994982464,
   "socMin": 0.9020762720470504,
   "ventoMax": 18.575687499582337,
   "rajadaMax": 26.377606907510042,
@@ -109,18 +109,18 @@
       "tipo": "wp"
     },
     {
-      "t": 1790743020000,
+      "t": 1790743080000,
       "texto": "Peniche Sul: 59,7 MN feitas",
       "tipo": "wp"
     },
     {
-      "t": 1790744340000,
-      "texto": "Peniche (porto): 61,4 MN feitas",
+      "t": 1790744400000,
+      "texto": "Peniche (porto): 61,3 MN feitas",
       "tipo": "wp"
     },
     {
-      "t": 1790744400000,
-      "texto": "Chegada a Peniche (06:00)",
+      "t": 1790744460000,
+      "texto": "Chegada a Peniche (06:01)",
       "tipo": "chegada"
     }
   ],
