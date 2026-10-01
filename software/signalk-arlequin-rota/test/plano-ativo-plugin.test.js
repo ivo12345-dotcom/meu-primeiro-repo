@@ -62,12 +62,13 @@ test('o envio do plano fica no plano ativo: enviado antes de Ativar (a quem, os 
   assert.equal(e.alarme, alarme)
   assert.equal(e.pedido, x.pedido)
   assert.match(e.enviadoEm, /^\d{4}-\d\d-\d\dT/)
-  // o envio de outra alternativa não conta para este plano
+  // ativar outra alternativa com este plano enviado: o plano novo segue para os mesmos contactos
+  // (Recalcular → Ativar, test/contactos-plugin.test.js)
   await chamar(r.post['/ativar'], { body: { id, alternativa: 1 } })
-  assert.equal(lerPlano(app).envio, null)
-  // enviado depois de Ativar: fica no plano ativo quando o porto responde
+  assert.deepEqual(lerPlano(app).envio.contactos, ['Mãe'])
+  assert.equal(lerPlano(app).envio.substitui, true)
+  // enviado pelo Ivo depois de Ativar: fica no plano ativo quando o porto responde
   const z = await chamar(r.post['/plano-telegram'], { body: { id, alternativa: 1 } })
-  assert.equal(lerPlano(app).envio, null)
   app.emit('arlequin:plano-enviado', { pedido: z.pedido, entregues: ['chat 111', 'Tio'], contactos: ['Tio'], falhas: [] })
   assert.deepEqual(lerPlano(app).envio.contactos, ['Tio'])
   assert.equal(lerPlano(app).envio.alarme, new Date(planoTexto.horaAlarme(resultado.alternativas[1])).toISOString())

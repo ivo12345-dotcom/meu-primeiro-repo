@@ -23,6 +23,24 @@
 //        em terra tem a hora de alarme e o ecrã não marca a precaução)
 //   avisos: o que o Ivo deve saber mas não impede o envio (sem o telefone dele na configuração, o
 //   plano diz só "liga ao Ivo").
+//   GET  /plano-ativo → 404 sem plano; { estado, destino: { id, nome }, tripulacao, idCalculo, indice,
+//        alternativa: { id, nome }, partida, saida, chegou, atrasoMin, proximo: { texto, hora } | null,
+//        chegadaAgora, chegadaPlano, chegadaNoite, recursos: { gasoleoChegadaL, bateriaChegadaPct,
+//        semLeitura, aviso }, semGps, barometro: { semLeitura, quedaHpa }, previsaoIdadeH,
+//        avisos: [{ caminho, state, message }], envio: { contactos, alarme, alarmePlano } | null,
+//        filaContactos: [{ tipo, criada, tentativas, proxima, estado, erro }], enviadas: [{ tipo, enviadaEm, contactos }] }
+//   POST /plano-ativo/terminar → { ok, estado: 'terminado', contactos } (409 sem plano aberto): fecha o
+//        plano, os avisos voltam a normal e os contactos recebem "viagem terminada" (contactos: true)
+//   POST /plano-ativo/continuar → { ok, estado } (409 se não estiver "pausado"; 502 se a API de rumo
+//        falhar): volta a ativar a rota do plano, no ponto seguinte ao da posição na rota
+//
+// Os contactos em terra a navegar (lib/contactos.js): só com o plano enviado a contactos em terra.
+// "Cheguei bem" na chegada, o atraso quando a chegada prevista passa da "mais tarde" do plano (no
+// máximo 1× por hora), "viagem terminada" no Terminar, e o plano novo ao Ativar outra alternativa com
+// um plano enviado aberto (o 422 de um cálculo antigo não ativa nada e o plano antigo fica). Pelo
+// mesmo evento 'arlequin:plano' { pedido, tipo, texto, gpx? (só no tipo 'plano'), nomeFicheiro?,
+// destinatarios: 'contactos-do-plano', contactos }, uma mensagem de cada vez; a fila fica no plano
+// ativo (sem resposta em 30 s ou sem o porto, nova tentativa daqui a 2 min).
 //
 // O plano (desenho 3b-1): monta o texto e o GPX (lib/plano.js) e emite no servidor o evento
 // 'arlequin:plano' { pedido, texto, gpx, nomeFicheiro }; o plugin porto (que tem o bot do Telegram)
@@ -59,6 +77,7 @@ const plano = require('./lib/plano')
 const pa = require('./lib/plano-ativo')
 const ac = require('./lib/acompanhamento')
 const av = require('./lib/avisos-navegar')
+const ct = require('./lib/contactos')
 const { criarCorrecaoVento } = require('./lib/cenarios')
 const { slug } = require('./lib/slug')
 const modelosJs = require('signalk-arlequin-ia/lib/modelos')
@@ -190,6 +209,7 @@ module.exports = function (app, deps = {}) {
   let cicloTimer = null
   let aCorrerCiclo = false
   let modelosVento = {}
+  const pedidosContactos = new Map() // pedido → temporizador dos 30 s (as mensagens para terra)
 
   function gravarPlanoAtivo () {
     try { pa.gravar(dirPlugin, planoAtivo) } catch (e) { app.error(`não gravei o plano ativo: ${e.message}`) }
@@ -206,6 +226,7 @@ module.exports = function (app, deps = {}) {
   // A resposta do plugin porto a um plano: "enviado" com pelo menos uma entrega; sem nenhuma,
   // "falhou" com as falhas (ou sem destinatários). Uma resposta depois do limite já não conta.
   function aoPlanoEnviado (m) {
+    if (eObjeto(m) && pedidosContactos.has(m.pedido)) return respostaContactos(m)
     const p = eObjeto(m) ? planos.get(m.pedido) : null
     if (!p || p.estado !== 'a enviar') return
     cancelar(p.temporizador)
@@ -302,6 +323,65 @@ module.exports = function (app, deps = {}) {
     return Array.isArray(coords) && coords.length ? coords.map(([lon, lat]) => ({ lat, lon })) : null
   }
 
+  // ---------- os contactos em terra ----------
+  // Uma mensagem para a fila do plano ativo, aos contactos entregues do plano (sem eles, nada).
+  function porMensagem (tipo, texto, agora, extra = {}) {
+    const contactos = planoAtivo?.envio?.contactos
+    if (!contactos?.length) return false
+    planoAtivo = { ...planoAtivo, contactos: ct.porNaFila(planoAtivo.contactos || ct.novaFila(), { tipo, texto, contactos, ...extra }, agora) }
+    return true
+  }
+  function falharContactos (pedido, motivo) {
+    if (!planoAtivo?.contactos) return
+    planoAtivo = { ...planoAtivo, contactos: ct.falhou(planoAtivo.contactos, pedido, motivo, relogio()) }
+    gravarPlanoAtivo()
+  }
+  // A próxima mensagem da fila, se for a hora dela (uma de cada vez).
+  function enviarFila (agora) {
+    if (!planoAtivo?.contactos) return
+    const m = ct.proxima(planoAtivo.contactos, agora)
+    if (!m) return
+    const pedido = crypto.randomUUID()
+    planoAtivo = { ...planoAtivo, contactos: ct.marcarAEnviar(planoAtivo.contactos, m.id, pedido, agora) }
+    gravarPlanoAtivo()
+    if (typeof app.emit !== 'function' || app.listenerCount?.('arlequin:plano') === 0) return falharContactos(pedido, PORTO_DESLIGADO)
+    const t = agendar(() => {
+      pedidosContactos.delete(pedido)
+      if (planoAtivo?.contactos?.fila?.some(x => x.pedido === pedido)) falharContactos(pedido, MOTIVO_PORTO)
+    }, LIMITE_PORTO_MS)
+    pedidosContactos.set(pedido, t)
+    try { app.emit('arlequin:plano', ct.evento(m, pedido)) } catch (e) {
+      cancelar(t)
+      pedidosContactos.delete(pedido)
+      falharContactos(pedido, `não foi possível enviar: ${e.message}`)
+    }
+  }
+  function respostaContactos (m) {
+    cancelar(pedidosContactos.get(m.pedido))
+    pedidosContactos.delete(m.pedido)
+    if (!planoAtivo?.contactos) return
+    const agora = relogio()
+    const msg = planoAtivo.contactos.fila.find(x => x.pedido === m.pedido)
+    planoAtivo = { ...planoAtivo, contactos: ct.resposta(planoAtivo.contactos, m.pedido, m, agora) }
+    // o plano novo entregue: o envio passa a ser este (a quem chegou)
+    const enviada = planoAtivo.contactos.enviadas.at(-1)
+    if (msg?.tipo === 'plano' && enviada?.id === msg.id && planoAtivo.envio) planoAtivo = { ...planoAtivo, envio: { ...planoAtivo.envio, contactos: [...enviada.contactos], pedido: m.pedido, enviadoEm: enviada.enviadaEm } }
+    gravarPlanoAtivo()
+    enviarFila(agora)
+  }
+  // O atraso para terra (só a navegar, com GPS e o plano enviado).
+  function atrasoParaTerra (res, agora) {
+    const envio = planoAtivo.envio
+    if (!envio?.contactos?.length || res.semGps) return
+    const d = ct.decidirAtraso(planoAtivo.atrasoEnviado || null, {
+      chegadaAgora: Date.parse(res.chegadaAgora), p90: Date.parse(planoAtivo.alternativa.chegada?.p90), alarmePlano: Date.parse(envio.alarme), agora
+    })
+    if (!d) return
+    porMensagem('atraso', ct.textoAtraso({ ...d, agora }), agora)
+    planoAtivo = { ...planoAtivo, atrasoEnviado: { ultimoEm: agora, chegada: d.chegada, alarme: d.alarme } }
+    gravarPlanoAtivo()
+  }
+
   // ---------- a navegar ----------
   const ficheiroPressoes = () => path.join(dirPlugin, 'barometro.json')
   function lerPressoes () {
@@ -343,18 +423,21 @@ module.exports = function (app, deps = {}) {
       pressoes = av.juntarPressao(pressoes, { t: agora, hPa: hPa / 100 }, agora)
       try { prev.escreverAtomico(ficheiroPressoes(), JSON.stringify(pressoes)) } catch (e) { app.error(`não gravei o barómetro: ${e.message}`) }
     }
-    if (!pa.aberto(planoAtivo)) { ultimo = null; publicarAvisos({}); return }
+    if (!pa.aberto(planoAtivo)) { ultimo = null; publicarAvisos({}); if (planoAtivo) enviarFila(agora); return }
     const sog = v('navigation.speedOverGround')
     const leitura = { posicao: leituraPosicao(agora), sogNos: Number.isFinite(sog) ? sog * NOS : null, href: await hrefAtivo() }
     if (leitura.posicao) ultimaPosicao = leitura.posicao
     const r = pa.avaliar(planoAtivo, leitura, memPlano, agora)
     planoAtivo = r.plano
     memPlano = r.mem
+    // a chegada: "cheguei bem" aos contactos (uma vez: o plano fica fechado)
+    if (r.mudou === 'chegou') porMensagem('chegada', ct.textoChegada({ destino: planoAtivo.destino?.nome, chegou: Date.parse(planoAtivo.chegou), agora }), agora)
     if (r.mudou) gravarPlanoAtivo()
     if (!pa.aberto(planoAtivo) || planoAtivo.estado === 'pausado') {
       ultimo = null
       estAvisos = av.novoEstado()
       publicarAvisos({})
+      enviarFila(agora)
       return
     }
     const ins = instrumentos()
@@ -389,6 +472,63 @@ module.exports = function (app, deps = {}) {
       planoAtivo = { ...planoAtivo, seguimento: { s: ant.s, t: new Date(ant.t).toISOString() } }
       gravarPlanoAtivo()
     }
+    if (navegar) atrasoParaTerra(res, agora)
+    enviarFila(agora)
+  }
+
+  // O que o GET /plano-ativo devolve (o ecrã lê-o de 10 em 10 s).
+  function estadoPlanoAtivo () {
+    const p = planoAtivo
+    const u = ultimo
+    const rec = u?.recursos || {}
+    const r0 = (x) => (Number.isFinite(x) ? Math.round(x) : null)
+    const ativos = Object.entries(u?.avisos || {}).filter(([, a]) => a.state !== 'normal').map(([caminho, a]) => ({ caminho, state: a.state, message: a.message }))
+    const recursosAviso = ativos.find(a => a.caminho === `${av.PREFIXO}.recursos`)
+    const c = p.contactos || ct.novaFila()
+    return {
+      estado: p.estado,
+      destino: { id: p.destino?.id ?? null, nome: p.destino?.nome ?? null },
+      tripulacao: p.tripulacao,
+      idCalculo: p.idCalculo,
+      indice: p.indice,
+      alternativa: { id: p.alternativa.id, nome: p.alternativa.nome },
+      partida: p.alternativa.partida ?? null,
+      saida: p.saida,
+      chegou: p.chegou,
+      atrasoMin: u && u.estado === 'a navegar' ? r0(u.atrasoMin) : null,
+      proximo: u?.proximo ? { texto: u.proximo.texto, hora: u.proximo.hora } : null,
+      chegadaAgora: u?.chegadaAgora ?? p.alternativa.chegada?.p50 ?? null,
+      chegadaPlano: p.alternativa.chegada?.p50 ?? null,
+      chegadaNoite: u?.chegadaNoite ?? null,
+      recursos: {
+        gasoleoChegadaL: r0(rec.gasoleoChegadaL),
+        bateriaChegadaPct: r0(rec.bateriaChegadaPct),
+        semLeitura: !!u && rec.gasoleoChegadaL == null && rec.bateriaChegadaPct == null,
+        aviso: recursosAviso ? recursosAviso.message : null
+      },
+      semGps: !!u?.semGps,
+      barometro: { semLeitura: u ? !!u.barometroSemLeitura : true, quedaHpa: Number.isFinite(u?.quedaBarometro) ? Math.round(u.quedaBarometro * 10) / 10 : null },
+      previsaoIdadeH: Number.isFinite(u?.previsaoIdadeH) ? Math.round(u.previsaoIdadeH * 10) / 10 : null,
+      avisos: ativos,
+      envio: p.envio ? { contactos: p.envio.contactos, alarme: p.atrasoEnviado ? new Date(p.atrasoEnviado.alarme).toISOString() : p.envio.alarme, alarmePlano: p.envio.alarme } : null,
+      filaContactos: c.fila.map(m => ({ tipo: m.tipo, criada: m.criada, tentativas: m.tentativas, proxima: m.proxima, estado: m.estado, erro: m.erro })),
+      enviadas: c.enviadas.map(m => ({ tipo: m.tipo, enviadaEm: m.enviadaEm, contactos: m.contactos }))
+    }
+  }
+
+  // Ativar um href na API de rumo (Continuar): a API do servidor, ou HTTP para o próprio servidor.
+  async function ativarHref (href, pointIndex) {
+    if (typeof app.activateRoute === 'function') return app.activateRoute({ href, pointIndex })
+    const r = await fetchFn(`http://localhost:${o.porta || 3000}/signalk/v2/api/vessels/self/navigation/course/activeRoute`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ href, pointIndex }), signal: AbortSignal.timeout(10000) })
+    if (!r.ok) throw new Error(`a API de rumo respondeu ${r.status}`)
+  }
+  // O ponto da rota a seguir à posição na rota (seguimento); sem ela, o 1.
+  function pontoSeguinte (p) {
+    const s = estAcomp.anterior?.s ?? p.seguimento?.s
+    if (!Number.isFinite(s)) return 1
+    const { linha } = ac.prepararRota(p)
+    const i = linha.s.findIndex(x => x > s + 1e-9)
+    return i < 1 ? Math.max(1, linha.s.length - 1) : i
   }
   async function cicloNavegar () {
     if (!o || !dirPlugin || aCorrerCiclo) return
@@ -505,6 +645,8 @@ module.exports = function (app, deps = {}) {
     const lido = pa.ler(dirPlugin)
     planoAtivo = lido.plano
     if (lido.erro) app.error(lido.erro)
+    // a mensagem para terra que estava a enviar já não tem resposta: volta à fila
+    if (planoAtivo?.contactos) planoAtivo = { ...planoAtivo, contactos: ct.aoArrancar(planoAtivo.contactos, relogio()) }
     // a navegar: os temporizadores recomeçam; a posição na rota e o barómetro vêm dos ficheiros, e o
     // que já está publicado lê-se do SignalK (não se publica outra vez)
     memPlano = pa.novaMemoria()
@@ -530,6 +672,8 @@ module.exports = function (app, deps = {}) {
     if (cicloTimer) pararCiclo(cicloTimer)
     cicloTimer = null
     app.removeListener?.('arlequin:plano-enviado', aoPlanoEnviado)
+    for (const t of pedidosContactos.values()) cancelar(t)
+    pedidosContactos.clear()
     for (const p of planos.values()) {
       cancelar(p.temporizador)
       if (p.estado === 'a enviar') { p.estado = 'falhou'; p.motivo = MOTIVO_REINICIO }
@@ -622,12 +766,45 @@ module.exports = function (app, deps = {}) {
       const alt = lista[indice]
       if (!alt) return res.status(404).json({ ok: false, erro: 'alternativa desconhecida' })
       const id = b.id
+      // Recalcular → Ativar (desenho 3b-2): com um plano aberto já enviado a contactos em terra, o plano
+      // novo segue para os mesmos contactos ("Este plano substitui o anterior"). Monta-se antes de
+      // ativar: um cálculo antigo (422) não ativa nada e o plano antigo fica.
+      const antigo = pa.aberto(planoAtivo) ? planoAtivo : null
+      const mesmo = !!antigo && antigo.idCalculo === id && antigo.indice === indice
+      // (a alternativa nova já enviada pelo Ivo depois de ativar o plano antigo não se reenvia)
+      const envioNovo = envioDe(id, indice, alt)
+      const novoJaEnviado = !!envioNovo && !!antigo && Date.parse(envioNovo.enviadoEm) >= Date.parse(antigo.ativadoEm)
+      const reenviar = !!antigo && !mesmo && !novoJaEnviado && !!antigo.envio?.contactos?.length
+      let novoTexto = null
+      if (reenviar) {
+        try {
+          novoTexto = plano.montarPlano({ resultado: t.resultado, indice, barco: o.barco, telefones: o.telefones, agora: relogio() })
+        } catch (e) {
+          if (e.status === 422) return res.status(422).json({ ok: false, erro: e.message })
+          return res.status(500).json({ ok: false, erro: `não montei o plano: ${e.message}` })
+        }
+      }
       ativarRota(alt, t.resultado.destino.nome)
         .then(r => {
+          const agora = relogio()
           // o plano ativo (desenho 3b-2): cria ou substitui
           const aproximacao = costaAtual().destinos.find(d => d.id && d.id === t.resultado.destino.id)?.aproximacao || null
-          planoAtivo = pa.criarPlano({ idCalculo: id, resultado: t.resultado, indice, href: r.href, aproximacao, envio: envioDe(id, indice, alt), agora: relogio() })
+          const anterior = planoAtivo
+          let envio = envioNovo
+          if (mesmo) envio = antigo.envio
+          if (reenviar) {
+            const alarme = plano.horaAlarme(alt)
+            envio = { contactos: [...antigo.envio.contactos], alarme: alarme == null ? null : new Date(alarme).toISOString(), pedido: null, enviadoEm: null, substitui: true }
+          }
+          planoAtivo = mesmo
+            ? { ...antigo, href: r.href, estado: antigo.estado === 'pausado' ? antigo.pausadoDe || pa.ESTADOS.ESPERA : antigo.estado, pausadoDe: null }
+            : pa.criarPlano({ idCalculo: id, resultado: t.resultado, indice, href: r.href, aproximacao, envio, agora })
+          // a fila dos contactos continua (sem os atrasos do plano antigo, que deixam de interessar)
+          if (!mesmo && anterior?.contactos) planoAtivo.contactos = { ...anterior.contactos, fila: anterior.contactos.fila.filter(m => m.tipo !== 'atraso' || m.estado === 'a enviar') }
+          if (reenviar) porMensagem('plano', ct.textoSubstitui(novoTexto.texto), agora, { gpx: novoTexto.gpx, nomeFicheiro: novoTexto.nomeFicheiro })
+          if (!mesmo) { memPlano = pa.novaMemoria(); estAcomp = ac.novoEstado(); estAvisos = av.novoEstado(); ventos = []; ultimo = null }
           gravarPlanoAtivo()
+          enviarFila(agora)
           res.json({ ok: true, ...r, alternativa: alt.id, nota: alt.nota || null, planoAtivo: { estado: planoAtivo.estado } })
         })
         .catch(e => res.status(502).json({ ok: false, erro: `não ativei a rota: ${e.message}` }))
@@ -670,6 +847,43 @@ module.exports = function (app, deps = {}) {
         estado.motivo = `não foi possível enviar: ${e.message}`
       }
       res.status(202).json({ pedido, avisos })
+    })
+
+    ler.get('/plano-ativo', (req, res) => {
+      if (!ligado()) return parado(res)
+      if (!planoAtivo) return res.status(404).json({ ok: false, erro: 'não há plano ativo' })
+      res.json(estadoPlanoAtivo())
+    })
+
+    escrever.post('/plano-ativo/terminar', (req, res) => {
+      if (!ligado()) return parado(res)
+      if (!pa.aberto(planoAtivo)) return res.status(409).json({ ok: false, erro: 'não há um plano ativo aberto' })
+      const agora = relogio()
+      const posicao = leituraPosicao(agora) || ultimaPosicao
+      planoAtivo = pa.terminar(planoAtivo, agora)
+      const contactos = porMensagem('terminado', ct.textoTerminado({ posicao, agora }), agora)
+      estAvisos = av.novoEstado()
+      ultimo = null
+      publicarAvisos({})
+      gravarPlanoAtivo()
+      enviarFila(agora)
+      res.json({ ok: true, estado: planoAtivo.estado, contactos })
+    })
+
+    escrever.post('/plano-ativo/continuar', (req, res) => {
+      if (!ligado()) return parado(res)
+      if (planoAtivo?.estado !== 'pausado') return res.status(409).json({ ok: false, erro: 'o plano não está pausado' })
+      const p = planoAtivo
+      ativarHref(p.href, pontoSeguinte(p))
+        .then(() => {
+          if (planoAtivo !== p) return res.status(409).json({ ok: false, erro: 'o plano mudou entretanto' })
+          planoAtivo = pa.continuar(p)
+          memPlano = pa.novaMemoria()
+          gravarPlanoAtivo()
+          res.json({ ok: true, estado: planoAtivo.estado })
+        })
+        .catch(e => res.status(502).json({ ok: false, erro: `não ativei a rota: ${e.message}` }))
+        .catch(e => app.error(`continuar: ${e.message}`))
     })
 
     ler.get('/plano-telegram/:pedido', (req, res) => {
