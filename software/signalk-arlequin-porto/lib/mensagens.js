@@ -4,6 +4,9 @@
 // oscilar. No porto (amarrado), os alarmes AIS não seguem: um navio a passar ao
 // largo da marina não é perigo para um barco amarrado. Alguns caminhos só
 // seguem em alarme (o aviso dos 80% do disco fica no ecrã: só os 95% contam).
+// A navegar (desenho 3b-2): os lembretes de evento e o "come e bebe" da rota ficam só no ecrã; a
+// previsão velha só segue em alarme (mais de 12 h); recalcula, recursos e barómetro seguem.
+// Tudo isto só para os chats autorizados (o do Ivo), nunca para os contactos do plano.
 
 const ICONE = { warn: '⚠️', alert: '⚠️', alarm: '🚨', emergency: '🔥' }
 const ATIVO = new Set(['warn', 'alert', 'alarm', 'emergency'])
@@ -15,9 +18,9 @@ function novoEncaminhador () {
 // notificacoes: [{ caminho, state, message }]
 // O limite de 10 min só trava ALARMES repetidos do mesmo caminho; o "resolvido"
 // de um alarme que foi enviado segue sempre (senão ficava-se a julgar que continua).
-const SO_ALARME = ['notifications.arlequin.caixanegra.disco']
+const SO_ALARME = ['notifications.arlequin.caixanegra.disco', 'notifications.rota.previsao']
 // Lembretes e avisos só para o ecrã: nunca seguem para o Telegram.
-const NUNCA = ['notifications.arlequin.caixanegra.velas', 'notifications.arlequin.caixanegra.relogio']
+const NUNCA = ['notifications.arlequin.caixanegra.velas', 'notifications.arlequin.caixanegra.relogio', 'notifications.rota.lembrete.', 'notifications.rota.comer']
 const GRAVE = new Set(['alarm', 'emergency'])
 
 function encaminhar (enc0, notificacoes, agora, { intervalo = 10 * 60 * 1000, amarrado = false, ignorarAmarrado = ['notifications.arlequin.ais.'], nunca = NUNCA, soAlarme = SO_ALARME } = {}) {
@@ -67,4 +70,4 @@ function alarmesAtivos (lista, nunca = NUNCA) {
     .map(n => n.message || n.caminho)
 }
 
-module.exports = { novoEncaminhador, encaminhar, listarNotificacoes, alarmesAtivos, NUNCA }
+module.exports = { novoEncaminhador, encaminhar, listarNotificacoes, alarmesAtivos, NUNCA, SO_ALARME }
