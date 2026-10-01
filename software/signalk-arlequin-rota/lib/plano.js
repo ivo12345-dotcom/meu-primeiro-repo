@@ -195,4 +195,4 @@ function montarPlano ({ resultado, indice = 0, barco = {}, telefones = {}, agora
   return { texto: linhas.join('\n'), gpx, nomeFicheiro }
 }
 
-module.exports = { MRCC, EMERGENCIA_PADRAO, SEM_ALARME, CALCULO_ANTIGO, horaLisboa, horaAlarme, rotaTexto, montarPlano }
+module.exports = { MRCC, EMERGENCIA_PADRAO, SEM_ALARME, CALCULO_ANTIGO, horaLisboa, asHoras, horaAlarme, rotaTexto, semVela, posicaoTexto, montarPlano }
