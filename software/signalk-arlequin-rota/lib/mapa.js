@@ -8,8 +8,14 @@
 //   pontos: [[lat, lon], …] — as rotas, os rastos e os pontos de desistência. A janela abrange-os
 //     com 10% de margem, e os que são mar na costa original continuam mar no contorno simplificado
 //     (a simplificação nunca fecha uma enseada ou um porto por cima da rota);
-//   opcoes: { margem: 0.1, toleranciaMn: 0.1, maxPontos: 2000 }. Com mais de maxPontos de terra,
-//     a tolerância sobe (× 1,5) até caber.
+//   opcoes: { margem: 0.1, toleranciaMn: 0.1, toleranciaMaxMn: 0.5, maxPontos: 2000, log }. Com mais
+//     de maxPontos de terra, a tolerância sobe (× 1,5) até caber, mas nunca passa de toleranciaMaxMn
+//     (com mais, os cabos e a Berlenga começavam a deformar-se); se nem assim couber, fica com os
+//     pontos que tiver e regista-o. log(msg): o registo (no plugin, app.error), também quando a
+//     proteção dos pontos não consegue repor um ponto no mar.
+//   Os ilhéus mais pequenos do que a tolerância INICIAL saem (a subida da tolerância não os tira),
+//     menos os que têm um ponto protegido lá dentro: pela paridade, um anel pequeno pode ser um
+//     buraco (mar dentro de terra), e tirá-lo punha esse ponto em terra.
 //
 // A terra recorta-se à janela (Sutherland–Hodgman, que serve para anéis côncavos: as partes que
 // saem e voltam ficam ligadas pela borda da janela, sem mudar o que é terra lá dentro) e
@@ -18,7 +24,7 @@
 
 const c = require('./costa')
 
-const PADRAO = Object.freeze({ margem: 0.1, toleranciaMn: 0.1, maxPontos: 2000, spanMin: 0.02 })
+const PADRAO = Object.freeze({ margem: 0.1, toleranciaMn: 0.1, toleranciaMaxMn: 0.5, maxPontos: 2000, spanMin: 0.02 })
 const r4 = (x) => Math.round(x * 1e4) / 1e4
 
 // A janela que abrange os pontos [[lat, lon]], com a margem (fração de cada lado) e um tamanho mínimo.
@@ -117,13 +123,22 @@ function caixa (pts) {
 }
 const naCaixa = (k, p) => p.lat >= k.latMin && p.lat <= k.latMax && p.lon >= k.lonMin && p.lon <= k.lonMax
 
-// Simplifica os anéis com a tolerância dada e repõe vértices até nenhum ponto protegido (mar na
-// costa original) ficar em terra. → [[índices]] por anel.
-function simplificarProtegendo (aneis, tolMn, esc, protegidos) {
-  const idx = aneis.map(a => simplificarAnel(a, tolMn, esc))
+// O tamanho de um anel [[lat, lon]] (a diagonal da caixa, MN).
+const tamanho = (a, esc) => { const k = caixa(a); return Math.hypot((k.lonMax - k.lonMin) * esc.kx, (k.latMax - k.latMin) * esc.ky) }
+
+// Simplifica os anéis com a tolerância dada (um número, ou uma por anel) e repõe vértices até nenhum
+// ponto protegido (mar na costa original) ficar em terra. → [[índices]] por anel. Se não conseguir
+// (não há aresta a refinar, o que não devia acontecer), fica como está e regista-o por log(msg).
+function simplificarProtegendo (aneis, tolMn, esc, protegidos, log) {
+  const idx = aneis.map((a, r) => simplificarAnel(a, Array.isArray(tolMn) ? tolMn[r] : tolMn, esc))
+  const desistir = (errados) => {
+    log?.(`mini-mapa: ${errados.length} ponto(s) da rota ficam em terra no contorno simplificado`)
+    return idx
+  }
+  let errados = []
   for (let volta = 0; volta < 10000; volta++) {
     const atual = idx.map((ix, r) => ix.map(i => aneis[r][i]))
-    const errados = protegidos.filter(p => emTerra(atual.filter(a => a.length >= 3), p))
+    errados = protegidos.filter(p => emTerra(atual.filter(a => a.length >= 3), p))
     if (!errados.length) return idx
     let mudou = false
     for (const p of errados) {
@@ -144,9 +159,9 @@ function simplificarProtegendo (aneis, tolMn, esc, protegidos) {
         }
       }
     }
-    if (!mudou) return idx // não há aresta a refinar (não devia acontecer): fica como está
+    if (!mudou) return desistir(errados)
   }
-  return idx
+  return desistir(errados)
 }
 
 function montarMapa (costa, { pontos = [] } = {}, opcoes = {}) {
@@ -171,16 +186,30 @@ function montarMapa (costa, { pontos = [] } = {}, opcoes = {}) {
   }
   // os pontos a proteger: os que são mar na terra recortada (a mesma que se simplifica)
   const protegidos = pts.map(([lat, lon]) => ({ lat, lon })).filter(p => !emTerra(aneis, p))
+  // os ilhéus mais pequenos do que a tolerância inicial saem, menos os que têm um ponto protegido
+  // lá dentro (um anel pequeno pode ser um buraco: tirá-lo punha esse ponto em terra)
+  const grandes = aneis.filter(a => {
+    if (tamanho(a, esc) >= o.toleranciaMn) return true
+    const k = caixa(a)
+    return protegidos.some(p => naCaixa(k, p) && c.dentroAnel(p, a))
+  })
+  const tamanhos = grandes.map(a => tamanho(a, esc))
+  const tolMax = Math.max(o.toleranciaMn, o.toleranciaMaxMn)
   let tol = o.toleranciaMn
   let terra = []
-  for (let tentativa = 0; tentativa < 40; tentativa++) {
-    // os ilhéus mais pequenos do que a tolerância saem (só tiram terra: nenhum ponto protegido muda)
-    const grandes = aneis.filter(a => { const k = caixa(a); return Math.hypot((k.lonMax - k.lonMin) * esc.kx, (k.latMax - k.latMin) * esc.ky) >= tol })
-    const idx = simplificarProtegendo(grandes, tol, esc, protegidos)
+  for (;;) {
+    // com a tolerância subida, nenhum anel se simplifica com mais de 1/4 do seu tamanho (a Berlenga,
+    // com ~0,9 MN, desaparecia com 0,5 MN), mas nunca com menos do que a tolerância inicial
+    const tols = tamanhos.map(t => Math.max(o.toleranciaMn, Math.min(tol, t / 4)))
+    const idx = simplificarProtegendo(grandes, tols, esc, protegidos, o.log)
     terra = idx.map((ix, r) => ix.map(i => grandes[r][i])).filter(a => a.length >= 3)
     const n = terra.reduce((s, a) => s + a.length, 0)
     if (n <= o.maxPontos) break
-    tol *= 1.5
+    if (tol >= tolMax) {
+      o.log?.(`mini-mapa: ${n} pontos de terra com a tolerância máxima (${String(tolMax).replace('.', ',')} MN)`)
+      break
+    }
+    tol = Math.min(tol * 1.5, tolMax)
   }
   // as zonas a evitar cuja caixa toca a janela (inteiras: são pequenas)
   const zonas = (costa?.zonas || []).filter(z => {
@@ -190,4 +219,4 @@ function montarMapa (costa, { pontos = [] } = {}, opcoes = {}) {
   return { janela: j, terra, zonas }
 }
 
-module.exports = { PADRAO, janela, recortarAnel, simplificarAnel, montarMapa }
+module.exports = { PADRAO, janela, recortarAnel, simplificarAnel, simplificarProtegendo, montarMapa }

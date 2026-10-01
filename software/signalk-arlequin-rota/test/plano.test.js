@@ -59,7 +59,7 @@ test('o texto do plano (Peniche → Nazaré pelo Canal da Berlenga), exatamente'
     'Rota: a 5 MN da costa, via Canal da Berlenga, só motor',
     'Chegada provável: qua 30/09 18:21 (o mais tarde: qua 30/09 18:21)',
     'Tripulação: só eu',
-    'Até qua 30/09 às 17:09 ainda volta a Peniche.',
+    'Até qua 30/09 às 17:09 ainda volta a Peniche, exceto qua 30/09 às 10:33 (5 MN feitas), onde a fuga é junto à costa com vento do mar; e qua 30/09 às 13:10 (15 MN feitas), onde a fuga é junto à costa com vento do mar; e qua 30/09 às 14:34 (20 MN feitas), onde não há fuga possível: rota absurda: 42,6 MN para 9,0 MN em linha reta; rota absurda: 51,5 MN para 9,0 MN em linha reta.',
     '',
     'Hora de alarme: qua 30/09 20:21',
     'Se não houver notícias até qua 30/09 20:21, liga ao Ivo. Se não atender, liga ao MRCC Lisboa +351 214 401 919 (ou 112) e diz: veleiro ARLEQUIN, de Peniche para Nazaré, saída qua 30/09 09:30.',
@@ -77,7 +77,8 @@ test('com os dados do barco e o telefone do Ivo; abrigos pelo caminho e "até à
   assert.ok(linhas.includes('Partida: 15:32 de Algés (CNA)'), p.texto)
   assert.ok(linhas.includes('Rota: a 5 MN da costa, só motor'))
   assert.ok(linhas.includes('Abrigos pelo caminho: Oeiras, Cascais'), p.texto)
-  assert.ok(linhas.includes('Até qua 30/09 às 06:29 ainda volta a Algés (CNA).'), p.texto)
+  // as exceções do resumo da desistência vão com a frase (no dia do envio, só a hora)
+  assert.ok(linhas.includes('Até qua 30/09 às 06:29 ainda volta a Algés (CNA), exceto junto ao Cabo Raso às 19:16, onde a fuga é junto à costa com vento do mar.'), p.texto)
   assert.match(p.texto, /liga ao Ivo \(\+351 912 345 678\)\. Se não atender/)
   assert.match(p.texto, /diz: veleiro ARLEQUIN, de Algés \(CNA\) para Peniche, saída 15:32\.$/m)
   assert.doesNotMatch(p.texto, proibido)
@@ -104,12 +105,46 @@ test('acompanhado, telefone de emergência mudado na configuração e partida no
 })
 
 test('nunca null, NaN nem undefined: campos em falta ficam de fora ou com "—"', () => {
-  const alt = { ...FIX.canal.alternativas[0], chegada: { p10: null, p50: null, p90: null }, afastamento: null, propulsao: null, pontosRota: [] }
-  const r = { ...FIX.canal, alternativas: [alt], desistencia: [], partida: {}, destino: {} }
+  const alt = { ...FIX.canal.alternativas[0], partida: null, chegada: { p10: null, p50: null, p90: FIX.canal.alternativas[0].chegada.p90 }, afastamento: null, propulsao: null, pontosRota: [] }
+  const r = { ...FIX.canal, alternativas: [alt], desistencia: [], desistenciaResumo: null, partida: {}, destino: {} }
   const p = montar(r, 0, { barco: { nome: '', modelo: null }, telefones: {} })
   assert.doesNotMatch(p.texto, proibido)
   assert.doesNotMatch(p.gpx, proibido)
-  assert.match(p.texto, /Hora de alarme: —/)
+  assert.match(p.texto, /^Partida: —$/m)
+  assert.match(p.texto, /^Chegada provável: — \(o mais tarde: qua 30\/09 18:21\)$/m)
+  assert.match(p.texto, /^Hora de alarme: qua 30\/09 20:21$/m)
+})
+
+test('sem a chegada mais tarde (p90) não há hora de alarme: o plano não se monta (erro 422 com o motivo)', () => {
+  const alt = { ...FIX.canal.alternativas[0], chegada: { ...FIX.canal.alternativas[0].chegada, p90: null } }
+  const r = { ...FIX.canal, alternativas: [alt] }
+  assert.equal(plano.SEM_ALARME, 'sem hora de chegada mais tarde: não há hora de alarme, o plano não foi enviado')
+  assert.throws(() => montar(r, 0), (e) => e.status === 422 && e.message === plano.SEM_ALARME)
+})
+
+test('o número do MRCC está numa só constante: o telefone de emergência por defeito e a frase do plano usam-na', () => {
+  assert.equal(plano.MRCC, '+351 214 401 919')
+  assert.equal(plano.EMERGENCIA_PADRAO, `${plano.MRCC} (MRCC Lisboa, 24 h) ou 112`)
+  assert.ok(montar(FIX.canal, 0).texto.includes(`liga ao MRCC Lisboa ${plano.MRCC} (ou 112)`))
+})
+
+test('mudança de hora: as horas da hora repetida (fim do horário de verão) dizem se são de Verão ou de Inverno', () => {
+  const ag = Date.parse('2026-10-24T12:00:00Z')
+  // 25/10/2026: às 02:00 de verão (01:00Z) volta-se à 01:00; das 01:00 às 02:00 acontece duas vezes
+  assert.equal(plano.horaLisboa(Date.parse('2026-10-25T00:30:00Z'), ag), 'dom 25/10 01:30 (hora de Verão)')
+  assert.equal(plano.horaLisboa(Date.parse('2026-10-25T01:30:00Z'), ag), 'dom 25/10 01:30 (hora de Inverno)')
+  assert.equal(plano.horaLisboa(Date.parse('2026-10-25T00:00:00Z'), ag), 'dom 25/10 01:00 (hora de Verão)')
+  assert.equal(plano.horaLisboa(Date.parse('2026-10-25T01:59:00Z'), ag), 'dom 25/10 01:59 (hora de Inverno)')
+  assert.equal(plano.horaLisboa(Date.parse('2026-10-24T23:59:00Z'), ag), 'dom 25/10 00:59')
+  assert.equal(plano.horaLisboa(Date.parse('2026-10-25T02:00:00Z'), ag), 'dom 25/10 02:00')
+  // no início do horário de verão não há hora repetida (salta-se da 01:00 para as 02:00)
+  assert.equal(plano.horaLisboa(Date.parse('2026-03-29T00:30:00Z'), ag), 'dom 29/03 00:30')
+  assert.equal(plano.horaLisboa(Date.parse('2026-03-29T01:30:00Z'), ag), 'dom 29/03 02:30')
+  // no plano: a hora de alarme na hora repetida
+  const alt = { ...FIX.canal.alternativas[0], chegada: { p10: '2026-10-24T22:00:00Z', p50: '2026-10-24T23:00:00Z', p90: '2026-10-24T23:30:00Z' } }
+  const p = plano.montarPlano({ resultado: { ...FIX.canal, alternativas: [alt] }, indice: 0, barco: BARCO, telefones: TELEFONES, agora: ag })
+  assert.match(p.texto, /^Hora de alarme: dom 25\/10 01:30 \(hora de Inverno\)$/m)
+  assert.match(p.texto, /^Se não houver notícias até dom 25\/10 01:30 \(hora de Inverno\), liga ao Ivo/m)
 })
 
 test('GPX 1.1 com um <rte> e os pontos da alternativa, o nome do barco e a data; nomes escapados para XML', () => {
@@ -134,9 +169,29 @@ test('GPX 1.1 com um <rte> e os pontos da alternativa, o nome do barco e a data;
   assert.throws(() => xmlBemFormado('<a><b></a>'))
 })
 
+test('GPX: os caracteres que o XML 1.0 não aceita (controlo, U+FFFE/U+FFFF, metades de surrogate) tiram-se; o tab e a mudança de linha ficam', () => {
+  const x = gpx.gpxRota({ titulo: 'A\u0001B\u001fC\tD', descricao: 'x\u0000y\nz', autor: 'Ze\u0008', pontos: [{ lat: 1, lon: 2, nome: 'P' + String.fromCharCode(0xfffe) + 'Q\uD800R\u{1F600}' }], quando: AGORA })
+  assert.ok(xmlBemFormado(x))
+  assert.doesNotMatch(x, /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u{FFFE}\u{FFFF}]|\uD800/u)
+  assert.match(x, /<metadata><name>ABC\tD<\/name><desc>xy\nz<\/desc><author><name>Ze<\/name><\/author>/)
+  assert.ok(x.includes('<name>PQR\u{1F600}</name>'))
+  assert.equal(gpx.esc('a\u0007<b>'), 'a&lt;b&gt;')
+})
+
+test('slug: um só ajudante (sem acentos, minúsculas, hífenes) para os ids dos destinos, das alternativas e o nome do GPX', () => {
+  const { slug } = require('../lib/slug')
+  assert.equal(slug('Algés (CNA)'), 'alges-cna')
+  assert.equal(slug('Canal da Berlenga'), 'canal-da-berlenga')
+  assert.equal(slug('  --Nazaré!! '), 'nazare')
+  assert.equal(slug(null), '')
+  assert.equal(slug('a'.repeat(50), 30), 'a'.repeat(30))
+  assert.equal(slug('a'.repeat(50)).length, 50)
+})
+
 test('configuração do plugin da rota: o barco e os telefones, com os valores por defeito', () => {
   const p = criar({ getDataDirPath: () => '.', setPluginStatus () {}, error () {} })
   const s = p.schema.properties
   assert.deepEqual(Object.fromEntries(Object.entries(s.barco.properties).map(([k, v]) => [k, v.default])), BARCO)
   assert.deepEqual(Object.fromEntries(Object.entries(s.telefones.properties).map(([k, v]) => [k, v.default])), TELEFONES)
+  assert.equal(s.telefones.properties.emergencia.default, plano.EMERGENCIA_PADRAO)
 })

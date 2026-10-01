@@ -3,10 +3,13 @@
 // pontos da alternativa e os nomes, mais o nome do barco e a data nos metadados.
 //
 // gpxRota({ titulo, descricao?, nomeRota?, pontos: [{ lat, lon, nome? }], autor?, quando (ms) }) → texto XML
-// Os pontos sem nome chamam-se WP<i> (como na rota ativada no SignalK). Os textos escapam-se para XML.
+// Os pontos sem nome chamam-se WP<i> (como na rota ativada no SignalK). Os textos escapam-se para XML
+// e perdem os caracteres que o XML 1.0 não aceita (os de controlo menos o tab, o LF e o CR, U+FFFE,
+// U+FFFF e as metades de surrogate soltas): um nome com um deles tornava o GPX inválido.
 
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ESC[c])
+const FORA_DO_XML = /[^\t\n\r\x20-\u{D7FF}\u{E000}-\u{FFFD}\u{10000}-\u{10FFFF}]/gu
+const esc = (s) => String(s ?? '').replace(FORA_DO_XML, '').replace(/[&<>"']/g, c => ESC[c])
 const coord = (x) => (Number.isFinite(x) ? String(Math.round(x * 1e6) / 1e6) : null)
 
 function gpxRota ({ titulo, descricao, nomeRota, pontos = [], autor, quando }) {

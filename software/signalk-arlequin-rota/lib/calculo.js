@@ -113,7 +113,7 @@ function simular3 (ctx, alt, partida, prop) {
 const simularProvavel = (ctx, cand) => simular(ctx, cand.geometria, cand.partida, cand.propulsao, 'provavel')
 
 // "Canal da Berlenga" → "canal-da-berlenga" (sem acentos, minúsculas, hífenes).
-const slug = (texto) => String(texto).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+const { slug } = require('./slug')
 
 // O id de uma alternativa: "20260930T0530-5mn-vela", "…-5mn-canal-da-berlenga-motor", "…-direto-vela"
 // (a rota direta não tem afastamento: nunca "nullmn"; o nome do canal, para os ids não se repetirem
@@ -485,7 +485,8 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   try {
     const pontosMapa = [...alternativas.flatMap(a => [...a.rota, ...a.rasto.map(p => [p.lat, p.lon])]), ...desistencia.map(p => [p.lat, p.lon])]
     if (!pontosMapa.length) pontosMapa.push([pos.lat, pos.lon], destino.largo)
-    mapaResultado = mapa.montarMapa(costa, { pontos: pontosMapa })
+    // o registo também para quando o mini-mapa não cabe ou não consegue proteger um ponto da rota
+    mapaResultado = mapa.montarMapa(costa, { pontos: pontosMapa }, { log: (msg) => log?.(msg) })
   } catch (e) { log?.('mini-mapa', e) }
 
   const versoes = deps.versoes || {}

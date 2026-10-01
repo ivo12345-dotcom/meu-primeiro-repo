@@ -10,15 +10,20 @@
 //   GET  /destinos, POST /destinos { nome, lat, lon | posicaoAtual: true, conhecido, abrigo? (false) }
 //   POST /ativar { id, alternativa } (alternativa: índice 0–2 ou o id) → grava e ativa a rota
 //        → { ok, rota, href, via, alternativa, nota } (nota: a do canal, se a rota passar por um)
-//   POST /plano-telegram { id, alternativa } → 202 { pedido } (404 cálculo ou alternativa
-//        desconhecidos; 409 se o cálculo não estiver pronto; 503 sem eventos no servidor)
+//   POST /plano-telegram { id, alternativa } → 202 { pedido, avisos: [texto] } (404 cálculo ou
+//        alternativa desconhecidos; 409 se o cálculo não estiver pronto; 422 sem a chegada mais
+//        tarde (não há hora de alarme); 503 sem eventos no servidor)
 //   GET  /plano-telegram/:pedido → { estado: 'a enviar' | 'enviado' | 'falhou', entregues: [nome],
-//        falhas: [{ nome, erro }], motivo? }
+//        falhas: [{ nome, erro }], avisos: [texto], motivo? }
+//   avisos: o que o Ivo deve saber mas não impede o envio (sem o telefone dele na configuração, o
+//   plano diz só "liga ao Ivo").
 //
 // O plano (desenho 3b-1): monta o texto e o GPX (lib/plano.js) e emite no servidor o evento
 // 'arlequin:plano' { pedido, texto, gpx, nomeFicheiro }; o plugin porto (que tem o bot do Telegram)
 // envia-o e responde com 'arlequin:plano-enviado' { pedido, entregues, falhas }. Sem resposta em
-// 30 s, "falhou": o plugin porto não respondeu.
+// 30 s, "falhou": o plugin porto não respondeu. Um stop() (o SignalK reinicia o plugin sempre que se
+// grava a configuração) com planos "a enviar" deixa-os "falhou": a resposta do porto já não chegaria.
+// A lista dos planos guarda os 20 mais recentes, mas nunca tira um que ainda está "a enviar".
 //
 // O destino do /calcular: o id de um destino da lista (dados/destinos.json ou os do Ivo),
 // 'rota-ativa' (o fim da rota ativa no SignalK/OpenCPN), ou { lat, lon, nome }.
@@ -35,12 +40,16 @@ const base = require('./lib/base')
 const calculo = require('./lib/calculo')
 const decisao = require('./lib/decisao')
 const plano = require('./lib/plano')
+const { slug } = require('./lib/slug')
 const modelosJs = require('signalk-arlequin-ia/lib/modelos')
 
 const MAX_TRABALHOS = 20
 const MAX_PLANOS = 20
+const LIMITE_PORTO_MS = 30000 // sem resposta do plugin porto em 30 s: "falhou"
 const MOTIVO_PORTO = 'o plugin porto não respondeu (está ligado? tem o token?)'
 const SEM_DESTINATARIOS = 'não há destinatários: junta os chats em "Chats autorizados" ou em "Contactos do plano" no plugin porto'
+const MOTIVO_REINICIO = 'o plugin da rota foi reiniciado durante o envio: confirma com os contactos se receberam'
+const AVISO_SEM_TELEFONE = 'o teu telefone não está na configuração: o plano diz só "liga ao Ivo"'
 const eObjeto = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
 
 function escreverAtomico (f, texto) {
@@ -65,13 +74,16 @@ function corrigirAproximacao (d) {
 // Os valores por defeito de um objeto do schema ({ chave: default }).
 const padroes = (esquema) => Object.fromEntries(Object.entries(esquema.properties).map(([k, x]) => [k, x.default]))
 
-const slug = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'destino'
+// o id de um destino do Ivo: "meu-<slug>"
+const slugDestino = (nome) => slug(nome, 30) || 'destino'
 
 module.exports = function (app, deps = {}) {
   const fetchFn = deps.fetch || ((...a) => fetch(...a))
   const relogio = deps.relogio || (() => Date.now())
   const esperar = deps.esperar || ((ms) => new Promise(resolve => setTimeout(resolve, ms)))
-  const limitePortoMs = deps.limitePortoMs ?? 30000
+  // o relógio do limite do porto (injetável nos testes)
+  const agendar = deps.agendar || ((fn, ms) => { const t = setTimeout(fn, ms); t.unref?.(); return t })
+  const cancelar = deps.cancelar || ((t) => clearTimeout(t))
   const plugin = {
     id: 'signalk-arlequin-rota',
     name: 'Arlequin · Melhor rota',
@@ -121,7 +133,7 @@ module.exports = function (app, deps = {}) {
         title: 'Telefones do plano (hora de alarme)',
         properties: {
           ivo: { type: 'string', title: 'Telefone do Ivo', default: '' },
-          emergencia: { type: 'string', title: 'Emergência', default: '+351 214 401 919 (MRCC Lisboa, 24 h) ou 112' }
+          emergencia: { type: 'string', title: 'Emergência', default: plano.EMERGENCIA_PADRAO }
         }
       }
     }
@@ -135,22 +147,27 @@ module.exports = function (app, deps = {}) {
   let erroArranque = null
   let aCorrer = null // id do cálculo em curso
   const trabalhos = new Map()
-  const planos = new Map() // pedido → { estado, entregues, falhas, motivo?, criado, temporizador }
+  const planos = new Map() // pedido → { estado, entregues, falhas, avisos, motivo?, criado, temporizador }
 
   // A resposta do plugin porto a um plano: "enviado" com pelo menos uma entrega; sem nenhuma,
   // "falhou" com as falhas (ou sem destinatários). Uma resposta depois do limite já não conta.
   function aoPlanoEnviado (m) {
     const p = eObjeto(m) ? planos.get(m.pedido) : null
     if (!p || p.estado !== 'a enviar') return
-    clearTimeout(p.temporizador)
+    cancelar(p.temporizador)
     p.entregues = Array.isArray(m.entregues) ? m.entregues.map(String) : []
     p.falhas = Array.isArray(m.falhas) ? m.falhas.filter(eObjeto).map(f => ({ nome: String(f.nome ?? ''), erro: String(f.erro ?? '') })) : []
     p.estado = p.entregues.length ? 'enviado' : 'falhou'
     if (!p.entregues.length) p.motivo = p.falhas.length ? p.falhas.map(f => `${f.nome}: ${f.erro}`).join('; ') : SEM_DESTINATARIOS
   }
+  // Os mais antigos saem primeiro, mas nunca um "a enviar" (o ecrã ainda o está a seguir).
   function guardarPlano (pedido, p) {
     planos.set(pedido, p)
-    while (planos.size > MAX_PLANOS) planos.delete(planos.keys().next().value)
+    while (planos.size > MAX_PLANOS) {
+      const velho = [...planos].find(([, x]) => x.estado !== 'a enviar')
+      if (!velho) break
+      planos.delete(velho[0])
+    }
   }
 
   const v = (p) => app.getSelfPath?.(p)?.value
@@ -338,7 +355,10 @@ module.exports = function (app, deps = {}) {
     // fica no mapa.
     o = null
     app.removeListener?.('arlequin:plano-enviado', aoPlanoEnviado)
-    for (const p of planos.values()) clearTimeout(p.temporizador)
+    for (const p of planos.values()) {
+      cancelar(p.temporizador)
+      if (p.estado === 'a enviar') { p.estado = 'falhou'; p.motivo = MOTIVO_REINICIO }
+    }
   }
 
   plugin.registerWithRouter = function (router) {
@@ -401,8 +421,8 @@ module.exports = function (app, deps = {}) {
       if (costaBase.emTerra(p)) return res.status(400).json({ ok: false, erro: 'essa posição fica em terra' })
       const meus = meusDestinos()
       const todos = costaAtual().destinos
-      let id = `meu-${slug(nome)}`
-      for (let n = 2; todos.some(d => d.id === id); n++) id = `meu-${slug(nome)}-${n}`
+      let id = `meu-${slugDestino(nome)}`
+      for (let n = 2; todos.some(d => d.id === id); n++) id = `meu-${slugDestino(nome)}-${n}`
       const lat = Math.round(p.lat * 1e5) / 1e5; const lon = Math.round(p.lon * 1e5) / 1e5
       const d = { id, nome, abrigo: b.abrigo === true, conhecido: b.conhecido, largo: [lat, lon], ...aproximacaoAvulsa(lat, lon), notas: 'acrescentado no ecrã', confirmado: false, criado: new Date(relogio()).toISOString() }
       try { escreverAtomico(ficheiroMeus(), JSON.stringify([...meus, d], null, 1)) } catch (e) { return res.status(500).json({ ok: false, erro: `não gravei o destino: ${e.message}` }) }
@@ -437,30 +457,34 @@ module.exports = function (app, deps = {}) {
       let p
       try {
         p = plano.montarPlano({ resultado: t.resultado, indice, barco: o.barco, telefones: o.telefones, agora: relogio() })
-      } catch (e) { return res.status(500).json({ ok: false, erro: `não montei o plano: ${e.message}` }) }
+      } catch (e) {
+        // 422: falta o que o plano precisa (a hora de alarme), com o motivo; 500: um erro de programação
+        if (e.status === 422) return res.status(422).json({ ok: false, erro: e.message })
+        return res.status(500).json({ ok: false, erro: `não montei o plano: ${e.message}` })
+      }
       const pedido = crypto.randomUUID()
-      const estado = { estado: 'a enviar', entregues: [], falhas: [], criado: new Date(relogio()).toISOString() }
-      estado.temporizador = setTimeout(() => {
+      const avisos = typeof o.telefones.ivo === 'string' && o.telefones.ivo.trim() ? [] : [AVISO_SEM_TELEFONE]
+      const estado = { estado: 'a enviar', entregues: [], falhas: [], avisos, criado: new Date(relogio()).toISOString() }
+      estado.temporizador = agendar(() => {
         if (estado.estado === 'a enviar') { estado.estado = 'falhou'; estado.motivo = MOTIVO_PORTO }
-      }, limitePortoMs)
-      estado.temporizador.unref?.()
+      }, LIMITE_PORTO_MS)
       guardarPlano(pedido, estado)
       try {
         app.emit('arlequin:plano', { pedido, texto: p.texto, gpx: p.gpx, nomeFicheiro: p.nomeFicheiro })
       } catch (e) {
         // um ouvinte que lança não derruba o pedido: fica "falhou" com o motivo
-        clearTimeout(estado.temporizador)
+        cancelar(estado.temporizador)
         estado.estado = 'falhou'
         estado.motivo = `não foi possível enviar: ${e.message}`
       }
-      res.status(202).json({ pedido })
+      res.status(202).json({ pedido, avisos })
     })
 
     router.get('/plano-telegram/:pedido', (req, res) => {
       if (!ligado()) return parado(res)
       const p = planos.get(req.params.pedido)
       if (!p) return res.status(404).json({ ok: false, erro: 'pedido desconhecido' })
-      const out = { estado: p.estado, entregues: p.entregues, falhas: p.falhas, criado: p.criado }
+      const out = { estado: p.estado, entregues: p.entregues, falhas: p.falhas, avisos: p.avisos, criado: p.criado }
       if (p.motivo) out.motivo = p.motivo
       res.json(out)
     })
