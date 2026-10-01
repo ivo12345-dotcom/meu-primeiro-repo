@@ -342,3 +342,110 @@ test('M3: stop() com um cálculo a correr — o cálculo acaba bem (as opções 
   assert.equal(x.estado, 'pronto', x.erro)
   assert.ok(!/Cannot read|null/.test(JSON.stringify(x.erro ?? '')))
 })
+
+// ---------- plano pelo Telegram (3b-1) ----------
+const { EventEmitter } = require('node:events')
+const MOTIVO_PORTO = 'o plugin porto não respondeu (está ligado? tem o token?)'
+const CASCAIS = c.P(costa.destinos.find(d => d.id === 'cascais').aproximacao.at(-1))
+
+// o app falso com eventos (o servidor SignalK é um EventEmitter), parado em Cascais (o cálculo até Algés é curto)
+function appComEventos () {
+  const app = Object.assign(new EventEmitter(), appFalso())
+  app.self['navigation.position'] = { latitude: CASCAIS.lat, longitude: CASCAIS.lon }
+  return app
+}
+async function calculado (r) {
+  const a = await chamar(r.post['/calcular'], { body: { destino: 'alges', tripulacao: 'so' } })
+  const x = await esperarResultado(r, a.id)
+  assert.equal(x.estado, 'pronto', x.erro)
+  return a.id
+}
+
+test('POST /plano-telegram: 404 e 409; 202 { pedido } e o evento arlequin:plano com o texto (barco da configuração) e o GPX; "enviado" com a resposta do porto', async () => {
+  const app = appComEventos()
+  const { p, r } = plugin(app)
+  p.start({ pasta: path.join(app.dir, 'dados'), barco: { corCasco: 'branco' }, telefones: { ivo: '+351 912 345 678' } })
+  const eventos = []
+  app.on('arlequin:plano', (e) => eventos.push(e))
+  const a = await chamar(r.post['/calcular'], { body: { destino: 'alges', tripulacao: 'so' } })
+  assert.equal((await chamar(r.post['/plano-telegram'], { body: { id: a.id, alternativa: 0 } })).code, 409)
+  await esperarResultado(r, a.id)
+  assert.equal((await chamar(r.post['/plano-telegram'], { body: { id: 'nao-existe', alternativa: 0 } })).code, 404)
+  const x404 = await chamar(r.post['/plano-telegram'], { body: { id: a.id, alternativa: 7 } })
+  assert.equal(x404.code, 404)
+  assert.equal(x404.erro, 'alternativa desconhecida')
+  assert.equal(eventos.length, 0)
+
+  const x = await chamar(r.post['/plano-telegram'], { body: { id: a.id, alternativa: 0 } })
+  assert.equal(x.code, 202)
+  assert.match(x.pedido, /^[0-9a-f-]{36}$/)
+  assert.equal(eventos.length, 1)
+  const e = eventos[0]
+  assert.deepEqual(Object.keys(e), ['pedido', 'texto', 'gpx', 'nomeFicheiro'])
+  assert.equal(e.pedido, x.pedido)
+  assert.match(e.texto, /^Barco: ARLEQUIN, Jeanneau Melody 34, casco branco$/m)
+  assert.match(e.texto, /liga ao Ivo \(\+351 912 345 678\)/)
+  assert.match(e.texto, /^Destino: Algés \(CNA\)$/m)
+  assert.match(e.texto, /^Rota: direta \(salto curto\), /m)
+  assert.match(e.gpx, /^<\?xml version="1.0" encoding="UTF-8"\?>\n<gpx version="1.1"/)
+  assert.match(e.nomeFicheiro, /^arlequin-cascais-alges-cna-\d{8}-\d{4}\.gpx$/)
+  // pela alternativa também se aceita o id (como no /ativar)
+  const alt1 = (await chamar(r.get['/resultado/:id'], { params: { id: a.id } })).resultado.alternativas[1]
+  assert.equal((await chamar(r.post['/plano-telegram'], { body: { id: a.id, alternativa: alt1.id } })).code, 202)
+
+  const antes = await chamar(r.get['/plano-telegram/:pedido'], { params: { pedido: x.pedido } })
+  assert.deepEqual({ estado: antes.estado, entregues: antes.entregues, falhas: antes.falhas }, { estado: 'a enviar', entregues: [], falhas: [] })
+  app.emit('arlequin:plano-enviado', { pedido: x.pedido, entregues: ['chat 111', 'Mãe'], falhas: [{ nome: 'Tio', erro: 'Telegram sendMessage: Forbidden: bot was blocked by the user' }] })
+  const depois = await chamar(r.get['/plano-telegram/:pedido'], { params: { pedido: x.pedido } })
+  assert.equal(depois.estado, 'enviado')
+  assert.deepEqual(depois.entregues, ['chat 111', 'Mãe'])
+  assert.deepEqual(depois.falhas, [{ nome: 'Tio', erro: 'Telegram sendMessage: Forbidden: bot was blocked by the user' }])
+  assert.equal((await chamar(r.get['/plano-telegram/:pedido'], { params: { pedido: 'nao-existe' } })).code, 404)
+  p.stop()
+  assert.equal(app.listenerCount('arlequin:plano-enviado'), 0, 'o stop() tira o ouvinte')
+})
+
+test('plano "falhou": o porto responde sem nenhuma entrega; e sem resposta em 30 s, com o motivo (uma resposta tardia já não muda nada)', async () => {
+  const app = appComEventos()
+  const { p, r } = plugin(app, { limitePortoMs: 40 })
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  const id = await calculado(r)
+  app.on('arlequin:plano', (e) => app.emit('arlequin:plano-enviado', { pedido: e.pedido, entregues: [], falhas: [{ nome: 'Telegram', erro: 'o plugin porto não tem o token do bot' }] }))
+  const a = await chamar(r.post['/plano-telegram'], { body: { id, alternativa: 0 } })
+  const ra = await chamar(r.get['/plano-telegram/:pedido'], { params: { pedido: a.pedido } })
+  assert.equal(ra.estado, 'falhou')
+  assert.equal(ra.motivo, 'Telegram: o plugin porto não tem o token do bot')
+  app.removeAllListeners('arlequin:plano')
+  // sem resposta do porto
+  const b = await chamar(r.post['/plano-telegram'], { body: { id, alternativa: 0 } })
+  assert.equal((await chamar(r.get['/plano-telegram/:pedido'], { params: { pedido: b.pedido } })).estado, 'a enviar')
+  await new Promise(resolve => setTimeout(resolve, 80))
+  const rb = await chamar(r.get['/plano-telegram/:pedido'], { params: { pedido: b.pedido } })
+  assert.equal(rb.estado, 'falhou')
+  assert.equal(rb.motivo, MOTIVO_PORTO)
+  app.emit('arlequin:plano-enviado', { pedido: b.pedido, entregues: ['chat 111'], falhas: [] })
+  assert.equal((await chamar(r.get['/plano-telegram/:pedido'], { params: { pedido: b.pedido } })).estado, 'falhou')
+  // o porto sem destinatários
+  app.on('arlequin:plano', (e) => app.emit('arlequin:plano-enviado', { pedido: e.pedido, entregues: [], falhas: [] }))
+  const c0 = await chamar(r.post['/plano-telegram'], { body: { id, alternativa: 0 } })
+  assert.match((await chamar(r.get['/plano-telegram/:pedido'], { params: { pedido: c0.pedido } })).motivo, /não há destinatários/)
+  p.stop()
+  assert.deepEqual(app.erros, [])
+})
+
+test('POST /plano-telegram com o plugin parado: 503; sem eventos no servidor: 503 com a explicação', async () => {
+  const app = appComEventos()
+  const { p, r } = plugin(app)
+  assert.equal((await chamar(r.post['/plano-telegram'], { body: { id: 'x', alternativa: 0 } })).code, 503)
+  assert.equal((await chamar(r.get['/plano-telegram/:pedido'], { params: { pedido: 'x' } })).code, 503)
+  const semEventos = appFalso()
+  semEventos.self['navigation.position'] = { latitude: CASCAIS.lat, longitude: CASCAIS.lon }
+  const q = plugin(semEventos)
+  q.p.start({ pasta: path.join(semEventos.dir, 'dados') })
+  const id = await calculado(q.r)
+  const x = await chamar(q.r.post['/plano-telegram'], { body: { id, alternativa: 0 } })
+  assert.equal(x.code, 503)
+  assert.match(x.erro, /não dá para enviar o plano/)
+  q.p.stop()
+  p.stop()
+})
