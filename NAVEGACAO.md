@@ -1276,6 +1276,10 @@ parte (3a) é só o cálculo; o ecrã, o mapa e os avisos durante a viagem (3b) 
   a chegada de noite só contam com "só eu"). Os limites contam no pior dos **3 cenários** (o
   otimista, mais lento, pode apanhar uma frente que os outros não apanham), e o vento do pior caso
   nunca fica abaixo do previsto, mesmo que a AI tenha aprendido que a previsão exagera.
+- **Destinos acrescentados por ti** (`POST /destinos`: posição atual ou coordenadas, com nome):
+  servem de destino e de partida (por exemplo, fundeado lá); só contam como **abrigo** para os
+  pontos de desistência se os marcares assim (por omissão não). Os gravados antes de 01/10 são
+  corrigidos sozinhos ao ler.
 - As 3 melhores: primeiro as recomendadas, depois por custo.
 - Perto da costa (alternativa a ≤ 3 MN), o mínimo à terra é o próprio afastamento (3 MN), não os
   5 MN de omissão das outras alternativas.

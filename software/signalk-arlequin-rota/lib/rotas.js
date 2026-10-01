@@ -134,7 +134,8 @@ function ventoDeTerra (costa, linha, s, twd, tolerancia = 60) {
 const pernaDe = (i, entrada) => i > entrada ? 'porto' : 'aproximacao'
 const entradaDe = (d) => Number.isInteger(d.entrada) ? d.entrada : d.aproximacao.length - 1
 
-// Pontos da saída: o cais primeiro, o largo por último.
+// Pontos da saída: o cais primeiro, o largo por último. Um ponto repetido (o destino avulso, com 2
+// pontos iguais) junta-se ao anterior, que fica com o nome da partida.
 function pontosSaida (porto) {
   const ap = porto.aproximacao.map(c.P)
   const entrada = entradaDe(porto)
@@ -143,6 +144,8 @@ function pontosSaida (porto) {
     const p = { ...ap[i], perna: i === ap.length - 1 ? null : pernaDe(i + 1, entrada), costaLivre: true }
     if (i === ap.length - 1) p.nome = `${porto.nome} (partida)`
     if (i === 0) p.nome = `Largo de ${porto.nome}`
+    const antes = out.at(-1)
+    if (antes && antes.lat === p.lat && antes.lon === p.lon) continue
     out.push(p)
   }
   return out

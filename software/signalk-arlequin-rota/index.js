@@ -7,7 +7,7 @@
 //   POST /calcular { destino, tripulacao: 'so' | 'acompanhado', sairAgora } → 202 { id }
 //        (409 se já houver um a calcular; 503 com o plugin parado)
 //   GET  /resultado/:id → { estado: 'a calcular' | 'pronto' | 'erro', progresso, texto, resultado?, erro? }
-//   GET  /destinos, POST /destinos { nome, lat, lon | posicaoAtual: true, conhecido, abrigo }
+//   GET  /destinos, POST /destinos { nome, lat, lon | posicaoAtual: true, conhecido, abrigo? (false) }
 //   POST /ativar { id, alternativa } (alternativa: índice 0–2 ou o id) → grava e ativa a rota
 //        → { ok, rota, href, via, alternativa, nota } (nota: a do canal, se a rota passar por um)
 //
@@ -38,6 +38,15 @@ function escreverAtomico (f, texto) {
     fs.fsyncSync(fd)
   } finally { fs.closeSync(fd) }
   fs.renameSync(tmp, f)
+}
+
+// A aproximação de um destino avulso (um ponto): 2 pontos iguais e entrada 1, como o costa.js exige
+// (o lib/rotas.js junta os pontos repetidos). Os destinos com uma aproximação válida ficam como estão.
+const aproximacaoAvulsa = (lat, lon) => ({ aproximacao: [[lat, lon], [lat, lon]], entrada: 1 })
+function corrigirAproximacao (d) {
+  const ap = d.aproximacao
+  const valida = Array.isArray(ap) && ap.length >= 2 && Number.isInteger(d.entrada) && d.entrada >= 1 && d.entrada <= ap.length - 1
+  return valida ? d : { ...d, ...aproximacaoAvulsa(d.largo[0], d.largo[1]) }
 }
 
 const slug = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'destino'
@@ -93,10 +102,13 @@ module.exports = function (app, deps = {}) {
   const v = (p) => app.getSelfPath?.(p)?.value
   const ficheiroMeus = () => path.join(dirPlugin, 'destinos.json')
 
+  // Os destinos do Ivo. Os gravados antes da revisão final (aproximação de 1 ponto, entrada 0) não
+  // passavam no costa.verificarAproximacao ("entrada mal definida"): corrigem-se ao ler, com a
+  // aproximação do destino avulso (2 pontos iguais no largo, entrada 1).
   function meusDestinos () {
     try {
       const l = JSON.parse(fs.readFileSync(ficheiroMeus(), 'utf8'))
-      return Array.isArray(l) ? l.filter(d => eObjeto(d) && typeof d.id === 'string' && Array.isArray(d.largo)) : []
+      return Array.isArray(l) ? l.filter(d => eObjeto(d) && typeof d.id === 'string' && Array.isArray(d.largo)).map(corrigirAproximacao) : []
     } catch { return [] }
   }
   // A costa com os destinos da lista mais os do Ivo (estes marcados `meu`).
@@ -324,14 +336,15 @@ module.exports = function (app, deps = {}) {
         if (!p) return res.status(400).json({ ok: false, erro: 'sem GPS: não sei a posição atual' })
       } else if (Number.isFinite(b.lat) && Number.isFinite(b.lon) && Math.abs(b.lat) <= 90 && Math.abs(b.lon) <= 180) p = { lat: b.lat, lon: b.lon }
       else return res.status(400).json({ ok: false, erro: 'faltam as coordenadas (lat, lon) ou posicaoAtual: true' })
-      if (typeof b.conhecido !== 'boolean' || typeof b.abrigo !== 'boolean') return res.status(400).json({ ok: false, erro: 'conhecido e abrigo têm de ser true ou false' })
+      // abrigo: só se o Ivo o marcar (por omissão false — um "meu" não gasta os candidatos de abrigo da desistência)
+      if (typeof b.conhecido !== 'boolean' || (b.abrigo != null && typeof b.abrigo !== 'boolean')) return res.status(400).json({ ok: false, erro: 'conhecido e abrigo têm de ser true ou false' })
       if (costaBase.emTerra(p)) return res.status(400).json({ ok: false, erro: 'essa posição fica em terra' })
       const meus = meusDestinos()
       const todos = costaAtual().destinos
       let id = `meu-${slug(nome)}`
       for (let n = 2; todos.some(d => d.id === id); n++) id = `meu-${slug(nome)}-${n}`
       const lat = Math.round(p.lat * 1e5) / 1e5; const lon = Math.round(p.lon * 1e5) / 1e5
-      const d = { id, nome, abrigo: b.abrigo, conhecido: b.conhecido, largo: [lat, lon], aproximacao: [[lat, lon]], entrada: 0, notas: 'acrescentado no ecrã', confirmado: false, criado: new Date(relogio()).toISOString() }
+      const d = { id, nome, abrigo: b.abrigo === true, conhecido: b.conhecido, largo: [lat, lon], ...aproximacaoAvulsa(lat, lon), notas: 'acrescentado no ecrã', confirmado: false, criado: new Date(relogio()).toISOString() }
       try { escreverAtomico(ficheiroMeus(), JSON.stringify([...meus, d], null, 1)) } catch (e) { return res.status(500).json({ ok: false, erro: `não gravei o destino: ${e.message}` }) }
       res.status(201).json({ ok: true, destino: { ...d, meu: true } })
     })

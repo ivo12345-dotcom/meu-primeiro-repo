@@ -173,17 +173,48 @@ test('GET/POST /destinos: os da lista e os do Ivo (gravados na pasta do plugin),
   assert.equal((await chamar(r.post['/destinos'], { body: { nome: 'Fundeadouro', lat: 38.43, lon: -9.1 } })).code, 400)
   const a = await chamar(r.post['/destinos'], { body: { nome: 'Fundeadouro da Arrábida', lat: 38.4512345, lon: -8.95, conhecido: true, abrigo: true } })
   assert.equal(a.code, 201)
-  assert.deepEqual({ id: a.destino.id, largo: a.destino.largo, aproximacao: a.destino.aproximacao, meu: a.destino.meu }, { id: 'meu-fundeadouro-da-arrabida', largo: [38.45123, -8.95], aproximacao: [[38.45123, -8.95]], meu: true })
+  // uma aproximação válida (2 pontos iguais, entrada 1: o costa.js exige entrada ≥ 1), como o destino avulso da rota ativa
+  assert.deepEqual({ id: a.destino.id, largo: a.destino.largo, aproximacao: a.destino.aproximacao, entrada: a.destino.entrada, meu: a.destino.meu }, { id: 'meu-fundeadouro-da-arrabida', largo: [38.45123, -8.95], aproximacao: [[38.45123, -8.95], [38.45123, -8.95]], entrada: 1, meu: true })
+  assert.deepEqual(costa.verificarAproximacao(a.destino), [])
   const b = await chamar(r.post['/destinos'], { body: { nome: 'Fundeadouro da Arrábida', posicaoAtual: true, conhecido: false, abrigo: false } })
   assert.equal(b.destino.id, 'meu-fundeadouro-da-arrabida-2')
   const l1 = await chamar(r.get['/destinos'])
   assert.equal(l1.destinos.length, 17)
   const gravado = JSON.parse(fs.readFileSync(path.join(app.dir, 'plugin', 'destinos.json'), 'utf8'))
   assert.equal(gravado.length, 2)
-  // um destino do Ivo serve para calcular
+  // um destino do Ivo serve para calcular: há alternativas, nenhuma "entrada mal definida"
   const x = await esperarResultado(r, (await chamar(r.post['/calcular'], { body: { destino: 'meu-fundeadouro-da-arrabida', tripulacao: 'acompanhado', sairAgora: true } })).id)
   assert.equal(x.estado, 'pronto', x.erro)
   assert.equal(x.resultado.destino.nome, 'Fundeadouro da Arrábida')
+  assert.ok(x.resultado.alternativas.length > 0, JSON.stringify(x.resultado.veredicto))
+  assert.ok(!JSON.stringify(x.resultado).includes('entrada mal definida'), JSON.stringify(x.resultado.veredicto))
+  // e a partir dele (o barco fundeado lá): parte do destino do Ivo, com alternativas
+  app.self['navigation.position'] = { latitude: 38.45123, longitude: -8.95 }
+  const y = await esperarResultado(r, (await chamar(r.post['/calcular'], { body: { destino: 'alges', tripulacao: 'acompanhado', sairAgora: true } })).id)
+  assert.equal(y.estado, 'pronto', y.erro)
+  assert.equal(y.resultado.partida.id, 'meu-fundeadouro-da-arrabida')
+  assert.ok(y.resultado.alternativas.length > 0, JSON.stringify(y.resultado.veredicto))
+  assert.ok(!JSON.stringify(y.resultado).includes('entrada mal definida'), JSON.stringify(y.resultado.veredicto))
+  // a rota não repete o ponto de partida (os 2 pontos iguais da aproximação juntam-se)
+  const rota = y.resultado.alternativas[0].rota
+  for (let i = 1; i < rota.length; i++) assert.notDeepEqual(rota[i], rota[i - 1], `ponto ${i} repetido`)
+})
+
+test('I3: "abrigo" só se o Ivo o marcar (por omissão false); os destinos já gravados com a aproximação de 1 ponto corrigem-se ao ler', async () => {
+  const app = appFalso()
+  const { p, r } = plugin(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  const a = await chamar(r.post['/destinos'], { body: { nome: 'Fundeadouro', lat: 38.4512, lon: -8.95, conhecido: false } })
+  assert.equal(a.code, 201, a.erro)
+  assert.equal(a.destino.abrigo, false)
+  assert.equal((await chamar(r.post['/destinos'], { body: { nome: 'X', lat: 38.4512, lon: -8.95, conhecido: false, abrigo: 'sim' } })).code, 400)
+  // um ficheiro antigo (gravado antes da correção): aproximacao de 1 ponto e entrada 0
+  const antigo = { id: 'meu-velho', nome: 'Velho', abrigo: true, conhecido: true, largo: [38.45, -8.96], aproximacao: [[38.45, -8.96]], entrada: 0, notas: 'acrescentado no ecrã', confirmado: false }
+  fs.writeFileSync(path.join(app.dir, 'plugin', 'destinos.json'), JSON.stringify([antigo]))
+  const l = await chamar(r.get['/destinos'])
+  const v = l.destinos.find(d => d.id === 'meu-velho')
+  assert.deepEqual({ aproximacao: v.aproximacao, entrada: v.entrada, abrigo: v.abrigo }, { aproximacao: [[38.45, -8.96], [38.45, -8.96]], entrada: 1, abrigo: true })
+  assert.deepEqual(costa.verificarAproximacao(v), [])
 })
 
 test('POST /ativar: grava a rota (API de recursos v2) e ativa-a (API de rumo v2); sem a API interna, por HTTP', async () => {

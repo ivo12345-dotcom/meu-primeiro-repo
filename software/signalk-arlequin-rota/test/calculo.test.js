@@ -453,3 +453,10 @@ test('M4: em "Sair agora" o resumo da desistência (calculado para a 1.ª altern
   assert.equal(texto(r.alternativas[0]), `Pontos de desistência revistos: ${r.desistenciaResumo}`)
   for (const a of r.alternativas.slice(1)) assert.equal(texto(a), 'Pontos de desistência revistos (calculados para a 1.ª alternativa)', a.id)
 })
+
+test('I3 (regressão): um destino { lat, lon, nome } (o /calcular por coordenadas, porConfirmar) dá alternativas, nenhuma "entrada mal definida"', async () => {
+  const r = await calcular(entrada({ destino: { lat: 38.4512, lon: -8.95, nome: 'Fundeadouro' }, tripulacao: 'acompanhado', sairAgora: true }), deps())
+  assert.equal(r.erro, undefined, r.erro)
+  assert.ok(r.alternativas.length > 0, JSON.stringify(r.veredicto))
+  assert.ok(!JSON.stringify(r).includes('entrada mal definida'), JSON.stringify(r.veredicto))
+})

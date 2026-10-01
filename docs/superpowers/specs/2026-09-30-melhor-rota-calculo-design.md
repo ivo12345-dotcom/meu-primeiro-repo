@@ -178,7 +178,7 @@ Para cada afastamento d ∈ {3, 5, 8} MN:
 |---|---|
 | `POST /calcular` | pedido `{ destino, tripulacao: "so" \| "acompanhado", sairAgora: bool }` → `202 { id }`. O cálculo corre em segundo plano; um de cada vez (409 se houver outro a correr) |
 | `GET /resultado/:id` | `{ estado: "a calcular" \| "pronto" \| "erro", progresso, resultado? , erro? }` |
-| `GET /destinos`, `POST /destinos` | ler e acrescentar destinos: posição atual ou coordenadas, com nome; `conhecido` e `abrigo` escolhidos pelo Ivo |
+| `GET /destinos`, `POST /destinos` | ler e acrescentar destinos: posição atual ou coordenadas, com nome; `conhecido` escolhido pelo Ivo, `abrigo` só se o Ivo o marcar (por omissão `false`). Gravados com a aproximação de um destino avulso (2 pontos iguais, `entrada: 1`), para servirem de destino e de partida; os gravados antes (1 ponto, `entrada: 0`) corrigem-se ao ler |
 | `POST /ativar { id, alternativa }` | grava a rota na API de recursos do SignalK (`/signalk/v2/api/resources/routes`) e ativa-a na API de rumo v2 (`/signalk/v2/api/vessels/self/navigation/course/activeRoute`) |
 
 **`resultado`:**
