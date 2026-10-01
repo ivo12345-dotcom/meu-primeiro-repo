@@ -1,9 +1,13 @@
 // A cola entre o DOM e as páginas, usada pelo app.js (funções pequenas, testadas sem browser).
 
 // O render de 1 Hz refaz a página só se ninguém estiver a escrever num campo nem com o dedo no ecrã
-// (entre o pointerdown e o click, refazer a página trocava o botão e o toque perdia-se). Forçado
+// (entre o pointerdown e o click, refazer a página trocava o botão e o toque perdia-se). O dedo só
+// pausa até PAUSA_TOQUE_MS: uma mão pousada ou gotas de água no ecrã não congelam o Leme.
+// premidoHaMs: há quanto tempo foi o pointerdown ainda sem pointerup (null: nenhum dedo). Forçado
 // (mudar de página, depois de uma ação, depois do Enter): refaz sempre.
-export function podeRedesenhar ({ forcar = false, aEscrever = false, premido = false } = {}) {
+export const PAUSA_TOQUE_MS = 3000
+export function podeRedesenhar ({ forcar = false, aEscrever = false, premidoHaMs = null } = {}) {
+  const premido = premidoHaMs != null && premidoHaMs < PAUSA_TOQUE_MS
   return forcar || (!aEscrever && !premido)
 }
 

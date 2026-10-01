@@ -2,14 +2,24 @@
 // escreve nos campos e quando o render de 1 Hz pode refazer a página.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { podeRedesenhar, aoEnter, aoEscrever } from '../public/lib/interacao.js'
+import { podeRedesenhar, aoEnter, aoEscrever, PAUSA_TOQUE_MS } from '../public/lib/interacao.js'
 
 test('o render de 1 Hz não refaz a página enquanto se escreve num campo nem com o dedo no ecrã (o toque não se perde)', () => {
   assert.equal(podeRedesenhar({}), true)
   assert.equal(podeRedesenhar({ aEscrever: true }), false)
-  assert.equal(podeRedesenhar({ premido: true }), false)
+  assert.equal(podeRedesenhar({ premidoHaMs: 0 }), false)
+  assert.equal(podeRedesenhar({ premidoHaMs: null }), true)
   // forçado (mudar de página, depois de uma ação, depois do Enter): refaz sempre
-  assert.equal(podeRedesenhar({ forcar: true, aEscrever: true, premido: true }), true)
+  assert.equal(podeRedesenhar({ forcar: true, aEscrever: true, premidoHaMs: 0 }), true)
+})
+
+test('o dedo no ecrã só pausa o render até 3 s (uma mão pousada ou gotas de água não congelam o Leme)', () => {
+  assert.equal(PAUSA_TOQUE_MS, 3000)
+  assert.equal(podeRedesenhar({ premidoHaMs: 2999 }), false)
+  assert.equal(podeRedesenhar({ premidoHaMs: 3000 }), true)
+  assert.equal(podeRedesenhar({ premidoHaMs: 60000 }), true)
+  // a escrever num campo continua a pausar (o que se escreve está guardado, mas o foco não se perde)
+  assert.equal(podeRedesenhar({ premidoHaMs: 60000, aEscrever: true }), false)
 })
 
 test('Enter num campo: a ação "enter" da página e depois um render forçado (o resultado aparece logo)', async () => {

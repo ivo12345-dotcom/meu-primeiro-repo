@@ -38,7 +38,7 @@ const app = {
   bipados: new Set(),
   estavaLigado: null,
   sons: [], // últimos sons tocados (diagnóstico: window.arlequin.app.sons)
-  premido: false // um dedo no ecrã (entre o pointerdown e o pointerup)
+  premidoEm: null // quando um dedo tocou no ecrã (do pointerdown ao pointerup; null: nenhum)
 }
 
 // ---------- contexto passado às páginas ----------
@@ -128,7 +128,7 @@ function render (forcar = false) {
   document.getElementById('barra').innerHTML = barraHtml(ctx)
   const el = document.getElementById('pagina')
   const aEscrever = el.contains(document.activeElement) && document.activeElement.tagName === 'INPUT'
-  if (podeRedesenhar({ forcar, aEscrever, premido: app.premido })) el.innerHTML = PAGINAS[app.pagina].render(ctx)
+  if (podeRedesenhar({ forcar, aEscrever, premidoHaMs: app.premidoEm == null ? null : Date.now() - app.premidoEm })) el.innerHTML = PAGINAS[app.pagina].render(ctx)
   document.querySelectorAll('#botoes [data-pag]').forEach(b => {
     b.classList.toggle('on', b.dataset.pag === app.pagina)
     if (b.dataset.pag === 'ais') {
@@ -156,12 +156,12 @@ function irPara (pag) {
 
 // ---------- eventos ----------
 document.addEventListener('pointerdown', () => {
-  app.premido = true
+  app.premidoEm = Date.now()
   if (!app.audio) {
     try { app.audio = new AudioContext() } catch { /* sem som */ }
   }
 }, { capture: true })
-for (const fim of ['pointerup', 'pointercancel']) document.addEventListener(fim, () => { app.premido = false }, { capture: true })
+for (const fim of ['pointerup', 'pointercancel']) document.addEventListener(fim, () => { app.premidoEm = null }, { capture: true })
 
 document.addEventListener('click', async (ev) => {
   const pag = ev.target.closest('[data-pag]')
