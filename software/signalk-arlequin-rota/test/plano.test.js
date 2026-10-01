@@ -59,7 +59,7 @@ test('o texto do plano (Peniche → Nazaré pelo Canal da Berlenga), exatamente'
     'Rota: a 5 MN da costa, via Canal da Berlenga, só motor',
     'Chegada provável: qua 30/09 18:21 (o mais tarde: qua 30/09 18:21)',
     'Tripulação: só eu',
-    'Até qua 30/09 às 17:09 ainda volta a Peniche, exceto qua 30/09 às 10:33 (fuga junto à costa com vento do mar), qua 30/09 às 13:10 (fuga junto à costa com vento do mar) e qua 30/09 às 14:34 (sem fuga possível).',
+    'Até qua 30/09 às 17:09 ainda volta a Peniche, exceto qua 30/09 às 10:33 (fuga junto à costa com vento do mar), qua 30/09 às 13:10 (fuga junto à costa com vento do mar) e qua 30/09 às 14:34 (sem volta a Peniche; abrigo em Nazaré).',
     '',
     'Hora de alarme: qua 30/09 20:21',
     'Se não houver notícias até qua 30/09 20:21, liga ao Ivo. Se não atender, liga ao MRCC Lisboa +351 214 401 919 (ou 112) e diz: veleiro ARLEQUIN, de Peniche para Nazaré, saída qua 30/09 09:30.',
@@ -104,6 +104,26 @@ test('as exceções do "até às" vêm dos pontos da desistência, não do texto
   // sem exceções: só a frase
   const q = montar({ ...FIX.fuga, desistencia: [desistencia[4]], desistenciaResumo: null }, 0)
   assert.ok(q.texto.split('\n').includes('Até às 18:00 ainda volta a Algés (CNA).'), q.texto)
+})
+
+test('um ponto sem volta à partida mas com abrigo limpo diz o abrigo, não "sem fuga possível" (revisão final, 5)', () => {
+  const ponto = (t, extra) => ({ t, tipo: 'marco', nome: null, lat: 38.7, lon: -9.4, milhas: 5, abrigo: null, voltar: null, semAbrigo: null, semVolta: null, ...extra })
+  const volta = { id: 'alges', nome: 'Algés (CNA)', milhas: 9, vento: 'a favor', avisoVermelho: null }
+  const abrigo = (o = {}) => ({ id: 'cascais', nome: 'Cascais', milhas: 4, vento: 'de través', avisoVermelho: null, ...o })
+  const desistencia = [
+    ponto('2026-09-29T15:00:00Z', { abrigo: abrigo() }),
+    ponto('2026-09-29T15:30:00Z', { abrigo: abrigo({ avisoVermelho: 'fuga junto à costa com vento do mar (a sotavento) — só em último recurso' }) }),
+    ponto('2026-09-29T16:00:00Z', { semAbrigo: 'sem abrigo daqui' }),
+    ponto('2026-09-29T17:00:00Z', { abrigo: abrigo(), voltar: volta })
+  ]
+  const p = montar({ ...FIX.fuga, desistencia }, 0)
+  assert.ok(p.texto.split('\n').includes('Até às 18:00 ainda volta a Algés (CNA), exceto às 16:00 (sem volta a Algés (CNA); abrigo em Cascais), às 16:30 (sem fuga possível) e às 17:00 (sem fuga possível).'), p.texto)
+})
+
+test('"Abrigos pelo caminho" só na 1.ª alternativa: os pontos de desistência são dela (revisão final, 6)', () => {
+  assert.match(montar(FIX.fuga, 0).texto, /^Abrigos pelo caminho: Oeiras, Cascais$/m)
+  for (const i of [1, 2]) assert.doesNotMatch(montar(FIX.fuga, i).texto, /Abrigos pelo caminho/)
+  assert.doesNotMatch(montar(FIX.canal, 1).texto, /Abrigos pelo caminho/)
 })
 
 test('a rota direta escreve-se "direta (salto curto)"; uma alternativa que não é a 1.ª não leva o "até às" (a desistência é da 1.ª)', () => {

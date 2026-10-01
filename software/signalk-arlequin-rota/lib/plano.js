@@ -17,8 +17,9 @@
 // partida há mais de 1 h, o plano mandava um falso alarme aos contactos (422, "calcula outra vez").
 // "Até … ainda volta a X": o último ponto de desistência em que voltar à partida tem vento a favor ou
 // de través e sem aviso vermelho, com as exceções: os pontos antes dele em que a volta é uma fuga
-// junto à costa (com o aviso vermelho) ou não há fuga, em texto simples ("exceto junto ao Cabo Raso
-// às 19:16 (fuga junto à costa com vento do mar)"), tirados dos pontos e não do texto do resumo (os
+// junto à costa (com o aviso vermelho) ou não há volta, em texto simples ("exceto junto ao Cabo Raso
+// às 19:16 (fuga junto à costa com vento do mar)"; sem volta mas com um abrigo limpo, "sem volta a
+// Peniche; abrigo em Nazaré"; "sem fuga possível" só sem abrigo limpo), tirados dos pontos e não do texto do resumo (os
 // diagnósticos do gerador de rotas não vão para os contactos em terra). Os pontos
 // de desistência só se calculam para a 1.ª alternativa: nas outras, a frase fica de fora. Nunca
 // escreve null, NaN nem undefined: o que falta fica de fora ou como "—".
@@ -118,7 +119,9 @@ function excecoes (desistencia, volta, agora, fuso) {
     if (!Number.isFinite(t)) return []
     const nome = p.tipo === 'cabo' && texto(p.nome)
     const onde = nome ? `junto ${/^(Ponta|Nazaré)/.test(nome) ? 'à' : 'ao'} ${nome} ${asHoras(t, agora, fuso)}` : asHoras(t, agora, fuso)
-    const porque = !p.voltar ? 'sem fuga possível' : AVISO_SEM_VENTO.test(p.voltar.avisoVermelho) ? 'fuga junto à costa sem vento previsto' : 'fuga junto à costa com vento do mar'
+    // sem volta mas com abrigo limpo: o abrigo (não é "sem fuga possível")
+    const abrigoLimpo = !p.voltar && p.abrigo && !p.abrigo.avisoVermelho && texto(p.abrigo.nome)
+    const porque = abrigoLimpo ? `sem volta a ${texto(volta.voltar.nome)}; abrigo em ${abrigoLimpo}` : !p.voltar ? 'sem fuga possível' : AVISO_SEM_VENTO.test(p.voltar.avisoVermelho) ? 'fuga junto à costa sem vento previsto' : 'fuga junto à costa com vento do mar'
     return [`${onde} (${porque})`]
   })
   if (!lista.length) return ''
@@ -155,9 +158,10 @@ function montarPlano ({ resultado, indice = 0, barco = {}, telefones = {}, agora
     `Chegada provável: ${hl(alt.chegada?.p50)} (o mais tarde: ${hl(alt.chegada?.p90)})`,
     `Tripulação: ${r.tripulacao === 'acompanhado' ? '2 ou mais' : 'só eu'}`
   ]
-  // os abrigos pelo caminho (os da desistência, sem a partida e o destino)
+  // os abrigos pelo caminho (os da desistência, sem a partida e o destino): só na 1.ª alternativa,
+  // a única para que se calculam os pontos de desistência
   const fora = new Set([texto(r.partida?.nome), destino].filter(Boolean))
-  const abrigos = [...new Set((r.desistencia || []).map(p => texto(p.abrigo?.nome)).filter(n => n && !fora.has(n)))]
+  const abrigos = indice === 0 ? [...new Set((r.desistencia || []).map(p => texto(p.abrigo?.nome)).filter(n => n && !fora.has(n)))] : []
   if (abrigos.length) linhas.push(`Abrigos pelo caminho: ${abrigos.join(', ')}`)
   const volta = indice === 0 ? ultimaVolta(r.desistencia) : null
   if (volta) {
