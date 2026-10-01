@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { criarStore, aplicarDelta, perderLigacao } from '../public/signalk.js'
+import { criarStore, aplicarDelta, perderLigacao, pedir } from '../public/signalk.js'
 
 test('sem ligação o ecrã esquece os alarmes (não fica a apitar)', () => {
   const store = criarStore()
@@ -26,4 +26,12 @@ test('alvos AIS: nome pelo caminho vazio e posição com hora', () => {
   assert.equal(a.name, 'NORDIC STAR')
   assert.equal(a.mmsi, '263000001')
   assert.equal(a.em, Date.parse('2026-09-29T09:00:00Z'))
+})
+
+test('pedir: o erro leva o código e o corpo do plugin (num 409, o id do cálculo que já corre)', async () => {
+  const orig = globalThis.fetch
+  globalThis.fetch = async () => new Response(JSON.stringify({ ok: false, erro: 'já há um cálculo a correr', id: 'calc-0' }), { status: 409, headers: { 'content-type': 'application/json' } })
+  try {
+    await assert.rejects(pedir('/plugins/signalk-arlequin-rota/calcular', { method: 'POST', body: {} }), (e) => e.status === 409 && e.message === 'já há um cálculo a correr' && e.corpo?.id === 'calc-0')
+  } finally { globalThis.fetch = orig }
 })

@@ -64,6 +64,9 @@ test('avisos vermelhos de uma alternativa: as fugas junto à costa da desistênc
   // a mesma fuga para o abrigo e para a volta junta-se numa linha
   assert.match(fugas[0], /^Fuga às 19:16 \(Cabo Raso\) para Cascais e Algés \(CNA\): fuga junto à costa com vento do mar \(a sotavento\)/)
   assert.equal(new Set(l).size, l.length)
+  // noutro dia: "Fuga amanhã às 10:33 (5 MN feitas) para Peniche"
+  const canal = t.avisosVermelhos(CANAL, 0, AGORA).filter(x => /^Fuga /.test(x))
+  assert.match(canal[0], /^Fuga amanhã às 10:33 \(5 MN feitas\) para Peniche: /)
   // as fugas são da 1.ª alternativa: as outras não as repetem
   assert.ok(!t.avisosVermelhos(FUGA, 1, AGORA).some(x => /^Fuga /.test(x)))
 })

@@ -35,6 +35,14 @@ export function horaLisboa (t, agora = Date.now()) {
   return `${d ? `${d} ` : ''}${partes(t).hm}`
 }
 
+// "às 19:16", "amanhã às 10:33", "sex 02/10 às 10:33"; "—" sem hora.
+export function quandoAs (t, agora = Date.now()) {
+  t = ms(t)
+  if (!ok(t)) return SEM
+  const d = dia(t, agora)
+  return `${d ? `${d} ` : ''}às ${partes(t).hm}`
+}
+
 // A margem da chegada, da mais cedo (p10) à mais tarde (p90): "amanhã 07:10–08:40"; o dia só uma vez.
 export function margem (chegada, agora = Date.now()) {
   if (!chegada) return SEM
@@ -107,7 +115,7 @@ export function avisosVermelhos (resultado = {}, i = 0, agora = Date.now()) {
         if (f.nome && !porAviso.get(f.avisoVermelho).includes(f.nome)) porAviso.get(f.avisoVermelho).push(f.nome)
       }
       const onde = p.nome || (ok(p.milhas) ? `${num(p.milhas, 0)} MN feitas` : '')
-      for (const [aviso, nomes] of porAviso) out.push(`Fuga às ${horaLisboa(p.t, agora)}${onde ? ` (${onde})` : ''}${nomes.length ? ` para ${nomes.join(' e ')}` : ''}: ${aviso}`)
+      for (const [aviso, nomes] of porAviso) out.push(`Fuga ${quandoAs(p.t, agora)}${onde ? ` (${onde})` : ''}${nomes.length ? ` para ${nomes.join(' e ')}` : ''}: ${aviso}`)
     }
   }
   return [...new Set(out.filter(x => typeof x === 'string' && x))]
