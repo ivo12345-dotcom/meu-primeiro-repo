@@ -1,0 +1,2084 @@
+{
+ "canal": {
+  "calculadoEm": "2026-09-29T14:32:00.000Z",
+  "destino": {
+   "id": "nazare",
+   "nome": "Nazaré",
+   "conhecido": false,
+   "abrigo": true,
+   "confirmado": false
+  },
+  "partida": {
+   "id": "peniche",
+   "nome": "Peniche",
+   "emMar": false
+  },
+  "tripulacao": "so",
+  "sairAgora": false,
+  "veredicto": {
+   "tipo": "espera",
+   "texto": "Espera até amanhã às 09:30",
+   "porque": [
+    "Agora: vento médio até 23 nós no pior caso (limite 22 sozinho) e rajadas até 39 nós no pior caso (limite 30 sozinho).",
+    "Partindo amanhã às 09:30, pela rota a 5 MN pelo Canal da Berlenga a motor: chegas amanhã às 18:21 (de dia), vento até 7 nós, ondas até 2,5 m."
+   ]
+  },
+  "alternativas": [
+   {
+    "id": "20260930T0830-5mn-canal-da-berlenga-motor",
+    "nome": "Amanhã às 09:30, 5 MN pelo Canal da Berlenga, só motor",
+    "afastamento": 5,
+    "direto": false,
+    "canal": "Canal da Berlenga",
+    "nota": "Canal da Berlenga: terra dos dois lados; só com ondas < 3 m — por confirmar na carta",
+    "partida": "2026-09-30T08:30:00.000Z",
+    "propulsao": "motor",
+    "chegada": {
+     "p10": "2026-09-30T17:21:00.000Z",
+     "p50": "2026-09-30T17:21:00.000Z",
+     "p90": "2026-09-30T17:21:00.000Z"
+    },
+    "milhas": 34.87,
+    "pontosRota": [
+     {
+      "lat": 39.3522,
+      "lon": -9.376,
+      "nome": "Peniche (partida)"
+     },
+     {
+      "lat": 39.3524,
+      "lon": -9.3747,
+      "nome": null
+     },
+     {
+      "lat": 39.3512,
+      "lon": -9.3748,
+      "nome": null
+     },
+     {
+      "lat": 39.3494,
+      "lon": -9.3752,
+      "nome": null
+     },
+     {
+      "lat": 39.344,
+      "lon": -9.372,
+      "nome": null
+     },
+     {
+      "lat": 39.31,
+      "lon": -9.42,
+      "nome": "Largo de Peniche"
+     },
+     {
+      "lat": 39.337,
+      "lon": -9.4968,
+      "nome": "Canal da Berlenga"
+     },
+     {
+      "lat": 39.3513,
+      "lon": -9.4858,
+      "nome": null
+     },
+     {
+      "lat": 39.3657,
+      "lon": -9.4748,
+      "nome": null
+     },
+     {
+      "lat": 39.3798,
+      "lon": -9.4634,
+      "nome": null
+     },
+     {
+      "lat": 39.3931,
+      "lon": -9.4502,
+      "nome": null
+     },
+     {
+      "lat": 39.4067,
+      "lon": -9.4377,
+      "nome": null
+     },
+     {
+      "lat": 39.4206,
+      "lon": -9.4259,
+      "nome": null
+     },
+     {
+      "lat": 39.4351,
+      "lon": -9.4153,
+      "nome": null
+     },
+     {
+      "lat": 39.4505,
+      "lon": -9.4064,
+      "nome": null
+     },
+     {
+      "lat": 39.56113,
+      "lon": -9.24548,
+      "nome": "Linha de 5 MN"
+     },
+     {
+      "lat": 39.56951,
+      "lon": -9.23324,
+      "nome": null
+     },
+     {
+      "lat": 39.59074,
+      "lon": -9.20807,
+      "nome": null
+     },
+     {
+      "lat": 39.575,
+      "lon": -9.11,
+      "nome": "Largo de Nazaré"
+     },
+     {
+      "lat": 39.5905,
+      "lon": -9.083,
+      "nome": null
+     },
+     {
+      "lat": 39.5903,
+      "lon": -9.0771,
+      "nome": null
+     },
+     {
+      "lat": 39.5891,
+      "lon": -9.0764,
+      "nome": null
+     },
+     {
+      "lat": 39.5876,
+      "lon": -9.0756,
+      "nome": null
+     },
+     {
+      "lat": 39.5867,
+      "lon": -9.0736,
+      "nome": null
+     },
+     {
+      "lat": 39.5857,
+      "lon": -9.0738,
+      "nome": "Nazaré"
+     }
+    ]
+   },
+   {
+    "id": "20260930T0830-5mn-canal-da-berlenga-vela",
+    "nome": "Amanhã às 09:30, 5 MN pelo Canal da Berlenga, vela e motor",
+    "afastamento": 5,
+    "direto": false,
+    "canal": "Canal da Berlenga",
+    "nota": "Canal da Berlenga: terra dos dois lados; só com ondas < 3 m — por confirmar na carta",
+    "partida": "2026-09-30T08:30:00.000Z",
+    "propulsao": "vela",
+    "chegada": {
+     "p10": "2026-09-30T17:21:00.000Z",
+     "p50": "2026-09-30T17:21:00.000Z",
+     "p90": "2026-09-30T17:46:00.000Z"
+    },
+    "milhas": 34.87,
+    "pontosRota": [
+     {
+      "lat": 39.3522,
+      "lon": -9.376,
+      "nome": "Peniche (partida)"
+     },
+     {
+      "lat": 39.3524,
+      "lon": -9.3747,
+      "nome": null
+     },
+     {
+      "lat": 39.3512,
+      "lon": -9.3748,
+      "nome": null
+     },
+     {
+      "lat": 39.3494,
+      "lon": -9.3752,
+      "nome": null
+     },
+     {
+      "lat": 39.344,
+      "lon": -9.372,
+      "nome": null
+     },
+     {
+      "lat": 39.31,
+      "lon": -9.42,
+      "nome": "Largo de Peniche"
+     },
+     {
+      "lat": 39.337,
+      "lon": -9.4968,
+      "nome": "Canal da Berlenga"
+     },
+     {
+      "lat": 39.3513,
+      "lon": -9.4858,
+      "nome": null
+     },
+     {
+      "lat": 39.3657,
+      "lon": -9.4748,
+      "nome": null
+     },
+     {
+      "lat": 39.3798,
+      "lon": -9.4634,
+      "nome": null
+     },
+     {
+      "lat": 39.3931,
+      "lon": -9.4502,
+      "nome": null
+     },
+     {
+      "lat": 39.4067,
+      "lon": -9.4377,
+      "nome": null
+     },
+     {
+      "lat": 39.4206,
+      "lon": -9.4259,
+      "nome": null
+     },
+     {
+      "lat": 39.4351,
+      "lon": -9.4153,
+      "nome": null
+     },
+     {
+      "lat": 39.4505,
+      "lon": -9.4064,
+      "nome": null
+     },
+     {
+      "lat": 39.56113,
+      "lon": -9.24548,
+      "nome": "Linha de 5 MN"
+     },
+     {
+      "lat": 39.56951,
+      "lon": -9.23324,
+      "nome": null
+     },
+     {
+      "lat": 39.59074,
+      "lon": -9.20807,
+      "nome": null
+     },
+     {
+      "lat": 39.575,
+      "lon": -9.11,
+      "nome": "Largo de Nazaré"
+     },
+     {
+      "lat": 39.5905,
+      "lon": -9.083,
+      "nome": null
+     },
+     {
+      "lat": 39.5903,
+      "lon": -9.0771,
+      "nome": null
+     },
+     {
+      "lat": 39.5891,
+      "lon": -9.0764,
+      "nome": null
+     },
+     {
+      "lat": 39.5876,
+      "lon": -9.0756,
+      "nome": null
+     },
+     {
+      "lat": 39.5867,
+      "lon": -9.0736,
+      "nome": null
+     },
+     {
+      "lat": 39.5857,
+      "lon": -9.0738,
+      "nome": "Nazaré"
+     }
+    ]
+   },
+   {
+    "id": "20260930T0830-8mn-canal-da-berlenga-motor",
+    "nome": "Amanhã às 09:30, 8 MN pelo Canal da Berlenga, só motor",
+    "afastamento": 8,
+    "direto": false,
+    "canal": "Canal da Berlenga",
+    "nota": "Canal da Berlenga: terra dos dois lados; só com ondas < 3 m — por confirmar na carta",
+    "partida": "2026-09-30T08:30:00.000Z",
+    "propulsao": "motor",
+    "chegada": {
+     "p10": "2026-09-30T17:52:00.000Z",
+     "p50": "2026-09-30T17:52:00.000Z",
+     "p90": "2026-09-30T17:52:00.000Z"
+    },
+    "milhas": 37.02,
+    "pontosRota": [
+     {
+      "lat": 39.3522,
+      "lon": -9.376,
+      "nome": "Peniche (partida)"
+     },
+     {
+      "lat": 39.3524,
+      "lon": -9.3747,
+      "nome": null
+     },
+     {
+      "lat": 39.3512,
+      "lon": -9.3748,
+      "nome": null
+     },
+     {
+      "lat": 39.3494,
+      "lon": -9.3752,
+      "nome": null
+     },
+     {
+      "lat": 39.344,
+      "lon": -9.372,
+      "nome": null
+     },
+     {
+      "lat": 39.31,
+      "lon": -9.42,
+      "nome": "Largo de Peniche"
+     },
+     {
+      "lat": 39.337,
+      "lon": -9.4968,
+      "nome": "Canal da Berlenga"
+     },
+     {
+      "lat": 39.3513,
+      "lon": -9.4858,
+      "nome": null
+     },
+     {
+      "lat": 39.3657,
+      "lon": -9.4748,
+      "nome": null
+     },
+     {
+      "lat": 39.3798,
+      "lon": -9.4634,
+      "nome": null
+     },
+     {
+      "lat": 39.3931,
+      "lon": -9.4502,
+      "nome": null
+     },
+     {
+      "lat": 39.4067,
+      "lon": -9.4377,
+      "nome": null
+     },
+     {
+      "lat": 39.4206,
+      "lon": -9.4259,
+      "nome": null
+     },
+     {
+      "lat": 39.4351,
+      "lon": -9.4153,
+      "nome": null
+     },
+     {
+      "lat": 39.4505,
+      "lon": -9.4064,
+      "nome": null
+     },
+     {
+      "lat": 39.59173,
+      "lon": -9.29799,
+      "nome": "Linha de 8 MN"
+     },
+     {
+      "lat": 39.60937,
+      "lon": -9.2751,
+      "nome": null
+     },
+     {
+      "lat": 39.575,
+      "lon": -9.11,
+      "nome": "Largo de Nazaré"
+     },
+     {
+      "lat": 39.5905,
+      "lon": -9.083,
+      "nome": null
+     },
+     {
+      "lat": 39.5903,
+      "lon": -9.0771,
+      "nome": null
+     },
+     {
+      "lat": 39.5891,
+      "lon": -9.0764,
+      "nome": null
+     },
+     {
+      "lat": 39.5876,
+      "lon": -9.0756,
+      "nome": null
+     },
+     {
+      "lat": 39.5867,
+      "lon": -9.0736,
+      "nome": null
+     },
+     {
+      "lat": 39.5857,
+      "lon": -9.0738,
+      "nome": "Nazaré"
+     }
+    ]
+   }
+  ],
+  "desistencia": [
+   {
+    "t": "2026-09-30T09:33:00.000Z",
+    "hora": "10:33",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 39.3195,
+    "lon": -9.4469,
+    "abrigo": {
+     "nome": "Nazaré",
+     "vento": "a favor",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Peniche",
+     "vento": "a favor",
+     "avisoVermelho": "fuga junto à costa com vento do mar (a sotavento) — só em último recurso: a rota direta passa a 2,8 MN de uma costa a sotavento"
+    }
+   },
+   {
+    "t": "2026-09-30T10:08:00.000Z",
+    "hora": "11:08",
+    "tipo": "cabo",
+    "nome": "Cabo Carvoeiro",
+    "lat": 39.3381,
+    "lon": -9.496,
+    "abrigo": {
+     "nome": "Peniche",
+     "vento": "a favor",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Peniche",
+     "vento": "a favor",
+     "avisoVermelho": null
+    }
+   },
+   {
+    "t": "2026-09-30T10:45:00.000Z",
+    "hora": "11:45",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 39.372,
+    "lon": -9.4697,
+    "abrigo": {
+     "nome": "Peniche",
+     "vento": "a favor",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Peniche",
+     "vento": "a favor",
+     "avisoVermelho": null
+    }
+   },
+   {
+    "t": "2026-09-30T12:10:00.000Z",
+    "hora": "13:10",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 39.4419,
+    "lon": -9.4114,
+    "abrigo": {
+     "nome": "Nazaré",
+     "vento": "de través",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Peniche",
+     "vento": "a favor",
+     "avisoVermelho": "fuga junto à costa com vento do mar (a sotavento) — só em último recurso: a rota direta passa a 0,4 MN de uma costa a sotavento"
+    }
+   },
+   {
+    "t": "2026-09-30T13:34:00.000Z",
+    "hora": "14:34",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 39.4996,
+    "lon": -9.335,
+    "abrigo": {
+     "nome": "Nazaré",
+     "vento": "de través",
+     "avisoVermelho": null
+    },
+    "voltar": null
+   },
+   {
+    "t": "2026-09-30T14:53:00.000Z",
+    "hora": "15:53",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 39.555,
+    "lon": -9.2545,
+    "abrigo": {
+     "nome": "Nazaré",
+     "vento": "de través",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Peniche",
+     "vento": "de través",
+     "avisoVermelho": null
+    }
+   },
+   {
+    "t": "2026-09-30T15:40:00.000Z",
+    "hora": "16:40",
+    "tipo": "cabo",
+    "nome": "Nazaré",
+    "lat": 39.5905,
+    "lon": -9.2064,
+    "abrigo": {
+     "nome": "Nazaré",
+     "vento": "a favor",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Peniche",
+     "vento": "de través",
+     "avisoVermelho": null
+    }
+   },
+   {
+    "t": "2026-09-30T16:09:00.000Z",
+    "hora": "17:09",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 39.5841,
+    "lon": -9.1668,
+    "abrigo": {
+     "nome": "Peniche",
+     "vento": "de través",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Peniche",
+     "vento": "de través",
+     "avisoVermelho": null
+    }
+   }
+  ],
+  "desistenciaResumo": "até às 17:09 ainda voltas a Peniche com vento de través, exceto às 10:33 (5 MN feitas), onde a fuga é junto à costa com vento do mar; e às 13:10 (15 MN feitas), onde a fuga é junto à costa com vento do mar; e às 14:34 (20 MN feitas), onde não há fuga possível: rota absurda: 42,6 MN para 9,0 MN em linha reta; rota absurda: 51,5 MN para 9,0 MN em linha reta"
+ },
+ "direta": {
+  "calculadoEm": "2026-09-29T14:32:00.000Z",
+  "destino": {
+   "id": "alges",
+   "nome": "Algés (CNA)",
+   "conhecido": true,
+   "abrigo": true,
+   "confirmado": false
+  },
+  "partida": {
+   "id": "cascais",
+   "nome": "Cascais",
+   "emMar": false
+  },
+  "tripulacao": "so",
+  "sairAgora": false,
+  "veredicto": {
+   "tipo": "espera",
+   "texto": "Espera até amanhã às 09:30",
+   "porque": [
+    "Agora: vento do mar em parte da rota: a rota direta passa a 2,6 MN de uma costa a sotavento.",
+    "Partindo amanhã às 09:30, pela rota direta a motor: chegas amanhã às 12:57 (de dia), vento até 7 nós, ondas até 2,1 m."
+   ]
+  },
+  "alternativas": [
+   {
+    "id": "20260930T0830-direto-motor",
+    "nome": "Amanhã às 09:30, direta (salto curto), só motor",
+    "afastamento": null,
+    "direto": true,
+    "canal": null,
+    "nota": null,
+    "partida": "2026-09-30T08:30:00.000Z",
+    "propulsao": "motor",
+    "chegada": {
+     "p10": "2026-09-30T11:57:00.000Z",
+     "p50": "2026-09-30T11:57:00.000Z",
+     "p90": "2026-09-30T11:57:00.000Z"
+    },
+    "milhas": 14.82,
+    "pontosRota": [
+     {
+      "lat": 38.6922,
+      "lon": -9.4165,
+      "nome": "Cascais (partida)"
+     },
+     {
+      "lat": 38.6928,
+      "lon": -9.4156,
+      "nome": null
+     },
+     {
+      "lat": 38.6935,
+      "lon": -9.4141,
+      "nome": null
+     },
+     {
+      "lat": 38.695,
+      "lon": -9.4132,
+      "nome": null
+     },
+     {
+      "lat": 38.6905,
+      "lon": -9.41,
+      "nome": null
+     },
+     {
+      "lat": 38.65,
+      "lon": -9.45,
+      "nome": "Largo de Cascais"
+     },
+     {
+      "lat": 38.65,
+      "lon": -9.45,
+      "nome": "Largo de Algés (CNA)"
+     },
+     {
+      "lat": 38.6809,
+      "lon": -9.375,
+      "nome": null
+     },
+     {
+      "lat": 38.67167,
+      "lon": -9.33,
+      "nome": null
+     },
+     {
+      "lat": 38.6696,
+      "lon": -9.32,
+      "nome": null
+     },
+     {
+      "lat": 38.68,
+      "lon": -9.295,
+      "nome": null
+     },
+     {
+      "lat": 38.688,
+      "lon": -9.265,
+      "nome": null
+     },
+     {
+      "lat": 38.6905,
+      "lon": -9.245,
+      "nome": null
+     },
+     {
+      "lat": 38.6925,
+      "lon": -9.2325,
+      "nome": null
+     },
+     {
+      "lat": 38.6948,
+      "lon": -9.2338,
+      "nome": null
+     },
+     {
+      "lat": 38.695,
+      "lon": -9.2344,
+      "nome": "Algés (CNA)"
+     }
+    ]
+   },
+   {
+    "id": "20260930T1430-direto-motor",
+    "nome": "Amanhã às 15:30, direta (salto curto), só motor",
+    "afastamento": null,
+    "direto": true,
+    "canal": null,
+    "nota": null,
+    "partida": "2026-09-30T14:30:00.000Z",
+    "propulsao": "motor",
+    "chegada": {
+     "p10": "2026-09-30T18:16:00.000Z",
+     "p50": "2026-09-30T18:16:00.000Z",
+     "p90": "2026-09-30T18:16:00.000Z"
+    },
+    "milhas": 14.82,
+    "pontosRota": [
+     {
+      "lat": 38.6922,
+      "lon": -9.4165,
+      "nome": "Cascais (partida)"
+     },
+     {
+      "lat": 38.6928,
+      "lon": -9.4156,
+      "nome": null
+     },
+     {
+      "lat": 38.6935,
+      "lon": -9.4141,
+      "nome": null
+     },
+     {
+      "lat": 38.695,
+      "lon": -9.4132,
+      "nome": null
+     },
+     {
+      "lat": 38.6905,
+      "lon": -9.41,
+      "nome": null
+     },
+     {
+      "lat": 38.65,
+      "lon": -9.45,
+      "nome": "Largo de Cascais"
+     },
+     {
+      "lat": 38.65,
+      "lon": -9.45,
+      "nome": "Largo de Algés (CNA)"
+     },
+     {
+      "lat": 38.6809,
+      "lon": -9.375,
+      "nome": null
+     },
+     {
+      "lat": 38.67167,
+      "lon": -9.33,
+      "nome": null
+     },
+     {
+      "lat": 38.6696,
+      "lon": -9.32,
+      "nome": null
+     },
+     {
+      "lat": 38.68,
+      "lon": -9.295,
+      "nome": null
+     },
+     {
+      "lat": 38.688,
+      "lon": -9.265,
+      "nome": null
+     },
+     {
+      "lat": 38.6905,
+      "lon": -9.245,
+      "nome": null
+     },
+     {
+      "lat": 38.6925,
+      "lon": -9.2325,
+      "nome": null
+     },
+     {
+      "lat": 38.6948,
+      "lon": -9.2338,
+      "nome": null
+     },
+     {
+      "lat": 38.695,
+      "lon": -9.2344,
+      "nome": "Algés (CNA)"
+     }
+    ]
+   },
+   {
+    "id": "20260930T1430-direto-vela",
+    "nome": "Amanhã às 15:30, direta (salto curto), vela e motor",
+    "afastamento": null,
+    "direto": true,
+    "canal": null,
+    "nota": null,
+    "partida": "2026-09-30T14:30:00.000Z",
+    "propulsao": "vela",
+    "chegada": {
+     "p10": "2026-09-30T18:16:00.000Z",
+     "p50": "2026-09-30T18:16:00.000Z",
+     "p90": "2026-09-30T18:16:00.000Z"
+    },
+    "milhas": 14.82,
+    "pontosRota": [
+     {
+      "lat": 38.6922,
+      "lon": -9.4165,
+      "nome": "Cascais (partida)"
+     },
+     {
+      "lat": 38.6928,
+      "lon": -9.4156,
+      "nome": null
+     },
+     {
+      "lat": 38.6935,
+      "lon": -9.4141,
+      "nome": null
+     },
+     {
+      "lat": 38.695,
+      "lon": -9.4132,
+      "nome": null
+     },
+     {
+      "lat": 38.6905,
+      "lon": -9.41,
+      "nome": null
+     },
+     {
+      "lat": 38.65,
+      "lon": -9.45,
+      "nome": "Largo de Cascais"
+     },
+     {
+      "lat": 38.65,
+      "lon": -9.45,
+      "nome": "Largo de Algés (CNA)"
+     },
+     {
+      "lat": 38.6809,
+      "lon": -9.375,
+      "nome": null
+     },
+     {
+      "lat": 38.67167,
+      "lon": -9.33,
+      "nome": null
+     },
+     {
+      "lat": 38.6696,
+      "lon": -9.32,
+      "nome": null
+     },
+     {
+      "lat": 38.68,
+      "lon": -9.295,
+      "nome": null
+     },
+     {
+      "lat": 38.688,
+      "lon": -9.265,
+      "nome": null
+     },
+     {
+      "lat": 38.6905,
+      "lon": -9.245,
+      "nome": null
+     },
+     {
+      "lat": 38.6925,
+      "lon": -9.2325,
+      "nome": null
+     },
+     {
+      "lat": 38.6948,
+      "lon": -9.2338,
+      "nome": null
+     },
+     {
+      "lat": 38.695,
+      "lon": -9.2344,
+      "nome": "Algés (CNA)"
+     }
+    ]
+   }
+  ],
+  "desistencia": [
+   {
+    "t": "2026-09-30T09:34:00.000Z",
+    "hora": "10:34",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 38.6607,
+    "lon": -9.4239,
+    "abrigo": {
+     "nome": "Cascais",
+     "vento": "contra",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Cascais",
+     "vento": "contra",
+     "avisoVermelho": null
+    }
+   },
+   {
+    "t": "2026-09-30T10:57:00.000Z",
+    "hora": "11:57",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 38.6707,
+    "lon": -9.3255,
+    "abrigo": {
+     "nome": "Oeiras",
+     "vento": "de través",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Cascais",
+     "vento": "contra",
+     "avisoVermelho": "fuga junto à costa com vento do mar (a sotavento) — só em último recurso: a rota direta passa a 2,6 MN de uma costa a sotavento"
+    }
+   }
+  ],
+  "desistenciaResumo": "voltar a Cascais é sempre contra o vento; atenção: às 11:57 (10 MN feitas) a fuga é junto à costa com vento do mar"
+ },
+ "fuga": {
+  "calculadoEm": "2026-09-29T14:32:00.000Z",
+  "destino": {
+   "id": "peniche",
+   "nome": "Peniche",
+   "conhecido": true,
+   "abrigo": true,
+   "confirmado": false
+  },
+  "partida": {
+   "id": "alges",
+   "nome": "Algés (CNA)",
+   "emMar": false
+  },
+  "tripulacao": "so",
+  "sairAgora": true,
+  "veredicto": {
+   "tipo": "nao-recomendado",
+   "texto": "Não recomendado sozinho",
+   "porque": [
+    "A melhor para sair agora (a 5 MN a motor, agora): rajadas até 34 nós no pior caso (limite 30 sozinho) e 13,7 h equivalentes ao leme (limite 8 h sozinho).",
+    "Se saíres mesmo assim, revê as precauções e os pontos de desistência."
+   ]
+  },
+  "alternativas": [
+   {
+    "id": "20260929T1432-5mn-motor",
+    "nome": "Agora, 5 MN, só motor",
+    "afastamento": 5,
+    "direto": false,
+    "canal": null,
+    "nota": null,
+    "partida": "2026-09-29T14:32:00.000Z",
+    "propulsao": "motor",
+    "chegada": {
+     "p10": "2026-09-30T06:22:00.000Z",
+     "p50": "2026-09-30T06:22:00.000Z",
+     "p90": "2026-09-30T06:22:00.000Z"
+    },
+    "milhas": 63.58,
+    "pontosRota": [
+     {
+      "lat": 38.695,
+      "lon": -9.2344,
+      "nome": "Algés (CNA) (partida)"
+     },
+     {
+      "lat": 38.6948,
+      "lon": -9.2338,
+      "nome": null
+     },
+     {
+      "lat": 38.6925,
+      "lon": -9.2325,
+      "nome": null
+     },
+     {
+      "lat": 38.6905,
+      "lon": -9.245,
+      "nome": null
+     },
+     {
+      "lat": 38.688,
+      "lon": -9.265,
+      "nome": null
+     },
+     {
+      "lat": 38.68,
+      "lon": -9.295,
+      "nome": null
+     },
+     {
+      "lat": 38.6696,
+      "lon": -9.32,
+      "nome": null
+     },
+     {
+      "lat": 38.67167,
+      "lon": -9.33,
+      "nome": null
+     },
+     {
+      "lat": 38.6809,
+      "lon": -9.375,
+      "nome": null
+     },
+     {
+      "lat": 38.65,
+      "lon": -9.45,
+      "nome": "Largo de Algés (CNA)"
+     },
+     {
+      "lat": 38.61723,
+      "lon": -9.49736,
+      "nome": "Linha de 5 MN"
+     },
+     {
+      "lat": 38.61865,
+      "lon": -9.50281,
+      "nome": null
+     },
+     {
+      "lat": 38.63042,
+      "lon": -9.53252,
+      "nome": null
+     },
+     {
+      "lat": 38.63991,
+      "lon": -9.54881,
+      "nome": null
+     },
+     {
+      "lat": 38.65304,
+      "lon": -9.5662,
+      "nome": null
+     },
+     {
+      "lat": 38.66893,
+      "lon": -9.58021,
+      "nome": null
+     },
+     {
+      "lat": 38.68523,
+      "lon": -9.58861,
+      "nome": null
+     },
+     {
+      "lat": 38.69527,
+      "lon": -9.59146,
+      "nome": null
+     },
+     {
+      "lat": 38.71177,
+      "lon": -9.59302,
+      "nome": null
+     },
+     {
+      "lat": 38.73044,
+      "lon": -9.58978,
+      "nome": null
+     },
+     {
+      "lat": 38.75294,
+      "lon": -9.60142,
+      "nome": null
+     },
+     {
+      "lat": 38.76356,
+      "lon": -9.60485,
+      "nome": null
+     },
+     {
+      "lat": 38.77908,
+      "lon": -9.60717,
+      "nome": null
+     },
+     {
+      "lat": 38.79467,
+      "lon": -9.60575,
+      "nome": null
+     },
+     {
+      "lat": 38.80978,
+      "lon": -9.60064,
+      "nome": null
+     },
+     {
+      "lat": 38.82433,
+      "lon": -9.59295,
+      "nome": null
+     },
+     {
+      "lat": 38.85301,
+      "lon": -9.57453,
+      "nome": null
+     },
+     {
+      "lat": 38.88168,
+      "lon": -9.55612,
+      "nome": null
+     },
+     {
+      "lat": 38.8927,
+      "lon": -9.55271,
+      "nome": null
+     },
+     {
+      "lat": 38.91969,
+      "lon": -9.54052,
+      "nome": null
+     },
+     {
+      "lat": 38.94669,
+      "lon": -9.52834,
+      "nome": null
+     },
+     {
+      "lat": 38.96027,
+      "lon": -9.53054,
+      "nome": null
+     },
+     {
+      "lat": 38.97736,
+      "lon": -9.52972,
+      "nome": null
+     },
+     {
+      "lat": 38.98732,
+      "lon": -9.53298,
+      "nome": null
+     },
+     {
+      "lat": 39.00388,
+      "lon": -9.5347,
+      "nome": null
+     },
+     {
+      "lat": 39.03477,
+      "lon": -9.53013,
+      "nome": null
+     },
+     {
+      "lat": 39.05174,
+      "lon": -9.52484,
+      "nome": null
+     },
+     {
+      "lat": 39.07343,
+      "lon": -9.52882,
+      "nome": null
+     },
+     {
+      "lat": 39.08998,
+      "lon": -9.52701,
+      "nome": null
+     },
+     {
+      "lat": 39.11969,
+      "lon": -9.51386,
+      "nome": null
+     },
+     {
+      "lat": 39.14125,
+      "lon": -9.49798,
+      "nome": null
+     },
+     {
+      "lat": 39.15521,
+      "lon": -9.49201,
+      "nome": null
+     },
+     {
+      "lat": 39.17626,
+      "lon": -9.4778,
+      "nome": null
+     },
+     {
+      "lat": 39.18509,
+      "lon": -9.46973,
+      "nome": null
+     },
+     {
+      "lat": 39.19734,
+      "lon": -9.46376,
+      "nome": null
+     },
+     {
+      "lat": 39.20784,
+      "lon": -9.46039,
+      "nome": null
+     },
+     {
+      "lat": 39.21922,
+      "lon": -9.45421,
+      "nome": null
+     },
+     {
+      "lat": 39.23452,
+      "lon": -9.45085,
+      "nome": null
+     },
+     {
+      "lat": 39.25367,
+      "lon": -9.45004,
+      "nome": null
+     },
+     {
+      "lat": 39.26488,
+      "lon": -9.44666,
+      "nome": null
+     },
+     {
+      "lat": 39.27448,
+      "lon": -9.44972,
+      "nome": null
+     },
+     {
+      "lat": 39.31,
+      "lon": -9.42,
+      "nome": "Largo de Peniche"
+     },
+     {
+      "lat": 39.344,
+      "lon": -9.372,
+      "nome": null
+     },
+     {
+      "lat": 39.3494,
+      "lon": -9.3752,
+      "nome": null
+     },
+     {
+      "lat": 39.3512,
+      "lon": -9.3748,
+      "nome": null
+     },
+     {
+      "lat": 39.3524,
+      "lon": -9.3747,
+      "nome": null
+     },
+     {
+      "lat": 39.3522,
+      "lon": -9.376,
+      "nome": "Peniche"
+     }
+    ]
+   },
+   {
+    "id": "20260929T1432-5mn-vela",
+    "nome": "Agora, 5 MN, vela e motor",
+    "afastamento": 5,
+    "direto": false,
+    "canal": null,
+    "nota": null,
+    "partida": "2026-09-29T14:32:00.000Z",
+    "propulsao": "vela",
+    "chegada": {
+     "p10": "2026-09-30T05:42:00.000Z",
+     "p50": "2026-09-30T06:24:00.000Z",
+     "p90": "2026-09-30T06:59:00.000Z"
+    },
+    "milhas": 63.58,
+    "pontosRota": [
+     {
+      "lat": 38.695,
+      "lon": -9.2344,
+      "nome": "Algés (CNA) (partida)"
+     },
+     {
+      "lat": 38.6948,
+      "lon": -9.2338,
+      "nome": null
+     },
+     {
+      "lat": 38.6925,
+      "lon": -9.2325,
+      "nome": null
+     },
+     {
+      "lat": 38.6905,
+      "lon": -9.245,
+      "nome": null
+     },
+     {
+      "lat": 38.688,
+      "lon": -9.265,
+      "nome": null
+     },
+     {
+      "lat": 38.68,
+      "lon": -9.295,
+      "nome": null
+     },
+     {
+      "lat": 38.6696,
+      "lon": -9.32,
+      "nome": null
+     },
+     {
+      "lat": 38.67167,
+      "lon": -9.33,
+      "nome": null
+     },
+     {
+      "lat": 38.6809,
+      "lon": -9.375,
+      "nome": null
+     },
+     {
+      "lat": 38.65,
+      "lon": -9.45,
+      "nome": "Largo de Algés (CNA)"
+     },
+     {
+      "lat": 38.61723,
+      "lon": -9.49736,
+      "nome": "Linha de 5 MN"
+     },
+     {
+      "lat": 38.61865,
+      "lon": -9.50281,
+      "nome": null
+     },
+     {
+      "lat": 38.63042,
+      "lon": -9.53252,
+      "nome": null
+     },
+     {
+      "lat": 38.63991,
+      "lon": -9.54881,
+      "nome": null
+     },
+     {
+      "lat": 38.65304,
+      "lon": -9.5662,
+      "nome": null
+     },
+     {
+      "lat": 38.66893,
+      "lon": -9.58021,
+      "nome": null
+     },
+     {
+      "lat": 38.68523,
+      "lon": -9.58861,
+      "nome": null
+     },
+     {
+      "lat": 38.69527,
+      "lon": -9.59146,
+      "nome": null
+     },
+     {
+      "lat": 38.71177,
+      "lon": -9.59302,
+      "nome": null
+     },
+     {
+      "lat": 38.73044,
+      "lon": -9.58978,
+      "nome": null
+     },
+     {
+      "lat": 38.75294,
+      "lon": -9.60142,
+      "nome": null
+     },
+     {
+      "lat": 38.76356,
+      "lon": -9.60485,
+      "nome": null
+     },
+     {
+      "lat": 38.77908,
+      "lon": -9.60717,
+      "nome": null
+     },
+     {
+      "lat": 38.79467,
+      "lon": -9.60575,
+      "nome": null
+     },
+     {
+      "lat": 38.80978,
+      "lon": -9.60064,
+      "nome": null
+     },
+     {
+      "lat": 38.82433,
+      "lon": -9.59295,
+      "nome": null
+     },
+     {
+      "lat": 38.85301,
+      "lon": -9.57453,
+      "nome": null
+     },
+     {
+      "lat": 38.88168,
+      "lon": -9.55612,
+      "nome": null
+     },
+     {
+      "lat": 38.8927,
+      "lon": -9.55271,
+      "nome": null
+     },
+     {
+      "lat": 38.91969,
+      "lon": -9.54052,
+      "nome": null
+     },
+     {
+      "lat": 38.94669,
+      "lon": -9.52834,
+      "nome": null
+     },
+     {
+      "lat": 38.96027,
+      "lon": -9.53054,
+      "nome": null
+     },
+     {
+      "lat": 38.97736,
+      "lon": -9.52972,
+      "nome": null
+     },
+     {
+      "lat": 38.98732,
+      "lon": -9.53298,
+      "nome": null
+     },
+     {
+      "lat": 39.00388,
+      "lon": -9.5347,
+      "nome": null
+     },
+     {
+      "lat": 39.03477,
+      "lon": -9.53013,
+      "nome": null
+     },
+     {
+      "lat": 39.05174,
+      "lon": -9.52484,
+      "nome": null
+     },
+     {
+      "lat": 39.07343,
+      "lon": -9.52882,
+      "nome": null
+     },
+     {
+      "lat": 39.08998,
+      "lon": -9.52701,
+      "nome": null
+     },
+     {
+      "lat": 39.11969,
+      "lon": -9.51386,
+      "nome": null
+     },
+     {
+      "lat": 39.14125,
+      "lon": -9.49798,
+      "nome": null
+     },
+     {
+      "lat": 39.15521,
+      "lon": -9.49201,
+      "nome": null
+     },
+     {
+      "lat": 39.17626,
+      "lon": -9.4778,
+      "nome": null
+     },
+     {
+      "lat": 39.18509,
+      "lon": -9.46973,
+      "nome": null
+     },
+     {
+      "lat": 39.19734,
+      "lon": -9.46376,
+      "nome": null
+     },
+     {
+      "lat": 39.20784,
+      "lon": -9.46039,
+      "nome": null
+     },
+     {
+      "lat": 39.21922,
+      "lon": -9.45421,
+      "nome": null
+     },
+     {
+      "lat": 39.23452,
+      "lon": -9.45085,
+      "nome": null
+     },
+     {
+      "lat": 39.25367,
+      "lon": -9.45004,
+      "nome": null
+     },
+     {
+      "lat": 39.26488,
+      "lon": -9.44666,
+      "nome": null
+     },
+     {
+      "lat": 39.27448,
+      "lon": -9.44972,
+      "nome": null
+     },
+     {
+      "lat": 39.31,
+      "lon": -9.42,
+      "nome": "Largo de Peniche"
+     },
+     {
+      "lat": 39.344,
+      "lon": -9.372,
+      "nome": null
+     },
+     {
+      "lat": 39.3494,
+      "lon": -9.3752,
+      "nome": null
+     },
+     {
+      "lat": 39.3512,
+      "lon": -9.3748,
+      "nome": null
+     },
+     {
+      "lat": 39.3524,
+      "lon": -9.3747,
+      "nome": null
+     },
+     {
+      "lat": 39.3522,
+      "lon": -9.376,
+      "nome": "Peniche"
+     }
+    ]
+   },
+   {
+    "id": "20260929T1432-8mn-vela",
+    "nome": "Agora, 8 MN, vela e motor",
+    "afastamento": 8,
+    "direto": false,
+    "canal": null,
+    "nota": null,
+    "partida": "2026-09-29T14:32:00.000Z",
+    "propulsao": "vela",
+    "chegada": {
+     "p10": "2026-09-30T06:47:00.000Z",
+     "p50": "2026-09-30T07:36:00.000Z",
+     "p90": "2026-09-30T07:58:00.000Z"
+    },
+    "milhas": 68.36,
+    "pontosRota": [
+     {
+      "lat": 38.695,
+      "lon": -9.2344,
+      "nome": "Algés (CNA) (partida)"
+     },
+     {
+      "lat": 38.6948,
+      "lon": -9.2338,
+      "nome": null
+     },
+     {
+      "lat": 38.6925,
+      "lon": -9.2325,
+      "nome": null
+     },
+     {
+      "lat": 38.6905,
+      "lon": -9.245,
+      "nome": null
+     },
+     {
+      "lat": 38.688,
+      "lon": -9.265,
+      "nome": null
+     },
+     {
+      "lat": 38.68,
+      "lon": -9.295,
+      "nome": null
+     },
+     {
+      "lat": 38.6696,
+      "lon": -9.32,
+      "nome": null
+     },
+     {
+      "lat": 38.67167,
+      "lon": -9.33,
+      "nome": null
+     },
+     {
+      "lat": 38.6809,
+      "lon": -9.375,
+      "nome": null
+     },
+     {
+      "lat": 38.65,
+      "lon": -9.45,
+      "nome": "Largo de Algés (CNA)"
+     },
+     {
+      "lat": 38.62008,
+      "lon": -9.61399,
+      "nome": "Linha de 8 MN"
+     },
+     {
+      "lat": 38.62208,
+      "lon": -9.61642,
+      "nome": null
+     },
+     {
+      "lat": 38.64536,
+      "lon": -9.63654,
+      "nome": null
+     },
+     {
+      "lat": 38.67143,
+      "lon": -9.65001,
+      "nome": null
+     },
+     {
+      "lat": 38.68662,
+      "lon": -9.65438,
+      "nome": null
+     },
+     {
+      "lat": 38.69925,
+      "lon": -9.65643,
+      "nome": null
+     },
+     {
+      "lat": 38.72464,
+      "lon": -9.65596,
+      "nome": null
+     },
+     {
+      "lat": 38.7377,
+      "lon": -9.66232,
+      "nome": null
+     },
+     {
+      "lat": 38.76544,
+      "lon": -9.66999,
+      "nome": null
+     },
+     {
+      "lat": 38.77793,
+      "lon": -9.67111,
+      "nome": null
+     },
+     {
+      "lat": 38.80287,
+      "lon": -9.66886,
+      "nome": null
+     },
+     {
+      "lat": 38.82705,
+      "lon": -9.66071,
+      "nome": null
+     },
+     {
+      "lat": 38.84317,
+      "lon": -9.65182,
+      "nome": null
+     },
+     {
+      "lat": 38.85928,
+      "lon": -9.64294,
+      "nome": null
+     },
+     {
+      "lat": 38.87717,
+      "lon": -9.62985,
+      "nome": null
+     },
+     {
+      "lat": 38.90051,
+      "lon": -9.61627,
+      "nome": null
+     },
+     {
+      "lat": 38.92655,
+      "lon": -9.60512,
+      "nome": null
+     },
+     {
+      "lat": 38.95259,
+      "lon": -9.59397,
+      "nome": null
+     },
+     {
+      "lat": 38.97241,
+      "lon": -9.5943,
+      "nome": null
+     },
+     {
+      "lat": 38.99149,
+      "lon": -9.59831,
+      "nome": null
+     },
+     {
+      "lat": 39.00479,
+      "lon": -9.59886,
+      "nome": null
+     },
+     {
+      "lat": 39.02474,
+      "lon": -9.59671,
+      "nome": null
+     },
+     {
+      "lat": 39.05403,
+      "lon": -9.59078,
+      "nome": null
+     },
+     {
+      "lat": 39.07268,
+      "lon": -9.59304,
+      "nome": null
+     },
+     {
+      "lat": 39.09915,
+      "lon": -9.59017,
+      "nome": null
+     },
+     {
+      "lat": 39.11209,
+      "lon": -9.58622,
+      "nome": null
+     },
+     {
+      "lat": 39.13851,
+      "lon": -9.57343,
+      "nome": null
+     },
+     {
+      "lat": 39.16246,
+      "lon": -9.55716,
+      "nome": null
+     },
+     {
+      "lat": 39.18761,
+      "lon": -9.54298,
+      "nome": null
+     },
+     {
+      "lat": 39.21191,
+      "lon": -9.52563,
+      "nome": null
+     },
+     {
+      "lat": 39.23305,
+      "lon": -9.51682,
+      "nome": null
+     },
+     {
+      "lat": 39.25413,
+      "lon": -9.51462,
+      "nome": null
+     },
+     {
+      "lat": 39.31,
+      "lon": -9.42,
+      "nome": "Largo de Peniche"
+     },
+     {
+      "lat": 39.344,
+      "lon": -9.372,
+      "nome": null
+     },
+     {
+      "lat": 39.3494,
+      "lon": -9.3752,
+      "nome": null
+     },
+     {
+      "lat": 39.3512,
+      "lon": -9.3748,
+      "nome": null
+     },
+     {
+      "lat": 39.3524,
+      "lon": -9.3747,
+      "nome": null
+     },
+     {
+      "lat": 39.3522,
+      "lon": -9.376,
+      "nome": "Peniche"
+     }
+    ]
+   }
+  ],
+  "desistencia": [
+   {
+    "t": "2026-09-29T15:58:00.000Z",
+    "hora": "16:58",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 38.6715,
+    "lon": -9.3292,
+    "abrigo": {
+     "nome": "Oeiras",
+     "vento": "a favor",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Algés (CNA)",
+     "vento": "a favor",
+     "avisoVermelho": null
+    }
+   },
+   {
+    "t": "2026-09-29T17:09:00.000Z",
+    "hora": "18:09",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 38.6593,
+    "lon": -9.4273,
+    "abrigo": {
+     "nome": "Cascais",
+     "vento": "a favor",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Algés (CNA)",
+     "vento": "de través",
+     "avisoVermelho": null
+    }
+   },
+   {
+    "t": "2026-09-29T18:16:00.000Z",
+    "hora": "19:16",
+    "tipo": "cabo",
+    "nome": "Cabo Raso",
+    "lat": 38.6174,
+    "lon": -9.498,
+    "abrigo": {
+     "nome": "Cascais",
+     "vento": "a favor",
+     "avisoVermelho": "fuga junto à costa com vento do mar (a sotavento) — só em último recurso: a rota direta passa a 2,6 MN de uma costa a sotavento"
+    },
+    "voltar": {
+     "nome": "Algés (CNA)",
+     "vento": "de través",
+     "avisoVermelho": "fuga junto à costa com vento do mar (a sotavento) — só em último recurso: a rota direta passa a 2,6 MN de uma costa a sotavento"
+    }
+   },
+   {
+    "t": "2026-09-29T18:28:00.000Z",
+    "hora": "19:28",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 38.6228,
+    "lon": -9.5134,
+    "abrigo": {
+     "nome": "Cascais",
+     "vento": "a favor",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Algés (CNA)",
+     "vento": "de través",
+     "avisoVermelho": null
+    }
+   },
+   {
+    "t": "2026-09-29T19:46:00.000Z",
+    "hora": "20:46",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 38.6805,
+    "lon": -9.5861,
+    "abrigo": {
+     "nome": "Cascais",
+     "vento": "de través",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Algés (CNA)",
+     "vento": "de través",
+     "avisoVermelho": null
+    }
+   },
+   {
+    "t": "2026-09-29T21:06:00.000Z",
+    "hora": "22:06",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 38.761,
+    "lon": -9.604,
+    "abrigo": {
+     "nome": "Cascais",
+     "vento": "de través",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Algés (CNA)",
+     "vento": "de través",
+     "avisoVermelho": null
+    }
+   },
+   {
+    "t": "2026-09-29T22:23:00.000Z",
+    "hora": "23:23",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 38.8405,
+    "lon": -9.5825,
+    "abrigo": {
+     "nome": "Cascais",
+     "vento": "contra",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Algés (CNA)",
+     "vento": "de través",
+     "avisoVermelho": null
+    }
+   },
+   {
+    "t": "2026-09-29T23:35:00.000Z",
+    "hora": "00:35",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 38.9173,
+    "lon": -9.5416,
+    "abrigo": {
+     "nome": "Cascais",
+     "vento": "contra",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Algés (CNA)",
+     "vento": "de través",
+     "avisoVermelho": null
+    }
+   },
+   {
+    "t": "2026-09-30T00:48:00.000Z",
+    "hora": "01:48",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 38.9984,
+    "lon": -9.5341,
+    "abrigo": {
+     "nome": "Peniche",
+     "vento": "a favor",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Algés (CNA)",
+     "vento": "de través",
+     "avisoVermelho": null
+    }
+   },
+   {
+    "t": "2026-09-30T01:58:00.000Z",
+    "hora": "02:58",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 39.0809,
+    "lon": -9.528,
+    "abrigo": {
+     "nome": "Peniche",
+     "vento": "de través",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Algés (CNA)",
+     "vento": "a favor",
+     "avisoVermelho": null
+    }
+   },
+   {
+    "t": "2026-09-30T03:06:00.000Z",
+    "hora": "04:06",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 39.1581,
+    "lon": -9.4901,
+    "abrigo": {
+     "nome": "Peniche",
+     "vento": "de través",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Algés (CNA)",
+     "vento": "de través",
+     "avisoVermelho": null
+    }
+   },
+   {
+    "t": "2026-09-30T04:15:00.000Z",
+    "hora": "05:15",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 39.2348,
+    "lon": -9.4508,
+    "abrigo": {
+     "nome": "Peniche",
+     "vento": "de través",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Algés (CNA)",
+     "vento": "contra",
+     "avisoVermelho": null
+    }
+   },
+   {
+    "t": "2026-09-30T05:29:00.000Z",
+    "hora": "06:29",
+    "tipo": "marco",
+    "nome": null,
+    "lat": 39.3105,
+    "lon": -9.4193,
+    "abrigo": {
+     "nome": "Peniche",
+     "vento": "contra",
+     "avisoVermelho": null
+    },
+    "voltar": {
+     "nome": "Algés (CNA)",
+     "vento": "a favor",
+     "avisoVermelho": null
+    }
+   }
+  ],
+  "desistenciaResumo": "até às 06:29 ainda voltas a Algés (CNA) com vento a favor, exceto junto ao Cabo Raso às 19:16, onde a fuga é junto à costa com vento do mar"
+ }
+}
