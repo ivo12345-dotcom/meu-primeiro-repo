@@ -431,8 +431,9 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   try { await deps.aoCandidatos?.(candidatos) } catch { /* só para diagnóstico (também se rejeitar) */ }
 
   // ---------- no mar: o abrigo mais perto (para "Volta ou abriga-te em X") ----------
+  // também com "sair agora" (decisão do Ivo de 01/10: o Recalcular a navegar só pede a partida imediata)
   let abrigo = null
-  if (emMar && !sairAgora) {
+  if (emMar) {
     await progresso(0.82, 'a ver o abrigo mais perto')
     const perto = costa.destinos.filter(d => d.abrigo && d.id !== destino.id).map(d => ({ d, mn: c.distanciaMn(pos, c.P(d.largo)) })).sort((a, b) => a.mn - b.mn)[0]
     if (perto) {

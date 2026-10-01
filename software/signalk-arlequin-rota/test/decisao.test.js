@@ -117,6 +117,12 @@ test('veredicto "Volta ou abriga-te em X": só no mar, continuar não é recomen
   assert.equal(d.decidir({ candidatos: [continuar, tarde], agora: AGORA, tripulacao: 'so', emMar: true, abrigo: mau }).veredicto.tipo, 'espera')
   // continuar é recomendado: segue
   assert.equal(d.decidir({ candidatos: [cand({ custo: 30 })], agora: AGORA, tripulacao: 'so', emMar: true, abrigo }).veredicto.tipo, 'segue')
+  // decisão 6 (Ivo): no mar, o Recalcular pede "sair agora" (só a partida imediata) e o "Volta ou abriga-te" fica
+  const agora = d.decidir({ candidatos: [continuar], agora: AGORA, tripulacao: 'so', sairAgora: true, emMar: true, abrigo })
+  assert.equal(agora.veredicto.tipo, 'volta')
+  assert.equal(agora.veredicto.texto, 'Volta ou abriga-te em Cascais')
+  assert.equal(agora.veredicto.porque[0], 'Agora: rajadas até 33 nós no pior caso (limite 30 sozinho).')
+  assert.equal(d.decidir({ candidatos: [cand({ custo: 30 })], agora: AGORA, tripulacao: 'so', sairAgora: true, emMar: true, abrigo }).veredicto.tipo, 'segue')
 })
 
 test('a rota direta (afastamento null) e a variante por um canal no texto do veredicto: nunca "a null MN"', () => {

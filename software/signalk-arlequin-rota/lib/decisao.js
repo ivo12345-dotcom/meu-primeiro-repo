@@ -31,7 +31,8 @@
 //   nao-recomendado nenhuma alternativa passa (com "so": "Não recomendado sozinho"; com
 //                   "acompanhado": "Não recomendado", acima de 28/35/4 — lib/seguranca.js);
 //   volta           só pedido no mar (a mais de 0,5 MN de um porto): continuar agora não é
-//                   recomendado e ir para o abrigo mais perto é ("Volta ou abriga-te em X").
+//                   recomendado e ir para o abrigo mais perto é ("Volta ou abriga-te em X"); também
+//                   com "sair agora" (o Recalcular a navegar, decisão do Ivo de 01/10).
 
 const H = 3600000
 const MEIA_HORA = 1800000
@@ -152,7 +153,7 @@ function decidir ({ candidatos, agora, tripulacao, sairAgora = false, emMar = fa
   let veredicto
   if (melhorRec && melhorRec.partida === agora) {
     veredicto = { tipo: 'segue', texto: 'Segue', porque: [`Parte agora pela rota ${nomeRota(melhorRec)}: ${frase(melhorRec, agora, fuso)}.`] }
-  } else if (emMar && !sairAgora && abrigo && abrigo.candidato && recomendada(abrigo.candidato, tripulacao)) {
+  } else if (emMar && abrigo && abrigo.candidato && recomendada(abrigo.candidato, tripulacao)) {
     const a = abrigo.candidato
     veredicto = {
       tipo: 'volta',

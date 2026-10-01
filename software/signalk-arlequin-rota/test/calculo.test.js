@@ -471,3 +471,16 @@ test('I3 (regressão): um destino { lat, lon, nome } (o /calcular por coordenada
   assert.ok(r.alternativas.length > 0, JSON.stringify(r.veredicto))
   assert.ok(!JSON.stringify(r).includes('entrada mal definida'), JSON.stringify(r.veredicto))
 })
+
+test('decisão 6 (Ivo): no mar, o Recalcular com "sair agora" (só a partida imediata) mantém "Volta ou abriga-te em X" e os pontos de desistência', async () => {
+  const r = await calcular(entrada({ instrumentos: { posicao: { lat: 38.66, lon: -9.47 }, socPct: 90, gasoleoL: 124 }, sairAgora: true }), deps())
+  assert.equal(r.erro, undefined, r.erro)
+  assert.equal(r.partida.emMar, true)
+  assert.equal(r.veredicto.tipo, 'volta')
+  assert.equal(r.veredicto.texto, 'Volta ou abriga-te em Cascais')
+  assert.match(r.veredicto.porque[1], /^Até Cascais são \d+,\d MN: /)
+  // só a partida imediata (nada de "partida amanhã às 06:00" a meio da viagem)
+  assert.ok(r.alternativas.length > 0)
+  for (const a of r.alternativas) assert.equal(Date.parse(a.partida), AGORA)
+  assert.ok(r.desistencia.length > 0)
+})
