@@ -22,19 +22,22 @@ const SO_ALARME = ['notifications.arlequin.caixanegra.disco', 'notifications.rot
 // Lembretes e avisos só para o ecrã: nunca seguem para o Telegram.
 const NUNCA = ['notifications.arlequin.caixanegra.velas', 'notifications.arlequin.caixanegra.relogio', 'notifications.rota.lembrete.', 'notifications.rota.comer']
 const GRAVE = new Set(['alarm', 'emergency'])
+// Um caminho das listas: exato; só um que acaba em ponto final é um prefixo (notifications.rota.lembrete.)
+const casa = (caminho, p) => (p.endsWith('.') ? caminho.startsWith(p) : caminho === p)
+const casaAlgum = (caminho, lista) => lista.some(p => casa(caminho, p))
 
 function encaminhar (enc0, notificacoes, agora, { intervalo = 10 * 60 * 1000, amarrado = false, ignorarAmarrado = ['notifications.arlequin.ais.'], nunca = NUNCA, soAlarme = SO_ALARME } = {}) {
   const enc = { estados: { ...enc0.estados }, mensagem: { ...enc0.mensagem }, ultimoAlarme: { ...enc0.ultimoAlarme }, pendente: { ...enc0.pendente } }
   const mensagens = []
   for (const n of notificacoes) {
-    if (nunca.some(p => n.caminho.startsWith(p))) continue // lembretes só para o ecrã
+    if (casaAlgum(n.caminho, nunca)) continue // lembretes só para o ecrã
     const antes = enc.estados[n.caminho] || 'normal'
-    const soGrave = soAlarme.some(p => n.caminho.startsWith(p))
+    const soGrave = casaAlgum(n.caminho, soAlarme)
     // Para estes caminhos um aviso conta como normal: não segue, e o "resolvido" só sai se houve alarme.
     const agoraEstado = ATIVO.has(n.state) && (!soGrave || GRAVE.has(n.state)) ? n.state : 'normal'
     enc.estados[n.caminho] = agoraEstado
     if (agoraEstado === antes) continue
-    if (amarrado && ignorarAmarrado.some(p => n.caminho.startsWith(p))) continue
+    if (amarrado && casaAlgum(n.caminho, ignorarAmarrado)) continue
     if (agoraEstado !== 'normal') {
       if (enc.ultimoAlarme[n.caminho] !== undefined && agora - enc.ultimoAlarme[n.caminho] < intervalo) continue
       mensagens.push(`${ICONE[agoraEstado]} ${n.message || n.caminho}`)
@@ -66,7 +69,7 @@ function listarNotificacoes (arvore, prefixo = 'notifications') {
 // Alarmes ativos para o /estado do Telegram (sem os lembretes só do ecrã).
 function alarmesAtivos (lista, nunca = NUNCA) {
   return lista
-    .filter(n => ['alarm', 'emergency', 'warn'].includes(n.state) && !nunca.some(p => n.caminho.startsWith(p)))
+    .filter(n => ['alarm', 'emergency', 'warn'].includes(n.state) && !casaAlgum(n.caminho, nunca))
     .map(n => n.message || n.caminho)
 }
 

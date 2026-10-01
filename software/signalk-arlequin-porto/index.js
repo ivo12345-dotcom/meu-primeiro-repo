@@ -6,13 +6,17 @@
 //
 // Plano de navegação (desenho 3b-1): o plugin da rota emite 'arlequin:plano' { pedido, texto, gpx,
 // nomeFicheiro }; aqui envia-se a mensagem e o GPX aos chatIds e aos contactosPlano, e responde-se
-// com 'arlequin:plano-enviado' { pedido, entregues: [nome], contactos: [nome], falhas: [{ nome, erro }] }.
-// contactos: os contactos em terra que o receberam (os contactosPlano entregues que não estão nos
-// chatIds: um chat nas duas listas é do Ivo e comanda). Só eles têm a hora de alarme em terra.
+// com 'arlequin:plano-enviado' { pedido, entregues: [nome], contactos: [nome], chats: [chatId], falhas: [{ nome, erro }] }.
+// contactos (e chats, os chatId deles, pela mesma ordem): os contactos em terra que o receberam (os
+// contactosPlano entregues que não estão nos chatIds: um chat nas duas listas é do Ivo e comanda). Só
+// eles têm a hora de alarme em terra.
 // A navegar (desenho 3b-2), o plugin da rota manda também { pedido, tipo: 'plano' | 'chegada' | 'atraso' |
-// 'terminado', texto, gpx?, nomeFicheiro?, destinatarios: 'contactos-do-plano', contactos: [nome] }: vai
-// só aos contactosPlano com esses nomes (os que receberam o plano) e aos chatIds (o Ivo); o GPX só no
-// tipo 'plano'. Sem destinatarios, como na 3b-1: a todos.
+// 'terminado', texto, gpx?, nomeFicheiro?, destinatarios: 'contactos-do-plano', contactos: [nome],
+// chats: [chatId] }: vai só aos contactosPlano com esses chatId (os que receberam o plano; escolhe-se
+// pelo chatId, nunca pelo nome) e aos chatIds (o Ivo); um chat pedido que já não está nos
+// contactosPlano vai para as falhas, com o nome do pedido. O GPX só no tipo 'plano'. Uma mensagem com
+// tipo que não seja 'plano' é sempre assim, mesmo sem destinatarios (sem chats, só ao Ivo). Sem tipo e
+// sem destinatarios, como na 3b-1: a todos.
 // Os contactosPlano só recebem: as mensagens deles são ignoradas (não comandam). Quem escreve sem
 // estar em nenhuma das listas recebe o código para dar ao Ivo (uma vez por hora) e não fica autorizado.
 // O plano vai a todos os destinatários em paralelo e cada chamada ao Telegram tem um limite de 10 s,
@@ -38,6 +42,7 @@ const CAMINHOS = {
 }
 
 const UMA_HORA = 3600000
+const FORA_DA_LISTA = 'já não está nos "Contactos do plano" do plugin porto'
 const MAX_CODIGOS = 500 // os desconhecidos de que se guarda a hora do código (os mais antigos saem)
 const textoCodigo = (chatId) => `Para receberes os planos do ARLEQUIN, dá este código ao Ivo: ${chatId}`
 
@@ -166,19 +171,27 @@ module.exports = function (app, deps = {}) {
     .filter(c => c && c.chatId != null && String(c.chatId).trim())
     .map(c => ({ nome: String(c.nome || '').trim() || `chat ${String(c.chatId).trim()}`, chatId: String(c.chatId).trim() }))
 
+  // Só aos indicados: com destinatarios 'contactos-do-plano' ou com um tipo que não seja o plano
+  // (chegada, atraso, terminado, ou um tipo desconhecido): nunca a todos os contactos.
+  const restrito = (ev) => ev?.destinatarios === 'contactos-do-plano' || (ev?.tipo != null && ev.tipo !== 'plano')
   // os destinatários do plano: os chats autorizados e os contactos do plano (em terra), sem repetir;
-  // com destinatarios 'contactos-do-plano', só os contactos com os nomes da lista
+  // restrito, só os contactos com os chatId pedidos. → { lista, faltam: [{ nome, erro }] } (os chats
+  // pedidos que já não estão nos contactos do plano)
   function destinatariosPlano (ev) {
-    const so = ev?.destinatarios === 'contactos-do-plano' ? new Set((Array.isArray(ev.contactos) ? ev.contactos : []).map(String)) : null
+    const pedidos = restrito(ev) ? (Array.isArray(ev.chats) ? ev.chats : []).map(x => String(x ?? '').trim()) : null
+    const so = pedidos ? new Set(pedidos) : null
     const out = []
     for (const id of chatsAutorizados()) out.push({ nome: `chat ${id}`, chatId: id, emTerra: false })
-    for (const c of contactosPlano()) if ((!so || so.has(c.nome)) && !out.some(d => d.chatId === c.chatId)) out.push({ ...c, emTerra: true })
-    return out
+    for (const c of contactosPlano()) if ((!so || so.has(c.chatId)) && !out.some(d => d.chatId === c.chatId)) out.push({ ...c, emTerra: true })
+    const nomes = Array.isArray(ev?.contactos) ? ev.contactos.map(String) : []
+    const faltam = (pedidos || []).map((id, i) => ({ id, i })).filter(({ id }) => id && !contactosPlano().some(c => c.chatId === id))
+      .map(({ id, i }) => ({ nome: nomes[i] || `chat ${id}`, erro: FORA_DA_LISTA }))
+    return { lista: out, faltam }
   }
 
   async function enviarPlano (ev) {
     const pedido = ev?.pedido
-    const responder = (entregues, falhas, contactos = []) => app.emit('arlequin:plano-enviado', { pedido, entregues, contactos, falhas })
+    const responder = (entregues, falhas, contactos = [], chats = []) => app.emit('arlequin:plano-enviado', { pedido, entregues, contactos, chats, falhas })
     // o cliente do início: um stop() a meio (tg = null) não estraga o envio, que acaba sozinho
     const cliente = tg
     if (!cliente) return responder([], [{ nome: 'Telegram', erro: 'o plugin porto não tem o token do bot' }])
@@ -186,15 +199,17 @@ module.exports = function (app, deps = {}) {
     const comGpx = ev?.tipo == null || ev.tipo === 'plano'
     const gpx = comGpx && typeof ev?.gpx === 'string' && ev.gpx ? Buffer.from(ev.gpx, 'utf8') : null
     // todos ao mesmo tempo; em cada um, a mensagem e depois o GPX
-    const resultados = await Promise.all(destinatariosPlano(ev).map(async (d) => {
+    const { lista, faltam } = destinatariosPlano(ev)
+    const resultados = await Promise.all(lista.map(async (d) => {
       try {
         await cliente.sendMessage(d.chatId, String(ev?.texto ?? ''))
         if (gpx) await cliente.sendDocument(d.chatId, gpx, ev.nomeFicheiro || 'plano.gpx')
-        return { nome: d.nome, emTerra: d.emTerra }
+        return { nome: d.nome, chatId: d.chatId, emTerra: d.emTerra }
       } catch (e) { return { nome: d.nome, erro: erroEmPortugues(e) } }
     }))
     const ok = resultados.filter(x => !x.erro)
-    responder(ok.map(x => x.nome), resultados.filter(x => x.erro), ok.filter(x => x.emTerra).map(x => x.nome))
+    const emTerra = ok.filter(x => x.emTerra)
+    responder(ok.map(x => x.nome), [...resultados.filter(x => x.erro), ...faltam], emTerra.map(x => x.nome), emTerra.map(x => x.chatId))
   }
   const aoPlano = (ev) => { enviarPlano(ev).catch(e => app.error(`plano: ${e.message}`)) }
 

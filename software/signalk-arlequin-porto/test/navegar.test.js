@@ -1,8 +1,8 @@
 'use strict'
 // A navegar (desenho 3b-2): os avisos notifications.rota.* no Telegram (os lembretes e o "come e bebe"
 // nunca; a previsão só em alarme; os importantes só ao chat do Ivo) e as mensagens do plugin da rota
-// com tipo (chegada, atraso, terminado: só aos contactos indicados e ao chat do Ivo, sem GPX; o plano
-// novo com o GPX).
+// com tipo (chegada, atraso, terminado: só aos contactos indicados, pelo chatId, e ao chat do Ivo, sem
+// GPX; o plano novo com o GPX; os pedidos que já não estão na configuração vão para as falhas).
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -77,8 +77,8 @@ test('chegada, atraso e terminado: só aos contactos indicados (os que receberam
     for (const [i, tipo] of ['chegada', 'atraso', 'terminado'].entries()) {
       const pedido = `t${i}`
       const r = respostaDe(x.app, pedido)
-      x.app.emit('arlequin:plano', { pedido, tipo, texto: `texto ${tipo}`, gpx: '<gpx/>', nomeFicheiro: 'n.gpx', destinatarios: 'contactos-do-plano', contactos: ['Mãe', 'Tio'] })
-      assert.deepEqual(await r, { pedido, entregues: ['chat 111', 'Mãe', 'Tio'], contactos: ['Mãe', 'Tio'], falhas: [] })
+      x.app.emit('arlequin:plano', { pedido, tipo, texto: `texto ${tipo}`, gpx: '<gpx/>', nomeFicheiro: 'n.gpx', destinatarios: 'contactos-do-plano', contactos: ['Mãe', 'Tio'], chats: ['222', '333'] })
+      assert.deepEqual(await r, { pedido, entregues: ['chat 111', 'Mãe', 'Tio'], contactos: ['Mãe', 'Tio'], chats: ['222', '333'], falhas: [] })
     }
     const por = (chat) => x.tgf.enviados.filter(m => m.chatId === chat).map(m => `${m.metodo}:${m.text ?? m.nomeFicheiro}`)
     for (const chat of ['111', '222', '333']) assert.deepEqual(por(chat), ['sendMessage:texto chegada', 'sendMessage:texto atraso', 'sendMessage:texto terminado'], chat)
@@ -87,12 +87,12 @@ test('chegada, atraso e terminado: só aos contactos indicados (os que receberam
   } finally { await x.fechar() }
 })
 
-test('o plano novo (tipo plano, "Este plano substitui o anterior") vai com o GPX aos mesmos contactos e ao Ivo; um contacto que já não está na configuração fica de fora', async () => {
+test('o plano novo (tipo plano, "Este plano substitui o anterior") vai com o GPX aos mesmos contactos e ao Ivo; um contacto que já não está na configuração fica de fora e vai para as falhas', async () => {
   const x = await porto()
   try {
     const r = respostaDe(x.app, 'p1')
-    x.app.emit('arlequin:plano', { pedido: 'p1', tipo: 'plano', texto: 'PLANO\nEste plano substitui o anterior.', gpx: '<gpx/>', nomeFicheiro: 'novo.gpx', destinatarios: 'contactos-do-plano', contactos: ['Mãe', 'Quem saiu'] })
-    assert.deepEqual(await r, { pedido: 'p1', entregues: ['chat 111', 'Mãe'], contactos: ['Mãe'], falhas: [] })
+    x.app.emit('arlequin:plano', { pedido: 'p1', tipo: 'plano', texto: 'PLANO\nEste plano substitui o anterior.', gpx: '<gpx/>', nomeFicheiro: 'novo.gpx', destinatarios: 'contactos-do-plano', contactos: ['Mãe', 'Quem saiu'], chats: ['222', '999'] })
+    assert.deepEqual(await r, { pedido: 'p1', entregues: ['chat 111', 'Mãe'], contactos: ['Mãe'], chats: ['222'], falhas: [{ nome: 'Quem saiu', erro: 'já não está nos "Contactos do plano" do plugin porto' }] })
     for (const chat of ['111', '222']) assert.deepEqual(x.tgf.enviados.filter(m => m.chatId === chat).map(m => m.metodo), ['sendMessage', 'sendDocument'])
     assert.equal(x.tgf.enviados.filter(m => m.chatId === '333').length, 0)
   } finally { await x.fechar() }
@@ -122,4 +122,76 @@ test('os avisos importantes da rota vão só ao chat do Ivo (nunca aos contactos
     await esperar(300)
     assert.deepEqual(x.tgf.enviados.map(m => [m.chatId, m.text]), [['111', '⚠️ Recalcula a rota: atraso de 31 min sobre o plano']])
   } finally { await x.fechar() }
+})
+
+test('8: os pedidos escolhem pelo chatId, não pelo nome: dois contactos com o mesmo nome (só um recebeu o plano) → só esse; um renomeado continua a receber', async () => {
+  const tgf = await criarTelegramFalso()
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ telegramToken: 'TESTE', chatIds: ['111'], contactosPlano: [{ nome: 'Mãe', chatId: '222' }, { nome: 'Mãe', chatId: '555' }, { nome: 'Tio (novo nome)', chatId: '333' }], telegramBase: tgf.url, pollTimeout: 1 })
+  try {
+    const r = respostaDe(app, 'n1')
+    app.emit('arlequin:plano', { pedido: 'n1', tipo: 'chegada', texto: 'cheguei', destinatarios: 'contactos-do-plano', contactos: ['Mãe', 'Tio'], chats: ['222', '333'] })
+    assert.deepEqual(await r, { pedido: 'n1', entregues: ['chat 111', 'Mãe', 'Tio (novo nome)'], contactos: ['Mãe', 'Tio (novo nome)'], chats: ['222', '333'], falhas: [] })
+    assert.equal(tgf.enviados.filter(m => m.chatId === '555').length, 0, 'a outra Mãe nunca recebeu o plano')
+  } finally { p.stop(); await tgf.fechar() }
+})
+
+test('8: as mensagens com tipo (chegada, atraso, terminado, ou um tipo desconhecido) vão sempre só aos indicados, mesmo sem destinatarios; sem chats, só ao Ivo', async () => {
+  const x = await porto()
+  try {
+    for (const [i, ev] of [
+      { tipo: 'atraso', contactos: ['Mãe'], chats: ['222'] }, // sem destinatarios
+      { tipo: 'outro-tipo', contactos: ['Mãe'], chats: ['222'] },
+      { tipo: 'chegada', destinatarios: 'contactos-do-plano' }, // sem contactos nem chats
+      { tipo: 'terminado' }
+    ].entries()) {
+      const pedido = `k${i}`
+      const r = respostaDe(x.app, pedido)
+      x.app.emit('arlequin:plano', { pedido, texto: `texto ${i}`, ...ev })
+      const res = await r
+      assert.deepEqual(res.contactos, ev.chats ? ['Mãe'] : [], pedido)
+    }
+    assert.deepEqual(x.tgf.enviados.filter(m => m.chatId === '333' || m.chatId === '444'), [], 'o Tio e o Amigo não receberam o plano')
+    assert.deepEqual(x.tgf.enviados.filter(m => m.chatId === '222').map(m => m.text), ['texto 0', 'texto 1'])
+    assert.equal(x.tgf.enviados.filter(m => m.chatId === '111').length, 4, 'o Ivo recebe todas')
+    assert.equal(x.tgf.enviados.filter(m => m.metodo === 'sendDocument').length, 0)
+  } finally { await x.fechar() }
+})
+
+test('8: num tipo, um contacto que falha vai para as falhas e fica fora dos contactos; um contacto que também está nos chats do Ivo recebe uma vez, como Ivo', async () => {
+  const tgf = await criarTelegramFalso()
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ telegramToken: 'TESTE', chatIds: ['111'], contactosPlano: [{ nome: 'Mãe', chatId: '222' }, { nome: 'Tio', chatId: '333' }, { nome: 'Ivo', chatId: '111' }], telegramBase: tgf.url, pollTimeout: 1 })
+  try {
+    tgf.bloquear('333')
+    const r = respostaDe(app, 'f1')
+    app.emit('arlequin:plano', { pedido: 'f1', tipo: 'atraso', texto: 'atraso', destinatarios: 'contactos-do-plano', contactos: ['Mãe', 'Tio', 'Ivo'], chats: ['222', '333', '111'] })
+    assert.deepEqual(await r, { pedido: 'f1', entregues: ['chat 111', 'Mãe'], contactos: ['Mãe'], chats: ['222'], falhas: [{ nome: 'Tio', erro: 'bloqueou o bot' }] })
+    assert.equal(tgf.enviados.filter(m => m.chatId === '111').length, 1, 'sem duplicar')
+  } finally { p.stop(); await tgf.fechar() }
+})
+
+test('8: a previsão em alarm → warn → alarm: o warn conta como normal ("Resolvido") e o 2.º alarme segue (passados os 10 min)', () => {
+  let e = novoEncaminhador()
+  let r = encaminhar(e, [n('notifications.rota.previsao', 'alarm', 'Previsão com 13 h: confia nos instrumentos e no barómetro')], 0)
+  assert.deepEqual(r.mensagens, ['🚨 Previsão com 13 h: confia nos instrumentos e no barómetro'])
+  e = r.enc
+  r = encaminhar(e, [n('notifications.rota.previsao', 'warn', 'Previsão com 7 h')], MIN)
+  assert.deepEqual(r.mensagens, ['✓ Resolvido: Previsão com 13 h: confia nos instrumentos e no barómetro'])
+  e = r.enc
+  r = encaminhar(e, [n('notifications.rota.previsao', 'alarm', 'Previsão com 13 h: confia nos instrumentos e no barómetro')], 11 * MIN)
+  assert.deepEqual(r.mensagens, ['🚨 Previsão com 13 h: confia nos instrumentos e no barómetro'])
+})
+
+test('8: os caminhos do NUNCA e do SO_ALARME são exatos (um ponto final no fim é um prefixo): notifications.rota.comerX não fica de fora', () => {
+  const r = encaminhar(novoEncaminhador(), [
+    n('notifications.rota.comerX', 'warn', 'outro aviso'),
+    n('notifications.rota.comer', 'alert', 'Come e bebe'),
+    n('notifications.rota.lembrete.e3', 'alert', 'lembrete'),
+    n('notifications.rota.previsaoX', 'warn', 'outro da previsão')
+  ], 0)
+  assert.deepEqual(r.mensagens, ['⚠️ outro aviso', '⚠️ outro da previsão'])
+  assert.deepEqual(alarmesAtivos([n('notifications.rota.comerX', 'warn', 'x'), n('notifications.rota.comer', 'alert', 'y')]), ['x'])
 })
