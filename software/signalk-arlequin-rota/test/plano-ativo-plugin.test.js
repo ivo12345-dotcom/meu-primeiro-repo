@@ -93,3 +93,19 @@ test('ao arrancar, o plugin lê o plano ativo gravado (e um ficheiro estragado s
   assert.match(app.erros.at(-1), /^plano-ativo\.json ilegível/)
   s.p.stop()
 })
+
+test('ativarRota: a descrição para o OpenCPN usa o semVela como o ecrã e o plano ("a motor (sem vento para vela)")', async () => {
+  const app = appFalso()
+  const { p, r } = plugin(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  const { id } = await calcular(r, { destino: 'alges', tripulacao: 'so' })
+  // o resultado guardado no plugin (o GET devolve o mesmo objeto): uma "vela e motor" sem vela
+  const guardado = (await chamar(r.get['/resultado/:id'], { params: { id } })).resultado
+  Object.assign(guardado.alternativas[0], { propulsao: 'vela', semVela: true })
+  const a = await chamar(r.post['/ativar'], { body: { id, alternativa: 0 } })
+  assert.match(app.recursos.get(`routes/${a.rota}`).description, /, a motor \(sem vento para vela\), partida /)
+  Object.assign(guardado.alternativas[0], { semVela: false })
+  const b = await chamar(r.post['/ativar'], { body: { id, alternativa: 0 } })
+  assert.match(app.recursos.get(`routes/${b.rota}`).description, /, vela e motor, partida /)
+  p.stop()
+})

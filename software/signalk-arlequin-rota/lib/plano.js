@@ -92,6 +92,10 @@ const texto = (x) => (typeof x === 'string' && x.trim() ? x.trim() : null)
 // do plugin (horas em bruto); sem ele (resultados antigos), o horas.vela arredondado.
 const semVela = (alt) => (typeof alt.semVela === 'boolean' ? alt.semVela : Number.isFinite(alt.horas?.vela) && alt.horas.vela < 0.1)
 
+// A propulsão em texto (a mesma no OpenCPN, no ecrã e no plano): "só motor", "vela e motor", ou
+// "a motor (sem vento para vela)" quando a "vela e motor" vai toda a motor (semVela).
+const propulsaoTexto = (alt) => (alt.propulsao === 'motor' ? 'só motor' : semVela(alt) ? 'a motor (sem vento para vela)' : 'vela e motor')
+
 // "a 5 MN da costa, via Canal da Berlenga, só motor" · "direta (salto curto), vela e motor" ·
 // "a 5 MN da costa, a motor (sem vento para vela)"
 function rotaTexto (alt) {
@@ -99,8 +103,7 @@ function rotaTexto (alt) {
   if (alt.direto) partes.push('direta (salto curto)')
   else if (Number.isFinite(alt.afastamento)) partes.push(`a ${String(alt.afastamento).replace('.', ',')} MN da costa`)
   if (alt.canal) partes.push(`via ${alt.canal}`)
-  if (alt.propulsao === 'motor') partes.push('só motor')
-  else if (alt.propulsao === 'vela') partes.push(semVela(alt) ? 'a motor (sem vento para vela)' : 'vela e motor')
+  if (alt.propulsao === 'motor' || alt.propulsao === 'vela') partes.push(propulsaoTexto(alt))
   return partes.join(', ') || SEM
 }
 
@@ -195,4 +198,4 @@ function montarPlano ({ resultado, indice = 0, barco = {}, telefones = {}, agora
   return { texto: linhas.join('\n'), gpx, nomeFicheiro }
 }
 
-module.exports = { MRCC, EMERGENCIA_PADRAO, SEM_ALARME, CALCULO_ANTIGO, horaLisboa, asHoras, horaAlarme, rotaTexto, semVela, posicaoTexto, montarPlano }
+module.exports = { MRCC, EMERGENCIA_PADRAO, SEM_ALARME, CALCULO_ANTIGO, horaLisboa, asHoras, horaAlarme, rotaTexto, propulsaoTexto, semVela, posicaoTexto, montarPlano }

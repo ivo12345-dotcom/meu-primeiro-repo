@@ -14,15 +14,18 @@ export function maisGrave (lista) {
   return melhor
 }
 
-// 'continuo' | 'curto' | null
+// 'continuo' | 'curto' | null. Um aviso com apito: 'curto' (a previsão velha da rota, desenho 3b-2,
+// que é alarm) dá só o apito curto: o contínuo fica para o perigo imediato (AIS).
 export function deveTocar (n) {
   if (!n || nivel(n) === 0) return null
   if (!Array.isArray(n.method) || !n.method.includes('sound')) return null
   if (n.status && (n.status.silenced || n.status.acknowledged)) return null
+  if (n.apito === 'curto') return 'curto'
   return nivel(n) >= GRAVIDADE.alarm ? 'continuo' : 'curto'
 }
 
 export function paginaDoAlarme (caminho) {
+  if (caminho.startsWith('notifications.rota.')) return 'melhor'
   if (caminho.includes('.caixanegra.velas')) return 'velas'
   if (caminho.includes('.caixanegra.')) return 'diario'
   if (caminho.includes('.ais.')) return 'ais'

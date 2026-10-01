@@ -111,6 +111,10 @@ body.noite button, body.noite .btn { color: var(--texto); }
   html { font-size: calc(100vw / 42); }
 }
 
+/* A navegar (3b-2): a faixa do plano ativo por cima do rumo e a caixa da rota mudada. */
+.plano-faixa { font-size: 1.3rem; border-left: .35rem solid var(--azul); }
+.plano-faixa .acoes, .plano-pausado .acoes, .plano-confirmar .acoes { margin-top: .35rem; }
+
 /* Melhor rota (3b-1): faixa do veredicto, cartões, avisos, precauções e o mini-mapa. */
 .rolar { overflow: auto; }
 .faixa { border-radius: .4rem; padding: .45rem .7rem; color: var(--faixa-texto); font-size: 1.1rem; }

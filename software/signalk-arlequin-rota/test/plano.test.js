@@ -266,3 +266,10 @@ test('configuração do plugin da rota: o barco e os telefones, com os valores p
   assert.deepEqual(Object.fromEntries(Object.entries(s.telefones.properties).map(([k, v]) => [k, v.default])), TELEFONES)
   assert.equal(s.telefones.properties.emergencia.default, plano.EMERGENCIA_PADRAO)
 })
+
+test('propulsaoTexto (o OpenCPN, o ecrã e o plano dizem o mesmo): só motor; vela e motor; a motor (sem vento para vela) com semVela', () => {
+  assert.equal(plano.propulsaoTexto({ propulsao: 'motor' }), 'só motor')
+  assert.equal(plano.propulsaoTexto({ propulsao: 'vela', semVela: false }), 'vela e motor')
+  assert.equal(plano.propulsaoTexto({ propulsao: 'vela', semVela: true }), 'a motor (sem vento para vela)')
+  assert.equal(plano.propulsaoTexto({ propulsao: 'vela', horas: { vela: 0.04 } }), 'a motor (sem vento para vela)')
+})
