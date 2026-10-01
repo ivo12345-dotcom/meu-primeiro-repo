@@ -6,9 +6,10 @@
 // sufixo de verão/inverno na hora repetida):
 //   chegada    "Cheguei bem a X às HH:MM. Obrigado!" (uma vez)
 //   atraso     "Ainda a navegar, tudo bem. Nova chegada prevista ~HH:MM. Nova hora de alarme: HH:MM
-//              (em vez de HH:MM)." quando a chegada prevista agora passa da "mais tarde" do plano
-//              (chegada.p90); a nova hora de alarme é a chegada prevista + 2 h; depois, no máximo 1×
-//              por hora e só se a chegada voltar a escorregar mais de 15 min (decidirAtraso)
+//              (em vez de HH:MM)." quando a chegada prevista agora passa 30 min ou mais da "mais tarde"
+//              do plano (chegada.p90; decisão do Ivo de 01/10); a nova hora de alarme é a chegada
+//              prevista + 2 h; depois, no máximo 1× por hora e só se a chegada voltar a escorregar mais
+//              de 15 min (decidirAtraso)
 //   terminado  "Viagem terminada / mudança de planos: estou bem, em <graus e minutos> às HH:MM."
 //   plano      o plano novo (texto + GPX da 3b-1) com a linha "Este plano substitui o anterior."
 // A fila (gravada no plano ativo, em plano.contactos): { fila: [msg], enviadas: [msg], seq }
@@ -36,6 +37,7 @@ const H = 3600000
 const REPETIR_MS = 2 * MIN
 const ATRASO_INTERVALO_MS = H
 const ATRASO_ESCORREGA_MS = 15 * MIN
+const ATRASO_MARGEM_MS = 30 * MIN // o 1.º atraso: a chegada prevista 30 min ou mais depois da p90
 const ALARME_DEPOIS_MS = 2 * H
 const FECHO = new Set(['chegada', 'terminado'])
 const SUBSTITUI = 'Este plano substitui o anterior.'
@@ -72,10 +74,12 @@ function textoSubstitui (texto) {
 
 // ---------- o atraso ----------
 // enviado: o último atraso enviado { ultimoEm, chegada, alarme } (ms) ou null.
+// O 1.º só com a chegada prevista agora 30 min ou mais depois da "mais tarde" do plano (decisão do Ivo de
+// 01/10: um plano só a motor tem p90 = p50, e 5 min de atraso não é motivo para ninguém se preocupar).
 function decidirAtraso (enviado, { chegadaAgora, p90, alarmePlano, agora }) {
   if (!valido(chegadaAgora) || !valido(p90) || chegadaAgora <= p90) return null
   const novo = { chegada: chegadaAgora, alarme: chegadaAgora + ALARME_DEPOIS_MS }
-  if (!enviado) return { ...novo, alarmeAntes: alarmePlano }
+  if (!enviado) return chegadaAgora - p90 >= ATRASO_MARGEM_MS ? { ...novo, alarmeAntes: alarmePlano } : null
   if (agora - enviado.ultimoEm < ATRASO_INTERVALO_MS) return null
   if (chegadaAgora - enviado.chegada <= ATRASO_ESCORREGA_MS) return null
   return { ...novo, alarmeAntes: enviado.alarme }
@@ -179,4 +183,4 @@ function evento (msg, pedido, contactos = msg.contactos || [], chats = msg.chats
   }
 }
 
-module.exports = { SUBSTITUI, REPETIR_MS, ATRASO_ESCORREGA_MS, grausMinutos, textoChegada, textoAtraso, textoTerminado, textoSubstitui, decidirAtraso, novaFila, porNaFila, herdar, atualizarAtraso, tirar, proxima, marcarAEnviar, falhou, resposta, aoArrancar, evento }
+module.exports = { SUBSTITUI, REPETIR_MS, ATRASO_ESCORREGA_MS, ATRASO_MARGEM_MS, grausMinutos, textoChegada, textoAtraso, textoTerminado, textoSubstitui, decidirAtraso, novaFila, porNaFila, herdar, atualizarAtraso, tirar, proxima, marcarAEnviar, falhou, resposta, aoArrancar, evento }

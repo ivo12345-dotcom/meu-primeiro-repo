@@ -116,15 +116,24 @@ test('"Cheguei bem a X às HH:MM" na chegada, uma vez, aos contactos do plano (t
   q.p.stop()
 })
 
-test('atraso: quando a chegada prevista passa da "mais tarde" do plano, "Ainda a navegar…" com a nova hora de alarme; depois, no máximo 1× por hora e só com mais 15 min', async () => {
+test('atraso: quando a chegada prevista passa 30 min ou mais da "mais tarde" do plano (decisão do Ivo), "Ainda a navegar…" com a nova hora de alarme; depois, no máximo 1× por hora e só com mais 15 min', async () => {
   const s = await preparar()
   await sair(s)
   s.por(s.alt.rasto[2], 0) // parado: o atraso cresce
   const atrasos = () => s.recebidos.filter(e => e.tipo === 'atraso')
+  const p90 = Date.parse(s.alt.chegada.p90)
   const minutos = [] // o minuto de cada envio
-  for (let m = 1; m <= 90; m++) { const n = atrasos().length; await s.ciclo(); if (atrasos().length > n) minutos.push(m) }
+  const margens = [] // chegada prevista − p90 (min), em cada minuto
+  for (let m = 1; m <= 120; m++) {
+    const n = atrasos().length
+    await s.ciclo()
+    margens.push((Date.parse((await chamar(s.r.get['/plano-ativo'])).chegadaAgora) - p90) / MIN)
+    if (atrasos().length > n) minutos.push(m)
+  }
   assert.equal(minutos.length, 2, JSON.stringify(minutos))
-  assert.ok(minutos[0] <= 5, 'logo que passa da mais tarde do plano')
+  // o 1.º logo que a chegada prevista passa 30 min da mais tarde do plano (com 29 ainda não)
+  assert.ok(margens[minutos[0] - 1] >= 30, `${margens[minutos[0] - 1]}`)
+  assert.ok(margens[minutos[0] - 2] < 30, `${margens[minutos[0] - 2]}`)
   assert.equal(minutos[1] - minutos[0], 60, 'no máximo 1× por hora (o escorregamento já passa dos 15 min)')
   assert.match(atrasos()[0].texto, /^Ainda a navegar, tudo bem\. Nova chegada prevista ~\d\d:\d\d\. Nova hora de alarme: \d\d:\d\d \(em vez de \d\d:\d\d\)\.$/)
   assert.deepEqual(atrasos()[0].contactos, ['Mãe'])
@@ -150,7 +159,7 @@ test('fila sem rede: o porto sem responder (30 s) ou desligado, a mensagem fica 
   await sair(s)
   s.porto.resposta = () => null // o porto não responde
   s.por(s.alt.rasto[2], 0)
-  for (let m = 1; m <= 30; m++) await s.ciclo()
+  for (let m = 1; m <= 90 && !s.recebidos.some(e => e.tipo === 'atraso'); m++) await s.ciclo()
   assert.equal(s.recebidos.filter(e => e.tipo === 'atraso').length, 1)
   // os 30 s do porto (o temporizador injetado)
   s.agendados.at(-1).fn()

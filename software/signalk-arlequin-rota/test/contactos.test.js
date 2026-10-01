@@ -26,12 +26,19 @@ test('as mensagens: "cheguei bem", o atraso com a nova hora de alarme, "viagem t
   assert.equal(ct.textoSubstitui(texto), 'PLANO DE NAVEGAÇÃO · ARLEQUIN\nEnviado 21:00 (horas de Lisboa)\nEste plano substitui o anterior.\n\nBarco: ARLEQUIN')
 })
 
-test('atraso: só quando a chegada prevista agora passa da "mais tarde" do plano (p90); a nova hora de alarme é a chegada prevista + 2 h, em vez da anterior', () => {
+test('atraso (decisão do Ivo de 01/10, Tarefa 8.1): o 1.º só quando a chegada prevista agora passa 30 min ou mais da "mais tarde" do plano (p90); a nova hora de alarme é a chegada prevista + 2 h, em vez da anterior', () => {
   const p90 = T0 + 6 * H
   const alarmePlano = p90 + 2 * H
+  assert.equal(ct.ATRASO_MARGEM_MS, 30 * MIN)
   assert.equal(ct.decidirAtraso(null, { chegadaAgora: p90, p90, alarmePlano, agora: T0 }), null)
-  const d = ct.decidirAtraso(null, { chegadaAgora: p90 + MIN, p90, alarmePlano, agora: T0 })
-  assert.deepEqual(d, { chegada: p90 + MIN, alarme: p90 + MIN + 2 * H, alarmeAntes: alarmePlano })
+  assert.equal(ct.decidirAtraso(null, { chegadaAgora: p90 + MIN, p90, alarmePlano, agora: T0 }), null)
+  // 29 min não, 30 min sim
+  assert.equal(ct.decidirAtraso(null, { chegadaAgora: p90 + 29 * MIN, p90, alarmePlano, agora: T0 }), null)
+  const d = ct.decidirAtraso(null, { chegadaAgora: p90 + 30 * MIN, p90, alarmePlano, agora: T0 })
+  assert.deepEqual(d, { chegada: p90 + 30 * MIN, alarme: p90 + 30 * MIN + 2 * H, alarmeAntes: alarmePlano })
+  // um plano só a motor (p90 = p50) com 5 min de atraso: nada
+  const p50 = T0 + 6 * H
+  assert.equal(ct.decidirAtraso(null, { chegadaAgora: p50 + 5 * MIN, p90: p50, alarmePlano: p50 + 2 * H, agora: T0 }), null)
 })
 
 test('atraso: depois do primeiro, no máximo 1× por hora e só se a chegada voltar a escorregar mais de 15 min', () => {

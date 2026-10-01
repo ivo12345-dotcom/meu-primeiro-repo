@@ -10,7 +10,7 @@ Parte do desenho geral `2026-09-29-melhor-rota-ia-design.md` (Parte 4: avisos e 
 |---|---|
 | Onde corre | No **plugin da rota, no Pi** (abordagem A): funciona com o ecrã desligado e sobrevive a reinícios |
 | Avisos para o Telegram | **Só os importantes**, e só para o chat do Ivo: recalcula, recursos, previsão com mais de 12 h, barómetro. Os lembretes de evento e o "come e bebe" ficam só no ecrã |
-| Contactos em terra | **Chegada e atrasos automáticos**: "cheguei bem" à chegada, e "ainda a navegar, nova hora de alarme" quando a chegada passa da "mais tarde" do plano (no máximo 1× por hora) |
+| Contactos em terra | **Chegada e atrasos automáticos**: "cheguei bem" à chegada, e "ainda a navegar, nova hora de alarme" quando a chegada passa 30 min ou mais da "mais tarde" do plano (decisão do Ivo de 01/10; depois, no máximo 1× por hora) |
 | Mudança de rota | Nunca muda a rota sozinho. "Recalcular" é um botão; ativar outra rota substitui o plano |
 | Ver a chegada mesmo em pausa (01/10, revisão) | Em pausa, a chegada ao cais do plano continua a contar (a mesma regra) → "cheguei bem" normal. Em pausa e parado (SOG < 0,5 nó) 30 min a menos de 0,3 MN de **outro** porto da lista, o ecrã pergunta "Chegaste a X? Enviar 'cheguei bem a X'" com um botão; só envia com o toque (`POST /plano-ativo/chegada { destino }`) |
 | Recalcular no mar (01/10, revisão) | A navegar (ou em pausa no mar), o Recalcular pede só a partida imediata (`sairAgora: true`), com o "Volta ou abriga-te em X" e os pontos de desistência; à espera de sair, todas as partidas |
@@ -97,7 +97,7 @@ Só se o plano foi enviado e há contactos entregues. As mensagens seguem só pa
 | Mensagem | Quando |
 |---|---|
 | "Cheguei bem a X às HH:MM. Obrigado!" | na chegada (uma vez) |
-| "Ainda a navegar, tudo bem. Nova chegada prevista ~HH:MM. Nova hora de alarme: HH:MM (em vez de HH:MM)." | quando a chegada prevista agora passa da "mais tarde" (`chegada.p90`) do plano. A nova hora de alarme é a chegada prevista agora + 2 h. Depois, no máximo 1× por hora, só se a chegada voltar a escorregar mais de 15 min |
+| "Ainda a navegar, tudo bem. Nova chegada prevista ~HH:MM. Nova hora de alarme: HH:MM (em vez de HH:MM)." | quando a chegada prevista agora passa **30 min ou mais** da "mais tarde" (`chegada.p90`) do plano (decisão do Ivo de 01/10, depois do protótipo: num plano só a motor a p90 é igual à p50, e uns minutos de atraso não são motivo para ninguém em terra se preocupar). A nova hora de alarme é a chegada prevista agora + 2 h. Depois, no máximo 1× por hora, só se a chegada voltar a escorregar mais de 15 min |
 | "Viagem terminada / mudança de planos: estou bem, em … às HH:MM." | ao Terminar |
 | O plano novo, com "Este plano substitui o anterior" | ao Recalcular → Ativar, se o antigo tinha sido enviado |
 

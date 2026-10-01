@@ -1416,7 +1416,8 @@ com menos de 1 MN, depois de 5 min a navegar). Um plano novo começa limpo; os 5
 **O que os contactos em terra recebem** (só se o plano lhes foi enviado; vão também para o teu chat):
 - "Cheguei bem a Peniche às 10:24. Obrigado!" à chegada (uma vez);
 - "Ainda a navegar, tudo bem. Nova chegada prevista ~HH:MM. Nova hora de alarme: HH:MM (em vez de
-  HH:MM)." quando a chegada prevista passa da "mais tarde" do plano; depois, no máximo 1× por hora
+  HH:MM)." quando a chegada prevista passa **30 min ou mais** da "mais tarde" do plano (decisão do
+  Ivo de 01/10: uns minutos não preocupam ninguém em terra); depois, no máximo 1× por hora
   e só se a chegada escorregar mais 15 min. A nova hora de alarme é a chegada prevista + 2 h, e só
   conta quando chega a terra (o "em vez de" é sempre a última que eles receberam);
 - "Viagem terminada / mudança de planos: estou bem, em <posição> às HH:MM." ao Terminar;
