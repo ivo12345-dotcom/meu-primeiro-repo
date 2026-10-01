@@ -49,6 +49,9 @@ function corrigirAproximacao (d) {
   return valida ? d : { ...d, ...aproximacaoAvulsa(d.largo[0], d.largo[1]) }
 }
 
+// Os valores por defeito de um objeto do schema ({ chave: default }).
+const padroes = (esquema) => Object.fromEntries(Object.entries(esquema.properties).map(([k, x]) => [k, x.default]))
+
 const slug = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'destino'
 
 module.exports = function (app, deps = {}) {
@@ -86,7 +89,27 @@ module.exports = function (app, deps = {}) {
           alternadorA: { type: 'number', title: 'Alternador com o motor ligado (A)', default: 45 }
         }
       },
-      porta: { type: 'number', title: 'Porta do SignalK (só se a API interna faltar)', default: 3000 }
+      porta: { type: 'number', title: 'Porta do SignalK (só se a API interna faltar)', default: 3000 },
+      // o plano de navegação pelo Telegram (desenho 3b-1): os campos vazios ficam de fora do texto
+      barco: {
+        type: 'object',
+        title: 'O barco (para o plano de navegação)',
+        properties: {
+          nome: { type: 'string', title: 'Nome', default: 'ARLEQUIN' },
+          modelo: { type: 'string', title: 'Modelo', default: 'Jeanneau Melody 34' },
+          corCasco: { type: 'string', title: 'Cor do casco', default: '' },
+          mmsi: { type: 'string', title: 'MMSI', default: '' },
+          indicativo: { type: 'string', title: 'Indicativo de chamada', default: '' }
+        }
+      },
+      telefones: {
+        type: 'object',
+        title: 'Telefones do plano (hora de alarme)',
+        properties: {
+          ivo: { type: 'string', title: 'Telefone do Ivo', default: '' },
+          emergencia: { type: 'string', title: 'Emergência', default: '+351 214 401 919 (MRCC Lisboa, 24 h) ou 112' }
+        }
+      }
     }
   }
 
@@ -259,6 +282,8 @@ module.exports = function (app, deps = {}) {
       pasta: '~/arlequin-dados', afastamentoMinimo: 5, rpmCruzeiro: 2100, polar: base.POLAR_PADRAO, previsoes: true,
       bateria: 'servico', deposito: '0', socDesconhecido: 0.8, gasoleoDesconhecidoL: 100, energia: {}, porta: 3000, ...props
     }
+    o.barco = { ...padroes(plugin.schema.properties.barco), ...(eObjeto(props?.barco) ? props.barco : {}) }
+    o.telefones = { ...padroes(plugin.schema.properties.telefones), ...(eObjeto(props?.telefones) ? props.telefones : {}) }
     pastaBase = path.resolve(o.pasta.startsWith('~') ? path.join(os.homedir(), o.pasta.slice(1)) : o.pasta)
     dirPlugin = app.getDataDirPath()
     erroArranque = null
