@@ -289,12 +289,14 @@ test('o cálculo nunca lança: previsão estragada, sem rota ativa, posição nu
 })
 
 test('a regra do vento de terra (3 MN) volta a verificar-se à hora a que o barco passa nos rastos simulados, não só à hora estimada a 5 nós', async () => {
-  // Nazaré → Figueira a 3 MN, agora (15:32): vento de leste (de terra) até às 00:45 de Lisboa e
-  // depois de oeste (do mar). A 5 nós o rotas.js estima o último ponto da linha às 23:00: passa.
-  // A motor o barco só lá chega por volta da 01:25 (os dois rastos, provável e pessimista), já
-  // com o vento do mar: excluída, com o motivo do rotas.js. À vela chega às 00:11 no pior caso:
-  // antes de rodar, fica.
-  const roda = Date.parse('2026-09-29T23:45:00Z')
+  // Nazaré → Figueira a 3 MN, agora (15:32): vento de leste (de terra) até às 23:30 de Lisboa e
+  // depois de oeste (do mar). A 5 nós o rotas.js estima o fim da linha antes disso: passa.
+  // A motor o barco só chega à Figueira às 00:51 (os 3 rastos) e passa o fim da linha já com o
+  // vento do mar: excluída, com o motivo do rotas.js. À vela chega às 23:29 no pior caso e passa
+  // a linha antes de rodar: fica. (Revisão final, C1: sem a maré fictícia do Tejo nesta costa as
+  // passagens são mais rápidas — antes a motor chegava à 01:25 e o vento rodava às 00:45. Com o
+  // vento a rodar entre as 23:05 e as 23:55 de Lisboa o resultado é o mesmo: a meio.)
+  const roda = Date.parse('2026-09-29T22:30:00Z')
   const P = mudar(P29, p => { p.twd = p.t.map(t => (t < roda ? 90 : 270)) })
   let cands = []
   const r = await calcular(entrada({ instrumentos: { posicao: de('nazare'), socPct: 90, gasoleoL: 124 }, destino: 'figueira', tripulacao: 'acompanhado' }), comPrevisao(P, { aoCandidatos: l => { cands = l } }))
@@ -387,10 +389,12 @@ test('sem nenhuma passagem: a mensagem diz a causa verdadeira (previsão curta, 
   // só "não chega" (2 h de simulação para Algés → Peniche): não é a previsão
   const nc = await calcular(entrada(), deps({ opcoes: { passagem: { maxHoras: 2 } } }))
   assert.match(nc.erro, /^Nenhuma das \d+ passagens simuladas chega a Peniche dentro de 2 h\.$/)
-  // as duas: as partidas cedo não chegam em 15,5 h, as que chegam acabam depois da previsão
-  const P = { ...P29, fim: AGORA + 30 * H }
-  const as2 = await calcular(entrada(), comPrevisao(P, { opcoes: { passagem: { maxHoras: 15.5 } } }))
-  assert.match(as2.erro, /^Nenhuma passagem até Peniche: \d+ acabam depois do fim da previsão \(amanhã às 21:32\) e \d+ não chegam dentro de 15,5 h\.$/)
+  // as duas: as partidas cedo não chegam em 15 h, as que chegam acabam depois da previsão
+  // (revisão final, C1: sem a maré fictícia do Tejo à chegada a Peniche as passagens são ~0,3 h
+  // mais rápidas; era 15,5 h e o fim às 21:32)
+  const P = { ...P29, fim: AGORA + 29.5 * H }
+  const as2 = await calcular(entrada(), comPrevisao(P, { opcoes: { passagem: { maxHoras: 15 } } }))
+  assert.match(as2.erro, /^Nenhuma passagem até Peniche: \d+ acabam depois do fim da previsão \(amanhã às 21:02\) e \d+ não chegam dentro de 15 h\.$/)
   // só a previsão curta: a mensagem de sempre
   const curta = { ...P29, fim: AGORA + 2 * H }
   assert.equal((await calcular(entrada(), comPrevisao(curta))).erro, 'A previsão acaba às 17:32: não cobre nenhuma passagem até Peniche.')
