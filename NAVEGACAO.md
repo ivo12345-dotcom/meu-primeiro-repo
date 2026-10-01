@@ -1227,10 +1227,17 @@ parte (3a) é o cálculo; a página do ecrã, o mini-mapa e o plano pelo Telegra
   `npm install @signalk/course-provider` na pasta `~/.signalk`, e ligá-lo em Plugin Config). É ele
   que calcula o rumo e a distância ao próximo ponto (`navigation.course.calcValues`): sem ele, o
   Leme não tem rumo e fica em "Rota ativada · à espera do rumo do SignalK".
-- **No Pi: ligar a segurança do SignalK** (Security, com utilizador e palavra-passe). O
-  `POST /plano-telegram`, o `/ativar`, o `/calcular` e o `/destinos` passam pelo router de
-  plugins do SignalK: sem segurança, qualquer aparelho na rede do barco pode mandar planos aos
-  contactos ou ativar rotas; com ela, só os aparelhos com sessão iniciada (o ecrã da roda).
+- **No Pi: ligar a segurança do SignalK** (Security, com utilizador e palavra-passe) e criar
+  um utilizador **"read/write"** para o ecrã da roda (iniciar sessão com ele no browser do ecrã).
+  Sem segurança, qualquer aparelho na rede do barco pode mandar planos aos contactos ou ativar
+  rotas. O plugin da rota regista as rotas com níveis (`router.access` do SignalK 2.33):
+  - as leituras (`GET /destinos`, `/resultado`, `/plano-telegram/:pedido`) pedem uma sessão
+    iniciada (qualquer utilizador);
+  - as escritas (`POST /calcular`, `/destinos`, `/ativar`, `/plano-telegram`) pedem um utilizador
+    "read/write" ou admin.
+
+  Num SignalK antigo, sem o `router.access`, as rotas dos plugins só aceitam um utilizador
+  **admin** (também os GET): aí o ecrã precisa de uma sessão de admin, ou atualiza-se o SignalK.
 - **Caminho da polar:** `software/arlequin-ecra/public/polar-arlequin.csv`, do próprio
   repositório.
 - **Zonas e portos: estão por confirmar.** Antes de confiar no cálculo, o Ivo tem de ver na
@@ -1315,13 +1322,24 @@ estado, de dia e de noite, em `docs/capturas-3b1/`.
   não bloqueiam nada e ficam guardadas no ecrã para esse cálculo) e os pontos de desistência
   (calculados para a 1.ª alternativa).
 - **Mapa:** o mini-mapa das 3 alternativas (azul à vela, cinzento a motor, mais escuro de noite;
-  triângulos nos avisos; bolinhas nos pontos de desistência; tracejado vermelho nas zonas a
-  evitar). Toca num cartão para destacar outra alternativa.
+  triângulos nos avisos; bolinhas nos pontos de desistência, verdes com uma fuga limpa e
+  vermelhas sem nenhuma; tracejado vermelho nas zonas a evitar). Toca num cartão para destacar
+  outra alternativa.
 - **Enviar plano:** manda o plano de navegação (texto com a hora de alarme + o ficheiro GPX) pelo
-  bot do Telegram do plugin porto. Mostra "enviado ✓ a N contactos" e marca a precaução "Plano
-  deixado a alguém em terra"; se o porto não responder em 30 s: "o plugin porto não respondeu
-  (está ligado? tem o token?)". Quem falhou vem com o motivo ("bloqueou o bot", "sem ligação ao
-  Telegram"). Sem a chegada mais tarde não há hora de alarme e o plano não vai.
+  bot do Telegram do plugin porto.
+  - Com pelo menos um **contacto do plano** a recebê-lo: "enviado ✓ a N contactos em terra", e a
+    precaução "Plano deixado a alguém em terra" fica marcada.
+  - Só com o teu chat (os **Chats autorizados**; um chat que esteja nas duas listas conta como
+    teu): a amarelo, "enviado só para o teu chat — nenhum contacto em terra recebeu (junta
+    contactos do plano na configuração)", e a precaução fica por marcar (ninguém em terra tem a
+    hora de alarme).
+  - Quem falhou vem com o motivo ("bloqueou o bot", "sem ligação ao Telegram").
+  - Com o plugin porto desligado: logo "o plugin porto está desligado: liga-o em Plugin Config".
+    Ligado mas sem resposta em 30 s: "o plugin porto não respondeu (está ligado? tem o token?)".
+  - Sem a chegada mais tarde não há hora de alarme e o plano não vai. Um cálculo antigo também
+    não: com a hora de alarme já passada ou a partida há mais de 1 h, "este cálculo é antigo: … —
+    calcula outra vez antes de enviar o plano".
+  - Escolher outro cartão a meio do envio não o perde: o estado diz "(plano da N.ª alternativa)".
 - **Ativar esta rota:** grava e ativa a rota no SignalK (o OpenCPN mostra-a) e a página passa ao
   Leme. **Sair agora mesmo assim** recalcula só para partir já.
 
@@ -1336,7 +1354,7 @@ quem o recebe para ligar ao Ivo e, se ele não atender, ao MRCC Lisboa (+351 214
 3. O Ivo junta-o no plugin porto, em **Contactos do plano** (`contactosPlano`: nome + código).
    Ninguém entra sozinho. Os contactos do plano recebem os planos, mas as mensagens deles são
    ignoradas (não podem /armar, /posicao, etc.). Os **Chats autorizados** (`chatIds`) também
-   recebem o plano.
+   recebem o plano, mas não contam como contactos em terra.
 
 **Telefones e barco na configuração** (plugin `signalk-arlequin-rota`):
 - `telefones.ivo` — o teu telemóvel (vazio por omissão: o plano diz só "liga ao Ivo", e o ecrã
