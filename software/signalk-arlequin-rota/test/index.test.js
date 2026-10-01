@@ -282,3 +282,32 @@ test('o cálculo recebe o registo (app.error); /ativar de uma rota direta e de u
     assert.equal(b.nota, nota)
   } finally { calculo.calcular = original }
 })
+
+test('M2: a descrição da rota gravada tem as horas de Lisboa (HH:MM), não o UTC em bruto com milissegundos', async () => {
+  const app = appFalso()
+  app.leiturasFalhadas = 0
+  const { p, r } = plugin(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  const id = (await chamar(r.post['/calcular'], { body: { destino: 'peniche', tripulacao: 'acompanhado', sairAgora: true } })).id
+  const x = await esperarResultado(r, id)
+  assert.equal(x.estado, 'pronto', x.erro)
+  const a = await chamar(r.post['/ativar'], { body: { id, alternativa: 0 } })
+  assert.equal(a.code, 200, a.erro)
+  const desc = app.recursos.get(`routes/${a.rota}`).description
+  assert.match(desc, /, partida às 15:32, chegada prevista (às|amanhã às) \d\d:\d\d \(hora de Lisboa\)/, desc)
+  assert.ok(!/\d{4}-\d\d-\d\dT|\.\d{3}Z/.test(desc), desc)
+})
+
+test('M3: stop() com um cálculo a correr — o cálculo acaba bem (as opções ficam com ele), sem erro em inglês', async () => {
+  const app = appFalso()
+  const { p, r } = plugin(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  const id = (await chamar(r.post['/calcular'], { body: { destino: 'peniche', tripulacao: 'acompanhado', sairAgora: true } })).id
+  p.stop()
+  // parado, o REST dá 503; o trabalho continua e acaba
+  assert.equal((await chamar(r.get['/resultado/:id'], { params: { id } })).code, 503)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  const x = await esperarResultado(r, id)
+  assert.equal(x.estado, 'pronto', x.erro)
+  assert.ok(!/Cannot read|null/.test(JSON.stringify(x.erro ?? '')))
+})

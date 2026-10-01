@@ -24,6 +24,7 @@ const c = require('./lib/costa')
 const prev = require('./lib/previsao')
 const base = require('./lib/base')
 const calculo = require('./lib/calculo')
+const decisao = require('./lib/decisao')
 const modelosJs = require('signalk-arlequin-ia/lib/modelos')
 
 const MAX_TRABALHOS = 20
@@ -103,12 +104,13 @@ module.exports = function (app, deps = {}) {
     return { ...costaBase, destinos: [...costaBase.destinos, ...meusDestinos().map(d => ({ ...d, meu: true }))] }
   }
 
-  function instrumentos () {
+  // oo: as opções com que se lê (um cálculo a correr fica com as do início, mesmo que o plugin pare)
+  function instrumentos (oo = o) {
     const pos = v('navigation.position')
-    const soc = v(`electrical.batteries.${o.bateria}.capacity.stateOfCharge`)
-    const vol = v(`tanks.fuel.${o.deposito}.currentVolume`)
-    const nivel = v(`tanks.fuel.${o.deposito}.currentLevel`)
-    const cap = v(`tanks.fuel.${o.deposito}.capacity`)
+    const soc = v(`electrical.batteries.${oo.bateria}.capacity.stateOfCharge`)
+    const vol = v(`tanks.fuel.${oo.deposito}.currentVolume`)
+    const nivel = v(`tanks.fuel.${oo.deposito}.currentLevel`)
+    const cap = v(`tanks.fuel.${oo.deposito}.capacity`)
     const gasoleoL = Number.isFinite(vol) ? vol * 1000 : Number.isFinite(nivel) && Number.isFinite(cap) ? nivel * cap * 1000 : null
     return {
       posicao: pos && Number.isFinite(pos.latitude) && Number.isFinite(pos.longitude) ? { lat: pos.latitude, lon: pos.longitude } : null,
@@ -127,10 +129,11 @@ module.exports = function (app, deps = {}) {
   }
 
   // A previsão: descarrega (e arquiva em previsoes/); sem rede, a guardada mais recente que cubra a rota.
-  async function obterPrevisao ({ pontos, desde, ate, agora }) {
-    const pasta = path.join(pastaBase, 'previsoes')
+  // Com as opções e a pasta do início do cálculo (oo, pasta): stop() a meio não as apaga.
+  const obterPrevisaoCom = (oo, pastaDados) => async function obterPrevisao ({ pontos, desde, ate, agora }) {
+    const pasta = path.join(pastaDados, 'previsoes')
     let erroRede = null
-    if (o.previsoes) {
+    if (oo.previsoes) {
       try {
         const p = await prev.obterPrevisao({ pontos, agora, fetch: fetchFn })
         try { prev.guardarArquivo(pasta, p) } catch (e) { app.error(`não arquivei a previsão: ${e.message}`) }
@@ -163,6 +166,9 @@ module.exports = function (app, deps = {}) {
   }
 
   async function executar (id, pedido) {
+    // as opções do início: um stop() a meio (o = null) não estraga o cálculo, que acaba sozinho
+    const oo = o
+    const pastaDados = pastaBase
     const t = trabalhos.get(id)
     const { modelos, versoes } = modelosAi()
     let destino = pedido.destino
@@ -173,12 +179,12 @@ module.exports = function (app, deps = {}) {
     }
     const costa = costaAtual()
     const r = await calculo.calcular(
-      { instrumentos: instrumentos(), destino, tripulacao: pedido.tripulacao, sairAgora: pedido.sairAgora, agora: relogio() },
+      { instrumentos: instrumentos(oo), destino, tripulacao: pedido.tripulacao, sairAgora: pedido.sairAgora, agora: relogio() },
       {
-        costa, polar, modelos, versoes, obterPrevisao,
+        costa, polar, modelos, versoes, obterPrevisao: obterPrevisaoCom(oo, pastaDados),
         opcoes: {
-          afastamentoMinimo: o.afastamentoMinimo, rpmCruzeiro: o.rpmCruzeiro, energia: o.energia,
-          socDesconhecido: o.socDesconhecido, gasoleoDesconhecidoL: o.gasoleoDesconhecidoL
+          afastamentoMinimo: oo.afastamentoMinimo, rpmCruzeiro: oo.rpmCruzeiro, energia: oo.energia,
+          socDesconhecido: oo.socDesconhecido, gasoleoDesconhecidoL: oo.gasoleoDesconhecidoL
         },
         progresso: (f, texto) => { t.progresso = Math.round(f * 100) / 100; t.texto = texto },
         // o registo dos erros de programação da geometria (lib/rotas.js: log(msg, erro))
@@ -196,13 +202,15 @@ module.exports = function (app, deps = {}) {
   // A rota direta (salto curto) não tem afastamento: diz "direta (salto curto)", nunca "null MN";
   // uma variante por um canal leva a nota do canal (terra dos dois lados, por confirmar na carta).
   async function ativarRota (alt, destinoNome) {
+    const quando = (iso) => decisao.quando(Date.parse(iso), relogio(), 'Europe/Lisbon')
     const pts = alt.pontosRota
     const id = crypto.randomUUID()
     const href = `/resources/routes/${id}`
     const onde = alt.direto || !Number.isFinite(alt.afastamento) ? 'direta (salto curto)' : `${alt.afastamento} MN${alt.canal ? ` pelo ${alt.canal}` : ''}`
     const dados = {
       name: `Arlequin → ${destinoNome} (${alt.nome})`,
-      description: `Melhor rota: ${onde}, ${alt.propulsao === 'motor' ? 'só motor' : 'vela e motor'}, partida ${alt.partida}, chegada prevista ${alt.chegada.p50}${alt.nota ? `. ${alt.nota}` : ''}`,
+      // as horas em hora de Lisboa (HH:MM), não o UTC em bruto: o OpenCPN mostra o texto tal e qual
+      description: `Melhor rota: ${onde}, ${alt.propulsao === 'motor' ? 'só motor' : 'vela e motor'}, partida ${quando(alt.partida)}, chegada prevista ${quando(alt.chegada.p50)} (hora de Lisboa)${alt.nota ? `. ${alt.nota}` : ''}`,
       ...(Number.isFinite(alt.milhas) ? { distance: Math.round(alt.milhas * 1852) } : {}),
       feature: {
         type: 'Feature',
@@ -256,7 +264,8 @@ module.exports = function (app, deps = {}) {
   }
 
   plugin.stop = function () {
-    // Um cálculo a correr acaba sozinho (é finito); o resultado fica no mapa.
+    // Um cálculo a correr acaba sozinho (é finito), com as opções do início (executar); o resultado
+    // fica no mapa.
     o = null
   }
 
