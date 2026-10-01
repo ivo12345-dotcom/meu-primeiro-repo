@@ -7,7 +7,8 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { gunzipSync } from 'node:zlib'
 import melhor from '../public/paginas/melhor.js'
-import { deveTocar, paginaDoAlarme } from '../public/lib/alarmes.js'
+import { deveTocar, paginaDoAlarme, chipAlarme } from '../public/lib/alarmes.js'
+import { buscarPlanoAtivo } from '../public/paginas/melhor/navegar.js'
 import { lerPolar } from '../public/lib/polar.js'
 
 const AGORA = Date.parse('2026-09-29T14:32:00Z') // 15:32 em Lisboa
@@ -24,6 +25,9 @@ const ROTA_ATIVA = { 'navigation.course.calcValues.distance': 9000, 'navigation.
 // o GET /plano-ativo a navegar (Algés → Peniche)
 const PLANO = {
   estado: 'a navegar',
+  pausadoDe: null,
+  ativadoEm: iso(AGORA - 4 * 3600000),
+  chegadaOutro: null,
   destino: { id: 'peniche', nome: 'Peniche', lat: 39.3522, lon: -9.376 },
   tripulacao: 'so',
   idCalculo: 'calc-1',
@@ -197,7 +201,8 @@ test('Recalcular: um cálculo novo de onde estás para o mesmo destino e tripula
     }
   })
   await melhor.acao('rota-recalcular', {}, ctx)
-  assert.deepEqual(ctx.pedidos.find(p => p.method === 'POST'), { url: `${ROTA}/calcular`, method: 'POST', body: { destino: 'peniche', tripulacao: 'so', sairAgora: false } })
+  // decisão 6 (Ivo): a navegar, só a partida imediata (sairAgora: true; o plugin mantém o "Volta ou abriga-te")
+  assert.deepEqual(ctx.pedidos.find(p => p.method === 'POST'), { url: `${ROTA}/calcular`, method: 'POST', body: { destino: 'peniche', tripulacao: 'so', sairAgora: true } })
   await esperar()
   let html = melhor.render(ctx)
   assert.match(html, /data-acao="rota-ativar"/, 'o Resultado')
@@ -208,7 +213,7 @@ test('Recalcular: um cálculo novo de onde estás para o mesmo destino e tripula
   // um destino avulso (sem id): pelas coordenadas do cais
   const av = await leme({ ...PLANO, destino: { id: null, nome: 'Baía', lat: 38.5, lon: -9.1 }, tripulacao: 'acompanhado' }, { respostas: { [`POST ${ROTA}/calcular`]: { id: 'calc-3' } } })
   await melhor.acao('rota-recalcular', {}, av)
-  assert.deepEqual(av.pedidos.find(p => p.method === 'POST').body, { destino: { lat: 38.5, lon: -9.1, nome: 'Baía' }, tripulacao: 'acompanhado', sairAgora: false })
+  assert.deepEqual(av.pedidos.find(p => p.method === 'POST').body, { destino: { lat: 38.5, lon: -9.1, nome: 'Baía' }, tripulacao: 'acompanhado', sairAgora: true })
 })
 
 test('rota mudada (pausado): a caixa "a rota ativa já não é a do plano: terminar o plano?" com Terminar e Continuar, mesmo sem rota ativa; Continuar faz o POST', async () => {
@@ -236,4 +241,132 @@ test('a hora da faixa é a do plugin (agora do GET /plano-ativo, mais o tempo de
   ctx.agora = AGORA + 5 * MIN // 5 min depois da leitura
   const t = texto(melhor.render(ctx))
   assert.match(t, /próximo: rizar às 21:57 \(daqui a 20 min\)/)
+})
+
+// o plano novo (Recalcular → Ativar): outro cálculo, outra hora de ativação
+const NOVO = { ...PLANO, estado: 'a espera de sair', idCalculo: 'calc-2', ativadoEm: iso(AGORA + MIN), saida: null, atrasoMin: null }
+const ATIVADA = { ok: true, rota: 'r2', href: '/resources/routes/r2', via: 'api interna', alternativa: 'x', nota: null, planoAtivo: { estado: 'a espera de sair' } }
+
+test('9 (a sequência da revisão): Terminar → Recalcular → Ativar → o Leme do plano novo não mostra a pergunta do Terminar, e o "Sim" já não termina nada', async () => {
+  const ctx = await leme(PLANO, {
+    respostas: {
+      [`GET ${ROTA}/plano-ativo`]: [PLANO, NOVO],
+      [`POST ${ROTA}/calcular`]: { id: 'calc-2' },
+      [`GET ${ROTA}/resultado/calc-2`]: { estado: 'pronto', progresso: 1, texto: 'pronto', resultado: DIRETA },
+      [`POST ${ROTA}/ativar`]: ATIVADA,
+      [`POST ${ROTA}/plano-ativo/terminar`]: { ok: true, estado: 'terminado', contactos: true }
+    }
+  })
+  await melhor.acao('rota-terminar', {}, ctx)
+  assert.match(melhor.render(ctx), /rota-terminar-sim/)
+  await melhor.acao('rota-recalcular', {}, ctx)
+  await esperar()
+  melhor.render(ctx)
+  await melhor.acao('rota-ativar', {}, ctx)
+  await esperar()
+  for (const noite of [false, true]) {
+    ctx.noite = noite
+    const html = melhor.render(ctx)
+    assert.match(texto(html), /plano ativo · à espera de sair/, 'o Leme do plano novo')
+    assert.doesNotMatch(html, /rota-terminar-sim|Terminar o plano\?/)
+  }
+  await melhor.acao('rota-terminar-sim', {}, ctx)
+  assert.deepEqual(ctx.pedidos.filter(p => p.url.endsWith('/terminar')), [], 'nada terminou')
+})
+
+test('9: a pergunta do Terminar sai quando o plano fecha (chegou) e não volta com o plano seguinte; a mensagem "Plano terminado" não fica por baixo da faixa do plano seguinte', async () => {
+  const ctx = await leme(PLANO, { respostas: { [`GET ${ROTA}/plano-ativo`]: [PLANO, { ...PLANO, estado: 'chegado' }, NOVO] } })
+  await melhor.acao('rota-terminar', {}, ctx)
+  ctx.agora = AGORA + 10000
+  melhor.render(ctx)
+  await esperar()
+  ctx.agora = AGORA + 20000
+  melhor.render(ctx)
+  await esperar()
+  assert.doesNotMatch(melhor.render(ctx), /rota-terminar-sim|Terminar o plano\?/)
+  // Terminar → "Plano terminado" → o plano seguinte
+  const t = await leme(PLANO, { respostas: { [`GET ${ROTA}/plano-ativo`]: [PLANO, { ...PLANO, estado: 'terminado' }, NOVO], [`POST ${ROTA}/plano-ativo/terminar`]: { ok: true, estado: 'terminado', contactos: true } } })
+  await melhor.acao('rota-terminar', {}, t)
+  await melhor.acao('rota-terminar-sim', {}, t)
+  assert.match(texto(melhor.render(t)), /Plano terminado/)
+  t.agora = AGORA + 10000
+  melhor.render(t)
+  await esperar()
+  const html = melhor.render(t)
+  assert.match(texto(html), /plano ativo · à espera de sair/)
+  assert.doesNotMatch(texto(html), /Plano terminado/)
+})
+
+test('9: um GET forçado (depois de Terminar, Continuar ou Ativar) com uma leitura a meio não se perde: a resposta pedida antes não conta e lê-se outra vez', async () => {
+  let soltar = null
+  const respostas = [new Promise(resolve => { soltar = resolve }), Promise.resolve(structuredClone(NOVO))]
+  const pedidos = []
+  const ctx = contexto()
+  ctx.pedir = async (url, o = {}) => { pedidos.push(`${o.method || 'GET'} ${url}`); return respostas.shift() }
+  const primeiro = buscarPlanoAtivo(ctx)
+  const forcado = buscarPlanoAtivo(ctx, true)
+  assert.ok(forcado, 'o forçado espera pela leitura em curso')
+  soltar(structuredClone(PLANO)) // a resposta velha (pedida antes do POST)
+  await primeiro
+  await forcado
+  assert.equal(pedidos.length, 2)
+  assert.equal(ctx.estado.planoAtivo.idCalculo, 'calc-2')
+})
+
+test('9: um erro que não é 404 (o plugin a reiniciar, a rede) avisa "sem ligação ao plugin da rota: os dados podem estar velhos" (de dia e de noite); a leitura seguinte boa tira o aviso', async () => {
+  const ctx = await leme(PLANO, { respostas: { [`GET ${ROTA}/plano-ativo`]: [PLANO, erroHttp(503, 'o plugin da rota não está ligado'), PLANO] } })
+  ctx.agora = AGORA + 10000
+  melhor.render(ctx)
+  await esperar()
+  for (const noite of [false, true]) {
+    ctx.noite = noite
+    const html = melhor.render(ctx)
+    limpo(html, 'sem ligação')
+    assert.match(texto(html), /sem ligação ao plugin da rota: os dados podem estar velhos/)
+  }
+  // pausado também
+  ctx.estado.planoAtivo = { ...PLANO, estado: 'pausado', pausadoDe: 'a navegar' }
+  assert.match(texto(melhor.render(ctx)), /sem ligação ao plugin da rota/)
+  ctx.agora = AGORA + 20000
+  melhor.render(ctx)
+  await esperar()
+  assert.doesNotMatch(texto(melhor.render(ctx)), /sem ligação ao plugin da rota/)
+})
+
+test('decisão 6 (Ivo): o Recalcular pede só a partida imediata a navegar ou em pausa no mar; à espera de sair, todas as partidas (sairAgora: false)', async () => {
+  const casos = [[{ ...PLANO, estado: 'pausado', pausadoDe: 'a navegar' }, true], [{ ...PLANO, estado: 'a espera de sair', saida: null }, false], [{ ...PLANO, estado: 'pausado', pausadoDe: 'a espera de sair' }, false]]
+  for (const [plano, sairAgora] of casos) {
+    const ctx = await leme(plano, { respostas: { [`POST ${ROTA}/calcular`]: { id: 'calc-9' } } })
+    assert.match(melhor.render(ctx), /data-acao="rota-recalcular"/, `${plano.estado} ${plano.pausadoDe}`)
+    await melhor.acao('rota-recalcular', {}, ctx)
+    assert.equal(ctx.pedidos.find(p => p.method === 'POST').body.sairAgora, sairAgora, `${plano.estado} ${plano.pausadoDe}`)
+  }
+})
+
+test('decisão 5 (Ivo): em pausa, parado noutro porto (chegadaOutro) → "Chegaste a Cascais? Enviar \'cheguei bem a Cascais\'" com o botão; só envia com o toque (POST /plano-ativo/chegada { destino })', async () => {
+  const p = { ...PLANO, estado: 'pausado', pausadoDe: 'a navegar', chegadaOutro: { id: 'cascais', nome: 'Cascais' } }
+  for (const noite of [false, true]) {
+    const ctx = await leme(p, { noite, respostas: { [`POST ${ROTA}/plano-ativo/chegada`]: { ok: true, estado: 'chegado', contactos: true } } })
+    const html = melhor.render(ctx)
+    limpo(html, 'chegada a outro porto')
+    assert.match(texto(html), /Chegaste a Cascais\? Enviar 'cheguei bem a Cascais'/)
+    assert.match(html, /data-acao="rota-chegada"/)
+    assert.deepEqual(ctx.pedidos.filter(x => x.method === 'POST'), [], 'nada sem o toque')
+    await melhor.acao('rota-chegada', {}, ctx)
+    assert.deepEqual(ctx.pedidos.filter(x => x.method === 'POST').map(x => [x.url, x.body]), [[`${ROTA}/plano-ativo/chegada`, { destino: 'cascais' }]])
+    assert.match(texto(melhor.render(ctx)), /Enviado aos contactos em terra: 'cheguei bem a Cascais'/)
+  }
+  // sem a sugestão, nada
+  assert.doesNotMatch(melhor.render(await leme({ ...p, chegadaOutro: null })), /rota-chegada|Chegaste a/)
+  // o nome do porto passa pelo esc
+  assert.match(melhor.render(await leme({ ...p, chegadaOutro: { id: 'x', nome: '<b>A&B</b>' } })), /&lt;b&gt;A&amp;B&lt;\/b&gt;/)
+})
+
+test('9: a mensagem do alarme na barra de cima passa pelo esc (texto do plugin: eventos, nomes dos destinos do Ivo)', () => {
+  const html = chipAlarme({ caminho: 'notifications.rota.lembrete.e3', id: 'n1', state: 'alert', method: ['visual', 'sound'], message: 'Às 22:50: chegada de noite a <b>A&B</b> "x"' })
+  assert.match(html, /chegada de noite a &lt;b&gt;A&amp;B&lt;\/b&gt; &quot;x&quot;/)
+  assert.match(html, /data-caminho="notifications\.rota\.lembrete\.e3"/)
+  assert.match(html, /data-acao="silenciar" data-id="n1"/)
+  assert.doesNotMatch(chipAlarme({ caminho: 'x', state: 'warn', message: 'm', method: ['visual'] }), /silenciar/)
+  assert.equal(chipAlarme(null), '')
 })

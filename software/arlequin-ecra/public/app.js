@@ -6,7 +6,7 @@ import { cpa, classificar } from './lib/cpa.js'
 import { lerPolar } from './lib/polar.js'
 import { criarBarometro, registarPressao, tendencia } from './lib/barometro.js'
 import { novaViagem, acumular } from './lib/viagem.js'
-import { maisGrave, deveTocar, paginaDoAlarme, bipDeLigacao } from './lib/alarmes.js'
+import { maisGrave, deveTocar, paginaDoAlarme, bipDeLigacao, chipAlarme } from './lib/alarmes.js'
 import { podeRedesenhar, aoEnter, aoEscrever } from './lib/interacao.js'
 import carta from './paginas/carta.js'
 import instr from './paginas/instr.js'
@@ -87,10 +87,7 @@ function barraHtml (ctx) {
   const t = ctx.baro
   const seta = !t ? '' : t.sentido === 'sobe' ? ' ▲' : t.sentido === 'desce' ? ' ▼' : ' ▬'
   const piloto = ctx.v('steering.autopilot.state') || 'manual'
-  const al = maisGrave(ctx.notificacoes)
-  const alarme = al
-    ? `<span class="chip ${al.state === 'warn' || al.state === 'alert' ? 'aviso' : 'alarme'}" data-acao="ir-alarme" data-caminho="${al.caminho}">⚠ ${al.message || al.caminho}${al.id && !al.status?.silenced && al.method?.includes('sound') ? `<span class="x" data-acao="silenciar" data-id="${al.id}">silenciar</span>` : ''}</span>`
-    : ''
+  const alarme = chipAlarme(maisGrave(ctx.notificacoes))
   const som = app.audio ? '' : '<span class="chip off aviso-som" title="O browser só deixa tocar depois de um toque">🔇 toque para ligar o som</span>'
   return `<span class="nome">ARLEQUIN</span><span>${hora(new Date())}</span>
 <span class="chip ${gps ? 'bom' : 'off'}">GPS</span><span class="chip off" title="Meshtastic: depois de validar o sistema">Mesh</span><span class="chip off" title="4G: a instalar">4G</span>

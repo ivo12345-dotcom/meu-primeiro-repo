@@ -1,6 +1,8 @@
 // Escolhe o alarme para a barra de cima, decide o som e a página de destino.
 // Notificação: { caminho, id, state, method, message, status }.
 
+import { esc } from './rota-texto.js'
+
 const GRAVIDADE = { normal: 0, nominal: 0, alert: 1, warn: 2, alarm: 3, emergency: 4 }
 
 const nivel = (n) => GRAVIDADE[n.state] ?? 0
@@ -37,4 +39,11 @@ export function paginaDoAlarme (caminho) {
 // falhada de religar, nem no arranque).
 export function bipDeLigacao (estavaLigado, ligado) {
   return estavaLigado === true && ligado === false
+}
+
+// O chip do alarme na barra de cima (o mais grave), com o "silenciar" se apita. O texto vem dos plugins
+// (eventos da rota, nomes dos destinos do Ivo): passa sempre pelo esc.
+export function chipAlarme (al) {
+  if (!al) return ''
+  return `<span class="chip ${al.state === 'warn' || al.state === 'alert' ? 'aviso' : 'alarme'}" data-acao="ir-alarme" data-caminho="${esc(al.caminho)}">⚠ ${esc(al.message || al.caminho)}${al.id && !al.status?.silenced && al.method?.includes('sound') ? `<span class="x" data-acao="silenciar" data-id="${esc(al.id)}">silenciar</span>` : ''}</span>`
 }

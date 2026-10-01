@@ -25,3 +25,11 @@ test('o mini-mapa tem as cores do mar e da terra de dia e de noite (tokens --mar
 test('as caixas das precauções têm pelo menos 44 px de altura (para o dedo, ao leme)', () => {
   assert.match(regra('.caixa'), /min-height:\s*44px/)
 })
+
+test('9: o Terminar dentro da caixa vermelha da rota mudada vê-se de dia e de noite (contorno; de noite, fundo e letra diferentes da caixa)', () => {
+  assert.match(regra('.plano-pausado .acao.stop'), /outline:\s*2px solid #fff/)
+  const noite = regra('body.noite .plano-pausado .acao.stop')
+  assert.match(noite, /outline:\s*2px solid #ff5a3a/)
+  assert.match(noite, /background:\s*#000/)
+  assert.match(noite, /color:\s*#ff5a3a/)
+})

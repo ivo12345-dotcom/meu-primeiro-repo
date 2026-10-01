@@ -114,6 +114,9 @@ body.noite button, body.noite .btn { color: var(--texto); }
 /* A navegar (3b-2): a faixa do plano ativo por cima do rumo e a caixa da rota mudada. */
 .plano-faixa { font-size: 1.3rem; border-left: .35rem solid var(--azul); }
 .plano-faixa .acoes, .plano-pausado .acoes, .plano-confirmar .acoes { margin-top: .35rem; }
+/* O Terminar dentro da caixa vermelha (mesmo fundo): um contorno de dia; de noite, fundo e letra à parte. */
+.plano-pausado .acao.stop { outline: 2px solid #fff; outline-offset: -2px; }
+body.noite .plano-pausado .acao.stop { background: #000; color: #ff5a3a; outline: 2px solid #ff5a3a; outline-offset: -2px; }
 
 /* Melhor rota (3b-1): faixa do veredicto, cartões, avisos, precauções e o mini-mapa. */
 .rolar { overflow: auto; }

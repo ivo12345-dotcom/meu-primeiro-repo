@@ -11,7 +11,7 @@
 // e quando ela acaba o ecrã volta ao que estava); sem confirmação em 2 min, sai e explica.
 // A navegar (desenho 3b-2, melhor/navegar.js): o plano ativo do plugin (GET /plano-ativo de 10 em 10 s)
 // dá a faixa, Recalcular e Terminar no Leme; com o plano pausado (a rota ativa já não é a do plano) o
-// Leme mostra a caixa com Terminar e Continuar, mesmo sem rota ativa.
+// Leme mostra a caixa com Terminar, Continuar e Recalcular, mesmo sem rota ativa.
 
 import leme from './melhor/leme.js'
 import pedir, { buscarDestinos, rotaAtiva } from './melhor/pedir.js'
@@ -71,6 +71,8 @@ export default {
       return buscarDestinos(ctx, true)
     }
     if (await navegar.acao(nome, dados, ctx)) return
+    // Ativar muda o plano: a pergunta do Terminar do plano antigo sai
+    if (nome === 'rota-ativar') e.confirmarTerminar = null
     if (await resultado.acao(nome, dados, ctx)) {
       // Ativar cria ou substitui o plano ativo: lê-o já
       if (nome === 'rota-ativar' && e.ativada) await navegar.buscarPlanoAtivo(ctx, true)
