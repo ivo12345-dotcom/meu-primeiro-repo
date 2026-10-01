@@ -35,10 +35,12 @@ test('Telegram: autorização, comandos, alarme de intrusão com foto e "resolvi
     app.pôr('navigation.position', { latitude: 39.353, longitude: -9.378 })
     app.pôr('electrical.batteries.servico.capacity.stateOfCharge', 0.81)
 
-    // Um estranho escreve: não recebe nada e o número aparece no estado do plugin.
+    // Um estranho escreve: o número aparece no estado do plugin e só recebe o código para dar ao
+    // Ivo (desenho 3b-1), nunca a resposta ao comando.
     tgf.escrever(999, '/estado')
     assert.ok(await ate(() => /NÃO autorizado: 999/.test(app.estado) || app.estado.includes('999')), app.estado)
-    assert.equal(tgf.enviados.filter(m => m.chatId === '999').length, 0)
+    assert.ok(await ate(() => tgf.enviados.some(m => m.chatId === '999')), JSON.stringify(tgf.enviados))
+    assert.deepEqual(tgf.enviados.filter(m => m.chatId === '999').map(m => m.text), ['Para receberes os planos do ARLEQUIN, dá este código ao Ivo: 999'])
 
     tgf.escrever(111, '/armar')
     assert.ok(await ate(() => tgf.enviados.some(m => /ARMADO/.test(m.text || ''))))

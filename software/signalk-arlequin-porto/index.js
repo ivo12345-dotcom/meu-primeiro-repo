@@ -3,6 +3,12 @@
 // fumo, gaiuta, movimento, líquido debaixo do depósito) + GPS → alarmes; os
 // alarmes de todos os plugins seguem para o Telegram; comandos pelo Telegram;
 // batimento para um serviço externo (healthchecks.io). Sem portas abertas.
+//
+// Plano de navegação (desenho 3b-1): o plugin da rota emite 'arlequin:plano' { pedido, texto, gpx,
+// nomeFicheiro }; aqui envia-se a mensagem e o GPX aos chatIds e aos contactosPlano, e responde-se
+// com 'arlequin:plano-enviado' { pedido, entregues: [nome], falhas: [{ nome, erro }] }.
+// Os contactosPlano só recebem: as mensagens deles são ignoradas (não comandam). Quem escreve sem
+// estar em nenhuma das listas recebe o código para dar ao Ivo (uma vez por hora) e não fica autorizado.
 
 const fs = require('node:fs')
 const os = require('node:os')
@@ -21,6 +27,9 @@ const CAMINHOS = {
   gaiuta: 'sensors.gaiuta.aberta',
   movimento: 'sensors.movimento'
 }
+
+const UMA_HORA = 3600000
+const textoCodigo = (chatId) => `Para receberes os planos do ARLEQUIN, dá este código ao Ivo: ${chatId}`
 
 const AJUDA = `Comandos do Arlequin:
 /estado — baterias, depósitos, cabine, alarmes
@@ -42,6 +51,12 @@ module.exports = function (app) {
     properties: {
       telegramToken: { type: 'string', title: 'Token do bot do Telegram (criado no @BotFather)', default: '' },
       chatIds: { type: 'array', title: 'Chats autorizados (o teu; o plugin mostra o número de quem escrever)', default: [], items: { type: 'string' } },
+      contactosPlano: {
+        type: 'array',
+        title: 'Contactos do plano: só recebem o plano de navegação, nunca comandam (o código vem do /start ao bot)',
+        default: [],
+        items: { type: 'object', properties: { nome: { type: 'string', title: 'Nome' }, chatId: { type: 'string', title: 'Código (chatId)' } } }
+      },
       telegramBase: { type: 'string', title: 'Servidor do Telegram (não mudar; só para testes)', default: 'https://api.telegram.org' },
       pollTimeout: { type: 'number', title: 'Long polling (s)', default: 25 },
       batimentoUrl: { type: 'string', title: 'URL do batimento (healthchecks.io), de 5 em 5 min', default: '' },
@@ -63,6 +78,7 @@ module.exports = function (app) {
   let aCorrer = false
   let tg = null
   let offset = 0
+  let codigoEnviado = new Map() // chatId desconhecido → quando recebeu o código (anti-spam: 1 por hora)
 
   const val = (p) => app.getSelfPath?.(p)?.value
   const bool = (p) => { const x = val(p); return x === undefined || x === null ? undefined : !!x }
@@ -129,6 +145,47 @@ module.exports = function (app) {
     return tg.sendMessage(chatId, AJUDA)
   }
 
+  // os contactos do plano válidos: [{ nome, chatId }]
+  const contactosPlano = () => (Array.isArray(o.contactosPlano) ? o.contactosPlano : [])
+    .filter(c => c && c.chatId != null && String(c.chatId).trim())
+    .map(c => ({ nome: String(c.nome || '').trim() || `chat ${String(c.chatId).trim()}`, chatId: String(c.chatId).trim() }))
+
+  // os destinatários do plano: os chats autorizados e os contactos do plano, sem repetir
+  function destinatariosPlano () {
+    const out = []
+    for (const id of o.chatIds) out.push({ nome: `chat ${id}`, chatId: String(id) })
+    for (const c of contactosPlano()) if (!out.some(d => d.chatId === c.chatId)) out.push(c)
+    return out
+  }
+
+  async function enviarPlano (ev) {
+    const pedido = ev?.pedido
+    const responder = (entregues, falhas) => app.emit('arlequin:plano-enviado', { pedido, entregues, falhas })
+    if (!tg) return responder([], [{ nome: 'Telegram', erro: 'o plugin porto não tem o token do bot' }])
+    const entregues = []
+    const falhas = []
+    const gpx = typeof ev?.gpx === 'string' && ev.gpx ? Buffer.from(ev.gpx, 'utf8') : null
+    for (const d of destinatariosPlano()) {
+      try {
+        await tg.sendMessage(d.chatId, String(ev?.texto ?? ''))
+        if (gpx) await tg.sendDocument(d.chatId, gpx, ev.nomeFicheiro || 'plano.gpx')
+        entregues.push(d.nome)
+      } catch (e) { falhas.push({ nome: d.nome, erro: e.message }) }
+    }
+    responder(entregues, falhas)
+  }
+  const aoPlano = (ev) => { enviarPlano(ev).catch(e => app.error(`plano: ${e.message}`)) }
+
+  // Quem escreve sem estar nas listas: o número no estado do plugin e, uma vez por hora, o código.
+  async function desconhecido (chatId) {
+    app.setPluginStatus(`Mensagem de um chat NÃO autorizado: ${chatId} (se for o teu, junta-o em "Chats autorizados"; para só receber os planos, em "Contactos do plano")`)
+    if (!chatId) return
+    const antes = codigoEnviado.get(chatId)
+    if (antes != null && Date.now() - antes < UMA_HORA) return
+    codigoEnviado.set(chatId, Date.now())
+    await tg.sendMessage(chatId, textoCodigo(chatId))
+  }
+
   async function ouvirTelegram () {
     while (aCorrer && tg) {
       try {
@@ -136,11 +193,10 @@ module.exports = function (app) {
         for (const u of updates) {
           offset = u.update_id + 1
           const chatId = String(u.message?.chat?.id ?? '')
-          if (!o.chatIds.map(String).includes(chatId)) {
-            app.setPluginStatus(`Mensagem de um chat NÃO autorizado: ${chatId} (se for o teu, junta-o em "Chats autorizados")`)
-            continue
-          }
-          await comando(chatId, u.message?.text)
+          if (o.chatIds.map(String).includes(chatId)) { await comando(chatId, u.message?.text); continue }
+          // os contactos do plano só recebem: os comandos deles ignoram-se
+          if (contactosPlano().some(c => c.chatId === chatId)) continue
+          await desconhecido(chatId)
         }
       } catch (e) {
         app.error(`Telegram: ${e.message}`)
@@ -189,7 +245,8 @@ module.exports = function (app) {
   }
 
   plugin.start = function (props) {
-    o = { telegramToken: '', chatIds: [], telegramBase: 'https://api.telegram.org', pollTimeout: 25, batimentoUrl: '', comandoFoto: '', ...props }
+    o = { telegramToken: '', chatIds: [], contactosPlano: [], telegramBase: 'https://api.telegram.org', pollTimeout: 25, batimentoUrl: '', comandoFoto: '', ...props }
+    codigoEnviado = new Map()
     const dir = app.getDataDirPath()
     fs.mkdirSync(dir, { recursive: true })
     ficheiro = path.join(dir, 'porto.json')
@@ -206,10 +263,13 @@ module.exports = function (app) {
       bater()
       temporizadores.push(setInterval(bater, 5 * 60 * 1000))
     }
+    app.removeListener?.('arlequin:plano', aoPlano)
+    app.on?.('arlequin:plano', aoPlano)
     if (tg) ouvirTelegram()
   }
 
   plugin.stop = function () {
+    app.removeListener?.('arlequin:plano', aoPlano)
     aCorrer = false
     temporizadores.forEach(clearInterval)
     temporizadores = []
