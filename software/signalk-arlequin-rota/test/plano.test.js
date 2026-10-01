@@ -155,6 +155,21 @@ test('sem a chegada mais tarde (p90) não há hora de alarme: o plano não se mo
   assert.throws(() => montar(r, 0), (e) => e.status === 422 && e.message === plano.SEM_ALARME)
 })
 
+test('um cálculo antigo não se envia: a hora de alarme já passou ou a partida foi há mais de 1 h → 422 com o motivo (revisão final, 2)', () => {
+  // o fixture do canal (partida qua 30/09 09:30, alarme qua 30/09 20:21) mandado no dia seguinte
+  const depois = Date.parse('2026-10-01T12:00:00Z')
+  assert.throws(() => montar(FIX.canal, 0, { agora: depois }), (e) => e.status === 422 && e.message === 'este cálculo é antigo: a hora de alarme já passou (qua 30/09 20:21) — calcula outra vez antes de enviar o plano')
+  // à hora de alarme certa já não vai
+  const alarme = plano.horaAlarme(FIX.canal.alternativas[0])
+  assert.throws(() => montar(FIX.canal, 0, { agora: alarme }), (e) => e.status === 422 && /a hora de alarme já passou/.test(e.message))
+  // a partida há mais de 1 h (o alarme ainda por vir): também não
+  const p = Date.parse(FIX.canal.alternativas[0].partida)
+  assert.throws(() => montar(FIX.canal, 0, { agora: p + 3600000 + 60000 }), (e) => e.status === 422 && e.message === 'este cálculo é antigo: a partida já foi (09:30) — calcula outra vez antes de enviar o plano')
+  // até 1 h depois da partida ainda vai (o Ivo manda o plano já a sair)
+  assert.match(montar(FIX.canal, 0, { agora: p + 3600000 }).texto, /^Hora de alarme: 20:21$/m)
+  assert.equal(plano.CALCULO_ANTIGO, 'calcula outra vez antes de enviar o plano')
+})
+
 test('o número do MRCC está numa só constante: o telefone de emergência por defeito e a frase do plano usam-na', () => {
   assert.equal(plano.MRCC, '+351 214 401 919')
   assert.equal(plano.EMERGENCIA_PADRAO, `${plano.MRCC} (MRCC Lisboa, 24 h) ou 112`)
@@ -174,7 +189,7 @@ test('mudança de hora: as horas da hora repetida (fim do horário de verão) di
   assert.equal(plano.horaLisboa(Date.parse('2026-03-29T00:30:00Z'), ag), 'dom 29/03 00:30')
   assert.equal(plano.horaLisboa(Date.parse('2026-03-29T01:30:00Z'), ag), 'dom 29/03 02:30')
   // no plano: a hora de alarme na hora repetida
-  const alt = { ...FIX.canal.alternativas[0], chegada: { p10: '2026-10-24T22:00:00Z', p50: '2026-10-24T23:00:00Z', p90: '2026-10-24T23:30:00Z' } }
+  const alt = { ...FIX.canal.alternativas[0], partida: '2026-10-24T14:00:00Z', chegada: { p10: '2026-10-24T22:00:00Z', p50: '2026-10-24T23:00:00Z', p90: '2026-10-24T23:30:00Z' } }
   const p = plano.montarPlano({ resultado: { ...FIX.canal, alternativas: [alt] }, indice: 0, barco: BARCO, telefones: TELEFONES, agora: ag })
   assert.match(p.texto, /^Hora de alarme: dom 25\/10 01:30 \(hora de inverno\)$/m)
   assert.match(p.texto, /^Se não houver notícias até dom 25\/10 01:30 \(hora de inverno\), liga ao Ivo/m)

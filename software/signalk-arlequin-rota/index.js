@@ -12,7 +12,8 @@
 //        → { ok, rota, href, via, alternativa, nota } (nota: a do canal, se a rota passar por um)
 //   POST /plano-telegram { id, alternativa } → 202 { pedido, avisos: [texto] } (404 cálculo ou
 //        alternativa desconhecidos; 409 se o cálculo não estiver pronto; 422 sem a chegada mais
-//        tarde (não há hora de alarme); 503 sem eventos no servidor)
+//        tarde (não há hora de alarme) ou com um cálculo antigo (a hora de alarme já passou, ou a
+//        partida foi há mais de 1 h); 503 sem eventos no servidor)
 //   GET  /plano-telegram/:pedido → { estado: 'a enviar' | 'enviado' | 'falhou', entregues: [nome],
 //        falhas: [{ nome, erro }], avisos: [texto], motivo? }
 //   avisos: o que o Ivo deve saber mas não impede o envio (sem o telefone dele na configuração, o

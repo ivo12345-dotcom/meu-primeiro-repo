@@ -531,6 +531,22 @@ test('POST /plano-telegram: sem chegada mais tarde → 422 com o motivo (nada se
   p.stop()
 })
 
+test('POST /plano-telegram de um cálculo antigo (a hora de alarme já passou): 422 com o motivo e nada se envia (revisão final, 2)', async () => {
+  const app = appComEventos()
+  const { p, r, avancar } = plugin(app, agendadorFalso())
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  const id = await calculado(r)
+  const eventos = []
+  app.on('arlequin:plano', (e) => eventos.push(e))
+  // o resultado fica guardado no plugin (e no ecrã): no dia seguinte já não serve
+  avancar(24 * 3600000)
+  const x = await chamar(r.post['/plano-telegram'], { body: { id, alternativa: 0 } })
+  assert.equal(x.code, 422)
+  assert.match(x.erro, /^este cálculo é antigo: a hora de alarme já passou \(.+\) — calcula outra vez antes de enviar o plano$/)
+  assert.equal(eventos.length, 0)
+  p.stop()
+})
+
 test('sem o telefone do Ivo na configuração, o plano vai na mesma, mas o POST e o GET trazem o aviso; com o telefone, avisos vazio', async () => {
   const app = appComEventos()
   const { p, r } = plugin(app, agendadorFalso())

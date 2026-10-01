@@ -13,6 +13,8 @@
 // dessa hora levam " (hora de verão)" ou " (hora de inverno)".
 // Hora de alarme = a chegada mais tarde (chegada.p90) + 2 h. Sem p90 não há hora de alarme: o plano
 // não se monta (erro com status 422 e o motivo SEM_ALARME).
+// Um cálculo antigo (guardado no plugin e no ecrã) também não: com a hora de alarme já passada, ou a
+// partida há mais de 1 h, o plano mandava um falso alarme aos contactos (422, "calcula outra vez").
 // "Até … ainda volta a X": o último ponto de desistência em que voltar à partida tem vento a favor ou
 // de través e sem aviso vermelho, com as exceções: os pontos antes dele em que a volta é uma fuga
 // junto à costa (com o aviso vermelho) ou não há fuga, em texto simples ("exceto junto ao Cabo Raso
@@ -32,6 +34,8 @@ const DIAS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
 const MRCC = '+351 214 401 919'
 const EMERGENCIA_PADRAO = `${MRCC} (MRCC Lisboa, 24 h) ou 112`
 const SEM_ALARME = 'sem hora de chegada mais tarde: não há hora de alarme, o plano não foi enviado'
+const CALCULO_ANTIGO = 'calcula outra vez antes de enviar o plano'
+const TOLERANCIA_PARTIDA = 3600000 // o plano ainda vai até 1 h depois da partida (o Ivo manda-o já a sair)
 const SEM = '—'
 
 function partes (t, fuso) {
@@ -135,6 +139,9 @@ function montarPlano ({ resultado, indice = 0, barco = {}, telefones = {}, agora
   const alarme = horaAlarme(alt)
   // a hora de alarme é o centro do plano: sem ela, não vai
   if (alarme == null) throw Object.assign(new Error(SEM_ALARME), { status: 422 })
+  const antigo = (o) => Object.assign(new Error(`este cálculo é antigo: ${o} — ${CALCULO_ANTIGO}`), { status: 422 })
+  if (alarme <= agora) throw antigo(`a hora de alarme já passou (${hl(alarme)})`)
+  if (valido(partida) && partida < agora - TOLERANCIA_PARTIDA) throw antigo(`a partida já foi (${hl(partida)})`)
   const de = origemMar ? `da posição ${origemMar}` : origem ? `de ${origem}` : null
 
   const linhas = [
@@ -183,4 +190,4 @@ function montarPlano ({ resultado, indice = 0, barco = {}, telefones = {}, agora
   return { texto: linhas.join('\n'), gpx, nomeFicheiro }
 }
 
-module.exports = { MRCC, EMERGENCIA_PADRAO, SEM_ALARME, horaLisboa, horaAlarme, rotaTexto, montarPlano }
+module.exports = { MRCC, EMERGENCIA_PADRAO, SEM_ALARME, CALCULO_ANTIGO, horaLisboa, horaAlarme, rotaTexto, montarPlano }
