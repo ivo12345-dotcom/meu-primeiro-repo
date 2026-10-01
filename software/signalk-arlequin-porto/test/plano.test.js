@@ -126,11 +126,28 @@ test('erros do Telegram em pt-PT: bloqueado → "bloqueou o bot"; sem resposta �
     assert.ok(Date.now() - t0 < 2000, 'o limite de tempo corta a chamada pendurada')
     assert.equal(erroEmPortugues(await erroDe(tg.sendDocument('444', Buffer.from('x'), 'a.gpx'))), 'sem ligação ao Telegram')
     // outro erro descrito pelo Telegram (o cliente guarda o código e a descrição)
-    assert.equal(erroEmPortugues(Object.assign(new Error('Telegram sendMessage: Bad Request: chat not found'), { codigo: 400, descricao: 'Bad Request: chat not found' })), 'erro do Telegram: Bad Request: chat not found')
+    assert.equal(erroEmPortugues(Object.assign(new Error('Telegram sendMessage: Bad Request: message is too long'), { codigo: 400, descricao: 'Bad Request: message is too long' })), 'erro do Telegram: Bad Request: message is too long')
     // sem servidor nenhum (ligação recusada)
     const morto = criarTelegram({ token: 'T', base: 'http://127.0.0.1:9', limiteMs: 2000 })
     assert.equal(erroEmPortugues(await erroDe(morto.sendMessage('111', 'x'))), 'sem ligação ao Telegram')
   } finally { await tgf.fechar() }
+})
+
+test('erros do Telegram em pt-PT: 400 "chat not found" → confirmar o código; 401 → token inválido; 429 → esperar N s (do retry_after)', async () => {
+  const { erroEmPortugues } = require('../lib/telegram')
+  // o Telegram a responder com o erro dado (o corpo real da API de bots)
+  const responde = (status, corpo) => criarTelegram({ token: 'T', base: 'http://x', fetchFn: async () => new Response(JSON.stringify(corpo), { status }) })
+  const erroDe = (p) => p.then(() => null, e => e)
+  assert.equal(erroEmPortugues(await erroDe(responde(400, { ok: false, error_code: 400, description: 'Bad Request: chat not found' }).sendMessage('999', 'x'))),
+    'o chat não existe ou nunca falou com o bot: confirma o código')
+  assert.equal(erroEmPortugues(await erroDe(responde(401, { ok: false, error_code: 401, description: 'Unauthorized' }).sendMessage('111', 'x'))), 'token do bot inválido')
+  const e429 = await erroDe(responde(429, { ok: false, error_code: 429, description: 'Too Many Requests: retry after 35', parameters: { retry_after: 35 } }).sendDocument('111', Buffer.from('x'), 'a.gpx'))
+  assert.equal(e429.esperarS, 35)
+  assert.equal(erroEmPortugues(e429), 'o Telegram pediu para esperar: tenta daqui a 35 s')
+  // 429 sem retry_after: sem número
+  assert.equal(erroEmPortugues(await erroDe(responde(429, { ok: false, error_code: 429, description: 'Too Many Requests' }).sendMessage('111', 'x'))), 'o Telegram pediu para esperar: tenta daqui a pouco')
+  // os outros 400 continuam com a descrição
+  assert.equal(erroEmPortugues(await erroDe(responde(400, { ok: false, error_code: 400, description: 'Bad Request: message text is empty' }).sendMessage('111', ''))), 'erro do Telegram: Bad Request: message text is empty')
 })
 
 test('o .gpx reconhece-se sem olhar a maiúsculas (ROTA.GPX → application/gpx+xml)', async () => {

@@ -3,7 +3,8 @@
 // polling): o barco não abre portas. `base` muda para o Telegram falso nos testes.
 // Cada chamada tem um limite de tempo (limiteMs, 10 s); o getUpdates, que fica à espera até
 // `timeout` s (long polling), tem esse tempo mais o limite. Os erros trazem `codigo` e `descricao`
-// quando o Telegram respondeu, ou `semLigacao` quando não respondeu (sem rede, recusado, o limite).
+// quando o Telegram respondeu (e `esperarS`, o retry_after de um 429), ou `semLigacao` quando não
+// respondeu (sem rede, recusado, o limite).
 
 const LIMITE_MS = 10000
 
@@ -25,7 +26,8 @@ function criarTelegram ({ token, base = 'https://api.telegram.org', fetchFn = gl
     }
     if (!j.ok) {
       const descricao = j.description || `HTTP ${r.status}`
-      throw Object.assign(new Error(`Telegram ${metodo}: ${descricao}`), { codigo: j.error_code ?? r.status, descricao })
+      const esperarS = Number.isFinite(j.parameters?.retry_after) ? j.parameters.retry_after : null
+      throw Object.assign(new Error(`Telegram ${metodo}: ${descricao}`), { codigo: j.error_code ?? r.status, descricao, esperarS })
     }
     return j.result
   }
@@ -55,6 +57,9 @@ function criarTelegram ({ token, base = 'https://api.telegram.org', fetchFn = gl
 function erroEmPortugues (e) {
   if (e?.semLigacao) return 'sem ligação ao Telegram'
   if (e?.codigo === 403) return 'bloqueou o bot'
+  if (e?.codigo === 400 && /chat not found/i.test(e.descricao)) return 'o chat não existe ou nunca falou com o bot: confirma o código'
+  if (e?.codigo === 401) return 'token do bot inválido'
+  if (e?.codigo === 429) return `o Telegram pediu para esperar: tenta daqui a ${Number.isFinite(e.esperarS) ? `${e.esperarS} s` : 'pouco'}`
   if (e?.codigo != null) return `erro do Telegram: ${e.descricao}`
   return `erro do Telegram: ${e?.message ?? e}`
 }
