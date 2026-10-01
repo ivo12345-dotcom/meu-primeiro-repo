@@ -370,3 +370,39 @@ test('9: a mensagem do alarme na barra de cima passa pelo esc (texto do plugin: 
   assert.doesNotMatch(chipAlarme({ caminho: 'x', state: 'warn', message: 'm', method: ['visual'] }), /silenciar/)
   assert.equal(chipAlarme(null), '')
 })
+
+test('Tarefa 8.2: com o plano ativo, o Leme fica limpo: sem "A rota ótima (isócronas, GRIB)…" nem "Novo cálculo" (só o Recalcular da faixa); de dia e de noite', async () => {
+  for (const plano of [PLANO, { ...PLANO, estado: 'a espera de sair', saida: null, atrasoMin: null }]) {
+    for (const noite of [false, true]) {
+      const html = melhor.render(await leme(plano, { noite }))
+      limpo(html, 'leme limpo')
+      assert.match(html, /Rumo a seguir/)
+      assert.doesNotMatch(texto(html), /isócronas|GRIB/)
+      assert.doesNotMatch(html, /data-acao="rota-novo"/)
+      assert.equal((html.match(/data-acao="rota-recalcular"/g) || []).length, 1)
+    }
+  }
+  // a navegar mas ainda sem o rumo do SignalK (a rota acabou de se ativar): também sem o "Novo cálculo"
+  const html = melhor.render(await leme(PLANO, { valores: { 'navigation.course.activeRoute': { href: '/resources/routes/r1', name: 'Arlequin → Peniche' } } }))
+  assert.doesNotMatch(html, /data-acao="rota-novo"/)
+  assert.match(html, /data-acao="rota-recalcular"/)
+})
+
+test('Tarefa 8.2: rota ativa sem plano (ativada à mão no OpenCPN): fica o "Novo cálculo" (e o texto do OpenCPN)', async () => {
+  const html = melhor.render(await leme(undefined))
+  assert.match(html, /Rumo a seguir/)
+  assert.match(html, /data-acao="rota-novo"[^>]*>Novo cálculo</)
+  assert.doesNotMatch(html, /rota-recalcular/)
+})
+
+test('Tarefa 8.2: pausado sem rota ativa: o texto por baixo do título diz "a rota do plano já não está ativa", não a espera pelo rumo; sem "Novo cálculo"', async () => {
+  for (const noite of [false, true]) {
+    const html = melhor.render(await leme({ ...PLANO, estado: 'pausado', pausadoDe: 'a navegar' }, { valores: {}, noite }))
+    limpo(html, 'pausado sem rota')
+    const t = texto(html)
+    assert.match(t, /a rota do plano já não está ativa/)
+    assert.doesNotMatch(t, /À espera do rumo/)
+    assert.doesNotMatch(html, /data-acao="rota-novo"/)
+    assert.match(html, /data-acao="rota-continuar"/)
+  }
+})

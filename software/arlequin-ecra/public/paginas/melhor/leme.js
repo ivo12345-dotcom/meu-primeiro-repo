@@ -1,7 +1,9 @@
 // Melhor rota, estado Leme (com uma rota ativa): o rumo a seguir ao leme, em grande, e contra o
 // vento os dois bordos ótimos da polar e quando virar. "Novo cálculo" volta ao estado Pedir.
 // (Era a página melhor.js antes da 3b-1.) A navegar (3b-2), o plano ativo por cima do rumo
-// (melhor/navegar.js: a faixa, Recalcular, Terminar, a caixa da rota mudada).
+// (melhor/navegar.js: a faixa, Recalcular, Terminar, a caixa da rota mudada); com o plano ativo o Leme
+// fica limpo (Tarefa 8.2): sem o "Novo cálculo" nem o texto do OpenCPN, só o Recalcular. Pausado sem
+// rota ativa: "a rota do plano já não está ativa" (não a espera pelo rumo).
 
 import { angulosOtimos } from '../../lib/polar.js'
 import { correcaoLeme, bordejo } from '../../lib/rumo.js'
@@ -19,15 +21,21 @@ export default {
     const twd = ctx.v('environment.wind.directionTrue')
     const tws = ctx.v('environment.wind.speedTrue')
     const plano = navegar.render(ctx)
+    // com o plano ativo (Tarefa 8.2), só o Recalcular da faixa: sem o "Novo cálculo" nem o texto do OpenCPN
+    const comPlano = !!navegar.planoAberto(ctx)
     if (!wp.ativo) {
-      // acabou de se ativar, ou o SignalK ainda não mandou o rumo ao próximo ponto
+      // acabou de se ativar, ou o SignalK ainda não mandou o rumo ao próximo ponto; em pausa sem rota
+      // ativa, a rota do plano já não está ativa (não se espera rumo nenhum)
       const nome = ctx.v('navigation.course.activeRoute')?.name
       const titulo = ctx.estado?.ativada ? 'Rota ativada' : nome ? 'Rota ativa' : 'Sem rota ativa'
+      const explica = navegar.pausado(ctx) && !nome
+        ? 'a rota do plano já não está ativa: Continuar volta a ativá-la.'
+        : 'À espera do rumo do SignalK (o OpenCPN mostra a rota ativa). Aqui aparece o rumo a seguir ao leme.'
       return `<div class="col" style="flex:1;">${plano}<div class="tile centro" style="flex:1;"><div class="vv">${titulo}</div>
 ${nome ? `<div class="v" style="margin-top:.4rem;">${esc(nome)}</div>` : ''}
-<div style="font-size:1.3rem;max-width:40rem;margin:.6rem 0;">À espera do rumo do SignalK (o OpenCPN mostra a rota ativa). Aqui aparece o rumo a seguir ao leme.</div>
+<div style="font-size:1.3rem;max-width:40rem;margin:.6rem 0;">${explica}</div>
 ${ctx.estado?.msgAtivar ? `<div class="lab" style="max-width:40rem;">${esc(ctx.estado.msgAtivar)}</div>` : ''}
-<div class="acoes">${NOVO}</div></div></div>`
+${comPlano ? '' : `<div class="acoes">${NOVO}</div>`}</div></div>`
     }
     let alvo = wp.rumoWp
     let bordos = ''
@@ -63,8 +71,8 @@ ${bordos}
 <div class="tile"><div class="lab">XTE ${ok(wp.xte) ? `${distancia(Math.abs(wp.xte), 2)} MN ${wp.xte > 0 ? 'EB' : 'BB'}` : '—'}</div>${barraXte(wp.xte)}</div>
 <div class="tile"><div class="lab">VMG ao WP</div><div class="vv">${velocidade(wp.vmg)} nós</div></div>
 <div class="tile"><div class="lab">Vento real</div><div class="vv">${velocidade(tws)} nós de ${rumo(twd)}</div></div>
-<div class="tile lab">A rota ótima (isócronas, GRIB) calcula-se no OpenCPN. Com o EV-100, este rumo passa a ir para o piloto.</div>
-<div class="tile" style="flex:0 0 auto;">${NOVO}</div>
+${comPlano ? '' : `<div class="tile lab">A rota ótima (isócronas, GRIB) calcula-se no OpenCPN. Com o EV-100, este rumo passa a ir para o piloto.</div>
+<div class="tile" style="flex:0 0 auto;">${NOVO}</div>`}
 </div>`
   }
 }
