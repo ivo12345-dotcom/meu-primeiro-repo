@@ -83,14 +83,18 @@ const virgula4 = (x) => Math.abs(x).toFixed(4).replace('.', ',')
 const posicaoTexto = (p) => (Number.isFinite(p?.lat) && Number.isFinite(p?.lon) ? `${virgula4(p.lat)} ${p.lat >= 0 ? 'N' : 'S'} ${virgula4(p.lon)} ${p.lon >= 0 ? 'E' : 'W'}` : null)
 const texto = (x) => (typeof x === 'string' && x.trim() ? x.trim() : null)
 
-// "a 5 MN da costa, via Canal da Berlenga, só motor" · "direta (salto curto), vela e motor"
+// Uma "vela e motor" com menos de 0,1 h de vela (horas.vela, o cenário provável) vai toda a motor.
+const semVela = (alt) => Number.isFinite(alt.horas?.vela) && alt.horas.vela < 0.1
+
+// "a 5 MN da costa, via Canal da Berlenga, só motor" · "direta (salto curto), vela e motor" ·
+// "a 5 MN da costa, a motor (sem vento para vela)"
 function rotaTexto (alt) {
   const partes = []
   if (alt.direto) partes.push('direta (salto curto)')
   else if (Number.isFinite(alt.afastamento)) partes.push(`a ${String(alt.afastamento).replace('.', ',')} MN da costa`)
   if (alt.canal) partes.push(`via ${alt.canal}`)
   if (alt.propulsao === 'motor') partes.push('só motor')
-  else if (alt.propulsao === 'vela') partes.push('vela e motor')
+  else if (alt.propulsao === 'vela') partes.push(semVela(alt) ? 'a motor (sem vento para vela)' : 'vela e motor')
   return partes.join(', ') || SEM
 }
 

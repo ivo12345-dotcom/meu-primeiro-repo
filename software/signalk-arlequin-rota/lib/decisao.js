@@ -16,7 +16,9 @@
 //
 // As 3 melhores: entre as não excluídas, as recomendadas primeiro e depois por custo (com
 // "so" ou "acompanhado", uma "não recomendada" nunca passa à frente de uma recomendada). Em "Sair agora" é
-// só pelo custo, com as não recomendadas incluídas.
+// só pelo custo, com as não recomendadas incluídas. Sem repetidas: uma "vela e motor" com menos de
+// 0,1 h de vela (provável) e uma "só motor" também sem vela, com a mesma partida e a mesma geometria
+// (afastamento, canal, direta), são a mesma passagem: fica a "só motor" e a vaga passa à seguinte.
 //
 // Veredicto:
 //   segue           a melhor recomendada parte agora;
@@ -84,9 +86,17 @@ const hora = (t, fuso = 'Europe/Lisbon') => new Intl.DateTimeFormat('pt-PT', { t
 // acompanhado (28/35/4) com "acompanhado" (decisão do Ivo de 01/10). O argumento fica por compatibilidade.
 const recomendada = (c, _tripulacao) => !c.excluida && !c.naoRecomendada
 
+// Menos de 0,1 h de vela no cenário provável (sem número: não se sabe, conta como com vela).
+const LIMIAR_VELA_H = 0.1
+const semVela = (c) => Number.isFinite(c.resumos?.provavel?.horasVela) && c.resumos.provavel.horasVela < LIMIAR_VELA_H
+const mesmaPassagem = (c) => `${c.partida}|${c.direto ? 'direta' : c.afastamento}|${c.canal || ''}`
+
 // Ordena e escolhe as 3 melhores. Decisão (controlador, revisão da Task 10): os "3 melhores por custo, entre as não excluídas" do desenho, com as recomendadas à frente das não recomendadas.
 function melhores (candidatos, { tripulacao, sairAgora = false, n = 3 } = {}) {
-  const ok = candidatos.filter(c => !c.excluida)
+  const naoExcluidas = candidatos.filter(c => !c.excluida)
+  // a "vela e motor" que vai toda a motor, quando há a "só motor" da mesma passagem também sem vela
+  const soMotor = new Set(naoExcluidas.filter(c => c.propulsao === 'motor' && semVela(c)).map(mesmaPassagem))
+  const ok = naoExcluidas.filter(c => !(c.propulsao !== 'motor' && semVela(c) && soMotor.has(mesmaPassagem(c))))
   const chave = (c) => (sairAgora ? 0 : (recomendada(c, tripulacao) ? 0 : 1))
   return ok.sort((a, b) => chave(a) - chave(b) || a.custo.total - b.custo.total || a.partida - b.partida).slice(0, n)
 }

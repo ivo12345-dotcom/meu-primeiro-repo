@@ -155,3 +155,24 @@ test('I4: com "acompanhado", uma "não recomendada" (acima dos limites de acompa
   assert.equal(so.veredicto.texto, 'Não recomendado')
   assert.equal(d.recomendada(agoraNr, 'acompanhado'), false)
 })
+
+test('sem alternativas repetidas: "vela e motor" sem vela (< 0,1 h) e "só motor" com a mesma partida e a mesma geometria contam como uma só (fica a "só motor"; a vaga passa à seguinte)', () => {
+  const comVela = (o, horasVela) => { const x = cand(o); x.canal = o.canal ?? null; x.direto = !!o.direto; x.resumos.provavel.horasVela = horasVela; return x }
+  // Peniche → Nazaré: com 7 nós a "vela e motor" vai toda a motor (0,04 h de vela)
+  const velaSem = comVela({ custo: 10, propulsao: 'vela', canal: 'Canal da Berlenga' }, 0.04)
+  const motor = comVela({ custo: 10, propulsao: 'motor', canal: 'Canal da Berlenga' }, 0)
+  const outra = comVela({ custo: 12, propulsao: 'motor', afastamento: 8 }, 0)
+  const tarde = comVela({ custo: 13, propulsao: 'motor', partida: AGORA + 3 * H, canal: 'Canal da Berlenga' }, 0)
+  const top = d.melhores([velaSem, motor, outra, tarde], { tripulacao: 'so' })
+  assert.deepEqual(top.map(c => c.id), [motor.id, outra.id, tarde.id])
+  // as 3 são distintas (partida, geometria, propulsão)
+  assert.equal(new Set(top.map(c => `${c.partida}|${c.afastamento}|${c.canal}|${c.direto}|${c.propulsao}`)).size, 3)
+  // com vela a sério (≥ 0,1 h) não são a mesma: as duas ficam
+  const velaCom = comVela({ custo: 9, propulsao: 'vela', canal: 'Canal da Berlenga' }, 0.1)
+  assert.deepEqual(d.melhores([velaCom, motor, outra], { tripulacao: 'so' }).map(c => c.id), [velaCom.id, motor.id, outra.id])
+  // outra partida ou outra geometria: não é repetida
+  const velaOutraGeo = comVela({ custo: 9, propulsao: 'vela', afastamento: 8 }, 0)
+  assert.deepEqual(d.melhores([velaOutraGeo, motor], { tripulacao: 'so' }).map(c => c.id), [velaOutraGeo.id, motor.id])
+  // o veredicto usa as mesmas 3
+  assert.deepEqual(d.decidir({ candidatos: [velaSem, motor, outra, tarde], agora: AGORA, tripulacao: 'so' }).top.map(c => c.id), [motor.id, outra.id, tarde.id])
+})

@@ -117,6 +117,17 @@ test('a rota direta escreve-se "direta (salto curto)"; uma alternativa que não 
   assert.match(q.texto, /Hora de alarme: qua 30\/09 10:58/)
 })
 
+test('"vela e motor" com menos de 0,1 h de vela: a rota diz "a motor (sem vento para vela)"', () => {
+  const comVela = (vela) => ({ ...FIX.canal.alternativas[1], horas: { vela } })
+  assert.equal(plano.rotaTexto(comVela(0.04)), 'a 5 MN da costa, via Canal da Berlenga, a motor (sem vento para vela)')
+  assert.equal(plano.rotaTexto(comVela(0.1)), 'a 5 MN da costa, via Canal da Berlenga, vela e motor')
+  assert.equal(plano.rotaTexto(comVela(undefined)), 'a 5 MN da costa, via Canal da Berlenga, vela e motor')
+  assert.equal(plano.rotaTexto({ ...FIX.canal.alternativas[0], horas: { vela: 0 } }), 'a 5 MN da costa, via Canal da Berlenga, só motor')
+  const p = montar({ ...FIX.canal, alternativas: [comVela(0.02)] }, 0)
+  assert.match(p.texto, /^Rota: a 5 MN da costa, via Canal da Berlenga, a motor \(sem vento para vela\)$/m)
+  assert.match(p.gpx, /a motor \(sem vento para vela\)/)
+})
+
 test('acompanhado, telefone de emergência mudado na configuração e partida no mar', () => {
   const r = { ...FIX.fuga, tripulacao: 'acompanhado', partida: { nome: 'Posição atual', lat: 38.65, lon: -9.4, emMar: true } }
   const p = montar(r, 0, { telefones: { ivo: '', emergencia: '112' } })
