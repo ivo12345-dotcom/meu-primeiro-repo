@@ -487,7 +487,8 @@ module.exports = function (app, deps = {}) {
     const c = p.contactos || ct.novaFila()
     return {
       estado: p.estado,
-      destino: { id: p.destino?.id ?? null, nome: p.destino?.nome ?? null },
+      // o cais (para o Recalcular de um destino avulso, sem id)
+      destino: { id: p.destino?.id ?? null, nome: p.destino?.nome ?? null, lat: p.destino?.cais?.lat ?? null, lon: p.destino?.cais?.lon ?? null },
       tripulacao: p.tripulacao,
       idCalculo: p.idCalculo,
       indice: p.indice,
@@ -590,7 +591,8 @@ module.exports = function (app, deps = {}) {
     const dados = {
       name: `Arlequin → ${destinoNome} (${alt.nome})`,
       // as horas em hora de Lisboa (HH:MM), não o UTC em bruto: o OpenCPN mostra o texto tal e qual
-      description: `Melhor rota: ${onde}, ${alt.propulsao === 'motor' ? 'só motor' : 'vela e motor'}, partida ${quando(alt.partida)}, chegada prevista ${quando(alt.chegada.p50)} (hora de Lisboa)${alt.nota ? `. ${alt.nota}` : ''}`,
+      // a propulsão como no ecrã e no plano: "a motor (sem vento para vela)" quando vai toda a motor
+      description: `Melhor rota: ${onde}, ${plano.propulsaoTexto(alt)}, partida ${quando(alt.partida)}, chegada prevista ${quando(alt.chegada.p50)} (hora de Lisboa)${alt.nota ? `. ${alt.nota}` : ''}`,
       ...(Number.isFinite(alt.milhas) ? { distance: Math.round(alt.milhas * 1852) } : {}),
       feature: {
         type: 'Feature',

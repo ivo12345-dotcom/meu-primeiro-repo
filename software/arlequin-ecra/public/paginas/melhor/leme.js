@@ -1,12 +1,14 @@
 // Melhor rota, estado Leme (com uma rota ativa): o rumo a seguir ao leme, em grande, e contra o
 // vento os dois bordos ótimos da polar e quando virar. "Novo cálculo" volta ao estado Pedir.
-// (Era a página melhor.js antes da 3b-1.)
+// (Era a página melhor.js antes da 3b-1.) A navegar (3b-2), o plano ativo por cima do rumo
+// (melhor/navegar.js: a faixa, Recalcular, Terminar, a caixa da rota mudada).
 
 import { angulosOtimos } from '../../lib/polar.js'
 import { correcaoLeme, bordejo } from '../../lib/rumo.js'
 import { barraXte } from '../../lib/desenho.js'
 import { proximoWp, velocidade, distancia, duracao, rumo, num, graus, ok } from '../comum.js'
 import { esc } from '../../lib/rota-texto.js'
+import * as navegar from './navegar.js'
 
 const NOVO = '<button class="acao" data-acao="rota-novo">Novo cálculo</button>'
 
@@ -16,14 +18,16 @@ export default {
     const proa = ctx.v('navigation.headingTrue')
     const twd = ctx.v('environment.wind.directionTrue')
     const tws = ctx.v('environment.wind.speedTrue')
+    const plano = navegar.render(ctx)
     if (!wp.ativo) {
       // acabou de se ativar, ou o SignalK ainda não mandou o rumo ao próximo ponto
       const nome = ctx.v('navigation.course.activeRoute')?.name
-      return `<div class="tile centro" style="flex:1;"><div class="vv">${ctx.estado?.ativada ? 'Rota ativada' : 'Rota ativa'}</div>
+      const titulo = ctx.estado?.ativada ? 'Rota ativada' : nome ? 'Rota ativa' : 'Sem rota ativa'
+      return `<div class="col" style="flex:1;">${plano}<div class="tile centro" style="flex:1;"><div class="vv">${titulo}</div>
 ${nome ? `<div class="v" style="margin-top:.4rem;">${esc(nome)}</div>` : ''}
 <div style="font-size:1.3rem;max-width:40rem;margin:.6rem 0;">À espera do rumo do SignalK (o OpenCPN mostra a rota ativa). Aqui aparece o rumo a seguir ao leme.</div>
 ${ctx.estado?.msgAtivar ? `<div class="lab" style="max-width:40rem;">${esc(ctx.estado.msgAtivar)}</div>` : ''}
-<div class="acoes">${NOVO}</div></div>`
+<div class="acoes">${NOVO}</div></div></div>`
     }
     let alvo = wp.rumoWp
     let bordos = ''
@@ -45,6 +49,7 @@ ${ctx.estado?.msgAtivar ? `<div class="lab" style="max-width:40rem;">${esc(ctx.e
       : c.lado === null ? '<span class="ok">✓ no rumo</span>'
         : c.lado === 'BB' ? `<span class="bb-txt">◀ ${c.graus}° BB</span>` : `<span class="eb-txt">${c.graus}° EB ▶</span>`
     return `<div class="col" style="flex:1.3;">
+${plano}
 <div class="tile centro" style="flex:1;">
   <div class="lab" style="font-size:1.2rem;">Rumo a seguir</div>
   <div class="vvv" style="font-size:6rem;">${rumo(alvo)}</div>
