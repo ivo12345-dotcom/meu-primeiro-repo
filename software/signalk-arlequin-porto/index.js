@@ -20,6 +20,8 @@
 // contactos indicados (re-revisão M-5: o Ivo não recebe a mesma mensagem de 2 em 2 min).
 // Os contactosPlano só recebem: as mensagens deles são ignoradas (não comandam). Quem escreve sem
 // estar em nenhuma das listas recebe o código para dar ao Ivo (uma vez por hora) e não fica autorizado.
+// O estado do encaminhador dos alarmes fica em encaminhador.json (escrita atómica): um reinício não
+// repete os avisos ativos nem o "✓ Resolvido".
 // O plano vai a todos os destinatários em paralelo e cada chamada ao Telegram tem um limite de 10 s,
 // para a resposta chegar bem antes dos 30 s que o plugin da rota espera; as falhas vão em pt-PT
 // ("bloqueou o bot", "sem ligação ao Telegram", "erro do Telegram: …").
@@ -43,6 +45,14 @@ const CAMINHOS = {
 }
 
 const UMA_HORA = 3600000
+
+// Escrita atómica: escreve um .tmp ao lado, fsync, e rename por cima (um corte a meio deixa o antigo).
+function escreverAtomico (ficheiro, texto) {
+  const tmp = `${ficheiro}.${process.pid}.tmp`
+  const fd = fs.openSync(tmp, 'w')
+  try { fs.writeSync(fd, texto); fs.fsyncSync(fd) } finally { fs.closeSync(fd) }
+  try { fs.renameSync(tmp, ficheiro) } catch (e) { try { fs.unlinkSync(tmp) } catch { /* já não existe */ } throw e }
+}
 const FORA_DA_LISTA = 'já não está nos "Contactos do plano" do plugin porto'
 const MAX_CODIGOS = 500 // os desconhecidos de que se guarda a hora do código (os mais antigos saem)
 const textoCodigo = (chatId) => `Para receberes os planos do ARLEQUIN, dá este código ao Ivo: ${chatId}`
@@ -286,10 +296,30 @@ module.exports = function (app, deps = {}) {
     app.setPluginStatus(`${persist.armado ? '🔒 armado' : 'desarmado'} · ${estado.amarracao.ponto ? 'amarrado' : 'sem ponto'} · Telegram ${tg ? 'ligado' : 'sem token'}`)
   }
 
+  // O estado do encaminhador em disco (Tarefa 8.3): depois de um reinício, um aviso ainda ativo não se
+  // repete e o "✓ Resolvido" sai uma só vez. Escrita atómica (o .tmp, o fsync e o rename).
+  let ficheiroEnc
+  function lerEncaminhador () {
+    try {
+      const x = JSON.parse(fs.readFileSync(ficheiroEnc, 'utf8'))
+      if (!x || typeof x !== 'object' || Array.isArray(x)) throw new Error('não é um encaminhador')
+      const base = novoEncaminhador()
+      for (const k of Object.keys(base)) if (x[k] && typeof x[k] === 'object' && !Array.isArray(x[k])) base[k] = x[k]
+      return base
+    } catch (e) {
+      if (e.code !== 'ENOENT') app.error(`encaminhador.json ilegível (começa vazio): ${e.message}`)
+      return novoEncaminhador()
+    }
+  }
+  function gravarEncaminhador () {
+    try { escreverAtomico(ficheiroEnc, JSON.stringify(enc)) } catch (e) { app.error(`não gravei o encaminhador: ${e.message}`) }
+  }
   function encaminharAlarmes () {
     const lista = listarNotificacoes(app.getSelfPath?.('notifications'))
     const r = encaminhar(enc, lista, Date.now(), { amarrado: !!estado.amarracao.ponto })
+    const mudou = JSON.stringify(r.enc) !== JSON.stringify(enc)
     enc = r.enc
+    if (mudou) gravarEncaminhador()
     for (const m of r.mensagens) enviarTodos(m)
   }
 
@@ -302,7 +332,8 @@ module.exports = function (app, deps = {}) {
     try { persist = { armado: false, ponto: null, ...JSON.parse(fs.readFileSync(ficheiro, 'utf8')) } } catch { persist = { armado: false, ponto: null } }
     estado = novoEstado()
     estado.amarracao.ponto = persist.ponto
-    enc = novoEncaminhador()
+    ficheiroEnc = path.join(dir, 'encaminhador.json')
+    enc = lerEncaminhador()
     offset = 0
     aCorrer = true
     tg = o.telegramToken ? criarTelegram({ token: o.telegramToken, base: o.telegramBase, ...(deps.limiteTelegramMs ? { limiteMs: deps.limiteTelegramMs } : {}) }) : null

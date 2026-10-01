@@ -214,3 +214,34 @@ test('re-revisão M-5: as novas tentativas de uma mensagem para terra (tentativa
     assert.equal(tgf.enviados.filter(m => m.chatId === '222').length, 3)
   } finally { p.stop(); await tgf.fechar() }
 })
+
+test('Tarefa 8.3: o estado do encaminhador sobrevive a um reinício (encaminhador.json, escrita atómica): um aviso ativo não se repete e, quando se apaga, sai um só "✓ Resolvido"', async () => {
+  const tgf = await criarTelegramFalso()
+  const app = appFalso()
+  const props = { telegramToken: 'TESTE', chatIds: ['111'], contactosPlano: CONTACTOS, telegramBase: tgf.url, pollTimeout: 1 }
+  app.arvore.notifications = { rota: { recursos: { value: { state: 'warn', message: 'Recursos: gasóleo à chegada ~34 L' } } } }
+  let p = criar(app)
+  p.start(props)
+  try {
+    assert.ok(await ate(() => tgf.enviados.some(m => m.chatId === '111')))
+    p.stop()
+    assert.ok(fs.existsSync(path.join(app.dir, 'encaminhador.json')))
+    assert.deepEqual(fs.readdirSync(app.dir).filter(f => f.endsWith('.tmp')), [], 'sem .tmp a sobrar')
+    // o reinício: o aviso continua ativo
+    p = criar(app)
+    p.start(props)
+    await esperar(2600)
+    assert.equal(tgf.enviados.filter(m => m.chatId === '111').length, 1, 'o aviso não se repete')
+    // o aviso apaga-se: um só "Resolvido"
+    app.arvore.notifications.rota.recursos.value = { state: 'normal', message: '' }
+    assert.ok(await ate(() => tgf.enviados.some(m => /Resolvido/.test(m.text || ''))))
+    await esperar(2600)
+    assert.deepEqual(tgf.enviados.filter(m => m.chatId === '111').map(m => m.text), ['⚠️ Recursos: gasóleo à chegada ~34 L', '✓ Resolvido: Recursos: gasóleo à chegada ~34 L'])
+    // um ficheiro estragado não derruba o arranque: começa vazio
+    p.stop()
+    fs.writeFileSync(path.join(app.dir, 'encaminhador.json'), '{estragado')
+    p = criar(app)
+    p.start(props)
+    assert.deepEqual(app.erros.filter(e => !/encaminhador/.test(e)), [])
+  } finally { p.stop(); await tgf.fechar() }
+})
