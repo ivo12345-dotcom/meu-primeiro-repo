@@ -227,3 +227,13 @@ test('rota mudada (pausado): a caixa "a rota ativa já não é a do plano: termi
     }
   }
 })
+
+test('a hora da faixa é a do plugin (agora do GET /plano-ativo, mais o tempo desde a leitura): "daqui a" e "amanhã" contam-se com ela', async () => {
+  // o plugin 6 h à frente do ecrã (a viagem acelerada do dev; no barco é o mesmo relógio)
+  const doPlugin = AGORA + 6 * 3600000
+  const p = { ...PLANO, agora: iso(doPlugin), proximo: { texto: 'rizar', hora: iso(doPlugin + 25 * MIN) } }
+  const ctx = await leme(p)
+  ctx.agora = AGORA + 5 * MIN // 5 min depois da leitura
+  const t = texto(melhor.render(ctx))
+  assert.match(t, /próximo: rizar às 21:57 \(daqui a 20 min\)/)
+})

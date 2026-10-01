@@ -1373,3 +1373,66 @@ quem o recebe para ligar ao Ivo e, se ele não atender, ao MRCC Lisboa (+351 214
   O envio para o Telegram verdadeiro precisa do token do bot, que só o Ivo põe.
 - O `@signalk/course-provider` está instalado e ligado no dev (`npm run instalar` instala-o): depois
   de **Ativar**, o Leme mostra o rumo a seguir.
+
+#### A navegar (3b-2)
+
+Desenho em `docs/superpowers/specs/2026-10-01-melhor-rota-navegar-3b2-design.md`; capturas do Leme
+(faixa, avisos, rota mudada), de dia e de noite, em `docs/capturas-3b2/`. Corre no **plugin da rota,
+no Pi**, de minuto a minuto: funciona com o ecrã desligado e continua depois de um reinício (o plano
+fica gravado em `plano-ativo.json`, na pasta do plugin). **Nunca muda a rota sozinho.**
+
+**O plano ativo:** ao carregar em **Ativar**, a alternativa fica como plano ativo, "à espera de
+sair". Passa a "a navegar" quando o barco fica a mais de 0,5 MN da partida (ou anda a mais de 2 nós
+durante 5 min). Chega quando fica a menos de 0,3 MN do cais do destino, parado (menos de 0,5 nó)
+durante 5 min.
+
+**A faixa no Leme**, por cima do rumo:
+- "próximo: rizar às 22:50 (daqui a 25 min) · +20 min sobre o plano" (os eventos de sítio — rizar,
+  cabos, largos, chegada — deslizam com o atraso; o pôr do sol, a chuva e a frente ficam à hora
+  prevista);
+- "chegada ~amanhã 07:58 (plano 07:38)", com "de noite" se a chegada deslizada for de noite;
+- "recursos: gasóleo à chegada ~34 L" quando há aviso, ou "recursos: sem leitura";
+- "sem GPS: acompanhamento parado" (mais de 2 min sem posição) e "barómetro: sem leitura";
+- antes de sair: "plano ativo · à espera de sair".
+
+**O que o sistema avisa** (na barra de cima, com o apito curto; nenhum muda a rota):
+- **Lembretes**, 30 min antes: rizar ou largar rizo, a frente, chuva e pouca visibilidade ("radar
+  ligado e luzes"), o pôr do sol ("luzes, arnês, come antes de escurecer") e a chegada de noite.
+  Só no ecrã.
+- **Come e bebe** (só com "só eu"), de 3 em 3 h desde a saída, durante 15 min. Só no ecrã.
+- **Recalcula a rota**: atraso de mais de 30 min, ou o vento medido (média de 10 min) afastado do
+  previsto mais de 30 % e mais de 4 nós durante 30 min seguidos. Apaga-se com os dois normais
+  durante 10 min. Vai também para o teu Telegram.
+- **Recursos**: gasóleo à chegada abaixo de 40 L ou bateria abaixo de 50 % (pelas horas de motor
+  que faltam no plano, a 2100 rpm, e o balanço da bateria). Vai também para o teu Telegram.
+- **Previsão velha**: com mais de 6 h, aviso no ecrã; com mais de 12 h (ou sem previsão nenhuma),
+  alarme com o apito curto, "confia nos instrumentos e no barómetro", e vai para o teu Telegram.
+- **Barómetro**: queda de mais de 3 hPa em 3 h, "o tempo pode piorar antes do previsto"; apaga-se
+  com a queda em 3 h até 2 hPa. Vai também para o teu Telegram.
+- O teu Telegram recebe o "✓ Resolvido" quando passam. O apito contínuo fica só para o AIS.
+
+**O que os contactos em terra recebem** (só se o plano lhes foi enviado; vão também para o teu chat):
+- "Cheguei bem a Peniche às 10:24. Obrigado!" à chegada (uma vez);
+- "Ainda a navegar, tudo bem. Nova chegada prevista ~HH:MM. Nova hora de alarme: HH:MM (em vez de
+  HH:MM)." quando a chegada prevista passa da "mais tarde" do plano; depois, no máximo 1× por hora
+  e só se a chegada escorregar mais 15 min. A nova hora de alarme é a chegada prevista + 2 h;
+- "Viagem terminada / mudança de planos: estou bem, em <posição> às HH:MM." ao Terminar;
+- o plano novo, com "Este plano substitui o anterior", ao Recalcular → Ativar.
+- Nada mais: os lembretes, os avisos e a rota mudada nunca vão para terra. Sem rede (ou sem o
+  plugin porto), as mensagens ficam em fila e voltam a tentar de 2 em 2 min.
+
+**Os botões:**
+- **Recalcular**: um cálculo novo de onde estás para o mesmo destino e tripulação; abre o
+  Resultado, onde **Ativar** substitui o plano (se o plano antigo tinha sido enviado, o novo segue
+  sozinho para os mesmos contactos). Um cálculo antigo é recusado e o plano antigo fica.
+- **Terminar** (pede confirmação: "Terminar o plano? Os contactos em terra recebem 'viagem
+  terminada, estou bem'"): fecha o plano e os avisos.
+- **Rota mudada no OpenCPN** (outra rota ativa, ou nenhuma): o plano fica em pausa e o Leme mostra
+  "a rota ativa já não é a do plano: terminar o plano?" com **Terminar** e **Continuar** (Continuar
+  volta a ativar a rota do plano). Nada segue para terra.
+
+**Em casa (dev):** a viagem acelerada Algés → Peniche (`npm run viagem-acelerada` na pasta
+`software/dev`, com o servidor e o `npm run telegram-falso` a correr) faz de GPS, barómetro,
+depósito e relógio, a 60× (1 s = 1 min). Precisa, só para o teste, do simulador desligado, do porto
+ligado e, no plugin da rota, de `horaSimulada: true` e `cicloSegundos: 1` (no barco ficam
+`false` e `60`). Com `--pausa <ficheiro>`, a hora pára enquanto o ficheiro existir.

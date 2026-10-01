@@ -195,3 +195,9 @@ test('os eventos reais da 3a (Algés → Peniche: { t, hora, tipo, texto }): o p
     ['chegada', 'chegada a Peniche', 15]
   ])
 })
+
+test('o mesmo minuto outra vez (o relógio parado, ou dois ciclos no mesmo minuto) não junta outra amostra à média', () => {
+  let estado = ac.novoEstado()
+  for (let k = 0; k < 5; k++) estado = ac.acompanhar(estado, { plano: plano(), posicao: norte(A, 1), agora: T0 + 30 * MIN }).estado
+  assert.equal(estado.amostras.length, 1)
+})

@@ -23,7 +23,7 @@
 //        em terra tem a hora de alarme e o ecrã não marca a precaução)
 //   avisos: o que o Ivo deve saber mas não impede o envio (sem o telefone dele na configuração, o
 //   plano diz só "liga ao Ivo").
-//   GET  /plano-ativo → 404 sem plano; { estado, destino: { id, nome }, tripulacao, idCalculo, indice,
+//   GET  /plano-ativo → 404 sem plano; { agora, estado, destino: { id, nome, lat, lon }, tripulacao, idCalculo, indice,
 //        alternativa: { id, nome }, partida, saida, chegou, atrasoMin, proximo: { texto, hora } | null,
 //        chegadaAgora, chegadaPlano, chegadaNoite, recursos: { gasoleoChegadaL, bateriaChegadaPct,
 //        semLeitura, aviso }, semGps, barometro: { semLeitura, quedaHpa }, previsaoIdadeH,
@@ -58,6 +58,9 @@
 // notifications.rota.* por delta, só nas mudanças. As amostras da pressão (de minuto a minuto, 3 h)
 // ficam em barometro.json; a posição na rota fica no plano ativo (seguimento), para um reinício não
 // a perder.
+// Só testes (a viagem acelerada do dev, software/dev/viagem-acelerada.js): com horaSimulada, a hora do
+// plugin é o navigation.datetime do SignalK (sem ele, o ciclo não corre) e o ciclo corre de
+// cicloSegundos em cicloSegundos. No barco ficam desligados (o padrão).
 //
 // O destino do /calcular: o id de um destino da lista (dados/destinos.json ou os do Ivo),
 // 'rota-ativa' (o fim da rota ativa no SignalK/OpenCPN), ou { lat, lon, nome }.
@@ -124,7 +127,10 @@ const slugDestino = (nome) => slug(nome, 30) || 'destino'
 
 module.exports = function (app, deps = {}) {
   const fetchFn = deps.fetch || ((...a) => fetch(...a))
-  const relogio = deps.relogio || (() => Date.now())
+  const relogioBase = deps.relogio || (() => Date.now())
+  // a hora do plugin: a do navigation.datetime com horaSimulada (só testes), senão a do relógio
+  const horaSimulada = () => (o?.horaSimulada ? Date.parse(app.getSelfPath?.('navigation.datetime')?.value) : NaN)
+  const relogio = () => { const t = horaSimulada(); return Number.isFinite(t) ? t : relogioBase() }
   const esperar = deps.esperar || ((ms) => new Promise(resolve => setTimeout(resolve, ms)))
   // o relógio do limite do porto (injetável nos testes)
   const agendar = deps.agendar || ((fn, ms) => { const t = setTimeout(fn, ms); t.unref?.(); return t })
@@ -164,6 +170,8 @@ module.exports = function (app, deps = {}) {
         }
       },
       porta: { type: 'number', title: 'Porta do SignalK (só se a API interna faltar)', default: 3000 },
+      horaSimulada: { type: 'boolean', title: 'Só testes: a hora vem do navigation.datetime (viagem acelerada); no barco, desligado', default: false },
+      cicloSegundos: { type: 'number', title: 'Só testes: o ciclo a navegar (s); no barco, 60', default: 60 },
       // o plano de navegação pelo Telegram (desenho 3b-1): os campos vazios ficam de fora do texto
       barco: {
         type: 'object',
@@ -486,6 +494,8 @@ module.exports = function (app, deps = {}) {
     const recursosAviso = ativos.find(a => a.caminho === `${av.PREFIXO}.recursos`)
     const c = p.contactos || ct.novaFila()
     return {
+      // a hora do plugin (o ecrã conta "daqui a X min" com ela)
+      agora: new Date(relogio()).toISOString(),
       estado: p.estado,
       // o cais (para o Recalcular de um destino avulso, sem id)
       destino: { id: p.destino?.id ?? null, nome: p.destino?.nome ?? null, lat: p.destino?.cais?.lat ?? null, lon: p.destino?.cais?.lon ?? null },
@@ -533,6 +543,8 @@ module.exports = function (app, deps = {}) {
   }
   async function cicloNavegar () {
     if (!o || !dirPlugin || aCorrerCiclo) return
+    // com a hora simulada e sem navigation.datetime, não há hora: não corre
+    if (o.horaSimulada && !Number.isFinite(horaSimulada())) return
     aCorrerCiclo = true
     try { await passoNavegar() } catch (e) { app.error(`a navegar: ${e.message}`) } finally { aCorrerCiclo = false }
   }
@@ -661,7 +673,7 @@ module.exports = function (app, deps = {}) {
     try { publicados = av.publicadosDaArvore(app.getSelfPath?.(av.PREFIXO)) } catch { publicados = {} }
     try { modelosVento = modelosAi().modelos } catch { modelosVento = {} }
     if (cicloTimer) pararCiclo(cicloTimer)
-    cicloTimer = agendarCiclo(() => { cicloNavegar() }, CICLO_MS)
+    cicloTimer = agendarCiclo(() => { cicloNavegar() }, Number.isFinite(o.cicloSegundos) && o.cicloSegundos > 0 ? o.cicloSegundos * 1000 : CICLO_MS)
     app.removeListener?.('arlequin:plano-enviado', aoPlanoEnviado)
     app.on?.('arlequin:plano-enviado', aoPlanoEnviado)
     app.setPluginStatus(`Pronto · ${costaBase.destinos.length + meusDestinos().length} destinos`)

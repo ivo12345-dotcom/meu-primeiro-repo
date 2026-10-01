@@ -8,6 +8,8 @@
 //     onde Ativar substitui o plano) e Terminar (com confirmação);
 //   a rota mudada (pausado): "a rota ativa já não é a do plano: terminar o plano?" com Terminar e
 //     Continuar (o plugin volta a ativar a rota do plano).
+// As horas ("daqui a X min", "amanhã") contam-se com a hora do plugin (o agora do GET, mais o tempo
+// desde a leitura): no barco é o mesmo relógio; na viagem acelerada do dev, o simulado.
 // Nunca mostra null, NaN nem undefined: o que falta fica de fora.
 
 import { esc, horaLisboa, quandoAs } from '../../lib/rota-texto.js'
@@ -27,7 +29,7 @@ export function buscarPlanoAtivo (ctx, forcar = false) {
   e.aLerPlano = true
   e.planoAtivoEm = t
   return ctx.pedir(`${URL_ROTA}/plano-ativo`)
-    .then(r => { e.planoAtivo = r && typeof r === 'object' ? r : null })
+    .then(r => { e.planoAtivo = r && typeof r === 'object' ? r : null; e.planoAtivoLidoEm = t })
     .catch(err => { if (err?.status === 404) e.planoAtivo = null })
     .finally(() => { e.aLerPlano = false; ctx.refrescar() })
 }
@@ -48,8 +50,15 @@ function atrasoTexto (a) {
   return `${a > 0 ? '+' : '−'}${Math.abs(a)} min sobre o plano`
 }
 
+// a hora do plugin agora (sem ela, a do ecrã)
+function horaPlugin (ctx, p) {
+  const base = Date.parse(p.agora)
+  const lido = ctx.estado.planoAtivoLidoEm
+  return ok(base) && ok(lido) ? base + (agora(ctx) - lido) : agora(ctx)
+}
+
 function linhasFaixa (ctx, p) {
-  const t = agora(ctx)
+  const t = horaPlugin(ctx, p)
   const linhas = []
   if (p.estado === 'a espera de sair') linhas.push('plano ativo · à espera de sair')
   else {

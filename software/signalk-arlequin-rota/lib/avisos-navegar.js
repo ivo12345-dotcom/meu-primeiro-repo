@@ -52,6 +52,10 @@ const LIMITES = Object.freeze({
 })
 
 const virgula = (x, d = 1) => x.toFixed(d).replace('.', ',')
+// Os números das mensagens arredondam para o lado do aviso: nunca "atraso de 30 min" com o limite de
+// mais de 30, nem "~40 L" com o de menos de 40 (o -1e-9 tira o erro de vírgula flutuante).
+const acima = (x, d = 0) => Math.ceil(x * 10 ** d - 1e-9) / 10 ** d
+const abaixo = (x) => Math.floor(x + 1e-9)
 const novoEstado = () => ({ ventoForaDesde: null, recalcula: false, normalDesde: null, motivos: [], barometro: false })
 const aviso = (state, message, extra = {}) => ({ state, method: [...METODO], message, ...extra })
 const normal = () => aviso('normal', '')
@@ -116,7 +120,7 @@ function recalcula (est, entrada, agora) {
   }
   if (!est.recalcula) return normal()
   const partes = []
-  if (condAtraso) partes.push(`atraso de ${Math.round(atraso)} min sobre o plano`)
+  if (condAtraso) partes.push(`atraso de ${acima(atraso)} min sobre o plano`)
   if (foraVento && (condVento || est.motivos.includes('vento'))) partes.push(`vento de ${Math.round(v.medido)} nós, previsto ${Math.round(v.previsto)} (${v.desvioPct >= 0 ? '+' : '−'}${Math.round(Math.abs(v.desvioPct))} %)`)
   // a voltar ao normal (os 10 min): o motivo que havia
   if (!partes.length) partes.push(est.motivos.includes('atraso') ? 'atraso sobre o plano a voltar ao normal' : 'vento a voltar ao previsto')
@@ -126,8 +130,8 @@ function recalcula (est, entrada, agora) {
 function recursosAviso (entrada) {
   const r = entrada.recursos || {}
   const partes = []
-  if (Number.isFinite(r.gasoleoChegadaL) && r.gasoleoChegadaL < LIMITES.gasoleoL) partes.push(['gasoleo', `gasóleo à chegada ~${Math.round(r.gasoleoChegadaL)} L`])
-  if (Number.isFinite(r.bateriaChegadaPct) && r.bateriaChegadaPct < LIMITES.bateriaPct) partes.push(['bateria', `bateria à chegada ~${Math.round(r.bateriaChegadaPct)} %`])
+  if (Number.isFinite(r.gasoleoChegadaL) && r.gasoleoChegadaL < LIMITES.gasoleoL) partes.push(['gasoleo', `gasóleo à chegada ~${abaixo(r.gasoleoChegadaL)} L`])
+  if (Number.isFinite(r.bateriaChegadaPct) && r.bateriaChegadaPct < LIMITES.bateriaPct) partes.push(['bateria', `bateria à chegada ~${abaixo(r.bateriaChegadaPct)} %`])
   if (!partes.length) return normal()
   return aviso('warn', `Recursos: ${partes.map(p => p[1]).join(' · ')}`, { chave: partes.map(p => p[0]).join(' ') })
 }
@@ -145,7 +149,7 @@ function barometroAviso (est, entrada, agora) {
   if (queda == null) { est.barometro = false; return normal() }
   if (!est.barometro && queda > LIMITES.quedaHpa) est.barometro = true
   else if (est.barometro && queda <= LIMITES.quedaApagaHpa) est.barometro = false
-  return est.barometro ? aviso('warn', `Barómetro: caiu ${virgula(queda)} hPa em 3 h — o tempo pode piorar antes do previsto`) : normal()
+  return est.barometro ? aviso('warn', `Barómetro: caiu ${virgula(acima(queda, 1))} hPa em 3 h — o tempo pode piorar antes do previsto`) : normal()
 }
 
 function avaliar (estado0, entrada, agora) {
