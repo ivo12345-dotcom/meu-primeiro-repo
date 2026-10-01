@@ -201,3 +201,11 @@ test('publicar: só as mudanças (estado ou motivo), os que desaparecem voltam a
   const k = av.publicar(av.publicadosDaArvore(arvore), { 'notifications.rota.recalcula': { state: 'warn', method: METODO, message: 'z', chave: 'atraso' } })
   assert.deepEqual(k.deltas.map(d => [d.path, d.value.state]), [['notifications.rota.lembrete.e3', 'normal']])
 })
+
+test('a mensagem nunca mostra o limite quando já o passou (visto ao vivo: "atraso de 30 min", "~40 L", "3,0 hPa"): arredonda para o lado do aviso', () => {
+  const m = (entrada) => av.avaliar(av.novoEstado(), base(entrada), T0).avisos
+  assert.equal(m({ atrasoMin: 30.4 })['notifications.rota.recalcula'].message, 'Recalcula a rota: atraso de 31 min sobre o plano')
+  assert.equal(m({ recursos: { gasoleoChegadaL: 39.6, bateriaChegadaPct: 49.7 } })['notifications.rota.recursos'].message, 'Recursos: gasóleo à chegada ~39 L · bateria à chegada ~49 %')
+  const amostras = [{ t: T0 - 3 * H, hPa: 1015 }, { t: T0, hPa: 1011.96 }]
+  assert.equal(m({ barometro: amostras })['notifications.rota.barometro'].message, 'Barómetro: caiu 3,1 hPa em 3 h — o tempo pode piorar antes do previsto')
+})

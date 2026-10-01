@@ -182,7 +182,8 @@ function acompanhar (estado0, entrada) {
     milhas = q.s
     distRota = q.dist
     estado.anterior = { s: q.s, t: agora }
-    estado.amostras = juntarAmostra(estado.amostras, { t: agora, v: atrasoMin(rota.tabela, q.s, agora) }, agora)
+    // uma amostra por minuto: o mesmo minuto outra vez (o relógio parado) não pesa a dobrar
+    if (estado.amostras.at(-1)?.t !== agora) estado.amostras = juntarAmostra(estado.amostras, { t: agora, v: atrasoMin(rota.tabela, q.s, agora) }, agora)
   }
   const atraso = navegar ? media(estado.amostras) : null
   const desliza = Number.isFinite(atraso) ? Math.round(atraso) * MIN : 0
