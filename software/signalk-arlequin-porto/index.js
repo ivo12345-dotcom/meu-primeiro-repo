@@ -6,7 +6,9 @@
 //
 // Plano de navegação (desenho 3b-1): o plugin da rota emite 'arlequin:plano' { pedido, texto, gpx,
 // nomeFicheiro }; aqui envia-se a mensagem e o GPX aos chatIds e aos contactosPlano, e responde-se
-// com 'arlequin:plano-enviado' { pedido, entregues: [nome], falhas: [{ nome, erro }] }.
+// com 'arlequin:plano-enviado' { pedido, entregues: [nome], contactos: [nome], falhas: [{ nome, erro }] }.
+// contactos: os contactos em terra que o receberam (os contactosPlano entregues que não estão nos
+// chatIds: um chat nas duas listas é do Ivo e comanda). Só eles têm a hora de alarme em terra.
 // Os contactosPlano só recebem: as mensagens deles são ignoradas (não comandam). Quem escreve sem
 // estar em nenhuma das listas recebe o código para dar ao Ivo (uma vez por hora) e não fica autorizado.
 // O plano vai a todos os destinatários em paralelo e cada chamada ao Telegram tem um limite de 10 s,
@@ -160,17 +162,17 @@ module.exports = function (app, deps = {}) {
     .filter(c => c && c.chatId != null && String(c.chatId).trim())
     .map(c => ({ nome: String(c.nome || '').trim() || `chat ${String(c.chatId).trim()}`, chatId: String(c.chatId).trim() }))
 
-  // os destinatários do plano: os chats autorizados e os contactos do plano, sem repetir
+  // os destinatários do plano: os chats autorizados e os contactos do plano (em terra), sem repetir
   function destinatariosPlano () {
     const out = []
-    for (const id of chatsAutorizados()) out.push({ nome: `chat ${id}`, chatId: id })
-    for (const c of contactosPlano()) if (!out.some(d => d.chatId === c.chatId)) out.push(c)
+    for (const id of chatsAutorizados()) out.push({ nome: `chat ${id}`, chatId: id, emTerra: false })
+    for (const c of contactosPlano()) if (!out.some(d => d.chatId === c.chatId)) out.push({ ...c, emTerra: true })
     return out
   }
 
   async function enviarPlano (ev) {
     const pedido = ev?.pedido
-    const responder = (entregues, falhas) => app.emit('arlequin:plano-enviado', { pedido, entregues, falhas })
+    const responder = (entregues, falhas, contactos = []) => app.emit('arlequin:plano-enviado', { pedido, entregues, contactos, falhas })
     // o cliente do início: um stop() a meio (tg = null) não estraga o envio, que acaba sozinho
     const cliente = tg
     if (!cliente) return responder([], [{ nome: 'Telegram', erro: 'o plugin porto não tem o token do bot' }])
@@ -180,10 +182,11 @@ module.exports = function (app, deps = {}) {
       try {
         await cliente.sendMessage(d.chatId, String(ev?.texto ?? ''))
         if (gpx) await cliente.sendDocument(d.chatId, gpx, ev.nomeFicheiro || 'plano.gpx')
-        return { nome: d.nome }
+        return { nome: d.nome, emTerra: d.emTerra }
       } catch (e) { return { nome: d.nome, erro: erroEmPortugues(e) } }
     }))
-    responder(resultados.filter(x => !x.erro).map(x => x.nome), resultados.filter(x => x.erro))
+    const ok = resultados.filter(x => !x.erro)
+    responder(ok.map(x => x.nome), resultados.filter(x => x.erro), ok.filter(x => x.emTerra).map(x => x.nome))
   }
   const aoPlano = (ev) => { enviarPlano(ev).catch(e => app.error(`plano: ${e.message}`)) }
 

@@ -54,7 +54,7 @@ test('o evento arlequin:plano envia a mensagem e o GPX aos chatIds e aos contact
     const resposta = respostaDe(app, 'p1')
     app.emit('arlequin:plano', PLANO)
     const r = await resposta
-    assert.deepEqual(r, { pedido: 'p1', entregues: ['chat 111', 'Mãe'], falhas: [{ nome: 'Tio', erro: 'bloqueou o bot' }] })
+    assert.deepEqual(r, { pedido: 'p1', entregues: ['chat 111', 'Mãe'], contactos: ['Mãe'], falhas: [{ nome: 'Tio', erro: 'bloqueou o bot' }] })
     for (const chat of ['111', '222']) {
       const m = tgf.enviados.filter(x => x.chatId === chat)
       assert.deepEqual(m.map(x => x.metodo), ['sendMessage', 'sendDocument'], chat)
@@ -71,6 +71,32 @@ test('o evento arlequin:plano envia a mensagem e o GPX aos chatIds e aos contact
   assert.equal(app.listenerCount('arlequin:plano'), 0, 'o stop() tira o ouvinte')
 })
 
+test('a resposta separa os contactos em terra (contactos do plano entregues) dos chats autorizados (o do Ivo): só com o chat do Ivo, contactos vazio (revisão final, 3)', async () => {
+  const tgf = await criarTelegramFalso()
+  const app = appFalso()
+  const p = criar(app)
+  // um chat nas duas listas é do Ivo (comanda): não conta como contacto em terra
+  p.start({ telegramToken: 'TESTE', chatIds: ['111'], contactosPlano: [{ nome: 'Mãe', chatId: '222' }, { nome: 'Ivo', chatId: '111' }, { nome: 'Tio', chatId: '333' }], telegramBase: tgf.url, pollTimeout: 1 })
+  try {
+    const r1 = respostaDe(app, 'c1')
+    app.emit('arlequin:plano', { ...PLANO, pedido: 'c1' })
+    const a = await r1
+    assert.deepEqual(a.entregues, ['chat 111', 'Mãe', 'Tio'])
+    assert.deepEqual(a.contactos, ['Mãe', 'Tio'])
+    // os contactos em terra falham todos: entregue só ao Ivo, contactos vazio
+    tgf.bloquear('222'); tgf.bloquear('333')
+    const r2 = respostaDe(app, 'c2')
+    app.emit('arlequin:plano', { ...PLANO, pedido: 'c2' })
+    const b = await r2
+    assert.deepEqual(b.entregues, ['chat 111'])
+    assert.deepEqual(b.contactos, [])
+    assert.deepEqual(b.falhas.map(f => f.nome), ['Mãe', 'Tio'])
+  } finally {
+    p.stop()
+    await tgf.fechar()
+  }
+})
+
 test('sem token: responde logo que não há bot (em vez de deixar o plugin da rota à espera)', async () => {
   const app = appFalso()
   const p = criar(app)
@@ -78,7 +104,7 @@ test('sem token: responde logo que não há bot (em vez de deixar o plugin da ro
   try {
     const resposta = respostaDe(app, 'p2')
     app.emit('arlequin:plano', { ...PLANO, pedido: 'p2' })
-    assert.deepEqual(await resposta, { pedido: 'p2', entregues: [], falhas: [{ nome: 'Telegram', erro: 'o plugin porto não tem o token do bot' }] })
+    assert.deepEqual(await resposta, { pedido: 'p2', entregues: [], contactos: [], falhas: [{ nome: 'Telegram', erro: 'o plugin porto não tem o token do bot' }] })
   } finally { p.stop() }
 })
 
@@ -178,6 +204,7 @@ test('plano: falhas com o motivo em pt-PT; o GPX vai como application/gpx+xml; o
     assert.deepEqual(r, {
       pedido: 'p3',
       entregues: ['chat 111'],
+      contactos: [],
       falhas: [{ nome: 'Tio', erro: 'bloqueou o bot' }, ...['A', 'B', 'C', 'D'].map(nome => ({ nome, erro: 'sem ligação ao Telegram' }))]
     })
     const doc = tgf.enviados.find(m => m.chatId === '111' && m.metodo === 'sendDocument')
@@ -197,7 +224,7 @@ test('stop() a meio do envio do plano: o envio acaba com o cliente do início (s
     const resposta = respostaDe(app, 'p4')
     app.emit('arlequin:plano', { ...PLANO, pedido: 'p4' })
     p.stop()
-    assert.deepEqual(await resposta, { pedido: 'p4', entregues: ['chat 111'], falhas: [] })
+    assert.deepEqual(await resposta, { pedido: 'p4', entregues: ['chat 111'], contactos: [], falhas: [] })
     assert.deepEqual(tgf.enviados.filter(m => m.chatId === '111').map(m => m.metodo), ['sendMessage', 'sendDocument'])
   } finally {
     p.stop()
@@ -213,7 +240,7 @@ test('chatIds normalizados (sem espaços, sem vazios, sem repetir) no plano e na
   try {
     const resposta = respostaDe(app, 'p5')
     app.emit('arlequin:plano', { ...PLANO, pedido: 'p5' })
-    assert.deepEqual(await resposta, { pedido: 'p5', entregues: ['chat 111', 'chat 222'], falhas: [] })
+    assert.deepEqual(await resposta, { pedido: 'p5', entregues: ['chat 111', 'chat 222'], contactos: [], falhas: [] })
     assert.equal(tgf.enviados.length, 4, JSON.stringify(tgf.enviados))
     assert.deepEqual(tgf.enviados.map(m => m.chatId).sort(), ['111', '111', '222', '222'])
     // o 222 (" 222" nos autorizados e também contacto do plano) comanda
