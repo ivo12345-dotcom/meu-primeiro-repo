@@ -19,6 +19,11 @@
 // só pelo custo, com as não recomendadas incluídas. Sem repetidas: uma "vela e motor" com menos de
 // 0,1 h de vela (provável) e uma "só motor" também sem vela, com a mesma partida e a mesma geometria
 // (afastamento, canal, direta), são a mesma passagem: fica a "só motor" e a vaga passa à seguinte.
+// Só quando a "só motor" não é pior: a mesma recomendação e os motivos, os avisos vermelhos e a
+// chegada de noite dela contidos nos da "vela e motor" (nos outros cenários a "vela e motor" pode pôr
+// vela; se a "só motor" for pior, ficam as duas).
+// A alternativa do veredicto (a melhor recomendada) é sempre a 1.ª das 3 (top[0]): em "Sair agora",
+// se houver uma recomendada, passa à frente das mais baratas não recomendadas.
 //
 // Veredicto:
 //   segue           a melhor recomendada parte agora;
@@ -90,13 +95,23 @@ const recomendada = (c, _tripulacao) => !c.excluida && !c.naoRecomendada
 const LIMIAR_VELA_H = 0.1
 const semVela = (c) => Number.isFinite(c.resumos?.provavel?.horasVela) && c.resumos.provavel.horasVela < LIMIAR_VELA_H
 const mesmaPassagem = (c) => `${c.partida}|${c.direto ? 'direta' : c.afastamento}|${c.canal || ''}`
+// os motivos, os avisos vermelhos e a chegada de noite de uma alternativa (o que a torna pior)
+const sinais = (c) => new Set([...(c.motivos || []), ...(c.avisosVermelhos || []), ...(c.chegadaNoite ? ['chegada de noite'] : [])])
+// a "só motor" m pode tomar o lugar da "vela e motor" v: a mesma recomendação e nada pior
+const naoPior = (m, v) => {
+  if (recomendada(m) !== recomendada(v)) return false
+  const sv = sinais(v)
+  return [...sinais(m)].every(x => sv.has(x))
+}
 
 // Ordena e escolhe as 3 melhores. Decisão (controlador, revisão da Task 10): os "3 melhores por custo, entre as não excluídas" do desenho, com as recomendadas à frente das não recomendadas.
 function melhores (candidatos, { tripulacao, sairAgora = false, n = 3 } = {}) {
   const naoExcluidas = candidatos.filter(c => !c.excluida)
-  // a "vela e motor" que vai toda a motor, quando há a "só motor" da mesma passagem também sem vela
-  const soMotor = new Set(naoExcluidas.filter(c => c.propulsao === 'motor' && semVela(c)).map(mesmaPassagem))
-  const ok = naoExcluidas.filter(c => !(c.propulsao !== 'motor' && semVela(c) && soMotor.has(mesmaPassagem(c))))
+  // a "vela e motor" que vai toda a motor, quando há a "só motor" da mesma passagem também sem vela e não pior
+  const soMotor = new Map()
+  for (const c of naoExcluidas) if (c.propulsao === 'motor' && semVela(c)) soMotor.set(mesmaPassagem(c), [...(soMotor.get(mesmaPassagem(c)) || []), c])
+  const repetida = (c) => c.propulsao !== 'motor' && semVela(c) && (soMotor.get(mesmaPassagem(c)) || []).some(m => naoPior(m, c))
+  const ok = naoExcluidas.filter(c => !repetida(c))
   const chave = (c) => (sairAgora ? 0 : (recomendada(c, tripulacao) ? 0 : 1))
   return ok.sort((a, b) => chave(a) - chave(b) || a.custo.total - b.custo.total || a.partida - b.partida).slice(0, n)
 }
@@ -119,12 +134,13 @@ const juntar = (motivos, n = 2) => motivos.slice(0, n).join(' e ')
 // abrigo (só no mar): { destino, candidato } — o abrigo mais perto, avaliado para partir agora.
 // → { top: [candidato], veredicto: { tipo, texto, porque[] } }
 function decidir ({ candidatos, agora, tripulacao, sairAgora = false, emMar = false, abrigo = null, fuso = 'Europe/Lisbon', excluidasAgora = [] }) {
-  const top = melhores([...candidatos], { tripulacao, sairAgora })
+  // todas por ordem (sem repetidas); a melhor recomendada sai desta mesma lista e é sempre a 1.ª das 3
+  const ordem = melhores([...candidatos], { tripulacao, sairAgora, n: Infinity })
+  const melhorRec = ordem.find(c => recomendada(c, tripulacao)) || null
+  const top = (melhorRec ? [melhorRec, ...ordem.filter(c => c !== melhorRec)] : ordem).slice(0, 3)
   const sozinho = tripulacao === 'so'
   const agoraCands = candidatos.filter(c => c.partida === agora)
   const melhorAgora = [...agoraCands].sort((a, b) => a.custo.total - b.custo.total)[0] || null
-  const recomendadas = candidatos.filter(c => recomendada(c, tripulacao))
-  const melhorRec = melhores(recomendadas, { tripulacao })[0] || null
   const porqueAgora = () => {
     if (!melhorAgora) return excluidasAgora.length ? `Agora: ${juntar([...new Set(excluidasAgora)])}.` : 'Agora não há alternativa possível.'
     const nrAgora = agoraCands.filter(c => !c.excluida)
@@ -164,4 +180,4 @@ function decidir ({ candidatos, agora, tripulacao, sairAgora = false, emMar = fa
   return { top, veredicto }
 }
 
-module.exports = { PESOS, CONTRA, horasContraVento, custo, partidas, quando, hora, melhores, recomendada, decidir }
+module.exports = { PESOS, CONTRA, LIMIAR_VELA_H, horasContraVento, custo, partidas, quando, hora, melhores, recomendada, semVela, decidir }

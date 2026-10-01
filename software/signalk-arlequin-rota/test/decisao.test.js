@@ -87,7 +87,9 @@ test('veredicto "Não recomendado sozinho": nenhuma recomendada; com "sair agora
   assert.equal(r.veredicto.porque[1], 'Agora: 14,5 h equivalentes ao leme (limite 8 h sozinho).')
   // "Sair agora mesmo assim": só a de agora (quem chama já só simulou agora), com as não recomendadas
   const s = d.decidir({ candidatos: [a, cand({ custo: 45, naoRecomendada: true, motivos: ['x'] }), cand({ custo: 42 })], agora: AGORA, tripulacao: 'so', sairAgora: true })
-  assert.deepEqual(s.top.map(c => c.custo.total), [40, 42, 45]) // só pelo custo
+  // só pelo custo, mas a recomendada do veredicto "segue" (42) é a 1.ª: os cartões, a desistência e o
+  // plano são os da 1.ª (revisão final, 1)
+  assert.deepEqual(s.top.map(c => c.custo.total), [42, 40, 45])
   assert.equal(s.veredicto.tipo, 'segue') // a melhor recomendada (42) parte agora
   const s2 = d.decidir({ candidatos: [a], agora: AGORA, tripulacao: 'so', sairAgora: true })
   assert.equal(s2.veredicto.tipo, 'nao-recomendado')
@@ -175,4 +177,65 @@ test('sem alternativas repetidas: "vela e motor" sem vela (< 0,1 h) e "só motor
   assert.deepEqual(d.melhores([velaOutraGeo, motor], { tripulacao: 'so' }).map(c => c.id), [velaOutraGeo.id, motor.id])
   // o veredicto usa as mesmas 3
   assert.deepEqual(d.decidir({ candidatos: [velaSem, motor, outra, tarde], agora: AGORA, tripulacao: 'so' }).top.map(c => c.id), [motor.id, outra.id, tarde.id])
+})
+
+test('sem repetidas, mas só quando a "só motor" não é pior: outra recomendação ou mais avisos/motivos e ficam as duas (revisão final, 1)', () => {
+  const comVela = (o, horasVela, extra = {}) => { const x = cand(o); x.canal = null; x.direto = false; x.resumos.provavel.horasVela = horasVela; return Object.assign(x, extra) }
+  // a sonda da revisão: a "vela e motor" recomendada (0,05 h de vela) e o par "só motor" não recomendado (leme)
+  const vela = comVela({ custo: 10, propulsao: 'vela' }, 0.05)
+  const motor = comVela({ custo: 11, propulsao: 'motor', naoRecomendada: true, motivos: ['9 h equivalentes ao leme (limite 8 h sozinho)'] }, 0)
+  const tarde = comVela({ custo: 20, propulsao: 'motor', partida: AGORA + 6 * H }, 0)
+  const r = d.decidir({ candidatos: [vela, motor, tarde], agora: AGORA, tripulacao: 'so' })
+  assert.deepEqual(r.top.map(c => c.id), [vela.id, tarde.id, motor.id])
+  assert.equal(r.veredicto.tipo, 'segue')
+  assert.match(r.veredicto.porque[0], /^Parte agora pela rota a 5 MN:/)
+  // "Sair agora": o veredicto "segue" é o da 1.ª mostrada (não a "só motor" não recomendada)
+  const s = d.decidir({ candidatos: [vela, motor], agora: AGORA, tripulacao: 'so', sairAgora: true })
+  assert.equal(s.veredicto.tipo, 'segue')
+  assert.deepEqual(s.top.map(c => c.id), [vela.id, motor.id])
+  // a "só motor" com um aviso vermelho que a "vela e motor" não tem: ficam as duas
+  const v2 = comVela({ custo: 10, propulsao: 'vela' }, 0, { avisosVermelhos: [] })
+  const m2 = comVela({ custo: 9, propulsao: 'motor' }, 0, { avisosVermelhos: ['a previsão acaba antes da chegada (22:00)'] })
+  assert.deepEqual(d.melhores([v2, m2], { tripulacao: 'so' }).map(c => c.id), [m2.id, v2.id])
+  // os avisos da "só motor" contidos nos da "vela e motor": é a mesma passagem, fica a "só motor"
+  const v3 = comVela({ custo: 10, propulsao: 'vela' }, 0, { avisosVermelhos: ['a', 'b'] })
+  const m3 = comVela({ custo: 9, propulsao: 'motor' }, 0, { avisosVermelhos: ['a'] })
+  assert.deepEqual(d.melhores([v3, m3], { tripulacao: 'so' }).map(c => c.id), [m3.id])
+  // as duas não recomendadas, a "só motor" com um motivo a mais: ficam as duas
+  const v4 = comVela({ custo: 10, propulsao: 'vela', naoRecomendada: true, motivos: ['m1'] }, 0)
+  const m4 = comVela({ custo: 9, propulsao: 'motor', naoRecomendada: true, motivos: ['m1', 'm2'] }, 0)
+  assert.deepEqual(d.melhores([v4, m4], { tripulacao: 'so' }).map(c => c.id), [m4.id, v4.id])
+  // a "só motor" chega de noite e a "vela e motor" não: ficam as duas
+  const v5 = comVela({ custo: 10, propulsao: 'vela' }, 0)
+  const m5 = comVela({ custo: 9, propulsao: 'motor', noite: true }, 0)
+  assert.deepEqual(d.melhores([v5, m5], { tripulacao: 'so' }).map(c => c.id), [m5.id, v5.id])
+})
+
+test('o veredicto fala sempre da 1.ª alternativa mostrada (top[0]): 400 casos ao acaso, com e sem "Sair agora" (revisão final, 1)', () => {
+  let s = 12345
+  const rnd = () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648 }
+  const escolha = (l) => l[Math.floor(rnd() * l.length)]
+  for (let k = 0; k < 400; k++) {
+    const sairAgora = rnd() < 0.3
+    const lista = []
+    const n = 1 + Math.floor(rnd() * 8)
+    for (let j = 0; j < n; j++) {
+      const partida = sairAgora ? AGORA : AGORA + escolha([0, 0, 3, 6]) * H
+      const x = cand({ partida, custo: Math.round(rnd() * 20), propulsao: escolha(['vela', 'motor']), afastamento: escolha([5, 8]), naoRecomendada: rnd() < 0.4, motivos: rnd() < 0.5 ? ['m1'] : [], excluida: rnd() < 0.1 })
+      x.resumos.provavel.horasVela = escolha([0, 0.05, 0.5])
+      x.avisosVermelhos = rnd() < 0.3 ? ['a'] : []
+      lista.push(x)
+    }
+    const r = d.decidir({ candidatos: lista, agora: AGORA, tripulacao: 'so', sairAgora })
+    const caso = JSON.stringify({ k, sairAgora, top: r.top.map(c => c.id), v: r.veredicto })
+    if (r.veredicto.tipo === 'segue') {
+      assert.ok(d.recomendada(r.top[0]) && r.top[0].partida === AGORA, caso)
+    }
+    if (r.veredicto.tipo === 'espera') {
+      assert.ok(d.recomendada(r.top[0]), caso)
+      assert.equal(r.veredicto.texto, `Espera até ${d.quando(r.top[0].partida, AGORA)}`, caso)
+    }
+    // a melhor recomendada (quando há) é a 1.ª
+    if (lista.some(c => d.recomendada(c))) assert.ok(d.recomendada(r.top[0]), caso)
+  }
 })
