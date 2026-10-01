@@ -59,6 +59,7 @@ test('à espera de sair: sem avisos; ao sair (> 0,5 MN) passa a "a navegar" e gr
   const r20 = s.alt.rasto[2]
   s.por(r20)
   await s.ciclo(20 * MIN)
+  await s.ciclo(0) // a 2.ª amostra longe da partida: saiu
   assert.equal(s.p.planoAtivo().estado, 'a navegar')
   assert.equal(pa.ler(s.app.getDataDirPath()).plano.estado, 'a navegar')
   assert.equal(pa.ler(s.app.getDataDirPath()).plano.saida, new Date(s.t0 + 20 * MIN).toISOString())
@@ -80,23 +81,26 @@ test('barómetro: amostras de minuto a minuto guardadas no plugin (barometro.jso
   const s = await preparar()
   s.por(s.alt.rasto[2])
   await s.ciclo(20 * MIN)
+  await s.ciclo(0) // a 2.ª amostra longe da partida: saiu
   for (let m = 1; m <= 60; m++) { s.app.self['environment.outside.pressure'] = 101500 - m * 350 / 60; s.por(s.alt.rasto[Math.min(2 + Math.floor(m / 10), s.alt.rasto.length - 1)]); await s.ciclo() }
   assert.equal(estadoDe(s.app, 'barometro'), 'warn')
   // a mensagem é a do minuto em que passou dos 3 hPa
   assert.match(s.app.self['notifications.rota.barometro'].message, /^Barómetro: caiu 3,[01] hPa em 3 h — o tempo pode piorar antes do previsto$/)
-  const guardadas = JSON.parse(fs.readFileSync(path.join(s.app.getDataDirPath(), 'barometro.json'), 'utf8'))
-  assert.equal(guardadas.length, 61)
   assert.equal(s.p.acompanhamento().barometroSemLeitura, false)
   delete s.app.self['environment.outside.pressure']
   await s.ciclo()
   assert.equal(s.p.acompanhamento().barometroSemLeitura, true)
   s.p.stop()
+  // no disco de 10 em 10 min e no stop: as 61 amostras (a 2.ª da saída, à mesma hora, não conta)
+  const guardadas = JSON.parse(fs.readFileSync(path.join(s.app.getDataDirPath(), 'barometro.json'), 'utf8'))
+  assert.equal(guardadas.length, 61)
 })
 
 test('previsão: a mais recente arquivada que cubra a posição; com mais de 6 h warn, com mais de 12 h alarm com apito curto', async () => {
   const s = await preparar()
   s.por(s.alt.rasto[2])
   await s.ciclo(20 * MIN)
+  await s.ciclo(0) // a 2.ª amostra longe da partida: saiu
   assert.equal(estadoDe(s.app, 'previsao'), 'normal')
   await s.ciclo(6.5 * H)
   assert.equal(estadoDe(s.app, 'previsao'), 'warn')
@@ -111,6 +115,7 @@ test('rota mudada no OpenCPN: "pausado", o acompanhamento para, os avisos voltam
   s.app.on('arlequin:plano', (e) => planos.push(e))
   s.por(s.alt.rasto[2])
   await s.ciclo(20 * MIN)
+  await s.ciclo(0) // a 2.ª amostra longe da partida: saiu
   await s.ciclo(13 * H)
   assert.equal(estadoDe(s.app, 'previsao'), 'alarm')
   const href = s.app.rotaAtiva
@@ -134,6 +139,7 @@ test('sem GPS mais de 2 min (a hora da posição): "sem GPS", e o plano não mud
   const s = await preparar()
   s.por(s.alt.rasto[2])
   await s.ciclo(20 * MIN)
+  await s.ciclo(0) // a 2.ª amostra longe da partida: saiu
   s.app.horas['navigation.position'] = new Date(s.t0 + 20 * MIN).toISOString()
   await s.ciclo(2 * MIN)
   assert.equal(s.p.acompanhamento().semGps, false, '2 min')
@@ -149,6 +155,7 @@ test('reinício a meio: o plano continua do ficheiro (a navegar, com a posição
   const s = await preparar()
   s.por(s.alt.rasto[2])
   await s.ciclo(20 * MIN)
+  await s.ciclo(0) // a 2.ª amostra longe da partida: saiu
   s.por(s.alt.rasto[2], 0)
   for (let m = 1; m <= 45; m++) await s.ciclo()
   assert.equal(estadoDe(s.app, 'recalcula'), 'warn')
@@ -177,4 +184,76 @@ test('um erro no ciclo vai para o registo e o ciclo seguinte corre', async () =>
   await s.ciclo()
   assert.equal(s.p.planoAtivo().estado, 'a espera de sair')
   s.p.stop()
+})
+
+test('M3: as leituras com mais de 2 min (ou sem hora legível) contam como em falta: a pressão e o vento velhos não entram; a posição sem hora é "sem GPS"', async () => {
+  const s = await preparar()
+  s.por(s.alt.rasto[2])
+  await s.ciclo(20 * MIN)
+  await s.ciclo(0)
+  s.app.self['environment.wind.speedTrue'] = 25 * NO
+  await s.ciclo()
+  assert.equal(s.p.acompanhamento().barometroSemLeitura, false)
+  assert.ok(s.p.acompanhamento().vento, 'o vento fresco entra')
+  // 3 min depois da última atualização: velhos
+  const velho = new Date(s.agora() - 2 * MIN).toISOString()
+  s.app.horas['environment.outside.pressure'] = velho
+  s.app.horas['environment.wind.speedTrue'] = velho
+  for (let m = 0; m < 11; m++) await s.ciclo()
+  assert.equal(s.p.acompanhamento().barometroSemLeitura, true, 'pressão velha: sem leitura')
+  assert.equal(s.p.acompanhamento().vento, null, 'o vento velho sai da média de 10 min')
+  assert.equal(s.p.acompanhamento().semGps, false)
+  s.app.horas['navigation.position'] = 'sem hora'
+  await s.ciclo()
+  assert.equal(s.p.acompanhamento().semGps, true, 'posição sem hora legível')
+  s.p.stop()
+})
+
+test('M3: um SOG velho (de antes de parar o GPS) não conta: SOG > 2 nós com mais de 2 min não faz a saída', async () => {
+  const s = await preparar()
+  const partida = s.alt.pontosRota[0]
+  s.por(partida, 3)
+  s.app.horas['navigation.speedOverGround'] = new Date(s.agora() - 3 * MIN).toISOString()
+  for (let m = 0; m < 8; m++) { s.app.horas['navigation.speedOverGround'] = new Date(s.agora() - 2 * MIN).toISOString(); await s.ciclo() }
+  assert.equal(s.p.planoAtivo().estado, 'a espera de sair')
+  s.p.stop()
+})
+
+test('M4: a API de rumo que nunca responde não pára o ciclo (limite: não se sabe a rota, o plano não pausa)', async () => {
+  const s = await preparar({ esperaRumoMs: 20 })
+  s.app.getCourse = () => new Promise(() => {})
+  const parado = (ms) => new Promise((resolve, reject) => setTimeout(() => reject(new Error('o ciclo ficou parado')), ms))
+  for (let m = 0; m < 2; m++) {
+    await Promise.race([s.ciclo(), parado(1000)])
+    assert.equal(s.p.acompanhamento().agora, s.agora(), `o ciclo ${m} correu`)
+  }
+  assert.equal(s.p.planoAtivo().estado, 'a espera de sair')
+  s.p.stop()
+})
+
+test('M9: o barómetro fica em memória; no disco só com um plano aberto e no máximo de 10 em 10 min (e no stop)', async () => {
+  // sem plano: nada no disco
+  const app = appFalso()
+  const { p, avancar } = plugin(app, { agendarCiclo: () => 1, pararCiclo: () => {} })
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  app.self['environment.outside.pressure'] = 101500
+  for (let m = 0; m < 15; m++) { avancar(MIN); await p.cicloNavegar() }
+  const ficheiro = path.join(app.getDataDirPath(), 'barometro.json')
+  assert.equal(fs.existsSync(ficheiro), false)
+  p.stop()
+  // com plano: a 1.ª, e depois de 10 em 10 min
+  const s = await preparar()
+  const f = path.join(s.app.getDataDirPath(), 'barometro.json')
+  const gravadas = () => (fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')).length : 0)
+  await s.ciclo(0)
+  assert.equal(gravadas(), 1)
+  for (let m = 1; m <= 9; m++) await s.ciclo()
+  assert.equal(gravadas(), 1, '9 min')
+  await s.ciclo()
+  assert.equal(gravadas(), 11, '10 min')
+  await s.ciclo(0) // a mesma hora outra vez não é outra amostra
+  for (let m = 1; m <= 3; m++) await s.ciclo()
+  assert.equal(gravadas(), 11)
+  s.p.stop()
+  assert.equal(gravadas(), 14, 'o stop grava o que falta')
 })

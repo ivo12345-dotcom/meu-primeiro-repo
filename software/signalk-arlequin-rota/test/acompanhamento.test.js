@@ -201,3 +201,10 @@ test('o mesmo minuto outra vez (o relógio parado, ou dois ciclos no mesmo minut
   for (let k = 0; k < 5; k++) estado = ac.acompanhar(estado, { plano: plano(), posicao: norte(A, 1), agora: T0 + 30 * MIN }).estado
   assert.equal(estado.amostras.length, 1)
 })
+
+test('M6: o previsto P50 de 0 nós (calma): desvioPct null (nunca Infinity), o desvio em nós fica', () => {
+  const v = ac.desvioVento([{ t: T0, medido: 12, previsto: 0 }])
+  assert.equal(v.desvioPct, null)
+  assert.equal(v.desvioNos, 12)
+  assert.equal(v.previsto, 0)
+})

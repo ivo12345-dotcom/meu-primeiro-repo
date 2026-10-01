@@ -21,7 +21,8 @@
 // Volvo (lib/base.js) às rpm de cruzeiro (2100); bateria = o SoC agora + o balanço do lib/energia.js
 // no troço que falta (motor e noite do rasto, ou a noite pelo sol à hora deslizada; sem radiação
 // conhecida, sem sol). Sem leitura, null.
-// O vento: a média de 10 min do medido e do previsto (P50 naquele sítio e hora), com o desvio.
+// O vento: a média de 10 min do medido e do previsto (P50 naquele sítio e hora), com o desvio em nós e
+// em % (o % fica null com a previsão de calma, 0 nós: nunca Infinity).
 
 const c = require('./costa')
 const { litrosHora } = require('./base')
@@ -159,7 +160,8 @@ function desvioVento (amostras) {
   const medido = media(ok, 'medido')
   const previsto = media(ok, 'previsto')
   const desvioNos = medido - previsto
-  const desvioPct = previsto > 0 ? 100 * desvioNos / previsto : desvioNos === 0 ? 0 : Infinity
+  // com a previsão de calma (0 nós) não há percentagem: null (só conta a regra dos 4 nós, avisos-navegar.js)
+  const desvioPct = previsto > 0 ? 100 * desvioNos / previsto : null
   return { medido, previsto, desvioNos, desvioPct }
 }
 

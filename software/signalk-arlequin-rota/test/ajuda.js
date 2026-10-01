@@ -33,15 +33,19 @@ function fetchFalso () {
   }
 }
 
-// O SignalK falso: valores do barco (app.self, com a hora de cada um em app.horas), a API de recursos
-// e a de rumo (activateRoute muda a rota ativa), eventos, e os deltas publicados (app.deltas).
+// O SignalK falso: valores do barco (app.self, com a hora de cada um em app.horas; sem ela, a hora do
+// relógio do plugin, app.relogio: um valor fresco), a API de recursos e a de rumo (activateRoute muda a
+// rota ativa), eventos, e os deltas publicados (app.deltas).
 function appFalso ({ em = 'cascais' } = {}) {
   const app = new EventEmitter()
   Object.assign(app, { self: {}, horas: {}, estado: '', erroPlugin: null, erros: [], recursos: new Map(), ativacoes: [], deltas: [], rotaAtiva: null })
   app.dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arlequin-navegar-'))
   app.getDataDirPath = () => path.join(app.dir, 'plugin')
   app.getSelfPath = (p) => {
-    if (p in app.self) return { value: app.self[p], ...(app.horas[p] ? { timestamp: app.horas[p] } : {}) }
+    if (p in app.self) {
+      const hora = app.horas[p] ?? (app.relogio ? new Date(app.relogio()).toISOString() : null)
+      return { value: app.self[p], ...(hora ? { timestamp: hora } : {}) }
+    }
     // os ramos (notifications.rota): a árvore como o SignalK a dá
     const filhos = Object.keys(app.self).filter(k => k.startsWith(`${p}.`))
     if (!filhos.length) return undefined
@@ -97,6 +101,7 @@ async function esperarResultado (r, id) {
 // O plugin com o relógio na mão: { p, r, avancar(ms), agora() }. extra: outros deps.
 function plugin (app, extra = {}) {
   let agora = AGORA
+  app.relogio = () => agora
   const p = criar(app, { fetch: fetchFalso(), relogio: () => agora, esperar: async () => {}, costa, ...extra })
   return { p, r: rotas(p), avancar: (ms) => { agora += ms }, agora: () => agora, acertar: (t) => { agora = t } }
 }

@@ -105,6 +105,7 @@ test('com a segurança do SignalK (2.33: router.access), os GET registam-se "rea
     'GET /plano-ativo': 'readonly',
     'POST /plano-ativo/terminar': 'readwrite',
     'POST /plano-ativo/continuar': 'readwrite',
+    'POST /plano-ativo/chegada': 'readwrite',
     'GET /plano-telegram/:pedido': 'readonly'
   })
   assert.ok(registos.every(x => x.h === 'function'))

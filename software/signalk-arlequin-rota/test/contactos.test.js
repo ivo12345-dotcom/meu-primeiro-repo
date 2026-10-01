@@ -111,6 +111,54 @@ test('reinício: uma mensagem que estava "a enviar" volta à fila para tentar j�
 
 test('o evento para o porto: tipo, texto, destinatários "contactos-do-plano" com a lista; o GPX só no tipo "plano"', () => {
   const ev = ct.evento({ tipo: 'atraso', texto: 'x', gpx: 'NÃO', nomeFicheiro: 'n.gpx', contactos: ['Mãe'] }, 'p1')
-  assert.deepEqual(ev, { pedido: 'p1', tipo: 'atraso', texto: 'x', destinatarios: 'contactos-do-plano', contactos: ['Mãe'] })
-  assert.deepEqual(ct.evento({ tipo: 'plano', texto: 'y', gpx: '<gpx/>', nomeFicheiro: 'n.gpx' }, 'p2', ['Mãe', 'Tio']), { pedido: 'p2', tipo: 'plano', texto: 'y', gpx: '<gpx/>', nomeFicheiro: 'n.gpx', destinatarios: 'contactos-do-plano', contactos: ['Mãe', 'Tio'] })
+  assert.deepEqual(ev, { pedido: 'p1', tipo: 'atraso', texto: 'x', destinatarios: 'contactos-do-plano', contactos: ['Mãe'], chats: [] })
+  assert.deepEqual(ct.evento({ tipo: 'plano', texto: 'y', gpx: '<gpx/>', nomeFicheiro: 'n.gpx' }, 'p2', ['Mãe', 'Tio'], ['222', '333']), { pedido: 'p2', tipo: 'plano', texto: 'y', gpx: '<gpx/>', nomeFicheiro: 'n.gpx', destinatarios: 'contactos-do-plano', contactos: ['Mãe', 'Tio'], chats: ['222', '333'] })
+})
+
+test('decisão 1 (Ivo): o plano novo começa com a fila limpa; só herda do plano antigo o "cheguei bem"/"terminada" por enviar e o que está "a enviar" (marcados do plano anterior), que não fecham o plano novo', () => {
+  let c = ct.novaFila()
+  c = ct.porNaFila(c, { tipo: 'plano', texto: 'p0' }, T0)
+  c = ct.marcarAEnviar(c, c.fila[0].id, 'p0', T0)
+  c = ct.resposta(c, 'p0', { contactos: ['Mãe'] }, T0)
+  c = ct.porNaFila(c, { tipo: 'chegada', texto: 'cheguei' }, T0 + H)
+  c = ct.porNaFila(c, { tipo: 'terminado', texto: 't' }, T0 + H)
+  c = ct.marcarAEnviar(c, c.fila[0].id, 'p1', T0 + H) // a chegada "a enviar"
+  const h = ct.herdar(c)
+  assert.deepEqual(h.enviadas, [])
+  assert.deepEqual(h.fila.map(m => [m.tipo, m.estado, m.anterior]), [['chegada', 'a enviar', true], ['terminado', 'fila', true]])
+  assert.equal(h.seq, c.seq, 'os ids continuam (m<seq>)')
+  // o atraso do plano novo entra (o "cheguei bem" herdado é do plano anterior)
+  const d = ct.porNaFila(h, { tipo: 'atraso', texto: 'a' }, T0 + 2 * H)
+  assert.deepEqual(d.fila.map(m => m.tipo), ['chegada', 'terminado', 'atraso'])
+  // um atraso do plano antigo por enviar não passa; nem as enviadas
+  let e = ct.porNaFila(ct.novaFila(), { tipo: 'atraso', texto: 'a' }, T0)
+  assert.deepEqual(ct.herdar(e).fila, [])
+  e = ct.marcarAEnviar(e, e.fila[0].id, 'pa', T0)
+  assert.deepEqual(ct.herdar(e).fila.map(m => [m.tipo, m.anterior]), [['atraso', true]], 'o que está "a enviar" fica até à resposta')
+  assert.deepEqual(ct.herdar(undefined), ct.novaFila())
+})
+
+test('decisão 3 (Ivo): o atraso na fila guarda a chegada e o alarme; atualizarAtraso só muda um que ainda não saiu (sem mexer na hora da tentativa); marcarAEnviar com o texto do momento', () => {
+  let c = ct.porNaFila(ct.novaFila(), { tipo: 'atraso', texto: 'a1', chegada: T0 + H, alarme: T0 + 3 * H }, T0)
+  assert.equal(c.fila[0].chegada, T0 + H)
+  assert.equal(c.fila[0].alarme, T0 + 3 * H)
+  c = ct.marcarAEnviar(c, c.fila[0].id, 'p1', T0)
+  c = ct.falhou(c, 'p1', 'sem resposta', T0 + 30000)
+  const proxima = c.fila[0].proxima
+  c = ct.atualizarAtraso(c, c.fila[0].id, { chegada: T0 + 2 * H, alarme: T0 + 4 * H, texto: 'a2' })
+  assert.deepEqual([c.fila[0].chegada, c.fila[0].alarme, c.fila[0].texto, c.fila[0].proxima, c.fila[0].tentativas], [T0 + 2 * H, T0 + 4 * H, 'a2', proxima, 1])
+  // "a enviar" não muda
+  c = ct.marcarAEnviar(c, c.fila[0].id, 'p2', T0 + 3 * MIN, 'a2 às 21:03')
+  assert.equal(c.fila[0].texto, 'a2 às 21:03')
+  const x = ct.atualizarAtraso(c, c.fila[0].id, { chegada: T0 + 5 * H, alarme: T0 + 7 * H, texto: 'a3' })
+  assert.equal(x.fila[0].chegada, T0 + 2 * H)
+  // a enviada guarda a chegada, o alarme e os chats a quem chegou
+  c = ct.resposta(c, 'p2', { contactos: ['Mãe'], chats: ['222'] }, T0 + 4 * MIN)
+  assert.deepEqual([c.enviadas[0].chegada, c.enviadas[0].alarme, c.enviadas[0].chats], [T0 + 2 * H, T0 + 4 * H, ['222']])
+})
+
+test('8 (porto): o evento leva os chats (chatId) dos contactos a par dos nomes; o porto escolhe pelo chatId', () => {
+  const ev = ct.evento({ tipo: 'chegada', texto: 'c', contactos: ['Mãe'], chats: ['222'] }, 'p1')
+  assert.deepEqual(ev, { pedido: 'p1', tipo: 'chegada', texto: 'c', destinatarios: 'contactos-do-plano', contactos: ['Mãe'], chats: ['222'] })
+  assert.deepEqual(ct.porNaFila(ct.novaFila(), { tipo: 'chegada', texto: 'c', contactos: ['Mãe'], chats: ['222'] }, T0).fila[0].chats, ['222'])
 })

@@ -109,3 +109,31 @@ test('ativarRota: a descrição para o OpenCPN usa o semVela como o ecrã e o pl
   assert.match(app.recursos.get(`routes/${b.rota}`).description, /, vela e motor, partida /)
   p.stop()
 })
+
+test('8: o envio guarda os chats (chatId) dos contactos em terra entregues, a par dos nomes (o porto escolhe por eles)', async () => {
+  const app = appFalso()
+  app.on('arlequin:plano', () => {})
+  const { p, r } = plugin(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  const { id } = await calcular(r, { destino: 'alges', tripulacao: 'so' })
+  const x = await chamar(r.post['/plano-telegram'], { body: { id, alternativa: 0 } })
+  app.emit('arlequin:plano-enviado', { pedido: x.pedido, entregues: ['chat 111', 'Mãe'], contactos: ['Mãe'], chats: ['222'], falhas: [] })
+  await chamar(r.post['/ativar'], { body: { id, alternativa: 0 } })
+  assert.deepEqual(lerPlano(app).envio.contactos, ['Mãe'])
+  assert.deepEqual(lerPlano(app).envio.chats, ['222'])
+  p.stop()
+})
+
+test('M8: uma só escrita atómica (a do lib/previsao.js, com o fsync da pasta onde o sistema deixa): os destinos do Ivo também a usam', async () => {
+  const app = appFalso()
+  const { p, r } = plugin(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  const abertos = []
+  const orig = fs.openSync
+  fs.openSync = (f, ...x) => { abertos.push(path.resolve(String(f))); return orig(f, ...x) }
+  let d
+  try { d = await chamar(r.post['/destinos'], { body: { nome: 'Fundeadouro', lat: 38.4512, lon: -8.95, conhecido: false } }) } finally { fs.openSync = orig }
+  assert.equal(d.code, 201, d.erro)
+  assert.ok(abertos.includes(path.resolve(app.getDataDirPath())), JSON.stringify(abertos))
+  p.stop()
+})

@@ -8,7 +8,8 @@ const assert = require('node:assert/strict')
 const path = require('node:path')
 const pa = require('../lib/plano-ativo')
 const prev = require('../lib/previsao')
-const { appFalso, plugin, chamar, calcular, fetchFalso, H } = require('./ajuda')
+const { appFalso, plugin, chamar, calcular, fetchFalso, caisDe, costa, H } = require('./ajuda')
+const { horaLisboa } = require('../lib/plano')
 
 const MIN = 60000
 const NO = 1852 / 3600
@@ -21,7 +22,7 @@ async function preparar ({ enviar = true, alternativa = 0 } = {}) {
   const pl = plugin(app, { agendarCiclo: () => 1, pararCiclo: () => {}, agendar: (fn, ms) => { agendados.push({ fn, ms }); return agendados.length }, cancelar: () => {} })
   pl.p.start({ pasta: path.join(app.dir, 'dados') })
   const recebidos = []
-  const porto = { resposta: (e) => ({ pedido: e.pedido, entregues: ['chat 111', ...(e.contactos || ['Mãe'])], contactos: e.contactos || ['Mãe'], falhas: [] }) }
+  const porto = { resposta: (e) => ({ pedido: e.pedido, entregues: ['chat 111', ...(e.contactos || ['Mãe'])], contactos: e.contactos || ['Mãe'], chats: e.chats || ['222'], falhas: [] }) }
   app.on('arlequin:plano', (e) => { recebidos.push(e); const r = porto.resposta(e); if (r) app.emit('arlequin:plano-enviado', r) })
   const { id, resultado } = await calcular(pl.r, { destino: 'alges', tripulacao: 'so' })
   if (enviar) await chamar(pl.r.post['/plano-telegram'], { body: { id, alternativa } })
@@ -41,9 +42,17 @@ async function sair (s) {
   s.acertar(s.t0)
   s.por(s.alt.rasto[2])
   await s.ciclo(20 * MIN)
+  await s.ciclo(0) // a 2.ª amostra longe da partida: saiu
   assert.equal(s.p.planoAtivo().estado, 'a navegar')
 }
 const plano = (s) => pa.ler(s.app.getDataDirPath()).plano
+// segue o rasto até ao fim (um ponto por minuto: a chegada pede progresso na rota) e fica parado no
+// cais do destino até chegar
+async function chegar (s) {
+  for (let k = 3; k < s.alt.rasto.length; k++) { s.por(s.alt.rasto[k]); await s.ciclo() }
+  s.por(s.alt.pontosRota.at(-1), 0)
+  for (let m = 0; m < 20 && s.p.planoAtivo().estado !== 'chegado'; m++) await s.ciclo()
+}
 
 test('GET /plano-ativo: 404 sem plano; com ele, o estado, o destino, o atraso, o próximo evento, a chegada agora e a do plano, os recursos e a fila dos contactos', async () => {
   const app = appFalso()
@@ -80,14 +89,13 @@ test('GET /plano-ativo: 404 sem plano; com ele, o estado, o destino, o atraso, o
 test('"Cheguei bem a X às HH:MM" na chegada, uma vez, aos contactos do plano (tipo chegada, sem GPX), com a hora a que saiu; nada se repete depois de um reinício', async () => {
   const s = await preparar()
   await sair(s)
-  const cais = s.alt.pontosRota.at(-1)
-  s.por(cais, 0)
-  for (let m = 0; m <= 5; m++) await s.ciclo()
+  await chegar(s)
   assert.equal(s.p.planoAtivo().estado, 'chegado')
   const chegadas = s.recebidos.filter(e => e.tipo === 'chegada')
   assert.equal(chegadas.length, 1)
   assert.match(chegadas[0].texto, /^Cheguei bem a Algés \(CNA\) às \d\d:\d\d\. Obrigado!$/)
   assert.deepEqual(chegadas[0].contactos, ['Mãe'])
+  assert.deepEqual(chegadas[0].chats, ['222'], 'o porto escolhe pelo chatId')
   assert.equal(chegadas[0].destinatarios, 'contactos-do-plano')
   assert.equal(chegadas[0].gpx, undefined)
   assert.deepEqual(plano(s).contactos.fila, [])
@@ -256,3 +264,157 @@ test('sem o plano enviado, ativar outra alternativa não manda nada', async () =
   s.p.stop()
 })
 
+
+test('decisão 1 (Ivo): na 2.ª viagem o atraso chega a terra (o plano novo começa limpo: sem as enviadas nem o atraso do plano antigo) e o plano antigo vai para planos-fechados.json', async () => {
+  const s = await preparar()
+  await sair(s)
+  await chegar(s)
+  assert.equal(s.p.planoAtivo().estado, 'chegado')
+  // a 2.ª viagem: o mesmo cálculo, já enviado aos contactos, ativado outra vez
+  const a = await chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 0 } })
+  assert.equal(a.code, 200, a.erro)
+  const novo = plano(s)
+  assert.equal(novo.estado, 'a espera de sair')
+  assert.deepEqual(novo.contactos.enviadas, [])
+  assert.deepEqual(novo.contactos.fila, [])
+  assert.equal(novo.atrasoEnviado ?? null, null)
+  assert.deepEqual(novo.envio.contactos, ['Mãe'])
+  const fechados = pa.lerFechados(s.app.getDataDirPath())
+  assert.deepEqual(fechados.map(x => x.estado), ['chegado'])
+  // sai e fica parado no rasto: o atraso segue para terra
+  s.por(s.alt.rasto[2])
+  await s.ciclo()
+  await s.ciclo(0)
+  assert.equal(s.p.planoAtivo().estado, 'a navegar')
+  s.por(s.alt.rasto[2], 0)
+  for (let m = 1; m <= 90 && !s.recebidos.some(e => e.tipo === 'atraso'); m++) await s.ciclo()
+  assert.ok(s.recebidos.some(e => e.tipo === 'atraso'), 'o atraso da 2.ª viagem')
+  s.p.stop()
+})
+
+test('decisão 3 (Ivo): o atraso só conta quando chega a terra: sem resposta do porto o GET fica com a hora de alarme do plano, e o que acaba por sair diz "em vez de" a hora do plano (a última entregue)', async () => {
+  const s = await preparar()
+  await sair(s)
+  s.porto.resposta = () => null
+  s.por(s.alt.rasto[2], 0)
+  const atrasos = () => s.recebidos.filter(e => e.tipo === 'atraso')
+  let g = null
+  // 70 min sem o porto responder (cada tentativa acaba nos 30 s)
+  for (let m = 1; m <= 70; m++) {
+    await s.ciclo()
+    s.agendados.at(-1)?.fn()
+    if (m === 30) g = await chamar(s.r.get['/plano-ativo'])
+  }
+  assert.ok(atrasos().length >= 2, 'tentou')
+  assert.equal(g.envio.alarme, g.envio.alarmePlano, 'nada chegou: a hora de alarme é a do plano')
+  // o porto volta
+  const quando = []
+  s.porto.resposta = (e) => { quando.push(s.agora()); return { pedido: e.pedido, entregues: ['chat 111', 'Mãe'], contactos: ['Mãe'], chats: ['222'], falhas: [] } }
+  for (let m = 0; m < 3 && !quando.length; m++) await s.ciclo()
+  assert.equal(quando.length, 1)
+  const entregue = atrasos().at(-1)
+  assert.ok(entregue.texto.endsWith(`(em vez de ${horaLisboa(Date.parse(g.envio.alarmePlano), quando[0])}).`), entregue.texto)
+  g = await chamar(s.r.get['/plano-ativo'])
+  assert.notEqual(g.envio.alarme, g.envio.alarmePlano)
+  assert.ok(entregue.texto.includes(`Nova hora de alarme: ${horaLisboa(Date.parse(g.envio.alarme), quando[0])} `), entregue.texto)
+  s.p.stop()
+})
+
+test('decisão 4: Ativar a mesma alternativa enquanto o porto responde a uma mensagem (durante a API de rumo): nada fica "a enviar" sem temporizador e a entrega fica registada', async () => {
+  const s = await preparar()
+  await sair(s)
+  s.porto.resposta = () => null
+  s.por(s.alt.rasto[2], 0)
+  for (let m = 1; m <= 40 && !s.recebidos.some(e => e.tipo === 'atraso'); m++) await s.ciclo()
+  const ev = s.recebidos.find(e => e.tipo === 'atraso')
+  assert.equal(s.p.planoAtivo().contactos.fila[0].estado, 'a enviar')
+  const ativar = s.app.activateRoute
+  s.app.activateRoute = async (dest) => {
+    s.app.emit('arlequin:plano-enviado', { pedido: ev.pedido, entregues: ['chat 111', 'Mãe'], contactos: ['Mãe'], chats: ['222'], falhas: [] })
+    return ativar(dest)
+  }
+  const a = await chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 0 } })
+  assert.equal(a.code, 200, a.erro)
+  const pl = s.p.planoAtivo()
+  assert.deepEqual(pl.contactos.fila.filter(m => m.estado === 'a enviar'), [])
+  assert.equal(pl.contactos.enviadas.at(-1).tipo, 'atraso')
+  assert.ok(pl.atrasoEnviado, 'o atraso entregue fica registado')
+  assert.equal(pl.estado, 'a navegar')
+  assert.equal(pl.href, a.href)
+  s.p.stop()
+})
+
+test('decisão 5 (Ivo): a rota do plano desligada à chegada (pausado): o plano chega na mesma ao cais (a mesma regra) e manda "cheguei bem"', async () => {
+  const s = await preparar()
+  await sair(s)
+  for (let k = 3; k < s.alt.rasto.length - 1; k++) { s.por(s.alt.rasto[k]); await s.ciclo() }
+  // o Ivo limpa a rota no OpenCPN ao entrar no porto
+  s.app.rotaAtiva = null
+  s.por(s.alt.pontosRota.at(-1), 0)
+  await s.ciclo()
+  assert.equal(s.p.planoAtivo().estado, 'pausado')
+  for (let m = 0; m < 6 && s.p.planoAtivo().estado !== 'chegado'; m++) await s.ciclo()
+  assert.equal(s.p.planoAtivo().estado, 'chegado')
+  assert.equal(s.recebidos.filter(e => e.tipo === 'chegada').length, 1)
+  s.p.stop()
+})
+
+test('decisão 5 (Ivo): em pausa no mar, parado 30 min noutro porto da lista → GET chegadaOutro { id, nome }; nada segue até o Ivo carregar; POST /plano-ativo/chegada { destino } manda "Cheguei bem a X" e fecha o plano', async () => {
+  const s = await preparar()
+  await sair(s)
+  s.app.rotaAtiva = null
+  await s.ciclo()
+  assert.equal(s.p.planoAtivo().estado, 'pausado')
+  assert.equal((await chamar(s.r.post['/plano-ativo/chegada'], { body: { destino: 'cascais' } })).code, 409, 'sem sugestão ainda')
+  s.por(caisDe('cascais'), 0)
+  for (let m = 0; m < 30; m++) await s.ciclo()
+  let g = await chamar(s.r.get['/plano-ativo'])
+  assert.equal(g.chegadaOutro, null, '29 min')
+  assert.equal(g.pausadoDe, 'a navegar')
+  await s.ciclo()
+  g = await chamar(s.r.get['/plano-ativo'])
+  const nome = costa.destinos.find(d => d.id === 'cascais').nome
+  assert.deepEqual(g.chegadaOutro, { id: 'cascais', nome })
+  assert.deepEqual(s.recebidos, [], 'só sugere')
+  assert.equal((await chamar(s.r.post['/plano-ativo/chegada'], { body: { destino: 'nazare' } })).code, 409, 'só o porto sugerido')
+  const c = await chamar(s.r.post['/plano-ativo/chegada'], { body: { destino: 'cascais' } })
+  assert.deepEqual(c, { code: 200, ok: true, estado: 'chegado', contactos: true })
+  const m = s.recebidos.filter(e => e.tipo === 'chegada')
+  assert.equal(m.length, 1)
+  assert.equal(m[0].texto, `Cheguei bem a ${nome} às ${horaLisboa(Date.parse(g.agora) - 30 * MIN, s.agora())}. Obrigado!`)
+  assert.equal(plano(s).estado, 'chegado')
+  assert.deepEqual(plano(s).chegouA, { id: 'cascais', nome })
+  assert.equal((await chamar(s.r.post['/plano-ativo/chegada'], { body: { destino: 'cascais' } })).code, 409, 'já fechado')
+  s.p.stop()
+})
+
+test('M5: Continuar com um ciclo a meio (a rota do plano já voltou durante o pedido): 200, sem o falso 409', async () => {
+  const s = await preparar()
+  await sair(s)
+  s.app.rotaAtiva = '/resources/routes/outra'
+  await s.ciclo()
+  assert.equal(s.p.planoAtivo().estado, 'pausado')
+  const ativar = s.app.activateRoute
+  s.app.activateRoute = async (dest) => { await ativar(dest); await s.p.cicloNavegar() }
+  const c = await chamar(s.r.post['/plano-ativo/continuar'])
+  assert.deepEqual(c, { code: 200, ok: true, estado: 'a navegar' })
+  assert.equal(s.p.planoAtivo().estado, 'a navegar')
+  s.p.stop()
+})
+
+test('9 (ecrã): o atraso do GET /plano-ativo arredonda para o lado do aviso (para cima), como a mensagem do recalcula', async () => {
+  const s = await preparar()
+  await sair(s)
+  // parado entre dois pontos do rasto: um atraso com décimas (procura um com menos de meio minuto)
+  const [r2, r3] = [s.alt.rasto[2], s.alt.rasto[3]]
+  s.por({ lat: r2.lat + 0.37 * (r3.lat - r2.lat), lon: r2.lon + 0.37 * (r3.lon - r2.lon) }, 0)
+  let a = null
+  for (let m = 1; m <= 20 && a == null; m++) {
+    await s.ciclo()
+    const x = s.p.acompanhamento().atrasoMin
+    if (x > 0 && x - Math.floor(x) > 0.05 && x - Math.floor(x) < 0.45) a = x
+  }
+  assert.ok(a != null, 'um atraso com menos de meio minuto')
+  assert.equal((await chamar(s.r.get['/plano-ativo'])).atrasoMin, Math.ceil(a))
+  s.p.stop()
+})

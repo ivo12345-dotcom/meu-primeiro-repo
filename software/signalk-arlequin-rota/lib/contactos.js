@@ -12,13 +12,20 @@
 //   terminado  "Viagem terminada / mudança de planos: estou bem, em <graus e minutos> às HH:MM."
 //   plano      o plano novo (texto + GPX da 3b-1) com a linha "Este plano substitui o anterior."
 // A fila (gravada no plano ativo, em plano.contactos): { fila: [msg], enviadas: [msg], seq }
-//   msg: { id, tipo, texto, contactos (a quem: os contactos entregues do plano quando entrou), gpx?, nomeFicheiro?, criada, tentativas, proxima, estado: 'fila' | 'a enviar',
-//   pedido, erro }; as enviadas guardam a hora a que realmente saíram (enviadaEm) e a quem.
+//   msg: { id, tipo, texto, contactos (a quem: os nomes dos contactos entregues do plano quando entrou),
+//   chats (os chatId deles), gpx?, nomeFicheiro?, chegada?/alarme? (só no atraso, ms), anterior? (do
+//   plano anterior), criada, tentativas, proxima, estado: 'fila' | 'a enviar', pedido, erro }; as
+//   enviadas guardam a hora a que realmente saíram (enviadaEm) e a quem.
 //   Uma de cada vez e por ordem; a que falha (sem resposta em 30 s, sem o porto, ou nenhum contacto em
 //   terra a recebeu) volta a tentar daqui a 2 min. Sai da fila o que deixou de interessar: um atraso
 //   mais antigo (há outro mais novo, um plano novo, "cheguei bem" ou "terminada"); e nenhum atraso entra
-//   depois de "cheguei bem" ou "terminada".
-// evento(msg, pedido): o que se emite em 'arlequin:plano' para o porto (aos contactos da mensagem).
+//   depois do "cheguei bem" ou da "terminada" do mesmo plano.
+// herdar(fila): a fila de um plano novo (decisão do Ivo de 01/10): limpa, só com o "cheguei bem"/
+//   "terminada" do plano antigo por enviar e o que está "a enviar" (anterior: true).
+// atualizarAtraso(fila, id, { chegada, alarme, texto }): o atraso ainda na fila passa a ter a chegada mais
+//   recente (decisão do Ivo de 01/10: o atraso só conta quando é entregue; a hora da tentativa fica).
+// evento(msg, pedido): o que se emite em 'arlequin:plano' para o porto (aos contactos da mensagem: o
+//   porto escolhe-os pelos chats).
 
 const { horaLisboa, asHoras } = require('./plano')
 
@@ -77,13 +84,45 @@ const novaFila = () => ({ fila: [], enviadas: [], seq: 0 })
 
 function porNaFila (c0, msg, agora) {
   const c = { ...novaFila(), ...c0 }
-  const fechado = [...c.enviadas, ...c.fila].some(m => FECHO.has(m.tipo))
+  // só o "cheguei bem"/"terminada" deste plano fecha (os herdados do plano anterior não)
+  const fechado = [...c.enviadas, ...c.fila].some(m => FECHO.has(m.tipo) && !m.anterior)
   if (msg.tipo === 'atraso' && fechado) return c
   // o que deixou de interessar (só o que ainda não saiu: o que está "a enviar" fica)
   const tira = (m) => m.estado === 'fila' && (m.tipo === 'atraso' || (msg.tipo === 'plano' && m.tipo === 'plano'))
   const seq = c.seq + 1
-  const nova = { id: `m${seq}`, tipo: msg.tipo, texto: msg.texto, contactos: [...(msg.contactos || [])], ...(msg.gpx ? { gpx: msg.gpx, nomeFicheiro: msg.nomeFicheiro } : {}), criada: iso(agora), tentativas: 0, proxima: iso(agora), estado: 'fila', pedido: null, erro: null }
+  const nova = {
+    id: `m${seq}`,
+    tipo: msg.tipo,
+    texto: msg.texto,
+    contactos: [...(msg.contactos || [])],
+    chats: [...(msg.chats || [])],
+    ...(msg.gpx ? { gpx: msg.gpx, nomeFicheiro: msg.nomeFicheiro } : {}),
+    // o atraso: a chegada e o alarme (ms), para o texto à hora de sair e para o registo na entrega
+    ...(msg.tipo === 'atraso' && valido(msg.chegada) && valido(msg.alarme) ? { chegada: msg.chegada, alarme: msg.alarme } : {}),
+    criada: iso(agora),
+    tentativas: 0,
+    proxima: iso(agora),
+    estado: 'fila',
+    pedido: null,
+    erro: null
+  }
   return { ...c, seq, fila: [...c.fila.filter(m => !tira(m)), nova] }
+}
+
+// O plano novo (decisão do Ivo de 01/10): a fila limpa (sem as enviadas nem os atrasos do plano antigo);
+// só segue o "cheguei bem"/"terminada" do plano antigo que ainda não saiu e o que está "a enviar" (à
+// espera da resposta do porto), marcados do plano anterior (anterior: true).
+function herdar (c0) {
+  if (!c0) return novaFila()
+  const c = { ...novaFila(), ...c0 }
+  const fica = (m) => m.estado === 'a enviar' || FECHO.has(m.tipo)
+  return { fila: c.fila.filter(fica).map(m => ({ ...m, anterior: true })), enviadas: [], seq: c.seq }
+}
+
+// O atraso que ainda está na fila (não "a enviar") passa a ter a chegada e o alarme mais recentes; a
+// hora da próxima tentativa fica.
+function atualizarAtraso (c, id, { chegada, alarme, texto }) {
+  return mudar(c, m => m.id === id && m.tipo === 'atraso' && m.estado === 'fila', m => ({ ...m, chegada, alarme, ...(texto != null ? { texto } : {}) }))
 }
 
 // A próxima a enviar: a primeira da fila, se já for a hora dela e nenhuma estiver "a enviar".
@@ -94,7 +133,8 @@ function proxima (c, agora) {
 }
 
 const mudar = (c, f, fn) => ({ ...c, fila: c.fila.map(m => (f(m) ? fn(m) : m)) })
-const marcarAEnviar = (c, id, pedido, agora) => mudar(c, m => m.id === id, m => ({ ...m, estado: 'a enviar', pedido, tentativas: m.tentativas + 1, tentadaEm: iso(agora) }))
+// texto: o da hora de sair (o atraso diz "em vez de" o último alarme entregue)
+const marcarAEnviar = (c, id, pedido, agora, texto) => mudar(c, m => m.id === id, m => ({ ...m, estado: 'a enviar', pedido, tentativas: m.tentativas + 1, tentadaEm: iso(agora), ...(texto != null ? { texto } : {}) }))
 
 function falhou (c, pedido, erro, agora) {
   if (!c.fila.some(m => m.pedido === pedido)) return c
@@ -109,7 +149,7 @@ function resposta (c, pedido, r = {}, agora) {
   const falhas = Array.isArray(r.falhas) ? r.falhas : []
   if (!contactos.length) return falhou(c, pedido, falhas.length ? falhas.map(f => `${f.nome}: ${f.erro}`).join('; ') : 'nenhum contacto em terra a recebeu', agora)
   const { gpx, nomeFicheiro, estado, pedido: _p, proxima: _x, ...resto } = m
-  const enviada = { ...resto, enviadaEm: iso(agora), contactos, entregues: Array.isArray(r.entregues) ? r.entregues.map(String) : [], falhas }
+  const enviada = { ...resto, enviadaEm: iso(agora), contactos, chats: Array.isArray(r.chats) ? r.chats.map(String) : [], entregues: Array.isArray(r.entregues) ? r.entregues.map(String) : [], falhas }
   return { ...c, fila: c.fila.filter(x => x !== m), enviadas: [...c.enviadas, enviada] }
 }
 
@@ -119,15 +159,17 @@ function aoArrancar (c, agora) {
   return mudar({ ...novaFila(), ...c }, m => m.estado === 'a enviar', m => ({ ...m, estado: 'fila', pedido: null, proxima: iso(agora) }))
 }
 
-function evento (msg, pedido, contactos = msg.contactos || []) {
+// contactos: os nomes (para o porto dizer quem falhou); chats: os chatId (o porto escolhe por eles)
+function evento (msg, pedido, contactos = msg.contactos || [], chats = msg.chats || []) {
   return {
     pedido,
     tipo: msg.tipo,
     texto: msg.texto,
     ...(msg.tipo === 'plano' && msg.gpx ? { gpx: msg.gpx, nomeFicheiro: msg.nomeFicheiro } : {}),
     destinatarios: 'contactos-do-plano',
-    contactos: [...contactos]
+    contactos: [...contactos],
+    chats: [...chats]
   }
 }
 
-module.exports = { SUBSTITUI, REPETIR_MS, grausMinutos, textoChegada, textoAtraso, textoTerminado, textoSubstitui, decidirAtraso, novaFila, porNaFila, proxima, marcarAEnviar, falhou, resposta, aoArrancar, evento }
+module.exports = { SUBSTITUI, REPETIR_MS, ATRASO_ESCORREGA_MS, grausMinutos, textoChegada, textoAtraso, textoTerminado, textoSubstitui, decidirAtraso, novaFila, porNaFila, herdar, atualizarAtraso, proxima, marcarAEnviar, falhou, resposta, aoArrancar, evento }

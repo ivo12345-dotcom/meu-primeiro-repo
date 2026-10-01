@@ -209,3 +209,40 @@ test('a mensagem nunca mostra o limite quando já o passou (visto ao vivo: "atra
   const amostras = [{ t: T0 - 3 * H, hPa: 1015 }, { t: T0, hPa: 1011.96 }]
   assert.equal(m({ barometro: amostras })['notifications.rota.barometro'].message, 'Barómetro: caiu 3,1 hPa em 3 h — o tempo pode piorar antes do previsto')
 })
+
+test('M6: previsto P50 de 0 nós (calma): só a regra absoluta dos 4 nós (sem %), nunca Infinity; a mensagem sem a percentagem', () => {
+  const calma = (medido) => base({ vento: { medido, previsto: 0, desvioNos: medido, desvioPct: null } })
+  assert.equal(st(correr(av.novoEstado(), 0, 29, calma(12)), 'recalcula'), 'normal', '29 min')
+  const r = correr(av.novoEstado(), 0, 30, calma(12))
+  assert.equal(st(r, 'recalcula'), 'warn')
+  assert.equal(r.avisos['notifications.rota.recalcula'].message, 'Recalcula a rota: vento de 12 nós, previsto 0')
+  // 4 nós com a previsão de calma: não
+  assert.equal(st(correr(av.novoEstado(), 0, 60, calma(4)), 'recalcula'), 'normal')
+})
+
+test('M2: os "30 min seguidos" do vento e os "10 min normal" só contam amostras a ≤ 2 min umas das outras (um salto do relógio recomeça)', () => {
+  const fora = base({ vento: { medido: 24, previsto: 18, desvioNos: 6, desvioPct: 33 } })
+  // uma amostra e outra 30 min depois (o relógio saltou): não
+  let r = av.avaliar(av.novoEstado(), fora, T0)
+  r = av.avaliar(r.estado, fora, T0 + 30 * MIN)
+  assert.equal(st(r, 'recalcula'), 'normal')
+  // de 2 em 2 min conta
+  r = { estado: av.novoEstado() }
+  for (let m = 0; m <= 30; m += 2) r = av.avaliar(r.estado, fora, T0 + m * MIN)
+  assert.equal(st(r, 'recalcula'), 'warn')
+  // o normal: uma amostra e outra 10 min depois não apagam
+  r = av.avaliar(r.estado, base(), T0 + 31 * MIN)
+  r = av.avaliar(r.estado, base(), T0 + 41 * MIN)
+  assert.equal(st(r, 'recalcula'), 'warn')
+  r = correr(r.estado, 42, 50, base())
+  assert.equal(st(r, 'recalcula'), 'warn', 'de 41 a 50: 9 min')
+  r = correr(r.estado, 51, 51, base())
+  assert.equal(st(r, 'recalcula'), 'normal')
+  // para trás também recomeça
+  r = { estado: av.novoEstado() }
+  r = correr(r.estado, 0, 20, fora)
+  r = av.avaliar(r.estado, fora, T0 + 5 * MIN)
+  r = correr(r.estado, 6, 34, fora)
+  assert.equal(st(r, 'recalcula'), 'normal', 'de 5 a 34: 29 min')
+  assert.equal(st(correr(r.estado, 35, 35, fora), 'recalcula'), 'warn')
+})

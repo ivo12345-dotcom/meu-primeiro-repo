@@ -7,8 +7,9 @@
 //   (noite) e a chegada de noite. Sem GPS, os de sítio (rizar, chegada) param.
 // notifications.rota.comer          alert  só com "só eu": de 3 em 3 h desde a saída real, 15 min.
 // notifications.rota.recalcula      warn   atraso (média de 10 min) > 30 min, ou o vento medido (média
-//   de 10 min) afastado do previsto P50 mais de ±30 % E mais de 4 nós durante 30 min seguidos. Apaga-se
-//   quando os dois voltam ao normal durante 10 min seguidos.
+//   de 10 min) afastado do previsto P50 mais de ±30 % E mais de 4 nós durante 30 min seguidos (com a
+//   previsão de calma, P50 0 nós, só os 4 nós). Apaga-se quando os dois voltam ao normal durante 10 min
+//   seguidos. Os "seguidos" só contam amostras a ≤ 2 min umas das outras (um salto do relógio recomeça).
 // notifications.rota.recursos       warn   gasóleo à chegada < 40 L ou bateria à chegada < 50 %.
 // notifications.rota.previsao       warn com a previsão mais recente com mais de 6 h; alarm (com
 //   apito: 'curto') com mais de 12 h ou sem previsão nenhuma.
@@ -48,7 +49,8 @@ const LIMITES = Object.freeze({
   previsaoAlarmeH: 12,
   quedaHpa: 3,
   quedaApagaHpa: 2,
-  janelaBaroH: 3
+  janelaBaroH: 3,
+  amostrasMaxMin: 2
 })
 
 const virgula = (x, d = 1) => x.toFixed(d).replace('.', ',')
@@ -56,7 +58,7 @@ const virgula = (x, d = 1) => x.toFixed(d).replace('.', ',')
 // mais de 30, nem "~40 L" com o de menos de 40 (o -1e-9 tira o erro de vírgula flutuante).
 const acima = (x, d = 0) => Math.ceil(x * 10 ** d - 1e-9) / 10 ** d
 const abaixo = (x) => Math.floor(x + 1e-9)
-const novoEstado = () => ({ ventoForaDesde: null, recalcula: false, normalDesde: null, motivos: [], barometro: false })
+const novoEstado = () => ({ ventoForaDesde: null, recalcula: false, normalDesde: null, motivos: [], barometro: false, ultimaT: null })
 const aviso = (state, message, extra = {}) => ({ state, method: [...METODO], message, ...extra })
 const normal = () => aviso('normal', '')
 
@@ -106,7 +108,9 @@ function recalcula (est, entrada, agora) {
   const atraso = Number.isFinite(entrada.atrasoMin) ? entrada.atrasoMin : null
   const condAtraso = atraso != null && atraso > LIMITES.atrasoMin
   const v = entrada.vento
-  const foraVento = !!v && Number.isFinite(v.desvioPct) && Number.isFinite(v.desvioNos) && Math.abs(v.desvioPct) > LIMITES.ventoPct && Math.abs(v.desvioNos) > LIMITES.ventoNos
+  // com a previsão de calma (P50 0 nós, sem percentagem) só a regra dos 4 nós
+  const pctOk = (x) => (Number.isFinite(x.desvioPct) ? Math.abs(x.desvioPct) > LIMITES.ventoPct : x.previsto === 0)
+  const foraVento = !!v && Number.isFinite(v.desvioNos) && Math.abs(v.desvioNos) > LIMITES.ventoNos && pctOk(v)
   est.ventoForaDesde = foraVento ? est.ventoForaDesde ?? agora : null
   const condVento = foraVento && agora - est.ventoForaDesde >= LIMITES.ventoSeguidosMin * MIN
   const motivos = [...(condAtraso ? ['atraso'] : []), ...(condVento ? ['vento'] : [])]
@@ -121,7 +125,7 @@ function recalcula (est, entrada, agora) {
   if (!est.recalcula) return normal()
   const partes = []
   if (condAtraso) partes.push(`atraso de ${acima(atraso)} min sobre o plano`)
-  if (foraVento && (condVento || est.motivos.includes('vento'))) partes.push(`vento de ${Math.round(v.medido)} nós, previsto ${Math.round(v.previsto)} (${v.desvioPct >= 0 ? '+' : '−'}${Math.round(Math.abs(v.desvioPct))} %)`)
+  if (foraVento && (condVento || est.motivos.includes('vento'))) partes.push(`vento de ${Math.round(v.medido)} nós, previsto ${Math.round(v.previsto)}${Number.isFinite(v.desvioPct) ? ` (${v.desvioPct >= 0 ? '+' : '−'}${Math.round(Math.abs(v.desvioPct))} %)` : ''}`)
   // a voltar ao normal (os 10 min): o motivo que havia
   if (!partes.length) partes.push(est.motivos.includes('atraso') ? 'atraso sobre o plano a voltar ao normal' : 'vento a voltar ao previsto')
   return aviso('warn', `Recalcula a rota: ${partes.join(' · ')}`, { chave: est.motivos.join(' ') })
@@ -158,6 +162,10 @@ function avaliar (estado0, entrada, agora) {
     const n = novoEstado()
     return { estado: n, avisos: Object.fromEntries(['comer', 'recalcula', 'recursos', 'previsao', 'barometro'].map(k => [`${PREFIXO}.${k}`, normal()])) }
   }
+  // os "seguidos" (30 min do vento, 10 min normal) só com amostras a ≤ 2 min umas das outras: um salto
+  // do relógio (para a frente ou para trás) recomeça-os
+  if (est.ultimaT != null && (agora - est.ultimaT > LIMITES.amostrasMaxMin * MIN || agora < est.ultimaT)) { est.ventoForaDesde = null; est.normalDesde = null }
+  est.ultimaT = agora
   const avisos = {
     ...lembretes(entrada, agora),
     [`${PREFIXO}.comer`]: comer(entrada, agora),
@@ -200,4 +208,4 @@ function publicadosDaArvore (arvore, prefixo = PREFIXO) {
   return out
 }
 
-module.exports = { PREFIXO, METODO, LIMITES, novoEstado, juntarPressao, quedaEm3h, avaliar, publicar, publicadosDaArvore }
+module.exports = { PREFIXO, METODO, LIMITES, acima, novoEstado, juntarPressao, quedaEm3h, avaliar, publicar, publicadosDaArvore }
