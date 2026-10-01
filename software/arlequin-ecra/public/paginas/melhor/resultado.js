@@ -13,6 +13,7 @@ import { URL_ROTA, calcular, motivoAcao, CANCELADO } from './pedir.js'
 const CHAVE_MARCAS = 'arlequin.precaucoes'
 const MAX_CALCULOS_MARCAS = 10
 const PLANO_PERDIDO = 'este envio já não existe no plugin da rota (reiniciado?): confirma com os contactos se receberam'
+const SO_O_TEU_CHAT = 'enviado só para o teu chat — nenhum contacto em terra recebeu (junta contactos do plano na configuração)'
 const eObjeto = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
 const agora = (ctx) => (Number.isFinite(ctx.agora) ? ctx.agora : Date.now())
 const agendar = (ctx, f, ms) => (ctx.agendar || setTimeout)(f, ms)
@@ -93,18 +94,26 @@ function desistencia (ctx, r, i) {
   return `<div>${esc(r.desistenciaResumo || '—')}</div>${linhas ? `<table><tr><th>hora</th><th>abrigo</th><th>volta</th></tr>${linhas}</table>` : ''}`
 }
 
-// O estado do envio do plano, com os avisos do plugin da rota (ex.: sem o telefone do Ivo).
+// Os contactos em terra que receberam o plano (o porto separa-os do chat do Ivo; um porto antigo
+// não os manda: nenhum).
+const contactosEmTerra = (p) => (Array.isArray(p?.contactos) ? p.contactos : [])
+
+// O estado do envio do plano, com os avisos do plugin da rota (ex.: sem o telefone do Ivo) e de que
+// alternativa é (o Ivo pode escolher outro cartão a meio do envio).
 function estadoPlano (e) {
   const p = e.plano
   if (!p) return ''
   const avisos = (Array.isArray(p.avisos) ? p.avisos : []).map(a => `<div class="lab atencao">⚠ ${esc(a)}</div>`).join('')
-  if (p.estado === 'a enviar') return `<div class="tile">a enviar o plano pelo Telegram…${avisos}</div>`
+  const qual = Number.isInteger(p.indice) ? ` (plano da ${p.indice + 1}.ª alternativa)` : ''
+  if (p.estado === 'a enviar') return `<div class="tile">a enviar o plano pelo Telegram…${qual}${avisos}</div>`
   if (p.estado === 'enviado') {
-    const n = p.entregues?.length || 0
+    const n = contactosEmTerra(p).length
     const falhas = p.falhas?.length ? `<div class="lab perigo">não chegou a: ${p.falhas.map(f => `${esc(f.nome)} (${esc(f.erro)})`).join('; ')}</div>` : ''
-    return `<div class="tile ok">enviado ✓ a ${n} ${n === 1 ? 'contacto' : 'contactos'}${falhas}${avisos}</div>`
+    // só ao chat do Ivo: ninguém em terra tem a hora de alarme
+    if (!n) return `<div class="tile atencao">${SO_O_TEU_CHAT}${qual}${falhas}${avisos}</div>`
+    return `<div class="tile ok">enviado ✓ a ${n} ${n === 1 ? 'contacto' : 'contactos'} em terra${qual}${falhas}${avisos}</div>`
   }
-  return `<div class="tile perigo">não foi possível enviar: ${esc(p.motivo || p.erro || 'sem explicação')}${avisos}</div>`
+  return `<div class="tile perigo">não foi possível enviar: ${esc(p.motivo || p.erro || 'sem explicação')}${qual}${avisos}</div>`
 }
 
 // ---------- o plano pelo Telegram ----------
@@ -117,9 +126,11 @@ function seguirPlano (ctx) {
       if (e.plano?.pedido !== pedido) return
       e.plano = { ...e.plano, ...r }
       if (r.estado === 'a enviar') return agendar(ctx, () => seguirPlano(ctx), 1000)
-      if (r.estado === 'enviado') {
-        // o plano deixado em terra (e com a hora de alarme): as precauções ficam marcadas
-        for (const id of ['plano', 'plano-hora']) if (e.resultado?.alternativas?.[e.selecionada]?.precaucoes?.some(p => p.id === id)) marcar(ctx, id, true)
+      if (r.estado === 'enviado' && contactosEmTerra(r).length) {
+        // o plano deixado em terra (com a hora de alarme): as precauções da alternativa enviada ficam
+        // marcadas; só com pelo menos um contacto em terra (o chat do Ivo não conta)
+        const alt = e.resultado?.alternativas?.[Number.isInteger(e.plano.indice) ? e.plano.indice : e.selecionada]
+        for (const id of ['plano', 'plano-hora']) if (alt?.precaucoes?.some(p => p.id === id)) marcar(ctx, id, true)
       }
     })
     .catch(err => { if (e.plano?.pedido === pedido) e.plano = { ...e.plano, estado: 'falhou', motivo: motivoAcao(err, { se404: PLANO_PERDIDO }) } })
@@ -192,7 +203,11 @@ export async function acao (nome, dados, ctx) {
   const e = ctx.estado
   if (nome === 'rota-escolher') {
     const i = Number(dados.i)
-    if (Number.isInteger(i) && e.resultado?.alternativas?.[i]) { e.selecionada = i; e.plano = null }
+    if (Number.isInteger(i) && e.resultado?.alternativas?.[i]) {
+      e.selecionada = i
+      // a meio do envio o plano continua a seguir-se (diz de que alternativa é); acabado, limpa-se
+      if (e.plano?.estado !== 'a enviar') e.plano = null
+    }
     return true
   }
   if (nome === 'rota-precaucao') { marcar(ctx, dados.id, !marcas(ctx)[dados.id]); return true }
@@ -209,11 +224,12 @@ export async function acao (nome, dados, ctx) {
   if (nome === 'rota-plano') {
     // um toque duplo não envia o plano duas vezes aos contactos
     if (e.plano?.estado === 'a enviar') return true
-    e.plano = { estado: 'a enviar' }
+    const indice = e.selecionada || 0
+    e.plano = { estado: 'a enviar', indice }
     try {
-      const r = await ctx.pedir(`${URL_ROTA}/plano-telegram`, { method: 'POST', body: { id: e.idCalculo, alternativa: e.selecionada || 0 } })
-      e.plano = { pedido: r.pedido, estado: 'a enviar', avisos: Array.isArray(r.avisos) ? r.avisos : [] }
-    } catch (err) { e.plano = { estado: 'falhou', motivo: motivoAcao(err) }; return true }
+      const r = await ctx.pedir(`${URL_ROTA}/plano-telegram`, { method: 'POST', body: { id: e.idCalculo, alternativa: indice } })
+      e.plano = { pedido: r.pedido, estado: 'a enviar', indice, avisos: Array.isArray(r.avisos) ? r.avisos : [] }
+    } catch (err) { e.plano = { estado: 'falhou', indice, motivo: motivoAcao(err) }; return true }
     await seguirPlano(ctx)
     return true
   }

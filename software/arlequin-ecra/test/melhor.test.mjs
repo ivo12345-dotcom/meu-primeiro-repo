@@ -238,10 +238,10 @@ test('precauções: as caixas marcam-se e ficam guardadas por cálculo', async (
   assert.match(melhor.render(ctx2), /data-acao="rota-precaucao" data-id="barra"[^>]*>☑/)
 })
 
-test('Enviar plano: POST e depois GET até "enviado" → "enviado ✓ a 2 contactos" e a precaução do plano marcada; "falhou" com o motivo', async () => {
+test('Enviar plano: POST e depois GET até "enviado" → "enviado ✓ a 2 contactos em terra" e a precaução do plano marcada; "falhou" com o motivo', async () => {
   const respostas = {
     [`POST ${ROTA}/plano-telegram`]: { pedido: 'p-1' },
-    [`GET ${ROTA}/plano-telegram/p-1`]: [{ estado: 'a enviar', entregues: [], falhas: [] }, { estado: 'enviado', entregues: ['chat 111', 'Mãe'], falhas: [] }]
+    [`GET ${ROTA}/plano-telegram/p-1`]: [{ estado: 'a enviar', entregues: [], contactos: [], falhas: [] }, { estado: 'enviado', entregues: ['chat 111', 'Mãe', 'Tio'], contactos: ['Mãe', 'Tio'], falhas: [] }]
   }
   const ctx = contexto({ estado: comResultado(FUGA, { selecionada: 0 }), respostas })
   await melhor.acao('rota-plano', {}, ctx)
@@ -249,7 +249,7 @@ test('Enviar plano: POST e depois GET até "enviado" → "enviado ✓ a 2 contac
   assert.match(melhor.render(ctx), /a enviar o plano/)
   await ctx.agendados.shift().f()
   const html = melhor.render(ctx)
-  assert.match(html, /enviado ✓ a 2 contactos/)
+  assert.match(html, /enviado ✓ a 2 contactos em terra/)
   assert.match(html, /data-acao="rota-precaucao" data-id="plano"[^>]*>☑/)
   assert.match(html, /data-acao="rota-precaucao" data-id="plano-hora"[^>]*>☑/)
 
@@ -565,9 +565,48 @@ test('409: segue o cálculo que já corria, e o "Sair agora"/"Tentar outra vez" 
 
 test('o aviso do plugin da rota (sem o telefone do Ivo) aparece com o estado do plano', async () => {
   const AVISO = 'o teu telefone não está na configuração: o plano diz só "liga ao Ivo"'
-  const ctx = contexto({ estado: comResultado(FUGA), respostas: { [`POST ${ROTA}/plano-telegram`]: { pedido: 'p-1', avisos: [AVISO] }, [`GET ${ROTA}/plano-telegram/p-1`]: { estado: 'enviado', entregues: ['Mãe'], falhas: [], avisos: [AVISO] } } })
+  const ctx = contexto({ estado: comResultado(FUGA), respostas: { [`POST ${ROTA}/plano-telegram`]: { pedido: 'p-1', avisos: [AVISO] }, [`GET ${ROTA}/plano-telegram/p-1`]: { estado: 'enviado', entregues: ['Mãe'], contactos: ['Mãe'], falhas: [], avisos: [AVISO] } } })
   await melhor.acao('rota-plano', {}, ctx)
   const html = melhor.render(ctx)
-  assert.match(html, /enviado ✓ a 1 contacto/)
+  assert.match(html, /enviado ✓ a 1 contacto em terra/)
   assert.ok(html.includes(AVISO.replace(/"/g, '&quot;')), html)
+})
+
+test('Enviar plano: entregue só ao chat do Ivo (nenhum contacto em terra) → aviso amarelo e a precaução do plano NÃO se marca (revisão final, 3)', async () => {
+  const SO_CHAT = 'enviado só para o teu chat — nenhum contacto em terra recebeu (junta contactos do plano na configuração)'
+  // o porto diz que nenhum contacto em terra o recebeu; e um porto antigo (sem contactos): o mesmo
+  for (const resposta of [{ estado: 'enviado', entregues: ['chat 111'], contactos: [], falhas: [{ nome: 'Mãe', erro: 'bloqueou o bot' }] }, { estado: 'enviado', entregues: ['chat 111'], falhas: [] }]) {
+    const ctx = contexto({ estado: comResultado(FUGA), respostas: { [`POST ${ROTA}/plano-telegram`]: { pedido: 'p-1', avisos: [] }, [`GET ${ROTA}/plano-telegram/p-1`]: resposta } })
+    await melhor.acao('rota-plano', {}, ctx)
+    const html = melhor.render(ctx)
+    limpo(html, 'só o chat')
+    assert.ok(html.includes(`<div class="tile atencao">${SO_CHAT}`), html.match(/<div class="tile[^"]*">[^<]*enviado[^<]*/)?.[0])
+    assert.doesNotMatch(html, /enviado ✓/)
+    assert.match(html, /data-acao="rota-precaucao" data-id="plano"[^>]*>☐/)
+    assert.match(html, /data-acao="rota-precaucao" data-id="plano-hora"[^>]*>☐/)
+    if (resposta.falhas.length) assert.match(html, /não chegou a: Mãe \(bloqueou o bot\)/)
+  }
+})
+
+test('escolher outro cartão a meio do envio não perde o plano: continua a seguir, diz de que alternativa é e marca as precauções (revisão final, 8)', async () => {
+  const respostas = {
+    [`POST ${ROTA}/plano-telegram`]: { pedido: 'p-1', avisos: [] },
+    [`GET ${ROTA}/plano-telegram/p-1`]: [{ estado: 'a enviar', entregues: [], contactos: [], falhas: [] }, { estado: 'enviado', entregues: ['chat 111', 'Mãe'], contactos: ['Mãe'], falhas: [] }]
+  }
+  const ctx = contexto({ estado: comResultado(FUGA, { selecionada: 0 }), respostas })
+  await melhor.acao('rota-plano', {}, ctx)
+  assert.equal(ctx.estado.plano.estado, 'a enviar')
+  await melhor.acao('rota-escolher', { i: '1' }, ctx)
+  assert.equal(ctx.estado.selecionada, 1)
+  assert.equal(ctx.estado.plano?.estado, 'a enviar', 'o envio não se perde')
+  assert.match(melhor.render(ctx), /a enviar o plano pelo Telegram… \(plano da 1\.ª alternativa\)/)
+  // o "Enviar plano" continua desligado (não se duplica aos contactos)
+  assert.match(melhor.render(ctx), /data-acao="rota-plano" disabled/)
+  await ctx.agendados.shift().f()
+  const html = melhor.render(ctx)
+  assert.match(html, /enviado ✓ a 1 contacto em terra \(plano da 1\.ª alternativa\)/)
+  assert.match(html, /data-acao="rota-precaucao" data-id="plano"[^>]*>☑/)
+  // depois de acabado, outro cartão limpa o estado (o plano novo é outro envio)
+  await melhor.acao('rota-escolher', { i: '2' }, ctx)
+  assert.equal(ctx.estado.plano, null)
 })
