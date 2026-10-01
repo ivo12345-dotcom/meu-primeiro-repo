@@ -871,7 +871,17 @@ Com tudo num ecrã só, esse ecrã passa a ser um ponto único de falha.
 | Diário | signalk-logbook: hora a hora, motor, **velas**, **rota**, **alarmes (e se foram por Mesh)**, entradas de um toque, cópia Wi-Fi |
 | Melhor rota | GRIB + polar + Weather Routing: isócronas, rota ótima vs direta, limites a solo, **ativar no piloto** |
 | Rec. velas | Verificações, bordo e desvio, aproar ao vento com o EV-100, terminar, registo no diário |
-| Noite | Tudo a vermelho |
+| Noite | As cores do dia muito escurecidas, com − e + para o brilho (ver abaixo) |
+
+**Modo noite (decisão do Ivo de 01/10; substitui o modo noite a vermelho de 29/09):** o Ivo não
+distinguia as linhas coloridas em vermelho e não gosta dele. O modo noite passa a ter **as mesmas
+cores do dia** — vela azul, motor cinzento, perigo vermelho, ok verde, avisos âmbar, a terra e o mar
+do mini-mapa — **muito escurecidas**, sobre fundo preto, com o texto em cinzento escuro e sem áreas
+grandes claras (nem brancas nem azul-claras). Ao lado do botão **Noite** ficam **−** e **+** (só de
+noite, 44 px para o dedo): 5 níveis de brilho (1 o mais escuro, **2 por omissão**, 5 o mais claro);
+o nível fica guardado no ecrã e o botão diz "Noite 2/5". Vale para todas as páginas (Carta, Instr.,
+AIS, Motor, Viagem, Diário, Melhor rota com o mini-mapa e o Leme, Velas). Capturas do nível mais
+escuro e do mais claro em `docs/capturas-3b2/noite-brilho-1.png` e `noite-brilho-5.png`.
 
 Barra de cima sempre visível: nome, hora, GPS, **Meshtastic**, **4G**,
 pressão, **estado do piloto**, **alarme AIS**.
@@ -1377,7 +1387,8 @@ quem o recebe para ligar ao Ivo e, se ele não atender, ao MRCC Lisboa (+351 214
 #### A navegar (3b-2)
 
 Desenho em `docs/superpowers/specs/2026-10-01-melhor-rota-navegar-3b2-design.md`; capturas do Leme
-(faixa, avisos, rota mudada), de dia e de noite, em `docs/capturas-3b2/`. Corre no **plugin da rota,
+(faixa com o lembrete de virar/cambar, recalcula, rota mudada, recursos e barómetro, rotação do vento), de dia e de noite
+(o modo noite de 01/10, brilho 2), em `docs/capturas-3b2/`. Corre no **plugin da rota,
 no Pi**, de minuto a minuto: funciona com o ecrã desligado e continua depois de um reinício (o plano
 fica gravado em `plano-ativo.json`, na pasta do plugin). **Nunca muda a rota sozinho.**
 
@@ -1385,8 +1396,10 @@ fica gravado em `plano-ativo.json`, na pasta do plugin). **Nunca muda a rota soz
 sair". Passa a "a navegar" quando o barco fica a mais de 0,5 MN da partida (em duas leituras
 seguidas) ou anda a mais de 2 nós durante 5 min. Chega quando fica a menos de 0,3 MN do cais do
 destino, parado (menos de 0,5 nó) durante 5 min, depois de feita pelo menos metade da rota (numa rota
-com menos de 1 MN, depois de 5 min a navegar). Um plano novo começa limpo; os 5 últimos ficam em
-`planos-fechados.json`.
+com menos de 1 MN, depois de 5 min a navegar). Com a rota limpa ou trocada no OpenCPN (o plano em
+pausa), conta também o afastamento real: se já estiveste a pelo menos 1 MN da partida (ou a metade
+da distância em linha reta até ao destino, se for menor), chegar e ficar 5 min no cais dá o "cheguei
+bem" na mesma. Um plano novo começa limpo; os 5 últimos ficam em `planos-fechados.json`.
 
 **A faixa no Leme**, por cima do rumo:
 - "próximo: rizar às 22:50 (daqui a 25 min) · +20 min sobre o plano" (os eventos de sítio — rizar,
@@ -1398,9 +1411,11 @@ com menos de 1 MN, depois de 5 min a navegar). Um plano novo começa limpo; os 5
 - antes de sair: "plano ativo · à espera de sair".
 
 **O que o sistema avisa** (na barra de cima, com o apito curto; nenhum muda a rota):
-- **Lembretes**, 30 min antes: rizar ou largar rizo, a frente, chuva e pouca visibilidade ("radar
-  ligado e luzes"), o pôr do sol ("luzes, arnês, come antes de escurecer") e a chegada de noite.
-  Só no ecrã.
+- **Lembretes**, 30 min antes: rizar ou largar rizo, a frente, chuva e visibilidade abaixo de 5 km
+  ("radar ligado e luzes"), o pôr do sol ("luzes, arnês, come antes de escurecer"), a chegada de
+  noite, **virar/cambar** nos pontos da rota onde o rumo muda mais de 45° ("virar/cambar no Cabo
+  Raso") e a **rotação do vento** previsto de mais de 45° em 1 h ("rotação do vento de 350° para
+  50°"). Só no ecrã.
 - **Come e bebe** (só com "só eu"), de 3 em 3 h desde a saída, durante 15 min. Só no ecrã.
 - **Recalcula a rota**: atraso de mais de 30 min, ou o vento medido (média de 10 min) afastado do
   previsto mais de 30 % e mais de 4 nós durante 30 min seguidos. Apaga-se com os dois normais
@@ -1411,7 +1426,9 @@ com menos de 1 MN, depois de 5 min a navegar). Um plano novo começa limpo; os 5
   alarme com o apito curto, "confia nos instrumentos e no barómetro", e vai para o teu Telegram.
 - **Barómetro**: queda de mais de 3 hPa em 3 h, "o tempo pode piorar antes do previsto"; apaga-se
   com a queda em 3 h até 2 hPa. Vai também para o teu Telegram.
-- O teu Telegram recebe o "✓ Resolvido" quando passam. O apito contínuo fica só para o AIS.
+- O teu Telegram recebe o "✓ Resolvido" quando passam, uma só vez (o plugin porto guarda o que já
+  te mandou em `encaminhador.json`: um reinício do servidor não repete os avisos nem o "Resolvido").
+  O apito contínuo fica só para o AIS.
 
 **O que os contactos em terra recebem** (só se o plano lhes foi enviado; vão também para o teu chat):
 - "Cheguei bem a Peniche às 10:24. Obrigado!" à chegada (uma vez);
@@ -1423,7 +1440,12 @@ com menos de 1 MN, depois de 5 min a navegar). Um plano novo começa limpo; os 5
 - "Viagem terminada / mudança de planos: estou bem, em <posição> às HH:MM." ao Terminar;
 - o plano novo, com "Este plano substitui o anterior", ao Recalcular → Ativar.
 - Nada mais: os lembretes, os avisos e a rota mudada nunca vão para terra. Sem rede (ou sem o
-  plugin porto), as mensagens ficam em fila e voltam a tentar de 2 em 2 min.
+  plugin porto), as mensagens ficam em fila e voltam a tentar de 2 em 2 min (no teu chat só a 1.ª
+  vez). Um atraso que fica na fila sai com os valores da hora a que sai, e já não sai se entretanto
+  recuperaste.
+- Cada mensagem acaba com uma referência curta ("ref. A3"), a mesma em todas as tentativas: depois
+  de um reinício a meio de um envio a mensagem volta a sair (perder um atraso é pior do que o contacto
+  o receber duas vezes) e quem a recebe vê que é a mesma.
 
 **Os botões:**
 - **Recalcular**: um cálculo novo de onde estás para o mesmo destino e tripulação; abre o
@@ -1433,7 +1455,9 @@ com menos de 1 MN, depois de 5 min a navegar). Um plano novo começa limpo; os 5
   partidas. Um cálculo antigo é recusado e o plano antigo fica.
 - **Terminar** (pede confirmação: "Terminar o plano? Os contactos em terra recebem 'viagem
   terminada, estou bem'"): fecha o plano e os avisos.
-- **Rota mudada no OpenCPN** (outra rota ativa, ou nenhuma): o plano fica em pausa e o Leme mostra
+- Com o plano ativo, o Leme fica limpo: só o **Recalcular** (sai o "Novo cálculo" e o texto do OpenCPN).
+- **Rota mudada no OpenCPN** (outra rota ativa, ou nenhuma, durante pelo menos 2 min: logo a seguir a
+  um reinício a API de rumo pode ainda não ter a rota): o plano fica em pausa e o Leme mostra
   "a rota ativa já não é a do plano: terminar o plano?" com **Terminar**, **Continuar** (volta a
   ativar a rota do plano) e **Recalcular**. Nada segue sozinho para terra, exceto a chegada ao cais
   do plano (a mesma regra: "cheguei bem"). Parado 30 min noutro porto da lista, o Leme pergunta
@@ -1448,5 +1472,6 @@ no plugin da rota, de `modoTeste: true` com `horaSimulada: true` e `cicloSegundo
 configuração do servidor e recusa-se a correr sem ela (no Pi, com a segurança do SignalK ligada, nem a
 consegue ler). As opções de teste estão **desligadas por omissão**: `modoTeste` é `false` e, sem ele,
 `horaSimulada` e `cicloSegundos` não contam (no barco, o ciclo é sempre de 60 s); no fim do teste,
-desliga o `modoTeste`. Ctrl-C a meio termina o plano, desativa a rota e repõe a hora. Com
+desliga o `modoTeste`. Com ele ligado, o estado do plugin no Plugin Config começa por "MODO DE TESTE
+(hora simulada, ciclo de 1 s)", para nunca passar despercebido no barco. Ctrl-C a meio termina o plano, desativa a rota e repõe a hora. Com
 `--pausa <ficheiro>`, a hora pára enquanto o ficheiro existir.
