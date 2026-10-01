@@ -1,10 +1,11 @@
 'use strict'
 // Telegram FALSO para testes em casa: finge a API de bots (getUpdates com long
-// polling, sendMessage, sendPhoto, sendLocation). Guarda o que o barco envia e
+// polling, sendMessage, sendPhoto, sendDocument, sendLocation). Guarda o que o barco envia e
 // deixa "escrever" mensagens como se fosse o telemóvel do Ivo.
 //   node telegram-falso.js 8081          → servidor em http://localhost:8081
 //   POST /_escrever { chatId, text }      → mensagem do "telemóvel"
-//   GET  /_enviados                       → o que o barco enviou
+//   POST /_bloquear { chatId }            → esse chat passa a recusar (como quem bloqueou o bot)
+//   GET  /_enviados                       → o que o barco enviou (sendDocument: nomeFicheiro e conteudo)
 
 const http = require('node:http')
 
@@ -13,6 +14,7 @@ function criarTelegramFalso ({ porta = 0 } = {}) {
   const fila = []
   let proximoId = 1
   const espera = [] // pedidos getUpdates em long polling
+  const bloqueados = new Set()
 
   const responder = (res, codigo, obj) => { res.writeHead(codigo, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)) }
   const entregar = () => {
@@ -28,6 +30,28 @@ function criarTelegramFalso ({ porta = 0 } = {}) {
     entregar()
   }
 
+  // As partes de um corpo multipart/form-data: { nome: { dados (Buffer), ficheiro?, tipo? } }
+  function lerMultipart (corpo, tipo) {
+    const b = /boundary=(?:"([^"]+)"|([^;]+))/.exec(tipo || '')
+    if (!b) return {}
+    const fronteira = Buffer.from(`--${b[1] || b[2]}`)
+    const partes = {}
+    let i = corpo.indexOf(fronteira)
+    while (i >= 0) {
+      const ini = i + fronteira.length
+      if (corpo.subarray(ini, ini + 2).toString() === '--') break
+      const fim = corpo.indexOf(fronteira, ini)
+      if (fim < 0) break
+      const parte = corpo.subarray(ini + 2, fim - 2) // sem o \r\n depois da fronteira e antes da seguinte
+      const sep = parte.indexOf('\r\n\r\n')
+      const cab = parte.subarray(0, sep).toString('utf8')
+      const nome = /name="([^"]+)"/.exec(cab)?.[1]
+      if (nome) partes[nome] = { dados: parte.subarray(sep + 4), ficheiro: /filename="([^"]*)"/.exec(cab)?.[1], tipo: /content-type: ([^\r\n]+)/i.exec(cab)?.[1] }
+      i = fim
+    }
+    return partes
+  }
+
   const servidor = http.createServer((req, res) => {
     const partes = []
     req.on('data', (c) => partes.push(c))
@@ -36,18 +60,32 @@ function criarTelegramFalso ({ porta = 0 } = {}) {
       const url = req.url
       if (url === '/_enviados') return responder(res, 200, enviados)
       if (url === '/_escrever') { const j = JSON.parse(corpo.toString() || '{}'); escrever(j.chatId, j.text); return responder(res, 200, { ok: true }) }
+      if (url === '/_bloquear') { const j = JSON.parse(corpo.toString() || '{}'); bloqueados.add(String(j.chatId)); return responder(res, 200, { ok: true }) }
       const m = /^\/bot([^/]+)\/(\w+)$/.exec(url)
       if (!m) return responder(res, 404, { ok: false, description: 'Not Found' })
       const metodo = m[2]
-      if (metodo === 'sendPhoto') {
-        const texto = corpo.toString('latin1')
-        const chat = /name="chat_id"\r\n\r\n([^\r]+)/.exec(texto)?.[1]
-        const legenda = /name="caption"\r\n\r\n([^\r]*)/.exec(texto)?.[1]
-        const jpeg = texto.includes('\xff\xd8\xff')
-        enviados.push({ metodo, chatId: chat, caption: legenda ? Buffer.from(legenda, 'latin1').toString('utf8') : '', jpeg, bytes: corpo.length })
+      // um chat bloqueado recusa, como o Telegram quando a pessoa bloqueou o bot
+      const recusar = (chat) => {
+        if (!bloqueados.has(String(chat))) return false
+        responder(res, 403, { ok: false, error_code: 403, description: 'Forbidden: bot was blocked by the user' })
+        return true
+      }
+      if (metodo === 'sendPhoto' || metodo === 'sendDocument') {
+        const partes = lerMultipart(corpo, req.headers['content-type'])
+        const chat = partes.chat_id?.dados.toString('utf8')
+        if (recusar(chat)) return
+        const caption = partes.caption ? partes.caption.dados.toString('utf8') : ''
+        if (metodo === 'sendPhoto') {
+          const f = partes.photo?.dados
+          enviados.push({ metodo, chatId: chat, caption, jpeg: !!f && f[0] === 0xff && f[1] === 0xd8 && f[2] === 0xff, bytes: corpo.length })
+        } else {
+          const f = partes.document
+          enviados.push({ metodo, chatId: chat, caption, nomeFicheiro: f?.ficheiro ?? null, tipo: f?.tipo ?? null, conteudo: f ? f.dados.toString('utf8') : null, bytes: corpo.length })
+        }
         return responder(res, 200, { ok: true, result: { message_id: proximoId++ } })
       }
       const j = JSON.parse(corpo.toString() || '{}')
+      if (['sendMessage', 'sendLocation'].includes(metodo) && recusar(j.chat_id)) return
       if (metodo === 'getUpdates') {
         // Confirma as anteriores (como o Telegram) e espera por novas até ao timeout.
         for (let i = fila.length - 1; i >= 0; i--) if (fila[i].update_id < (j.offset || 0)) fila.splice(i, 1)
@@ -73,6 +111,7 @@ function criarTelegramFalso ({ porta = 0 } = {}) {
         url,
         enviados,
         escrever,
+        bloquear: (chatId) => bloqueados.add(String(chatId)),
         fechar: () => new Promise(r => { espera.splice(0).forEach(({ res }) => responder(res, 200, { ok: true, result: [] })); servidor.close(r) })
       })
     })
