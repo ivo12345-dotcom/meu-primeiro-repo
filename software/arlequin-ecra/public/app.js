@@ -8,6 +8,7 @@ import { criarBarometro, registarPressao, tendencia } from './lib/barometro.js'
 import { novaViagem, acumular } from './lib/viagem.js'
 import { maisGrave, deveTocar, paginaDoAlarme, bipDeLigacao, chipAlarme } from './lib/alarmes.js'
 import { podeRedesenhar, aoEnter, aoEscrever } from './lib/interacao.js'
+import { NIVEIS, PADRAO as BRILHO_PADRAO, nivelValido, mudarNivel } from './lib/brilho.js'
 import carta from './paginas/carta.js'
 import instr from './paginas/instr.js'
 import ais from './paginas/ais.js'
@@ -30,6 +31,8 @@ const app = {
   // ?pagina=ais e ?noite=1 abrem direto numa página (atalhos e capturas).
   pagina: PAGINAS[parametros.get('pagina')] ? parametros.get('pagina') : guardado('arlequin.pagina', 'carta'),
   noite: parametros.has('noite') ? parametros.get('noite') === '1' : guardado('arlequin.noite', false),
+  // o brilho de noite, 1–5 (2 por omissão; ?brilho=1 abre direto num nível, para as capturas)
+  brilho: nivelValido(parametros.has('brilho') ? parametros.get('brilho') : guardado('arlequin.brilho', BRILHO_PADRAO)),
   polar: null,
   baro: guardado('arlequin.baro', criarBarometro()),
   viagem: guardado('arlequin.viagem', null) || novaViagem(Date.now()),
@@ -134,7 +137,16 @@ function render (forcar = false) {
     }
   })
   document.getElementById('b-noite').classList.toggle('on', app.noite)
+  document.getElementById('b-noite').textContent = app.noite ? `Noite ${app.brilho}/${NIVEIS.length}` : 'Noite'
+  document.getElementById('b-brilho-menos').disabled = app.brilho <= 1
+  document.getElementById('b-brilho-mais').disabled = app.brilho >= NIVEIS.length
   return ctx
+}
+
+// o modo noite e o brilho no body (o estilo.css faz o resto)
+function aplicarNoite () {
+  document.body.classList.toggle('noite', app.noite)
+  document.body.dataset.brilho = String(app.brilho)
 }
 
 function janela (corpo) {
@@ -169,8 +181,15 @@ document.addEventListener('click', async (ev) => {
   if (acao === 'noite') {
     app.noite = !app.noite
     guardar('arlequin.noite', app.noite)
-    document.body.classList.toggle('noite', app.noite)
+    aplicarNoite()
     janela({ noite: app.noite })
+    return render()
+  }
+  // o brilho de noite (decisão do Ivo de 01/10): − e +, 5 níveis, guardado no ecrã
+  if (acao === 'brilho-menos' || acao === 'brilho-mais') {
+    app.brilho = mudarNivel(app.brilho, acao === 'brilho-mais' ? 1 : -1)
+    guardar('arlequin.brilho', app.brilho)
+    aplicarNoite()
     return render()
   }
   if (acao === 'silenciar') {
@@ -221,7 +240,7 @@ export function novaViagemAgora () {
 }
 window.arlequin = { novaViagemAgora, app, store }
 
-document.body.classList.toggle('noite', app.noite)
+aplicarNoite()
 fetch('polar-arlequin.csv').then(r => r.text()).then(t => { app.polar = lerPolar(t) }).catch(() => {})
 // Ligação caiu: dois bips curtos, uma só vez. A barra fica com "SEM LIGAÇÃO".
 function aoMudarLigacao () {

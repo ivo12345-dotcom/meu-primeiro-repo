@@ -10,16 +10,26 @@
   --mar: #10202c; --terra: #4a4a44;
   --segue: #0f6e56; --espera: #8a6d00; --naorec: #a8550f; --volta: #a32d2d; --faixa-texto: #fff;
 }
+/* Modo noite (decisão do Ivo de 01/10; substitui o vermelho de 29/09, onde não se distinguiam as linhas):
+   as mesmas cores do dia (vela azul, motor cinzento, perigo vermelho, ok verde, avisos âmbar, terra e mar
+   do mini-mapa), muito escurecidas, sobre preto; texto cinzento escuro. O brilho (− e +, 5 níveis)
+   escurece ainda a página toda por cima (filter: brightness, pelo data-brilho do body). */
 body.noite {
-  --fundo: #000; --barra: #0a0000; --tile: #140000; --botao: #1c0000; --borda: #3a0000;
-  --texto: #d42a1a; --texto-2: #8a1a10; --linha: #4a0a05;
-  --amarelo: #e03a1a; --azul: #a0200f; --verde: #7a1a0c; --ok: #c02a18;
-  --bb: #8a1a10; --eb: #5a120a; --rosa: #8a1a10;
-  --perigo: #ff4a2a; --perigo-fundo: #5a0000; --aviso-fundo: #3a0800; --ativo: #4a0500;
-  --rt: #2a0400; --rt-on: #4a0500; --vel: #2a0400; --vel-on: #4a0500;
-  --mar: #000; --terra: #2a0400;
-  --segue: #1c0000; --espera: #2a0400; --naorec: #3a0500; --volta: #5a0000; --faixa-texto: #ff5a3a;
+  --fundo: #000; --barra: #08090b; --tile: #0e1013; --botao: #17191d; --borda: #2a2d32;
+  --texto: #b4b6ba; --texto-2: #85837c; --linha: #46453f;
+  --amarelo: #b08f54; --azul: #5f88b3; --verde: #46701a; --ok: #6c8d40;
+  --bb: #a23736; --eb: #157257; --rosa: #983c5b;
+  --perigo: #b86c6c; --perigo-fundo: #561818; --aviso-fundo: #3a2600; --ativo: #0b2c4e;
+  --rt: #221d4e; --rt-on: #352f74; --vel: #3a2104; --vel-on: #70460e;
+  --mar: #0a1620; --terra: #34342f;
+  --segue: #073326; --espera: #3a2e00; --naorec: #4a2507; --volta: #561818; --faixa-texto: #c8cacd;
 }
+/* O brilho de noite (1 = o mais escuro, 2 por omissão; lib/brilho.js). */
+body.noite[data-brilho="1"] #app { filter: brightness(0.35); }
+body.noite[data-brilho="2"] #app { filter: brightness(0.5); }
+body.noite[data-brilho="3"] #app { filter: brightness(0.65); }
+body.noite[data-brilho="4"] #app { filter: brightness(0.8); }
+body.noite[data-brilho="5"] #app { filter: brightness(1); }
 html { font-size: calc(100vh / 50); }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--fundo); color: var(--texto);
@@ -69,7 +79,7 @@ html, body { margin: 0; height: 100%; background: var(--fundo); color: var(--tex
 .barra > div { height: 100%; border-radius: .3rem; }
 .xte { width: 100%; height: 1.6rem; }
 .carta-demo { flex: 0 0 58%; background: #fff; color: #555; border-radius: .4rem; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; text-align: center; }
-body.noite .carta-demo { background: #200; color: #a33; }
+body.noite .carta-demo { background: var(--tile); color: var(--texto-2); }
 
 .grelha { flex: 1 1 auto; display: grid; gap: .3rem; grid-auto-rows: 1fr; }
 .grelha > .tile { display: flex; flex-direction: column; justify-content: center; }
@@ -91,18 +101,24 @@ button, .btn { font: inherit; color: var(--texto); background: var(--botao); bor
 #botoes button.on { background: var(--ativo); border-color: var(--azul); }
 #botoes button.rt { background: var(--rt); } #botoes button.rt.on { background: var(--rt-on); }
 #botoes button.vel { background: var(--vel); } #botoes button.vel.on { background: var(--vel-on); }
+/* O brilho de noite: − e + ao lado do Noite, para o dedo (44 px); só de noite. */
+.brilho { display: none; }
+body.noite .brilho { display: block; }
+#botoes button.brilho { flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: .75rem .9rem; font-weight: bold; }
+#botoes button.brilho[disabled] { opacity: .4; cursor: not-allowed; }
 .acao { padding: .7rem 1.1rem; font-size: 1.1rem; font-weight: bold; }
 .acao.go { background: #0f6e56; } .acao.stop { background: var(--perigo-fundo); }
 /* De noite o fundo escuro não chega para se ver qual está escolhido (ex.: a vela atual). */
-body.noite .acao.go { background: #3a0500; color: #ff5a3a; outline: 2px solid #ff5a3a; outline-offset: -2px; }
+body.noite .acao.go { background: var(--segue); color: var(--texto); outline: 2px solid var(--ok); outline-offset: -2px; }
+body.noite .passo.feito .n { background: var(--segue); }
 .acoes { display: flex; flex-wrap: wrap; gap: .4rem; }
 input[type=text] { font: inherit; font-size: 1.1rem; padding: .5rem; flex: 1; background: var(--tile); color: var(--texto); border: 1px solid var(--borda); border-radius: .4rem; }
 .passo { display: flex; gap: .6rem; align-items: center; padding: .45rem .3rem; border-bottom: 1px solid var(--botao); font-size: 1.15rem; }
 .passo .n { flex: 0 0 2rem; height: 2rem; border-radius: 1rem; background: var(--botao); display: flex; align-items: center; justify-content: center; font-weight: bold; }
 .passo.feito .n { background: #0f6e56; } .passo.atual { background: var(--tile); }
 .aviso-som { cursor: pointer; }
-/* De noite nada pode ser branco: o alarme fica vermelho sobre escuro. */
-body.noite .chip.alarme, body.noite .chip.aviso { color: #ff5a3a; }
+/* De noite nada pode ser branco: a letra dos alarmes fica no cinzento claro das faixas. */
+body.noite .chip.alarme, body.noite .chip.aviso { color: var(--faixa-texto); }
 body.noite button, body.noite .btn { color: var(--texto); }
 /* Ecrãs ao alto (telemóvel): sem a zona da carta e a barra pode partir. */
 @media (max-aspect-ratio: 1/1) {
@@ -116,7 +132,7 @@ body.noite button, body.noite .btn { color: var(--texto); }
 .plano-faixa .acoes, .plano-pausado .acoes, .plano-confirmar .acoes { margin-top: .35rem; }
 /* O Terminar dentro da caixa vermelha (mesmo fundo): um contorno de dia; de noite, fundo e letra à parte. */
 .plano-pausado .acao.stop { outline: 2px solid #fff; outline-offset: -2px; }
-body.noite .plano-pausado .acao.stop { background: #000; color: #ff5a3a; outline: 2px solid #ff5a3a; outline-offset: -2px; }
+body.noite .plano-pausado .acao.stop { background: #000; color: var(--texto); outline: 2px solid var(--texto); outline-offset: -2px; }
 
 /* Melhor rota (3b-1): faixa do veredicto, cartões, avisos, precauções e o mini-mapa. */
 .rolar { overflow: auto; }
@@ -125,13 +141,13 @@ body.noite .plano-pausado .acao.stop { background: #000; color: #ff5a3a; outline
 .faixa.verde { background: var(--segue); } .faixa.amarelo { background: var(--espera); }
 .faixa.laranja { background: var(--naorec); } .faixa.vermelho { background: var(--volta); }
 .faixa.cinzento { background: var(--botao); }
-body.noite .faixa { outline: 2px solid var(--faixa-texto); outline-offset: -2px; }
+body.noite .faixa { outline: 1px solid var(--borda); outline-offset: -1px; }
 .cartao { cursor: pointer; border: 2px solid transparent; display: flex; flex-direction: column; gap: .15rem; font-size: 1rem; }
 .cartao.sel { border-color: var(--azul); background: var(--botao); }
 .nome-alt { font-weight: bold; font-size: 1.05rem; }
 .cartao .v { font-size: 1.1rem; }
 .caixa-erro { background: var(--perigo-fundo); color: #fff; font-weight: bold; font-size: 1.2rem; padding: .7rem 1rem; border-radius: .4rem; }
-body.noite .caixa-erro { color: #ff5a3a; }
+body.noite .caixa-erro { color: var(--faixa-texto); }
 .vermelhos .perigo { font-weight: normal; margin-top: .2rem; }
 .caixas { display: flex; flex-direction: column; gap: .3rem; }
 .caixa { text-align: left; padding: .7rem .6rem; font-size: 1.05rem; min-height: 44px; } /* para o dedo, ao leme */
