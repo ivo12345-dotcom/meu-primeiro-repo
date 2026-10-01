@@ -1223,6 +1223,10 @@ parte (3a) é o cálculo; a página do ecrã, o mini-mapa e o plano pelo Telegra
   **pontos de desistência** ao longo da rota.
 - **No Pi:** ativar o plugin `@signalk/resources-provider` no SignalK. Sem ele, o `/ativar` dá
   502 "não ativei a rota: …" — não há onde gravar a rota nem ativá-la.
+- **No Pi: ligar a segurança do SignalK** (Security, com utilizador e palavra-passe). O
+  `POST /plano-telegram`, o `/ativar`, o `/calcular` e o `/destinos` passam pelo router de
+  plugins do SignalK: sem segurança, qualquer aparelho na rede do barco pode mandar planos aos
+  contactos ou ativar rotas; com ela, só os aparelhos com sessão iniciada (o ecrã da roda).
 - **Caminho da polar:** `software/arlequin-ecra/public/polar-arlequin.csv`, do próprio
   repositório.
 - **Zonas e portos: estão por confirmar.** Antes de confiar no cálculo, o Ivo tem de ver na
@@ -1293,12 +1297,14 @@ estado, de dia e de noite, em `docs/capturas-3b1/`.
 
 **Como usar a página "Melhor rota":**
 - **Com uma rota ativa**, a página mostra o **Leme** (o rumo a seguir, os bordos, VIRA AGORA).
-  **Novo cálculo** volta à escolha do destino; a rota ativa aparece no topo da lista.
+  **Novo cálculo** volta à escolha do destino; a rota ativa aparece no topo da lista e
+  **Voltar ao leme** volta ao rumo (sair da página e voltar também).
 - **Pedir:** toca no destino (os portos vêm do mais perto para o mais longe; "+ acrescentar"
   grava um destino aqui, com a posição do GPS, ou por coordenadas, ex.: `39,37` e `9,34 W`),
   escolhe **Só eu** ou **2 ou mais** e carrega em **Calcular**. Sem GPS, o Calcular fica
   desligado ("sem GPS: não dá para calcular").
-- **A calcular:** a barra de progresso; demora uns segundos.
+- **A calcular:** a barra de progresso; demora uns segundos. **Cancelar** só deixa de seguir: o
+  plugin continua a calcular até ao fim (um novo Calcular segue esse cálculo).
 - **Resultado:** a faixa do veredicto (verde Segue, amarela Espera, laranja Não recomendado,
   vermelha Volta/abriga-te), a idade da previsão, os 3 cartões (toca num para o escolher), os
   **avisos vermelhos** (sempre visíveis), a linha do tempo, as **precauções** (caixas para marcar;
@@ -1310,7 +1316,8 @@ estado, de dia e de noite, em `docs/capturas-3b1/`.
 - **Enviar plano:** manda o plano de navegação (texto com a hora de alarme + o ficheiro GPX) pelo
   bot do Telegram do plugin porto. Mostra "enviado ✓ a N contactos" e marca a precaução "Plano
   deixado a alguém em terra"; se o porto não responder em 30 s: "o plugin porto não respondeu
-  (está ligado? tem o token?)".
+  (está ligado? tem o token?)". Quem falhou vem com o motivo ("bloqueou o bot", "sem ligação ao
+  Telegram"). Sem a chegada mais tarde não há hora de alarme e o plano não vai.
 - **Ativar esta rota:** grava e ativa a rota no SignalK (o OpenCPN mostra-a) e a página passa ao
   Leme. **Sair agora mesmo assim** recalcula só para partir já.
 
@@ -1322,13 +1329,14 @@ quem o recebe para ligar ao Ivo e, se ele não atender, ao MRCC Lisboa (+351 214
 1. A pessoa procura o bot do Arlequin no Telegram e manda **/start** (ou qualquer mensagem).
 2. O bot responde "Para receberes os planos do ARLEQUIN, dá este código ao Ivo: NNNN" (uma vez
    por hora, no máximo). O número também aparece no estado do plugin porto.
-3. O Ivo junta-a no plugin porto, em **Contactos do plano** (`contactosPlano`: nome + código).
+3. O Ivo junta-o no plugin porto, em **Contactos do plano** (`contactosPlano`: nome + código).
    Ninguém entra sozinho. Os contactos do plano recebem os planos, mas as mensagens deles são
    ignoradas (não podem /armar, /posicao, etc.). Os **Chats autorizados** (`chatIds`) também
    recebem o plano.
 
 **Telefones e barco na configuração** (plugin `signalk-arlequin-rota`):
-- `telefones.ivo` — o teu telemóvel (vazio por omissão: o plano diz só "liga ao Ivo");
+- `telefones.ivo` — o teu telemóvel (vazio por omissão: o plano diz só "liga ao Ivo", e o ecrã
+  avisa ao enviar);
 - `telefones.emergencia` — por omissão "+351 214 401 919 (MRCC Lisboa, 24 h) ou 112";
 - `barco` — nome (ARLEQUIN), modelo (Jeanneau Melody 34), cor do casco, MMSI e indicativo; os
   campos vazios ficam de fora do plano.
