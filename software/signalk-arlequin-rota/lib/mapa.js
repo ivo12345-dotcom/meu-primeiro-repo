@@ -8,10 +8,12 @@
 //   pontos: [[lat, lon], …] — as rotas, os rastos e os pontos de desistência. A janela abrange-os
 //     com 10% de margem, e os que são mar na costa original continuam mar no contorno simplificado
 //     (a simplificação nunca fecha uma enseada ou um porto por cima da rota);
-//   opcoes: { margem: 0.1, toleranciaMn: 0.1, toleranciaMaxMn: 0.5, maxPontos: 2000, log }. Com mais
+//   opcoes: { margem: 0.1, toleranciaMn: 0.1, toleranciaMaxMn: 0.5, maxPontos: 2000, maxVoltas: 40, log }. Com mais
 //     de maxPontos de terra, a tolerância sobe (× 1,5) até caber, mas nunca passa de toleranciaMaxMn
 //     (com mais, os cabos e a Berlenga começavam a deformar-se); se nem assim couber, fica com os
-//     pontos que tiver e regista-o. log(msg): o registo (no plugin, app.error), também quando a
+//     pontos que tiver e regista-o; a subida pára ao fim de maxVoltas (40), também com registo. Uma
+//     toleranciaMn que não seja um número > 0 é recusada (erro): a subida nunca sairia do sítio.
+//     log(msg): o registo (no plugin, app.error), também quando a
 //     proteção dos pontos não consegue repor um ponto no mar.
 //   Os ilhéus mais pequenos do que a tolerância INICIAL saem (a subida da tolerância não os tira),
 //     menos os que têm um ponto protegido lá dentro: pela paridade, um anel pequeno pode ser um
@@ -24,7 +26,7 @@
 
 const c = require('./costa')
 
-const PADRAO = Object.freeze({ margem: 0.1, toleranciaMn: 0.1, toleranciaMaxMn: 0.5, maxPontos: 2000, spanMin: 0.02 })
+const PADRAO = Object.freeze({ margem: 0.1, toleranciaMn: 0.1, toleranciaMaxMn: 0.5, maxPontos: 2000, maxVoltas: 40, spanMin: 0.02 })
 const r4 = (x) => Math.round(x * 1e4) / 1e4
 
 // A janela que abrange os pontos [[lat, lon]], com a margem (fração de cada lado) e um tamanho mínimo.
@@ -166,6 +168,7 @@ function simplificarProtegendo (aneis, tolMn, esc, protegidos, log) {
 
 function montarMapa (costa, { pontos = [] } = {}, opcoes = {}) {
   const o = { ...PADRAO, ...opcoes }
+  if (!(o.toleranciaMn > 0)) throw new Error('mini-mapa: a tolerância tem de ser um número maior do que 0 MN')
   const pts = pontos.filter(p => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]))
   const j = janela(pts, o.margem, o.spanMin)
   if (!j) return null
@@ -197,7 +200,7 @@ function montarMapa (costa, { pontos = [] } = {}, opcoes = {}) {
   const tolMax = Math.max(o.toleranciaMn, o.toleranciaMaxMn)
   let tol = o.toleranciaMn
   let terra = []
-  for (;;) {
+  for (let volta = 1; ; volta++) {
     // com a tolerância subida, nenhum anel se simplifica com mais de 1/4 do seu tamanho (a Berlenga,
     // com ~0,9 MN, desaparecia com 0,5 MN), mas nunca com menos do que a tolerância inicial
     const tols = tamanhos.map(t => Math.max(o.toleranciaMn, Math.min(tol, t / 4)))
@@ -207,6 +210,10 @@ function montarMapa (costa, { pontos = [] } = {}, opcoes = {}) {
     if (n <= o.maxPontos) break
     if (tol >= tolMax) {
       o.log?.(`mini-mapa: ${n} pontos de terra com a tolerância máxima (${String(tolMax).replace('.', ',')} MN)`)
+      break
+    }
+    if (volta >= o.maxVoltas) {
+      o.log?.(`mini-mapa: ${n} pontos de terra ao fim de ${o.maxVoltas} voltas (tolerância ${String(Math.round(tol * 1000) / 1000).replace('.', ',')} MN)`)
       break
     }
     tol = Math.min(tol * 1.5, tolMax)

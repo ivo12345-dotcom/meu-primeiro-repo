@@ -10,11 +10,14 @@
 // Horas de Lisboa: "HH:MM" hoje, "qua 30/09 HH:MM" nos outros dias (quem lê o plano pode lê-lo no
 // dia seguinte: o dia escreve-se sempre que não é o do envio, e o envio leva a data).
 // Na noite em que acaba a hora de verão, a hora das 01:00 às 02:00 acontece duas vezes: as horas
-// dessa hora levam " (hora de Verão)" ou " (hora de Inverno)".
+// dessa hora levam " (hora de verão)" ou " (hora de inverno)".
 // Hora de alarme = a chegada mais tarde (chegada.p90) + 2 h. Sem p90 não há hora de alarme: o plano
 // não se monta (erro com status 422 e o motivo SEM_ALARME).
 // "Até … ainda volta a X": o último ponto de desistência em que voltar à partida tem vento a favor ou
-// de través e sem aviso vermelho, com as exceções do resumo da desistência (", exceto …"). Os pontos
+// de través e sem aviso vermelho, com as exceções: os pontos antes dele em que a volta é uma fuga
+// junto à costa (com o aviso vermelho) ou não há fuga, em texto simples ("exceto junto ao Cabo Raso
+// às 19:16 (fuga junto à costa com vento do mar)"), tirados dos pontos e não do texto do resumo (os
+// diagnósticos do gerador de rotas não vão para os contactos em terra). Os pontos
 // de desistência só se calculam para a 1.ª alternativa: nas outras, a frase fica de fora. Nunca
 // escreve null, NaN nem undefined: o que falta fica de fora ou como "—".
 
@@ -42,13 +45,13 @@ function partes (t, fuso) {
 const valido = (t) => typeof t === 'number' && Number.isFinite(t)
 const ms = (x) => (typeof x === 'string' ? Date.parse(x) : x)
 
-// " (hora de Verão)" / " (hora de Inverno)" se a hora local de t também acontece noutro instante (a
+// " (hora de verão)" / " (hora de inverno)" se a hora local de t também acontece noutro instante (a
 // hora repetida no fim da hora de verão); '' nas outras.
 function horaRepetida (t, fuso) {
   const d = partes(t, fuso).desvio
   for (const t3 of [t - 3 * H, t + 3 * H]) {
     const d2 = partes(t3, fuso).desvio
-    if (d2 !== d && partes(t + (d - d2) * MIN, fuso).desvio === d2) return d > d2 ? ' (hora de Verão)' : ' (hora de Inverno)'
+    if (d2 !== d && partes(t + (d - d2) * MIN, fuso).desvio === d2) return d > d2 ? ' (hora de verão)' : ' (hora de inverno)'
   }
   return ''
 }
@@ -97,20 +100,21 @@ function ultimaVolta (desistencia) {
   return bons.at(-1) || null
 }
 
-// As exceções do resumo da desistência (", exceto …") quando o resumo fala do mesmo "até às" que a
-// frase do plano. O resumo só tem HH:MM: as horas dos pontos passam a ser como as do plano (com o
-// dia, se não for o do envio). '' sem exceções.
-function excecoes (resumo, desistencia, volta, agora, fuso) {
-  if (typeof resumo !== 'string' || typeof volta.hora !== 'string' || !resumo.startsWith(`até às ${volta.hora} `)) return ''
-  const m = resumo.match(/, exceto (.+)$/)
-  if (!m) return ''
-  const ate = Date.parse(volta.t)
-  const porHora = new Map()
-  for (const p of desistencia || []) {
+// As exceções da frase "até … ainda volta": os pontos antes de volta em que voltar não é uma fuga
+// limpa. Só o sítio, a hora e o porquê em texto simples. '' sem exceções.
+const AVISO_SEM_VENTO = /^fuga junto à costa sem vento previsto/
+function excecoes (desistencia, volta, agora, fuso) {
+  const antes = (desistencia || []).slice(0, desistencia.indexOf(volta))
+  const lista = antes.filter(p => !p.voltar || p.voltar.avisoVermelho).flatMap(p => {
     const t = Date.parse(p.t)
-    if (Number.isFinite(t) && t <= ate && typeof p.hora === 'string' && !porHora.has(p.hora)) porHora.set(p.hora, t)
-  }
-  return `, exceto ${m[1].replace(/às (\d{2}:\d{2})/g, (s, h) => (porHora.has(h) ? asHoras(porHora.get(h), agora, fuso) : s))}`
+    if (!Number.isFinite(t)) return []
+    const nome = p.tipo === 'cabo' && texto(p.nome)
+    const onde = nome ? `junto ${/^(Ponta|Nazaré)/.test(nome) ? 'à' : 'ao'} ${nome} ${asHoras(t, agora, fuso)}` : asHoras(t, agora, fuso)
+    const porque = !p.voltar ? 'sem fuga possível' : AVISO_SEM_VENTO.test(p.voltar.avisoVermelho) ? 'fuga junto à costa sem vento previsto' : 'fuga junto à costa com vento do mar'
+    return [`${onde} (${porque})`]
+  })
+  if (!lista.length) return ''
+  return `, exceto ${lista.length > 1 ? `${lista.slice(0, -1).join(', ')} e ${lista.at(-1)}` : lista[0]}`
 }
 
 function montarPlano ({ resultado, indice = 0, barco = {}, telefones = {}, agora = Date.now(), fuso = FUSO }) {
@@ -147,7 +151,7 @@ function montarPlano ({ resultado, indice = 0, barco = {}, telefones = {}, agora
   const volta = indice === 0 ? ultimaVolta(r.desistencia) : null
   if (volta) {
     const frase = ateAs(Date.parse(volta.t), agora, fuso)
-    linhas.push(`${frase[0].toUpperCase()}${frase.slice(1)} ainda volta a ${texto(volta.voltar.nome)}${excecoes(r.desistenciaResumo, r.desistencia, volta, agora, fuso)}.`)
+    linhas.push(`${frase[0].toUpperCase()}${frase.slice(1)} ainda volta a ${texto(volta.voltar.nome)}${excecoes(r.desistencia, volta, agora, fuso)}.`)
   }
 
   const ivo = texto(telefones.ivo)

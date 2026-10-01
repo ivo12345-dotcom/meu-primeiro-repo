@@ -59,7 +59,7 @@ test('o texto do plano (Peniche → Nazaré pelo Canal da Berlenga), exatamente'
     'Rota: a 5 MN da costa, via Canal da Berlenga, só motor',
     'Chegada provável: qua 30/09 18:21 (o mais tarde: qua 30/09 18:21)',
     'Tripulação: só eu',
-    'Até qua 30/09 às 17:09 ainda volta a Peniche, exceto qua 30/09 às 10:33 (5 MN feitas), onde a fuga é junto à costa com vento do mar; e qua 30/09 às 13:10 (15 MN feitas), onde a fuga é junto à costa com vento do mar; e qua 30/09 às 14:34 (20 MN feitas), onde não há fuga possível: rota absurda: 42,6 MN para 9,0 MN em linha reta; rota absurda: 51,5 MN para 9,0 MN em linha reta.',
+    'Até qua 30/09 às 17:09 ainda volta a Peniche, exceto qua 30/09 às 10:33 (fuga junto à costa com vento do mar), qua 30/09 às 13:10 (fuga junto à costa com vento do mar) e qua 30/09 às 14:34 (sem fuga possível).',
     '',
     'Hora de alarme: qua 30/09 20:21',
     'Se não houver notícias até qua 30/09 20:21, liga ao Ivo. Se não atender, liga ao MRCC Lisboa +351 214 401 919 (ou 112) e diz: veleiro ARLEQUIN, de Peniche para Nazaré, saída qua 30/09 09:30.',
@@ -77,11 +77,33 @@ test('com os dados do barco e o telefone do Ivo; abrigos pelo caminho e "até à
   assert.ok(linhas.includes('Partida: 15:32 de Algés (CNA)'), p.texto)
   assert.ok(linhas.includes('Rota: a 5 MN da costa, só motor'))
   assert.ok(linhas.includes('Abrigos pelo caminho: Oeiras, Cascais'), p.texto)
-  // as exceções do resumo da desistência vão com a frase (no dia do envio, só a hora)
-  assert.ok(linhas.includes('Até qua 30/09 às 06:29 ainda volta a Algés (CNA), exceto junto ao Cabo Raso às 19:16, onde a fuga é junto à costa com vento do mar.'), p.texto)
+  // as exceções da desistência vão com a frase (no dia do envio, só a hora)
+  assert.ok(linhas.includes('Até qua 30/09 às 06:29 ainda volta a Algés (CNA), exceto junto ao Cabo Raso às 19:16 (fuga junto à costa com vento do mar).'), p.texto)
   assert.match(p.texto, /liga ao Ivo \(\+351 912 345 678\)\. Se não atender/)
   assert.match(p.texto, /diz: veleiro ARLEQUIN, de Algés \(CNA\) para Peniche, saída 15:32\.$/m)
   assert.doesNotMatch(p.texto, proibido)
+})
+
+test('as exceções do "até às" vêm dos pontos da desistência, não do texto do resumo: nunca os diagnósticos internos', () => {
+  const ponto = (t, hora, extra) => ({ t, hora, tipo: 'marco', nome: null, lat: 38.7, lon: -9.4, milhas: 5, abrigo: null, voltar: null, semAbrigo: null, semVolta: null, ...extra })
+  const volta = (o = {}) => ({ id: 'alges', nome: 'Algés (CNA)', milhas: 9, vento: 'a favor', avisoVermelho: null, ...o })
+  const desistencia = [
+    ponto('2026-09-29T15:00:00Z', '16:00', { voltar: volta({ avisoVermelho: 'fuga junto à costa sem vento previsto — só em último recurso: não há vento previsto' }) }),
+    ponto('2026-09-29T15:30:00Z', '16:30', { semVolta: 'sem fuga possível daqui: rota absurda: 42,6 MN para 9,0 MN em linha reta; rota absurda: 51,5 MN para 9,0 MN em linha reta' }),
+    ponto('2026-09-29T16:00:00Z', '17:00', { tipo: 'cabo', nome: 'Nazaré', voltar: volta({ avisoVermelho: 'fuga junto à costa com vento do mar (a sotavento) — só em último recurso: 0,8 MN de terra' }) }),
+    ponto('2026-09-29T16:30:00Z', '17:30', { tipo: 'cabo', nome: 'Cabo Raso', voltar: volta({ avisoVermelho: 'fuga junto à costa com vento do mar (a sotavento) — só em último recurso: 0,8 MN de terra' }) }),
+    ponto('2026-09-29T17:00:00Z', '18:00', { voltar: volta({ vento: 'de través' }) }),
+    // depois do último "volta": não conta
+    ponto('2026-09-29T17:30:00Z', '18:30', { semVolta: 'sem fuga possível daqui: rota absurda' })
+  ]
+  // o resumo pode dizer outra coisa (ou nada): as exceções saem dos pontos
+  const r = { ...FIX.fuga, desistencia, desistenciaResumo: 'um texto qualquer' }
+  const p = montar(r, 0)
+  assert.ok(p.texto.split('\n').includes('Até às 18:00 ainda volta a Algés (CNA), exceto às 16:00 (fuga junto à costa sem vento previsto), às 16:30 (sem fuga possível), junto à Nazaré às 17:00 (fuga junto à costa com vento do mar) e junto ao Cabo Raso às 17:30 (fuga junto à costa com vento do mar).'), p.texto)
+  assert.doesNotMatch(p.texto, /rota absurda|sotavento|último recurso|MN de terra/)
+  // sem exceções: só a frase
+  const q = montar({ ...FIX.fuga, desistencia: [desistencia[4]], desistenciaResumo: null }, 0)
+  assert.ok(q.texto.split('\n').includes('Até às 18:00 ainda volta a Algés (CNA).'), q.texto)
 })
 
 test('a rota direta escreve-se "direta (salto curto)"; uma alternativa que não é a 1.ª não leva o "até às" (a desistência é da 1.ª)', () => {
@@ -128,13 +150,13 @@ test('o número do MRCC está numa só constante: o telefone de emergência por 
   assert.ok(montar(FIX.canal, 0).texto.includes(`liga ao MRCC Lisboa ${plano.MRCC} (ou 112)`))
 })
 
-test('mudança de hora: as horas da hora repetida (fim do horário de verão) dizem se são de Verão ou de Inverno', () => {
+test('mudança de hora: as horas da hora repetida (fim do horário de verão) dizem se são de verão ou de inverno', () => {
   const ag = Date.parse('2026-10-24T12:00:00Z')
   // 25/10/2026: às 02:00 de verão (01:00Z) volta-se à 01:00; das 01:00 às 02:00 acontece duas vezes
-  assert.equal(plano.horaLisboa(Date.parse('2026-10-25T00:30:00Z'), ag), 'dom 25/10 01:30 (hora de Verão)')
-  assert.equal(plano.horaLisboa(Date.parse('2026-10-25T01:30:00Z'), ag), 'dom 25/10 01:30 (hora de Inverno)')
-  assert.equal(plano.horaLisboa(Date.parse('2026-10-25T00:00:00Z'), ag), 'dom 25/10 01:00 (hora de Verão)')
-  assert.equal(plano.horaLisboa(Date.parse('2026-10-25T01:59:00Z'), ag), 'dom 25/10 01:59 (hora de Inverno)')
+  assert.equal(plano.horaLisboa(Date.parse('2026-10-25T00:30:00Z'), ag), 'dom 25/10 01:30 (hora de verão)')
+  assert.equal(plano.horaLisboa(Date.parse('2026-10-25T01:30:00Z'), ag), 'dom 25/10 01:30 (hora de inverno)')
+  assert.equal(plano.horaLisboa(Date.parse('2026-10-25T00:00:00Z'), ag), 'dom 25/10 01:00 (hora de verão)')
+  assert.equal(plano.horaLisboa(Date.parse('2026-10-25T01:59:00Z'), ag), 'dom 25/10 01:59 (hora de inverno)')
   assert.equal(plano.horaLisboa(Date.parse('2026-10-24T23:59:00Z'), ag), 'dom 25/10 00:59')
   assert.equal(plano.horaLisboa(Date.parse('2026-10-25T02:00:00Z'), ag), 'dom 25/10 02:00')
   // no início do horário de verão não há hora repetida (salta-se da 01:00 para as 02:00)
@@ -143,8 +165,8 @@ test('mudança de hora: as horas da hora repetida (fim do horário de verão) di
   // no plano: a hora de alarme na hora repetida
   const alt = { ...FIX.canal.alternativas[0], chegada: { p10: '2026-10-24T22:00:00Z', p50: '2026-10-24T23:00:00Z', p90: '2026-10-24T23:30:00Z' } }
   const p = plano.montarPlano({ resultado: { ...FIX.canal, alternativas: [alt] }, indice: 0, barco: BARCO, telefones: TELEFONES, agora: ag })
-  assert.match(p.texto, /^Hora de alarme: dom 25\/10 01:30 \(hora de Inverno\)$/m)
-  assert.match(p.texto, /^Se não houver notícias até dom 25\/10 01:30 \(hora de Inverno\), liga ao Ivo/m)
+  assert.match(p.texto, /^Hora de alarme: dom 25\/10 01:30 \(hora de inverno\)$/m)
+  assert.match(p.texto, /^Se não houver notícias até dom 25\/10 01:30 \(hora de inverno\), liga ao Ivo/m)
 })
 
 test('GPX 1.1 com um <rte> e os pontos da alternativa, o nome do barco e a data; nomes escapados para XML', () => {

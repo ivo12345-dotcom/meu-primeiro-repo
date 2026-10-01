@@ -110,6 +110,20 @@ test('montarMapa: a tolerância sobe no máximo até 0,5 MN e os ilhéus só sae
   }
 })
 
+test('montarMapa: recusa uma tolerância inicial <= 0 (a subida nunca saía do sítio e prendia o servidor) e a subida tem um limite de voltas', () => {
+  const pts = [[38.6, -9.6], [39.5, -9.2]]
+  for (const t of [0, -0.1, NaN]) {
+    assert.throws(() => mapa.montarMapa(costa, { pontos: pts }, { toleranciaMn: t }), { message: 'mini-mapa: a tolerância tem de ser um número maior do que 0 MN' })
+  }
+  // uma tolerância minúscula (mas > 0) levaria centenas de voltas a chegar ao máximo: pára ao fim de 40 e regista
+  const terra = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [[[-9.2, 38], [-9, 38], [-9, 38.2], [-9.2, 38.2], [-9.2, 38]]] } }] }
+  const registos = []
+  const m = mapa.montarMapa(c.criarCosta({ terra }), { pontos: [[38.25, -9.25], [37.95, -8.95]] }, { toleranciaMn: 1e-12, maxPontos: 1, log: (msg) => registos.push(msg) })
+  assert.ok(m.terra.length)
+  assert.equal(mapa.PADRAO.maxVoltas, 40)
+  assert.deepEqual(registos.map(r => r.replace(/[\d,]+ pontos/, 'N pontos').replace(/\(.*\)/, '(…)')), ['mini-mapa: N pontos de terra ao fim de 40 voltas (…)'])
+})
+
 test('montarMapa: um anel pequeno que é um buraco (mar dentro de terra) com um ponto protegido lá dentro não sai', () => {
   // terra: um quadrado de ~12 MN com um buraco de ~0,03 MN (abaixo da tolerância) onde está um ponto da rota
   const terra = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [[[-9.2, 38], [-9, 38], [-9, 38.2], [-9.2, 38.2], [-9.2, 38]], [[-9.1003, 38.0997], [-9.0997, 38.0997], [-9.0997, 38.1003], [-9.1003, 38.1003], [-9.1003, 38.0997]]] } }] }
@@ -134,7 +148,6 @@ test('simplificarProtegendo: quando não consegue repor um ponto protegido, regi
   assert.match(registos[0], /^mini-mapa: 1 ponto\(s\) da rota ficam em terra no contorno simplificado$/)
 })
 
-
 test('o cálculo passa o registo (deps.log) ao mini-mapa', async () => {
   const original = mapa.montarMapa
   const registos = []
@@ -145,4 +158,64 @@ test('o cálculo passa o registo (deps.log) ao mini-mapa', async () => {
     assert.ok(r.mapa)
   } finally { mapa.montarMapa = original }
   assert.deepEqual(registos, ['mini-mapa: teste'])
+})
+
+test('Algés → Peniche (29/09): o resultado traz o mapa — janela com tudo, ≤ 2000 pontos, a rota de 5 MN no mar, zonas da barra', async () => {
+  const r = await correr('ap', entrada('alges', 'peniche'))
+  assert.equal(r.erro, undefined, r.erro)
+  const m = r.mapa
+  assert.deepEqual(Object.keys(m), ['janela', 'terra', 'zonas'])
+  for (const a of r.alternativas) for (const p of a.rota) assert.ok(dentro(m.janela, p), JSON.stringify(p))
+  for (const d of r.desistencia) assert.ok(dentro(m.janela, [d.lat, d.lon]))
+  const n = m.terra.reduce((s, a) => s + a.length, 0)
+  assert.ok(n > 100 && n <= 2000, `${n} pontos`)
+  for (const anel of m.terra) for (const p of anel) assert.ok(p.every(Number.isFinite))
+  const a5 = r.alternativas.filter(a => a.afastamento === 5)
+  assert.ok(a5.length)
+  let vistos = 0
+  for (const a of a5) {
+    for (const p of a.rota) {
+      if (costa.emTerra(c.P(p))) continue // dentro de um porto que o OSM fecha: já é terra na costa original
+      vistos++
+      assert.ok(!emTerraSimplificada(m, c.P(p)), `ponto da rota em terra no contorno simplificado: ${p}`)
+    }
+  }
+  assert.ok(vistos > 20)
+  const zonas = m.zonas.map(z => z.nome)
+  assert.ok(zonas.some(z => /Cachopo do Norte/.test(z)), zonas.join())
+  assert.ok(zonas.some(z => /Berlengas/.test(z)), zonas.join())
+  assert.ok(!zonas.some(z => /São Vicente/.test(z)), zonas.join())
+  for (const z of m.zonas) { assert.equal(typeof z.nome, 'string'); assert.ok(z.pontos.length >= 3) }
+})
+
+test('cada alternativa traz o rasto provável de 10 em 10 min: { lat, lon, t, motor, noite }, da partida à chegada', async () => {
+  const r = await correr('ap', entrada('alges', 'peniche'))
+  for (const a of r.alternativas) {
+    const ra = a.rasto
+    assert.ok(ra.length > 20)
+    for (const p of ra) {
+      assert.deepEqual(Object.keys(p), ['lat', 'lon', 't', 'motor', 'noite'])
+      assert.ok(Number.isFinite(p.lat) && Number.isFinite(p.lon))
+      assert.equal(typeof p.motor, 'boolean')
+      assert.equal(typeof p.noite, 'boolean')
+    }
+    assert.equal(ra[0].t, a.partida)
+    for (let i = 1; i < ra.length - 1; i++) assert.equal(Date.parse(ra[i].t) - Date.parse(ra[i - 1].t), MIN10, `${a.id} ${i}`)
+    const ultimo = Date.parse(ra.at(-1).t) - Date.parse(ra.at(-2).t)
+    assert.ok(ultimo > 0 && ultimo <= MIN10)
+    assert.equal(ra.at(-1).t, a.chegada.p50)
+    // a 5 MN e só a motor: o rasto vai todo a motor
+    if (a.propulsao === 'motor') assert.ok(ra.every(p => p.motor))
+  }
+})
+
+test('Peniche → Nazaré: as zonas das Berlengas e das Estelas e Farilhões, e o rasto pelo canal no mar', async () => {
+  const r = await correr('pn', entrada('peniche', 'nazare'))
+  assert.equal(r.erro, undefined, r.erro)
+  const zonas = r.mapa.zonas.map(z => z.nome)
+  assert.ok(zonas.some(z => /Berlengas/.test(z)))
+  assert.ok(zonas.some(z => /Estelas/.test(z)))
+  const k = r.alternativas.find(a => a.canal)
+  assert.ok(k)
+  for (const p of k.rota) if (!costa.emTerra(c.P(p))) assert.ok(!emTerraSimplificada(r.mapa, c.P(p)), JSON.stringify(p))
 })
