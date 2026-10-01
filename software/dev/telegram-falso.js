@@ -5,6 +5,7 @@
 //   node telegram-falso.js 8081          → servidor em http://localhost:8081
 //   POST /_escrever { chatId, text }      → mensagem do "telemóvel"
 //   POST /_bloquear { chatId }            → esse chat passa a recusar (como quem bloqueou o bot)
+//   POST /_pendurar { chatId }            → os envios para esse chat nunca têm resposta (rede pendurada)
 //   GET  /_enviados                       → o que o barco enviou (sendDocument: nomeFicheiro e conteudo)
 
 const http = require('node:http')
@@ -15,6 +16,8 @@ function criarTelegramFalso ({ porta = 0 } = {}) {
   let proximoId = 1
   const espera = [] // pedidos getUpdates em long polling
   const bloqueados = new Set()
+  const pendurados = new Set()
+  const pendentes = [] // as respostas que nunca chegam (só se fecham no fim)
 
   const responder = (res, codigo, obj) => { res.writeHead(codigo, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)) }
   const entregar = () => {
@@ -61,11 +64,14 @@ function criarTelegramFalso ({ porta = 0 } = {}) {
       if (url === '/_enviados') return responder(res, 200, enviados)
       if (url === '/_escrever') { const j = JSON.parse(corpo.toString() || '{}'); escrever(j.chatId, j.text); return responder(res, 200, { ok: true }) }
       if (url === '/_bloquear') { const j = JSON.parse(corpo.toString() || '{}'); bloqueados.add(String(j.chatId)); return responder(res, 200, { ok: true }) }
+      if (url === '/_pendurar') { const j = JSON.parse(corpo.toString() || '{}'); pendurados.add(String(j.chatId)); return responder(res, 200, { ok: true }) }
       const m = /^\/bot([^/]+)\/(\w+)$/.exec(url)
       if (!m) return responder(res, 404, { ok: false, description: 'Not Found' })
       const metodo = m[2]
       // um chat bloqueado recusa, como o Telegram quando a pessoa bloqueou o bot
+      // um chat pendurado nunca responde (como uma ligação que fica a meio)
       const recusar = (chat) => {
+        if (pendurados.has(String(chat))) { pendentes.push(res); return true }
         if (!bloqueados.has(String(chat))) return false
         responder(res, 403, { ok: false, error_code: 403, description: 'Forbidden: bot was blocked by the user' })
         return true
@@ -112,7 +118,13 @@ function criarTelegramFalso ({ porta = 0 } = {}) {
         enviados,
         escrever,
         bloquear: (chatId) => bloqueados.add(String(chatId)),
-        fechar: () => new Promise(r => { espera.splice(0).forEach(({ res }) => responder(res, 200, { ok: true, result: [] })); servidor.close(r) })
+        pendurar: (chatId) => pendurados.add(String(chatId)),
+        fechar: () => new Promise(r => {
+          espera.splice(0).forEach(({ res }) => responder(res, 200, { ok: true, result: [] }))
+          pendentes.splice(0).forEach(res => res.destroy())
+          servidor.closeAllConnections?.()
+          servidor.close(r)
+        })
       })
     })
   })

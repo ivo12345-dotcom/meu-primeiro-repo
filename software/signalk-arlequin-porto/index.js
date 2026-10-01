@@ -9,6 +9,9 @@
 // com 'arlequin:plano-enviado' { pedido, entregues: [nome], falhas: [{ nome, erro }] }.
 // Os contactosPlano só recebem: as mensagens deles são ignoradas (não comandam). Quem escreve sem
 // estar em nenhuma das listas recebe o código para dar ao Ivo (uma vez por hora) e não fica autorizado.
+// O plano vai a todos os destinatários em paralelo e cada chamada ao Telegram tem um limite de 10 s,
+// para a resposta chegar bem antes dos 30 s que o plugin da rota espera; as falhas vão em pt-PT
+// ("bloqueou o bot", "sem ligação ao Telegram", "erro do Telegram: …").
 
 const fs = require('node:fs')
 const os = require('node:os')
@@ -17,7 +20,7 @@ const { exec } = require('node:child_process')
 const { novoEstado, passo, distancia } = require('./lib/regras')
 const { novoEncaminhador, encaminhar, listarNotificacoes, alarmesAtivos } = require('./lib/mensagens')
 const { resumo } = require('./lib/resumo')
-const { criarTelegram } = require('./lib/telegram')
+const { criarTelegram, erroEmPortugues } = require('./lib/telegram')
 
 const CAMINHOS = {
   agua: 'sensors.porao.agua',
@@ -29,6 +32,7 @@ const CAMINHOS = {
 }
 
 const UMA_HORA = 3600000
+const MAX_CODIGOS = 500 // os desconhecidos de que se guarda a hora do código (os mais antigos saem)
 const textoCodigo = (chatId) => `Para receberes os planos do ARLEQUIN, dá este código ao Ivo: ${chatId}`
 
 const AJUDA = `Comandos do Arlequin:
@@ -39,7 +43,10 @@ const AJUDA = `Comandos do Arlequin:
 /amarrar — grava aqui o ponto de amarração
 /largar — apaga o ponto de amarração`
 
-module.exports = function (app) {
+// deps (testes): agora() o relógio do anti-spam; maxCodigos; limiteTelegramMs o limite de cada chamada
+module.exports = function (app, deps = {}) {
+  const agora = deps.agora || (() => Date.now())
+  const maxCodigos = deps.maxCodigos ?? MAX_CODIGOS
   const plugin = {
     id: 'signalk-arlequin-porto',
     name: 'Arlequin · porto',
@@ -78,15 +85,18 @@ module.exports = function (app) {
   let aCorrer = false
   let tg = null
   let offset = 0
-  let codigoEnviado = new Map() // chatId desconhecido → quando recebeu o código (anti-spam: 1 por hora)
+  let codigoEnviado = new Map() // chatId desconhecido → quando recebeu o código (anti-spam: 1 por hora; por ordem)
 
   const val = (p) => app.getSelfPath?.(p)?.value
   const bool = (p) => { const x = val(p); return x === undefined || x === null ? undefined : !!x }
   const guardar = () => { try { fs.writeFileSync(ficheiro, JSON.stringify(persist)) } catch (e) { app.error(e.message) } }
 
+  // os chats autorizados: sem espaços, sem vazios, sem repetir (o mesmo para enviar e para autorizar)
+  const chatsAutorizados = () => [...new Set((Array.isArray(o.chatIds) ? o.chatIds : []).map(id => String(id ?? '').trim()).filter(Boolean))]
+
   async function enviarTodos (texto) {
     if (!tg) return
-    for (const id of o.chatIds) {
+    for (const id of chatsAutorizados()) {
       try { await tg.sendMessage(id, texto) } catch (e) { app.error(`Telegram: ${e.message}`) }
     }
   }
@@ -104,7 +114,7 @@ module.exports = function (app) {
 
   async function enviarFoto (legenda, paraId) {
     if (!tg) return
-    const destinos = paraId ? [paraId] : o.chatIds
+    const destinos = paraId ? [paraId] : chatsAutorizados()
     try {
       const jpeg = await tirarFoto()
       for (const id of destinos) await tg.sendPhoto(id, jpeg, legenda)
@@ -153,7 +163,7 @@ module.exports = function (app) {
   // os destinatários do plano: os chats autorizados e os contactos do plano, sem repetir
   function destinatariosPlano () {
     const out = []
-    for (const id of o.chatIds) out.push({ nome: `chat ${id}`, chatId: String(id) })
+    for (const id of chatsAutorizados()) out.push({ nome: `chat ${id}`, chatId: id })
     for (const c of contactosPlano()) if (!out.some(d => d.chatId === c.chatId)) out.push(c)
     return out
   }
@@ -161,18 +171,19 @@ module.exports = function (app) {
   async function enviarPlano (ev) {
     const pedido = ev?.pedido
     const responder = (entregues, falhas) => app.emit('arlequin:plano-enviado', { pedido, entregues, falhas })
-    if (!tg) return responder([], [{ nome: 'Telegram', erro: 'o plugin porto não tem o token do bot' }])
-    const entregues = []
-    const falhas = []
+    // o cliente do início: um stop() a meio (tg = null) não estraga o envio, que acaba sozinho
+    const cliente = tg
+    if (!cliente) return responder([], [{ nome: 'Telegram', erro: 'o plugin porto não tem o token do bot' }])
     const gpx = typeof ev?.gpx === 'string' && ev.gpx ? Buffer.from(ev.gpx, 'utf8') : null
-    for (const d of destinatariosPlano()) {
+    // todos ao mesmo tempo; em cada um, a mensagem e depois o GPX
+    const resultados = await Promise.all(destinatariosPlano().map(async (d) => {
       try {
-        await tg.sendMessage(d.chatId, String(ev?.texto ?? ''))
-        if (gpx) await tg.sendDocument(d.chatId, gpx, ev.nomeFicheiro || 'plano.gpx')
-        entregues.push(d.nome)
-      } catch (e) { falhas.push({ nome: d.nome, erro: e.message }) }
-    }
-    responder(entregues, falhas)
+        await cliente.sendMessage(d.chatId, String(ev?.texto ?? ''))
+        if (gpx) await cliente.sendDocument(d.chatId, gpx, ev.nomeFicheiro || 'plano.gpx')
+        return { nome: d.nome }
+      } catch (e) { return { nome: d.nome, erro: erroEmPortugues(e) } }
+    }))
+    responder(resultados.filter(x => !x.erro).map(x => x.nome), resultados.filter(x => x.erro))
   }
   const aoPlano = (ev) => { enviarPlano(ev).catch(e => app.error(`plano: ${e.message}`)) }
 
@@ -180,10 +191,18 @@ module.exports = function (app) {
   async function desconhecido (chatId) {
     app.setPluginStatus(`Mensagem de um chat NÃO autorizado: ${chatId} (se for o teu, junta-o em "Chats autorizados"; para só receber os planos, em "Contactos do plano")`)
     if (!chatId) return
+    const t = agora()
     const antes = codigoEnviado.get(chatId)
-    if (antes != null && Date.now() - antes < UMA_HORA) return
-    codigoEnviado.set(chatId, Date.now())
-    await tg.sendMessage(chatId, textoCodigo(chatId))
+    if (antes != null && t - antes < UMA_HORA) return
+    // a lista não cresce sem fim: saem os de há mais de 1 h e, acima do máximo, os mais antigos
+    codigoEnviado.delete(chatId)
+    for (const [id, quando] of codigoEnviado) if (t - quando >= UMA_HORA) codigoEnviado.delete(id)
+    codigoEnviado.set(chatId, t)
+    while (codigoEnviado.size > maxCodigos) codigoEnviado.delete(codigoEnviado.keys().next().value)
+    // quem bloqueou o bot (ou a rede a falhar) não pode parar o ciclo dos comandos do Ivo
+    const cliente = tg
+    if (!cliente) return
+    await cliente.sendMessage(chatId, textoCodigo(chatId)).catch(e => app.error(`Telegram (código para ${chatId}): ${erroEmPortugues(e)}`))
   }
 
   async function ouvirTelegram () {
@@ -193,7 +212,7 @@ module.exports = function (app) {
         for (const u of updates) {
           offset = u.update_id + 1
           const chatId = String(u.message?.chat?.id ?? '')
-          if (o.chatIds.map(String).includes(chatId)) { await comando(chatId, u.message?.text); continue }
+          if (chatId && chatsAutorizados().includes(chatId)) { await comando(chatId, u.message?.text); continue }
           // os contactos do plano só recebem: os comandos deles ignoram-se
           if (contactosPlano().some(c => c.chatId === chatId)) continue
           await desconhecido(chatId)
@@ -256,7 +275,7 @@ module.exports = function (app) {
     enc = novoEncaminhador()
     offset = 0
     aCorrer = true
-    tg = o.telegramToken ? criarTelegram({ token: o.telegramToken, base: o.telegramBase }) : null
+    tg = o.telegramToken ? criarTelegram({ token: o.telegramToken, base: o.telegramBase, ...(deps.limiteTelegramMs ? { limiteMs: deps.limiteTelegramMs } : {}) }) : null
     temporizadores = [setInterval(tick, 1000), setInterval(encaminharAlarmes, 2000)]
     if (o.batimentoUrl) {
       const bater = () => fetch(o.batimentoUrl).catch(e => app.error(`batimento: ${e.message}`))
