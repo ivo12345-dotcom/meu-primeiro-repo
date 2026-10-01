@@ -162,3 +162,12 @@ test('8 (porto): o evento leva os chats (chatId) dos contactos a par dos nomes; 
   assert.deepEqual(ev, { pedido: 'p1', tipo: 'chegada', texto: 'c', destinatarios: 'contactos-do-plano', contactos: ['Mãe'], chats: ['222'] })
   assert.deepEqual(ct.porNaFila(ct.novaFila(), { tipo: 'chegada', texto: 'c', contactos: ['Mãe'], chats: ['222'] }, T0).fila[0].chats, ['222'])
 })
+
+test('re-revisão M-5: o evento de uma nova tentativa diz a tentativa (o porto já não a repete ao Ivo); a 1.ª não leva o campo', () => {
+  let c = ct.porNaFila(ct.novaFila(), { tipo: 'atraso', texto: 'a', contactos: ['Mãe'], chats: ['222'] }, T0)
+  c = ct.marcarAEnviar(c, c.fila[0].id, 'p1', T0)
+  assert.equal(ct.evento(c.fila[0], 'p1').tentativa, undefined)
+  c = ct.falhou(c, 'p1', 'sem resposta', T0)
+  c = ct.marcarAEnviar(c, c.fila[0].id, 'p2', T0 + 2 * MIN)
+  assert.equal(ct.evento(c.fila[0], 'p2').tentativa, 2)
+})

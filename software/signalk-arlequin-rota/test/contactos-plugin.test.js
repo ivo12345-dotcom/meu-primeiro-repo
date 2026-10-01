@@ -361,6 +361,30 @@ test('decisão 5 (Ivo): a rota do plano desligada à chegada (pausado): o plano 
   s.p.stop()
 })
 
+test('re-revisão I-1 (sonda P1): a rota limpa a ~27 % da viagem, o Ivo segue à mão até Algés e fica 40 min parado no cais → "cheguei bem" (o afastamento real da partida conta como progresso em pausa)', async () => {
+  const s = await preparar()
+  await sair(s)
+  const total = pa.comprimentoRota(s.p.planoAtivo())
+  let k = 3
+  for (; k < s.alt.rasto.length && !((s.p.acompanhamento()?.milhas ?? 0) >= 0.27 * total); k++) { s.por(s.alt.rasto[k]); await s.ciclo() }
+  const milhas = s.p.acompanhamento().milhas
+  assert.ok(milhas >= 0.27 * total && milhas < 0.5 * total, `${milhas} de ${total}`)
+  // o Ivo limpa a rota no OpenCPN e segue o rasto à mão até ao fim
+  s.app.rotaAtiva = null
+  for (; k < s.alt.rasto.length; k++) { s.por(s.alt.rasto[k]); await s.ciclo() }
+  assert.equal(s.p.planoAtivo().estado, 'pausado')
+  // o afastamento máximo fica gravado no plano (um reinício não o perde)
+  assert.ok(plano(s).afastamentoMaxMn >= 0.9 * s.p.planoAtivo().afastamentoMaxMn && plano(s).afastamentoMaxMn > 1, `${plano(s).afastamentoMaxMn}`)
+  s.por(s.alt.pontosRota.at(-1), 0)
+  for (let m = 0; m < 40; m++) await s.ciclo()
+  assert.equal(s.p.planoAtivo().estado, 'chegado')
+  assert.equal(plano(s).estado, 'chegado', 'gravado')
+  const chegadas = s.recebidos.filter(e => e.tipo === 'chegada')
+  assert.equal(chegadas.length, 1)
+  assert.match(chegadas[0].texto, /^Cheguei bem a Algés \(CNA\) às \d\d:\d\d\. Obrigado!$/)
+  s.p.stop()
+})
+
 test('decisão 5 (Ivo): em pausa no mar, parado 30 min noutro porto da lista → GET chegadaOutro { id, nome }; nada segue até o Ivo carregar; POST /plano-ativo/chegada { destino } manda "Cheguei bem a X" e fecha o plano', async () => {
   const s = await preparar()
   await sair(s)
@@ -418,5 +442,78 @@ test('9 (ecrã): o atraso do GET /plano-ativo arredonda para o lado do aviso (pa
   }
   assert.ok(a != null, 'um atraso com menos de meio minuto')
   assert.equal((await chamar(s.r.get['/plano-ativo'])).atrasoMin, Math.ceil(a))
+  s.p.stop()
+})
+
+test('re-revisão M-2: um atraso na fila (o porto em baixo) faz-se com os valores de agora à hora de sair, e sai da fila se deixou de valer (o barco recuperou)', async () => {
+  const s = await preparar()
+  await sair(s)
+  const ouvintes = s.app.listeners('arlequin:plano')
+  s.app.removeAllListeners('arlequin:plano') // o porto desligado: a mensagem fica na fila
+  const filaAtraso = () => (s.p.planoAtivo().contactos?.fila || []).filter(m => m.tipo === 'atraso')
+  s.por(s.alt.rasto[2], 0)
+  let m = 0
+  for (; m < 180 && !filaAtraso().length; m++) await s.ciclo()
+  assert.equal(filaAtraso().length, 1, 'o atraso entrou na fila')
+  // mais 20 min parado: à hora de sair, a chegada e a hora de alarme são as de agora
+  for (let k = 0; k < 20; k++) await s.ciclo()
+  for (const f of ouvintes) s.app.on('arlequin:plano', f)
+  for (let k = 0; k < 3 && !s.recebidos.some(e => e.tipo === 'atraso'); k++) await s.ciclo()
+  const g = await chamar(s.r.get['/plano-ativo'])
+  const enviado = s.recebidos.filter(e => e.tipo === 'atraso').at(-1)
+  assert.ok(enviado, 'saiu quando o porto voltou')
+  assert.ok(enviado.texto.includes(`Nova chegada prevista ~${horaLisboa(Date.parse(g.chegadaAgora), s.agora())}.`), `${enviado.texto} · ${g.chegadaAgora}`)
+  s.p.stop()
+
+  // outra vez, mas o barco recupera antes de o porto voltar: o atraso sai da fila e nada segue
+  const t = await preparar()
+  await sair(t)
+  const ouv = t.app.listeners('arlequin:plano')
+  t.app.removeAllListeners('arlequin:plano')
+  const fila = () => (t.p.planoAtivo().contactos?.fila || []).filter(x => x.tipo === 'atraso')
+  t.por(t.alt.rasto[2], 0)
+  for (let k = 0; k < 180 && !fila().length; k++) await t.ciclo()
+  assert.equal(fila().length, 1)
+  // apanha o plano: avança no rasto (2 pontos por minuto) até ao ponto da hora de agora e segue-o 15 min
+  const indice = () => { let i = 0; while (i + 1 < t.alt.rasto.length && Date.parse(t.alt.rasto[i + 1].t) <= t.agora()) i++; return i }
+  // a posição do plano 3 min à frente da hora de agora (entre dois pontos do rasto): um pouco adiantado
+  const aHoras = () => {
+    const tt = t.agora() + 3 * MIN
+    let i = 0; while (i + 1 < t.alt.rasto.length && Date.parse(t.alt.rasto[i + 1].t) <= tt) i++
+    const a = t.alt.rasto[i]; const b = t.alt.rasto[Math.min(i + 1, t.alt.rasto.length - 1)]
+    const f = b === a ? 0 : (tt - Date.parse(a.t)) / (Date.parse(b.t) - Date.parse(a.t))
+    return { lat: a.lat + f * (b.lat - a.lat), lon: a.lon + f * (b.lon - a.lon) }
+  }
+  let ci = 2
+  for (let k = 0; k < 200 && ci < indice(); k++) { ci = Math.min(ci + 2, indice()); t.por(t.alt.rasto[ci]); await t.ciclo() }
+  for (let k = 0; k < 15; k++) { t.por(aHoras()); await t.ciclo() }
+  const ch = (await chamar(t.r.get['/plano-ativo'])).chegadaAgora
+  assert.ok(Date.parse(ch) <= Date.parse(t.alt.chegada.p90), `recuperou: ${ch} (p90 ${t.alt.chegada.p90})`)
+  assert.deepEqual(fila(), [], 'o atraso deixou de valer: sai da fila')
+  for (const f of ouv) t.app.on('arlequin:plano', f)
+  for (let k = 0; k < 5; k++) { t.por(aHoras()); await t.ciclo() }
+  assert.deepEqual(t.recebidos.filter(e => e.tipo === 'atraso'), [])
+  t.p.stop()
+})
+
+test('re-revisão M-3: Recalcular → Ativar com o plano enviado: a hora de alarme do GET (envio.alarme) só passa à do plano novo quando o "Este plano substitui o anterior" chega a terra', async () => {
+  const s = await preparar()
+  await sair(s)
+  const antes = (await chamar(s.r.get['/plano-ativo'])).envio.alarme
+  s.porto.resposta = () => null // o porto não responde
+  const b = await chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 1 } })
+  assert.equal(b.code, 200, b.erro)
+  const ev = s.recebidos.find(e => e.tipo === 'plano')
+  assert.ok(ev, 'o plano novo saiu')
+  let g = await chamar(s.r.get['/plano-ativo'])
+  assert.equal(g.envio.alarme, antes, 'ainda não chegou a terra: a hora de alarme é a do plano antigo')
+  assert.equal(plano(s).envio.alarme, antes, 'e no plano gravado')
+  // o porto responde: o plano novo chegou
+  s.app.emit('arlequin:plano-enviado', { pedido: ev.pedido, entregues: ['chat 111', 'Mãe'], contactos: ['Mãe'], chats: ['222'], falhas: [] })
+  g = await chamar(s.r.get['/plano-ativo'])
+  const novo = new Date(require('../lib/plano').horaAlarme(s.resultado.alternativas[1])).toISOString()
+  assert.notEqual(novo, antes)
+  assert.equal(g.envio.alarme, novo)
+  assert.equal(plano(s).envio.alarme, novo)
   s.p.stop()
 })

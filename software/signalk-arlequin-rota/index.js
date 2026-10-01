@@ -28,7 +28,8 @@
 //        aviso do recalcula), proximo: { texto, hora } | null, chegadaAgora, chegadaPlano, chegadaNoite,
 //        recursos: { gasoleoChegadaL, bateriaChegadaPct, semLeitura, aviso }, semGps, barometro: { semLeitura,
 //        quedaHpa }, previsaoIdadeH, avisos: [{ caminho, state, message }], envio: { contactos, alarme (o
-//        último entregue em terra), alarmePlano } | null, chegadaOutro: { id, nome } | null,
+//        último entregue em terra: o de um plano reenviado só quando chega), alarmePlano (o deste plano) } | null,
+//        chegadaOutro: { id, nome } | null,
 //        filaContactos: [{ tipo, criada, tentativas, proxima, estado, erro }], enviadas: [{ tipo, enviadaEm, contactos }] }
 //        chegadaOutro (decisão do Ivo de 01/10): em pausa no mar, parado 30 min a menos de 0,3 MN de outro
 //        porto da lista (dados/destinos.json): o ecrã pergunta "Chegaste a X?"
@@ -74,7 +75,8 @@
 // Só testes (a viagem acelerada do dev, software/dev/viagem-acelerada.js), e só com modoTeste: true
 // (desligado por omissão; sem ele as duas opções não contam): com horaSimulada, a hora do plugin é o
 // navigation.datetime do SignalK (sem ele, o ciclo não corre) e o ciclo corre de cicloSegundos em
-// cicloSegundos (no mínimo 1 s). No barco fica tudo desligado (o padrão).
+// cicloSegundos (no mínimo 1 s). No barco fica tudo desligado (o padrão). Com o modoTeste ligado, o estado
+// do plugin começa por "MODO DE TESTE (hora simulada, ciclo de 1 s) · …" (vê-se no Plugin Config).
 //
 // O destino do /calcular: o id de um destino da lista (dados/destinos.json ou os do Ivo),
 // 'rota-ativa' (o fim da rota ativa no SignalK/OpenCPN), ou { lat, lon, nome }.
@@ -233,8 +235,13 @@ module.exports = function (app, deps = {}) {
   let modelosVento = {}
   const pedidosContactos = new Map() // pedido → temporizador dos 30 s (as mensagens para terra)
 
+  let afastGravado = null // o afastamento máximo da partida da última gravação do plano
+  // O estado do plugin (Plugin Config); com o modoTeste ligado, à frente (re-revisão M-4): "MODO DE TESTE
+  // (hora simulada, ciclo de 1 s) · …", para nunca passar despercebido no barco
+  let modoTesteTexto = ''
+  function estadoPlugin (texto) { app.setPluginStatus(`${modoTesteTexto}${texto}`) }
   function gravarPlanoAtivo () {
-    try { pa.gravar(dirPlugin, planoAtivo) } catch (e) { app.error(`não gravei o plano ativo: ${e.message}`) }
+    try { pa.gravar(dirPlugin, planoAtivo); afastGravado = planoAtivo?.afastamentoMaxMn ?? null } catch (e) { app.error(`não gravei o plano ativo: ${e.message}`) }
   }
   // O envio de uma alternativa (o mais recente com contactos em terra): { contactos, alarme, pedido, enviadoEm } ou null.
   function envioDe (id, indice, alt) {
@@ -370,8 +377,20 @@ module.exports = function (app, deps = {}) {
   // A próxima mensagem da fila, se for a hora dela (uma de cada vez).
   function enviarFila (agora) {
     if (!planoAtivo?.contactos) return
-    const m0 = ct.proxima(planoAtivo.contactos, agora)
+    let m0 = ct.proxima(planoAtivo.contactos, agora)
     if (!m0) return
+    // o atraso faz-se com os valores de agora (re-revisão M-2): com o último acompanhamento a navegar,
+    // sai da fila se deixou de valer, senão leva a chegada e o alarme mais recentes
+    if (m0.tipo === 'atraso' && !m0.anterior && ultimo?.estado === pa.ESTADOS.NAVEGAR && !ultimo.semGps) {
+      const d = atrasoAgora(ultimo, agora)
+      if (!d) {
+        planoAtivo = { ...planoAtivo, contactos: ct.tirar(planoAtivo.contactos, m0.id) }
+        gravarPlanoAtivo()
+        return enviarFila(agora)
+      }
+      planoAtivo = { ...planoAtivo, contactos: ct.atualizarAtraso(planoAtivo.contactos, m0.id, { chegada: d.chegada, alarme: d.alarme }) }
+      m0 = planoAtivo.contactos.fila.find(x => x.id === m0.id)
+    }
     const pedido = crypto.randomUUID()
     // o atraso diz "em vez de" o último alarme entregue em terra (o texto faz-se à hora de sair)
     const texto = m0.tipo === 'atraso' && !m0.anterior && Number.isFinite(m0.chegada) ? textoAtraso(m0, agora) : null
@@ -400,7 +419,11 @@ module.exports = function (app, deps = {}) {
     const enviada = planoAtivo.contactos.enviadas.at(-1)
     const entregue = !!msg && !msg.anterior && enviada?.id === msg.id
     // o plano novo entregue: o envio passa a ser este (a quem chegou)
-    if (entregue && msg.tipo === 'plano' && planoAtivo.envio) planoAtivo = { ...planoAtivo, envio: { ...planoAtivo.envio, contactos: [...enviada.contactos], chats: [...(enviada.chats || [])], pedido: m.pedido, enviadoEm: enviada.enviadaEm } }
+    if (entregue && msg.tipo === 'plano' && planoAtivo.envio) {
+      const { alarmePendente, ...envio } = planoAtivo.envio
+      // a hora de alarme do plano novo passa a contar agora que chegou (re-revisão M-3)
+      planoAtivo = { ...planoAtivo, envio: { ...envio, ...(alarmePendente !== undefined ? { alarme: alarmePendente } : {}), contactos: [...enviada.contactos], chats: [...(enviada.chats || [])], pedido: m.pedido, enviadoEm: enviada.enviadaEm } }
+    }
     // o atraso só conta quando chega a terra: a hora de alarme do GET e o "em vez de" seguintes
     if (entregue && msg.tipo === 'atraso' && Number.isFinite(enviada.chegada)) planoAtivo = { ...planoAtivo, atrasoEnviado: { ultimoEm: agora, chegada: enviada.chegada, alarme: enviada.alarme } }
     gravarPlanoAtivo()
@@ -414,15 +437,23 @@ module.exports = function (app, deps = {}) {
   // O atraso para terra (só a navegar, com GPS e o plano enviado). Decide-se contra o último entregue;
   // com um atraso ainda na fila, esse passa a ter a chegada mais recente (sem perder a vez da tentativa);
   // com um "a enviar", espera a resposta.
+  // O atraso que vale agora (decidido contra o último entregue), com o resultado do acompanhamento.
+  function atrasoAgora (res, agora) {
+    return ct.decidirAtraso(planoAtivo.atrasoEnviado || null, {
+      chegadaAgora: Date.parse(res.chegadaAgora), p90: Date.parse(planoAtivo.alternativa.chegada?.p90), alarmePlano: Date.parse(planoAtivo.envio?.alarme), agora
+    })
+  }
   function atrasoParaTerra (res, agora) {
     const envio = planoAtivo.envio
     if (!envio?.contactos?.length || res.semGps) return
-    const d = ct.decidirAtraso(planoAtivo.atrasoEnviado || null, {
-      chegadaAgora: Date.parse(res.chegadaAgora), p90: Date.parse(planoAtivo.alternativa.chegada?.p90), alarmePlano: Date.parse(envio.alarme), agora
-    })
-    if (!d) return
+    const d = atrasoAgora(res, agora)
     const c = planoAtivo.contactos || ct.novaFila()
     const pendente = c.fila.find(m => m.tipo === 'atraso' && !m.anterior)
+    // deixou de valer (o barco recuperou): o atraso que ainda está na fila sai (re-revisão M-2)
+    if (!d) {
+      if (pendente?.estado === 'fila') { planoAtivo = { ...planoAtivo, contactos: ct.tirar(c, pendente.id) }; gravarPlanoAtivo() }
+      return
+    }
     if (pendente) {
       if (pendente.estado !== 'fila' || (pendente.chegada === d.chegada && pendente.alarme === d.alarme)) return
       planoAtivo = { ...planoAtivo, contactos: ct.atualizarAtraso(c, pendente.id, { chegada: d.chegada, alarme: d.alarme, texto: textoAtraso(d, agora) }) }
@@ -495,6 +526,9 @@ module.exports = function (app, deps = {}) {
     const r = pa.avaliar(planoAtivo, leitura, memPlano, agora, { portos })
     planoAtivo = r.plano
     memPlano = r.mem
+    // o afastamento máximo da partida (a chegada em pausa) grava-se quando cresce 0,1 MN
+    const afast = planoAtivo.afastamentoMaxMn
+    if (!r.mudou && Number.isFinite(afast) && (afastGravado == null || afast - afastGravado >= SEGUIMENTO_MN)) gravarPlanoAtivo()
     // a chegada: "cheguei bem" aos contactos (uma vez: o plano fica fechado)
     if (r.mudou === 'chegou') porMensagem('chegada', ct.textoChegada({ destino: planoAtivo.destino?.nome, chegou: Date.parse(planoAtivo.chegou), agora }), agora)
     if (r.mudou) gravarPlanoAtivo()
@@ -584,7 +618,7 @@ module.exports = function (app, deps = {}) {
       previsaoIdadeH: Number.isFinite(u?.previsaoIdadeH) ? Math.round(u.previsaoIdadeH * 10) / 10 : null,
       avisos: ativos,
       // a hora de alarme: a do último atraso entregue em terra (sem nenhum, a do plano)
-      envio: p.envio ? { contactos: p.envio.contactos, alarme: Number.isFinite(p.atrasoEnviado?.alarme) ? new Date(p.atrasoEnviado.alarme).toISOString() : p.envio.alarme, alarmePlano: p.envio.alarme } : null,
+      envio: p.envio ? { contactos: p.envio.contactos, alarme: Number.isFinite(p.atrasoEnviado?.alarme) ? new Date(p.atrasoEnviado.alarme).toISOString() : p.envio.alarme, alarmePlano: p.envio.alarmePendente ?? p.envio.alarme } : null,
       chegadaOutro: sug ? { id: sug.id, nome: sug.nome } : null,
       filaContactos: c.fila.map(m => ({ tipo: m.tipo, criada: m.criada, tentativas: m.tentativas, proxima: m.proxima, estado: m.estado, erro: m.erro })),
       enviadas: c.enviadas.map(m => ({ tipo: m.tipo, enviadaEm: m.enviadaEm, contactos: m.contactos }))
@@ -742,10 +776,11 @@ module.exports = function (app, deps = {}) {
     if (cicloTimer) pararCiclo(cicloTimer)
     // cicloSegundos só com modoTeste (no mínimo 1 s); no barco, 60 s
     const cicloMs = o.modoTeste === true && Number.isFinite(o.cicloSegundos) ? Math.max(1, o.cicloSegundos) * 1000 : CICLO_MS
+    modoTesteTexto = o.modoTeste === true ? `MODO DE TESTE (${simulada() ? 'hora simulada' : 'hora real'}, ciclo de ${cicloMs / 1000} s) · ` : ''
     cicloTimer = agendarCiclo(() => { cicloNavegar() }, cicloMs)
     app.removeListener?.('arlequin:plano-enviado', aoPlanoEnviado)
     app.on?.('arlequin:plano-enviado', aoPlanoEnviado)
-    app.setPluginStatus(`Pronto · ${costaBase.destinos.length + meusDestinos().length} destinos`)
+    estadoPlugin(`Pronto · ${costaBase.destinos.length + meusDestinos().length} destinos`)
   }
 
   plugin.stop = function () {
@@ -788,13 +823,13 @@ module.exports = function (app, deps = {}) {
       const id = crypto.randomUUID()
       aCorrer = id
       guardarTrabalho(id, { estado: 'a calcular', progresso: 0, texto: 'a começar', pedido: { destino, tripulacao, sairAgora: !!b.sairAgora }, criado: new Date(relogio()).toISOString() })
-      app.setPluginStatus('A calcular a melhor rota…')
+      estadoPlugin('A calcular a melhor rota…')
       executar(id, { destino, tripulacao, sairAgora: !!b.sairAgora })
         .catch(e => { const t = trabalhos.get(id); if (t) { t.estado = 'erro'; t.erro = e && e.message ? e.message : String(e) } })
         .finally(() => {
           aCorrer = null
           const t = trabalhos.get(id)
-          try { app.setPluginStatus(t?.estado === 'pronto' ? `Última rota: ${t.resultado.veredicto.texto}` : `Último cálculo: ${t?.erro || 'erro'}`) } catch { /* só o estado */ }
+          try { estadoPlugin(t?.estado === 'pronto' ? `Última rota: ${t.resultado.veredicto.texto}` : `Último cálculo: ${t?.erro || 'erro'}`) } catch { /* só o estado */ }
         })
         .catch(e => app.error(`calcular: ${e.message}`))
       res.status(202).json({ id })
@@ -883,8 +918,12 @@ module.exports = function (app, deps = {}) {
             let envio = envioNovo
             if (reenviar) {
               const alarme = plano.horaAlarme(alt)
-              const de = anterior?.envio?.contactos?.length ? anterior.envio : antigo.envio
-              envio = { contactos: [...de.contactos], chats: [...(de.chats || [])], alarme: alarme == null ? null : new Date(alarme).toISOString(), pedido: null, enviadoEm: null, substitui: true }
+              const velho = anterior?.envio?.contactos?.length ? anterior : antigo
+              const de = velho.envio
+              // a hora de alarme em terra só muda quando o plano novo lá chegar (re-revisão M-3): até lá, a
+              // última entregue do plano antigo (o atraso entregue, ou a do plano); a nova fica pendente
+              const entregue = Number.isFinite(velho.atrasoEnviado?.alarme) ? new Date(velho.atrasoEnviado.alarme).toISOString() : de.alarme
+              envio = { contactos: [...de.contactos], chats: [...(de.chats || [])], alarme: entregue, alarmePendente: alarme == null ? null : new Date(alarme).toISOString(), pedido: null, enviadoEm: null, substitui: true }
             }
             // um plano novo começa limpo (decisão do Ivo de 01/10): só herda do antigo o "cheguei
             // bem"/"terminada" por enviar e o que está "a enviar"; o antigo vai para planos-fechados.json

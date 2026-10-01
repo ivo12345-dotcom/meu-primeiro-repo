@@ -304,14 +304,43 @@ test('decisão 5 (Ivo): em pausa no mar, a chegada ao cais do plano continua a c
   assert.equal(p.estado, 'chegado')
   assert.equal(p.pausadoDe, null)
   assert.equal(p.chegou, new Date(AGORA + 600 * MIN).toISOString())
-  // sem progresso na rota, não
+  // re-revisão I-1 (Ivo): em pausa, sem as milhas na rota (a rota foi limpa cedo), conta o afastamento real
+  // da partida (o cais do destino fica a ~40 MN): chega na mesma
   p = { ...novo(), estado: 'pausado', pausadoDe: 'a navegar', saida: new Date(AGORA).toISOString() }; mem = pa.novaMemoria()
-  for (let m = 600; m <= 610; m++) passo(m, aNorte(CAIS, 0.1), 0, 1)
-  assert.equal(p.estado, 'pausado')
+  for (let m = 600; m <= 605; m++) passo(m, aNorte(CAIS, 0.1), 0, 1)
+  assert.equal(p.estado, 'chegado')
   // pausado antes de sair: nunca
   p = { ...novo(), estado: 'pausado', pausadoDe: 'a espera de sair' }; mem = pa.novaMemoria()
   for (let m = 600; m <= 610; m++) passo(m, aNorte(CAIS, 0.1), 0)
   assert.equal(p.estado, 'pausado')
+})
+
+test('re-revisão I-1 (Ivo): em pausa, o progresso também é o afastamento real da partida (o máximo, guardado no plano): pelo menos min(1 MN, 50 % da distância em linha reta partida → destino)', () => {
+  // partida → cais em linha reta 0,4 MN (o limite fica em 0,2 MN), por uma rota com mais de 1 MN (a da rota curta não conta)
+  const base = novo()
+  const cais = aNorte(PARTIDA, 0.4)
+  const pts = [{ lat: PARTIDA.lat, lon: PARTIDA.lon }, c.deslocar(PARTIDA, 90, 0.6), { lat: cais.lat, lon: cais.lon }]
+  let p = { ...base, estado: 'a navegar', saida: new Date(AGORA).toISOString(), navegarDesde: new Date(AGORA).toISOString(), alternativa: { ...base.alternativa, pontosRota: pts }, destino: { ...base.destino, aproximacao: [[cais.lat, cais.lon]], cais }, partida: { ...base.partida, lat: PARTIDA.lat, lon: PARTIDA.lon } }
+  assert.ok(pa.comprimentoRota(p) >= 1)
+  let mem = pa.novaMemoria()
+  const passo = (min, posicao, href = null) => { const r = pa.avaliar(p, { ...ler(posicao, 0, href), milhas: 0.1 }, mem, AGORA + min * MIN); p = r.plano; mem = r.mem; return r }
+  // a navegar, a 0,15 MN da partida: o afastamento máximo fica no plano
+  passo(1, aNorte(PARTIDA, 0.15), HREF)
+  assert.equal(Math.round(p.afastamentoMaxMn * 100) / 100, 0.15)
+  // a rota limpa: pausado; parado a 0,15 MN da partida (a 0,25 MN do cais): nunca se afastou 0,2 MN, não chega
+  assert.equal(passo(2, aNorte(PARTIDA, 0.15)).mudou, 'pausado')
+  for (let m = 3; m <= 15; m++) passo(m, aNorte(PARTIDA, 0.15))
+  assert.equal(p.estado, 'pausado')
+  // foi a 0,25 MN da partida e voltou: já houve progresso real; 5 min parado perto do cais → chegou
+  passo(16, aNorte(PARTIDA, 0.25))
+  assert.ok(p.afastamentoMaxMn >= 0.25 - 1e-9)
+  for (let m = 17; m <= 20; m++) passo(m, aNorte(PARTIDA, 0.15))
+  assert.equal(p.estado, 'pausado', '4 min')
+  assert.equal(passo(21, aNorte(PARTIDA, 0.15)).mudou, 'chegou')
+  // a navegar (na rota), o afastamento não substitui as milhas: só em pausa
+  p = { ...p, estado: 'a navegar', pausadoDe: null, chegou: null, fechadoEm: null, afastamentoMaxMn: 5 }; mem = pa.novaMemoria()
+  for (let m = 30; m <= 40; m++) passo(m, aNorte(PARTIDA, 0.15), HREF)
+  assert.equal(p.estado, 'a navegar')
 })
 
 test('decisão 5 (Ivo): em pausa no mar, parado (SOG < 0,5 nó) 30 min a menos de 0,3 MN de OUTRO porto da lista → a sugestão "Chegaste a X?" (só sugere: o plano não muda)', () => {

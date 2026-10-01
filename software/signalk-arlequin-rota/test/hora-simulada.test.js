@@ -56,3 +56,26 @@ test('7: as opções só de testes (horaSimulada, cicloSegundos) só contam com 
   assert.equal(agendados.at(-1), 1000)
   q.p.stop()
 })
+
+test('re-revisão M-4: com o modoTeste ligado, o estado do plugin começa por "MODO DE TESTE (hora simulada…)" (vê-se no Plugin Config); desligado, não', async () => {
+  const deps = { agendarCiclo: () => 1, pararCiclo: () => {} }
+  const app = appFalso()
+  const { p, r } = plugin(app, deps)
+  p.start({ pasta: path.join(app.dir, 'dados'), modoTeste: true, horaSimulada: true, cicloSegundos: 1 })
+  assert.match(app.estado, /^MODO DE TESTE \(hora simulada, ciclo de 1 s\) · Pronto · \d+ destinos$/)
+  // também depois de um cálculo
+  await calcular(r, { destino: 'alges', tripulacao: 'so' })
+  assert.match(app.estado, /^MODO DE TESTE \(hora simulada, ciclo de 1 s\) · Últim[ao] /)
+  p.stop()
+  const b = appFalso()
+  const q = plugin(b, deps)
+  q.p.start({ pasta: path.join(b.dir, 'dados'), modoTeste: true })
+  assert.match(b.estado, /^MODO DE TESTE \(hora real, ciclo de 60 s\) · Pronto/)
+  q.p.stop()
+  // desligado (o barco): sem o aviso, mesmo com as outras opções
+  const x = appFalso()
+  const k = plugin(x, deps)
+  k.p.start({ pasta: path.join(x.dir, 'dados'), horaSimulada: true, cicloSegundos: 1 })
+  assert.match(x.estado, /^Pronto · \d+ destinos$/)
+  k.p.stop()
+})

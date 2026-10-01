@@ -24,8 +24,10 @@
 //   "terminada" do plano antigo por enviar e o que está "a enviar" (anterior: true).
 // atualizarAtraso(fila, id, { chegada, alarme, texto }): o atraso ainda na fila passa a ter a chegada mais
 //   recente (decisão do Ivo de 01/10: o atraso só conta quando é entregue; a hora da tentativa fica).
+// tirar(fila, id): sai da fila (só se ainda não saiu) o atraso que deixou de valer (o barco recuperou).
 // evento(msg, pedido): o que se emite em 'arlequin:plano' para o porto (aos contactos da mensagem: o
-//   porto escolhe-os pelos chats).
+//   porto escolhe-os pelos chats); numa nova tentativa, com tentativa (2, 3, …): o porto só a manda ao
+//   chat do Ivo na 1.ª.
 
 const { horaLisboa, asHoras } = require('./plano')
 
@@ -125,6 +127,9 @@ function atualizarAtraso (c, id, { chegada, alarme, texto }) {
   return mudar(c, m => m.id === id && m.tipo === 'atraso' && m.estado === 'fila', m => ({ ...m, chegada, alarme, ...(texto != null ? { texto } : {}) }))
 }
 
+// Tira da fila uma mensagem que ainda não saiu (estado 'fila'): o atraso que deixou de valer.
+const tirar = (c, id) => ({ ...c, fila: c.fila.filter(m => !(m.id === id && m.estado === 'fila')) })
+
 // A próxima a enviar: a primeira da fila, se já for a hora dela e nenhuma estiver "a enviar".
 function proxima (c, agora) {
   if (!c?.fila?.length || c.fila.some(m => m.estado === 'a enviar')) return null
@@ -168,8 +173,10 @@ function evento (msg, pedido, contactos = msg.contactos || [], chats = msg.chats
     ...(msg.tipo === 'plano' && msg.gpx ? { gpx: msg.gpx, nomeFicheiro: msg.nomeFicheiro } : {}),
     destinatarios: 'contactos-do-plano',
     contactos: [...contactos],
-    chats: [...chats]
+    chats: [...chats],
+    // uma nova tentativa (re-revisão M-5): o porto já não a repete ao chat do Ivo
+    ...(msg.tentativas > 1 ? { tentativa: msg.tentativas } : {})
   }
 }
 
-module.exports = { SUBSTITUI, REPETIR_MS, ATRASO_ESCORREGA_MS, grausMinutos, textoChegada, textoAtraso, textoTerminado, textoSubstitui, decidirAtraso, novaFila, porNaFila, herdar, atualizarAtraso, proxima, marcarAEnviar, falhou, resposta, aoArrancar, evento }
+module.exports = { SUBSTITUI, REPETIR_MS, ATRASO_ESCORREGA_MS, grausMinutos, textoChegada, textoAtraso, textoTerminado, textoSubstitui, decidirAtraso, novaFila, porNaFila, herdar, atualizarAtraso, tirar, proxima, marcarAEnviar, falhou, resposta, aoArrancar, evento }

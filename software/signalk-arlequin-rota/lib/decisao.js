@@ -134,6 +134,7 @@ const juntar = (motivos, n = 2) => motivos.slice(0, n).join(' e ')
 //   custo: { total }, resumos: { provavel }, chegadaNoite }]
 // abrigo (só no mar): { destino, candidato } — o abrigo mais perto, avaliado para partir agora.
 // → { top: [candidato], veredicto: { tipo, texto, porque[] } }
+const MESMO_ASSIM = 'Se saíres mesmo assim, revê as precauções e os pontos de desistência.'
 function decidir ({ candidatos, agora, tripulacao, sairAgora = false, emMar = false, abrigo = null, fuso = 'Europe/Lisbon', excluidasAgora = [] }) {
   // todas por ordem (sem repetidas); a melhor recomendada sai desta mesma lista e é sempre a 1.ª das 3
   const ordem = melhores([...candidatos], { tripulacao, sairAgora, n: Infinity })
@@ -160,6 +161,8 @@ function decidir ({ candidatos, agora, tripulacao, sairAgora = false, emMar = fa
       texto: `Volta ou abriga-te em ${abrigo.destino.nome}`,
       porque: [porqueAgora(), `Até ${abrigo.destino.nome} são ${virgula(a.milhas)} MN: ${frase(a, agora, fuso)}.`]
     }
+    // "Sair agora mesmo assim" no mar (re-revisão M-1): fica o abrigo e a frase das precauções
+    if (sairAgora) veredicto.porque.push(MESMO_ASSIM)
   } else if (melhorRec) {
     const quandoTxt = quando(melhorRec.partida, agora, fuso)
     const porque = []
@@ -173,11 +176,12 @@ function decidir ({ candidatos, agora, tripulacao, sairAgora = false, emMar = fa
     const porque = []
     if (melhor) porque.push(`${sairAgora ? 'A melhor para sair agora' : 'Nenhuma partida nas próximas 48 h passa nos limites; a melhor'} (${nomeRota(melhor)}, ${melhor.partida === agora ? 'agora' : quando(melhor.partida, agora, fuso)}): ${juntar(melhor.motivos)}.`)
     else porque.push(porqueAgora())
-    if (sairAgora && melhor) porque.push('Se saíres mesmo assim, revê as precauções e os pontos de desistência.')
+    if (sairAgora && melhor) porque.push(MESMO_ASSIM)
     else if (melhor && melhor.partida !== agora) porque.push(porqueAgora())
     veredicto = { tipo: 'nao-recomendado', texto: sozinho ? 'Não recomendado sozinho' : 'Não recomendado', porque: porque.slice(0, 2) }
   }
-  veredicto.porque = veredicto.porque.slice(0, 2)
+  // no máximo 2 linhas; o "Volta" do "sair agora" no mar leva a 3.ª (a frase das precauções)
+  veredicto.porque = veredicto.porque.slice(0, veredicto.tipo === 'volta' && sairAgora ? 3 : 2)
   return { top, veredicto }
 }
 

@@ -26,8 +26,10 @@
 //   não é a saída), ou SOG > 2 nós durante 5 min seguidos (saída = o início dos 5 min); navegarDesde =
 //   a hora em que passou a "a navegar".
 //   Chegada ("a navegar", ou pausado depois de sair): a menos de 0,3 MN do cais e SOG < 0,5 nó durante
-//   5 min seguidos, com progresso real (decisão do Ivo de 01/10): ≥ 50 % das milhas da rota, ou, numa
-//   rota com menos de 1 MN, 5 min "a navegar" antes (chegou = o início dos 5 min parado).
+//   5 min seguidos, com progresso real (decisão do Ivo de 01/10): ≥ 50 % das milhas da rota; em pausa,
+//   também o afastamento máximo da partida desde a saída (afastamentoMaxMn, no plano) de pelo menos
+//   min(1 MN, 50 % da distância em linha reta da partida ao cais) (a rota limpa ou trocada antes de
+//   metade); ou, numa rota com menos de 1 MN, 5 min "a navegar" antes (chegou = o início dos 5 min parado).
 //   Pausado depois de sair, parado (SOG < 0,5 nó) 30 min a menos de 0,3 MN de outro porto da lista (não
 //   o destino): mem.sugestao = { id, nome, desde } (o ecrã pergunta "Chegaste a X?"; o plano não muda).
 // chegarA(plano, { id, nome }, chegou, agora): fecha o plano como chegado a outro porto (o botão).
@@ -49,7 +51,7 @@ const ESTADOS = Object.freeze({ ESPERA: 'a espera de sair', NAVEGAR: 'a navegar'
 const ABERTOS = new Set([ESTADOS.ESPERA, ESTADOS.NAVEGAR, ESTADOS.PAUSADO])
 const PADRAO = Object.freeze({
   saidaMn: 0.5, saidaSogNos: 2, saidaMin: 5, chegadaMn: 0.3, chegadaSogNos: 0.5, chegadaMin: 5,
-  progresso: 0.5, rotaCurtaMn: 1, navegarMin: 5, outroPortoMin: 30, amostrasMaxMin: 2
+  progresso: 0.5, rotaCurtaMn: 1, navegarMin: 5, outroPortoMin: 30, amostrasMaxMin: 2, afastamentoMn: 1
 })
 
 const iso = (t) => new Date(t).toISOString()
@@ -108,11 +110,19 @@ function comprimentoRota (p) {
   const pts = (p.alternativa?.pontosRota || []).filter(x => Number.isFinite(x?.lat) && Number.isFinite(x?.lon))
   return pts.length > 1 ? c.prepararLinha(pts).total : 0
 }
-// o progresso real (decisão do Ivo de 01/10): ≥ 50 % das milhas da rota, ou, numa rota com menos de
-// 1 MN, pelo menos 5 min "a navegar"
+// em pausa (re-revisão I-1, decisão do Ivo de 01/10): o afastamento real da partida que conta como
+// progresso, min(1 MN, 50 % da distância em linha reta da partida ao cais)
+function afastamentoMinimo (p, o) {
+  const reta = p.partida && p.destino?.cais ? c.distanciaMn(p.partida, p.destino.cais) : 0
+  return Math.min(o.afastamentoMn, o.progresso * reta)
+}
+// o progresso real (decisão do Ivo de 01/10): ≥ 50 % das milhas da rota; em pausa, também o afastamento
+// máximo da partida desde a saída (a rota pode ter sido limpa ou trocada antes de metade); numa rota com
+// menos de 1 MN, pelo menos 5 min "a navegar"
 function comProgresso (p, milhas, agora, o) {
   const total = comprimentoRota(p)
   if (Number.isFinite(milhas) && total > 0 && milhas >= o.progresso * total) return true
+  if (p.estado === ESTADOS.PAUSADO && Number.isFinite(p.afastamentoMaxMn) && p.afastamentoMaxMn >= afastamentoMinimo(p, o)) return true
   if (total >= o.rotaCurtaMn) return false
   const desde = Date.parse(p.navegarDesde ?? p.saida)
   return Number.isFinite(desde) && agora - desde >= o.navegarMin * MIN
@@ -170,6 +180,12 @@ function avaliar (plano, leitura = {}, mem = novaMemoria(), agora, opcoes = {}) 
   const sog = Number.isFinite(leitura.sogNos) ? leitura.sogNos : null
   const milhas = Number.isFinite(leitura.milhas) ? leitura.milhas : null
   if (!pos) { semJanelas(m); return fim(null) }
+  // o afastamento máximo da partida desde a saída (a navegar ou em pausa depois de sair), no plano
+  const fora = p.estado === ESTADOS.NAVEGAR || (p.estado === ESTADOS.PAUSADO && p.pausadoDe === ESTADOS.NAVEGAR)
+  if (fora && p.partida) {
+    const d = c.distanciaMn(pos, p.partida)
+    if (!(p.afastamentoMaxMn >= d)) p.afastamentoMaxMn = d
+  }
 
   // em pausa (decisão do Ivo de 01/10, "ver a chegada mesmo em pausa"): só depois de sair; a chegada ao
   // cais do plano conta como a navegar; parado noutro porto da lista, só a sugestão
