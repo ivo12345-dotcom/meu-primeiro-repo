@@ -3,7 +3,8 @@
 // alternativas até um destino (lib/calculo.js), serve o resultado por REST e ativa a
 // rota escolhida no SignalK (API de recursos v2 + API de rumo v2), para o OpenCPN a mostrar.
 //
-// REST (/plugins/signalk-arlequin-rota):
+// REST (/plugins/signalk-arlequin-rota), com a segurança do SignalK ligada: os GET pedem uma sessão
+// (readonly) e os POST um utilizador "read/write" (router.access; sem ele, só admin):
 //   POST /calcular { destino, tripulacao: 'so' | 'acompanhado', sairAgora } → 202 { id }
 //        (409 se já houver um a calcular; 503 com o plugin parado)
 //   GET  /resultado/:id → { estado: 'a calcular' | 'pronto' | 'erro', progresso, texto, resultado?, erro? }
@@ -366,8 +367,15 @@ module.exports = function (app, deps = {}) {
   plugin.registerWithRouter = function (router) {
     const parado = (res) => res.status(503).json({ ok: false, erro: erroArranque || 'o plugin da rota não está ligado' })
     const ligado = () => o && costaBase && polar
+    // Com a segurança ligada, o SignalK 2.33 só deixa um utilizador admin chamar as rotas registadas
+    // com router.get/post simples (tokensecurity.js, pluginAuthenticationMiddleware). Com o
+    // router.access(nível) (interfaces/plugins.js, asPluginRouter), as leituras pedem uma sessão
+    // (readonly) e as escritas um utilizador "read/write". Sem o router.access (versões antigas): as simples.
+    const comNivel = typeof router.access === 'function'
+    const ler = comNivel ? router.access('readonly') : router
+    const escrever = comNivel ? router.access('readwrite') : router
 
-    router.post('/calcular', (req, res) => {
+    escrever.post('/calcular', (req, res) => {
       if (!ligado()) return parado(res)
       const b = eObjeto(req.body) ? req.body : {}
       const tripulacao = b.tripulacao
@@ -392,7 +400,7 @@ module.exports = function (app, deps = {}) {
       res.status(202).json({ id })
     })
 
-    router.get('/resultado/:id', (req, res) => {
+    ler.get('/resultado/:id', (req, res) => {
       if (!ligado()) return parado(res)
       const t = trabalhos.get(req.params.id)
       if (!t) return res.status(404).json({ ok: false, erro: 'cálculo desconhecido' })
@@ -402,12 +410,12 @@ module.exports = function (app, deps = {}) {
       res.json(out)
     })
 
-    router.get('/destinos', (req, res) => {
+    ler.get('/destinos', (req, res) => {
       if (!ligado()) return parado(res)
       res.json({ destinos: costaAtual().destinos })
     })
 
-    router.post('/destinos', (req, res) => {
+    escrever.post('/destinos', (req, res) => {
       if (!ligado()) return parado(res)
       const b = eObjeto(req.body) ? req.body : {}
       const nome = typeof b.nome === 'string' ? b.nome.trim() : ''
@@ -431,7 +439,7 @@ module.exports = function (app, deps = {}) {
       res.status(201).json({ ok: true, destino: { ...d, meu: true } })
     })
 
-    router.post('/ativar', (req, res) => {
+    escrever.post('/ativar', (req, res) => {
       if (!ligado()) return parado(res)
       const b = eObjeto(req.body) ? req.body : {}
       const t = trabalhos.get(b.id)
@@ -446,7 +454,7 @@ module.exports = function (app, deps = {}) {
         .catch(e => app.error(`ativar: ${e.message}`))
     })
 
-    router.post('/plano-telegram', (req, res) => {
+    escrever.post('/plano-telegram', (req, res) => {
       if (!ligado()) return parado(res)
       const b = eObjeto(req.body) ? req.body : {}
       const t = trabalhos.get(b.id)
@@ -484,7 +492,7 @@ module.exports = function (app, deps = {}) {
       res.status(202).json({ pedido, avisos })
     })
 
-    router.get('/plano-telegram/:pedido', (req, res) => {
+    ler.get('/plano-telegram/:pedido', (req, res) => {
       if (!ligado()) return parado(res)
       const p = planos.get(req.params.pedido)
       if (!p) return res.status(404).json({ ok: false, erro: 'pedido desconhecido' })

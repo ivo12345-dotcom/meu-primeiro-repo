@@ -81,6 +81,32 @@ function plugin (app, extra = {}) {
   return { p, r: rotas(p), registo, avancar: (ms) => { agora += ms } }
 }
 
+test('com a segurança do SignalK (2.33: router.access), os GET registam-se "readonly" e os POST "readwrite"; nada fica só para admin (revisão final, 4)', () => {
+  const registos = []
+  const direto = []
+  const router = {
+    get: (k) => direto.push(`GET ${k}`),
+    post: (k) => direto.push(`POST ${k}`),
+    access: (nivel) => ({
+      get: (k, h) => { registos.push({ m: 'GET', k, nivel, h: typeof h }) },
+      post: (k, h) => { registos.push({ m: 'POST', k, nivel, h: typeof h }) }
+    })
+  }
+  criar(appFalso()).registerWithRouter(router)
+  assert.deepEqual(direto, [], 'nenhuma rota sem nível (ficava só para admin)')
+  const nivel = Object.fromEntries(registos.map(x => [`${x.m} ${x.k}`, x.nivel]))
+  assert.deepEqual(nivel, {
+    'POST /calcular': 'readwrite',
+    'GET /resultado/:id': 'readonly',
+    'GET /destinos': 'readonly',
+    'POST /destinos': 'readwrite',
+    'POST /ativar': 'readwrite',
+    'POST /plano-telegram': 'readwrite',
+    'GET /plano-telegram/:pedido': 'readonly'
+  })
+  assert.ok(registos.every(x => x.h === 'function'))
+})
+
 test('antes de arrancar tudo dá 503; com a polar em falta não arranca e diz porquê', async () => {
   const app = appFalso()
   const { p, r } = plugin(app)
