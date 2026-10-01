@@ -2,8 +2,11 @@
 // Maré na barra do Tejo. As preia-mares de Cascais saem da série horária
 // sea_level_height_msl da Open-Meteo (máximos locais, com uma parábola pelos 3
 // valores à volta de cada máximo). A corrente na barra é o modelo do simular.mjs
-// (APROXIMADO): só a leste de 9°25' W, até 1,8 nó, vazante para 250° e enchente
-// para 70°, estofo 45 min depois da preia-mar. Ao largo vale a corrente da Open-Meteo.
+// (APROXIMADO): até 1,8 nó, vazante para 250° e enchente para 70°, estofo 45 min depois
+// da preia-mar. SÓ NA BARRA E NO ESTUÁRIO DO TEJO: a caixa 38,60–38,72 N, 9,42–9,00 W
+// (a barra a leste de 9°25' W, os Cachopos e o Bugio, o rio até Lisboa). Fora dela (o resto
+// da costa, de Caminha a VRSA) é 0: ao largo vale a corrente da Open-Meteo. O simular.mjs
+// (Algés → Peniche, só a leste de 9°25' W, sem limite de latitude) passa a sua caixa.
 
 const MIN = 60000
 const H = 3600000
@@ -31,7 +34,7 @@ function preiaMares (t, nivel, { separacaoH = 6 } = {}) {
   return out
 }
 
-const PADRAO = Object.freeze({ lonLimite: -9.42, vMax: 1.8, dirVazante: 250, dirEnchente: 70, estofoMin: 45, periodoH: 12.42 })
+const PADRAO = Object.freeze({ latMin: 38.60, latMax: 38.72, lonMin: -9.42, lonMax: -9.00, vMax: 1.8, dirVazante: 250, dirEnchente: 70, estofoMin: 45, periodoH: 12.42 })
 
 // correnteMare(lat, lon, t) → { v (nós), dir (graus, para onde vai) }.
 // Entre dois estofos seguidos o ciclo dura o que vai de um ao outro; antes do
@@ -40,7 +43,7 @@ function criarMareTejo (preias, opcoes = {}) {
   const o = { ...PADRAO, ...opcoes }
   const estofos = preias.map(p => p.t + o.estofoMin * MIN).sort((a, b) => a - b)
   return function correnteMare (lat, lon, t) {
-    if (lon < o.lonLimite || !estofos.length) return { v: 0, dir: 0 }
+    if (!(lat >= o.latMin && lat <= o.latMax && lon >= o.lonMin && lon <= o.lonMax) || !estofos.length) return { v: 0, dir: 0 }
     let fase
     let k = -1
     for (let i = 0; i < estofos.length; i++) if (estofos[i] <= t) k = i

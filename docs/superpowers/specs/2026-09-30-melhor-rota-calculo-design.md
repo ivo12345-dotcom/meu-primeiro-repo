@@ -114,7 +114,7 @@ Para cada afastamento d ∈ {3, 5, 8} MN:
 ## Maré na barra do Tejo (`lib/mare.js`)
 
 - **Preia-mares de Cascais:** os máximos locais da série `sea_level_height_msl` no ponto de Cascais (38,69 N; 9,42 W), com uma interpolação parabólica à volta do máximo horário.
-- **Corrente na barra** (a leste de 9°25' W): o modelo do `simular.mjs`, com a preia-mar calculada em vez da hora fixa. Corrente máxima de 1,8 nó, vazante para 250°, enchente para 70°, estofo 45 min depois da preia-mar.
+- **Corrente na barra** (só na barra e no estuário do Tejo: a caixa 38,60–38,72 N, 9,42–9,00 W — a leste de 9°25' W, os Cachopos, o Bugio e o rio até Lisboa; no resto da costa é 0): o modelo do `simular.mjs`, com a preia-mar calculada em vez da hora fixa. Corrente máxima de 1,8 nó, vazante para 250°, enchente para 70°, estofo 45 min depois da preia-mar. (Até à revisão final, só se limitava a longitude: a corrente fictícia aplicava-se de Viana ao Algarve. O `simular.mjs` de 29/09 guarda a sua caixa de sempre, a leste de 9°25' W sem limite de latitude, para o resultado de referência não mudar.)
 - **Ao largo:** a corrente da Open-Meteo.
 
 ## Simulação (`lib/passagem.js`)

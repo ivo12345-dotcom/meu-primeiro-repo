@@ -271,9 +271,11 @@ function tempoAqui (met, lat, t) {
 // sempre o MESMO instante independentemente do fuso do sistema onde isto corre).
 // Estofo ~45 min depois; vazante positiva (sai a 250°), até ~1,8 nó na barra.
 // Só a leste de 9°25'W. É a corrente de lib/mare.js do plugin da rota (com uma só
-// preia-mar, o modelo de sempre tal e qual).
+// preia-mar, o modelo de sempre tal e qual). O plugin limita-a à caixa da barra e do
+// estuário (38,60–38,72 N); aqui fica a caixa de sempre deste modelo (a leste de 9°25' W,
+// sem limite de latitude, também na chegada a Peniche), para o resultado de 29/09 não mudar.
 const PREIA_MAR = new Date('2026-09-29T16:37:00+01:00').getTime()
-const mareTejo = criarMareTejo([{ t: PREIA_MAR }])
+const mareTejo = criarMareTejo([{ t: PREIA_MAR }], { latMin: -90, latMax: 90, lonMin: -9.42, lonMax: 180 })
 
 // ---------- simulação ----------
 // Energia: o modelo do simulador (bancos de 440 Ah, frigorífico) com os alarmes do plugin da energia.
