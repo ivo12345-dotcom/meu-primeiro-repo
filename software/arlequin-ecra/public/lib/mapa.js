@@ -6,7 +6,8 @@
 // - a alternativa selecionada a traço grosso (desenhada por último), as outras finas;
 // - o rasto: vela azul, motor cinzento, de noite mais escuro (opacidade 0,5);
 // - marcas nos avisos da selecionada (no rasto, à hora do aviso); bolinhas nos pontos de
-//   desistência com o nome do abrigo; a partida e o destino; a escala em MN.
+//   desistência com o abrigo ("↩ Peniche", mais pequeno e na cor de aviso); a partida e o destino;
+//   a escala em MN.
 // As cores são os tokens do estilo.css (var(--…)): o modo noite muda-as sozinho.
 
 import { esc, horaLisboa } from './rota-texto.js'
@@ -85,9 +86,9 @@ function noRasto (rasto, t) {
 }
 
 const marca = (classe, [x, y], cor, r) => `<rect class="marca ${classe}" x="${f1(x - r)}" y="${f1(y - r)}" width="${f1(2 * r)}" height="${f1(2 * r)}" fill="${cor}" stroke="var(--fundo)" stroke-width="2"/>`
-const rotulo = ([x, y], texto, largura, cor = 'var(--texto)') => {
+const rotulo = ([x, y], texto, largura, cor = 'var(--texto)', { classe = '', tamanho = 22 } = {}) => {
   const esquerda = x > largura * 0.7
-  return `<text x="${f1(esquerda ? x - 14 : x + 14)}" y="${f1(y + 7)}" font-size="22" fill="${cor}" text-anchor="${esquerda ? 'end' : 'start'}" stroke="var(--fundo)" stroke-width="4" paint-order="stroke">${esc(texto)}</text>`
+  return `<text${classe ? ` class="${classe}"` : ''} x="${f1(esquerda ? x - 14 : x + 14)}" y="${f1(y + 7)}" font-size="${tamanho}" fill="${cor}" text-anchor="${esquerda ? 'end' : 'start'}" stroke="var(--fundo)" stroke-width="4" paint-order="stroke">${esc(texto)}</text>`
 }
 
 // { mapa, alternativas, selecionada, noite, desistencia, partida (nome), destino (nome), agora,
@@ -134,7 +135,8 @@ export function desenharMapa ({ mapa, alternativas = [], selecionada = 0, noite 
     const nome = p.abrigo?.nome || p.voltar?.nome || ''
     const vermelho = p.abrigo?.avisoVermelho || (!p.abrigo && !p.voltar)
     partes.push(`<circle class="desistencia" cx="${f1(xy[0])}" cy="${f1(xy[1])}" r="8" fill="${vermelho ? 'var(--perigo)' : 'var(--ok)'}" stroke="var(--fundo)" stroke-width="2"><title>${esc(p.hora || '')} ${esc(nome)}</title></circle>`)
-    if (nome && nome !== anterior) partes.push(rotulo(xy, nome, largura, 'var(--texto-2)'))
+    // "↩ Peniche": a fuga, mais pequena e na cor de aviso (não se confunde com os portos da rota)
+    if (nome && nome !== anterior) partes.push(rotulo(xy, `↩ ${nome}`, largura, 'var(--amarelo)', { classe: 'fuga', tamanho: 18 }))
     anterior = nome
   }
   // partida e destino (da selecionada)

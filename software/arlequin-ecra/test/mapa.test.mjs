@@ -59,9 +59,10 @@ test('o SVG: terra a cheio, zonas a tracejado, a destacada grossa, o rasto vela/
   assert.match(svg, /class="rasto vela[^"]*"[^>]*stroke="var\(--azul\)"/)
   assert.match(svg, /class="rasto motor[^"]*"[^>]*stroke="var\(--texto-2\)"/)
   assert.match(svg, /class="rasto [a-z]+ noite"[^>]*stroke-opacity="0.5"/)
-  // desistência: bolinhas com o nome do abrigo
+  // desistência: bolinhas com o nome do abrigo, "↩ Cascais" (a fuga, não um porto da rota)
   assert.equal((svg.match(/<circle class="desistencia"/g) || []).length, FUGA.desistencia.length)
-  assert.match(svg, />Cascais</)
+  assert.match(svg, />↩ Cascais</)
+  assert.doesNotMatch(svg, />Cascais</)
   // partida e destino, escala
   assert.match(svg, /class="marca partida"/)
   assert.match(svg, /class="marca destino"/)
@@ -106,4 +107,18 @@ test('tudo cortado à janela (o mar só nela; as zonas grandes não saem); o nom
   const rotulos = [...svg.matchAll(/<circle class="desistencia"[^]*?<\/circle>(<text[^>]*>([^<]+)<\/text>)?/g)].filter(m => m[1]).length
   assert.equal(rotulos, mudancas)
   assert.ok(mudancas < FUGA.desistencia.length)
+})
+
+test('as etiquetas das fugas: "↩ " antes do nome, mais pequenas do que as da partida e do destino e na cor de aviso', () => {
+  const svg = desenhar(FUGA, { selecionada: 0 })
+  const fugas = [...svg.matchAll(/<text class="fuga"[^>]*font-size="(\d+)"[^>]*fill="([^"]+)"[^>]*>([^<]+)<\/text>/g)]
+  assert.ok(fugas.length >= 1, svg.slice(0, 200))
+  for (const [, tam, cor, texto] of fugas) {
+    assert.match(texto, /^↩ \S/)
+    assert.ok(Number(tam) < 22, tam)
+    assert.equal(cor, 'var(--amarelo)')
+  }
+  // a partida e o destino continuam sem a seta, no tamanho normal
+  assert.match(svg, /font-size="22"[^>]*>Algés \(CNA\)</)
+  assert.match(svg, /font-size="22"[^>]*>Peniche</)
 })

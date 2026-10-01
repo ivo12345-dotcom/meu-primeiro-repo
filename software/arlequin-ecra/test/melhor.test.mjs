@@ -67,8 +67,11 @@ test('Pedir: os portos do mais perto para o mais longe, só eu / 2 ou mais, Calc
     const html = melhor.render(ctx)
     limpo(html, 'pedir')
     const nomes = [...html.matchAll(/data-acao="rota-destino" data-id="([^"]+)"/g)].map(m => m[1])
-    assert.equal(nomes[0], 'peniche') // estamos em Peniche
-    assert.equal(nomes[1], 'nazare')
+    // estamos em Peniche: fica no topo da lista, "estás aqui", mas desativado (não é destino)
+    assert.ok(!nomes.includes('peniche'), nomes.join())
+    assert.match(semEspacos(html), /<tr class="desativado"[^>]*><td>Peniche<\/td><td class="lab">estás aqui<\/td><\/tr>/)
+    assert.ok(html.indexOf('>Peniche<') < html.indexOf('data-id="nazare"'))
+    assert.equal(nomes[0], 'nazare')
     assert.ok(nomes.indexOf('cascais') < nomes.indexOf('olhao'))
     assert.match(html, /Só eu/)
     assert.match(html, /2 ou mais/)
@@ -92,6 +95,17 @@ test('Pedir: com uma rota ativa no OpenCPN, ela vem no topo; e "Novo cálculo" a
   assert.equal(ids[0], 'rota-ativa')
   assert.match(html, /Rota ativa no OpenCPN/)
   limpo(html, 'pedir com rota ativa')
+})
+
+test('Pedir: o porto onde estás não é destino (mesmo que tenha ficado escolhido): o Calcular fica desativado', async () => {
+  const ctx = contexto({ respostas: { [`GET ${ROTA}/destinos`]: { destinos: DESTINOS } }, estado: { escolhido: 'peniche' } })
+  melhor.aoEntrar(ctx)
+  await new Promise(resolve => setTimeout(resolve, 0))
+  const html = melhor.render(ctx)
+  assert.doesNotMatch(html, /data-acao="rota-destino" data-id="peniche"/)
+  assert.match(html, /data-acao="rota-calcular" disabled/)
+  await melhor.acao('rota-calcular', {}, ctx)
+  assert.equal(ctx.pedidos.filter(p => p.method === 'POST').length, 0)
 })
 
 test('sem GPS: "sem GPS: não dá para calcular" e o Calcular não pede nada; plugin desligado: caixa vermelha', async () => {

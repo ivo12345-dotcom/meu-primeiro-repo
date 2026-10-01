@@ -81,6 +81,7 @@ table { width: 100%; border-collapse: collapse; font-size: 1rem; }
 th { text-align: left; color: var(--texto-2); font-weight: normal; font-size: .85rem; }
 td, th { padding: .3rem .4rem; border-bottom: 1px solid var(--botao); }
 tr.sel td { background: var(--ativo); }
+tr.desativado td { opacity: .45; cursor: default; }
 tr[data-mmsi] { cursor: pointer; }
 
 /* Botões */

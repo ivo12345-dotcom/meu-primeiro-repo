@@ -78,16 +78,25 @@ export function idade (t, agora = Date.now()) {
   return `há ${Math.floor(min / 1440)} dias`
 }
 
-// "5 MN, só motor", "direta (salto curto), vela e motor", "5 MN pelo Canal da Berlenga, só motor".
+// Uma "vela e motor" com menos de 0,1 h de vela (horas.vela, o cenário provável) vai toda a motor.
+const SEM_VENTO_VELA = 'a motor (sem vento para vela)'
+const semVela = (alt) => alt.propulsao === 'vela' && ok(alt.horas?.vela) && alt.horas.vela < 0.1
+
+// "5 MN, só motor", "direta (salto curto), vela e motor", "5 MN pelo Canal da Berlenga, só motor",
+// "8 MN, a motor (sem vento para vela)".
 export function rotaCurta (alt = {}) {
   const onde = alt.direto ? 'direta (salto curto)' : ok(alt.afastamento) ? `${num(alt.afastamento, alt.afastamento % 1 ? 1 : 0)} MN` : ''
   const via = alt.canal ? `${onde ? `${onde} ` : ''}pelo ${alt.canal}` : onde
-  const prop = alt.propulsao === 'motor' ? 'só motor' : alt.propulsao === 'vela' ? 'vela e motor' : ''
+  const prop = alt.propulsao === 'motor' ? 'só motor' : semVela(alt) ? SEM_VENTO_VELA : alt.propulsao === 'vela' ? 'vela e motor' : ''
   return [via, prop].filter(Boolean).join(', ') || SEM
 }
 
-// O nome do plugin (com a hora da partida), ou o da rota.
-export const nomeAlternativa = (alt = {}) => (typeof alt.nome === 'string' && alt.nome ? alt.nome : rotaCurta(alt))
+// O nome do plugin (com a hora da partida), ou o da rota; o "vela e motor" do plugin passa a "a motor
+// (sem vento para vela)" quando a alternativa não tem vela.
+export function nomeAlternativa (alt = {}) {
+  if (!(typeof alt.nome === 'string' && alt.nome)) return rotaCurta(alt)
+  return semVela(alt) ? alt.nome.replace(/vela e motor$/, SEM_VENTO_VELA) : alt.nome
+}
 
 const CORES = { segue: 'verde', espera: 'amarelo', 'nao-recomendado': 'laranja', volta: 'vermelho' }
 export const corVeredicto = (tipo) => CORES[tipo] || 'cinzento'

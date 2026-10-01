@@ -47,6 +47,20 @@ test('o nome da rota: afastamento, "direta (salto curto)", pelo canal; e o da al
   assert.doesNotMatch(t.nomeAlternativa({ afastamento: null, direto: true }), /null/)
 })
 
+test('"vela e motor" com menos de 0,1 h de vela chama-se "a motor (sem vento para vela)" (no nome do plugin e no da rota)', () => {
+  // Peniche → Nazaré: a 2.ª vai toda a motor (0,02 h de vela)
+  assert.equal(CANAL.alternativas[1].horas.vela, 0.02)
+  assert.equal(t.nomeAlternativa(CANAL.alternativas[1]), 'Amanhã às 09:30, 5 MN pelo Canal da Berlenga, a motor (sem vento para vela)')
+  assert.equal(t.nomeAlternativa({ afastamento: 8, propulsao: 'vela', horas: { vela: 0.09 } }), '8 MN, a motor (sem vento para vela)')
+  assert.equal(t.rotaCurta({ afastamento: 8, propulsao: 'vela', horas: { vela: 0 } }), '8 MN, a motor (sem vento para vela)')
+  // com vela a sério, ou sem o número: "vela e motor"
+  assert.equal(t.nomeAlternativa(FUGA.alternativas[1]), 'Agora, 5 MN, vela e motor')
+  assert.equal(t.nomeAlternativa({ afastamento: 8, propulsao: 'vela', horas: { vela: 0.1 } }), '8 MN, vela e motor')
+  assert.equal(t.nomeAlternativa({ afastamento: 8, propulsao: 'vela', horas: { vela: null } }), '8 MN, vela e motor')
+  // a "só motor" fica "só motor"
+  assert.equal(t.nomeAlternativa(CANAL.alternativas[0]), 'Amanhã às 09:30, 5 MN pelo Canal da Berlenga, só motor')
+})
+
 test('a cor do veredicto por tipo: segue verde, espera amarelo, não recomendado laranja, volta vermelho', () => {
   assert.equal(t.corVeredicto('segue'), 'verde')
   assert.equal(t.corVeredicto('espera'), 'amarelo')

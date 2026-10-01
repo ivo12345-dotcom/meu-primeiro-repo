@@ -158,8 +158,14 @@ function listaDestinos (ctx) {
     return { id: d.id, nome: d.nome, meu: !!d.meu, mn: pos && p ? milhas(pos, p) : null }
   })
   if (pos) portos.sort((a, b) => (a.mn ?? Infinity) - (b.mn ?? Infinity))
-  for (const d of portos) itens.push({ id: d.id, nome: d.nome, detalhe: d.mn == null ? '' : d.mn < 0.5 ? 'estás aqui' : `${num(d.mn, d.mn < 10 ? 1 : 0)} MN`, meu: d.meu })
+  // o porto onde estás (a menos de 0,5 MN) fica na lista, "estás aqui", mas não é destino
+  for (const d of portos) itens.push({ id: d.id, nome: d.nome, detalhe: d.mn == null ? '' : d.mn < 0.5 ? 'estás aqui' : `${num(d.mn, d.mn < 10 ? 1 : 0)} MN`, meu: d.meu, aqui: d.mn != null && d.mn < 0.5 })
   return itens
+}
+const linhaDestino = (e, d) => {
+  const celulas = `<td>${esc(d.nome)}${d.meu ? ' <span class="lab">(meu)</span>' : ''}</td><td class="lab">${esc(d.detalhe)}</td>`
+  if (d.aqui) return `<tr class="desativado">${celulas}</tr>`
+  return `<tr class="${e.escolhido === d.id ? 'sel' : ''}" data-acao="rota-destino" data-id="${esc(d.id)}">${celulas}</tr>`
 }
 
 function acrescentarHtml (e) {
@@ -185,11 +191,11 @@ export default {
     const pos = posicaoGps(ctx)
     const trip = e.tripulacao || 'so'
     const lista = listaDestinos(ctx)
-    const linhas = lista.map(d => `<tr class="${e.escolhido === d.id ? 'sel' : ''}" data-acao="rota-destino" data-id="${esc(d.id)}"><td>${esc(d.nome)}${d.meu ? ' <span class="lab">(meu)</span>' : ''}</td><td class="lab">${esc(d.detalhe)}</td></tr>`).join('')
+    const linhas = lista.map(d => linhaDestino(e, d)).join('')
     const vazio = e.destinosErro ? '' : e.destinos ? '<div class="lab">Sem destinos.</div>' : '<div class="lab">A ler os destinos…</div>'
     const erro = e.destinosErro ? `<div class="tile caixa-erro">${esc(e.destinosErro)}</div>` : ''
     const semGps = pos ? '' : '<div class="tile caixa-erro">sem GPS: não dá para calcular</div>'
-    const escolhido = lista.find(d => d.id === e.escolhido)
+    const escolhido = lista.find(d => d.id === e.escolhido && !d.aqui)
     const podeCalcular = pos && escolhido
     // "Novo cálculo" com uma rota ativa: o caminho de volta ao rumo
     const voltarLeme = rotaAtiva(ctx) ? '<button class="acao" data-acao="rota-voltar-leme">Voltar ao leme</button>' : ''
@@ -219,7 +225,7 @@ ${voltarLeme}
     if (nome === 'rota-tripulacao') { e.tripulacao = dados.t === 'acompanhado' ? 'acompanhado' : 'so'; return }
     if (nome === 'rota-calcular') {
       if (!posicaoGps(ctx)) { e.msg = 'sem GPS: não dá para calcular'; e.msgErro = true; return }
-      if (!e.escolhido) { e.msg = 'Escolhe o destino.'; e.msgErro = true; return }
+      if (!e.escolhido || listaDestinos(ctx).some(d => d.id === e.escolhido && d.aqui)) { e.msg = 'Escolhe o destino.'; e.msgErro = true; return }
       return calcular(ctx, { destino: e.escolhido, tripulacao: e.tripulacao || 'so', sairAgora: false })
     }
     if (nome === 'rota-acrescentar') { e.acrescentar = 'menu'; e.msgDestino = null; return }
