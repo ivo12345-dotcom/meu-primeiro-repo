@@ -279,3 +279,16 @@ test('Tarefa 8.5: chuva e visibilidade — com a visibilidade prevista no rasto,
   const k = ac.acompanhar(ac.novoEstado(), { plano: planoV(sem, [da3a]), posicao: A, agora: T0 })
   assert.deepEqual(k.resultado.eventos.filter(e => /^Chuva/.test(e.texto)).map(e => e.texto), [da3a.texto])
 })
+
+test('Tarefa 8.5 (viagem acelerada): "virar/cambar na Linha de 5 MN" (os nomes femininos levam "na"); "no Cabo X", "no Largo de Peniche", "no WP1"', () => {
+  const nomes = (nome) => {
+    const p = planoV(rastoV())
+    const r = ROTA_V.map((q, i) => (i === 1 ? { ...q, nome } : q))
+    return ac.lembretesDoPlano({ ...p, alternativa: { ...p.alternativa, pontosRota: r } }).find(e => e.tipo === 'viragem').texto
+  }
+  assert.equal(nomes('Linha de 5 MN'), 'Virar/cambar na Linha de 5 MN')
+  assert.equal(nomes('Ponta da Lamporeira'), 'Virar/cambar na Ponta da Lamporeira')
+  assert.equal(nomes('Largo de Peniche'), 'Virar/cambar no Largo de Peniche')
+  assert.equal(nomes('Cabo X'), 'Virar/cambar no Cabo X')
+  assert.equal(nomes(null), 'Virar/cambar no WP1')
+})

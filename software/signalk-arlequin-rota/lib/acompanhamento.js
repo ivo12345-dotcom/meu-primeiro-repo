@@ -125,6 +125,8 @@ const difAngulo = (a, b) => Math.abs((((b - a) % 360) + 540) % 360 - 180)
 const grau = (x) => Math.round(((x % 360) + 360) % 360)
 const virgula = (x) => x.toFixed(1).replace('.', ',')
 const daChuva3a = (e) => e.tipo === 'tempo' && /^chuva/i.test(String(e.texto || ''))
+// "na Linha de 5 MN", "na Ponta da …"; os outros (cabos, largos, portos, WPn) levam "no"
+const FEMININOS = /^(Linha|Ponta|Barra|Ilha|Baía|Praia|Berlenga|Foz|Enseada|Boia|Bóia)\b/i
 const comVisibilidade = (plano) => (plano.alternativa?.rasto || []).some(p => Number.isFinite(p.vis))
 
 // [{ id, t, tipo, texto }] a partir do plano ativo:
@@ -145,7 +147,8 @@ function lembretesDoPlano (plano, rota = prepararRota(plano)) {
     if (b.perna === 'porto' || d.perna === 'porto') continue
     if (difAngulo(c.vetor(a, b).rumo, c.vetor(b, d).rumo) <= VIRAGEM_GRAUS) continue
     const t = horaNoPlano(rota.tabela, rota.linha.s[idx[k]])
-    if (Number.isFinite(t)) out.push({ id: `v${idx[k]}`, t: iso(t), tipo: 'viragem', texto: `Virar/cambar no ${b.nome || `WP${idx[k]}`}` })
+    const nome = b.nome || `WP${idx[k]}`
+    if (Number.isFinite(t)) out.push({ id: `v${idx[k]}`, t: iso(t), tipo: 'viragem', texto: `Virar/cambar ${FEMININOS.test(nome) ? 'na' : 'no'} ${nome}` })
   }
   const rasto = (plano.alternativa?.rasto || []).map(p => ({ ...p, t: Date.parse(p.t) })).filter(p => Number.isFinite(p.t))
   const r = rasto.filter(p => Number.isFinite(p.twd))
