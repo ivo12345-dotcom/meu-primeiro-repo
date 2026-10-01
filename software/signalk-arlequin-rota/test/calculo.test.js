@@ -178,6 +178,17 @@ test('alternativas pelo rotas.gerarAlternativas em cada partida (hora da partida
   assert.equal(new Set(cands.map(k => k.id)).size, cands.length, 'ids repetidos')
 })
 
+test('cada alternativa diz se vai sem vela (semVela, < 0,1 h de vela no provável, em bruto): o mesmo critério da junção das repetidas (revisão final, 9)', async () => {
+  let cands = []
+  const r = await calcular(entrada({ instrumentos: { posicao: de('peniche'), socPct: 90, gasoleoL: 124 }, destino: 'nazare' }), deps({ aoCandidatos: l => { cands = l } }))
+  assert.equal(r.erro, undefined, r.erro)
+  for (const a of r.alternativas) {
+    const k = cands.find(x => x.id === a.id)
+    assert.equal(typeof a.semVela, 'boolean', a.id)
+    assert.equal(a.semVela, decisao.semVela(k), a.id)
+  }
+})
+
 test('a variante pelo Canal da Berlenga no texto da alternativa: nome, canal, nota e o aviso "por confirmar na carta"', async () => {
   const calmo = mudar(P29, p => { p.ondas = p.ondas.map(x => (x == null ? null : x * 0.6)) })
   const r = await calcular(entrada({ instrumentos: { posicao: de('peniche'), socPct: 90, gasoleoL: 124 }, destino: 'nazare', tripulacao: 'acompanhado' }), comPrevisao(calmo))

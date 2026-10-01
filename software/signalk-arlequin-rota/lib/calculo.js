@@ -257,6 +257,9 @@ function montarAlternativa (ctx, cand, pr, desistenciaResumo, primeira = true) {
     partida: iso(cand.partida),
     esperaH: r2(cand.esperaH),
     propulsao: cand.propulsao,
+    // sem vela (< 0,1 h no provável, nas horas em bruto): o critério da junção das repetidas
+    // (lib/decisao.js); o ecrã e o plano usam este campo, não o horas.vela arredondado
+    semVela: decisao.semVela(cand),
     chegada: cand.chegadas,
     milhas: r2(cand.milhas),
     milhasSimuladas: r2(R.provavel.milhas),

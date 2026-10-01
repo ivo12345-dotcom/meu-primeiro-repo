@@ -88,8 +88,9 @@ const virgula4 = (x) => Math.abs(x).toFixed(4).replace('.', ',')
 const posicaoTexto = (p) => (Number.isFinite(p?.lat) && Number.isFinite(p?.lon) ? `${virgula4(p.lat)} ${p.lat >= 0 ? 'N' : 'S'} ${virgula4(p.lon)} ${p.lon >= 0 ? 'E' : 'W'}` : null)
 const texto = (x) => (typeof x === 'string' && x.trim() ? x.trim() : null)
 
-// Uma "vela e motor" com menos de 0,1 h de vela (horas.vela, o cenário provável) vai toda a motor.
-const semVela = (alt) => Number.isFinite(alt.horas?.vela) && alt.horas.vela < 0.1
+// Uma "vela e motor" com menos de 0,1 h de vela (o cenário provável) vai toda a motor: o campo semVela
+// do plugin (horas em bruto); sem ele (resultados antigos), o horas.vela arredondado.
+const semVela = (alt) => (typeof alt.semVela === 'boolean' ? alt.semVela : Number.isFinite(alt.horas?.vela) && alt.horas.vela < 0.1)
 
 // "a 5 MN da costa, via Canal da Berlenga, só motor" · "direta (salto curto), vela e motor" ·
 // "a 5 MN da costa, a motor (sem vento para vela)"
