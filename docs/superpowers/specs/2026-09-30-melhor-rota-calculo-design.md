@@ -27,7 +27,7 @@ Um plugin SignalK, `signalk-arlequin-rota`, que, dado um destino e a tripulaçã
 | Variáveis que só se medem (adorno, balanço, rajada medida) | **Opção A:** os modelos de planeamento usam **só o que se sabe antes de partir**. O balanço da IMU fica gravado para um futuro "mar real contra mar previsto" |
 | Zona coberta | **Toda a costa continental**, de Caminha a Vila Real de Santo António |
 | Arquitetura | **Plugin próprio em Node** + linhas de costa **pré-calculadas no portátil** (Python e shapely) |
-| Segurança | Limites avaliados no **cenário pessimista** do vento corrigido pela AI (mais conservador do que o desenho original) |
+| Segurança | Limites avaliados no **cenário pessimista** do vento corrigido pela AI (mais conservador do que o desenho original). Revisão final (01/10): no máximo dos 3 cenários, com o pessimista nunca abaixo da previsão em bruto; e limites próprios para "acompanhado" (decisão do Ivo, "limites mais largos") |
 
 ## Ajustes à Parte 2 (AI), incluídos neste plano
 
@@ -152,6 +152,7 @@ Para cada afastamento d ∈ {3, 5, 8} MN:
   - vento médio > 22 nós, rajadas > 30 ou ondas > 3 m, no **máximo dos 3 cenários** (o vento do pessimista é o P90; o máximo só acrescenta os momentos que os rastos do provável e do otimista apanham — revisão final: os cenários não são monótonos na hora, e o otimista, mais lento, pode apanhar a frente);
   - mais de 8 h equivalentes ao leme (o motor em calma, com vento < 10 nós e (ondas < 2 m, ou ondas ≤ 3 m com período ≥ 9 s — ondulação comprida), conta metade; regra do Ivo, 30/09);
   - chegada de noite a um porto com `conhecido: false`.
+- **"Não recomendado" com "acompanhado"** (decisão do Ivo de 01/10, "limites mais largos"): vento médio > 28 nós, rajadas > 35 ou ondas > 4 m, no máximo dos 3 cenários (configuráveis: `ventoMaxAcompanhado`, `rajadaMaxAcompanhado`, `ondasMaxAcompanhado`). Entre os limites de "só eu" (22/30/3) e estes, a alternativa fica recomendada, com um **aviso vermelho** "acima dos limites a solo: …". As 8 h ao leme e a chegada de noite a um porto desconhecido ficam só para "só eu". (Até aqui, com "acompanhado" não havia limite nenhum: um temporal podia dar "Segue".)
 - **O pior caso nunca abaixo da previsão** (revisão final, 01/10): o vento e a rajada do cenário pessimista, que decidem estes limites, são os previstos em bruto × a razão P90 do modelo `ventoForca`, mas essa razão nunca fica abaixo de 1 — um modelo que aprendeu "a previsão exagera" não pode baixar o pior caso abaixo do previsto (`lib/cenarios.js`, `ventoRazaoMin`). O P50, o P10 e a polar ficam com a razão do modelo.
 
 ## Decisão (`lib/decisao.js`)
@@ -161,7 +162,7 @@ Para cada afastamento d ∈ {3, 5, 8} MN:
   - Cada partida é combinada com os afastamentos e a propulsão (vela com motor abaixo de 7 nós, ou só motor).
   - Passagens que acabem depois do fim da previsão ficam de fora.
 - **3 melhores** por custo, entre as não excluídas.
-- **Veredicto:** Segue / Espera até às HH:MM / Não recomendado sozinho / Volta ou abriga-te em X, com 1–2 frases de porquê.
+- **Veredicto:** Segue / Espera até às HH:MM / Não recomendado sozinho (com "acompanhado": Não recomendado) / Volta ou abriga-te em X, com 1–2 frases de porquê.
   - "Volta ou abriga-te em X" só aparece se o pedido vier já no mar (a mais de 0,5 MN de um porto).
 - **"Sair agora mesmo assim":** só com partida imediata, inclui as "não recomendadas" e junta os pontos de desistência.
 

@@ -72,8 +72,8 @@ test('veredicto "Espera até às HH:MM": a melhor recomendada parte mais tarde; 
   // mesmo dia: "Espera até às 18:30"
   const logo = d.decidir({ candidatos: [agoraNr, cand({ partida: Date.UTC(2026, 8, 29, 17, 30), custo: 30 })], agora: AGORA, tripulacao: 'so' })
   assert.equal(logo.veredicto.texto, 'Espera até às 18:30')
-  // acompanhado, a "não recomendada" não conta: segue
-  assert.equal(d.decidir({ candidatos: [agoraNr, amanha], agora: AGORA, tripulacao: 'acompanhado' }).veredicto.tipo, 'segue')
+  // acompanhado: a "não recomendada" também conta (revisão final, I4 — o lib/seguranca.js só a marca
+  // com os limites de acompanhado); ver o teste I4 abaixo
 })
 
 test('veredicto "Não recomendado sozinho": nenhuma recomendada; com "sair agora" mostra a de menor custo', () => {
@@ -141,4 +141,17 @@ test('I1: a frase não contradiz a chegada de noite — o provável chega de dia
   const c2 = cand({ noite: true }); c2.chegadaNoiteProvavel = true
   assert.match(d.decidir({ candidatos: [c2], agora: AGORA, tripulacao: 'acompanhado' }).veredicto.porque[0], /\(de noite\)/)
   assert.match(d.decidir({ candidatos: [cand()], agora: AGORA, tripulacao: 'acompanhado' }).veredicto.porque[0], /\(de dia\)/)
+})
+
+test('I4: com "acompanhado", uma "não recomendada" (acima dos limites de acompanhado, lib/seguranca.js) já não segue; nenhuma passa → "Não recomendado"', () => {
+  const agoraNr = cand({ custo: 10, naoRecomendada: true, motivos: ['vento médio até 31 nós no pior caso (limite 28 acompanhado)'] })
+  const amanha = cand({ partida: Date.UTC(2026, 8, 30, 7), custo: 24 })
+  const r = d.decidir({ candidatos: [agoraNr, amanha], agora: AGORA, tripulacao: 'acompanhado' })
+  assert.equal(r.veredicto.tipo, 'espera')
+  assert.equal(r.veredicto.porque[0], 'Agora: vento médio até 31 nós no pior caso (limite 28 acompanhado).')
+  assert.deepEqual(r.top.map(c => c.id), [amanha.id, agoraNr.id])
+  const so = d.decidir({ candidatos: [agoraNr], agora: AGORA, tripulacao: 'acompanhado' })
+  assert.equal(so.veredicto.tipo, 'nao-recomendado')
+  assert.equal(so.veredicto.texto, 'Não recomendado')
+  assert.equal(d.recomendada(agoraNr, 'acompanhado'), false)
 })

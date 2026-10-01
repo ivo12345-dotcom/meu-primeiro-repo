@@ -1268,6 +1268,14 @@ parte (3a) é só o cálculo; o ecrã, o mapa e os avisos durante a viagem (3b) 
   otimista".
 - "Sair agora mesmo assim" pode mostrar uma passagem que acaba depois do fim da previsão — fica
   na mesma, com aviso vermelho, porque o Ivo pediu para sair mesmo assim.
+- **Limites de segurança.** Com "só eu": "Não recomendado sozinho" acima de 22 nós de vento
+  médio, 30 de rajada ou 3 m de ondas, mais de 8 h equivalentes ao leme, ou chegada de noite a um
+  porto que não conheces. Com "acompanhado" (decisão do Ivo de 01/10, "limites mais largos"):
+  "Não recomendado" acima de **28 nós, 35 de rajada ou 4 m de ondas**; entre os limites a solo e
+  estes, a alternativa fica, com um aviso vermelho "acima dos limites a solo: …" (as 8 h ao leme e
+  a chegada de noite só contam com "só eu"). Os limites contam no pior dos **3 cenários** (o
+  otimista, mais lento, pode apanhar uma frente que os outros não apanham), e o vento do pior caso
+  nunca fica abaixo do previsto, mesmo que a AI tenha aprendido que a previsão exagera.
 - As 3 melhores: primeiro as recomendadas, depois por custo.
 - Perto da costa (alternativa a ≤ 3 MN), o mínimo à terra é o próprio afastamento (3 MN), não os
   5 MN de omissão das outras alternativas.

@@ -431,3 +431,46 @@ test('I1: Canal da Berlenga — o otimista que atravessa o canal mais tarde, já
   // os três abaixo de 3 m: passa
   assert.equal(s.avaliar(base({ alternativa: alt, pessimista: rasto(alt, () => 2), provavel: rasto(alt, noCanal(2.9)), otimista: rasto(alt, noCanal(2.9)), tripulacao: 'acompanhado' })).excluida, false)
 })
+
+test('I4 (decisão do Ivo, 01/10, "limites mais largos"): acompanhado — "não recomendado" acima de 28 nós, rajadas de 35 ou ondas de 4 m (no máximo dos 3 rastos)', () => {
+  const r = s.avaliar(base({ tripulacao: 'acompanhado', pessimista: passagem({ resumo: { ventoMax: 29, rajadaMax: 36, ondasMax: 4.2 } }) }))
+  assert.equal(r.naoRecomendada, true)
+  assert.equal(r.excluida, false)
+  assert.deepEqual(r.motivos, [
+    'vento médio até 29 nós no pior caso (limite 28 acompanhado)',
+    'rajadas até 36 nós no pior caso (limite 35 acompanhado)',
+    'ondas até 4,2 m no pior caso (limite 4 m acompanhado)'
+  ])
+  // também quando só o otimista lá chega
+  assert.equal(s.avaliar(base({ tripulacao: 'acompanhado', otimista: passagem({ resumo: { rajadaMax: 36 } }) })).naoRecomendada, true)
+  // no limite exato não conta (é "mais de")
+  assert.equal(s.avaliar(base({ tripulacao: 'acompanhado', pessimista: passagem({ resumo: { ventoMax: 28, rajadaMax: 35, ondasMax: 4 } }) })).naoRecomendada, false)
+  // configuráveis
+  assert.equal(s.avaliar(base({ tripulacao: 'acompanhado', pessimista: passagem({ resumo: { ventoMax: 26 } }), opcoes: { ventoMaxAcompanhado: 25 } })).naoRecomendada, true)
+  assert.deepEqual([s.PADRAO.ventoMaxAcompanhado, s.PADRAO.rajadaMaxAcompanhado, s.PADRAO.ondasMaxAcompanhado], [28, 35, 4])
+  // as regras das 8 h ao leme e da chegada de noite ficam só para "só eu"
+  const longa = passagem({ min: 900 }); longa.pontos.at(-1).noite = true
+  const x = s.avaliar(base({ tripulacao: 'acompanhado', destino: { nome: 'Figueira da Foz', conhecido: false }, pessimista: longa }))
+  assert.equal(x.naoRecomendada, false)
+  assert.deepEqual(x.motivos, [])
+  assert.deepEqual(x.avisosVermelhos, [])
+})
+
+test('I4: acompanhado entre os limites a solo (22/30/3) e os de acompanhado — aviso vermelho "acima dos limites a solo", sem "não recomendado"', () => {
+  const r = s.avaliar(base({ tripulacao: 'acompanhado', pessimista: passagem({ resumo: { ventoMax: 23, rajadaMax: 31, ondasMax: 3.2 } }) }))
+  assert.equal(r.naoRecomendada, false)
+  assert.deepEqual(r.motivos, [])
+  assert.deepEqual(r.avisosVermelhos, [
+    'acima dos limites a solo: vento médio até 23 nós no pior caso (limite 22 sozinho)',
+    'acima dos limites a solo: rajadas até 31 nós no pior caso (limite 30 sozinho)',
+    'acima dos limites a solo: ondas até 3,2 m no pior caso (limite 3 m sozinho)'
+  ])
+  // acima dos dois num campo e só do solo noutro: o motivo e o aviso, sem repetir
+  const m = s.avaliar(base({ tripulacao: 'acompanhado', pessimista: passagem({ resumo: { ventoMax: 30, ondasMax: 3.5 } }) }))
+  assert.deepEqual(m.motivos, ['vento médio até 30 nós no pior caso (limite 28 acompanhado)'])
+  assert.deepEqual(m.avisosVermelhos, ['acima dos limites a solo: ondas até 3,5 m no pior caso (limite 3 m sozinho)'])
+  // com "só eu" é o "não recomendado sozinho" de sempre, sem este aviso
+  const so = s.avaliar(base({ pessimista: passagem({ resumo: { ventoMax: 23 } }) }))
+  assert.deepEqual(so.avisosVermelhos, [])
+  assert.equal(so.naoRecomendada, true)
+})

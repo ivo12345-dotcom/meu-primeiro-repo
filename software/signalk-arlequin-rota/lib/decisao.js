@@ -15,13 +15,14 @@
 // agora mesmo assim", só agora.
 //
 // As 3 melhores: entre as não excluídas, as recomendadas primeiro e depois por custo (com
-// "so", uma "não recomendada" nunca passa à frente de uma recomendada). Em "Sair agora" é
+// "so" ou "acompanhado", uma "não recomendada" nunca passa à frente de uma recomendada). Em "Sair agora" é
 // só pelo custo, com as não recomendadas incluídas.
 //
 // Veredicto:
 //   segue           a melhor recomendada parte agora;
 //   espera          a melhor recomendada parte mais tarde ("Espera até às HH:MM");
-//   nao-recomendado nenhuma alternativa passa (com "so": "Não recomendado sozinho");
+//   nao-recomendado nenhuma alternativa passa (com "so": "Não recomendado sozinho"; com
+//                   "acompanhado": "Não recomendado", acima de 28/35/4 — lib/seguranca.js);
 //   volta           só pedido no mar (a mais de 0,5 MN de um porto): continuar agora não é
 //                   recomendado e ir para o abrigo mais perto é ("Volta ou abriga-te em X").
 
@@ -79,7 +80,9 @@ function quando (t, agora, fuso = 'Europe/Lisbon') {
 }
 const hora = (t, fuso = 'Europe/Lisbon') => new Intl.DateTimeFormat('pt-PT', { timeZone: fuso, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(t)
 
-const recomendada = (c, tripulacao) => !c.excluida && !(tripulacao === 'so' && c.naoRecomendada)
+// naoRecomendada já é a da tripulação (lib/seguranca.js): "sozinho" com "so", os limites de
+// acompanhado (28/35/4) com "acompanhado" (decisão do Ivo de 01/10). O argumento fica por compatibilidade.
+const recomendada = (c, _tripulacao) => !c.excluida && !c.naoRecomendada
 
 // Ordena e escolhe as 3 melhores. Decisão (controlador, revisão da Task 10): os "3 melhores por custo, entre as não excluídas" do desenho, com as recomendadas à frente das não recomendadas.
 function melhores (candidatos, { tripulacao, sairAgora = false, n = 3 } = {}) {

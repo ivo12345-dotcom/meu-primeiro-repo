@@ -42,6 +42,11 @@
 //     previstos (null) não é calma; acima de 2 m sem período conhecido também não;
 //   - chegada de noite a um porto com `conhecido: false`. Conta a chegada de noite em qualquer
 //     um dos 3 cenários (pessimista, provável ou otimista).
+// "Não recomendada" com tripulação "acompanhado" (decisão do Ivo de 01/10, "limites mais largos";
+//   revisão final, I4): vento médio > 28 nós, rajadas > 35 ou ondas > 4 m (o máximo dos 3 resumos,
+//   como acima; ventoMaxAcompanhado, rajadaMaxAcompanhado, ondasMaxAcompanhado). Entre os limites
+//   de "só eu" e estes: aviso vermelho "acima dos limites a solo: …". As 8 h ao leme e a chegada
+//   de noite ficam só para "só eu".
 
 const c = require('./costa')
 
@@ -55,6 +60,9 @@ const PADRAO = Object.freeze({
   ventoMedioMax: 22,
   rajadaMax: 30,
   ondasMax: 3,
+  ventoMaxAcompanhado: 28,
+  rajadaMaxAcompanhado: 35,
+  ondasMaxAcompanhado: 4,
   lemeMaxH: 8,
   corredorCanalMn: 1,
   calmaVento: 10, // nós (menos do que isto)
@@ -259,11 +267,23 @@ function avaliar ({ alternativa, pessimista, provavel, otimista, destino, tripul
   // os máximos dos 3 resumos (o que for número)
   const maximo = (k) => { const v = rastos.map(x => x.resumo[k]).filter(Number.isFinite); return v.length ? Math.max(...v) : null }
   const m = { vento: maximo('ventoMax'), rajada: maximo('rajadaMax'), ondas: maximo('ondasMax') }
+  // os limites de vento, rajada e ondas: [o máximo, o texto, o limite a solo, o limite acompanhado]
+  const limites = [
+    [m.vento, (lim, quem) => `vento médio até ${inteiro(m.vento)} nós no pior caso (limite ${lim} ${quem})`, o.ventoMedioMax, o.ventoMaxAcompanhado],
+    [m.rajada, (lim, quem) => `rajadas até ${inteiro(m.rajada)} nós no pior caso (limite ${lim} ${quem})`, o.rajadaMax, o.rajadaMaxAcompanhado],
+    [m.ondas, (lim, quem) => `ondas até ${virgula(m.ondas)} m no pior caso (limite ${lim} m ${quem})`, o.ondasMax, o.ondasMaxAcompanhado]
+  ]
+  if (tripulacao === 'acompanhado') {
+    const nr = []
+    for (const [v, texto, solo, acomp] of limites) {
+      if (v > acomp) nr.push(texto(acomp, 'acompanhado'))
+      else if (v > solo) out.avisosVermelhos.push(`acima dos limites a solo: ${texto(solo, 'sozinho')}`)
+    }
+    if (nr.length) { out.naoRecomendada = true; out.motivos.push(...nr) }
+  }
   if (tripulacao === 'so') {
     const nr = []
-    if (m.vento > o.ventoMedioMax) nr.push(`vento médio até ${inteiro(m.vento)} nós no pior caso (limite ${o.ventoMedioMax} sozinho)`)
-    if (m.rajada > o.rajadaMax) nr.push(`rajadas até ${inteiro(m.rajada)} nós no pior caso (limite ${o.rajadaMax} sozinho)`)
-    if (m.ondas > o.ondasMax) nr.push(`ondas até ${virgula(m.ondas)} m no pior caso (limite ${o.ondasMax} m sozinho)`)
+    for (const [v, texto, solo] of limites) if (v > solo) nr.push(texto(solo, 'sozinho'))
     if (out.horasLemeEq > o.lemeMaxH) nr.push(`${virgula(out.horasLemeEq)} h equivalentes ao leme (limite ${o.lemeMaxH} h sozinho)`)
     if (out.chegadaNoite && destino && destino.conhecido === false) nr.push(`chegada de noite a ${destino.nome}, um porto que não conheces`)
     if (nr.length) { out.naoRecomendada = true; out.motivos.push(...nr) }
