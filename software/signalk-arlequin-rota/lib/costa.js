@@ -373,7 +373,8 @@ function criarCosta ({ terra, linhas = {}, zonas = [], destinos = [] }, { celula
 
   const linha = (d) => linhasP[String(d)] || null
 
-  return { grelha, zonas: zonasP, destinos, linhas: linhasP, linha, emTerra, distanciaTerra, cruzaTerra, zonaCruzada, verificarTroco, verificarAproximacao }
+  // aneis: os da terra, em bruto ([[lon, lat], …]), para o mini-mapa (lib/mapa.js) desenhar a mesma costa
+  return { grelha, aneis, zonas: zonasP, destinos, linhas: linhasP, linha, emTerra, distanciaTerra, cruzaTerra, zonaCruzada, verificarTroco, verificarAproximacao }
 }
 
 function lerGz (f) { return JSON.parse(zlib.gunzipSync(fs.readFileSync(f))) }

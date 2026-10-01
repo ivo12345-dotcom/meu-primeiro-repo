@@ -42,6 +42,7 @@ const seguranca = require('./seguranca')
 const decisao = require('./decisao')
 const { pontosDesistencia } = require('./desistencia')
 const avisos = require('./avisos')
+const mapa = require('./mapa')
 
 const H = 3600000
 const MOTIVO_SEM_ROTA_ATIVA = 'não há rota ativa no OpenCPN'
@@ -221,6 +222,21 @@ const nomeAlternativa = (cand, agora, fuso) => {
   return `${q}, ${onde}, ${cand.propulsao === 'motor' ? 'só motor' : 'vela e motor'}`
 }
 
+// O rasto provável para o mini-mapa (desenho 3b-1): de 10 em 10 min desde a partida, mais a chegada
+// (no último ponto da rota, à hora de chegada do resumo). → [{ lat, lon, t, motor, noite }]
+const PASSO_RASTO = 10 * 60000
+function rastoProvavel (pr, pontosRota) {
+  const out = []
+  const ponto = (p, t, lat = p.lat, lon = p.lon) => ({ lat: Math.round(lat * 1e4) / 1e4, lon: Math.round(lon * 1e4) / 1e4, t: iso(t), motor: !!p.motor, noite: !!p.noite })
+  let alvo = pr.pontos[0]?.t
+  for (const p of pr.pontos) if (p.t >= alvo) { out.push(ponto(p, p.t)); alvo = p.t + PASSO_RASTO }
+  const ultimo = pr.pontos.at(-1)
+  const chegada = Date.parse(pr.resumo.chegada)
+  const fim = pontosRota.at(-1)
+  if (ultimo && Number.isFinite(chegada) && fim && out.at(-1)?.t !== iso(chegada)) out.push(ponto(ultimo, chegada, fim.lat, fim.lon))
+  return out
+}
+
 function eventosComHora (eventos, fuso) {
   const hm = new Intl.DateTimeFormat('pt-PT', { timeZone: fuso, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
   return eventos.map(e => ({ t: iso(e.t), hora: hm.format(e.t), tipo: e.tipo, texto: e.texto }))
@@ -260,6 +276,7 @@ function montarAlternativa (ctx, cand, pr, desistenciaResumo, primeira = true) {
     costaMinMn: r2(cand.costaMinMn),
     custo: { total: r2(cand.custo.total), partes: Object.fromEntries(Object.entries(cand.custo.partes).map(([k, v]) => [k, r2(v)])) },
     rota: cand.geometria.pontos.map(p => [Math.round(p.lat * 1e5) / 1e5, Math.round(p.lon * 1e5) / 1e5]),
+    rasto: rastoProvavel(pr, cand.geometria.pontos),
     pontosRota: cand.geometria.pontos.map(p => ({ lat: Math.round(p.lat * 1e5) / 1e5, lon: Math.round(p.lon * 1e5) / 1e5, nome: p.nome ?? null, perna: p.perna ?? null })),
     eventos: eventosComHora(pr.eventos, ctx.o.fuso),
     avisos: avisos.avisosDaPassagem({ passagem: pr, destino: ctx.destino, tripulacao: ctx.tripulacao, opcoes: { fuso: ctx.o.fuso } }),
@@ -462,6 +479,15 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   // está, "Sem nível do gasóleo: assumi … L": não se repete)
   if (sairAgora && alternativas[0]?.avisosVermelhos?.length) avisosGerais.push(...alternativas[0].avisosVermelhos.filter(x => !(gasoleoAssumido && x === avisoGasoleoAssumido(gasoleoInicial))))
 
+  // o mini-mapa (desenho 3b-1): a janela das rotas, dos rastos e dos pontos de desistência; nunca
+  // derruba o cálculo (sem mapa, o ecrã desativa o botão Mapa)
+  let mapaResultado = null
+  try {
+    const pontosMapa = [...alternativas.flatMap(a => [...a.rota, ...a.rasto.map(p => [p.lat, p.lon])]), ...desistencia.map(p => [p.lat, p.lon])]
+    if (!pontosMapa.length) pontosMapa.push([pos.lat, pos.lon], destino.largo)
+    mapaResultado = mapa.montarMapa(costa, { pontos: pontosMapa })
+  } catch (e) { log?.('mini-mapa', e) }
+
   const versoes = deps.versoes || {}
   const resultado = {
     calculadoEm: iso(agora),
@@ -476,7 +502,8 @@ async function calcularSemRede (entrada = {}, deps = {}) {
     previsao: { obtida: pv.obtida || previsao.obtida, idadeH: r2(Number.isFinite(pv.idadeH) ? pv.idadeH : (agora - Date.parse(previsao.obtida)) / H), aviso: pv.aviso || null, fim: iso(previsao.fim) },
     ia: { versoes, nota: notaIa(modelos) },
     avisos: avisosGerais,
-    estatisticas: { ...estat, candidatos: candidatos.length, recomendadas: candidatos.filter(x => decisao.recomendada(x, tripulacao)).length }
+    estatisticas: { ...estat, candidatos: candidatos.length, recomendadas: candidatos.filter(x => decisao.recomendada(x, tripulacao)).length },
+    mapa: mapaResultado
   }
   await progresso(1, 'pronto')
   return resultado
