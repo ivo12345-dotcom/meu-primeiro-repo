@@ -7,6 +7,7 @@
   --bb: #e24b4a; --eb: #1d9e75; --rosa: #d4537e;
   --perigo: #f09595; --perigo-fundo: #a32d2d; --aviso-fundo: #8a5a00; --ativo: #185fa5;
   --rt: #3c3489; --rt-on: #534ab7; --vel: #633806; --vel-on: #ba7517;
+  --mar: #10202c; --terra: #4a4a44;
 }
 body.noite {
   --fundo: #000; --barra: #0a0000; --tile: #140000; --botao: #1c0000; --borda: #3a0000;
@@ -15,6 +16,7 @@ body.noite {
   --bb: #8a1a10; --eb: #5a120a; --rosa: #8a1a10;
   --perigo: #ff4a2a; --perigo-fundo: #5a0000; --aviso-fundo: #3a0800; --ativo: #4a0500;
   --rt: #2a0400; --rt-on: #4a0500; --vel: #2a0400; --vel-on: #4a0500;
+  --mar: #000; --terra: #2a0400;
 }
 html { font-size: calc(100vh / 50); }
 * { box-sizing: border-box; }
