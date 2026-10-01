@@ -16,13 +16,15 @@
 //        tarde (não há hora de alarme) ou com um cálculo antigo (a hora de alarme já passou, ou a
 //        partida foi há mais de 1 h); 503 sem eventos no servidor ou sem o plugin porto a ouvir)
 //   GET  /plano-telegram/:pedido → { estado: 'a enviar' | 'enviado' | 'falhou', entregues: [nome],
-//        falhas: [{ nome, erro }], avisos: [texto], motivo? }
+//        contactos: [nome], falhas: [{ nome, erro }], avisos: [texto], motivo? }
+//        contactos: os contactos em terra que o receberam (o chat do Ivo não conta; sem eles, ninguém
+//        em terra tem a hora de alarme e o ecrã não marca a precaução)
 //   avisos: o que o Ivo deve saber mas não impede o envio (sem o telefone dele na configuração, o
 //   plano diz só "liga ao Ivo").
 //
 // O plano (desenho 3b-1): monta o texto e o GPX (lib/plano.js) e emite no servidor o evento
 // 'arlequin:plano' { pedido, texto, gpx, nomeFicheiro }; o plugin porto (que tem o bot do Telegram)
-// envia-o e responde com 'arlequin:plano-enviado' { pedido, entregues, falhas }. Sem resposta em
+// envia-o e responde com 'arlequin:plano-enviado' { pedido, entregues, contactos, falhas }. Sem resposta em
 // 30 s, "falhou": o plugin porto não respondeu. Um stop() (o SignalK reinicia o plugin sempre que se
 // grava a configuração) com planos "a enviar" deixa-os "falhou": a resposta do porto já não chegaria.
 // A lista dos planos guarda os 20 mais recentes, mas nunca tira um que ainda está "a enviar".
@@ -150,7 +152,7 @@ module.exports = function (app, deps = {}) {
   let erroArranque = null
   let aCorrer = null // id do cálculo em curso
   const trabalhos = new Map()
-  const planos = new Map() // pedido → { estado, entregues, falhas, avisos, motivo?, criado, temporizador }
+  const planos = new Map() // pedido → { estado, entregues, contactos, falhas, avisos, motivo?, criado, temporizador }
 
   // A resposta do plugin porto a um plano: "enviado" com pelo menos uma entrega; sem nenhuma,
   // "falhou" com as falhas (ou sem destinatários). Uma resposta depois do limite já não conta.
@@ -159,6 +161,8 @@ module.exports = function (app, deps = {}) {
     if (!p || p.estado !== 'a enviar') return
     cancelar(p.temporizador)
     p.entregues = Array.isArray(m.entregues) ? m.entregues.map(String) : []
+    // um porto antigo não manda os contactos: nenhum em terra (o ecrã avisa)
+    p.contactos = Array.isArray(m.contactos) ? m.contactos.map(String) : []
     p.falhas = Array.isArray(m.falhas) ? m.falhas.filter(eObjeto).map(f => ({ nome: String(f.nome ?? ''), erro: String(f.erro ?? '') })) : []
     p.estado = p.entregues.length ? 'enviado' : 'falhou'
     if (!p.entregues.length) p.motivo = p.falhas.length ? p.falhas.map(f => `${f.nome}: ${f.erro}`).join('; ') : SEM_DESTINATARIOS
@@ -476,7 +480,7 @@ module.exports = function (app, deps = {}) {
       }
       const pedido = crypto.randomUUID()
       const avisos = typeof o.telefones.ivo === 'string' && o.telefones.ivo.trim() ? [] : [AVISO_SEM_TELEFONE]
-      const estado = { estado: 'a enviar', entregues: [], falhas: [], avisos, criado: new Date(relogio()).toISOString() }
+      const estado = { estado: 'a enviar', entregues: [], contactos: [], falhas: [], avisos, criado: new Date(relogio()).toISOString() }
       estado.temporizador = agendar(() => {
         if (estado.estado === 'a enviar') { estado.estado = 'falhou'; estado.motivo = MOTIVO_PORTO }
       }, LIMITE_PORTO_MS)
@@ -496,7 +500,7 @@ module.exports = function (app, deps = {}) {
       if (!ligado()) return parado(res)
       const p = planos.get(req.params.pedido)
       if (!p) return res.status(404).json({ ok: false, erro: 'pedido desconhecido' })
-      const out = { estado: p.estado, entregues: p.entregues, falhas: p.falhas, avisos: p.avisos, criado: p.criado }
+      const out = { estado: p.estado, entregues: p.entregues, contactos: p.contactos, falhas: p.falhas, avisos: p.avisos, criado: p.criado }
       if (p.motivo) out.motivo = p.motivo
       res.json(out)
     })

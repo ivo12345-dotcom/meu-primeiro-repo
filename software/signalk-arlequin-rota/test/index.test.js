@@ -420,11 +420,19 @@ test('POST /plano-telegram: 404 e 409; 202 { pedido } e o evento arlequin:plano 
   assert.equal((await chamar(r.post['/plano-telegram'], { body: { id: a.id, alternativa: alt1.id } })).code, 202)
 
   const antes = await chamar(r.get['/plano-telegram/:pedido'], { params: { pedido: x.pedido } })
-  assert.deepEqual({ estado: antes.estado, entregues: antes.entregues, falhas: antes.falhas }, { estado: 'a enviar', entregues: [], falhas: [] })
-  app.emit('arlequin:plano-enviado', { pedido: x.pedido, entregues: ['chat 111', 'Mãe'], falhas: [{ nome: 'Tio', erro: 'Telegram sendMessage: Forbidden: bot was blocked by the user' }] })
+  assert.deepEqual({ estado: antes.estado, entregues: antes.entregues, contactos: antes.contactos, falhas: antes.falhas }, { estado: 'a enviar', entregues: [], contactos: [], falhas: [] })
+  app.emit('arlequin:plano-enviado', { pedido: x.pedido, entregues: ['chat 111', 'Mãe'], contactos: ['Mãe'], falhas: [{ nome: 'Tio', erro: 'Telegram sendMessage: Forbidden: bot was blocked by the user' }] })
   const depois = await chamar(r.get['/plano-telegram/:pedido'], { params: { pedido: x.pedido } })
   assert.equal(depois.estado, 'enviado')
   assert.deepEqual(depois.entregues, ['chat 111', 'Mãe'])
+  // os contactos em terra que o receberam (revisão final, 3): o ecrã só marca a precaução com eles
+  assert.deepEqual(depois.contactos, ['Mãe'])
+  // um porto antigo (sem contactos na resposta): nenhum em terra
+  const y = await chamar(r.post['/plano-telegram'], { body: { id: a.id, alternativa: 0 } })
+  app.emit('arlequin:plano-enviado', { pedido: y.pedido, entregues: ['chat 111'], falhas: [] })
+  const gy = await chamar(r.get['/plano-telegram/:pedido'], { params: { pedido: y.pedido } })
+  assert.equal(gy.estado, 'enviado')
+  assert.deepEqual(gy.contactos, [])
   assert.deepEqual(depois.falhas, [{ nome: 'Tio', erro: 'Telegram sendMessage: Forbidden: bot was blocked by the user' }])
   assert.equal((await chamar(r.get['/plano-telegram/:pedido'], { params: { pedido: 'nao-existe' } })).code, 404)
   p.stop()
