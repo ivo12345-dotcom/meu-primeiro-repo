@@ -94,3 +94,16 @@ test('nunca NaN: pontos inválidos saltam-se, sem mapa ou sem rasto não rebenta
   assert.match(svg, /<polyline class="rota"/)
   assert.equal(desenharMapa({ mapa: null, alternativas }), '')
 })
+
+test('tudo cortado à janela (o mar só nela; as zonas grandes não saem); o nome do abrigo só quando muda', () => {
+  const svg = desenhar(FUGA, { selecionada: 0 })
+  assert.match(svg, /<clipPath id="mapa-janela"><rect x="[\d.]+" y="[\d.]+" width="[\d.]+" height="[\d.]+"\/><\/clipPath>/)
+  const corte = svg.indexOf('<g clip-path="url(#mapa-janela)">')
+  assert.ok(corte > 0 && svg.indexOf('<path class="terra"') > corte && svg.indexOf('<polygon class="zona"') > corte)
+  // as bolinhas todas, mas o rótulo só quando o abrigo muda de um ponto para o seguinte
+  const nomes = FUGA.desistencia.map(p => p.abrigo?.nome || p.voltar?.nome)
+  const mudancas = nomes.filter((n, i) => n && n !== nomes[i - 1]).length
+  const rotulos = [...svg.matchAll(/<circle class="desistencia"[^]*?<\/circle>(<text[^>]*>([^<]+)<\/text>)?/g)].filter(m => m[1]).length
+  assert.equal(rotulos, mudancas)
+  assert.ok(mudancas < FUGA.desistencia.length)
+})

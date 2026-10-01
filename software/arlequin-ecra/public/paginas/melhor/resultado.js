@@ -1,0 +1,216 @@
+// Melhor rota, estados A calcular, Resultado e Erro (desenho 3b-1).
+//   Resultado: a faixa do veredicto (cor do tipo) com as frases de porquê, a linha da previsão,
+//   os 3 cartões (a recomendada destacada), os avisos vermelhos (sempre visíveis), a linha do
+//   tempo, as precauções com caixas (guardadas por cálculo), os pontos de desistência, e os botões
+//   Mapa / Enviar plano / Ativar esta rota / Sair agora mesmo assim / Novo cálculo.
+//   Nunca mostra null, NaN nem undefined: o que falta é "—".
+
+import { esc, num, horaLisboa, margem, nomeAlternativa, corVeredicto, avisosVermelhos, avisosGerais, linhaPrevisao } from '../../lib/rota-texto.js'
+import { barra } from '../../lib/desenho.js'
+import { URL_ROTA, calcular, motivoPlugin } from './pedir.js'
+
+const CHAVE_MARCAS = 'arlequin.precaucoes'
+const MAX_CALCULOS_MARCAS = 10
+const agora = (ctx) => (Number.isFinite(ctx.agora) ? ctx.agora : Date.now())
+const agendar = (ctx, f, ms) => (ctx.agendar || setTimeout)(f, ms)
+
+// ---------- marcas das precauções (por id de cálculo; no ecrã e no localStorage) ----------
+function todasMarcas (ctx) {
+  const e = ctx.estado
+  if (!e.marcas) e.marcas = (typeof ctx.guardado === 'function' ? ctx.guardado(CHAVE_MARCAS, {}) : null) || {}
+  return e.marcas
+}
+export function marcas (ctx) {
+  const m = todasMarcas(ctx)
+  return m[ctx.estado.idCalculo] || {}
+}
+function marcar (ctx, id, valor) {
+  const m = todasMarcas(ctx)
+  const k = ctx.estado.idCalculo
+  const atual = { ...(m[k] || {}) }
+  if (valor) atual[id] = true
+  else delete atual[id]
+  delete m[k]
+  m[k] = atual // o mais recente no fim
+  for (const velho of Object.keys(m).slice(0, Math.max(0, Object.keys(m).length - MAX_CALCULOS_MARCAS))) delete m[velho]
+  if (typeof ctx.guardar === 'function') ctx.guardar(CHAVE_MARCAS, m)
+}
+
+// ---------- pedaços ----------
+const h = (n, d = 1) => `${num(n, d)} h`
+
+function cartao (ctx, alt, i, sel) {
+  const ag = agora(ctx)
+  const recomendada = !alt.naoRecomendada && !alt.excluida
+  const etiqueta = recomendada ? (i === 0 ? '<span class="ok">recomendada</span>' : '<span class="ok">alternativa</span>') : '<span class="perigo">não recomendada</span>'
+  const motivos = alt.motivos?.length ? `<div class="lab perigo">${alt.motivos.map(esc).join('; ')}</div>` : ''
+  // os avisos da rota que não vão para os vermelhos (a previsão e o canal vão): o salto curto, a rota ativa…
+  const avisosRota = (alt.avisosRota || []).filter(a => !/previs/i.test(a) && !(alt.canal && /por confirmar/.test(a))).map(a => `<div class="lab atencao">${esc(a)}</div>`).join('')
+  const H = alt.horas || {}; const M = alt.maximos || {}; const G = alt.gasoleoL || {}
+  return `<div class="tile cartao${sel ? ' sel' : ''}${i === 0 ? ' primeira' : ''}" data-acao="rota-escolher" data-i="${i}">
+<div class="linha"><span class="lab">${i + 1}.ª · ${etiqueta}</span><span class="lab">${num(alt.milhas, 1)} MN</span></div>
+<div class="nome-alt">${esc(nomeAlternativa(alt))}</div>
+<div class="v">${horaLisboa(alt.partida, ag)} → ${horaLisboa(alt.chegada?.p50, ag)}</div>
+<div class="lab">chegada (cedo–tarde): ${margem(alt.chegada, ag)}${alt.chegadaNoite ? ' · <span class="atencao">de noite</span>' : ''}</div>
+<div>vela ${h(H.vela)} · motor ${h(H.motor)} · noite ${h(H.noite)} · leme ${h(H.leme)}</div>
+<div>vento ${num(M.vento, 0)} · rajada ${num(M.rajada, 0)} nós · ondas ${num(M.ondas, 1)} m</div>
+<div>gasóleo ${num(G.p50, 0)} L (pior ${num(G.p90, 0)} L) · bateria mín. ${num(alt.bateriaMin, 0)}%</div>
+${motivos}${avisosRota}</div>`
+}
+
+function linhaTempo (ctx, alt) {
+  const ag = agora(ctx)
+  const itens = [...(alt.eventos || []).map(x => ({ ...x, aviso: false })), ...(alt.avisos || []).map(x => ({ ...x, aviso: true }))]
+    .filter(x => x && x.texto)
+    .sort((a, b) => (Date.parse(a.t) || 0) - (Date.parse(b.t) || 0))
+  if (!itens.length) return '<div class="lab">—</div>'
+  return `<table>${itens.map(x => `<tr${x.aviso ? ' class="atencao"' : ''}><td class="hora-col">${horaLisboa(x.t, ag)}</td><td>${x.aviso ? '⚠ ' : ''}${esc(x.texto)}</td></tr>`).join('')}</table>`
+}
+
+function precaucoes (ctx, alt) {
+  const m = marcas(ctx)
+  const lista = alt.precaucoes || []
+  if (!lista.length) return '<div class="lab">—</div>'
+  return lista.map(p => `<button class="caixa${m[p.id] ? ' marcada' : ''}" data-acao="rota-precaucao" data-id="${esc(p.id)}">${m[p.id] ? '☑' : '☐'} ${esc(p.texto)}${p.porque ? ` <span class="lab">(${esc(p.porque)})</span>` : ''}</button>`).join('')
+}
+
+function fuga (f) {
+  if (!f) return '—'
+  return `${esc(f.nome)} ${num(f.milhas, 1)} MN, vento ${esc(f.vento || '—')}${f.avisoVermelho ? ' <span class="perigo">⚠</span>' : ''}`
+}
+
+function desistencia (ctx, r, i) {
+  if (i !== 0) return '<div class="lab">Os pontos de desistência foram calculados para a 1.ª alternativa (a recomendada): escolhe-a para os ver.</div>'
+  const ag = agora(ctx)
+  const linhas = (r.desistencia || []).map(p => `<tr><td class="hora-col">${horaLisboa(p.t, ag)}</td><td>${p.abrigo ? fuga(p.abrigo) : `<span class="perigo">${esc(p.semAbrigo || 'sem abrigo')}</span>`}</td><td>${p.voltar ? `voltar: ${fuga(p.voltar)}` : p.semVolta ? `<span class="perigo">${esc(p.semVolta)}</span>` : ''}</td></tr>`).join('')
+  return `<div>${esc(r.desistenciaResumo || '—')}</div>${linhas ? `<table><tr><th>hora</th><th>abrigo</th><th>volta</th></tr>${linhas}</table>` : ''}`
+}
+
+function estadoPlano (e) {
+  const p = e.plano
+  if (!p) return ''
+  if (p.estado === 'a enviar') return '<div class="tile">a enviar o plano pelo Telegram…</div>'
+  if (p.estado === 'enviado') {
+    const n = p.entregues?.length || 0
+    const falhas = p.falhas?.length ? `<div class="lab perigo">não chegou a: ${p.falhas.map(f => `${esc(f.nome)} (${esc(f.erro)})`).join('; ')}</div>` : ''
+    return `<div class="tile ok">enviado ✓ a ${n} ${n === 1 ? 'contacto' : 'contactos'}${falhas}</div>`
+  }
+  return `<div class="tile perigo">não foi possível enviar: ${esc(p.motivo || p.erro || 'sem explicação')}</div>`
+}
+
+// ---------- o plano pelo Telegram ----------
+function seguirPlano (ctx) {
+  const e = ctx.estado
+  const pedido = e.plano?.pedido
+  if (!pedido) return
+  return ctx.pedir(`${URL_ROTA}/plano-telegram/${encodeURIComponent(pedido)}`)
+    .then(r => {
+      if (e.plano?.pedido !== pedido) return
+      e.plano = { ...e.plano, ...r }
+      if (r.estado === 'a enviar') return agendar(ctx, () => seguirPlano(ctx), 1000)
+      if (r.estado === 'enviado') {
+        // o plano deixado em terra (e com a hora de alarme): as precauções ficam marcadas
+        for (const id of ['plano', 'plano-hora']) if (e.resultado?.alternativas?.[e.selecionada]?.precaucoes?.some(p => p.id === id)) marcar(ctx, id, true)
+      }
+    })
+    .catch(err => { if (e.plano?.pedido === pedido) e.plano = { pedido, estado: 'falhou', motivo: motivoPlugin(err) } })
+    .finally(() => ctx.refrescar())
+}
+
+export function renderACalcular (ctx) {
+  const c = ctx.estado.calculo || {}
+  const f = Number.isFinite(c.progresso) ? c.progresso : 0
+  return `<div class="tile centro" style="flex:1;">
+<div class="vv">A calcular a melhor rota…</div>
+<div style="width:min(40rem,90%);margin:1rem 0;">${barra(f, 'var(--azul)')}</div>
+<div class="v">${Math.round(f * 100)}%</div>
+<div style="font-size:1.2rem;margin-top:.4rem;">${esc(c.texto || 'a começar')}</div>
+<div class="lab" style="margin-top:.8rem;">Demora uns segundos: o plugin simula as partidas das próximas 48 h.</div>
+</div>`
+}
+
+export function renderErro (ctx) {
+  const e = ctx.estado
+  return `<div class="col" style="flex:1;justify-content:center;align-items:center;">
+<div class="tile caixa-erro" style="max-width:48rem;">${esc(e.erro || 'o cálculo falhou sem explicação')}</div>
+<div class="acoes">${e.ultimoPedido ? '<button class="acao go" data-acao="rota-repetir">Tentar outra vez</button>' : ''}<button class="acao" data-acao="rota-novo">Novo cálculo</button></div>
+</div>`
+}
+
+export function botoes (ctx) {
+  const r = ctx.estado.resultado
+  const semMapa = !r?.mapa
+  const aEnviar = ctx.estado.plano?.estado === 'a enviar'
+  return `<div class="acoes">
+<button class="acao" data-acao="rota-mapa"${semMapa ? ' disabled title="Este resultado vem sem o mapa"' : ''}>Mapa</button>
+<button class="acao" data-acao="rota-plano"${aEnviar ? ' disabled' : ''}>Enviar plano</button>
+<button class="acao go" data-acao="rota-ativar">Ativar esta rota</button>
+<button class="acao stop" data-acao="rota-sair-agora">Sair agora mesmo assim</button>
+<button class="acao" data-acao="rota-novo">Novo cálculo</button>
+</div>${semMapa ? '<div class="lab">Este resultado vem sem o mapa (de uma versão antiga do plugin da rota): faz um novo cálculo para o ver.</div>' : ''}`
+}
+
+export function render (ctx) {
+  const e = ctx.estado
+  const r = e.resultado || {}
+  const alts = r.alternativas || []
+  const i = alts[e.selecionada] ? e.selecionada : 0
+  const alt = alts[i] || {}
+  const v = r.veredicto || {}
+  const ag = agora(ctx)
+  const vermelhos = avisosVermelhos(r, i, ag)
+  const gerais = avisosGerais(r)
+  const prev = linhaPrevisao(r, ag)
+  return `<div class="col rolar" style="flex:1.6;">
+<div class="faixa ${corVeredicto(v.tipo)}"><div class="vv">${esc(v.texto || '—')}</div>${(v.porque || []).map(p => `<div>${esc(p)}</div>`).join('')}</div>
+${prev || gerais.length ? `<div class="lab">${esc(prev)}${gerais.map(g => ` · <span class="atencao">${esc(g)}</span>`).join('')}</div>` : ''}
+${alts.length ? `<div class="g3">${alts.map((a, k) => cartao(ctx, a, k, k === i)).join('')}</div>` : '<div class="tile caixa-erro">Nenhuma alternativa passa: ver o porquê acima.</div>'}
+<div class="tile vermelhos"><div class="lab">Avisos vermelhos</div>${vermelhos.length ? vermelhos.map(x => `<div class="perigo">⚠ ${esc(x)}</div>`).join('') : '<div class="lab">nenhum</div>'}</div>
+${estadoPlano(e)}
+${e.msg ? `<div class="tile ${e.msgErro ? 'perigo' : ''}">${esc(e.msg)}</div>` : ''}
+${botoes(ctx)}
+</div>
+<div class="col rolar" style="flex:1;">
+<div class="tile"><div class="lab">Linha do tempo · ${esc(nomeAlternativa(alt))}</div>${linhaTempo(ctx, alt)}</div>
+<div class="tile"><div class="lab">Precauções</div><div class="caixas">${precaucoes(ctx, alt)}</div></div>
+<div class="tile"><div class="lab">Pontos de desistência</div>${desistencia(ctx, r, i)}</div>
+</div>`
+}
+
+export async function acao (nome, dados, ctx) {
+  const e = ctx.estado
+  if (nome === 'rota-escolher') {
+    const i = Number(dados.i)
+    if (Number.isInteger(i) && e.resultado?.alternativas?.[i]) { e.selecionada = i; e.plano = null }
+    return true
+  }
+  if (nome === 'rota-precaucao') { marcar(ctx, dados.id, !marcas(ctx)[dados.id]); return true }
+  if (nome === 'rota-mapa') { if (e.resultado?.mapa) e.vista = 'mapa'; return true }
+  if (nome === 'rota-voltar') { e.vista = 'resultado'; return true }
+  if (nome === 'rota-plano') {
+    e.plano = { estado: 'a enviar' }
+    try {
+      const r = await ctx.pedir(`${URL_ROTA}/plano-telegram`, { method: 'POST', body: { id: e.idCalculo, alternativa: e.selecionada || 0 } })
+      e.plano = { pedido: r.pedido, estado: 'a enviar' }
+    } catch (err) { e.plano = { estado: 'falhou', motivo: err?.status ? err.message : motivoPlugin(err) }; return true }
+    await seguirPlano(ctx)
+    return true
+  }
+  if (nome === 'rota-ativar') {
+    e.msg = null
+    try {
+      const r = await ctx.pedir(`${URL_ROTA}/ativar`, { method: 'POST', body: { id: e.idCalculo, alternativa: e.selecionada || 0 } })
+      e.ativada = true
+      e.novo = false
+      e.msgAtivar = r?.nota || null
+    } catch (err) { e.msg = err?.status ? err.message : motivoPlugin(err); e.msgErro = true }
+    return true
+  }
+  if (nome === 'rota-sair-agora' || nome === 'rota-repetir') {
+    const base = e.ultimoPedido || (e.resultado?.destino?.id ? { destino: e.resultado.destino.id, tripulacao: e.resultado.tripulacao || 'so' } : null)
+    if (!base) { e.msg = 'Não sei o destino deste cálculo: faz um novo cálculo.'; e.msgErro = true; return true }
+    await calcular(ctx, { destino: base.destino, tripulacao: base.tripulacao, sairAgora: nome === 'rota-sair-agora' ? true : !!base.sairAgora })
+    return true
+  }
+  return false
+}

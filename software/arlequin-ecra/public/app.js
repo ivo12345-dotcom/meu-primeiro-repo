@@ -68,6 +68,10 @@ function contexto () {
     notificacoes: [...store.notificacoes.values()],
     estado: app.estados[app.pagina],
     demo: parametros.has('demo'),
+    noite: app.noite,
+    // armazenamento do ecrã (as marcas das precauções da melhor rota, por cálculo)
+    guardado,
+    guardar,
     pedir,
     logbook: (text, category = 'navigation') => pedir('/plugins/signalk-logbook/logs', { method: 'POST', body: { text, category } }),
     refrescar: () => render()

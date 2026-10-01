@@ -8,6 +8,7 @@
   --perigo: #f09595; --perigo-fundo: #a32d2d; --aviso-fundo: #8a5a00; --ativo: #185fa5;
   --rt: #3c3489; --rt-on: #534ab7; --vel: #633806; --vel-on: #ba7517;
   --mar: #10202c; --terra: #4a4a44;
+  --segue: #0f6e56; --espera: #8a6d00; --naorec: #a8550f; --volta: #a32d2d; --faixa-texto: #fff;
 }
 body.noite {
   --fundo: #000; --barra: #0a0000; --tile: #140000; --botao: #1c0000; --borda: #3a0000;
@@ -17,6 +18,7 @@ body.noite {
   --perigo: #ff4a2a; --perigo-fundo: #5a0000; --aviso-fundo: #3a0800; --ativo: #4a0500;
   --rt: #2a0400; --rt-on: #4a0500; --vel: #2a0400; --vel-on: #4a0500;
   --mar: #000; --terra: #2a0400;
+  --segue: #1c0000; --espera: #2a0400; --naorec: #3a0500; --volta: #5a0000; --faixa-texto: #ff5a3a;
 }
 html { font-size: calc(100vh / 50); }
 * { box-sizing: border-box; }
@@ -107,6 +109,31 @@ body.noite button, body.noite .btn { color: var(--texto); }
   #barra { flex-wrap: wrap; }
   html { font-size: calc(100vw / 42); }
 }
+
+/* Melhor rota (3b-1): faixa do veredicto, cartões, avisos, precauções e o mini-mapa. */
+.rolar { overflow: auto; }
+.faixa { border-radius: .4rem; padding: .45rem .7rem; color: var(--faixa-texto); font-size: 1.1rem; }
+.faixa .vv { font-size: 2rem; }
+.faixa.verde { background: var(--segue); } .faixa.amarelo { background: var(--espera); }
+.faixa.laranja { background: var(--naorec); } .faixa.vermelho { background: var(--volta); }
+.faixa.cinzento { background: var(--botao); }
+body.noite .faixa { outline: 2px solid var(--faixa-texto); outline-offset: -2px; }
+.cartao { cursor: pointer; border: 2px solid transparent; display: flex; flex-direction: column; gap: .15rem; font-size: 1rem; }
+.cartao.sel { border-color: var(--azul); background: var(--botao); }
+.nome-alt { font-weight: bold; font-size: 1.05rem; }
+.cartao .v { font-size: 1.1rem; }
+.caixa-erro { background: var(--perigo-fundo); color: #fff; font-weight: bold; font-size: 1.2rem; padding: .7rem 1rem; border-radius: .4rem; }
+body.noite .caixa-erro { color: #ff5a3a; }
+.vermelhos .perigo { font-weight: normal; margin-top: .2rem; }
+.caixas { display: flex; flex-direction: column; gap: .3rem; }
+.caixa { text-align: left; padding: .45rem .6rem; font-size: 1.05rem; }
+.caixa.marcada { border-color: var(--ok); }
+tr[data-acao] { cursor: pointer; }
+.acao[disabled] { opacity: .4; cursor: not-allowed; }
+.acao.grande { font-size: 1.6rem; padding: 1rem; }
+.mapa-caixa { display: flex; align-items: center; justify-content: center; padding: .2rem; }
+svg.mapa { width: 100%; height: 100%; }
+td.hora-col { width: 8.5rem; white-space: nowrap; color: var(--texto-2); }
 
 /* Teclado numérico por cima da página (Abasteci / Calibrar). */
 .teclado { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 10; }

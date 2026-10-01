@@ -96,11 +96,14 @@ export async function pedir (url, opcoes = {}) {
     body: opcoes.body ? JSON.stringify(opcoes.body) : undefined
   })
   if (!r.ok) {
-    // O erro leva a explicação do plugin, se houver ({ erro: '…' }), e o código.
+    // O erro leva a explicação do plugin, se houver ({ erro: '…' }), o código e o corpo (ex.: o
+    // id do cálculo que já está a correr, num 409 da melhor rota).
     let msg = String(r.status)
-    try { const j = await r.json(); if (j?.erro) msg = j.erro } catch { /* sem corpo */ }
+    let corpo = null
+    try { corpo = await r.json(); if (corpo?.erro) msg = corpo.erro } catch { /* sem corpo */ }
     const e = new Error(msg)
     e.status = r.status
+    e.corpo = corpo
     throw e
   }
   const tipo = r.headers.get('content-type') || ''

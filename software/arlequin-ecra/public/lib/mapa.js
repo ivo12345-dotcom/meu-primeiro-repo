@@ -23,7 +23,7 @@ export function projecao (j, largura, altura) {
   const k = Math.min(largura / w, altura / h) // px por grau de latitude
   const x0 = (largura - w * k) / 2
   const y0 = (altura - h * k) / 2
-  return { xy: (lat, lon) => [x0 + (lon - j.lonMin) * cos * k, y0 + (j.latMax - lat) * k], pxPorMn: k / 60 }
+  return { xy: (lat, lon) => [x0 + (lon - j.lonMin) * cos * k, y0 + (j.latMax - lat) * k], pxPorMn: k / 60, caixa: { x: x0, y: y0, w: w * k, h: h * k } }
 }
 
 // O comprimento da escala (MN): o maior número redondo com no máximo 1/4 da largura.
@@ -57,7 +57,7 @@ function trocos (rasto) {
 }
 
 function desenharAlternativa (pr, alt, i, sel) {
-  const espessura = sel ? 5 : 2
+  const espessura = sel ? 8 : 3
   const tr = trocos(alt.rasto)
   let corpo
   if (tr.length) {
@@ -98,7 +98,11 @@ export function desenharMapa ({ mapa, alternativas = [], selecionada = 0, noite 
   const alt = ok(altura) ? altura : alturaPara(j, largura)
   const pr = projecao(j, largura, alt)
   const partes = []
-  partes.push(`<rect class="mar" x="0" y="0" width="${largura}" height="${alt}" fill="var(--mar)"/>`)
+  // o mar só na janela (a terra vem recortada a ela); o resto da caixa fica com o fundo do ecrã,
+  // e tudo o que se desenha fica cortado à janela
+  const c = pr.caixa
+  partes.push(`<defs><clipPath id="mapa-janela"><rect x="${f1(c.x)}" y="${f1(c.y)}" width="${f1(c.w)}" height="${f1(c.h)}"/></clipPath></defs><g clip-path="url(#mapa-janela)">`)
+  partes.push(`<rect class="mar" x="${f1(c.x)}" y="${f1(c.y)}" width="${f1(c.w)}" height="${f1(c.h)}" fill="var(--mar)"/>`)
   // terra: um path com um anel por M…Z (evenodd para os buracos)
   const d = (mapa.terra || []).map(anel => {
     const pts = (anel || []).filter(p => Array.isArray(p) && valido(p[0], p[1])).map(([lat, lon]) => pr.xy(lat, lon).map(f1).join(' '))
@@ -121,14 +125,17 @@ export function desenharMapa ({ mapa, alternativas = [], selecionada = 0, noite 
     const [x, y] = pr.xy(p.lat, p.lon)
     partes.push(`<path class="aviso" d="M${f1(x)} ${f1(y - 13)}L${f1(x + 11)} ${f1(y + 7)}L${f1(x - 11)} ${f1(y + 7)}Z" fill="var(--amarelo)" stroke="var(--fundo)" stroke-width="2"><title>${esc(av.hora || horaLisboa(av.t, agora))} ${esc(av.texto)}</title></path>`)
   }
-  // pontos de desistência (calculados para a 1.ª alternativa): bolinha e o abrigo
+  // pontos de desistência (calculados para a 1.ª alternativa): bolinha e o abrigo (o nome só
+  // quando muda, para não o repetir em cada ponto)
+  let anterior = null
   for (const p of desistencia || []) {
     if (!valido(p?.lat, p?.lon)) continue
     const xy = pr.xy(p.lat, p.lon)
     const nome = p.abrigo?.nome || p.voltar?.nome || ''
     const vermelho = p.abrigo?.avisoVermelho || (!p.abrigo && !p.voltar)
     partes.push(`<circle class="desistencia" cx="${f1(xy[0])}" cy="${f1(xy[1])}" r="8" fill="${vermelho ? 'var(--perigo)' : 'var(--ok)'}" stroke="var(--fundo)" stroke-width="2"><title>${esc(p.hora || '')} ${esc(nome)}</title></circle>`)
-    if (nome) partes.push(rotulo(xy, nome, largura, 'var(--texto-2)'))
+    if (nome && nome !== anterior) partes.push(rotulo(xy, nome, largura, 'var(--texto-2)'))
+    anterior = nome
   }
   // partida e destino (da selecionada)
   const rota = (a?.rota || []).filter(p => Array.isArray(p) && valido(p[0], p[1]))
@@ -139,10 +146,12 @@ export function desenharMapa ({ mapa, alternativas = [], selecionada = 0, noite 
     if (partida) partes.push(rotulo(ini, partida, largura))
     if (destino) partes.push(rotulo(fim, destino, largura))
   }
-  // escala em MN, em baixo à esquerda
-  const mn = escalaMn(pr.pxPorMn, largura)
+  partes.push('</g>')
+  // escala em MN, em baixo à esquerda da janela
+  const mn = escalaMn(pr.pxPorMn, c.w)
   const comp = mn * pr.pxPorMn
-  const y = alt - 30
-  partes.push(`<g class="escala" stroke="var(--texto)" stroke-width="3"><path d="M30 ${y}H${f1(30 + comp)}M30 ${y - 8}V${y + 8}M${f1(30 + comp)} ${y - 8}V${y + 8}" fill="none"/><text x="${f1(30 + comp / 2)}" y="${y - 14}" font-size="22" fill="var(--texto)" stroke="none" text-anchor="middle">${String(mn).replace('.', ',')} MN</text></g>`)
+  const x = c.x + 30
+  const y = c.y + c.h - 30
+  partes.push(`<g class="escala" stroke="var(--texto)" stroke-width="3"><path d="M${f1(x)} ${f1(y)}H${f1(x + comp)}M${f1(x)} ${f1(y - 8)}V${f1(y + 8)}M${f1(x + comp)} ${f1(y - 8)}V${f1(y + 8)}" fill="none"/><text x="${f1(x + comp / 2)}" y="${f1(y - 14)}" font-size="22" fill="var(--texto)" stroke="none" text-anchor="middle">${String(mn).replace('.', ',')} MN</text></g>`)
   return `<svg class="mapa${noite ? ' noite' : ''}" viewBox="0 0 ${largura} ${alt}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mini-mapa das alternativas">${partes.join('')}</svg>`
 }
