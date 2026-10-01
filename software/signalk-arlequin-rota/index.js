@@ -10,7 +10,9 @@
 //   GET  /resultado/:id → { estado: 'a calcular' | 'pronto' | 'erro', progresso, texto, resultado?, erro? }
 //   GET  /destinos, POST /destinos { nome, lat, lon | posicaoAtual: true, conhecido, abrigo? (false) }
 //   POST /ativar { id, alternativa } (alternativa: índice 0–2 ou o id) → grava e ativa a rota
-//        → { ok, rota, href, via, alternativa, nota } (nota: a do canal, se a rota passar por um)
+//        → { ok, rota, href, via, alternativa, nota, planoAtivo: { estado } } (nota: a do canal, se a
+//        rota passar por um). Cria ou substitui o plano ativo (desenho 3b-2, lib/plano-ativo.js),
+//        gravado em plano-ativo.json na pasta do plugin, com o envio do plano se já foi enviado.
 //   POST /plano-telegram { id, alternativa } → 202 { pedido, avisos: [texto] } (404 cálculo ou
 //        alternativa desconhecidos; 409 se o cálculo não estiver pronto; 422 sem a chegada mais
 //        tarde (não há hora de alarme) ou com um cálculo antigo (a hora de alarme já passou, ou a
@@ -25,7 +27,8 @@
 // O plano (desenho 3b-1): monta o texto e o GPX (lib/plano.js) e emite no servidor o evento
 // 'arlequin:plano' { pedido, texto, gpx, nomeFicheiro }; o plugin porto (que tem o bot do Telegram)
 // envia-o e responde com 'arlequin:plano-enviado' { pedido, entregues, contactos, falhas }. Sem resposta em
-// 30 s, "falhou": o plugin porto não respondeu. Um stop() (o SignalK reinicia o plugin sempre que se
+// 30 s, "falhou": o plugin porto não respondeu. Um plano enviado com pelo menos um contacto em terra
+// fica no plano ativo (envio: a quem e a hora de alarme), antes ou depois de Ativar a mesma alternativa. Um stop() (o SignalK reinicia o plugin sempre que se
 // grava a configuração) com planos "a enviar" deixa-os "falhou": a resposta do porto já não chegaria.
 // A lista dos planos guarda os 20 mais recentes, mas nunca tira um que ainda está "a enviar".
 //
@@ -44,6 +47,7 @@ const base = require('./lib/base')
 const calculo = require('./lib/calculo')
 const decisao = require('./lib/decisao')
 const plano = require('./lib/plano')
+const pa = require('./lib/plano-ativo')
 const { slug } = require('./lib/slug')
 const modelosJs = require('signalk-arlequin-ia/lib/modelos')
 
@@ -152,7 +156,20 @@ module.exports = function (app, deps = {}) {
   let erroArranque = null
   let aCorrer = null // id do cálculo em curso
   const trabalhos = new Map()
-  const planos = new Map() // pedido → { estado, entregues, contactos, falhas, avisos, motivo?, criado, temporizador }
+  const planos = new Map() // pedido → { id, indice, estado, entregues, contactos, falhas, avisos, motivo?, criado, enviadoEm?, temporizador }
+  let planoAtivo = null // o plano ativo (lib/plano-ativo.js), também em plano-ativo.json
+
+  function gravarPlanoAtivo () {
+    try { pa.gravar(dirPlugin, planoAtivo) } catch (e) { app.error(`não gravei o plano ativo: ${e.message}`) }
+  }
+  // O envio de uma alternativa (o mais recente com contactos em terra): { contactos, alarme, pedido, enviadoEm } ou null.
+  function envioDe (id, indice, alt) {
+    const enviados = [...planos].filter(([, x]) => x.id === id && x.indice === indice && x.estado === 'enviado' && x.contactos.length)
+    const ultimo = enviados.at(-1)
+    if (!ultimo) return null
+    const alarme = plano.horaAlarme(alt)
+    return { contactos: [...ultimo[1].contactos], alarme: alarme == null ? null : new Date(alarme).toISOString(), pedido: ultimo[0], enviadoEm: ultimo[1].enviadoEm }
+  }
 
   // A resposta do plugin porto a um plano: "enviado" com pelo menos uma entrega; sem nenhuma,
   // "falhou" com as falhas (ou sem destinatários). Uma resposta depois do limite já não conta.
@@ -165,7 +182,14 @@ module.exports = function (app, deps = {}) {
     p.contactos = Array.isArray(m.contactos) ? m.contactos.map(String) : []
     p.falhas = Array.isArray(m.falhas) ? m.falhas.filter(eObjeto).map(f => ({ nome: String(f.nome ?? ''), erro: String(f.erro ?? '') })) : []
     p.estado = p.entregues.length ? 'enviado' : 'falhou'
+    p.enviadoEm = new Date(relogio()).toISOString()
     if (!p.entregues.length) p.motivo = p.falhas.length ? p.falhas.map(f => `${f.nome}: ${f.erro}`).join('; ') : SEM_DESTINATARIOS
+    // enviado depois de Ativar a mesma alternativa: fica no plano ativo
+    if (pa.aberto(planoAtivo) && p.contactos.length && p.id === planoAtivo.idCalculo && p.indice === planoAtivo.indice) {
+      const alt = trabalhos.get(p.id)?.resultado?.alternativas?.[p.indice]
+      const envio = alt && envioDe(p.id, p.indice, alt)
+      if (envio) { planoAtivo = { ...planoAtivo, envio }; gravarPlanoAtivo() }
+    }
   }
   // Os mais antigos saem primeiro, mas nunca um "a enviar" (o ecrã ainda o está a seguir).
   function guardarPlano (pedido, p) {
@@ -352,6 +376,9 @@ module.exports = function (app, deps = {}) {
       app.setPluginError?.(erroArranque)
       return
     }
+    const lido = pa.ler(dirPlugin)
+    planoAtivo = lido.plano
+    if (lido.erro) app.error(lido.erro)
     app.removeListener?.('arlequin:plano-enviado', aoPlanoEnviado)
     app.on?.('arlequin:plano-enviado', aoPlanoEnviado)
     app.setPluginStatus(`Pronto · ${costaBase.destinos.length + meusDestinos().length} destinos`)
@@ -450,10 +477,18 @@ module.exports = function (app, deps = {}) {
       if (!t) return res.status(404).json({ ok: false, erro: 'cálculo desconhecido' })
       if (t.estado !== 'pronto') return res.status(409).json({ ok: false, erro: `o cálculo está "${t.estado}"` })
       const lista = t.resultado.alternativas
-      const alt = Number.isInteger(b.alternativa) ? lista[b.alternativa] : lista.find(a => a.id === b.alternativa)
+      const indice = Number.isInteger(b.alternativa) ? b.alternativa : lista.findIndex(a => a.id === b.alternativa)
+      const alt = lista[indice]
       if (!alt) return res.status(404).json({ ok: false, erro: 'alternativa desconhecida' })
+      const id = b.id
       ativarRota(alt, t.resultado.destino.nome)
-        .then(r => res.json({ ok: true, ...r, alternativa: alt.id, nota: alt.nota || null }))
+        .then(r => {
+          // o plano ativo (desenho 3b-2): cria ou substitui
+          const aproximacao = costaAtual().destinos.find(d => d.id && d.id === t.resultado.destino.id)?.aproximacao || null
+          planoAtivo = pa.criarPlano({ idCalculo: id, resultado: t.resultado, indice, href: r.href, aproximacao, envio: envioDe(id, indice, alt), agora: relogio() })
+          gravarPlanoAtivo()
+          res.json({ ok: true, ...r, alternativa: alt.id, nota: alt.nota || null, planoAtivo: { estado: planoAtivo.estado } })
+        })
         .catch(e => res.status(502).json({ ok: false, erro: `não ativei a rota: ${e.message}` }))
         .catch(e => app.error(`ativar: ${e.message}`))
     })
@@ -480,7 +515,7 @@ module.exports = function (app, deps = {}) {
       }
       const pedido = crypto.randomUUID()
       const avisos = typeof o.telefones.ivo === 'string' && o.telefones.ivo.trim() ? [] : [AVISO_SEM_TELEFONE]
-      const estado = { estado: 'a enviar', entregues: [], contactos: [], falhas: [], avisos, criado: new Date(relogio()).toISOString() }
+      const estado = { id: b.id, indice, estado: 'a enviar', entregues: [], contactos: [], falhas: [], avisos, criado: new Date(relogio()).toISOString() }
       estado.temporizador = agendar(() => {
         if (estado.estado === 'a enviar') { estado.estado = 'falhou'; estado.motivo = MOTIVO_PORTO }
       }, LIMITE_PORTO_MS)
@@ -505,6 +540,9 @@ module.exports = function (app, deps = {}) {
       res.json(out)
     })
   }
+
+  // o plano ativo em memória (diagnóstico e testes)
+  plugin.planoAtivo = () => planoAtivo
 
   return plugin
 }

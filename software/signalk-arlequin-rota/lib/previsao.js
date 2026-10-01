@@ -322,4 +322,4 @@ function lerArquivo (pasta, { pontos, desde, ate, agora = Date.now(), raioMn = 1
   }
 }
 
-module.exports = { MAX_PONTOS, CASCAIS, FORECAST, MARINE, pontosPrevisao, urls, interpretar, obterPrevisao, criarTempo, nivelDoMar, nomeArquivo, registoParte2, guardarArquivo, lerArquivo }
+module.exports = { MAX_PONTOS, CASCAIS, FORECAST, MARINE, pontosPrevisao, urls, interpretar, obterPrevisao, criarTempo, nivelDoMar, nomeArquivo, registoParte2, escreverAtomico, guardarArquivo, lerArquivo }
