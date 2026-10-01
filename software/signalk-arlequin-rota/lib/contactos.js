@@ -13,7 +13,8 @@
 //   terminado  "Viagem terminada / mudança de planos: estou bem, em <graus e minutos> às HH:MM."
 //   plano      o plano novo (texto + GPX da 3b-1) com a linha "Este plano substitui o anterior."
 // A fila (gravada no plano ativo, em plano.contactos): { fila: [msg], enviadas: [msg], seq }
-//   msg: { id, tipo, texto, contactos (a quem: os nomes dos contactos entregues do plano quando entrou),
+//   msg: { id, ref ("A3": a letra do plano e o número; vai no fim do texto, "ref. A3", a mesma em todas as
+//   tentativas — perder um atraso é pior do que o contacto o receber duas vezes), tipo, texto, contactos (a quem: os nomes dos contactos entregues do plano quando entrou),
 //   chats (os chatId deles), gpx?, nomeFicheiro?, chegada?/alarme? (só no atraso, ms), anterior? (do
 //   plano anterior), criada, tentativas, proxima, estado: 'fila' | 'a enviar', pedido, erro }; as
 //   enviadas guardam a hora a que realmente saíram (enviadaEm) e a quem.
@@ -86,7 +87,9 @@ function decidirAtraso (enviado, { chegadaAgora, p90, alarmePlano, agora }) {
 }
 
 // ---------- a fila ----------
-const novaFila = () => ({ fila: [], enviadas: [], seq: 0 })
+// letra: a letra das referências deste plano ("ref. A3"); o plano seguinte passa à seguinte (Z → A)
+const novaFila = () => ({ fila: [], enviadas: [], seq: 0, letra: 'A' })
+const letraSeguinte = (l) => (typeof l === 'string' && /^[A-Y]$/.test(l) ? String.fromCharCode(l.charCodeAt(0) + 1) : 'A')
 
 function porNaFila (c0, msg, agora) {
   const c = { ...novaFila(), ...c0 }
@@ -98,6 +101,9 @@ function porNaFila (c0, msg, agora) {
   const seq = c.seq + 1
   const nova = {
     id: `m${seq}`,
+    // a referência curta e estável (Tarefa 8.4): a mesma em todas as tentativas, para quem recebe ver
+    // que é a mesma mensagem
+    ref: `${c.letra || 'A'}${seq}`,
     tipo: msg.tipo,
     texto: msg.texto,
     contactos: [...(msg.contactos || [])],
@@ -122,7 +128,7 @@ function herdar (c0) {
   if (!c0) return novaFila()
   const c = { ...novaFila(), ...c0 }
   const fica = (m) => m.estado === 'a enviar' || FECHO.has(m.tipo)
-  return { fila: c.fila.filter(fica).map(m => ({ ...m, anterior: true })), enviadas: [], seq: c.seq }
+  return { fila: c.fila.filter(fica).map(m => ({ ...m, anterior: true })), enviadas: [], seq: c.seq, letra: letraSeguinte(c.letra) }
 }
 
 // O atraso que ainda está na fila (não "a enviar") passa a ter a chegada e o alarme mais recentes; a
@@ -173,7 +179,7 @@ function evento (msg, pedido, contactos = msg.contactos || [], chats = msg.chats
   return {
     pedido,
     tipo: msg.tipo,
-    texto: msg.texto,
+    texto: msg.ref ? `${msg.texto}\nref. ${msg.ref}` : msg.texto,
     ...(msg.tipo === 'plano' && msg.gpx ? { gpx: msg.gpx, nomeFicheiro: msg.nomeFicheiro } : {}),
     destinatarios: 'contactos-do-plano',
     contactos: [...contactos],

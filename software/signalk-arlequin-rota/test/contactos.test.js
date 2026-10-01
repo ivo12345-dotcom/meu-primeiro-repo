@@ -178,3 +178,24 @@ test('re-revisão M-5: o evento de uma nova tentativa diz a tentativa (o porto j
   c = ct.marcarAEnviar(c, c.fila[0].id, 'p2', T0 + 2 * MIN)
   assert.equal(ct.evento(c.fila[0], 'p2').tentativa, 2)
 })
+
+test('Tarefa 8.4: cada mensagem para terra leva no fim uma referência curta e estável ("ref. A3"): a mesma em todas as tentativas e depois de um reinício; o plano seguinte passa à letra seguinte', () => {
+  let c = ct.porNaFila(ct.novaFila(), { tipo: 'atraso', texto: 'Ainda a navegar.', contactos: ['Mãe'], chats: ['222'] }, T0)
+  c = ct.porNaFila(c, { tipo: 'terminado', texto: 'Viagem terminada.', contactos: ['Mãe'], chats: ['222'] }, T0)
+  const m = c.fila[0]
+  assert.equal(m.ref, 'A2')
+  c = ct.marcarAEnviar(c, m.id, 'p1', T0)
+  const e1 = ct.evento(c.fila[0], 'p1')
+  assert.equal(e1.texto, 'Viagem terminada.\nref. A2')
+  c = ct.falhou(c, 'p1', 'sem resposta', T0)
+  c = ct.aoArrancar(JSON.parse(JSON.stringify(c)), T0 + MIN)
+  c = ct.marcarAEnviar(c, c.fila[0].id, 'p2', T0 + 2 * MIN)
+  assert.equal(ct.evento(c.fila[0], 'p2').texto, e1.texto, 'o reenvio leva a mesma referência')
+  // o plano seguinte: outra letra (o que vem do anterior fica com a sua)
+  const h = ct.herdar(c)
+  assert.equal(h.fila[0].ref, 'A2')
+  const d = ct.porNaFila(h, { tipo: 'atraso', texto: 'x' }, T0)
+  assert.equal(d.fila.at(-1).ref, 'B3')
+  // depois do Z volta ao A
+  assert.equal(ct.herdar({ ...ct.novaFila(), letra: 'Z' }).letra, 'A')
+})
