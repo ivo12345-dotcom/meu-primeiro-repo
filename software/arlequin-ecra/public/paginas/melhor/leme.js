@@ -17,8 +17,10 @@ export default {
     const twd = ctx.v('environment.wind.directionTrue')
     const tws = ctx.v('environment.wind.speedTrue')
     if (!wp.ativo) {
-      // acabou de se ativar: o SignalK ainda não mandou o rumo ao próximo ponto
-      return `<div class="tile centro" style="flex:1;"><div class="vv">Rota ativada</div>
+      // acabou de se ativar, ou o SignalK ainda não mandou o rumo ao próximo ponto
+      const nome = ctx.v('navigation.course.activeRoute')?.name
+      return `<div class="tile centro" style="flex:1;"><div class="vv">${ctx.estado?.ativada ? 'Rota ativada' : 'Rota ativa'}</div>
+${nome ? `<div class="v" style="margin-top:.4rem;">${esc(nome)}</div>` : ''}
 <div style="font-size:1.3rem;max-width:40rem;margin:.6rem 0;">À espera do rumo do SignalK (o OpenCPN mostra a rota ativa). Aqui aparece o rumo a seguir ao leme.</div>
 ${ctx.estado?.msgAtivar ? `<div class="lab" style="max-width:40rem;">${esc(ctx.estado.msgAtivar)}</div>` : ''}
 <div class="acoes">${NOVO}</div></div>`
