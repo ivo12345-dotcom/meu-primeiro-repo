@@ -64,6 +64,8 @@ test('GET /plano-ativo: 404 sem plano; com ele, o estado, o destino, o atraso, o
   let g = await chamar(s.r.get['/plano-ativo'])
   assert.equal(g.code, 200)
   assert.equal(g.estado, 'a espera de sair')
+  // o plano a que o ecrã liga o Terminar e as mensagens (9: nunca as de um plano antigo)
+  assert.equal(g.ativadoEm, s.p.planoAtivo().ativadoEm)
   const cais = s.alt.pontosRota.at(-1)
   assert.deepEqual(g.destino, { id: 'alges', nome: 'Algés (CNA)', lat: cais.lat, lon: cais.lon })
   assert.equal(g.tripulacao, 'so')

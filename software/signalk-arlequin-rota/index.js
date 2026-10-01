@@ -23,7 +23,7 @@
 //        em terra tem a hora de alarme e o ecrã não marca a precaução)
 //   avisos: o que o Ivo deve saber mas não impede o envio (sem o telefone dele na configuração, o
 //   plano diz só "liga ao Ivo").
-//   GET  /plano-ativo → 404 sem plano; { agora, estado, pausadoDe, destino: { id, nome, lat, lon }, tripulacao, idCalculo,
+//   GET  /plano-ativo → 404 sem plano; { agora, estado, pausadoDe, ativadoEm, destino: { id, nome, lat, lon }, tripulacao, idCalculo,
 //        indice, alternativa: { id, nome }, partida, saida, chegou, atrasoMin (arredondado para cima, como o
 //        aviso do recalcula), proximo: { texto, hora } | null, chegadaAgora, chegadaPlano, chegadaNoite,
 //        recursos: { gasoleoChegadaL, bateriaChegadaPct, semLeitura, aviso }, semGps, barometro: { semLeitura,
@@ -556,6 +556,8 @@ module.exports = function (app, deps = {}) {
       agora: new Date(relogio()).toISOString(),
       estado: p.estado,
       pausadoDe: p.pausadoDe ?? null,
+      // o plano (o ecrã liga a ele a pergunta do Terminar e as mensagens)
+      ativadoEm: p.ativadoEm ?? null,
       // o cais (para o Recalcular de um destino avulso, sem id)
       destino: { id: p.destino?.id ?? null, nome: p.destino?.nome ?? null, lat: p.destino?.cais?.lat ?? null, lon: p.destino?.cais?.lon ?? null },
       tripulacao: p.tripulacao,
