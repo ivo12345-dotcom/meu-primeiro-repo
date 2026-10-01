@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "configuration": {
     "telegramToken": "DEV-TELEGRAM-FALSO",
     "telegramBase": "http://localhost:8081",

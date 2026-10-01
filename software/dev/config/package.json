@@ -15,6 +15,7 @@
     "signalk-arlequin-ia": "file:../../signalk-arlequin-ia",
     "signalk-arlequin-rota": "file:../../signalk-arlequin-rota",
     "signalk-arlequin-porto": "file:../../signalk-arlequin-porto",
-    "@signalk/resources-provider": "1.5.2"
+    "@signalk/resources-provider": "1.5.2",
+    "@signalk/course-provider": "1.4.0"
   }
 }

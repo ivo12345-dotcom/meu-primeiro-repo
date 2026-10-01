@@ -1223,6 +1223,10 @@ parte (3a) é o cálculo; a página do ecrã, o mini-mapa e o plano pelo Telegra
   **pontos de desistência** ao longo da rota.
 - **No Pi:** ativar o plugin `@signalk/resources-provider` no SignalK. Sem ele, o `/ativar` dá
   502 "não ativei a rota: …" — não há onde gravar a rota nem ativá-la.
+- **No Pi: instalar e ativar o plugin `@signalk/course-provider`** (Appstore do SignalK, ou
+  `npm install @signalk/course-provider` na pasta `~/.signalk`, e ligá-lo em Plugin Config). É ele
+  que calcula o rumo e a distância ao próximo ponto (`navigation.course.calcValues`): sem ele, o
+  Leme não tem rumo e fica em "Rota ativada · à espera do rumo do SignalK".
 - **No Pi: ligar a segurança do SignalK** (Security, com utilizador e palavra-passe). O
   `POST /plano-telegram`, o `/ativar`, o `/calcular` e o `/destinos` passam pelo router de
   plugins do SignalK: sem segurança, qualquer aparelho na rede do barco pode mandar planos aos
@@ -1341,8 +1345,13 @@ quem o recebe para ligar ao Ivo e, se ele não atender, ao MRCC Lisboa (+351 214
 - `barco` — nome (ARLEQUIN), modelo (Jeanneau Melody 34), cor do casco, MMSI e indicativo; os
   campos vazios ficam de fora do plano.
 
-**Em casa (dev):** o plugin porto está ligado ao Telegram falso (`npm run telegram-falso` na
-pasta `software/dev`, porta 8081; `GET http://localhost:8081/_enviados` mostra o texto e o GPX
-recebidos). O envio para o Telegram verdadeiro precisa do token do bot, que só o Ivo põe.
-Sem um fornecedor de cálculos de rumo no SignalK (ex.: o plugin `@signalk/course-provider`), não há rumo ao próximo ponto: depois de
-ativar, o Leme fica em "Rota ativada · à espera do rumo do SignalK".
+**Em casa (dev):**
+- O plugin porto vem **desligado** (`enabled: false`), para o `npm start` não registar erros de
+  ligação de 10 em 10 s. Para experimentar o **Enviar plano**:
+  1. na pasta `software/dev`, `npm run telegram-falso` (porta 8081; `GET
+     http://localhost:8081/_enviados` mostra o texto e o GPX recebidos);
+  2. ligar o porto: em `config/plugin-config-data/signalk-arlequin-porto.json`, `"enabled": true`
+     (ou no Admin UI, Plugin Config), e `npm start`. Já aponta para o Telegram falso.
+  O envio para o Telegram verdadeiro precisa do token do bot, que só o Ivo põe.
+- O `@signalk/course-provider` está instalado e ligado no dev (`npm run instalar` instala-o): depois
+  de **Ativar**, o Leme mostra o rumo a seguir.
