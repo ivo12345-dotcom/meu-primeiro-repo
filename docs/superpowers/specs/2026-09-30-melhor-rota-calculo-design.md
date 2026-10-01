@@ -283,6 +283,10 @@ nos commits do ramo `prototipo-3a`.
   antigos da janela horária de cada previsão arquivada vêm de emissões anteriores, coladas umas
   às outras. É a previsão que o plugin da rota teria arquivado, não uma reconstrução da emissão
   única das 14h.
+- Sem rede, a previsão arquivada só serve com **até 48 h** de idade (`maxIdadeH`) e se cobrir as
+  **próximas 12 h** em cada ponto da rota (`[agora, agora + 12 h]`): mais velha ou mais curta, não
+  calcula e diz porquê (`lib/previsao.js`, `lerArquivo`; `lib/calculo.js`). Os avisos de 6 h e
+  12 h da secção "Previsão" valem dentro destas 48 h.
 - O plugin lê tanto os seus próprios ficheiros de arquivo (um por ponto da rota) como os do
   plugin da AI mais antigo (um só ponto, sem o sufixo de latitude/longitude no nome): a mesma
   pasta `previsoes/` serve os dois formatos, para a previsão sem rede aproveitar o que já lá

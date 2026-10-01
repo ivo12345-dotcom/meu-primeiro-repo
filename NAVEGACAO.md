@@ -1221,7 +1221,7 @@ parte (3a) é só o cálculo; o ecrã, o mapa e os avisos durante a viagem (3b) 
   mesmo assim"** (inclui as não recomendadas, para quando o Ivo quer sair na mesma) e os
   **pontos de desistência** ao longo da rota.
 - **No Pi:** ativar o plugin `@signalk/resources-provider` no SignalK. Sem ele, o `/ativar` dá
-  404 — não há onde gravar a rota nem ativá-la.
+  502 "não ativei a rota: …" — não há onde gravar a rota nem ativá-la.
 - **Caminho da polar:** `software/arlequin-ecra/public/polar-arlequin.csv`, do próprio
   repositório.
 - **Zonas e portos: estão por confirmar.** Antes de confiar no cálculo, o Ivo tem de ver na
@@ -1244,8 +1244,7 @@ parte (3a) é só o cálculo; o ecrã, o mapa e os avisos durante a viagem (3b) 
 - A alternativa de 3 MN só existe com **vento de terra ao longo de toda a linha seguida**
   (verificado à hora estimada de passagem, e voltado a verificar-se nos rastos dos 3 cenários
   simulados); perto da costa (< 3 MN), a rota direta segue a mesma regra. Sem vento de terra,
-  essa alternativa fica de fora do cálculo normal — só pode aparecer no "Sair agora mesmo
-  assim".
+  essa alternativa **nunca aparece, nem no "Sair agora mesmo assim"** (é uma exclusão dura).
 - Entre dois portos vizinhos com um **salto curto**, há uma só alternativa "direta", junto à
   costa, com a distância real à terra (nunca "a null MN" nos nomes).
 - Se o barco já estiver dentro da aproximação de um porto (por exemplo, no canal do Tejo), a
@@ -1255,6 +1254,8 @@ parte (3a) é só o cálculo; o ecrã, o mapa e os avisos durante a viagem (3b) 
 - O **Canal da Berlenga** só entra como alternativa quando a linha dá a volta às Berlengas, e só
   com ondas previstas abaixo de 3 m nos 3 cenários (tem terra dos dois lados, por isso
   fica fora da regra do vento de terra — aí só as ondas decidem).
+- **Sem rede**, o cálculo usa a previsão arquivada mais recente, mas só se tiver **até 48 h** e
+  cobrir as **próximas 12 h** ao longo da rota; senão não calcula e diz porquê.
 - Previsão em falta (vento, rajadas ou ondas) numa parte da rota **exclui** a alternativa —
   desconhecido nunca conta como calmo; só no "Sair agora" fica, com aviso vermelho. Ondas
   desconhecidas contam como 3 m para a velocidade a motor; distância à costa desconhecida também
