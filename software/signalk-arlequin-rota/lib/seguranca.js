@@ -76,6 +76,10 @@ const inteiro = (x) => String(Math.round(x))
 // Para baixo, para o que fica abaixo de um mínimo (39,6 L nunca diz "40 L"); a folga de 1e-9 só
 // tira o erro da vírgula flutuante (0,29 × 100 = 28,999…).
 const inteiroAbaixo = (x) => String(Math.floor(x + 1e-9))
+// Para cima, para o que fica acima de um limite (3,04 m nunca diz "3,0 m (limite 3 m)"; 22,3 nós dizem
+// "23"): o simétrico do inteiroAbaixo, com a mesma folga de 1e-9.
+const inteiroAcima = (x) => String(Math.ceil(x - 1e-9))
+const virgulaAcima = (x) => virgula(Math.ceil(x * 10 - 1e-9) / 10)
 const metros = (x) => (Number.isInteger(x) ? String(x) : virgula(x))
 
 // Os campos da previsão (lib/previsao.js) em português, para os motivos e avisos.
@@ -236,7 +240,7 @@ function avaliar ({ alternativa, pessimista, provavel, otimista, destino, tripul
       out.motivos.push(`${nome}: sem previsão de ondas no canal (desconhecido não conta como calmo; ${limite})`)
     } else if (k.max >= alternativa.ondasMax) {
       out.excluida = true
-      out.motivos.push(`${nome}: ondas até ${virgula(k.max)} m no pior caso (${limite})`)
+      out.motivos.push(`${nome}: ondas até ${virgulaAcima(k.max)} m no pior caso (${limite})`)
     }
   }
   // previsão incompleta ao longo da rota (a mesma previsão nos 3 cenários, mas rastos diferentes)
@@ -269,9 +273,9 @@ function avaliar ({ alternativa, pessimista, provavel, otimista, destino, tripul
   const m = { vento: maximo('ventoMax'), rajada: maximo('rajadaMax'), ondas: maximo('ondasMax') }
   // os limites de vento, rajada e ondas: [o máximo, o texto, o limite a solo, o limite acompanhado]
   const limites = [
-    [m.vento, (lim, quem) => `vento médio até ${inteiro(m.vento)} nós no pior caso (limite ${lim} ${quem})`, o.ventoMedioMax, o.ventoMaxAcompanhado],
-    [m.rajada, (lim, quem) => `rajadas até ${inteiro(m.rajada)} nós no pior caso (limite ${lim} ${quem})`, o.rajadaMax, o.rajadaMaxAcompanhado],
-    [m.ondas, (lim, quem) => `ondas até ${virgula(m.ondas)} m no pior caso (limite ${lim} m ${quem})`, o.ondasMax, o.ondasMaxAcompanhado]
+    [m.vento, (lim, quem) => `vento médio até ${inteiroAcima(m.vento)} nós no pior caso (limite ${lim} ${quem})`, o.ventoMedioMax, o.ventoMaxAcompanhado],
+    [m.rajada, (lim, quem) => `rajadas até ${inteiroAcima(m.rajada)} nós no pior caso (limite ${lim} ${quem})`, o.rajadaMax, o.rajadaMaxAcompanhado],
+    [m.ondas, (lim, quem) => `ondas até ${virgulaAcima(m.ondas)} m no pior caso (limite ${lim} m ${quem})`, o.ondasMax, o.ondasMaxAcompanhado]
   ]
   if (tripulacao === 'acompanhado') {
     const nr = []
@@ -284,7 +288,7 @@ function avaliar ({ alternativa, pessimista, provavel, otimista, destino, tripul
   if (tripulacao === 'so') {
     const nr = []
     for (const [v, texto, solo] of limites) if (v > solo) nr.push(texto(solo, 'sozinho'))
-    if (out.horasLemeEq > o.lemeMaxH) nr.push(`${virgula(out.horasLemeEq)} h equivalentes ao leme (limite ${o.lemeMaxH} h sozinho)`)
+    if (out.horasLemeEq > o.lemeMaxH) nr.push(`${virgulaAcima(out.horasLemeEq)} h equivalentes ao leme (limite ${o.lemeMaxH} h sozinho)`)
     if (out.chegadaNoite && destino && destino.conhecido === false) nr.push(`chegada de noite a ${destino.nome}, um porto que não conheces`)
     if (nr.length) { out.naoRecomendada = true; out.motivos.push(...nr) }
   }

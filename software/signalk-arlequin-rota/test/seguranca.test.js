@@ -474,3 +474,23 @@ test('I4: acompanhado entre os limites a solo (22/30/3) e os de acompanhado — 
   assert.deepEqual(so.avisosVermelhos, [])
   assert.equal(so.naoRecomendada, true)
 })
+
+test('M1: os valores acima de um limite arredondam-se para cima (3,04 m nunca diz "3,0 m (limite 3 m)")', () => {
+  const r = s.avaliar(base({ pessimista: passagem({ min: 481, resumo: { ventoMax: 22.3, rajadaMax: 30.2, ondasMax: 3.04 } }) }))
+  assert.deepEqual(r.motivos, [
+    'vento médio até 23 nós no pior caso (limite 22 sozinho)',
+    'rajadas até 31 nós no pior caso (limite 30 sozinho)',
+    'ondas até 3,1 m no pior caso (limite 3 m sozinho)',
+    '8,1 h equivalentes ao leme (limite 8 h sozinho)'
+  ])
+  // sem erros de vírgula flutuante: 3,2 continua 3,2; 23 continua 23
+  assert.deepEqual(s.avaliar(base({ pessimista: passagem({ resumo: { ventoMax: 23, ondasMax: 3.2 } }) })).motivos, ['vento médio até 23 nós no pior caso (limite 22 sozinho)', 'ondas até 3,2 m no pior caso (limite 3 m sozinho)'])
+  // canal: 3,04 m → "3,1 m"; exatamente 3 → "3,0 m"
+  const alt = rotaCanal()
+  const noCanal = (h) => (lat) => (lat >= 39.2 && lat <= 39.35 ? h : 2)
+  assert.deepEqual(s.avaliar(base({ alternativa: alt, pessimista: rasto(alt, noCanal(3.04)), tripulacao: 'acompanhado' })).motivos, ['Canal da Berlenga: ondas até 3,1 m no pior caso (só com ondas abaixo de 3 m)'])
+  // acompanhado: o aviso e o motivo também
+  const a = s.avaliar(base({ tripulacao: 'acompanhado', pessimista: passagem({ resumo: { ventoMax: 28.2, ondasMax: 3.01 } }) }))
+  assert.deepEqual(a.motivos, ['vento médio até 29 nós no pior caso (limite 28 acompanhado)'])
+  assert.deepEqual(a.avisosVermelhos, ['acima dos limites a solo: ondas até 3,1 m no pior caso (limite 3 m sozinho)'])
+})
