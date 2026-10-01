@@ -177,3 +177,23 @@ test('cenários: vento ou rajada sem previsão (null) fica null — desconhecido
     }
   }
 })
+
+test('I2: o vento que decide no pessimista nunca fica abaixo da previsão em bruto (modelo que aprendeu "a previsão exagera", razão P90 < 1)', () => {
+  const polar = base.carregarPolar()
+  const modelos = { ventoForca: { quantis: { p10: fixa(0.6), p50: fixa(0.7), p90: fixa(0.8) } } }
+  const k = criarCenarios({ tempoBruto: tempoFixo({ tws: 26, rajada: 32 }), modelos, polar, obtida: 0 })
+  const pe = k.pessimista.tempo(39, -9.5, 0)
+  const pr = k.provavel.tempo(39, -9.5, 0)
+  const ot = k.otimista.tempo(39, -9.5, 0)
+  // pessimista: a razão P90 0,8 sobe para 1 → 26 nós e rajadas de 32 (os previstos), nunca 20,8 / 25,6
+  assert.equal(pe.tws, 26)
+  assert.equal(pe.rajada, 32)
+  // o P50 e o P10 ficam como estão; a polar (twsPolar) também
+  assert.ok(Math.abs(pr.tws - 26 * 0.7) < 1e-9)
+  assert.ok(Math.abs(ot.tws - 26 * 0.6) < 1e-9)
+  assert.ok(Math.abs(pe.twsPolar - 26 * 0.6) < 1e-9) // pessimista: a polar no P10
+  assert.ok(Math.abs(ot.twsPolar - 26 * 0.8) < 1e-9) // otimista: a polar no P90, sem o mínimo
+  // com razão P90 > 1 fica a do modelo
+  const k2 = criarCenarios({ tempoBruto: tempoFixo({ tws: 20, rajada: 25 }), modelos: { ventoForca: { quantis: { p10: fixa(0.9), p50: fixa(1), p90: fixa(1.3) } } }, polar, obtida: 0 })
+  assert.ok(Math.abs(k2.pessimista.tempo(39, -9.5, 0).tws - 26) < 1e-9)
+})

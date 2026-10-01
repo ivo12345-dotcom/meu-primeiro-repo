@@ -151,6 +151,7 @@ Para cada afastamento d ∈ {3, 5, 8} MN:
   - vento médio > 22 nós, rajadas > 30 ou ondas > 3 m, no **cenário pessimista**;
   - mais de 8 h equivalentes ao leme (o motor em calma, com vento < 10 nós e (ondas < 2 m, ou ondas ≤ 3 m com período ≥ 9 s — ondulação comprida), conta metade; regra do Ivo, 30/09);
   - chegada de noite a um porto com `conhecido: false`.
+- **O pior caso nunca abaixo da previsão** (revisão final, 01/10): o vento e a rajada do cenário pessimista, que decidem estes limites, são os previstos em bruto × a razão P90 do modelo `ventoForca`, mas essa razão nunca fica abaixo de 1 — um modelo que aprendeu "a previsão exagera" não pode baixar o pior caso abaixo do previsto (`lib/cenarios.js`, `ventoRazaoMin`). O P50, o P10 e a polar ficam com a razão do modelo.
 
 ## Decisão (`lib/decisao.js`)
 

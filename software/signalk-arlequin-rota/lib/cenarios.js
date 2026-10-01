@@ -9,7 +9,10 @@
 // O VENTO QUE DECIDE (rizos, motor abaixo de 7 nós, limites de segurança, máximos) é o
 // previsto em bruto × a razão do quantil do cenário, dada pelo modelo ventoForca
 // (modelos.preverVento), e a direção é a corrigida pelo ventoDirecao (P50). A rajada leva a
-// mesma razão. Com a direção corrigida, o `w` leva corrigido: true e a prevTwd em bruto (o
+// mesma razão. NO PESSIMISTA, a razão do vento que decide nunca fica abaixo de 1 (revisão final,
+// I2): um modelo que aprendeu "a previsão exagera" (razão P90 < 1) não pode pôr o pior caso abaixo
+// do vento e da rajada previstos em bruto, que decidem os limites de segurança (o P50, o P10 e a
+// polar, twsPolar, ficam com a razão do modelo). Com a direção corrigida, o `w` leva corrigido: true e a prevTwd em bruto (o
 // lib/passagem.js lança um erro se faltar: nunca duplica a correção no modelo da velocidade).
 // A VELOCIDADE À VELA é modelos.preverVelocidade(velocidade, x, stwPolar)[quantil], com o x
 // da previsão em bruto (contrato do modelos.js: twaPrevAbs = |TWD previsto EM BRUTO − rumo|,
@@ -34,7 +37,7 @@ const dif = (a, b) => { let d = norm(a - b); if (d > 180) d -= 360; return d }
 
 // decisão (relatório C do protótipo, ponto 7): o vento que decide é o P90 e a polar lê-se no quantil contrário (P10)
 const CENARIOS = Object.freeze({
-  pessimista: Object.freeze({ vento: 'p90', ventoPolar: 'p10', velocidade: 'p10', gasoleo: 'p90' }),
+  pessimista: Object.freeze({ vento: 'p90', ventoRazaoMin: 1, ventoPolar: 'p10', velocidade: 'p10', gasoleo: 'p90' }),
   provavel: Object.freeze({ vento: 'p50', ventoPolar: 'p50', velocidade: 'p50', gasoleo: 'p50' }),
   otimista: Object.freeze({ vento: 'p10', ventoPolar: 'p90', velocidade: 'p90', gasoleo: 'p10' })
 })
@@ -86,7 +89,8 @@ function criarCenarios ({ tempoBruto, modelos = {}, polar, obtida, tendPressao3h
   for (const [nome, q] of Object.entries(CENARIOS)) {
     const tempo = (lat, lon, t) => {
       const { w, razao, twd, corrigido } = correcao(lat, lon, t)
-      const r = razao[q.vento]
+      // o pessimista nunca abaixo do previsto em bruto (ventoRazaoMin)
+      const r = Number.isFinite(q.ventoRazaoMin) ? Math.max(q.ventoRazaoMin, razao[q.vento]) : razao[q.vento]
       return {
         ...w,
         tws: vezes(w.tws, r),
