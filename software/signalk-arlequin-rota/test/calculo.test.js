@@ -443,3 +443,13 @@ test('I1: a segurança recebe os 3 rastos (também o otimista) e a "chegada de n
   for (const k of cands) assert.equal(k.chegadaNoite, true, k.id)
   for (const a of r.alternativas) assert.equal(a.chegadaNoite, true, a.id)
 })
+
+test('M4: em "Sair agora" o resumo da desistência (calculado para a 1.ª alternativa) só vai nas precauções da 1.ª; as outras dizem para qual foi calculado', async () => {
+  const r = await correr('agora', entrada({ sairAgora: true }), deps())
+  assert.equal(r.erro, undefined, r.erro)
+  assert.ok(r.alternativas.length >= 2, String(r.alternativas.length))
+  assert.ok(r.desistenciaResumo)
+  const texto = (a) => a.precaucoes.find(p => p.id === 'desistencia').texto
+  assert.equal(texto(r.alternativas[0]), `Pontos de desistência revistos: ${r.desistenciaResumo}`)
+  for (const a of r.alternativas.slice(1)) assert.equal(texto(a), 'Pontos de desistência revistos (calculados para a 1.ª alternativa)', a.id)
+})

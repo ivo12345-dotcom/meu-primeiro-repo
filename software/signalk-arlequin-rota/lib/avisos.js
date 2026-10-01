@@ -120,7 +120,9 @@ function avisosDaPassagem ({ passagem, destino = null, tripulacao = 'so', opcoes
 
 // A lista de verificação de uma alternativa (não bloqueia nada).
 // → [{ id, texto, sempre: bool, porque? }]
-function precaucoes ({ passagem, tripulacao = 'so', sairAgora = false, desistenciaResumo = null, opcoes = {} }) {
+// desistenciaResumo: o resumo dos pontos de desistência (só da 1.ª alternativa, para a qual foram
+// calculados); desistenciaDaPrimeira: true nas outras (o texto diz para qual foram calculados).
+function precaucoes ({ passagem, tripulacao = 'so', sairAgora = false, desistenciaResumo = null, desistenciaDaPrimeira = false, opcoes = {} }) {
   const o = { ...PADRAO, ...opcoes }
   const pontos = passagem?.pontos || []
   const eventos = passagem?.eventos || []
@@ -153,7 +155,8 @@ function precaucoes ({ passagem, tripulacao = 'so', sairAgora = false, desistenc
     if (!out.some(x => x.id === 'arnes')) out.push({ id: 'arnes', texto: 'Arnês e linha de vida montada', sempre: false, porque: 'sair contra a recomendação' })
     if (!out.some(x => x.id === 'rizo-saida')) out.push({ id: 'rizo-saida', texto: 'Rizo feito à saída', sempre: false, porque: 'sair contra a recomendação' })
     if (!out.some(x => x.id === 'retranca-motor')) out.push({ id: 'retranca-motor', texto: 'Prender a retranca, motor pronto', sempre: false, porque: 'sair contra a recomendação' })
-    out.push({ id: 'desistencia', texto: `Pontos de desistência revistos${desistenciaResumo ? `: ${desistenciaResumo}` : ''}`, sempre: false, porque: 'sair contra a recomendação' })
+    const desist = desistenciaResumo ? `: ${desistenciaResumo}` : desistenciaDaPrimeira ? ' (calculados para a 1.ª alternativa)' : ''
+    out.push({ id: 'desistencia', texto: `Pontos de desistência revistos${desist}`, sempre: false, porque: 'sair contra a recomendação' })
     out.push({ id: 'plano-hora', texto: 'Plano com a hora de chegada e de alarme deixado em terra', sempre: false, porque: 'sair contra a recomendação' })
   }
   return out

@@ -227,8 +227,9 @@ function eventosComHora (eventos, fuso) {
 }
 
 // O objeto de uma alternativa para o resultado. pr: o rasto provável (simularProvavel), para a linha
-// do tempo, os avisos e as precauções.
-function montarAlternativa (ctx, cand, pr, desistenciaResumo) {
+// do tempo, os avisos e as precauções. desistenciaResumo: o da 1.ª (os pontos de desistência só se
+// calculam para ela); nas outras null, e a precaução diz para qual foram calculados.
+function montarAlternativa (ctx, cand, pr, desistenciaResumo, primeira = true) {
   const R = cand.resumos
   const alt = {
     id: cand.id,
@@ -262,7 +263,7 @@ function montarAlternativa (ctx, cand, pr, desistenciaResumo) {
     pontosRota: cand.geometria.pontos.map(p => ({ lat: Math.round(p.lat * 1e5) / 1e5, lon: Math.round(p.lon * 1e5) / 1e5, nome: p.nome ?? null, perna: p.perna ?? null })),
     eventos: eventosComHora(pr.eventos, ctx.o.fuso),
     avisos: avisos.avisosDaPassagem({ passagem: pr, destino: ctx.destino, tripulacao: ctx.tripulacao, opcoes: { fuso: ctx.o.fuso } }),
-    precaucoes: avisos.precaucoes({ passagem: pr, tripulacao: ctx.tripulacao, sairAgora: ctx.sairAgora, desistenciaResumo })
+    precaucoes: avisos.precaucoes({ passagem: pr, tripulacao: ctx.tripulacao, sairAgora: ctx.sairAgora, desistenciaResumo: primeira ? desistenciaResumo : null, desistenciaDaPrimeira: !primeira })
   }
   return alt
 }
@@ -453,9 +454,9 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   }
   await progresso(0.95, 'avisos e precauções')
   const alternativas = []
-  for (const cand of top) {
+  for (const [i, cand] of top.entries()) {
     await ceder()
-    alternativas.push(montarAlternativa(ctx, cand, rastos.get(cand) || simularProvavel(ctx, cand), desistenciaResumo))
+    alternativas.push(montarAlternativa(ctx, cand, rastos.get(cand) || simularProvavel(ctx, cand), desistenciaResumo, i === 0))
   }
   // em "Sair agora" os avisos vermelhos da 1.ª vão também para os gerais (o gasóleo assumido já lá
   // está, "Sem nível do gasóleo: assumi … L": não se repete)
