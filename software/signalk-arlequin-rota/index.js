@@ -32,6 +32,15 @@
 // grava a configuração) com planos "a enviar" deixa-os "falhou": a resposta do porto já não chegaria.
 // A lista dos planos guarda os 20 mais recentes, mas nunca tira um que ainda está "a enviar".
 //
+// A navegar (desenho 3b-2): um ciclo de minuto a minuto (setInterval) lê do SignalK a posição (com a
+// hora: mais de 2 min sem posição nova é "sem GPS"), o SOG, o vento real, a pressão, o gasóleo, o SoC
+// e a rota ativa (API de rumo v2); segue o plano ativo (lib/plano-ativo.js: saída, chegada, rota
+// mudada), o acompanhamento (lib/acompanhamento.js) com a previsão mais recente arquivada que cubra
+// a posição (previsoes/ da pasta dos dados), e publica os avisos (lib/avisos-navegar.js) em
+// notifications.rota.* por delta, só nas mudanças. As amostras da pressão (de minuto a minuto, 3 h)
+// ficam em barometro.json; a posição na rota fica no plano ativo (seguimento), para um reinício não
+// a perder.
+//
 // O destino do /calcular: o id de um destino da lista (dados/destinos.json ou os do Ivo),
 // 'rota-ativa' (o fim da rota ativa no SignalK/OpenCPN), ou { lat, lon, nome }.
 // Nada aqui derruba o servidor: o cálculo corre dentro de try/catch (lib/calculo.js nunca
@@ -48,6 +57,9 @@ const calculo = require('./lib/calculo')
 const decisao = require('./lib/decisao')
 const plano = require('./lib/plano')
 const pa = require('./lib/plano-ativo')
+const ac = require('./lib/acompanhamento')
+const av = require('./lib/avisos-navegar')
+const { criarCorrecaoVento } = require('./lib/cenarios')
 const { slug } = require('./lib/slug')
 const modelosJs = require('signalk-arlequin-ia/lib/modelos')
 
@@ -60,6 +72,11 @@ const SEM_DESTINATARIOS = 'não há destinatários: junta os chats em "Chats aut
 const MOTIVO_REINICIO = 'o plugin da rota foi reiniciado durante o envio: confirma com os contactos se receberam'
 const AVISO_SEM_TELEFONE = 'o teu telefone não está na configuração: o plano diz só "liga ao Ivo"'
 const eObjeto = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
+const MIN = 60000
+const CICLO_MS = 60000 // a navegar: de minuto a minuto
+const GPS_VELHO_MS = 2 * MIN // sem posição nova há mais de 2 min: sem GPS
+const NOS = 3600 / 1852 // m/s → nós
+const SEGUIMENTO_MN = 0.1 // a posição na rota grava-se no plano ativo quando anda isto
 
 function escreverAtomico (f, texto) {
   const tmp = f + '.tmp'
@@ -93,6 +110,9 @@ module.exports = function (app, deps = {}) {
   // o relógio do limite do porto (injetável nos testes)
   const agendar = deps.agendar || ((fn, ms) => { const t = setTimeout(fn, ms); t.unref?.(); return t })
   const cancelar = deps.cancelar || ((t) => clearTimeout(t))
+  // o ciclo a navegar (injetável nos testes, que o chamam à mão com plugin.cicloNavegar)
+  const agendarCiclo = deps.agendarCiclo || ((fn, ms) => { const t = setInterval(fn, ms); t.unref?.(); return t })
+  const pararCiclo = deps.pararCiclo || ((t) => clearInterval(t))
   const plugin = {
     id: 'signalk-arlequin-rota',
     name: 'Arlequin · Melhor rota',
@@ -158,6 +178,18 @@ module.exports = function (app, deps = {}) {
   const trabalhos = new Map()
   const planos = new Map() // pedido → { id, indice, estado, entregues, contactos, falhas, avisos, motivo?, criado, enviadoEm?, temporizador }
   let planoAtivo = null // o plano ativo (lib/plano-ativo.js), também em plano-ativo.json
+  // a navegar: os estados do ciclo (em memória; num reinício os temporizadores recomeçam)
+  let memPlano = pa.novaMemoria()
+  let estAcomp = ac.novoEstado()
+  let estAvisos = av.novoEstado()
+  let publicados = {} // caminho → { state, chave } do que está publicado em notifications.rota.*
+  let pressoes = [] // [{ t, hPa }] de minuto a minuto (barometro.json)
+  let ventos = [] // [{ t, medido, previsto }] (10 min)
+  let ultimaPosicao = null
+  let ultimo = null // o último resultado do acompanhamento
+  let cicloTimer = null
+  let aCorrerCiclo = false
+  let modelosVento = {}
 
   function gravarPlanoAtivo () {
     try { pa.gravar(dirPlugin, planoAtivo) } catch (e) { app.error(`não gravei o plano ativo: ${e.message}`) }
@@ -270,6 +302,100 @@ module.exports = function (app, deps = {}) {
     return Array.isArray(coords) && coords.length ? coords.map(([lon, lat]) => ({ lat, lon })) : null
   }
 
+  // ---------- a navegar ----------
+  const ficheiroPressoes = () => path.join(dirPlugin, 'barometro.json')
+  function lerPressoes () {
+    try { const l = JSON.parse(fs.readFileSync(ficheiroPressoes(), 'utf8')); return Array.isArray(l) ? l.filter(x => Number.isFinite(x?.t) && Number.isFinite(x?.hPa)) : [] } catch { return [] }
+  }
+  function publicarAvisos (avisos) {
+    const r = av.publicar(publicados, avisos)
+    publicados = r.publicados
+    if (r.deltas.length) app.handleMessage(plugin.id, { updates: [{ values: r.deltas }] })
+  }
+  // A rota ativa: o href, null sem nenhuma, undefined se não se sabe (a API de rumo falhou).
+  async function hrefAtivo () {
+    if (typeof app.getCourse === 'function') {
+      try { return (await app.getCourse())?.activeRoute?.href ?? null } catch { return undefined }
+    }
+    const ar = v('navigation.course.activeRoute')
+    return ar === undefined ? undefined : ar?.href ?? null
+  }
+  function leituraPosicao (agora) {
+    const x = app.getSelfPath?.('navigation.position')
+    const p = x?.value
+    if (!p || !Number.isFinite(p.latitude) || !Number.isFinite(p.longitude)) return null
+    const hora = Date.parse(x.timestamp)
+    if (Number.isFinite(hora) && agora - hora > GPS_VELHO_MS) return null
+    return { lat: p.latitude, lon: p.longitude }
+  }
+  // A previsão mais recente arquivada que cubra a posição agora: { previsao, obtida, idadeH } ou null.
+  function previsaoAgora (pos, agora) {
+    if (!pos) return null
+    const a = prev.lerArquivo(path.join(pastaBase, 'previsoes'), { pontos: [pos], desde: agora, ate: agora, agora, maxIdadeH: Infinity })
+    return a.erro ? null : a
+  }
+
+  async function passoNavegar () {
+    const agora = relogio()
+    const hPa = v('environment.outside.pressure')
+    const comPressao = Number.isFinite(hPa)
+    if (comPressao) {
+      pressoes = av.juntarPressao(pressoes, { t: agora, hPa: hPa / 100 }, agora)
+      try { prev.escreverAtomico(ficheiroPressoes(), JSON.stringify(pressoes)) } catch (e) { app.error(`não gravei o barómetro: ${e.message}`) }
+    }
+    if (!pa.aberto(planoAtivo)) { ultimo = null; publicarAvisos({}); return }
+    const sog = v('navigation.speedOverGround')
+    const leitura = { posicao: leituraPosicao(agora), sogNos: Number.isFinite(sog) ? sog * NOS : null, href: await hrefAtivo() }
+    if (leitura.posicao) ultimaPosicao = leitura.posicao
+    const r = pa.avaliar(planoAtivo, leitura, memPlano, agora)
+    planoAtivo = r.plano
+    memPlano = r.mem
+    if (r.mudou) gravarPlanoAtivo()
+    if (!pa.aberto(planoAtivo) || planoAtivo.estado === 'pausado') {
+      ultimo = null
+      estAvisos = av.novoEstado()
+      publicarAvisos({})
+      return
+    }
+    const ins = instrumentos()
+    const pv = previsaoAgora(leitura.posicao || ultimaPosicao || planoAtivo.partida, agora)
+    const tempo = pv ? prev.criarTempo(pv.previsao) : null
+    const a = ac.acompanhar(estAcomp, {
+      plano: planoAtivo, posicao: leitura.posicao, agora, gasoleoL: ins.gasoleoL, socPct: ins.socPct, energia: o.energia, rpm: o.rpmCruzeiro,
+      radiacao: tempo ? (lat, lon, t) => tempo(lat, lon, t).radiacao : null
+    })
+    estAcomp = a.estado
+    // o vento medido contra o previsto P50 (a correção da AI, se houver modelo) naquele sítio e hora
+    const medido = v('environment.wind.speedTrue')
+    let previsto = null
+    if (tempo && leitura.posicao) {
+      const k = criarCorrecaoVento({ tempoBruto: tempo, modelos: modelosVento, obtida: Date.parse(pv.obtida) })(leitura.posicao.lat, leitura.posicao.lon, agora)
+      previsto = Number.isFinite(k.w.tws) ? k.w.tws * k.razao.p50 : null
+    }
+    ventos = Number.isFinite(medido) && leitura.posicao ? ac.juntarAmostra(ventos, { t: agora, medido: medido * NOS, previsto }, agora) : ventos.filter(x => x.t >= agora - 10 * MIN)
+    const vento = ac.desvioVento(ventos)
+    const res = a.resultado
+    const navegar = planoAtivo.estado === 'a navegar'
+    const x = av.avaliar(estAvisos, {
+      navegar, tripulacao: planoAtivo.tripulacao, saida: Date.parse(planoAtivo.saida), destino: planoAtivo.destino?.nome, semGps: !leitura.posicao,
+      atrasoMin: res.atrasoMin, vento, previsaoIdadeH: pv ? pv.idadeH : null, barometro: pressoes, recursos: res.recursos, eventos: res.eventos, chegadaNoite: res.chegadaNoite
+    }, agora)
+    estAvisos = x.estado
+    publicarAvisos(x.avisos)
+    ultimo = { ...res, agora, vento, previsaoIdadeH: pv ? pv.idadeH : null, barometroSemLeitura: !comPressao, quedaBarometro: av.quedaEm3h(pressoes, agora), avisos: x.avisos }
+    // a posição na rota: no plano ativo, para um reinício continuar dali
+    const ant = estAcomp.anterior
+    if (navegar && ant && (!planoAtivo.seguimento || Math.abs(planoAtivo.seguimento.s - ant.s) >= SEGUIMENTO_MN)) {
+      planoAtivo = { ...planoAtivo, seguimento: { s: ant.s, t: new Date(ant.t).toISOString() } }
+      gravarPlanoAtivo()
+    }
+  }
+  async function cicloNavegar () {
+    if (!o || !dirPlugin || aCorrerCiclo) return
+    aCorrerCiclo = true
+    try { await passoNavegar() } catch (e) { app.error(`a navegar: ${e.message}`) } finally { aCorrerCiclo = false }
+  }
+
   function guardarTrabalho (id, t) {
     trabalhos.set(id, t)
     while (trabalhos.size > MAX_TRABALHOS) {
@@ -379,6 +505,19 @@ module.exports = function (app, deps = {}) {
     const lido = pa.ler(dirPlugin)
     planoAtivo = lido.plano
     if (lido.erro) app.error(lido.erro)
+    // a navegar: os temporizadores recomeçam; a posição na rota e o barómetro vêm dos ficheiros, e o
+    // que já está publicado lê-se do SignalK (não se publica outra vez)
+    memPlano = pa.novaMemoria()
+    const seg = planoAtivo?.seguimento
+    estAcomp = { ...ac.novoEstado(), anterior: seg && Number.isFinite(seg.s) ? { s: seg.s, t: Date.parse(seg.t) } : null }
+    estAvisos = av.novoEstado()
+    ventos = []
+    ultimo = null
+    pressoes = lerPressoes()
+    try { publicados = av.publicadosDaArvore(app.getSelfPath?.(av.PREFIXO)) } catch { publicados = {} }
+    try { modelosVento = modelosAi().modelos } catch { modelosVento = {} }
+    if (cicloTimer) pararCiclo(cicloTimer)
+    cicloTimer = agendarCiclo(() => { cicloNavegar() }, CICLO_MS)
     app.removeListener?.('arlequin:plano-enviado', aoPlanoEnviado)
     app.on?.('arlequin:plano-enviado', aoPlanoEnviado)
     app.setPluginStatus(`Pronto · ${costaBase.destinos.length + meusDestinos().length} destinos`)
@@ -388,6 +527,8 @@ module.exports = function (app, deps = {}) {
     // Um cálculo a correr acaba sozinho (é finito), com as opções do início (executar); o resultado
     // fica no mapa.
     o = null
+    if (cicloTimer) pararCiclo(cicloTimer)
+    cicloTimer = null
     app.removeListener?.('arlequin:plano-enviado', aoPlanoEnviado)
     for (const p of planos.values()) {
       cancelar(p.temporizador)
@@ -541,8 +682,10 @@ module.exports = function (app, deps = {}) {
     })
   }
 
-  // o plano ativo em memória (diagnóstico e testes)
+  // o plano ativo em memória, o último acompanhamento e o ciclo (diagnóstico e testes)
   plugin.planoAtivo = () => planoAtivo
+  plugin.acompanhamento = () => ultimo
+  plugin.cicloNavegar = cicloNavegar
 
   return plugin
 }
