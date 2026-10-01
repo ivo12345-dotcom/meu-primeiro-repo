@@ -421,7 +421,8 @@ test('plano "falhou": o porto responde sem nenhuma entrega; e sem resposta em 30
   assert.equal(agendados[0].ms, 30000)
   assert.ok(agendados[0].cancelado, 'a resposta cancela o limite')
   app.removeAllListeners('arlequin:plano')
-  // sem resposta do porto
+  // sem resposta do porto (ligado, a ouvir, mas não responde)
+  app.on('arlequin:plano', () => {})
   const b = await chamar(r.post['/plano-telegram'], { body: { id, alternativa: 0 } })
   assert.equal((await chamar(r.get['/plano-telegram/:pedido'], { params: { pedido: b.pedido } })).estado, 'a enviar')
   assert.equal(agendados.length, 2)
@@ -463,6 +464,19 @@ const agendadorFalso = () => {
   return { agendados, agendar: (fn, ms) => { const t = { fn, ms, cancelado: false }; agendados.push(t); return t }, cancelar: (t) => { if (t) t.cancelado = true } }
 }
 
+test('POST /plano-telegram com o plugin porto desligado (ninguém a ouvir arlequin:plano): 503 logo, sem esperar os 30 s (revisão final, 10)', async () => {
+  const app = appComEventos()
+  const ag = agendadorFalso()
+  const { p, r } = plugin(app, ag)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  const id = await calculado(r)
+  const x = await chamar(r.post['/plano-telegram'], { body: { id, alternativa: 0 } })
+  assert.equal(x.code, 503)
+  assert.equal(x.erro, 'o plugin porto está desligado: liga-o em Plugin Config')
+  assert.equal(ag.agendados.length, 0, 'nada fica a enviar')
+  p.stop()
+})
+
 test('stop() a meio de um envio: o plano "a enviar" fica "falhou" com o motivo (não fica a enviar para sempre); depois do start, uma resposta tardia não muda nada', async () => {
   const app = appComEventos()
   const ag = agendadorFalso()
@@ -470,6 +484,7 @@ test('stop() a meio de um envio: o plano "a enviar" fica "falhou" com o motivo (
   const pasta = path.join(app.dir, 'dados')
   p.start({ pasta })
   const id = await calculado(r)
+  app.on('arlequin:plano', () => {}) // o porto ligado, ainda sem resposta
   const x = await chamar(r.post['/plano-telegram'], { body: { id, alternativa: 0 } })
   p.stop()
   assert.ok(ag.agendados[0].cancelado)
@@ -487,6 +502,7 @@ test('a lista de planos (20) nunca tira um pedido ainda "a enviar"; tira primeir
   const { p, r } = plugin(app, agendadorFalso())
   p.start({ pasta: path.join(app.dir, 'dados') })
   const id = await calculado(r)
+  app.on('arlequin:plano', () => {}) // o porto ligado, ainda sem resposta
   const pedidos = []
   for (let i = 0; i < 22; i++) pedidos.push((await chamar(r.post['/plano-telegram'], { body: { id, alternativa: 0 } })).pedido)
   // 22 a enviar: nenhum sai

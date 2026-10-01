@@ -13,7 +13,7 @@
 //   POST /plano-telegram { id, alternativa } → 202 { pedido, avisos: [texto] } (404 cálculo ou
 //        alternativa desconhecidos; 409 se o cálculo não estiver pronto; 422 sem a chegada mais
 //        tarde (não há hora de alarme) ou com um cálculo antigo (a hora de alarme já passou, ou a
-//        partida foi há mais de 1 h); 503 sem eventos no servidor)
+//        partida foi há mais de 1 h); 503 sem eventos no servidor ou sem o plugin porto a ouvir)
 //   GET  /plano-telegram/:pedido → { estado: 'a enviar' | 'enviado' | 'falhou', entregues: [nome],
 //        falhas: [{ nome, erro }], avisos: [texto], motivo? }
 //   avisos: o que o Ivo deve saber mas não impede o envio (sem o telefone dele na configuração, o
@@ -48,6 +48,7 @@ const MAX_TRABALHOS = 20
 const MAX_PLANOS = 20
 const LIMITE_PORTO_MS = 30000 // sem resposta do plugin porto em 30 s: "falhou"
 const MOTIVO_PORTO = 'o plugin porto não respondeu (está ligado? tem o token?)'
+const PORTO_DESLIGADO = 'o plugin porto está desligado: liga-o em Plugin Config'
 const SEM_DESTINATARIOS = 'não há destinatários: junta os chats em "Chats autorizados" ou em "Contactos do plano" no plugin porto'
 const MOTIVO_REINICIO = 'o plugin da rota foi reiniciado durante o envio: confirma com os contactos se receberam'
 const AVISO_SEM_TELEFONE = 'o teu telefone não está na configuração: o plano diz só "liga ao Ivo"'
@@ -455,6 +456,8 @@ module.exports = function (app, deps = {}) {
       const indice = Number.isInteger(b.alternativa) ? b.alternativa : lista.findIndex(a => a.id === b.alternativa)
       if (!lista[indice]) return res.status(404).json({ ok: false, erro: 'alternativa desconhecida' })
       if (typeof app.emit !== 'function') return res.status(503).json({ ok: false, erro: 'o servidor não tem eventos: não dá para enviar o plano ao plugin porto' })
+      // ninguém a ouvir (o plugin porto desligado, o padrão no dev): diz logo, sem esperar os 30 s
+      if (app.listenerCount?.('arlequin:plano') === 0) return res.status(503).json({ ok: false, erro: PORTO_DESLIGADO })
       let p
       try {
         p = plano.montarPlano({ resultado: t.resultado, indice, barco: o.barco, telefones: o.telefones, agora: relogio() })
