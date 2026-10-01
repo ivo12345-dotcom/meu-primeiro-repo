@@ -59,6 +59,11 @@ test('"vela e motor" com menos de 0,1 h de vela chama-se "a motor (sem vento par
   assert.equal(t.nomeAlternativa({ afastamento: 8, propulsao: 'vela', horas: { vela: null } }), '8 MN, vela e motor')
   // a "só motor" fica "só motor"
   assert.equal(t.nomeAlternativa(CANAL.alternativas[0]), 'Amanhã às 09:30, 5 MN pelo Canal da Berlenga, só motor')
+  // o campo semVela do plugin (horas em bruto) manda: 0,097 h arredonda a 0,1 mas vai sem vela (revisão final, 9)
+  assert.equal(t.nomeAlternativa({ afastamento: 8, propulsao: 'vela', horas: { vela: 0.1 }, semVela: true }), '8 MN, a motor (sem vento para vela)')
+  assert.equal(t.rotaCurta({ afastamento: 8, propulsao: 'vela', horas: { vela: 0.1 }, semVela: true }), '8 MN, a motor (sem vento para vela)')
+  assert.equal(t.nomeAlternativa({ afastamento: 8, propulsao: 'vela', horas: { vela: 0.04 }, semVela: false }), '8 MN, vela e motor')
+  assert.equal(t.rotaCurta({ afastamento: 8, propulsao: 'motor', horas: { vela: 0 }, semVela: true }), '8 MN, só motor')
 })
 
 test('a cor do veredicto por tipo: segue verde, espera amarelo, não recomendado laranja, volta vermelho', () => {

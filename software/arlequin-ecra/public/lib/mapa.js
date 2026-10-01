@@ -133,7 +133,8 @@ export function desenharMapa ({ mapa, alternativas = [], selecionada = 0, noite 
     if (!valido(p?.lat, p?.lon)) continue
     const xy = pr.xy(p.lat, p.lon)
     const nome = p.abrigo?.nome || p.voltar?.nome || ''
-    const vermelho = p.abrigo?.avisoVermelho || (!p.abrigo && !p.voltar)
+    // verde só com uma fuga limpa (abrigo ou volta sem aviso vermelho)
+    const vermelho = ![p.abrigo, p.voltar].some(f => f && !f.avisoVermelho)
     partes.push(`<circle class="desistencia" cx="${f1(xy[0])}" cy="${f1(xy[1])}" r="8" fill="${vermelho ? 'var(--perigo)' : 'var(--ok)'}" stroke="var(--fundo)" stroke-width="2"><title>${esc(p.hora || '')} ${esc(nome)}</title></circle>`)
     // "↩ Peniche": a fuga, mais pequena e na cor de aviso (não se confunde com os portos da rota)
     if (nome && nome !== anterior) partes.push(rotulo(xy, `↩ ${nome}`, largura, 'var(--amarelo)', { classe: 'fuga', tamanho: 18 }))

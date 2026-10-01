@@ -78,9 +78,11 @@ export function idade (t, agora = Date.now()) {
   return `há ${Math.floor(min / 1440)} dias`
 }
 
-// Uma "vela e motor" com menos de 0,1 h de vela (horas.vela, o cenário provável) vai toda a motor.
+// Uma "vela e motor" com menos de 0,1 h de vela (o cenário provável) vai toda a motor: o campo semVela
+// do plugin (horas em bruto, o critério da junção das repetidas); sem ele (resultados antigos), o
+// horas.vela arredondado.
 const SEM_VENTO_VELA = 'a motor (sem vento para vela)'
-const semVela = (alt) => alt.propulsao === 'vela' && ok(alt.horas?.vela) && alt.horas.vela < 0.1
+const semVela = (alt) => alt.propulsao === 'vela' && (typeof alt.semVela === 'boolean' ? alt.semVela : ok(alt.horas?.vela) && alt.horas.vela < 0.1)
 
 // "5 MN, só motor", "direta (salto curto), vela e motor", "5 MN pelo Canal da Berlenga, só motor",
 // "8 MN, a motor (sem vento para vela)".

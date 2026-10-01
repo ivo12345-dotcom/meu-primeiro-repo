@@ -122,3 +122,19 @@ test('as etiquetas das fugas: "↩ " antes do nome, mais pequenas do que as da p
   assert.match(svg, /font-size="22"[^>]*>Algés \(CNA\)</)
   assert.match(svg, /font-size="22"[^>]*>Peniche</)
 })
+
+test('a bolinha da desistência só é verde com uma fuga limpa: sem abrigo e com a volta só junto à costa (aviso vermelho) é vermelha (revisão final, 7)', () => {
+  const mapa = { janela: { latMin: 38, latMax: 39.5, lonMin: -10, lonMax: -9 }, terra: [], zonas: [] }
+  const alternativas = [{ rota: [[38.5, -9.5], [38.6, -9.4]], rasto: [] }]
+  const fuga = (o = {}) => ({ nome: 'Peniche', milhas: 5, vento: 'a favor', avisoVermelho: null, ...o })
+  const VERMELHO = 'fuga junto à costa com vento do mar (a sotavento) — só em último recurso'
+  const cor = (p) => desenharMapa({ mapa, alternativas, selecionada: 0, desistencia: [{ lat: 38.6, lon: -9.4, hora: '10:00', ...p }] }).match(/<circle class="desistencia"[^>]*fill="([^"]+)"/)[1]
+  assert.equal(cor({ abrigo: null, voltar: fuga({ avisoVermelho: VERMELHO }) }), 'var(--perigo)')
+  assert.equal(cor({ abrigo: fuga({ avisoVermelho: VERMELHO }), voltar: fuga({ avisoVermelho: VERMELHO }) }), 'var(--perigo)')
+  assert.equal(cor({ abrigo: null, voltar: null }), 'var(--perigo)')
+  assert.equal(cor({ abrigo: fuga({ avisoVermelho: VERMELHO }), voltar: null }), 'var(--perigo)')
+  // uma fuga limpa (abrigo ou volta): verde
+  assert.equal(cor({ abrigo: null, voltar: fuga() }), 'var(--ok)')
+  assert.equal(cor({ abrigo: fuga(), voltar: fuga({ avisoVermelho: VERMELHO }) }), 'var(--ok)')
+  assert.equal(cor({ abrigo: fuga({ avisoVermelho: VERMELHO }), voltar: fuga() }), 'var(--ok)')
+})
