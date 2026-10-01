@@ -9,6 +9,10 @@
 // com 'arlequin:plano-enviado' { pedido, entregues: [nome], contactos: [nome], falhas: [{ nome, erro }] }.
 // contactos: os contactos em terra que o receberam (os contactosPlano entregues que não estão nos
 // chatIds: um chat nas duas listas é do Ivo e comanda). Só eles têm a hora de alarme em terra.
+// A navegar (desenho 3b-2), o plugin da rota manda também { pedido, tipo: 'plano' | 'chegada' | 'atraso' |
+// 'terminado', texto, gpx?, nomeFicheiro?, destinatarios: 'contactos-do-plano', contactos: [nome] }: vai
+// só aos contactosPlano com esses nomes (os que receberam o plano) e aos chatIds (o Ivo); o GPX só no
+// tipo 'plano'. Sem destinatarios, como na 3b-1: a todos.
 // Os contactosPlano só recebem: as mensagens deles são ignoradas (não comandam). Quem escreve sem
 // estar em nenhuma das listas recebe o código para dar ao Ivo (uma vez por hora) e não fica autorizado.
 // O plano vai a todos os destinatários em paralelo e cada chamada ao Telegram tem um limite de 10 s,
@@ -162,11 +166,13 @@ module.exports = function (app, deps = {}) {
     .filter(c => c && c.chatId != null && String(c.chatId).trim())
     .map(c => ({ nome: String(c.nome || '').trim() || `chat ${String(c.chatId).trim()}`, chatId: String(c.chatId).trim() }))
 
-  // os destinatários do plano: os chats autorizados e os contactos do plano (em terra), sem repetir
-  function destinatariosPlano () {
+  // os destinatários do plano: os chats autorizados e os contactos do plano (em terra), sem repetir;
+  // com destinatarios 'contactos-do-plano', só os contactos com os nomes da lista
+  function destinatariosPlano (ev) {
+    const so = ev?.destinatarios === 'contactos-do-plano' ? new Set((Array.isArray(ev.contactos) ? ev.contactos : []).map(String)) : null
     const out = []
     for (const id of chatsAutorizados()) out.push({ nome: `chat ${id}`, chatId: id, emTerra: false })
-    for (const c of contactosPlano()) if (!out.some(d => d.chatId === c.chatId)) out.push({ ...c, emTerra: true })
+    for (const c of contactosPlano()) if ((!so || so.has(c.nome)) && !out.some(d => d.chatId === c.chatId)) out.push({ ...c, emTerra: true })
     return out
   }
 
@@ -176,9 +182,11 @@ module.exports = function (app, deps = {}) {
     // o cliente do início: um stop() a meio (tg = null) não estraga o envio, que acaba sozinho
     const cliente = tg
     if (!cliente) return responder([], [{ nome: 'Telegram', erro: 'o plugin porto não tem o token do bot' }])
-    const gpx = typeof ev?.gpx === 'string' && ev.gpx ? Buffer.from(ev.gpx, 'utf8') : null
+    // o GPX só no plano (sem tipo: o da 3b-1; ou o plano novo)
+    const comGpx = ev?.tipo == null || ev.tipo === 'plano'
+    const gpx = comGpx && typeof ev?.gpx === 'string' && ev.gpx ? Buffer.from(ev.gpx, 'utf8') : null
     // todos ao mesmo tempo; em cada um, a mensagem e depois o GPX
-    const resultados = await Promise.all(destinatariosPlano().map(async (d) => {
+    const resultados = await Promise.all(destinatariosPlano(ev).map(async (d) => {
       try {
         await cliente.sendMessage(d.chatId, String(ev?.texto ?? ''))
         if (gpx) await cliente.sendDocument(d.chatId, gpx, ev.nomeFicheiro || 'plano.gpx')
