@@ -123,12 +123,21 @@ test('sem dados do mar: calcula com a corrente da barra do Tejo a 0 e avisa', as
 test('falhas: sem GPS, sem previsão, destino desconhecido, já no destino, sem polar e erros dentro: nunca lança', async () => {
   assert.match((await calcular(entrada({ instrumentos: {} }), deps())).erro, /^Sem GPS/)
   assert.match((await calcular(entrada(), deps({ obterPrevisao: async () => ({ erro: 'não há previsão guardada que cubra a rota' }) }))).erro, /^Sem previsão que cubra a rota: não há previsão guardada/)
-  assert.match((await calcular(entrada(), deps({ obterPrevisao: async () => { throw new Error('rebentou') } }))).erro, /^Sem previsão que cubra a rota: rebentou/)
+  // I-32: uma exceção (erro de programação, em inglês do JavaScript) nunca chega ao Ivo: frase fixa e o erro no registo
+  const registo = []
+  const log = (msg, e) => registo.push([msg, e])
+  assert.equal((await calcular(entrada(), deps({ log, obterPrevisao: async () => { throw new TypeError("Cannot read properties of undefined (reading 'x')") } }))).erro, 'Sem previsão que cubra a rota: erro interno ao obter a previsão (o pormenor ficou no registo do SignalK). Não calculo sem previsão.')
+  assert.equal(registo.length, 1)
+  assert.ok(registo[0][1] instanceof TypeError)
   assert.equal((await calcular(entrada({ destino: 'atlantida' }), deps())).erro, 'destino desconhecido: atlantida')
   assert.equal((await calcular(entrada({ destino: 'alges' }), deps())).erro, 'Já estás em Algés (CNA).')
   assert.equal((await calcular(entrada(), deps({ polar: null }))).erro, 'sem polar')
   const r = await calcular(entrada(), deps({ costa: { ...costa, linha: () => { throw new Error('costa estragada') } } }))
-  assert.equal(r.erro, 'erro no cálculo: costa estragada')
+  assert.equal(r.erro, 'Erro interno no cálculo da rota: o pormenor ficou no registo do SignalK.')
+  const r2 = await calcular(entrada(), deps({ log, costa: { ...costa, linha: () => { throw new Error('costa estragada') } } }))
+  assert.equal(r2.erro, r.erro)
+  assert.equal(registo.at(-1)[1].message, 'costa estragada')
+  assert.match(registo.at(-1)[0], /erro no cálculo/)
   // previsão curta (acaba antes de qualquer chegada): explica
   const curta = { ...P29, fim: AGORA + 2 * H }
   assert.match((await calcular(entrada(), deps({ obterPrevisao: async () => ({ previsao: curta, obtida: curta.obtida, idadeH: 0 }) }))).erro, /^A previsão acaba às 17:32: não cobre nenhuma passagem até Peniche\.$/)
@@ -382,7 +391,7 @@ test('o cálculo nunca lança: previsão estragada, sem rota ativa, posição nu
   assert.equal((await calcular(entrada({ destino: { rotaAtiva: [] } }), deps())).erro, 'não há rota ativa no OpenCPN')
   assert.equal((await calcular(entrada({ destino: { rotaAtiva: null } }), deps())).erro, 'não há rota ativa no OpenCPN')
   assert.match((await calcular(entrada({ instrumentos: { posicao: null } }), deps())).erro, /^Sem GPS/)
-  assert.match((await calcular(entrada(), deps({ obterPrevisao: async () => ({ previsao: { pontos: null } }) }))).erro, /^(erro no cálculo|Sem previsão)/)
+  assert.equal((await calcular(entrada(), deps({ obterPrevisao: async () => ({ previsao: { pontos: null } }) }))).erro, 'Erro interno no cálculo da rota: o pormenor ficou no registo do SignalK.')
 })
 
 test('a regra do vento de terra (3 MN) volta a verificar-se à hora a que o barco passa nos rastos simulados, não só à hora estimada a 5 nós', async () => {

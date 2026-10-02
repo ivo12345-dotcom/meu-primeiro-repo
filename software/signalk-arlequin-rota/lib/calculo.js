@@ -335,11 +335,21 @@ function semPassagens (estat, { fim, agora, o, nome }) {
   return `Nenhuma passagem até ${nome}: ${estat.foraDaPrevisao} acabam depois do fim da previsão (${quando}) e ${estat.naoChega} não chegam dentro de ${maxH} h.`
 }
 
+// Uma exceção é um erro de programação (com a mensagem do JavaScript, em inglês: "Cannot read
+// properties of undefined…"): ao Ivo, uma frase fixa em português; o erro verdadeiro vai para o
+// registo (deps.log; no plugin, app.error), como o lib/rotas.js faz (auditoria I-32).
+const ERRO_INTERNO = 'Erro interno no cálculo da rota: o pormenor ficou no registo do SignalK.'
+const ERRO_PREVISAO = 'erro interno ao obter a previsão (o pormenor ficou no registo do SignalK)'
+function registar (deps, msg, e) {
+  try { if (typeof deps?.log === 'function') deps.log(`signalk-arlequin-rota: ${msg}`, e) } catch { /* o registo nunca derruba o cálculo */ }
+}
+
 async function calcular (entrada, deps) {
   try {
     return await calcularSemRede(entrada, deps)
   } catch (e) {
-    return { erro: `erro no cálculo: ${e && e.message ? e.message : String(e)}` }
+    registar(deps, 'erro no cálculo', e)
+    return { erro: ERRO_INTERNO }
   }
 }
 
@@ -375,7 +385,12 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   let pv
   try {
     pv = await deps.obterPrevisao({ pontos: pontosPrev, desde: agora, ate: agora + 12 * H, agora })
-  } catch (e) { pv = { erro: e.message } }
+  } catch (e) {
+    // o obterPrevisao do plugin nunca lança (devolve { erro } em português): uma exceção é um erro
+    // de programação — frase fixa e o erro no registo (I-32)
+    registar(deps, 'erro a obter a previsão', e)
+    pv = { erro: ERRO_PREVISAO }
+  }
   if (!pv || pv.erro || !pv.previsao) return { erro: `Sem previsão que cubra a rota: ${pv?.erro || 'sem resposta'}. Não calculo sem previsão.` }
   if (pv.aviso && pv.texto) avisosGerais.push(pv.texto)
   const previsao = pv.previsao
