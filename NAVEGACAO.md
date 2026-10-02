@@ -1387,7 +1387,7 @@ quem o recebe para ligar ao Ivo e, se ele não atender, ao MRCC Lisboa (+351 214
 #### A navegar (3b-2)
 
 Desenho em `docs/superpowers/specs/2026-10-01-melhor-rota-navegar-3b2-design.md`; capturas do Leme
-(faixa com o lembrete de virar/cambar, recalcula, rota mudada, recursos e barómetro, rotação do vento), de dia e de noite
+(faixa com o lembrete de mudar de rumo, recalcula, rota mudada, recursos e barómetro, e o "Estou bem" com a hora de alarme em terra por adiar), de dia e de noite
 (o modo noite de 01/10, brilho 2), em `docs/capturas-3b2/`. Corre no **plugin da rota,
 no Pi**, de minuto a minuto: funciona com o ecrã desligado e continua depois de um reinício (o plano
 fica gravado em `plano-ativo.json`, na pasta do plugin). **Nunca muda a rota sozinho.**
@@ -1399,7 +1399,10 @@ destino, parado (menos de 0,5 nó) durante 5 min, depois de feita pelo menos met
 com menos de 1 MN, depois de 5 min a navegar). Com a rota limpa ou trocada no OpenCPN (o plano em
 pausa), conta também o afastamento real: se já estiveste a pelo menos 1 MN da partida (ou a metade
 da distância em linha reta até ao destino, se for menor), chegar e ficar 5 min no cais dá o "cheguei
-bem" na mesma. Um plano novo começa limpo; os 5 últimos ficam em `planos-fechados.json`.
+bem" na mesma. Em pausa, e numa rota com menos de 1 MN, o barco também tem de ter saído 0,5 MN do
+cais (a contar da partida) e voltado: numa ida e volta, ou com o destino colado à partida, ficar no
+cais logo à saída não é "cheguei bem". Um plano novo começa limpo; os 5 últimos ficam em
+`planos-fechados.json`.
 
 **A faixa no Leme**, por cima do rumo:
 - "próximo: rizar às 22:50 (daqui a 25 min) · +20 min sobre o plano" (os eventos de sítio — rizar,
@@ -1408,14 +1411,20 @@ bem" na mesma. Um plano novo começa limpo; os 5 últimos ficam em `planos-fecha
 - "chegada ~amanhã 07:58 (plano 07:38)", com "de noite" se a chegada deslizada for de noite;
 - "recursos: gasóleo à chegada ~34 L" quando há aviso, ou "recursos: sem leitura";
 - "sem GPS: acompanhamento parado" (mais de 2 min sem posição) e "barómetro: sem leitura";
-- antes de sair: "plano ativo · à espera de sair".
+- antes de sair: "plano ativo · à espera de sair";
+- com o plano enviado: "contactos em terra: alarme HH:MM" (a hora a que eles ligam ao MRCC), "mensagem
+  para terra por enviar (sem rede)" quando uma já falhou, "não chegou a X (a tentar outra vez)" e, na
+  caixa da pausa, "em pausa: os atrasos não seguem para terra".
 
 **O que o sistema avisa** (na barra de cima, com o apito curto; nenhum muda a rota):
 - **Lembretes**, 30 min antes: rizar ou largar rizo, a frente, chuva e visibilidade abaixo de 5 km
   ("radar ligado e luzes"), o pôr do sol ("luzes, arnês, come antes de escurecer"), a chegada de
   noite, **virar/cambar** nos pontos da rota onde o rumo muda mais de 45° ("virar/cambar no Cabo
-  Raso") e a **rotação do vento** previsto de mais de 45° em 1 h ("rotação do vento de 350° para
-  50°"). Só no ecrã.
+  Raso"; num troço a motor, "mudar de rumo no Cabo Raso") e a **rotação do vento** previsto de mais
+  de 45° em 1 h ("rotação do vento de 350° para 50°"; com vento previsto de 6 nós ou mais, no mínimo
+  3 h entre elas e nenhuma perto de uma frente, que já diz para onde roda). Só no ecrã.
+- **A hora de alarme em terra**, 60 min antes, com o plano aberto (também à espera de sair e em
+  pausa): "Os contactos em terra ligam ao MRCC às HH:MM: avisa-os ou Terminar". Só no ecrã.
 - **Come e bebe** (só com "só eu"), de 3 em 3 h desde a saída, durante 15 min. Só no ecrã.
 - **Recalcula a rota**: atraso de mais de 30 min, ou o vento medido (média de 10 min) afastado do
   previsto mais de 30 % e mais de 4 nós durante 30 min seguidos. Apaga-se com os dois normais
@@ -1427,7 +1436,9 @@ bem" na mesma. Um plano novo começa limpo; os 5 últimos ficam em `planos-fecha
 - **Barómetro**: queda de mais de 3 hPa em 3 h, "o tempo pode piorar antes do previsto"; apaga-se
   com a queda em 3 h até 2 hPa. Vai também para o teu Telegram.
 - O teu Telegram recebe o "✓ Resolvido" quando passam, uma só vez (o plugin porto guarda o que já
-  te mandou em `encaminhador.json`: um reinício do servidor não repete os avisos nem o "Resolvido").
+  te mandou em `encaminhador.json`: um reinício do plugin não repete os avisos nem o "Resolvido";
+  depois de desligar o Pi, um aviso ainda ativo volta a chegar uma vez — mais vale repetido do que
+  perdido).
   O apito contínuo fica só para o AIS.
 
 **O que os contactos em terra recebem** (só se o plano lhes foi enviado; vão também para o teu chat):
@@ -1436,9 +1447,19 @@ bem" na mesma. Um plano novo começa limpo; os 5 últimos ficam em `planos-fecha
   HH:MM)." quando a chegada prevista passa **30 min ou mais** da "mais tarde" do plano (decisão do
   Ivo de 01/10: uns minutos não preocupam ninguém em terra); depois, no máximo 1× por hora
   e só se a chegada escorregar mais 15 min. A nova hora de alarme é a chegada prevista + 2 h, e só
-  conta quando chega a terra (o "em vez de" é sempre a última que eles receberam);
+  conta quando chega a terra (o "em vez de" é sempre a última que eles receberam). **Só sai com o
+  barco a avançar** (decisão do Ivo de 02/10, "só a avançar + teto de 3 h"): pelo menos 1 MN na rota
+  na última hora, a andar agora e a menos de 2 MN da rota; e **nunca empurra sozinho a hora de alarme
+  mais de 3 h** sobre a do plano. Parado ou à deriva não sai nada: fica a hora de alarme que eles têm
+  (se estiveres incapacitado, ligam ao MRCC à hora certa). O Leme diz então "A hora de alarme em terra
+  é HH:MM e não foi adiada (barco parado / limite de 3 h). Se estás bem, carrega Estou bem.": o botão
+  **Estou bem** manda um atraso com a estimativa de agora, e o limite passa a 3 h sobre essa hora;
 - "Viagem terminada / mudança de planos: estou bem, em <posição> às HH:MM." ao Terminar;
-- o plano novo, com "Este plano substitui o anterior", ao Recalcular → Ativar.
+- o plano novo, com "Este plano substitui o anterior", ao Recalcular → Ativar, e também ao Ativar
+  outra alternativa (ou outro cálculo) quando eles têm o plano de outra (o Resultado avisa: "os
+  contactos em terra têm o plano da 1.ª alternativa (alarme HH:MM): ao Ativar, segue o novo").
+- Um contacto que não a recebeu (bloqueou o bot, um erro do Telegram) recebe-a outra vez, igual e com
+  a mesma referência, de 2 em 2 min, até chegar.
 - Nada mais: os lembretes, os avisos e a rota mudada nunca vão para terra. Sem rede (ou sem o
   plugin porto), as mensagens ficam em fila e voltam a tentar de 2 em 2 min (no teu chat só a 1.ª
   vez). Um atraso que fica na fila sai com os valores da hora a que sai, e já não sai se entretanto

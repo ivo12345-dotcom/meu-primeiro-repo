@@ -14,6 +14,7 @@ Parte do desenho geral `2026-09-29-melhor-rota-ia-design.md` (Parte 4: avisos e 
 | Mudança de rota | Nunca muda a rota sozinho. "Recalcular" é um botão; ativar outra rota substitui o plano |
 | Ver a chegada mesmo em pausa (01/10, revisão) | Em pausa, a chegada ao cais do plano continua a contar (a mesma regra) → "cheguei bem" normal. Em pausa e parado (SOG < 0,5 nó) 30 min a menos de 0,3 MN de **outro** porto da lista, o ecrã pergunta "Chegaste a X? Enviar 'cheguei bem a X'" com um botão; só envia com o toque (`POST /plano-ativo/chegada { destino }`) |
 | Recalcular no mar (01/10, revisão) | A navegar (ou em pausa no mar), o Recalcular pede só a partida imediata (`sairAgora: true`), com o "Volta ou abriga-te em X" e os pontos de desistência; à espera de sair, todas as partidas |
+| Atrasos para terra: "só a avançar + teto de 3 h" (02/10, revisão final C1) | O "Ainda a navegar, tudo bem…" automático só sai com o barco a avançar na rota: ≥ 1 MN de progresso na rota na última hora e a ≤ 2 MN da rota. A hora de alarme nunca passa sozinha 3 h da do plano; daí para a frente só com o **Estou bem** do Ivo no ecrã. Parado ou à deriva, não sai nada e fica a hora de alarme que terra tem (ver "Contactos em terra") |
 
 ## Arquitetura
 
@@ -101,6 +102,14 @@ Só se o plano foi enviado e há contactos entregues. As mensagens seguem só pa
 | "Viagem terminada / mudança de planos: estou bem, em … às HH:MM." | ao Terminar |
 | O plano novo, com "Este plano substitui o anterior" | ao Recalcular → Ativar, se o antigo tinha sido enviado |
 
+- **As guardas do atraso (decisão do Ivo de 02/10, "Só a avançar + teto de 3 h"; revisão final C1):** o atraso automático diz "tudo bem" aos contactos, por isso só sai quando o barco está mesmo a avançar:
+  - **progresso real:** ≥ 1 MN na rota na última hora, a avançar agora (os últimos 15 min ao mesmo ritmo: um barco que acabou de parar não diz "tudo bem") e a ≤ 2 MN da rota. As milhas na rota guardam-se de 5 em 5 min no plano ativo (valem depois de um reinício), e cada troço conta no máximo o que o barco andou de facto (longe da rota, numa curva, a projeção salta sem o barco andar);
+  - **teto:** a hora de alarme nunca passa sozinha mais de 3 h da hora de alarme do plano;
+  - parado ou à deriva, ou acima do teto, **não sai nada** e fica a hora de alarme que terra já tem (falha segura: se o Ivo estiver incapacitado, os contactos chegam à hora de ligar ao MRCC). Um atraso na fila que deixou de passar nas guardas sai da fila;
+  - o ecrã mostra então "A hora de alarme em terra é HH:MM e não foi adiada (barco parado / limite de 3 h). Se estás bem, carrega Estou bem." com o botão **Estou bem** (`POST /plano-ativo/estou-bem`, `readwrite`): liberta **um** atraso com a estimativa de agora, e o teto passa a ser 3 h sobre a hora de alarme dessa mensagem.
+- **Plano de outra alternativa (revisão final I1):** o último plano entregue a contactos em terra fica em `ultimo-envio.json`. Ao Ativar sem um plano aberto enviado, se terra tem o plano de outra alternativa ou de outro cálculo (com a hora de alarme por passar e sem "cheguei bem"/"terminada"), o novo segue como no Recalcular → Ativar ("Este plano substitui o anterior"). O Resultado avisa antes.
+- **Contacto que falhou (revisão final I3):** os contactos que não receberam uma mensagem (bloquearam o bot, um erro do Telegram) recebem-na outra vez, igual e com a mesma referência, de 2 em 2 min, até entregar ou deixar de interessar; o ecrã diz "não chegou a X (a tentar outra vez)".
+- **A hora de alarme no ecrã (revisão final I2):** a faixa e a caixa da pausa dizem "contactos em terra: alarme HH:MM", "mensagem para terra por enviar (sem rede)" e, em pausa, "em pausa: os atrasos não seguem para terra"; 60 min antes da hora de alarme, com o plano aberto (também à espera de sair e em pausa), o aviso `notifications.rota.alarmeTerra` (alert, apito curto, só no ecrã): "Os contactos em terra ligam ao MRCC às HH:MM: avisa-os ou Terminar".
 - **Horas:** como na 3b-1, horas de Lisboa com o dia da semana, a data e o sufixo de verão/inverno na hora ambígua.
 - **Fila sem rede:**
   - uma mensagem que falha fica em fila (gravada no plano ativo) e volta a tentar de 2 em 2 min;
