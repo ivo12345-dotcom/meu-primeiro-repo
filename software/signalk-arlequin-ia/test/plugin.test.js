@@ -356,3 +356,16 @@ test('estado.json com campos estragados: fica o que é válido e a previsão con
   assert.equal(guardado.ultimoTreinoMs, 0)
   assert.deepEqual(app.erros, [])
 })
+
+test('o estado do plugin dá a hora de Lisboa, seja qual for o fuso do Pi (decisão n.º 22; auditoria I-31)', (t) => {
+  const tz = process.env.TZ
+  process.env.TZ = 'Asia/Tokyo' // um Pi com outro fuso (em UTC seria igual de errado no verão)
+  t.after(() => { if (tz === undefined) delete process.env.TZ; else process.env.TZ = tz })
+  const app = appFalso()
+  fs.mkdirSync(app.getDataDirPath(), { recursive: true })
+  fs.writeFileSync(path.join(app.getDataDirPath(), 'estado.json'), JSON.stringify({ previsao: { okEm: Date.UTC(2026, 8, 29, 14, 0, 5) } }))
+  const p = criar(app, { comando: UMA_LINHA, nice: false })
+  p.start({ pasta: path.join(app.dir, 'dados'), treinoAutomatico: false })
+  p.stop()
+  assert.match(app.estado, /última previsão 15:00:05$/, app.estado) // 14:00:05 UTC = 15:00:05 em Lisboa (verão)
+})

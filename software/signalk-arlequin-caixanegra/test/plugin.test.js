@@ -574,3 +574,17 @@ test('ao arrancar com o alarme do disco na árvore e o disco ainda cheio: não s
   assert.deepEqual(daCaixa(app, 'disco').map(n => n.state), ['normal'], 'quando o disco esvazia, limpa-se')
   p.stop()
 })
+
+test('o estado do plugin dá a hora de Lisboa, seja qual for o fuso do Pi (decisão n.º 22; auditoria I-31)', (t) => {
+  const tz = process.env.TZ
+  process.env.TZ = 'Asia/Tokyo' // um Pi com outro fuso (em UTC seria igual de errado no verão)
+  t.after(() => { if (tz === undefined) delete process.env.TZ; else process.env.TZ = tz })
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 50
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  correr(t, app, 60, 'nmea0183.GP') // a última linha é às 14:01:00 UTC = 15:01:00 em Lisboa (verão)
+  p.stop()
+  assert.match(app.estado, /última linha 15:01:00/, app.estado)
+})
