@@ -30,7 +30,12 @@
 //        quedaHpa }, previsaoIdadeH, avisos: [{ caminho, state, message }], envio: { contactos, alarme (o
 //        último entregue em terra: o de um plano reenviado só quando chega), alarmePlano (o deste plano) } | null,
 //        chegadaOutro: { id, nome } | null,
-//        filaContactos: [{ tipo, criada, tentativas, proxima, estado, erro }], enviadas: [{ tipo, enviadaEm, contactos }] }
+//        filaContactos: [{ tipo, criada, tentativas, proxima, estado, erro }], enviadas: [{ tipo, enviadaEm, contactos }],
+//        atrasoRetido: { motivo: 'parado' | 'limite', alarme (a hora de alarme que terra tem) } | null }
+//        atrasoRetido (revisão final C1, decisão do Ivo de 02/10): um atraso para terra que as guardas não
+//        deixaram sair (o barco parado ou à deriva, ou o teto de 3 h): o ecrã pede o "Estou bem"
+//   POST /plano-ativo/estou-bem → { ok, chegada, alarme } (409 sem um atraso retido): o Ivo está bem; sai
+//        um atraso com a estimativa de agora e o teto passa a 3 h sobre a hora de alarme dele
 //        chegadaOutro (decisão do Ivo de 01/10): em pausa no mar, parado 30 min a menos de 0,3 MN de outro
 //        porto da lista (dados/destinos.json): o ecrã pergunta "Chegaste a X?"
 //   POST /plano-ativo/terminar → { ok, estado: 'terminado', contactos } (409 sem plano aberto): fecha o
@@ -42,7 +47,10 @@
 //
 // Os contactos em terra a navegar (lib/contactos.js): só com o plano enviado a contactos em terra.
 // "Cheguei bem" na chegada, o atraso quando a chegada prevista passa da "mais tarde" do plano (no
-// máximo 1× por hora), "viagem terminada" no Terminar, e o plano novo ao Ativar outra alternativa com
+// máximo 1× por hora; decisão do Ivo de 02/10, "só a avançar + teto de 3 h": só com ≥ 1 MN de progresso
+// na rota na última hora, a avançar agora e a ≤ 2 MN da rota, e nunca mais de 3 h sobre a hora de alarme
+// do plano sem o "Estou bem" do Ivo; parado ou à deriva não sai nada e fica a hora de alarme que terra
+// tem), "viagem terminada" no Terminar, e o plano novo ao Ativar outra alternativa com
 // um plano enviado aberto (o 422 de um cálculo antigo não ativa nada e o plano antigo fica). Pelo
 // mesmo evento 'arlequin:plano' { pedido, tipo, texto, gpx? (só no tipo 'plano'), nomeFicheiro?,
 // destinatarios: 'contactos-do-plano', contactos: [nome], chats: [chatId] } (o porto escolhe pelo chatId),
@@ -234,6 +242,9 @@ module.exports = function (app, deps = {}) {
   let aCorrerCiclo = false
   let modelosVento = {}
   const pedidosContactos = new Map() // pedido → temporizador dos 30 s (as mensagens para terra)
+  // o atraso para terra retido pelas guardas (revisão final C1): { motivo: 'parado' | 'limite' } ou null
+  // (em memória: o ciclo seguinte volta a decidir)
+  let retido = null
 
   let afastGravado = null // o afastamento máximo da partida da última gravação do plano
   // O estado do plugin (Plugin Config); com o modoTeste ligado, à frente (re-revisão M-4): "MODO DE TESTE
@@ -383,7 +394,8 @@ module.exports = function (app, deps = {}) {
     // sai da fila se deixou de valer, senão leva a chegada e o alarme mais recentes
     if (m0.tipo === 'atraso' && !m0.anterior && ultimo?.estado === pa.ESTADOS.NAVEGAR && !ultimo.semGps) {
       const d = atrasoAgora(ultimo, agora)
-      if (!d) {
+      // deixou de valer, ou o barco parou entretanto (revisão final C1: só o que o "Estou bem" libertou passa)
+      if (!d || (!m0.confirmado && retencao(ultimo, d, agora))) {
         planoAtivo = { ...planoAtivo, contactos: ct.tirar(planoAtivo.contactos, m0.id) }
         gravarPlanoAtivo()
         return enviarFila(agora)
@@ -429,9 +441,26 @@ module.exports = function (app, deps = {}) {
     gravarPlanoAtivo()
     enviarFila(agora)
   }
+  // A hora de alarme que terra tem (ms): a do último atraso entregue; sem nenhum, a do envio.
+  const alarmeEmTerra = (p = planoAtivo) => (Number.isFinite(p?.atrasoEnviado?.alarme) ? p.atrasoEnviado.alarme : Date.parse(p?.envio?.alarme))
+  // A hora de alarme do plano (a do plano ativo, também a de um plano novo ainda por entregar): a base do teto.
+  const alarmeDoPlano = (p = planoAtivo) => Date.parse(p?.envio?.alarmePendente ?? p?.envio?.alarme)
+  // As guardas do atraso automático (revisão final C1, decisão do Ivo de 02/10): null (pode sair),
+  // 'parado' (menos de 1 MN na rota na última hora, parado agora, ou a mais de 2 MN dela) ou 'limite' (mais de 3 h
+  // sobre a hora de alarme do plano, ou sobre a do último "Estou bem").
+  function retencao (res, d, agora) {
+    return ct.retencaoAtraso({
+      progressoMnH: ct.progressoNaHora(planoAtivo.marcas, { s: res.milhas, ...res.posicao }, agora),
+      ritmoAgoraMnH: ct.progressoNaHora(planoAtivo.marcas, { s: res.milhas, ...res.posicao }, agora, 15 * MIN),
+      distRotaMn: res.distRota,
+      alarmeNovo: d.alarme,
+      alarmePlano: alarmeDoPlano(),
+      estouBem: planoAtivo.estouBem
+    })
+  }
   // O texto do atraso: "em vez de" o último alarme entregue em terra (sem nenhum, o do plano).
   function textoAtraso (m, agora) {
-    const antes = planoAtivo.atrasoEnviado?.alarme ?? Date.parse(planoAtivo.envio?.alarme)
+    const antes = alarmeEmTerra()
     return ct.textoAtraso({ chegada: m.chegada, alarme: m.alarme, alarmeAntes: antes, agora })
   }
   // O atraso para terra (só a navegar, com GPS e o plano enviado). Decide-se contra o último entregue;
@@ -443,7 +472,11 @@ module.exports = function (app, deps = {}) {
       chegadaAgora: Date.parse(res.chegadaAgora), p90: Date.parse(planoAtivo.alternativa.chegada?.p90), alarmePlano: Date.parse(planoAtivo.envio?.alarme), agora
     })
   }
+  // As guardas (revisão final C1, decisão do Ivo de 02/10, "só a avançar + teto de 3 h"): sem progresso
+  // real na rota (parado ou à deriva) ou acima do teto, nada sai, fica a hora de alarme que terra tem e o
+  // ecrã pede o "Estou bem" (retido); um atraso na fila que ainda não saiu também sai dela.
   function atrasoParaTerra (res, agora) {
+    retido = null
     const envio = planoAtivo.envio
     if (!envio?.contactos?.length || res.semGps) return
     const d = atrasoAgora(res, agora)
@@ -451,6 +484,12 @@ module.exports = function (app, deps = {}) {
     const pendente = c.fila.find(m => m.tipo === 'atraso' && !m.anterior)
     // deixou de valer (o barco recuperou): o atraso que ainda está na fila sai (re-revisão M-2)
     if (!d) {
+      if (pendente?.estado === 'fila') { planoAtivo = { ...planoAtivo, contactos: ct.tirar(c, pendente.id) }; gravarPlanoAtivo() }
+      return
+    }
+    const motivo = pendente?.confirmado ? null : retencao(res, d, agora)
+    if (motivo) {
+      retido = { motivo }
       if (pendente?.estado === 'fila') { planoAtivo = { ...planoAtivo, contactos: ct.tirar(c, pendente.id) }; gravarPlanoAtivo() }
       return
     }
@@ -517,7 +556,7 @@ module.exports = function (app, deps = {}) {
     if (comPressao && pressoes.at(-1)?.t !== agora) { pressoes = av.juntarPressao(pressoes, { t: agora, hPa: hPa / 100 }, agora); baroPorGravar = true }
     // no disco só com um plano aberto, no máximo de 10 em 10 min
     if (baroPorGravar && pa.aberto(planoAtivo) && (baroGravadoEm == null || agora - baroGravadoEm >= BARO_GRAVAR_MS || agora < baroGravadoEm)) gravarPressoes(agora)
-    if (!pa.aberto(planoAtivo)) { ultimo = null; publicarAvisos({}); if (planoAtivo) enviarFila(agora); return }
+    if (!pa.aberto(planoAtivo)) { ultimo = null; retido = null; publicarAvisos({}); if (planoAtivo) enviarFila(agora); return }
     const sog = numeroFresco('navigation.speedOverGround', agora)
     // as milhas feitas na rota (a chegada pede progresso): a última posição na rota
     const milhas = estAcomp.anterior?.s ?? planoAtivo.seguimento?.s ?? null
@@ -534,6 +573,7 @@ module.exports = function (app, deps = {}) {
     if (r.mudou) gravarPlanoAtivo()
     if (!pa.aberto(planoAtivo) || planoAtivo.estado === 'pausado') {
       ultimo = null
+      retido = null
       estAvisos = av.novoEstado()
       publicarAvisos({})
       enviarFila(agora)
@@ -564,14 +604,23 @@ module.exports = function (app, deps = {}) {
     }, agora)
     estAvisos = x.estado
     publicarAvisos(x.avisos)
-    ultimo = { ...res, agora, vento, previsaoIdadeH: pv ? pv.idadeH : null, barometroSemLeitura: !comPressao, quedaBarometro: av.quedaEm3h(pressoes, agora), avisos: x.avisos }
+    ultimo = { ...res, posicao: leitura.posicao, agora, vento, previsaoIdadeH: pv ? pv.idadeH : null, barometroSemLeitura: !comPressao, quedaBarometro: av.quedaEm3h(pressoes, agora), avisos: x.avisos }
     // a posição na rota: no plano ativo, para um reinício continuar dali
     const ant = estAcomp.anterior
     if (navegar && ant && (!planoAtivo.seguimento || Math.abs(planoAtivo.seguimento.s - ant.s) >= SEGUIMENTO_MN)) {
       planoAtivo = { ...planoAtivo, seguimento: { s: ant.s, t: new Date(ant.t).toISOString() } }
       gravarPlanoAtivo()
     }
-    if (navegar) atrasoParaTerra(res, agora)
+    // as marcas { t, s } de 5 em 5 min (o progresso na rota na última hora, revisão final C1)
+    if (navegar && leitura.posicao && Number.isFinite(res.milhas)) {
+      const marcas = ct.juntarMarca(planoAtivo.marcas, { t: agora, s: res.milhas, ...leitura.posicao })
+      if (marcas.length !== (planoAtivo.marcas || []).length || marcas.at(-1)?.t !== planoAtivo.marcas?.at(-1)?.t) {
+        planoAtivo = { ...planoAtivo, marcas }
+        gravarPlanoAtivo()
+      }
+    }
+    if (navegar) atrasoParaTerra(ultimo, agora)
+    else retido = null
     enviarFila(agora)
   }
 
@@ -619,6 +668,8 @@ module.exports = function (app, deps = {}) {
       avisos: ativos,
       // a hora de alarme: a do último atraso entregue em terra (sem nenhum, a do plano)
       envio: p.envio ? { contactos: p.envio.contactos, alarme: Number.isFinite(p.atrasoEnviado?.alarme) ? new Date(p.atrasoEnviado.alarme).toISOString() : p.envio.alarme, alarmePlano: p.envio.alarmePendente ?? p.envio.alarme } : null,
+      // o atraso que não seguiu para terra (revisão final C1): o ecrã pede o "Estou bem"
+      atrasoRetido: retido && p.estado === pa.ESTADOS.NAVEGAR && Number.isFinite(alarmeEmTerra(p)) ? { motivo: retido.motivo, alarme: new Date(alarmeEmTerra(p)).toISOString() } : null,
       chegadaOutro: sug ? { id: sug.id, nome: sug.nome } : null,
       filaContactos: c.fila.map(m => ({ tipo: m.tipo, criada: m.criada, tentativas: m.tentativas, proxima: m.proxima, estado: m.estado, erro: m.erro })),
       enviadas: c.enviadas.map(m => ({ tipo: m.tipo, enviadaEm: m.enviadaEm, contactos: m.contactos }))
@@ -767,6 +818,7 @@ module.exports = function (app, deps = {}) {
     estAvisos = av.novoEstado()
     ventos = []
     ultimo = null
+    retido = null
     pressoes = lerPressoes()
     baroGravadoEm = null
     baroPorGravar = false
@@ -933,7 +985,7 @@ module.exports = function (app, deps = {}) {
               try { pa.arquivar(dirPlugin, anterior, agora) } catch (e) { app.error(`não arquivei o plano antigo: ${e.message}`) }
             }
             if (reenviar) porMensagem('plano', ct.textoSubstitui(novoTexto.texto), agora, { gpx: novoTexto.gpx, nomeFicheiro: novoTexto.nomeFicheiro })
-            memPlano = pa.novaMemoria(); estAcomp = ac.novoEstado(); estAvisos = av.novoEstado(); ventos = []; ultimo = null
+            memPlano = pa.novaMemoria(); estAcomp = ac.novoEstado(); estAvisos = av.novoEstado(); ventos = []; ultimo = null; retido = null
           }
           gravarPlanoAtivo()
           enviarFila(agora)
@@ -1020,6 +1072,22 @@ module.exports = function (app, deps = {}) {
         })
         .catch(e => res.status(502).json({ ok: false, erro: `não ativei a rota: ${e.message}` }))
         .catch(e => app.error(`continuar: ${e.message}`))
+    })
+
+    // "Estou bem" (revisão final C1, decisão do Ivo de 02/10): com um atraso retido pelas guardas (parado
+    // ou acima do teto de 3 h), liberta uma mensagem de atraso com a estimativa de agora; o teto passa a
+    // ser 3 h sobre a hora de alarme dessa mensagem
+    escrever.post('/plano-ativo/estou-bem', (req, res) => {
+      if (!ligado()) return parado(res)
+      const agora = relogio()
+      const d = planoAtivo?.estado === pa.ESTADOS.NAVEGAR && retido && ultimo && !ultimo.semGps ? atrasoAgora(ultimo, agora) : null
+      if (!d) return res.status(409).json({ ok: false, erro: 'não há nenhum atraso por enviar: a hora de alarme em terra não precisa de ser adiada' })
+      planoAtivo = { ...planoAtivo, estouBem: { em: new Date(agora).toISOString(), alarme: d.alarme } }
+      porMensagem('atraso', textoAtraso(d, agora), agora, { chegada: d.chegada, alarme: d.alarme, confirmado: true })
+      retido = null
+      gravarPlanoAtivo()
+      enviarFila(agora)
+      res.json({ ok: true, chegada: new Date(d.chegada).toISOString(), alarme: new Date(d.alarme).toISOString() })
     })
 
     // "Cheguei bem a X" noutro porto (decisão do Ivo de 01/10): só o porto da sugestão (em pausa no mar,

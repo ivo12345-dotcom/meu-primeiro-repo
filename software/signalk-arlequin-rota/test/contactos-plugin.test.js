@@ -8,7 +8,7 @@ const assert = require('node:assert/strict')
 const path = require('node:path')
 const pa = require('../lib/plano-ativo')
 const prev = require('../lib/previsao')
-const { appFalso, plugin, chamar, calcular, fetchFalso, caisDe, costa, H } = require('./ajuda')
+const { appFalso, plugin, chamar, calcular, fetchFalso, caisDe, costa, H, posNoRasto } = require('./ajuda')
 const { horaLisboa } = require('../lib/plano')
 
 const MIN = 60000
@@ -46,6 +46,17 @@ async function sair (s) {
   assert.equal(s.p.planoAtivo().estado, 'a navegar')
 }
 const plano = (s) => pa.ler(s.app.getDataDirPath()).plano
+// anda devagar pelo rasto, à fração f do ritmo do plano, a partir de agora e do ponto `desde` do rasto
+// (revisão final C1: o atraso automático pede progresso real na rota; um barco parado não manda nada).
+// → uma função que dá um ciclo (ms) com a posição do momento.
+function devagar (s, f = 0.4, desde = s.alt.rasto[2]) {
+  const t1 = s.agora()
+  const p1 = Date.parse(desde.t)
+  return async (ms = MIN) => {
+    s.por(posNoRasto(s.alt.rasto, p1 + f * (s.agora() + ms - t1)), 4.2 * f)
+    await s.ciclo(ms)
+  }
+}
 // a rota mudada só pausa com ≥ 2 leituras seguidas e ≥ 2 min (Tarefa 8.3): 3 ciclos de minuto a minuto
 async function pausar (s) { for (let m = 0; m < 3; m++) await s.ciclo() }
 // segue o rasto até ao fim (um ponto por minuto: a chegada pede progresso na rota) e fica parado no
@@ -121,14 +132,16 @@ test('"Cheguei bem a X às HH:MM" na chegada, uma vez, aos contactos do plano (t
 test('atraso: quando a chegada prevista passa 30 min ou mais da "mais tarde" do plano (decisão do Ivo), "Ainda a navegar…" com a nova hora de alarme; depois, no máximo 1× por hora e só com mais 15 min', async () => {
   const s = await preparar()
   await sair(s)
-  s.por(s.alt.rasto[2], 0) // parado: o atraso cresce
+  // a andar devagar (40 % do ritmo do plano): o atraso cresce com progresso real na rota (revisão final
+  // C1: parado não sai nenhum)
+  const anda = devagar(s, 0.4)
   const atrasos = () => s.recebidos.filter(e => e.tipo === 'atraso')
   const p90 = Date.parse(s.alt.chegada.p90)
   const minutos = [] // o minuto de cada envio
   const margens = [] // chegada prevista − p90 (min), em cada minuto
-  for (let m = 1; m <= 120; m++) {
+  for (let m = 1; m <= 150; m++) {
     const n = atrasos().length
-    await s.ciclo()
+    await anda()
     margens.push((Date.parse((await chamar(s.r.get['/plano-ativo'])).chegadaAgora) - p90) / MIN)
     if (atrasos().length > n) minutos.push(m)
   }
@@ -160,8 +173,8 @@ test('fila sem rede: o porto sem responder (30 s) ou desligado, a mensagem fica 
   const s = await preparar()
   await sair(s)
   s.porto.resposta = () => null // o porto não responde
-  s.por(s.alt.rasto[2], 0)
-  for (let m = 1; m <= 90 && !s.recebidos.some(e => e.tipo === 'atraso'); m++) await s.ciclo()
+  const anda = devagar(s, 0.4)
+  for (let m = 1; m <= 120 && !s.recebidos.some(e => e.tipo === 'atraso'); m++) await anda()
   assert.equal(s.recebidos.filter(e => e.tipo === 'atraso').length, 1)
   // os 30 s do porto (o temporizador injetado)
   s.agendados.at(-1).fn()
@@ -169,9 +182,9 @@ test('fila sem rede: o porto sem responder (30 s) ou desligado, a mensagem fica 
   assert.equal(f.length, 1)
   assert.equal(f[0].tipo, 'atraso')
   assert.equal(f[0].erro, 'o plugin porto não respondeu (está ligado? tem o token?)')
-  await s.ciclo()
+  await anda()
   assert.equal(s.recebidos.filter(e => e.tipo === 'atraso').length, 1, 'ainda não passaram 2 min')
-  await s.ciclo()
+  await anda()
   assert.equal(s.recebidos.filter(e => e.tipo === 'atraso').length, 2, 'nova tentativa')
   // Tarefa 8.4: o reenvio leva a mesma referência ("ref. A1")
   const refs = s.recebidos.filter(e => e.tipo === 'atraso').map(e => e.texto.split('\n').at(-1))
@@ -298,13 +311,13 @@ test('decisão 1 (Ivo): na 2.ª viagem o atraso chega a terra (o plano novo come
   assert.deepEqual(novo.envio.contactos, ['Mãe'])
   const fechados = pa.lerFechados(s.app.getDataDirPath())
   assert.deepEqual(fechados.map(x => x.estado), ['chegado'])
-  // sai e fica parado no rasto: o atraso segue para terra
+  // sai e anda devagar: o atraso segue para terra
   s.por(s.alt.rasto[2])
   await s.ciclo()
   await s.ciclo(0)
   assert.equal(s.p.planoAtivo().estado, 'a navegar')
-  s.por(s.alt.rasto[2], 0)
-  for (let m = 1; m <= 90 && !s.recebidos.some(e => e.tipo === 'atraso'); m++) await s.ciclo()
+  const anda = devagar(s, 0.4)
+  for (let m = 1; m <= 120 && !s.recebidos.some(e => e.tipo === 'atraso'); m++) await anda()
   assert.ok(s.recebidos.some(e => e.tipo === 'atraso'), 'o atraso da 2.ª viagem')
   s.p.stop()
 })
@@ -313,21 +326,21 @@ test('decisão 3 (Ivo): o atraso só conta quando chega a terra: sem resposta do
   const s = await preparar()
   await sair(s)
   s.porto.resposta = () => null
-  s.por(s.alt.rasto[2], 0)
+  const anda = devagar(s, 0.4)
   const atrasos = () => s.recebidos.filter(e => e.tipo === 'atraso')
   let g = null
-  // 70 min sem o porto responder (cada tentativa acaba nos 30 s)
-  for (let m = 1; m <= 70; m++) {
-    await s.ciclo()
+  // 100 min sem o porto responder (cada tentativa acaba nos 30 s)
+  for (let m = 1; m <= 100; m++) {
+    await anda()
     s.agendados.at(-1)?.fn()
-    if (m === 30) g = await chamar(s.r.get['/plano-ativo'])
+    if (m === 60) g = await chamar(s.r.get['/plano-ativo'])
   }
   assert.ok(atrasos().length >= 2, 'tentou')
   assert.equal(g.envio.alarme, g.envio.alarmePlano, 'nada chegou: a hora de alarme é a do plano')
   // o porto volta
   const quando = []
   s.porto.resposta = (e) => { quando.push(s.agora()); return { pedido: e.pedido, entregues: ['chat 111', 'Mãe'], contactos: ['Mãe'], chats: ['222'], falhas: [] } }
-  for (let m = 0; m < 3 && !quando.length; m++) await s.ciclo()
+  for (let m = 0; m < 3 && !quando.length; m++) await anda()
   assert.equal(quando.length, 1)
   const entregue = atrasos().at(-1)
   assert.ok(entregue.texto.split('\n')[0].endsWith(`(em vez de ${horaLisboa(Date.parse(g.envio.alarmePlano), quando[0])}).`), entregue.texto)
@@ -341,8 +354,8 @@ test('decisão 4: Ativar a mesma alternativa enquanto o porto responde a uma men
   const s = await preparar()
   await sair(s)
   s.porto.resposta = () => null
-  s.por(s.alt.rasto[2], 0)
-  for (let m = 1; m <= 40 && !s.recebidos.some(e => e.tipo === 'atraso'); m++) await s.ciclo()
+  const anda = devagar(s, 0.4)
+  for (let m = 1; m <= 120 && !s.recebidos.some(e => e.tipo === 'atraso'); m++) await anda()
   const ev = s.recebidos.find(e => e.tipo === 'atraso')
   assert.equal(s.p.planoAtivo().contactos.fila[0].estado, 'a enviar')
   const ativar = s.app.activateRoute
@@ -466,14 +479,15 @@ test('re-revisão M-2: um atraso na fila (o porto em baixo) faz-se com os valore
   const ouvintes = s.app.listeners('arlequin:plano')
   s.app.removeAllListeners('arlequin:plano') // o porto desligado: a mensagem fica na fila
   const filaAtraso = () => (s.p.planoAtivo().contactos?.fila || []).filter(m => m.tipo === 'atraso')
-  s.por(s.alt.rasto[2], 0)
+  const anda = devagar(s, 0.4)
   let m = 0
-  for (; m < 180 && !filaAtraso().length; m++) await s.ciclo()
+  for (; m < 180 && !filaAtraso().length; m++) await anda()
   assert.equal(filaAtraso().length, 1, 'o atraso entrou na fila')
-  // mais 20 min parado: à hora de sair, a chegada e a hora de alarme são as de agora
-  for (let k = 0; k < 20; k++) await s.ciclo()
+  // mais 20 min devagar: à hora de sair, a chegada e a hora de alarme são as de agora
+  for (let k = 0; k < 20; k++) await anda()
   for (const f of ouvintes) s.app.on('arlequin:plano', f)
-  for (let k = 0; k < 3 && !s.recebidos.some(e => e.tipo === 'atraso'); k++) await s.ciclo()
+  // (num troço lento do rasto o atraso pode ficar retido como "parado" uns minutos: sai depois)
+  for (let k = 0; k < 30 && !s.recebidos.some(e => e.tipo === 'atraso'); k++) await anda()
   const g = await chamar(s.r.get['/plano-ativo'])
   const enviado = s.recebidos.filter(e => e.tipo === 'atraso').at(-1)
   assert.ok(enviado, 'saiu quando o porto voltou')
@@ -486,8 +500,8 @@ test('re-revisão M-2: um atraso na fila (o porto em baixo) faz-se com os valore
   const ouv = t.app.listeners('arlequin:plano')
   t.app.removeAllListeners('arlequin:plano')
   const fila = () => (t.p.planoAtivo().contactos?.fila || []).filter(x => x.tipo === 'atraso')
-  t.por(t.alt.rasto[2], 0)
-  for (let k = 0; k < 180 && !fila().length; k++) await t.ciclo()
+  const andaT = devagar(t, 0.4)
+  for (let k = 0; k < 180 && !fila().length; k++) await andaT()
   assert.equal(fila().length, 1)
   // apanha o plano: avança no rasto (2 pontos por minuto) até ao ponto da hora de agora e segue-o 15 min
   const indice = () => { let i = 0; while (i + 1 < t.alt.rasto.length && Date.parse(t.alt.rasto[i + 1].t) <= t.agora()) i++; return i }
@@ -562,4 +576,112 @@ test('Tarefa 8.3 (reinício): a API de rumo sem a rota logo a seguir ao arranque
   q.avancar(60000); await q.p.cicloNavegar()
   assert.equal(q.p.planoAtivo().estado, 'pausado', '2 min')
   q.p.stop()
+})
+
+// ---------- revisão final C1 (decisão do Ivo de 02/10, "só a avançar + teto de 3 h") ----------
+const atrasosDe = (s) => s.recebidos.filter(e => e.tipo === 'atraso')
+
+test('revisão final C1 (sonda A): o barco parado 8 h a meio da viagem → nenhum "Ainda a navegar, tudo bem"; a hora de alarme em terra fica a do plano e o GET diz atrasoRetido { motivo: "parado", alarme }', async () => {
+  const s = await preparar()
+  await sair(s)
+  // ao ritmo do plano até meio da viagem
+  const anda = devagar(s, 1)
+  for (let m = 0; m < 80; m++) await anda()
+  assert.equal((await chamar(s.r.get['/plano-ativo'])).atrasoRetido, null)
+  const aqui = s.app.self['navigation.position']
+  s.por({ lat: aqui.latitude, lon: aqui.longitude }, 0)
+  for (let m = 0; m < 8 * 60; m++) await s.ciclo()
+  assert.deepEqual(atrasosDe(s), [], '8 h parado: nenhuma mensagem')
+  const g = await chamar(s.r.get['/plano-ativo'])
+  assert.ok(g.atrasoMin > 7 * 60, `${g.atrasoMin}`)
+  assert.equal(g.envio.alarme, g.envio.alarmePlano, 'a hora de alarme em terra não andou')
+  assert.deepEqual(g.atrasoRetido, { motivo: 'parado', alarme: g.envio.alarmePlano })
+  assert.equal((plano(s).contactos?.fila || []).filter(m => m.tipo === 'atraso').length, 0)
+  s.p.stop()
+})
+
+test('revisão final C1: à deriva 8 h (0,6 nó ao longo da rota e 0,6 nó para fora dela) → nenhuma mensagem para terra', async () => {
+  const s = await preparar()
+  await sair(s)
+  const anda = devagar(s, 1)
+  for (let m = 0; m < 80; m++) await anda()
+  const p0 = s.app.self['navigation.position']
+  // o rumo da rota ali (o troço do rasto à hora do plano) e a perpendicular
+  const a = posNoRasto(s.alt.rasto, s.t0 + 100 * MIN); const b = posNoRasto(s.alt.rasto, s.t0 + 110 * MIN)
+  const k = Math.cos(p0.latitude * Math.PI / 180)
+  const [dx, dy] = [(b.lon - a.lon) * 60 * k, (b.lat - a.lat) * 60]
+  const n = Math.hypot(dx, dy)
+  const [ux, uy] = [dx / n, dy / n]
+  for (let m = 1; m <= 8 * 60; m++) {
+    const h = m / 60
+    const x = 0.6 * h * ux + 0.6 * h * uy; const y = 0.6 * h * uy - 0.6 * h * ux
+    s.por({ lat: p0.latitude + y / 60, lon: p0.longitude + x / (60 * k) }, 0.85)
+    await s.ciclo()
+  }
+  assert.deepEqual(atrasosDe(s), [])
+  const g = await chamar(s.r.get['/plano-ativo'])
+  assert.equal(g.envio.alarme, g.envio.alarmePlano)
+  assert.equal(g.atrasoRetido.motivo, 'parado')
+  s.p.stop()
+})
+
+test('revisão final C1: o teto de 3 h — a andar devagar os atrasos saem até a hora de alarme passar 3 h da do plano; depois nada sai e o GET diz "limite"; o "Estou bem" (POST /plano-ativo/estou-bem) liberta um com a estimativa de agora e dá mais 3 h a partir daí', async () => {
+  const s = await preparar()
+  await sair(s)
+  // sem nada retido, o "Estou bem" não faz nada
+  assert.equal((await chamar(s.r.post['/plano-ativo/estou-bem'])).code, 409)
+  const alarmePlano = Date.parse((await chamar(s.r.get['/plano-ativo'])).envio.alarmePlano)
+  const anda = devagar(s, 0.3)
+  let g = null
+  for (let m = 0; m < 8 * 60; m++) {
+    await anda()
+    g = await chamar(s.r.get['/plano-ativo'])
+    // (um troço lento do rasto pode reter um atraso como "parado" por uns minutos: segue até ao teto)
+    if (g.atrasoRetido?.motivo === 'limite') break
+  }
+  assert.equal(g.atrasoRetido?.motivo, 'limite', JSON.stringify(g.atrasoRetido))
+  const n = atrasosDe(s).length
+  // (o rasto tem um troço lento numa curva: aí um atraso fica retido como "parado" e a hora de alarme salta mais)
+  assert.ok(n >= 2, `${n} atrasos antes do teto`)
+  // a última hora de alarme entregue fica dentro das 3 h
+  const ultimoAlarme = Date.parse(g.envio.alarme)
+  assert.ok(ultimoAlarme <= alarmePlano + 3 * H, `${g.envio.alarme}`)
+  assert.equal(g.atrasoRetido.alarme, g.envio.alarme)
+  // mais 1 h a andar devagar: nada sai
+  for (let m = 0; m < 60; m++) await anda()
+  assert.equal(atrasosDe(s).length, n)
+  // o "Estou bem": sai um, com a estimativa de agora
+  const e = await chamar(s.r.post['/plano-ativo/estou-bem'])
+  assert.equal(e.code, 200, e.erro)
+  assert.equal(atrasosDe(s).length, n + 1)
+  g = await chamar(s.r.get['/plano-ativo'])
+  assert.equal(g.atrasoRetido, null)
+  assert.ok(Date.parse(g.envio.alarme) > alarmePlano + 3 * H, 'a hora de alarme passou o teto com o toque')
+  assert.ok(atrasosDe(s).at(-1).texto.includes(`Nova chegada prevista ~${horaLisboa(Date.parse(g.chegadaAgora), s.agora())}.`), atrasosDe(s).at(-1).texto)
+  assert.equal(e.alarme, g.envio.alarme)
+  // e o automático volta a sair (3 h a partir da hora de alarme libertada)
+  for (let m = 0; m < 90; m++) await anda()
+  assert.equal(atrasosDe(s).length, n + 2)
+  s.p.stop()
+})
+
+test('revisão final C1: parado com o "Estou bem" do Ivo → sai uma mensagem; sem progresso, a seguinte não sai sem outro toque', async () => {
+  const s = await preparar()
+  await sair(s)
+  const aqui = s.app.self['navigation.position']
+  s.por({ lat: aqui.latitude, lon: aqui.longitude }, 0)
+  let g = null
+  for (let m = 0; m < 3 * 60; m++) {
+    await s.ciclo()
+    g = await chamar(s.r.get['/plano-ativo'])
+    if (g.atrasoRetido) break
+  }
+  assert.equal(g.atrasoRetido?.motivo, 'parado')
+  assert.deepEqual(atrasosDe(s), [])
+  assert.equal((await chamar(s.r.post['/plano-ativo/estou-bem'])).code, 200)
+  assert.equal(atrasosDe(s).length, 1)
+  for (let m = 0; m < 2 * 60; m++) await s.ciclo()
+  assert.equal(atrasosDe(s).length, 1, 'ainda parado: só com outro toque')
+  assert.equal((await chamar(s.r.get['/plano-ativo'])).atrasoRetido.motivo, 'parado')
+  s.p.stop()
 })

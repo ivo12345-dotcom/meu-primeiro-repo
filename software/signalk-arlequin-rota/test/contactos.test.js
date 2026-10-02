@@ -199,3 +199,71 @@ test('Tarefa 8.4: cada mensagem para terra leva no fim uma referência curta e e
   // depois do Z volta ao A
   assert.equal(ct.herdar({ ...ct.novaFila(), letra: 'Z' }).letra, 'A')
 })
+
+test('revisão final C1 (decisão do Ivo de 02/10): as marcas { t, s } de 5 em 5 min (as últimas 2 h) e o progresso na rota na última hora (MN/h); sem 15 min de marcas, null', () => {
+  let m = []
+  for (let k = 0; k <= 90; k++) m = ct.juntarMarca(m, { t: T0 + k * MIN, s: k * 0.03 })
+  // uma de 5 em 5 min, só as das últimas 2 h
+  assert.deepEqual(m.map(x => (x.t - T0) / MIN), [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90])
+  m = ct.juntarMarca(m, { t: T0 + 200 * MIN, s: 6 })
+  assert.ok(m.every(x => x.t >= T0 + 80 * MIN), JSON.stringify(m))
+  // um salto do relógio para trás recomeça as marcas
+  assert.deepEqual(ct.juntarMarca(m, { t: T0, s: 1 }), [{ t: T0, s: 1 }])
+  // a 1,8 nós: 1,8 MN na última hora
+  let n = []
+  for (let k = 0; k <= 70; k++) n = ct.juntarMarca(n, { t: T0 + k * MIN, s: 1.8 * k / 60 })
+  assert.ok(Math.abs(ct.progressoNaHora(n, 1.8 * 70 / 60, T0 + 70 * MIN) - 1.8) < 1e-9)
+  // parado: 0
+  assert.equal(ct.progressoNaHora(n, 1.8 * 70 / 60, T0 + 130 * MIN), 0)
+  // só com 20 min de marcas: o ritmo desses 20 min, por hora
+  const p = [{ t: T0, s: 0 }, { t: T0 + 5 * MIN, s: 0.25 }]
+  assert.ok(Math.abs(ct.progressoNaHora(p, 1, T0 + 20 * MIN) - 3) < 1e-9)
+  // com menos de 15 min de marcas não se sabe
+  assert.equal(ct.progressoNaHora(p, 0.5, T0 + 10 * MIN), null)
+  // o ritmo de agora (os últimos 15 min): andou 1,8 nós 70 min e está parado há 20 min
+  assert.ok(Math.abs(ct.progressoNaHora(n, 1.8 * 70 / 60, T0 + 90 * MIN) - 1.2) < 1e-9)
+  assert.equal(ct.progressoNaHora(n, 1.8 * 70 / 60, T0 + 90 * MIN, 15 * MIN), 0)
+  assert.equal(ct.progressoNaHora([], 0.5, T0), null)
+})
+
+test('revisão final C1 (decisão do Ivo de 02/10, "só a avançar + teto de 3 h"): o atraso automático só sai com ≥ 1 MN de progresso na rota na última hora e a ≤ 2 MN da rota, e nunca empurra a hora de alarme mais de 3 h sobre a do plano', () => {
+  const alarmePlano = T0 + 8 * H
+  const base = { progressoMnH: 1.5, ritmoAgoraMnH: 1.4, distRotaMn: 0.4, alarmeNovo: alarmePlano + H, alarmePlano, estouBem: null }
+  assert.equal(ct.retencaoAtraso(base), null)
+  assert.equal(ct.retencaoAtraso({ ...base, progressoMnH: 1 }), null)
+  // acabou de parar (2 MN na última hora, mas parado nos últimos 15 min): não diz "tudo bem"
+  assert.equal(ct.retencaoAtraso({ ...base, progressoMnH: 2, ritmoAgoraMnH: 0 }), 'parado')
+  assert.equal(ct.retencaoAtraso({ ...base, ritmoAgoraMnH: null }), 'parado')
+  // parado ou à deriva: fica a hora de alarme que terra já tem
+  assert.equal(ct.retencaoAtraso({ ...base, progressoMnH: 0.99 }), 'parado')
+  assert.equal(ct.retencaoAtraso({ ...base, progressoMnH: null }), 'parado')
+  assert.equal(ct.retencaoAtraso({ ...base, distRotaMn: 2.01 }), 'parado')
+  assert.equal(ct.retencaoAtraso({ ...base, distRotaMn: null }), 'parado')
+  // o teto: 3 h sobre a hora de alarme do plano
+  assert.equal(ct.retencaoAtraso({ ...base, alarmeNovo: alarmePlano + 3 * H }), null)
+  assert.equal(ct.retencaoAtraso({ ...base, alarmeNovo: alarmePlano + 3 * H + MIN }), 'limite')
+  // depois do "Estou bem": 3 h sobre a hora de alarme da mensagem que o toque libertou
+  const estouBem = { em: iso(T0 + 5 * H), alarme: alarmePlano + 4 * H }
+  assert.equal(ct.retencaoAtraso({ ...base, alarmeNovo: alarmePlano + 6 * H, estouBem }), null)
+  assert.equal(ct.retencaoAtraso({ ...base, alarmeNovo: alarmePlano + 7 * H + MIN, estouBem }), 'limite')
+  // o atraso libertado pelo toque fica com a marca (passa as guardas, também na fila)
+  const c = ct.porNaFila(ct.novaFila(), { tipo: 'atraso', texto: 'a', contactos: ['Mãe'], chats: ['222'], chegada: T0 + 6 * H, alarme: T0 + 8 * H, confirmado: true }, T0)
+  assert.equal(c.fila[0].confirmado, true)
+  assert.equal(ct.porNaFila(ct.novaFila(), { tipo: 'atraso', texto: 'a', contactos: ['Mãe'], chats: ['222'], chegada: T0 + 6 * H, alarme: T0 + 8 * H }, T0).fila[0].confirmado, undefined)
+})
+
+test('revisão final C1: o progresso conta em cada troço no máximo o que o barco andou de facto (longe da rota, numa curva, a projeção salta sem o barco andar)', () => {
+  // 0,07 MN de 5 em 5 min sobre o fundo, mas a projeção salta 0,5 MN a meio
+  const m = []
+  let s = 0
+  for (let k = 0; k <= 12; k++) {
+    s += k === 6 ? 0.5 : 0.07
+    m.push({ t: T0 + k * 5 * MIN, s, lat: 38.7 + k * 0.07 / 60, lon: -9.2 })
+  }
+  const atual = { s: s + 0.07, lat: 38.7 + 13 * 0.07 / 60, lon: -9.2 }
+  const r = ct.progressoNaHora(m, atual, T0 + 65 * MIN)
+  assert.ok(r < 0.9, `${r}`)
+  // sem a posição, só as milhas na rota (as marcas antigas)
+  assert.ok(ct.progressoNaHora(m.map(({ t, s }) => ({ t, s })), atual.s, T0 + 65 * MIN) > 1)
+  assert.deepEqual(ct.juntarMarca([], { t: T0, s: 1, lat: 38.7, lon: -9.2 }), [{ t: T0, s: 1, lat: 38.7, lon: -9.2 }])
+})

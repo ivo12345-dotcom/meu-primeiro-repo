@@ -114,4 +114,15 @@ async function calcular (r, corpo) {
   return { id: a.id, resultado: x.resultado }
 }
 
-module.exports = { H, AGORA, costa, caisDe, fetchFalso, appFalso, rotas, chamar, esperarResultado, plugin, calcular }
+// A posição no rasto do plano [{ lat, lon, t }] à hora do plano t (entre dois pontos, na reta).
+function posNoRasto (rasto, t) {
+  const ts = rasto.map(p => Date.parse(p.t))
+  if (t <= ts[0]) return { lat: rasto[0].lat, lon: rasto[0].lon }
+  let i = 0
+  while (i + 1 < rasto.length && ts[i + 1] <= t) i++
+  if (i + 1 >= rasto.length) return { lat: rasto.at(-1).lat, lon: rasto.at(-1).lon }
+  const f = (t - ts[i]) / (ts[i + 1] - ts[i])
+  return { lat: rasto[i].lat + f * (rasto[i + 1].lat - rasto[i].lat), lon: rasto[i].lon + f * (rasto[i + 1].lon - rasto[i].lon) }
+}
+
+module.exports = { H, AGORA, posNoRasto, costa, caisDe, fetchFalso, appFalso, rotas, chamar, esperarResultado, plugin, calcular }
