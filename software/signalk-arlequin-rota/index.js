@@ -112,6 +112,7 @@ const ac = require('./lib/acompanhamento')
 const av = require('./lib/avisos-navegar')
 const ct = require('./lib/contactos')
 const { criarCorrecaoVento } = require('./lib/cenarios')
+const energiaPlano = require('./lib/energia')
 const { slug } = require('./lib/slug')
 const modelosJs = require('signalk-arlequin-ia/lib/modelos')
 
@@ -131,6 +132,7 @@ const SEGUIMENTO_MN = 0.1 // a posição na rota grava-se no plano ativo quando 
 const LEITURA_VELHA_MS = 2 * MIN // posição, SOG, vento e pressão com mais de 2 min: em falta
 const ESPERA_RUMO_MS = 10000 // a API de rumo sem resposta em 10 s: não se sabe a rota
 const BARO_GRAVAR_MS = 10 * MIN // o barometro.json no máximo de 10 em 10 min
+const CAPACIDADE_AH_ANTIGA = 200 // o valor por omissão do esquema até 02/10 (auditoria I-13)
 const AVISO_IVO_MS = 24 * 3600000 // o aviso ao Ivo de uma mensagem que não chegou: tenta-se durante 24 h
 // a escrita atómica (com o fsync do ficheiro e da pasta, onde o sistema deixa): uma só, a do lib/previsao.js
 const { escreverAtomico } = prev
@@ -183,16 +185,19 @@ module.exports = function (app, deps = {}) {
       deposito: { type: 'string', title: 'Depósito de gasóleo (tanks.fuel.<id>)', default: '0' },
       socDesconhecido: { type: 'number', title: 'SoC a assumir sem leitura da bateria (0–1)', default: 0.8 },
       gasoleoDesconhecidoL: { type: 'number', title: 'Gasóleo a assumir sem leitura do depósito (L)', default: 100 },
+      // o banco de serviço de 440 Ah (bancos 2 + 3) e o solar com perdas (decisão do Ivo n.º 4, auditoria
+      // I-13, contrato C5): os mesmos valores do lib/energia.js (PADRAO)
       energia: {
         type: 'object',
         title: 'Bateria de serviço (planeamento)',
         properties: {
-          capacidadeAh: { type: 'number', title: 'Capacidade (Ah)', default: 200 },
+          capacidadeAh: { type: 'number', title: 'Capacidade do banco de serviço (Ah)', default: energiaPlano.PADRAO.capacidadeAh },
           consumoDiaA: { type: 'number', title: 'Consumo de dia (A)', default: 4.5 },
           consumoNoiteA: { type: 'number', title: 'Consumo de noite (A)', default: 6 },
           paineis: { type: 'number', title: 'Painéis solares', default: 2 },
           areaPainelM2: { type: 'number', title: 'Área de cada painel (m²)', default: 1.65 },
           rendimento: { type: 'number', title: 'Rendimento dos painéis', default: 0.2 },
+          fatorSolar: { type: 'number', title: 'Perdas do solar: fator 0–1 (regulador, sombras, painéis deitados)', default: energiaPlano.PADRAO.fatorSolar },
           alternadorA: { type: 'number', title: 'Alternador com o motor ligado (A)', default: 45 }
         }
       },
@@ -994,6 +999,14 @@ module.exports = function (app, deps = {}) {
       bateria: 'servico', deposito: '0', socDesconhecido: 0.8, gasoleoDesconhecidoL: 100, energia: {}, porta: 3000, ...props
     }
     o.barco = { ...padroes(plugin.schema.properties.barco), ...(eObjeto(props?.barco) ? props.barco : {}) }
+    // A bateria de serviço (auditoria I-13): uma configuração gravada no Admin UI com o esquema antigo tem os
+    // 200 Ah que eram o valor por omissão escritos — contam como não postos (fica o banco de 440 Ah, decisão
+    // do Ivo n.º 4), e o registo di-lo
+    o.energia = eObjeto(props?.energia) ? { ...props.energia } : {}
+    if (o.energia.capacidadeAh === CAPACIDADE_AH_ANTIGA) {
+      delete o.energia.capacidadeAh
+      app.error(`energia.capacidadeAh = ${CAPACIDADE_AH_ANTIGA} na configuração (o valor por omissão antigo) não conta: o banco de serviço tem ${energiaPlano.PADRAO.capacidadeAh} Ah (decisão n.º 4); grava a configuração do plugin para o tirar`)
+    }
     o.telefones = { ...padroes(plugin.schema.properties.telefones), ...(eObjeto(props?.telefones) ? props.telefones : {}) }
     pastaBase = path.resolve(o.pasta.startsWith('~') ? path.join(os.homedir(), o.pasta.slice(1)) : o.pasta)
     dirPlugin = app.getDataDirPath()

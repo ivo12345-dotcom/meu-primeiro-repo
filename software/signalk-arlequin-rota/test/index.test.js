@@ -678,3 +678,36 @@ test('auditoria I-12: o gasóleo e o SoC só contam com leitura fresca (≤ 2 mi
     pl.p.stop()
   } finally { calculo.calcular = original }
 })
+
+test('auditoria I-13 (decisão n.º 4, contrato C5): o esquema dá o banco de serviço de 440 Ah e o fator solar 0,65; uma configuração gravada com o valor por omissão antigo (200 Ah) conta como não posta (fica 440) e o registo diz porquê; outro valor fica', async () => {
+  const calculo = require('../lib/calculo')
+  const energia = require('../lib/energia')
+  const original = calculo.calcular
+  const opcoes = []
+  calculo.calcular = async (entrada, deps) => { opcoes.push(deps.opcoes); return { veredicto: { tipo: 'segue', texto: 'Segue', porque: [] }, destino: { id: 'peniche', nome: 'Peniche' }, alternativas: [] } }
+  try {
+    const app = appFalso()
+    const pl = plugin(app)
+    const e = pl.p.schema.properties.energia.properties
+    assert.equal(e.capacidadeAh.default, 440)
+    assert.equal(e.fatorSolar.default, 0.65)
+    assert.equal(e.capacidadeAh.default, energia.PADRAO.capacidadeAh)
+    assert.equal(e.fatorSolar.default, energia.PADRAO.fatorSolar)
+    const calc = async () => { await esperarResultado(pl.r, (await chamar(pl.r.post['/calcular'], { body: { destino: 'peniche', tripulacao: 'so' } })).id); return opcoes.at(-1).energia }
+    // a configuração antiga do Admin UI (todos os campos escritos, com os 200 Ah de antes)
+    pl.p.start({ pasta: path.join(app.dir, 'dados'), energia: { capacidadeAh: 200, consumoDiaA: 4.5, consumoNoiteA: 6, paineis: 2, areaPainelM2: 1.65, rendimento: 0.2, alternadorA: 45 } })
+    const x = await calc()
+    assert.equal(x.capacidadeAh, undefined, 'sem o valor antigo: o padrão do lib/energia.js (440)')
+    assert.equal(energia.criarEnergia(x).config.capacidadeAh, 440)
+    assert.equal(energia.criarEnergia(x).config.fatorSolar, 0.65)
+    assert.equal(x.consumoNoiteA, 6)
+    assert.ok(app.erros.some(m => /capacidadeAh.*200.*440 Ah/.test(m)), JSON.stringify(app.erros))
+    pl.p.stop()
+    // um banco posto à mão com outro valor fica
+    pl.p.start({ pasta: path.join(app.dir, 'dados'), energia: { capacidadeAh: 300, fatorSolar: 0.5 } })
+    const y = await calc()
+    assert.equal(y.capacidadeAh, 300)
+    assert.equal(y.fatorSolar, 0.5)
+    pl.p.stop()
+  } finally { calculo.calcular = original }
+})
