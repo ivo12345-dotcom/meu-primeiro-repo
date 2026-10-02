@@ -562,6 +562,27 @@ test('auditoria I-26: em todas as páginas e estados, cada elemento tocável é 
   assert.ok(vistos > 80, `${vistos} alvos vistos`)
 })
 
+// ---------- auditoria I-29 (decisão do Ivo n.º 23): água sem sensor ----------
+test('auditoria I-29: um depósito sem nível (o plugin publica null sem sensor, até ao 1.º "Enchi" ou nível posto à mão) diz "sem sensor" — nunca "0 L" a vermelho nem "cheio"', () => {
+  const st = storeSimulado(1)
+  aplicarDelta(st, { updates: [{ timestamp: new Date().toISOString(), values: [
+    { path: 'tanks.freshWater.0.name', value: 'Cozinha (BB)' }, { path: 'tanks.freshWater.0.currentVolume', value: null }, { path: 'tanks.freshWater.0.currentLevel', value: null },
+    { path: 'tanks.freshWater.1.name', value: 'WC (EB)' }, { path: 'tanks.freshWater.1.currentVolume', value: 0.012 }, { path: 'tanks.freshWater.1.currentLevel', value: 0.15 }
+  ] }] })
+  const html = motor.render(contexto(st, { agua: { tanques: [{ id: 0, nome: 'Cozinha (BB)', ritmo: { litrosDia: 9, dias: 5 } }] } }))
+  const cozinha = html.slice(html.indexOf('Cozinha (BB)'), html.indexOf('WC (EB)'))
+  assert.match(cozinha, /sem sensor/)
+  assert.doesNotMatch(cozinha, /0 L|dias/)
+  assert.doesNotMatch(cozinha, /background:var\(--bb\)/, 'sem barra vermelha')
+  assert.match(cozinha, /data-acao="agua-encher"/, 'o Enchi continua (é ele que tira o "sem sensor")')
+  // o outro depósito, com sensor, continua com os litros
+  assert.match(html.slice(html.indexOf('WC (EB)')), /12 L/)
+  // sem o caminho publicado (undefined), o mesmo
+  const st2 = storeSimulado(1)
+  aplicarDelta(st2, { updates: [{ timestamp: new Date().toISOString(), values: [{ path: 'tanks.freshWater.0.name', value: 'Cozinha (BB)' }] }] })
+  assert.match(motor.render(contexto(st2)), /Cozinha \(BB\)[\s\S]*sem sensor/)
+})
+
 test('Diário: cartão da AI mostra mensagem genérica para erro sem status', async () => {
   const estado = {}
   const ctx = {
