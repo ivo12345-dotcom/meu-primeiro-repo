@@ -113,7 +113,7 @@ module.exports = function (app) {
   // Sem ficheiro → a omissão (primeiro arranque). Ilegível, ou sem a forma de um objeto → a
   // omissão também, mas diz-se e o ficheiro fica à parte (<nome>.ilegivel-<hora>), senão o
   // próximo guardar escrevia-lhe por cima e uma saída em curso perdia-se calada.
-  function ler (f, omissao) {
+  function lerJson (f, omissao) {
     let texto
     try { texto = fs.readFileSync(f, 'utf8') } catch (e) {
       if (e.code !== 'ENOENT') { erros++; app.error(`caixa negra: ${path.basename(f)} ilegível (${e.message}); começo do zero`) }
@@ -334,8 +334,8 @@ module.exports = function (app) {
     bruto = criarGravadorBruto(path.join(base, 'bruto'))
     estado = est.novoEstado()
     janela = estavel.novaJanela()
-    saidas = ler(ficheiroSaida(), saidasLib.novaSaidas())
-    velas = { ...velasLib.novoEstadoVelas(), ...ler(ficheiroVelas(), {}) }
+    saidas = lerJson(ficheiroSaida(), saidasLib.novaSaidas())
+    velas = { ...velasLib.novoEstadoVelas(), ...lerJson(ficheiroVelas(), {}) }
     contador = 0
     ultimaLinha = null
     infoDisco = null
