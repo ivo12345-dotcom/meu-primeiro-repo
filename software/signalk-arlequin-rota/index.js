@@ -420,7 +420,7 @@ module.exports = function (app, deps = {}) {
   function porMensagem (tipo, texto, agora, extra = {}) {
     const contactos = planoAtivo?.envio?.contactos
     if (!contactos?.length) return false
-    planoAtivo = { ...planoAtivo, contactos: ct.porNaFila(planoAtivo.contactos || ct.novaFila(), { tipo, texto, contactos, chats: planoAtivo.envio.chats || [], ...extra }, agora) }
+    planoAtivo = { ...planoAtivo, contactos: ct.porNaFila(planoAtivo.contactos || ct.novaFila(), { tipo, texto, contactos, chats: planoAtivo.envio.chats || [], idCalculo: planoAtivo.idCalculo, indice: planoAtivo.indice, ...extra }, agora) }
     return true
   }
   function falharContactos (pedido, motivo) {
@@ -510,9 +510,12 @@ module.exports = function (app, deps = {}) {
     // o último envio em terra (revisão final I1): o plano novo ou o atraso entregues; o "cheguei bem" ou a
     // "terminada" entregues fecham-no
     if (entregue && (msg.tipo === 'plano' || msg.tipo === 'atraso')) ultimoEnvioDoPlano()
+    // auditoria I-04: só fecha o envio do plano da mensagem (um "cheguei bem" atrasado da viagem 1 não fecha
+    // o plano da viagem 2 que entretanto foi mandado); uma mensagem antiga sem o plano, só a deste plano
     if (msg && enviada?.id === msg.id && (msg.tipo === 'chegada' || msg.tipo === 'terminado')) {
       const u = lerUltimoEnvio()
-      if (u && !u.fechado) gravarUltimoEnvio({ ...u, fechado: true })
+      const de = msg.idCalculo != null ? { idCalculo: msg.idCalculo, indice: msg.indice } : msg.anterior ? null : planoAtivo
+      if (u && !u.fechado && de && u.idCalculo === de.idCalculo && u.indice === de.indice) gravarUltimoEnvio({ ...u, fechado: true })
     }
     gravarPlanoAtivo()
     enviarFila(agora)
