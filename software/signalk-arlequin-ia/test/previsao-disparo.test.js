@@ -47,6 +47,17 @@ test('descarregar: pede em nós e UTC, arredonda a posição; sem mar guarda o v
   await assert.rejects(prev.descarregar(39, -9, 0, async () => ({ ok: false, status: 503 })), /503/)
 })
 
+test('descarregar: o vento e o mar pedem-se com cell_selection=sea — a célula de terra (a omissão do forecast) subestima o vento junto à costa (auditoria K-05)', async () => {
+  const pedidos = []
+  await prev.descarregar(38.61, -9.46, Date.UTC(2026, 9, 2, 12), async (u) => { pedidos.push(u); return { ok: true, json: async () => (u.includes('marine') ? MAR : VENTO) } })
+  assert.equal(pedidos.length, 2)
+  assert.match(pedidos[0], /^https:\/\/api\.open-meteo\.com\/v1\/forecast\?/)
+  assert.match(pedidos[1], /^https:\/\/marine-api\.open-meteo\.com\/v1\/marine\?/)
+  for (const u of pedidos) assert.equal(new URL(u).searchParams.get('cell_selection'), 'sea', u)
+  const u = prev.urls(38.61, -9.46)
+  for (const x of [u.vento, u.mar]) assert.equal(new URL(x).searchParams.get('cell_selection'), 'sea', x)
+})
+
 test('guardar: previsoes/AAAA-MM-DDTHH-MM.json.gz, sem ":" no nome', () => {
   const p = fs.mkdtempSync(path.join(os.tmpdir(), 'arlequin-prev-'))
   const f = prev.guardar(path.join(p, 'previsoes'), prev.compor(39, -9.6, Date.UTC(2026, 8, 29, 14, 5), VENTO, MAR))

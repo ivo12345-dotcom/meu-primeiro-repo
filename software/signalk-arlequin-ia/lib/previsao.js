@@ -11,8 +11,12 @@ const zlib = require('node:zlib')
 const MIN = 60000
 const TEMPO_LIMITE_MS = 30000
 
+// cell_selection=sea nos dois pedidos, como o plugin da rota: a omissão do forecast é a célula "de
+// terra" (com a altitude parecida), que junto à costa vem de um ponto em terra e subestima o vento
+// (auditoria K-05: a 5 MN de Cascais, 8,4 nós contra 14,5 com a célula de mar). As previsões
+// arquivadas antes desta correção (02/10/2026) foram pedidas com a célula de terra.
 function urls (lat, lon) {
-  const q = `latitude=${lat}&longitude=${lon}&timezone=UTC&forecast_days=2`
+  const q = `latitude=${lat}&longitude=${lon}&timezone=UTC&forecast_days=2&cell_selection=sea`
   return {
     vento: `https://api.open-meteo.com/v1/forecast?${q}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=kn`,
     mar: `https://marine-api.open-meteo.com/v1/marine?${q}&hourly=wave_height,wave_period,wave_direction`
