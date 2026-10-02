@@ -42,10 +42,12 @@ export function gasoleo (ctx) {
   }
 }
 
+// a cor da barra do gasóleo
+export const corGasoleo = (g) => (g.nivel !== null && g.nivel < 0.2 ? 'var(--bb)' : 'var(--verde)')
+
 export function tileGasoleo (ctx, grande = false) {
   const g = gasoleo(ctx)
-  const cor = g.nivel !== null && g.nivel < 0.2 ? 'var(--bb)' : 'var(--verde)'
-  return `<div class="tile"><div class="linha"><span class="lab">Gasóleo</span><span class="${grande ? 'v' : ''}">${g.html}</span></div>${barra(g.nivel, cor)}</div>`
+  return `<div class="tile"><div class="linha"><span class="lab">Gasóleo</span><span class="${grande ? 'v' : ''}">${g.html}</span></div>${barra(g.nivel, corGasoleo(g))}</div>`
 }
 
 // O motor pelas rotações (Hz) do J1939 (auditoria I-23): true a trabalhar (> 5 Hz = 300 rpm), false

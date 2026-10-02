@@ -517,6 +517,51 @@ test('auditoria I-23: no resumo da viagem, sem leitura do motor não conta nem p
   assert.match(app, /motor:\s*motorLigado\(v\('propulsion\.main\.revolutions'\)\)/)
 })
 
+// ---------- auditoria I-26: todos os alvos de toque cobertos pelas regras de 44 px do estilo ----------
+test('auditoria I-26: em todas as páginas e estados, cada elemento tocável é um botão, uma linha de tabela, um chip ou um cartão (todos com 44 px no estilo) e nenhum estilo na linha lhe põe a altura', async () => {
+  const { gunzipSync } = await import('node:zlib')
+  const { chipAlarme } = await import('../public/lib/alarmes.js')
+  const { chipSemSom } = await import('../public/lib/som.js')
+  const FUGA = JSON.parse(gunzipSync(readFileSync(new URL('./fixtures/resultado-fuga.json.gz', import.meta.url))))
+  const DESTINOS = require('../../signalk-arlequin-rota/dados/destinos.json')
+  const st = storeSimulado(1)
+  aplicarDelta(st, { updates: [{ timestamp: new Date().toISOString(), values: [{ path: 'tanks.freshWater.0.name', value: 'Cozinha (BB)' }, { path: 'tanks.freshWater.0.currentVolume', value: 0.04 }, { path: 'tanks.freshWater.0.currentLevel', value: 0.5 }] }] })
+  const c = (estado, extra = {}) => ({ ...contexto(st, estado), ...extra })
+  const ia = { modelos: { velocidade: { versao: 'v0002', versoes: ['v0001', 'v0002'], podeVoltar: true, horas: 6, frases: [] } } }
+  const plano = { estado: 'a navegar', idCalculo: 'c', indice: 0, ativadoEm: 'x', destino: { id: 'peniche', nome: 'Peniche' }, alternativa: { id: 'a', nome: 'A' }, proximo: null, recursos: {}, barometro: {}, avisos: [], envio: null, filaContactos: [], atrasoRetido: { motivo: 'parado', alarme: '2026-09-30T08:38:00.000Z' } }
+  const htmls = [
+    carta.render(c({})), instr.render(c({})), ais.render(c({ sel: '263000001' })),
+    motor.render(c({})), motor.render(c({ teclado: { modo: 'abasteci', valor: '8' } })), motor.render(c({ confirmarEncher: 0 })),
+    motor.render(c({ calibAberta: true, calib: { ativa: true, total: 5, pontos: [{ litros: 0, razao: 0.1 }], pendente: null } })),
+    motor.render(c({ calibAberta: true, calib: { ativa: false, tabela: [], capacidadeL: 200 } })), motor.render(c({ bombaCalib: 0, agua: { tanques: [{ id: 0, nome: 'Cozinha (BB)' }] } })),
+    viagem.render(c({})), viagem.render(c({ confirmarNova: true })), diario.render(c({ ia, iaEm: Date.now() })),
+    velas.render(c({})), velas.render(c({ passo: 0 })), velas.render(c({ passo: 1 })), velas.render(c({ passo: 2 })),
+    melhor.render(c({ destinos: DESTINOS, destinosEm: Date.now(), acrescentar: 'coordenadas' }, { pedir: () => new Promise(() => {}) })),
+    melhor.render(c({ vista: 'resultado', resultado: FUGA, idCalculo: 'c', selecionada: 0, novo: true }, { pedir: () => new Promise(() => {}) })),
+    melhor.render(c({ vista: 'mapa', resultado: FUGA, idCalculo: 'c', selecionada: 0, novo: true }, { pedir: () => new Promise(() => {}) })),
+    melhor.render(c({ vista: 'a-calcular', calculo: { id: 'c', progresso: 0.3, texto: 'x' }, novo: true }, { pedir: () => new Promise(() => {}) })),
+    melhor.render(c({ vista: 'erro', erro: 'x', ultimoPedido: { destino: 'peniche' }, novo: true }, { pedir: () => new Promise(() => {}) })),
+    melhor.render(c({ planoAtivo: plano, planoAtivoEm: Date.now(), confirmarTerminar: 'c|0|x' }, { pedir: () => new Promise(() => {}) })),
+    melhor.render(c({ planoAtivo: { ...plano, estado: 'pausado', chegadaOutro: { id: 'cascais', nome: 'Cascais' } }, planoAtivoEm: Date.now() }, { pedir: () => new Promise(() => {}) })),
+    chipAlarme({ caminho: 'notifications.arlequin.ais.1', id: 'u1', state: 'alarm', method: ['visual', 'sound'], message: 'x', status: {} }),
+    chipSemSom(null)
+  ]
+  let vistos = 0
+  for (const html of htmls) {
+    for (const m of html.matchAll(/<(\w+)((?:\s+[\w-]+(?:="[^"]*")?)*)\s*>/g)) {
+      const [tag, nome, attrs] = [m[0], m[1], m[2]]
+      if (!/\bdata-acao="/.test(attrs) && nome !== 'button' && nome !== 'input') continue
+      vistos++
+      const classe = /\bclass="([^"]*)"/.exec(attrs)?.[1] || ''
+      const coberto = nome === 'button' || nome === 'input' || nome === 'tr' || (nome === 'span' && /\bchip\b/.test(classe)) || (nome === 'div' && /\bcartao\b/.test(classe))
+      assert.ok(coberto, `um alvo de toque sem regra de 44 px: ${tag}`)
+      const estilo = /\bstyle="([^"]*)"/.exec(attrs)?.[1] || ''
+      assert.doesNotMatch(estilo, /(^|;)\s*(max-|min-)?height\s*:/, tag)
+    }
+  }
+  assert.ok(vistos > 80, `${vistos} alvos vistos`)
+})
+
 test('Diário: cartão da AI mostra mensagem genérica para erro sem status', async () => {
   const estado = {}
   const ctx = {

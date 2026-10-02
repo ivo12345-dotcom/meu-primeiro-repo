@@ -3,7 +3,7 @@
 
 import { barra } from '../lib/desenho.js'
 import { celsius } from '../lib/formato.js'
-import { tile, tileGasoleo, num, ok, esc, motorLigado, ESTADO_MOTOR, CLASSE_MOTOR } from './comum.js'
+import { tile, gasoleo, corGasoleo, num, ok, esc, motorLigado, ESTADO_MOTOR, CLASSE_MOTOR } from './comum.js'
 import { litrosPorMilha } from '../lib/consumo-milha.js'
 import { motivo } from '../lib/erros.js'
 
@@ -105,11 +105,15 @@ function tileAgua (ctx) {
   const erro = ctx.estado.msgAgua || ctx.estado.aguaErro
   const erroHtml = erro && !(ctx.estado.bombaCalib !== undefined && ctx.estado.bombaCalib !== null) ? `<div class="perigo">${esc(erro)}</div>` : ''
   if (!tanques.length) return `<div class="tile"><div class="lab">Água doce</div><div class="lab">sem dados das bombas</div>${erroHtml}</div>`
-  return `<div class="tile" style="flex:0 0 auto;"><div class="lab">Água doce</div>${erroHtml}${tanques.map(t => `
-<div class="linha" style="margin-top:.25rem;"><span>${esc(t.nome)}</span><span class="v">${num(t.litros * 1000, 0)} L${t.ritmo?.dias ? ` <span class="lab">· ~${num(t.ritmo.dias, 1)} dias</span>` : ''}</span></div>
+  // os botões na linha do depósito (auditoria I-26: com 44 px, uma linha a mais por depósito não cabia a 1024×600)
+  return `<div class="tile" style="flex:0 0 auto;"><div class="lab">Água doce</div>${erroHtml}${tanques.map(t => {
+    const confirmar = ctx.estado.confirmarEncher === t.id
+    const botoes = confirmar ? '' : `<span class="acoes"><button class="btn" style="padding:.3rem .8rem;" data-acao="agua-encher" data-id="${t.id}">Enchi</button><button class="btn" style="padding:.3rem .8rem;" data-acao="agua-calib" data-id="${t.id}">Calibrar bomba</button></span>`
+    return `
+<div class="linha" style="margin-top:.25rem;align-items:center;"><span>${esc(t.nome)} <span class="v">${num(t.litros * 1000, 0)} L</span>${t.ritmo?.dias ? ` <span class="lab">· ~${num(t.ritmo.dias, 1)} dias</span>` : ''}</span>${botoes}</div>
 ${barra(t.frac, t.frac <= 0.2 ? 'var(--bb)' : 'var(--azul)')}
-${ctx.estado.confirmarEncher === t.id ? pergunta(`Encheste o depósito ${esc(t.nome)}?`, 'agua-encher-sim', 'Sim, enchi', 'agua-encher-nao')
-  : `<div class="acoes" style="margin-top:.2rem;"><button class="btn" style="padding:.3rem .8rem;" data-acao="agua-encher" data-id="${t.id}">Enchi</button><button class="btn" style="padding:.3rem .8rem;" data-acao="agua-calib" data-id="${t.id}">Calibrar bomba</button></div>`}`).join('')}</div>`
+${confirmar ? pergunta(`Encheste o depósito ${esc(t.nome)}?`, 'agua-encher-sim', 'Sim, enchi', 'agua-encher-nao') : ''}`
+  }).join('')}</div>`
 }
 
 function painelBomba (ctx) {
@@ -153,6 +157,8 @@ export default {
     const sess = ctx.estado.sessoes
     const tempC = ok(temp) ? celsius(temp) : null
     const g = ctx.estado.gas
+    // o depósito e a sonda num só mosaico (auditoria I-26: com os botões de 44 px não cabiam os dois a 1024×600)
+    const gas = gasoleo(ctx)
     const gasInfo = g === undefined ? 'Sonda do gasóleo: a ligar…'
       : g === null ? `Sonda do gasóleo: ${ctx.estado.gasErro || 'o plugin do gasóleo não responde'}`
         : (g.tabela?.length || 0) < 2 ? `Sonda do gasóleo: falta calibrar (${g.tabela?.length || 0} pontos)`
@@ -167,7 +173,7 @@ export default {
       : 'Por regime: ' + c.faixas.map(f => `${num(f.de, 0)} rpm ${num(f.lmn, 2)}${c.melhor?.de === f.de ? ' ★' : ''}`).join(' · ') + ' L/MN'
     return `<div class="col estica">
 <div class="tile"><div class="linha"><span class="lab">Volvo Penta D1-20B</span><span class="${CLASSE_MOTOR[estadoMotor]}">${ESTADO_MOTOR[estadoMotor]}</span></div>
-  <div class="vvv">${ok(rpm) ? num(rpm * 60, 0) : '—'} <span style="font-size:1.4rem;">rpm</span></div></div>
+  <div class="vv">${ok(rpm) ? num(rpm * 60, 0) : '—'} <span style="font-size:1.4rem;">rpm</span></div></div>
 <div class="g2">
   ${tile('Temperatura', `<span class="${tempC > 95 ? 'perigo' : ''}">${ok(tempC) ? num(tempC, 0) + ' °C' : '—'}</span>`, '', 'vv')}
   ${tile('Pressão do óleo', ligado ? `${ok(oleo) ? num(oleo / 1e5, 1) + ' bar' : '—'}` : '—', '', 'vv')}
@@ -176,9 +182,9 @@ export default {
 </div>
 <div class="tile"><div class="linha"><span class="lab">Consumo</span><span class="v">${ligado && ok(taxa) ? `${num(taxa * 3600 * 1000, 1)} L/h · ${ok(lmn) ? num(lmn, 2) + ' L/MN' : '— L/MN'}` : '—'}</span></div>
   <div class="lab">${esc(regimes)}</div></div>
-${tileGasoleo(ctx, true)}
-<div class="tile" style="flex:0 0 auto;"><div class="linha"><span class="lab">${esc(gasInfo)}</span>
-  <span class="acoes"><button class="btn" style="padding:.4rem .9rem;" data-acao="abrir-teclado" data-modo="abasteci">Abasteci</button><button class="btn" style="padding:.4rem .9rem;" data-acao="abrir-teclado" data-modo="calibrar">Calibrar</button><button class="btn" style="padding:.4rem .9rem;" data-acao="calib-abrir">Calibração completa</button></span></div>
+<div class="tile" style="flex:0 0 auto;"><div class="linha"><span class="lab">Gasóleo</span><span class="v">${gas.html}</span></div>${barra(gas.nivel, corGasoleo(gas))}
+  <div class="lab" style="margin-top:.3rem;">${esc(gasInfo)}</div>
+  <div class="acoes" style="margin-top:.2rem;"><button class="btn" style="padding:.4rem .9rem;" data-acao="abrir-teclado" data-modo="abasteci">Abasteci</button><button class="btn" style="padding:.4rem .9rem;" data-acao="abrir-teclado" data-modo="calibrar">Calibrar</button><button class="btn" style="padding:.4rem .9rem;" data-acao="calib-abrir">Calibração completa</button></div>
   ${ctx.estado.msgGas ? `<div class="${ctx.estado.msgGasErro ? 'perigo' : 'ok'}">${esc(ctx.estado.msgGas)}</div>` : ''}</div>
 <div class="tile"><div class="lab">Alarmes do motor, da energia e dos depósitos</div>${alarmes.length ? alarmes.map(n => `<div class="${n.state === 'warn' ? 'atencao' : 'perigo'}">${esc(n.message)}</div>`).join('') : '<div class="ok">sem alarmes</div>'}</div>
 </div>

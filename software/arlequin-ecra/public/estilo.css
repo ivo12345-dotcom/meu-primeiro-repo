@@ -1,5 +1,6 @@
-/* Ecrã do Arlequin. Tamanhos em rem, e o rem acompanha a altura do ecrã:
-   800 px (10") → 16 px; 600 px (7") → 12 px. */
+/* Ecrã do Arlequin. Tamanhos em rem, e o rem acompanha a altura do ecrã: 800 px (10") → 16 px; 600 px
+   (o LAFVIN 7" da roda, 1024×600) → 14 px, o mínimo (auditoria I-26: dava 12 px). Os alvos de toque têm
+   44 × 44 px no mínimo, em px (não encolhem com o ecrã). */
 :root {
   --fundo: #0f1114; --barra: #16181c; --tile: #1d2127; --botao: #2c2f35; --borda: #3a3e45;
   --texto: #e8eaed; --texto-2: #a9a79e; --linha: #5f5e5a;
@@ -30,17 +31,20 @@ body.noite[data-brilho="2"] #app { filter: brightness(0.5); }
 body.noite[data-brilho="3"] #app { filter: brightness(0.65); }
 body.noite[data-brilho="4"] #app { filter: brightness(0.8); }
 body.noite[data-brilho="5"] #app { filter: brightness(1); }
-html { font-size: calc(100vh / 50); }
+html { font-size: max(14px, 2vh); }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--fundo); color: var(--texto);
   font-family: Arial, Helvetica, sans-serif; -webkit-user-select: none; user-select: none; overflow: hidden; }
 #app { display: flex; flex-direction: column; height: 100vh; }
 
 /* Barra de cima */
-#barra { display: flex; align-items: center; gap: .5rem; background: var(--barra); padding: .35rem .6rem; font-size: 1rem; min-height: 2.6rem; }
+/* sempre com a altura do chip de 44 px: o desenho não salta quando chega um alarme */
+#barra { display: flex; align-items: center; gap: .5rem; background: var(--barra); padding: .35rem .6rem; font-size: 1rem; min-height: calc(44px + .7rem); }
 .nome { font-weight: bold; letter-spacing: .15rem; color: var(--amarelo); }
 .chip { border-radius: .3rem; padding: .15rem .5rem; background: var(--botao); white-space: nowrap; }
 .chip.off { opacity: .45; }
+/* o chip que se toca (o alarme, o "sem som"): 44 px de altura, para o dedo */
+.chip[data-acao] { display: inline-flex; align-items: center; min-height: 44px; }
 .chip.bom { color: var(--ok); }
 .chip.alarme { background: var(--perigo-fundo); color: #fff; font-weight: bold; cursor: pointer; margin-left: auto; }
 .chip.aviso { background: var(--aviso-fundo); color: #fff; font-weight: bold; cursor: pointer; margin-left: auto; }
@@ -99,10 +103,12 @@ td, th { padding: .3rem .4rem; border-bottom: 1px solid var(--botao); }
 tr.sel td { background: var(--ativo); }
 tr.desativado td { opacity: .45; cursor: default; }
 tr[data-mmsi] { cursor: pointer; }
+/* as linhas que se tocam (AIS, destinos): 44 px (numa tabela, a altura da célula é o mínimo) */
+tr[data-acao] > td, tr[data-mmsi] > td { height: 44px; }
 
 /* Botões */
 #botoes { display: flex; gap: .2rem; padding: .3rem; background: var(--barra); }
-button, .btn { font: inherit; color: var(--texto); background: var(--botao); border: 1px solid var(--borda); border-radius: .4rem; cursor: pointer; }
+button, .btn { font: inherit; color: var(--texto); background: var(--botao); border: 1px solid var(--borda); border-radius: .4rem; cursor: pointer; min-height: 44px; min-width: 44px; }
 #botoes button { flex: 1; padding: .75rem 0; font-size: 1.05rem; white-space: nowrap; }
 #botoes button.on { background: var(--ativo); border-color: var(--azul); }
 #botoes button.rt { background: var(--rt); } #botoes button.rt.on { background: var(--rt-on); }
@@ -118,7 +124,7 @@ body.noite .brilho { display: block; }
 body.noite .acao.go { background: var(--segue); color: var(--texto); outline: 2px solid var(--ok); outline-offset: -2px; }
 body.noite .passo.feito .n { background: var(--segue); }
 .acoes { display: flex; flex-wrap: wrap; gap: .4rem; }
-input[type=text] { font: inherit; font-size: 1.1rem; padding: .5rem; flex: 1; background: var(--tile); color: var(--texto); border: 1px solid var(--borda); border-radius: .4rem; }
+input[type=text] { font: inherit; font-size: 1.1rem; padding: .5rem; flex: 1; min-height: 44px; background: var(--tile); color: var(--texto); border: 1px solid var(--borda); border-radius: .4rem; }
 .passo { display: flex; gap: .6rem; align-items: center; padding: .45rem .3rem; border-bottom: 1px solid var(--botao); font-size: 1.15rem; }
 .passo .n { flex: 0 0 2rem; height: 2rem; border-radius: 1rem; background: var(--botao); display: flex; align-items: center; justify-content: center; font-weight: bold; }
 .passo.feito .n { background: #0f6e56; } .passo.atual { background: var(--tile); }
@@ -149,7 +155,7 @@ body.noite .plano-pausado .acao.stop { background: #000; color: var(--texto); ou
 .faixa.laranja { background: var(--naorec); } .faixa.vermelho { background: var(--volta); }
 .faixa.cinzento { background: var(--botao); }
 body.noite .faixa { outline: 1px solid var(--borda); outline-offset: -1px; }
-.cartao { cursor: pointer; border: 2px solid transparent; display: flex; flex-direction: column; gap: .15rem; font-size: 1rem; }
+.cartao { cursor: pointer; border: 2px solid transparent; display: flex; flex-direction: column; gap: .15rem; font-size: 1rem; min-height: 44px; }
 .cartao.sel { border-color: var(--azul); background: var(--botao); }
 .nome-alt { font-weight: bold; font-size: 1.05rem; }
 .cartao .v { font-size: 1.1rem; }
