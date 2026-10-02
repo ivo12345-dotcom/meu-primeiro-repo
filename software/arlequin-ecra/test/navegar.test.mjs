@@ -90,7 +90,8 @@ async function leme (plano, extra = {}) {
 
 test('alarmes: apito "curto" pedido pelo plugin (a previsão com mais de 12 h é alarm) dá o apito curto, não o contínuo; sem sound ou silenciado, nada', () => {
   const n = (state, extra = {}) => ({ caminho: 'notifications.rota.previsao', state, method: ['visual', 'sound'], ...extra })
-  assert.equal(deveTocar(n('alarm')), 'continuo')
+  // contrato C1 (auditoria I-07): sem o campo apito, um alarm é curto (o contínuo é só o 'continuo' ou a emergência)
+  assert.equal(deveTocar(n('alarm')), 'curto')
   assert.equal(deveTocar(n('alarm', { apito: 'curto' })), 'curto')
   assert.equal(deveTocar(n('warn', { apito: 'curto' })), 'curto')
   assert.equal(deveTocar(n('alarm', { apito: 'curto', method: ['visual'] })), null)
