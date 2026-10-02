@@ -372,6 +372,17 @@ test('I-19 (decisão do Ivo n.º 5): as passagens longas calculam-se até ao fim
   for (const k of cands) assert.ok(Date.parse(k.chegadas.p90) <= curta.fim, k.id)
 })
 
+test('M-05: em "Sair agora" sem previsão de rajadas nem de ondas, o custo conta-as como os limites a solo (nunca como zero)', async () => {
+  const semNada = mudar(P29, p => { p.rajada = p.rajada.map(() => null); p.ondas = p.ondas.map(() => null) })
+  const r = await calcular(entrada({ sairAgora: true, tripulacao: 'acompanhado' }), comPrevisao(semNada))
+  assert.equal(r.erro, undefined, r.erro)
+  assert.ok(r.alternativas.length > 0)
+  for (const a of r.alternativas) {
+    assert.equal(a.custo.partes.rajada, 5, a.id) // 0,5 × (30 − 20)
+    assert.equal(a.custo.partes.ondas, 2, a.id) // 2 × (3 − 2)
+  }
+})
+
 test('o cálculo nunca lança: previsão estragada, sem rota ativa, posição null, entrada e dependências em falta', async () => {
   const casos = [
     [entrada(), deps({ obterPrevisao: async () => ({ previsao: { pontos: null } }) })],

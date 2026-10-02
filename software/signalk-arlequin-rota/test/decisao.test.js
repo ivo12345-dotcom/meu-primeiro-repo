@@ -25,6 +25,27 @@ test('horas contra o vento: vento de 7 nós ou mais a ≤ 50° da proa', () => {
   const p = (proa, twd, tws = 12) => ({ proa, twd, tws })
   const pontos = [...Array(60).fill(p(0, 45)), ...Array(60).fill(p(0, 90)), ...Array(30).fill(p(10, 0, 5)), ...Array(30).fill(p(350, 30))]
   assert.equal(d.horasContraVento(pontos), 1.5)
+  // M-05: o vento desconhecido (força ou direção sem previsão) conta como contra (o pior caso), nunca como nada
+  assert.equal(d.horasContraVento([...Array(30).fill(p(0, null)), ...Array(30).fill(p(0, 45, null)), ...Array(60).fill(p(0, 180))]), 1)
+})
+
+test('M-05: com a previsão incompleta o custo não fica mais baixo — a rajada e as ondas desconhecidas contam como os limites a solo (30 nós, 3 m)', () => {
+  const resumo = { duracaoH: 10, horasNoite: 0, rajadaMax: -Infinity, ondasMax: -Infinity }
+  const sem = d.custo({ resumo, tripulacao: 'acompanhado', semDados: ['rajada', 'ondas'] })
+  assert.equal(sem.partes.rajada, 0.5 * (30 - 20))
+  assert.equal(sem.partes.ondas, 2 * (3 - 2))
+  // a parte conhecida maior que o pior caso assumido fica a conhecida
+  const maior = d.custo({ resumo: { ...resumo, rajadaMax: 34, ondasMax: 3.5 }, tripulacao: 'acompanhado', semDados: new Set(['rajada', 'ondas']) })
+  assert.equal(maior.partes.rajada, 0.5 * 14)
+  assert.equal(maior.partes.ondas, 2 * 1.5)
+  // a conhecida mais baixa sobe para o pior caso
+  const menor = d.custo({ resumo: { ...resumo, rajadaMax: 18, ondasMax: 1 }, tripulacao: 'acompanhado', semDados: ['rajada', 'ondas'] })
+  assert.equal(menor.partes.rajada, 5)
+  assert.equal(menor.partes.ondas, 2)
+  // sem nada desconhecido, como sempre
+  assert.equal(d.custo({ resumo: { ...resumo, rajadaMax: 18, ondasMax: 1 }, tripulacao: 'acompanhado' }).total, 10)
+  // uma passagem com a previsão incompleta nunca é mais barata do que a mesma com a previsão completa e calma
+  assert.ok(sem.total > d.custo({ resumo: { ...resumo, rajadaMax: 15, ondasMax: 1 }, tripulacao: 'acompanhado' }).total)
 })
 
 test('partidas: agora, +3, +6 … +48 h arredondadas à meia hora, antes do fim da previsão; sair agora só agora', () => {

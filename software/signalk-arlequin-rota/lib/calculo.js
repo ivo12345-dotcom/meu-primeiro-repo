@@ -209,7 +209,10 @@ function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
   const lemeEqProvavel = seguranca.horasLemeEquivalentes(pr.pontos)
   const contraVentoH = decisao.horasContraVento(pr.pontos)
   const esperaH = (partida - ctx.agora) / H
-  const custo = decisao.custo({ resumo: pr.resumo, esperaH, tripulacao: ctx.tripulacao, lemeEq: lemeEqProvavel, contraVentoH })
+  // a previsão incompleta no rasto provável pesa no custo (M-05): a rajada e as ondas desconhecidas
+  // contam como os limites a solo (só pesa em "Sair agora": fora dele, a alternativa fica excluída)
+  const semDados = [...seguranca.previsaoIncompleta([pr]).semDados]
+  const custo = decisao.custo({ resumo: pr.resumo, esperaH, tripulacao: ctx.tripulacao, lemeEq: lemeEqProvavel, contraVentoH, semDados })
   const socMinPe = pe.resumo.socMin
   return {
     id: idAlternativa(partida, alt, prop),
