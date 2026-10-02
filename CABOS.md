@@ -8,7 +8,9 @@ Trabalho de inverno, independente do casco. Ver também `QUILHA.md`,
 - **Enrolador de genoa**: sim
 - **Rizos levados ao poço**: sim
 - **Spi**: sim
-- Sloop de topo, mastro ~13 m acima do convés, retranca ~4 m
+- Sloop de topo, mastro ~13 m acima do convés, retranca ~4 m (a ficha técnica do Melody dá
+  14,20 m de comprimento do mastro: ver o quadro "Dados do barco" do `NAVEGACAO.md`, §0b; por
+  confirmar pelo Ivo, porque muda o comprimento das drizas)
 
 ## ⚠️ A regra que evita subir ao mastro
 
@@ -24,7 +26,7 @@ metro a mais. Diâmetro com paquímetro — não confiar no que "parece".
 
 | Cabo | Metros | Diâmetro |
 |---|---|---|
-| Driza da maior | 25 | 10 mm |
+| Driza da maior | 25 (por confirmar: ver a nota abaixo) | 10 mm |
 | Driza da genoa | 28 | 10 mm |
 | Driza do spi | 30 | 10 mm |
 | Escotas de genoa (2) | 32 | 12 mm |
@@ -38,6 +40,12 @@ metro a mais. Diâmetro com paquímetro — não confiar no que "parece".
 | Cunningham | 5 | 6–8 mm |
 
 **Total: ~280 m.** Mais ~36 m se o spi for simétrico e levar braços.
+
+**Drizas: por confirmar pelo Ivo.** Pela regra deste documento (driza = 2 × altura a que sobe +
+2 a 3 m), com o mastro a ~13 m a driza da maior dá **28–29 m**, e não 25 m (a da genoa, 28 m,
+cumpre-a). Com os 14,20 m de mastro da ficha técnica, a regra dá ~30–31 m para as três drizas do
+topo (maior, genoa e spi). Medir as drizas velhas antes de encomendar ("o cabo velho é o molde");
+o total sobe na mesma medida.
 
 **Custo: €900–1400.** O equipamento de spi sozinho leva €250–400. As drizas
 e os rizos, em Dyneema, são a fatia cara; o resto é poliéster.
@@ -90,10 +98,13 @@ Com o orçamento já esticado no casco, não comprar tudo de uma vez:
 As duas primeiras fases põem o barco a navegar em condições por menos de
 metade do valor total.
 
-## ⚠️ PERGUNTA EM ABERTO: mastreação fixa
+## ✅ RESPONDIDA: mastreação fixa
 
-**A mastreação fixa é a original dos anos 80?** Se os cabos de aço,
-terminais e esticadores tiverem 40 anos, isso é um risco **muito maior** do
-que drizas cansadas, e a maioria dos seguros considera vida útil de 10 a 15
-anos. Saber a idade antes de investir nos cabos de manobra. A solo e longe
-de terra, é a diferença entre uma chatice e perder o mastro.
+**A mastreação fixa tem 12 anos** (confirmado pelo proprietário a 10/09: ver `MASTREACAO.md`).
+Não é a original: fica dentro das recomendações habituais de 10–15 anos, e o `MASTREACAO.md`
+recomenda uma inspeção de mastreador como linha de base. O cordame de manobra faz-se por fases,
+com o mastro em pé e mensageiros.
+
+A pergunta era: "A mastreação fixa é a original dos anos 80? Se os cabos de aço, terminais e
+esticadores tiverem 40 anos, isso é um risco **muito maior** do que drizas cansadas, e a maioria
+dos seguros considera vida útil de 10 a 15 anos."
