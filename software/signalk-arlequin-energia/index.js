@@ -38,8 +38,9 @@ module.exports = function (app) {
   let runTimePublicado = false
   let inicioDados = null
 
-  // Hora "dos dados": o relógio do sistema corrigido pelo carimbo da última
-  // delta. No barco dá o mesmo; com o simulador acelerado segue o tempo simulado.
+  // Hora "dos dados": o relógio do sistema corrigido pelo carimbo do último SoC
+  // do SmartShunt (ver aoReceber). No barco dá o mesmo; com o simulador acelerado
+  // segue o tempo simulado.
   const agora = () => Date.now() + desvio
 
   function publicar (values) {
