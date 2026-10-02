@@ -1,6 +1,6 @@
 'use strict'
 // Reinícios do plugin porto (o SignalK faz stop() e start() seguidos ao gravar a configuração):
-// auditoria I-22 (um só ciclo a falar com o Telegram).
+// auditoria I-22 (um só ciclo a falar com o Telegram) e I-21 (um alarme que limpou não fica preso).
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -59,5 +59,121 @@ test('auditoria I-22: o stop() corta o long polling pendente, sem erro no regist
     assert.ok(await ate(() => tgf.esperasAbertas() === 0, 3000), 'o pedido de 20 s ficou pendurado depois do stop()')
     await esperar(200)
     assert.deepEqual(app.erros, [])
+  } finally { p.stop(); await tgf.fechar() }
+})
+
+// ---------- auditoria I-21: os alarmes do porto atravessam os reinícios ----------
+
+const RAPIDO = { tickMs: 50, encaminharMs: 50, pausaFilaMs: 0 }
+const AGUA = 'notifications.arlequin.porto.aguaPorao'
+const estadoDe = (app, caminho) => app.getSelfPath(caminho)?.value?.state
+const textos = (tgf) => tgf.enviados.filter(m => m.chatId === '111').map(m => m.text)
+
+async function arrancar (props = {}) {
+  const tgf = await criarTelegramFalso()
+  const app = appFalso()
+  const p = criar(app, RAPIDO)
+  const config = { telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1, ...props }
+  return { tgf, app, p, config }
+}
+
+test('auditoria I-21: reinício com um alarme ativo e o sensor já normal: o "normal" e o "✓ Resolvido" saem (sonda p4)', async () => {
+  const { tgf, app, p, config } = await arrancar()
+  p.start(config)
+  try {
+    app.pôr('sensors.porao.agua', 1)
+    assert.ok(await ate(() => textos(tgf).includes('🚨 Água no porão!')))
+    p.stop()
+    app.pôr('sensors.porao.agua', 0)
+    p.start(config)
+    assert.ok(await ate(() => textos(tgf).includes('✓ Resolvido: Água no porão!')), JSON.stringify(textos(tgf)))
+    assert.equal(estadoDe(app, AGUA), 'normal')
+    await esperar(300)
+    assert.deepEqual(textos(tgf), ['🚨 Água no porão!', '✓ Resolvido: Água no porão!'])
+  } finally { p.stop(); await tgf.fechar() }
+})
+
+test('auditoria I-21: reinício com o alarme ainda verdadeiro: continua ativo na árvore, sem "Resolvido" falso nem repetição', async () => {
+  const { tgf, app, p, config } = await arrancar()
+  p.start(config)
+  try {
+    app.pôr('sensors.porao.agua', 1)
+    assert.ok(await ate(() => textos(tgf).includes('🚨 Água no porão!')))
+    p.stop()
+    p.start(config)
+    await esperar(600)
+    assert.equal(estadoDe(app, AGUA), 'alarm')
+    assert.deepEqual(textos(tgf), ['🚨 Água no porão!'])
+    // e quando a água acaba, um só "Resolvido"
+    app.pôr('sensors.porao.agua', 0)
+    assert.ok(await ate(() => textos(tgf).length === 2))
+    assert.deepEqual(textos(tgf), ['🚨 Água no porão!', '✓ Resolvido: Água no porão!'])
+  } finally { p.stop(); await tgf.fechar() }
+})
+
+test('auditoria I-21: a intrusão (que fica até desarmar) atravessa o reinício; desarmar depois limpa-a', async () => {
+  const { tgf, app, p, config } = await arrancar()
+  p.start(config)
+  try {
+    tgf.escrever(111, '/armar')
+    assert.ok(await ate(() => textos(tgf).some(t => /ARMADO/.test(t))))
+    app.pôr('sensors.gaiuta.aberta', 1)
+    assert.ok(await ate(() => textos(tgf).includes('🚨 Intrusão: a gaiuta abriu com o alarme armado')))
+    app.pôr('sensors.gaiuta.aberta', 0)
+    await esperar(200)
+    p.stop()
+    p.start(config)
+    await esperar(600)
+    assert.equal(estadoDe(app, 'notifications.arlequin.porto.intrusao'), 'alarm')
+    assert.ok(!textos(tgf).some(t => /Resolvido/.test(t)), JSON.stringify(textos(tgf)))
+    tgf.escrever(111, '/desarmar')
+    assert.ok(await ate(() => textos(tgf).includes('✓ Resolvido: Intrusão: a gaiuta abriu com o alarme armado')), JSON.stringify(textos(tgf)))
+    assert.equal(estadoDe(app, 'notifications.arlequin.porto.intrusao'), 'normal')
+  } finally { p.stop(); await tgf.fechar() }
+})
+
+test('auditoria I-21: o stop() põe a normal os alarmes do porto (o plugin desligado não deixa um alarme preso no ecrã)', async () => {
+  const { tgf, app, p, config } = await arrancar()
+  p.start(config)
+  try {
+    app.pôr('sensors.porao.agua', 1)
+    app.pôr('sensors.fumo', 1)
+    assert.ok(await ate(() => estadoDe(app, AGUA) === 'alarm' && estadoDe(app, 'notifications.arlequin.porto.fumo') === 'emergency'))
+    p.stop()
+    assert.equal(estadoDe(app, AGUA), 'normal')
+    assert.equal(estadoDe(app, 'notifications.arlequin.porto.fumo'), 'normal')
+  } finally { p.stop(); await tgf.fechar() }
+})
+
+test('auditoria I-21: depois de um reinício do servidor (a árvore vazia) o alarme que estava ativo volta à árvore; o "Resolvido" sai quando o sensor o diz', async () => {
+  const { tgf, app, p, config } = await arrancar()
+  p.start(config)
+  try {
+    app.pôr('sensors.porao.agua', 1)
+    assert.ok(await ate(() => textos(tgf).includes('🚨 Água no porão!')))
+    p.stop()
+    app.arvore = {} // o servidor arrancou de novo: nada na árvore, nem o sensor
+    p.start(config)
+    assert.ok(await ate(() => estadoDe(app, AGUA) === 'alarm'))
+    await esperar(300)
+    assert.deepEqual(textos(tgf), ['🚨 Água no porão!'], 'sem repetir nem "Resolvido" falso')
+    app.pôr('sensors.porao.agua', 0)
+    assert.ok(await ate(() => textos(tgf).length === 2))
+    assert.deepEqual(textos(tgf), ['🚨 Água no porão!', '✓ Resolvido: Água no porão!'])
+  } finally { p.stop(); await tgf.fechar() }
+})
+
+test('auditoria I-21: um alarme do porto preso na árvore por uma versão antiga (sem os ativos no porto.json) limpa-se quando o sensor está normal', async () => {
+  const { tgf, app, p, config } = await arrancar()
+  // o que a versão antiga deixava: a árvore em alarm, o encaminhador com ele pendente, o porto.json sem ativos
+  app.pôr(AGUA, { state: 'alarm', method: ['visual', 'sound'], message: 'Água no porão!' })
+  app.pôr('sensors.porao.agua', 0)
+  fs.writeFileSync(path.join(app.dir, 'porto.json'), JSON.stringify({ armado: false, ponto: null }))
+  fs.writeFileSync(path.join(app.dir, 'encaminhador.json'), JSON.stringify({ estados: { [AGUA]: 'alarm' }, mensagem: { [AGUA]: 'Água no porão!' }, ultimoAlarme: { [AGUA]: Date.now() - 60000 }, pendente: { [AGUA]: true } }))
+  p.start(config)
+  try {
+    assert.ok(await ate(() => estadoDe(app, AGUA) === 'normal'))
+    assert.ok(await ate(() => textos(tgf).length === 1))
+    assert.deepEqual(textos(tgf), ['✓ Resolvido: Água no porão!'])
   } finally { p.stop(); await tgf.fechar() }
 })

@@ -35,7 +35,7 @@ const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 const { exec } = require('node:child_process')
-const { novoEstado, passo, distancia } = require('./lib/regras')
+const { ALARMES, novoEstado, passo, distancia } = require('./lib/regras')
 const { novoEncaminhador, encaminhar, listarNotificacoes, alarmesAtivos } = require('./lib/mensagens')
 const { porNaFila, textoAEnviar, recuoMs, filaValida } = require('./lib/fila')
 const { resumo } = require('./lib/resumo')
@@ -51,6 +51,7 @@ const CAMINHOS = {
 }
 
 const UMA_HORA = 3600000
+const ATIVO = new Set(['warn', 'alert', 'alarm', 'emergency'])
 
 // Escrita atómica: escreve um .tmp ao lado, fsync, e rename por cima (um corte a meio deixa o antigo).
 function escreverAtomico (ficheiro, texto) {
@@ -300,6 +301,35 @@ module.exports = function (app, deps = {}) {
     }
   }
 
+  // notificacoes: [{ id, state, method, message }] → notifications.arlequin.porto.<id>
+  function publicar (notificacoes) {
+    if (!notificacoes.length) return
+    app.handleMessage(plugin.id, {
+      updates: [{ values: notificacoes.map(n => ({ path: `notifications.arlequin.porto.${n.id}`, value: { state: n.state, method: n.method, message: n.message } })) }]
+    })
+  }
+
+  // Os alarmes do porto atravessam os reinícios (auditoria I-21). No arranque repõem-se os que estavam
+  // ativos (os do porto.json e, de uma versão antiga, os que ainda estão na árvore) e publicam-se outra
+  // vez: as regras continuam a partir deles e mandam o "normal" (e o encaminhador o "✓ Resolvido") quando
+  // o sensor o diz; a intrusão fica até desarmar. Antes, o plugin arrancava a julgar que estava tudo
+  // normal e um alarme que limpou ficava preso na árvore, sem o "Resolvido". No stop() os ativos passam a
+  // normal (um plugin desligado não deixa um alarme a apitar no ecrã) e ficam no porto.json.
+  function ativosNoArranque () {
+    const out = {}
+    const arvore = app.getSelfPath?.('notifications.arlequin.porto')
+    for (const id of ALARMES) {
+      const guardado = persist.ativos?.[id]
+      const naArvore = arvore?.[id]?.value
+      const x = guardado && ATIVO.has(guardado.state) ? guardado : naArvore && ATIVO.has(naArvore.state) ? naArvore : null
+      if (x) out[id] = { state: x.state, message: typeof x.message === 'string' ? x.message : '' }
+    }
+    return out
+  }
+  const comoNotificacao = (ativos, normal = false) => Object.entries(ativos).map(([id, a]) => normal
+    ? { id, state: 'normal', method: [], message: 'Normal' }
+    : { id, state: a.state, method: ['visual', 'sound'], message: a.message })
+
   function tick () {
     const c = { ...CAMINHOS, ...(o.caminhos || {}) }
     const rpm = val('propulsion.main.revolutions')
@@ -316,15 +346,13 @@ module.exports = function (app, deps = {}) {
       armado: persist.armado
     }, agora())
     estado = r.estado
-    if (JSON.stringify(estado.amarracao.ponto) !== JSON.stringify(persist.ponto)) {
+    // o ponto e os alarmes ativos ficam no porto.json (estes para os repor depois de um reinício: I-21)
+    if (JSON.stringify(estado.amarracao.ponto) !== JSON.stringify(persist.ponto) || JSON.stringify(estado.ativos) !== JSON.stringify(persist.ativos)) {
       persist.ponto = estado.amarracao.ponto
+      persist.ativos = { ...estado.ativos }
       guardar()
     }
-    if (r.notificacoes.length) {
-      app.handleMessage(plugin.id, {
-        updates: [{ values: r.notificacoes.map(n => ({ path: `notifications.arlequin.porto.${n.id}`, value: { state: n.state, method: n.method, message: n.message } })) }]
-      })
-    }
+    publicar(r.notificacoes)
     for (const a of r.acoes) {
       if (a.tipo === 'foto') enviarFoto('📷 Alarme de intrusão')
       if (a.tipo === 'lembrete') enviarTodos(`🔓 ${a.texto}`)
@@ -431,9 +459,12 @@ module.exports = function (app, deps = {}) {
     const dir = app.getDataDirPath()
     fs.mkdirSync(dir, { recursive: true })
     ficheiro = path.join(dir, 'porto.json')
-    try { persist = { armado: false, ponto: null, ...JSON.parse(fs.readFileSync(ficheiro, 'utf8')) } } catch { persist = { armado: false, ponto: null } }
+    try { persist = { armado: false, ponto: null, ativos: {}, ...JSON.parse(fs.readFileSync(ficheiro, 'utf8')) } } catch { persist = { armado: false, ponto: null, ativos: {} } }
     estado = novoEstado()
     estado.amarracao.ponto = persist.ponto
+    estado.ativos = ativosNoArranque()
+    persist.ativos = { ...estado.ativos }
+    publicar(comoNotificacao(estado.ativos))
     ficheiroEnc = path.join(dir, 'encaminhador.json')
     enc = lerEncaminhador()
     falhasFila = 0
@@ -464,6 +495,8 @@ module.exports = function (app, deps = {}) {
     temporizadores.forEach(clearInterval)
     temporizadores = []
     tg = null
+    // os alarmes ativos passam a normal na árvore e ficam no porto.json para o arranque seguinte (I-21)
+    publicar(comoNotificacao(estado.ativos, true))
   }
 
   return plugin
