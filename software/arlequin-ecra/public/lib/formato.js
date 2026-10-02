@@ -34,12 +34,12 @@ export function anguloBordo (rad) {
 export const velocidade = (ms, casas = 1) => ok(ms) ? num(nos(ms), casas) : '—'
 export const distancia = (m, casas = 1) => ok(m) ? num(mn(m), casas) : '—'
 
+// "34 min", "3 h 05". Os minutos totais arredondam-se primeiro (auditoria M-36: dava "60 min" e "1 h 60").
 export function duracao (s) {
   if (!ok(s)) return '—'
-  if (s < 3600) return `${Math.round(s / 60)} min`
-  const h = Math.floor(s / 3600)
-  const m = Math.round((s - h * 3600) / 60)
-  return `${h} h ${String(m).padStart(2, '0')}`
+  const t = Math.round(s / 60)
+  if (t < 60) return `${t} min`
+  return `${Math.floor(t / 60)} h ${String(t % 60).padStart(2, '0')}`
 }
 
 // HH:MM na hora de Lisboa (auditoria I-31, decisão do Ivo n.º 22: nunca a hora local do browser, que no Pi

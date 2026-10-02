@@ -40,6 +40,27 @@ test('velocidade em nós, distância em MN, duração', () => {
   assert.equal(f.duracao(null), '—')
 })
 
+test('auditoria M-36: a duração arredonda primeiro os minutos totais — nunca "60 min" nem "1 h 60"', () => {
+  assert.equal(f.duracao(3599), '1 h 00')
+  assert.equal(f.duracao(3570), '1 h 00')
+  assert.equal(f.duracao(3540), '59 min')
+  assert.equal(f.duracao(7199), '2 h 00')
+  assert.equal(f.duracao(5399), '1 h 30')
+  assert.equal(f.duracao(29), '0 min')
+  assert.equal(f.duracao(0), '0 min')
+})
+
+import { polarSvg } from '../public/lib/desenho.js'
+import { readFileSync } from 'node:fs'
+import { lerPolar } from '../public/lib/polar.js'
+test('auditoria M-37: acima de 20 nós a curva da polar é a da coluna dos 20 nós (não a dos 6)', () => {
+  const p = lerPolar(readFileSync(new URL('../public/polar-arlequin.csv', import.meta.url), 'utf8'))
+  const curva = (tws) => polarSvg(p, tws).match(/<polyline points="([^"]+)"/)[1]
+  assert.equal(curva(25), curva(20))
+  assert.notEqual(curva(25), curva(6))
+  assert.equal(curva(4), curva(6), 'abaixo dos 6 nós, a dos 6')
+})
+
 // auditoria I-31 (decisão do Ivo n.º 22): a hora do ecrã é sempre a de Lisboa, seja qual for o fuso do Pi
 // (antes: a hora local do browser — o teste construía a data no fuso da máquina)
 test('hora de Lisboa HH:MM (verão UTC+1, inverno UTC+0), nunca a do fuso do browser', () => {
