@@ -169,6 +169,8 @@ test('revisão final M5: no brilho por omissão (nível 2) o texto lê-se (≥ 3
   // o filter: brightness(k) multiplica cada componente
   const escurecer = (hex) => `#${rgb(hex).map(x => Math.round(x * k * 255).toString(16).padStart(2, '0')).join('')}`
   assert.ok(contraste(escurecer(noite.texto), escurecer(noite.fundo)) >= 3, 'o texto no nível 2')
+  // auditoria I-27 e M-46: quase todo o texto está sobre o mosaico (--tile), não sobre o fundo preto
+  assert.ok(contraste(escurecer(noite.texto), escurecer(noite.tile)) >= 3, `o texto sobre o mosaico no nível 2: ${contraste(escurecer(noite.texto), escurecer(noite.tile)).toFixed(2)}`)
   for (const linha of ['azul', 'texto-2']) {
     assert.ok(contraste(escurecer(noite[linha]), escurecer(noite.mar)) >= 1.5, `${linha} sobre o mar no nível 2`)
     assert.ok(contraste(escurecer(noite[linha]), escurecer(noite.fundo)) >= 1.5, `${linha} sobre o fundo no nível 2`)
@@ -176,6 +178,21 @@ test('revisão final M5: no brilho por omissão (nível 2) o texto lê-se (≥ 3
   assert.match(regra('body.noite .chip.alarme'), /outline:\s*2px solid var\(--perigo\)/)
   assert.match(regra('body.noite .chip.alarme'), /outline-offset:\s*-2px/)
   assert.doesNotMatch(regra('body.noite .chip.aviso'), /outline/)
+})
+
+test('auditoria I-27 (decisão do Ivo n.º 21): de noite, a correção do leme (◀ 12° BB / 8° EB ▶) lê-se no brilho por omissão — ≥ 3:1 sobre o mosaico, com o tom do dia; de dia fica igual', () => {
+  const k = NIVEIS[PADRAO - 1]
+  const escurecer = (hex) => `#${rgb(hex).map(x => Math.round(x * k * 255).toString(16).padStart(2, '0')).join('')}`
+  assert.match(regra('.bb-txt'), /color:\s*var\(--bb-txt\)/)
+  assert.match(css, /\.eb-txt \{ color: var\(--eb-txt\); \}/)
+  for (const [txt, cor] of [['bb-txt', 'bb'], ['eb-txt', 'eb']]) {
+    assert.equal(dia[txt], dia[cor], `${txt} de dia = --${cor}`)
+    const c = contraste(escurecer(noite[txt]), escurecer(noite.tile))
+    assert.ok(c >= 3, `${txt} de noite no nível 2 sobre o mosaico: ${c.toFixed(2)}`)
+    assert.ok(difTom(hsl(noite[txt]).h, hsl(dia[cor]).h) <= 10, `${txt}: o tom do dia (${noite[txt]})`)
+  }
+  // o vermelho e o verde continuam a distinguir-se (BB vermelho, EB verde)
+  assert.ok(difTom(hsl(noite['bb-txt']).h, hsl(noite['eb-txt']).h) > 90)
 })
 
 test('revisão final M6: um <script> clássico logo a seguir ao <body> põe o modo noite e o brilho (localStorage ou ?noite=/?brilho=) antes do primeiro desenho; um armazenamento que falha não rebenta', async () => {
