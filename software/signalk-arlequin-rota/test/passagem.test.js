@@ -16,7 +16,8 @@ const FIXTURES = path.join(__dirname, 'fixtures')
 const SW = path.join(__dirname, '..', '..')
 const gz = (f) => JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(FIXTURES, f))))
 
-// ---------- o simular.mjs de 29/09 (resultado de referência gravado com o código antigo) ----------
+// ---------- o simular.mjs de 29/09 (resultado de referência gravado com o código antigo a 29/09 e ----------
+// ---------- regravado a 01/10, com a maré do Tejo só na caixa da barra: chegada 05:00 → 05:01) ----------
 
 test('reproduz o simular.mjs de 29/09 (Algés → Peniche, partida 15:32): resumo e linha do tempo iguais', async () => {
   const { simular, parsePartida, ROTA, COSTA } = await import('file://' + path.join(SW, 'ferramentas', 'passagem', 'simular.mjs').replace(/\\/g, '/'))
@@ -24,9 +25,7 @@ test('reproduz o simular.mjs de 29/09 (Algés → Peniche, partida 15:32): resum
   const ref = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'simular-2026-09-29-resumo.json'), 'utf8'))
   const partida = parsePartida('2026-09-29T15:32') // hora de Lisboa, como o comando da Task 4
   assert.equal(partida, Date.parse('2026-09-29T14:32Z'))
-  const t0 = performance.now()
   const r = await simular(partida, met)
-  const ms = performance.now() - t0
   // o que o desenho pede: ±2% na distância e na hora de chegada (duração)
   assert.ok(Math.abs(r.resumo.milhas / ref.milhas - 1) < 0.02)
   assert.ok(Math.abs(r.resumo.duracaoH / ref.duracaoH - 1) < 0.02)
@@ -47,9 +46,7 @@ test('reproduz o simular.mjs de 29/09 (Algés → Peniche, partida 15:32): resum
   // coberto pelo deepEqual acima, e correr principal() em si exige simular um processo à parte
   // (o argv-guard `PRINCIPAL` e a escrita de ficheiros), o que não é barato e reestruturar
   // simular.mjs para o tornar testável em processo está fora do âmbito desta ronda (simular.mjs
-  // só muda no cabeçalho).
-  // limite largo (era 2000 ms): não pode marcar falso num Raspberry Pi sob carga
-  assert.ok(ms < 10000, `${ms} ms`)
+  // só muda no cabeçalho). Sem limite de tempo (auditoria M-17: o relógio de parede não é do teste).
 })
 
 // ---------- o motor com um ambiente inventado ----------
@@ -311,17 +308,13 @@ test('um ponto de rota passado ao lado (a mais de 0,15 MN) conta como passado', 
 
 // ---------- os três cenários com a previsão real de 29/09 ----------
 
-test('29/09, Algés → Peniche a 5 MN: pessimista, provável e otimista por ordem', async () => {
+test('29/09, Algés → Peniche a 5 MN: pessimista, provável e otimista por ordem (os cenários do lib/cenarios.js)', async () => {
   const c = require('../lib/costa')
   const rotas = require('../lib/rotas')
   const prev = require('../lib/previsao')
   const mare = require('../lib/mare')
-  const modelos = require('signalk-arlequin-ia/lib/modelos')
-  const { litrosHora } = require(path.join(SW, 'signalk-arlequin-j1939', 'lib', 'consumo.js'))
-  const { lerPolar, velocidadeAlvo } = await import('file://' + path.join(SW, 'arlequin-ecra', 'public', 'lib', 'polar.js').replace(/\\/g, '/'))
-  const polar = lerPolar(fs.readFileSync(path.join(SW, 'arlequin-ecra', 'public', 'polar-arlequin.csv'), 'utf8'))
-  const NO = 1852 / 3600
-  const polarNos = (twa, tws) => velocidadeAlvo(polar, twa * Math.PI / 180, Math.min(tws, 20) * NO) / NO
+  const base = require('../lib/base')
+  const { criarCenarios } = require('../lib/cenarios')
 
   const f = gz('previsao-2026-09-29.json.gz')
   const p29 = prev.interpretar(f.pontos.map(c.P), f.forecast, f.marine, f.obtidaSimulada)
@@ -334,31 +327,25 @@ test('29/09, Algés → Peniche a 5 MN: pessimista, provável e otimista por ord
   assert.equal(alt.excluida, false)
   const noite = noitePeloSol(f.sol.daily.sunrise.map(x => Date.parse(x + 'Z')), f.sol.daily.sunset.map(x => Date.parse(x + 'Z')))
 
-  // Cenário: o vento que decide (rizos, motor, máximos) é o do cenário (pessimista = mais vento);
-  // a velocidade à vela é modelos.preverVelocidade (sem modelo = a polar) no vento do quantil
-  // de velocidade (pessimista = menos vento a empurrar). O gasóleo no quantil do cenário.
-  const cenarios = {
-    pessimista: { vento: 1.1, velVento: 0.9, q: 'p10', qGasoleo: 'p90' },
-    provavel: { vento: 1, velVento: 1, q: 'p50', qGasoleo: 'p50' },
-    otimista: { vento: 0.9, velVento: 1.1, q: 'p90', qGasoleo: 'p10' }
-  }
+  // Os cenários são os do cálculo (lib/cenarios.js, sem modelos da AI): o vento que decide (rizos, motor,
+  // máximos) é o do cenário (pessimista = vento P90), a velocidade à vela é a polar no vento do quantil
+  // contrário (pessimista = menos vento a empurrar) e o gasóleo é o do quantil do cenário. Antes eram
+  // montados à mão aqui (× 1,1 / × 0,9) e uma regressão no lib/cenarios.js não se via (auditoria M-17).
+  const cenarios = criarCenarios({ tempoBruto, modelos: {}, polar: base.carregarPolar(), obtida: Date.parse(p29.obtida) })
   const res = {}
-  const tempos = []
-  for (const [nome, k] of Object.entries(cenarios)) {
-    const tempo = (lat, lon, t) => { const w = tempoBruto(lat, lon, t); return { ...w, tws: w.tws * k.vento, rajada: w.rajada * k.vento, prevTws: w.tws, prevRajada: w.rajada, prevTwd: w.twd } }
-    const t0 = performance.now()
+  for (const nome of ['pessimista', 'provavel', 'otimista']) {
+    const k = cenarios[nome]
     res[nome] = simularPassagem({
       rota: alt.pontos,
       partida: Date.parse('2026-09-29T14:32Z'),
-      tempo,
+      tempo: k.tempo,
       correnteExtra,
-      velocidadeVela: ({ twa, twaPrevAbs, w, rizos }) => modelos.preverVelocidade(null, { prevTws: w.prevTws, twaPrevAbs, prevRajada: w.prevRajada, prevOndas: w.ondas, prevPeriodo: w.periodo, ondasAnguloRel: null, grandeRizos: rizos, genoaPct: 100 }, polarNos(twa, w.prevTws * k.velVento))[k.q],
-      consumo: ({ rpm }) => modelos.preverConsumo(null, { rpm }, litrosHora(rpm))[k.qGasoleo],
+      velocidadeVela: k.velocidadeVela,
+      consumo: k.consumo,
       noite,
       energia: criarEnergia({ socInicial: 0.9 }),
       distanciaCosta: (p) => costa.distanciaTerra(p)
     }).resumo
-    tempos.push(performance.now() - t0)
   }
   const { pessimista: pe, provavel: pr, otimista: ot } = res
   for (const r of [pe, pr, ot]) assert.equal(r.chegou, true)
@@ -369,10 +356,7 @@ test('29/09, Algés → Peniche a 5 MN: pessimista, provável e otimista por ord
   // e a simulação faz o mesmo mais os bordos e cambadelas
   assert.ok(Math.abs(alt.milhas - 63.6) < 0.5, `${alt.milhas}`)
   for (const r of [pe, pr, ot]) assert.ok(r.milhas > alt.milhas - 0.5 && r.milhas < alt.milhas + 3)
-  // cada passagem simulada com folga (era 200 ms; ~900 passos de 1 min): não pode marcar
-  // falso num Raspberry Pi sob carga
-  assert.ok(Math.max(...tempos.slice(1)) < 2000, tempos.join(', '))
-  if (process.env.ROTA_MOSTRAR) console.log(JSON.stringify({ milhasRota: alt.milhas, pe, pr, ot, tempos }, null, 1))
+  if (process.env.ROTA_MOSTRAR) console.log(JSON.stringify({ milhasRota: alt.milhas, pe, pr, ot }, null, 1))
 })
 
 test('a linha do tempo leva o semDados e o aproximado da previsão (lib/previsao.js) só quando os há, para a segurança', () => {

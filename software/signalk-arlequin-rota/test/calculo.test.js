@@ -32,12 +32,19 @@ const entrada = (o = {}) => ({ instrumentos: { posicao: ALGES, socPct: 90, gasol
 const cache = {}
 const correr = (nome, e, d) => (cache[nome] ??= calcular(e, d))
 
-test('29/09, Algés → Peniche, só eu, 15:32: "Não recomendado sozinho" ou "Espera", com o resultado na forma do desenho', async () => {
+test('29/09, Algés → Peniche, só eu, 15:32: "Espera até amanhã às 06:30", com o resultado na forma do desenho', async () => {
   const progresso = []
   const r = await correr('so', entrada(), deps({ progresso: (f, t) => progresso.push([f, t]) }))
   assert.equal(r.erro, undefined, r.erro)
-  assert.ok(['nao-recomendado', 'espera'].includes(r.veredicto.tipo), r.veredicto.texto)
-  assert.ok(r.veredicto.porque.length >= 1 && r.veredicto.porque.length <= 2)
+  // M-17: uma só resposta (aceitava "Não recomendado sozinho" ou "Espera"): agora as rajadas e as horas ao leme não dão
+  assert.deepEqual(r.veredicto, {
+    tipo: 'espera',
+    texto: 'Espera até amanhã às 06:30',
+    porque: [
+      'Agora: rajadas até 34 nós no pior caso (limite 30 sozinho) e 14,2 h equivalentes ao leme (limite 8 h sozinho).',
+      'Partindo amanhã às 06:30, pela rota a 5 MN a motor: chegas amanhã às 21:16 (de noite), vento até 6 nós, ondas até 2,8 m.'
+    ]
+  })
   // a forma do `resultado`
   for (const k of ['veredicto', 'alternativas', 'desistencia', 'previsao', 'ia']) assert.ok(k in r, k)
   assert.deepEqual(Object.keys(r.veredicto), ['tipo', 'texto', 'porque'])
@@ -54,15 +61,19 @@ test('29/09, Algés → Peniche, só eu, 15:32: "Não recomendado sozinho" ou "E
     assert.ok(a.precaucoes.some(p => p.id === 'vhf'))
     assert.ok(Date.parse(a.chegada.p90) <= P29.fim) // nenhuma acaba depois da previsão
   }
-  // as 3 por custo (as recomendadas primeiro)
-  const custos = r.alternativas.map(a => a.custo.total)
-  if (r.alternativas.every(a => a.naoRecomendada === r.alternativas[0].naoRecomendada)) assert.deepEqual([...custos].sort((x, y) => x - y), custos)
+  // as 3: as recomendadas primeiro e, dentro de cada grupo, por custo (M-17: verifica-se sempre; antes
+  // só quando as 3 tinham o mesmo naoRecomendada, e aqui não têm)
+  assert.deepEqual(r.alternativas.map(a => a.naoRecomendada), [false, false, true])
+  for (let i = 1; i < r.alternativas.length; i++) {
+    const [a, b] = [r.alternativas[i - 1], r.alternativas[i]]
+    if (a.naoRecomendada === b.naoRecomendada) assert.ok(a.custo.total <= b.custo.total, `${a.id} ${a.custo.total} > ${b.id} ${b.custo.total}`)
+  }
   assert.deepEqual(r.previsao, { obtida: P29.obtida, idadeH: 0.5, aviso: null, fim: new Date(P29.fim).toISOString() })
   assert.deepEqual(r.ia, { versoes: { velocidade: null }, nota: 'AI: a aprender (polar, previsão ±10% e curva da Volvo)' })
   assert.equal(r.partida.nome, 'Algés (CNA)')
   // desistência da melhor, com o resumo
   assert.ok(r.desistencia.length >= 10)
-  assert.match(r.desistenciaResumo, /^até às \d\d:\d\d ainda voltas a Algés \(CNA\) com vento (a favor|de través)$|^voltar a Algés/)
+  assert.equal(r.desistenciaResumo, 'até às 20:24 ainda voltas a Algés (CNA) com vento a favor')
   // progresso de 0 a 1, por ordem
   assert.equal(progresso.at(-1)[0], 1)
   for (let i = 1; i < progresso.length; i++) assert.ok(progresso[i][0] >= progresso[i - 1][0])
@@ -220,8 +231,8 @@ test('a variante pelo Canal da Berlenga no texto da alternativa: nome, canal, no
   const k = r.alternativas.find(a => a.canal)
   assert.ok(k, JSON.stringify(r.alternativas.map(a => a.nome)))
   assert.equal(k.canal, 'Canal da Berlenga')
-  assert.match(k.nome, /, 5 MN pelo Canal da Berlenga, (vela e motor|só motor)$/)
-  assert.match(k.id, /^\d{8}T\d{4}-5mn-canal-da-berlenga-(vela|motor)$/) // o nome do canal no id (com mais canais, não se repetem)
+  assert.equal(k.nome, 'Amanhã às 09:30, 5 MN pelo Canal da Berlenga, só motor')
+  assert.equal(k.id, '20260930T0830-5mn-canal-da-berlenga-motor') // o nome do canal no id (com mais canais, não se repetem)
   assert.equal(k.nota, 'Canal da Berlenga: terra dos dois lados; só com ondas < 3 m — por confirmar na carta')
   assert.ok(k.avisosRota.includes('Canal da Berlenga por confirmar na carta'))
   for (const a of r.alternativas.filter(a => !a.canal)) { assert.equal(a.canal, null); assert.equal(a.nota, null) }
@@ -235,8 +246,9 @@ test('rota direta (salto curto) Cascais → Algés: uma por partida, com id e no
   for (const a of r.alternativas) {
     assert.equal(a.direto, true)
     assert.equal(a.afastamento, null)
-    assert.match(a.id, /^\d{8}T\d{4}-direto-(vela|motor)$/)
-    assert.match(a.nome, /, direta \(salto curto\), (vela e motor|só motor)$/)
+    const quando = new Date(a.partida).toISOString().slice(0, 16).replace(/[-:]/g, '')
+    assert.equal(a.id, `${quando}-direto-${a.propulsao}`)
+    assert.ok(a.nome.endsWith(`, direta (salto curto), ${a.propulsao === 'motor' ? 'só motor' : 'vela e motor'}`), a.nome)
     assert.ok(a.avisosRota.includes('salto curto entre portos vizinhos: rota direta junto à costa'))
   }
   assert.doesNotMatch(JSON.stringify({ v: r.veredicto, a: r.alternativas.map(a => [a.id, a.nome]) }), /null ?mn/i)
@@ -296,26 +308,25 @@ test('"Sair agora": inclui as não recomendadas e os avisos vermelhos (previsão
 
 test('K-06 (decisão do Ivo n.º 1): "Sair agora" com o gasóleo curto, sem previsão do mar ou com a previsão a acabar antes da chegada: "Não recomendado" (nunca "Segue"), com o motivo e os avisos vermelhos; continua a poder ativar-se', async () => {
   const MESMO_ASSIM = 'Se saíres mesmo assim, revê as precauções e os pontos de desistência.'
-  const hmLisboa = (t) => new Intl.DateTimeFormat('pt-PT', { timeZone: 'Europe/Lisbon', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(t)
   const casos = [
     // a sonda do auditor (Algés → Peniche, acompanhado, 45 L no depósito): era "Segue" a verde (com
-    // "chegas com 22 L" na lista por baixo); qual das alternativas fica à frente é a do menor custo
-    ['gasóleo', entrada({ instrumentos: { posicao: ALGES, socPct: 90, gasoleoL: 45 }, tripulacao: 'acompanhado', sairAgora: true }), deps(), () => /^chegas com (2\d|3\d) L de gasóleo no pior caso \(mínimo 40 L\)$/],
-    ['sem mar', entrada({ tripulacao: 'acompanhado', sairAgora: true }), comPrevisao(P29_SEM_MAR), () => /^sem previsão de ondas em parte da rota: desconhecido não conta como calmo$/],
-    // a hora é a da chegada mais tarde da 1.ª alternativa (p90), em Lisboa
-    ['previsão curta', entrada({ tripulacao: 'acompanhado', sairAgora: true }), comPrevisao({ ...P29, fim: AGORA + 2 * H }), (a0) => new RegExp(`^a previsão acaba antes da chegada \\(${hmLisboa(Date.parse(a0.chegada.p90))}\\): o fim da passagem é sem previsão$`)]
+    // "chegas com 22 L" na lista por baixo, a de 5 MN a motor); com a ordem dos pontos da previsão fixa
+    // (M-09) a mais barata para sair agora é a de 5 MN à vela, com 31 L no pior caso
+    ['gasóleo', entrada({ instrumentos: { posicao: ALGES, socPct: 90, gasoleoL: 45 }, tripulacao: 'acompanhado', sairAgora: true }), deps(), 'chegas com 31 L de gasóleo no pior caso (mínimo 40 L)'],
+    ['sem mar', entrada({ tripulacao: 'acompanhado', sairAgora: true }), comPrevisao(P29_SEM_MAR), 'sem previsão de ondas em parte da rota: desconhecido não conta como calmo'],
+    // a hora é a da chegada mais tarde da 1.ª alternativa (p90, 06:58 UTC), em Lisboa
+    ['previsão curta', entrada({ tripulacao: 'acompanhado', sairAgora: true }), comPrevisao({ ...P29, fim: AGORA + 2 * H }), 'a previsão acaba antes da chegada (07:58): o fim da passagem é sem previsão']
   ]
-  for (const [nome, e, d, padrao] of casos) {
+  for (const [nome, e, d, motivo] of casos) {
     const r = await calcular(e, d)
     assert.equal(r.erro, undefined, `${nome}: ${r.erro}`)
     assert.equal(r.veredicto.tipo, 'nao-recomendado', `${nome}: ${JSON.stringify(r.veredicto)}`)
     assert.equal(r.veredicto.texto, 'Não recomendado')
-    // o veredicto fala da 1.ª alternativa (a melhor para sair agora) e do motivo dela
+    // o veredicto fala da 1.ª alternativa (a melhor para sair agora, a de 5 MN à vela) e do motivo dela
     const a0 = r.alternativas[0]
-    const motivo = a0.motivos[0]
-    assert.match(motivo, padrao(a0), nome)
-    const rota = `a ${a0.afastamento} MN${a0.propulsao === 'motor' ? ' a motor' : ''}`
-    assert.deepEqual(r.veredicto.porque, [`A melhor para sair agora (${rota}, agora): ${motivo}.`, MESMO_ASSIM], nome)
+    assert.equal(a0.id, '20260929T1432-5mn-vela', nome)
+    assert.deepEqual(a0.motivos, [motivo], nome)
+    assert.deepEqual(r.veredicto.porque, [`A melhor para sair agora (a 5 MN, agora): ${motivo}.`, MESMO_ASSIM], nome)
     // as alternativas mostram-se (podem ativar-se), não recomendadas, com o motivo e o aviso vermelho
     assert.equal(r.alternativas.length, 3, nome)
     for (const a of r.alternativas) {
@@ -590,8 +601,10 @@ test('no mar, sem "sair agora": continuar agora não é recomendado e o abrigo m
   assert.equal(r.partida.emMar, true)
   assert.equal(r.veredicto.tipo, 'volta')
   assert.equal(r.veredicto.texto, 'Volta ou abriga-te em Cascais')
-  assert.match(r.veredicto.porque[0], /^Agora: /)
-  assert.match(r.veredicto.porque[1], /^Até Cascais são \d+,\d MN: chegas às \d\d:\d\d \(de (dia|noite)\)/)
+  assert.deepEqual(r.veredicto.porque, [
+    'Agora: vento médio até 23 nós no pior caso (limite 22 sozinho) e rajadas até 31 nós no pior caso (limite 30 sozinho).',
+    'Até Cascais são 10,3 MN: chegas às 17:52 (de dia), vento até 12 nós, ondas até 2,1 m.'
+  ])
 })
 
 test('M-14 (decisão do Ivo n.º 9): no mar, o abrigo do "Volta" avalia todas as rotas do cálculo até ele (os 3 afastamentos, a direta e o canal) e as duas propulsões, e fica a melhor recomendada', async () => {

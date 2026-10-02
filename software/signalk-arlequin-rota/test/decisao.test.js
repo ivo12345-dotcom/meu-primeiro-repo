@@ -238,7 +238,8 @@ test('a rota direta (afastamento null) e a variante por um canal no texto do ver
   assert.match(k.veredicto.porque[0], /^Parte agora pela rota a 5 MN pelo Canal da Berlenga a motor: /)
   // "não recomendado" e "espera" também
   const nr = d.decidir({ candidatos: [{ ...direta, naoRecomendada: true, motivos: ['x'] }], agora: AGORA, tripulacao: 'so' })
-  assert.match(nr.veredicto.porque[0], / \(direta, (às 15:32|agora)\): x\.$/)
+  // M-17: uma só resposta (aceitava "às 15:32" ou "agora"; a partida de agora diz sempre "agora")
+  assert.equal(nr.veredicto.porque[0], 'Nenhuma partida nas próximas 48 h passa nos limites; a melhor (direta, agora): x.')
   const es = d.decidir({ candidatos: [{ ...direta, partida: AGORA + 3 * H }], agora: AGORA, tripulacao: 'so' })
   assert.match(es.veredicto.porque[1], /pela rota direta: /)
   for (const x of [r, k, nr, es]) assert.doesNotMatch(JSON.stringify(x.veredicto), /null/)

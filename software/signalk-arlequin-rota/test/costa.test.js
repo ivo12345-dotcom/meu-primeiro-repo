@@ -184,14 +184,27 @@ test('dados reais: as linhas ficam a d ± 0,06 MN da terra e o Cachopo do Norte 
   assert.match(real.zonaCruzada({ lat: 38.65, lon: -9.36 }, { lat: 38.665, lon: -9.345 }).nome, /Cachopo do Norte/)
 })
 
-test('dados reais: rápido (distância à terra e troços com milhares de vértices)', () => {
-  let t = performance.now()
-  for (let i = 0; i < 2000; i++) real.distanciaTerra({ lat: 37 + (i % 50) / 10, lon: -9.9 + (i % 7) / 10 })
-  const msDist = (performance.now() - t) / 2000
-  t = performance.now()
-  for (let i = 0; i < 2000; i++) real.cruzaTerra({ lat: 38 + (i % 30) / 10, lon: -9.9 }, { lat: 38.1 + (i % 30) / 10, lon: -9.5 })
-  const msTroco = (performance.now() - t) / 2000
-  // limite generoso (era < 0,5 ms): num Pi ocupado 0,5 ms é fácil de falhar por ruído do SO,
-  // não por regressão real; 20 ms continua a apanhar um algoritmo linear nos milhares de vértices
-  assert.ok(msDist < 20 && msTroco < 20, `${msDist} ms, ${msTroco} ms`)
+test('dados reais: a grelha poupa trabalho (distância à terra e troços medem só uma parte das milhares de arestas)', () => {
+  // Sem relógio de parede (auditoria M-17: era "< 20 ms por consulta", que num Pi ocupado falha por
+  // ruído): conta-se o trabalho. Cada consulta marca as arestas que mediu (grelha.marca === volta);
+  // um algoritmo linear mediria todas.
+  const g = real.grelha
+  const medidas = () => { let n = 0; for (let e = 0; e < g.m; e++) if (g.marca[e] === g.volta) n++; return n }
+  assert.ok(g.m > 5000, `${g.m} arestas`)
+  let maxDist = 0; let somaDist = 0
+  for (let i = 0; i < 2000; i++) {
+    const d = real.distanciaTerra({ lat: 37 + (i % 50) / 10, lon: -9.9 + (i % 7) / 10 })
+    assert.ok(Number.isFinite(d) || d === Infinity)
+    const n = medidas(); maxDist = Math.max(maxDist, n); somaDist += n
+  }
+  let maxTroco = 0
+  for (let i = 0; i < 2000; i++) {
+    real.cruzaTerra({ lat: 38 + (i % 30) / 10, lon: -9.9 }, { lat: 38.1 + (i % 30) / 10, lon: -9.5 })
+    maxTroco = Math.max(maxTroco, medidas())
+  }
+  // hoje: distância no máximo 1488 (20 %) e em média 319 (4 %) de 7382; troço no máximo 246 (3 %)
+  assert.ok(maxDist < g.m / 4 && somaDist / 2000 < g.m / 10, `distância: máx ${maxDist}, média ${somaDist / 2000} de ${g.m}`)
+  assert.ok(maxTroco < g.m / 10, `troço: máx ${maxTroco} de ${g.m}`)
+  // o "em terra" percorre só a faixa de latitude do ponto
+  assert.ok(Math.max(...g.faixas.map(f => f.length)) < g.m / 5)
 })
