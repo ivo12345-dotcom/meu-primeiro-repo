@@ -7,7 +7,9 @@
 //      Tejo), vai ao ponto mais perto dela e segue-a até ao largo (ou até ao cais, se esse
 //      porto for o destino: uma só alternativa, `direto`);
 //   2. juntar-se à linha de d MN à frente, no sentido da viagem;
-//   3. seguir a linha até ao ponto mais perto do largo do destino (pontos de ≤ 2 MN);
+//   3. seguir a linha até ao ponto mais perto do largo do destino (pontos de ≤ 2 MN), atalhando as
+//      baías por cordas que ficam a ≥ d − 0,1 MN de terra e fora das zonas (auditoria I-19, decisão do
+//      Ivo n.º 5: ver "as cordas das baías", mais abaixo);
 //   4. entrada: a aproximação do destino (do largo ao cais);
 //   5. nenhum troço toca em terra nem em zonas (a terra não se verifica dentro do
 //      porto, da `entrada` para dentro, porque o OSM fecha rios e bacias).
@@ -256,18 +258,37 @@ function ventoEm (twd, p, milhasDesdePartida, horaPartida, o) {
   return twd(p.lat, p.lon, horaPartida + milhasDesdePartida / o.nosEta * H_MS)
 }
 
+// Junto à costa fora da linha (os pontos de uma corda, as ligações): com a costa a menos de
+// afastamentoVentoTerra, o vento tem de vir da terra mais perto (±toleranciaVento), como na rota
+// direta. → null (serve, ou a costa está longe) | 'sem vento' | 'mar'.
+function ventoJuntoACosta (costa, q, milhas, { twd, horaPartida }, o) {
+  if (costa.distanciaTerra(q, 50) >= o.afastamentoVentoTerra) return null
+  const vento = ventoEm(twd, q, milhas, horaPartida, o)
+  if (!Number.isFinite(vento)) return 'sem vento'
+  const paraTerra = rumoTerraMaisPerto(costa, q)
+  return paraTerra != null && Math.abs(c.dif(vento, paraTerra)) > o.toleranciaVento ? 'mar' : null
+}
+
 // A regra dos 3 MN (desenho: "3 MN só com vento de terra", decisão do Ivo de 30/09): em cada ponto
 // da linha seguida (os que têm `s`), o vento previsto tem de vir do lado de terra da linha (a normal
-// que aponta para terra, ±o.toleranciaVento). Devolve o motivo da exclusão, ou null.
+// que aponta para terra, ±o.toleranciaVento). Os pontos de uma corda (sem `s`, auditoria I-19) com a
+// costa a menos de afastamentoVentoTerra contam como na rota direta (a terra mais perto). Devolve o
+// motivo da exclusão, ou null.
 function ventoDoMarNaRota (costa, linha, pontos, { twd, horaPartida }, o) {
+  const semVento = `a ${o.afastamentoVentoTerra} MN só com vento de terra, e não há vento previsto para a rota`
   let milhas = 0
   for (let i = 0; i < pontos.length; i++) {
     if (i > 0) milhas += c.distanciaMn(pontos[i - 1], pontos[i])
     const p = pontos[i]
-    if (!Number.isFinite(p.s)) continue
-    const vento = ventoEm(twd, p, milhas, horaPartida, o)
-    if (!Number.isFinite(vento)) return `a ${o.afastamentoVentoTerra} MN só com vento de terra, e não há vento previsto para a rota`
-    if (!ventoDeTerra(costa, linha, p.s, vento, o.toleranciaVento)) return MOTIVO_VENTO_MAR
+    if (Number.isFinite(p.s)) {
+      const vento = ventoEm(twd, p, milhas, horaPartida, o)
+      if (!Number.isFinite(vento)) return semVento
+      if (!ventoDeTerra(costa, linha, p.s, vento, o.toleranciaVento)) return MOTIVO_VENTO_MAR
+    } else if (p.perna === 'linha') {
+      const r = ventoJuntoACosta(costa, p, milhas, { twd, horaPartida }, o)
+      if (r === 'sem vento') return semVento
+      if (r === 'mar') return MOTIVO_VENTO_MAR
+    }
   }
   return null
 }
@@ -397,17 +418,133 @@ function tracarPar (costa, linha, pA, pB, sA, sB, afastamento, o) {
   // 3. sair da linha para o largo do destino (olhando para trás a partir do destino)
   const l = j && ligar(costa, linha, pB, -sentido, { de: sB, ate: j.s }, o, true)
   if (!j || !l) return { problema: { motivo: 'terra' } }
-  if ((l.s - j.s) * sentido > 0.5) return { meio: pontosLinha(linha, j.s, l.s, afastamento, o), j, l, sentido }
+  if ((l.s - j.s) * sentido > 0.5) return { meio: pontosLinha(costa, linha, j.s, l.s, afastamento, o), j, l, sentido }
   // partida e destino perto um do outro na linha (a saída da linha ficava antes da entrada
   // nela): vai direto de largo a largo
   if (costa.verificarTroco(pA, pB)) return { problema: { motivo: 'terra' } }
   return { meio: [], j, l, sentido }
 }
 
-// Os pontos da linha de s1 a s2 (troços ≤ o.passoMax); o primeiro chega pela ligação.
-function pontosLinha (linha, s1, s2, afastamento, o) {
-  const meio = c.seguirLinha(linha, s1, s2, { passoMax: o.passoMax, tolerancia: o.tolerancia })
-    .map((q, i) => ({ lat: q.lat, lon: q.lon, s: q.s, perna: i === 0 ? 'ligacao' : 'linha' }))
+// ---------- as cordas das baías (auditoria I-19, decisão do Ivo n.º 5, 02/10) ----------
+// Onde a linha entra numa baía (a costa recua), segue-se a corda entre dois pontos da linha em vez
+// de dar a volta por dentro, se a corda ficar SEMPRE a ≥ afastamento − 0,1 MN de terra (a tolerância
+// do lib/seguranca.js; mede-se de 0,05 em 0,05 MN com meia amostra de margem, para nenhum ponto do
+// meio ficar mais perto: a segurança nunca a exclui), não tocar em terra nem em zonas a evitar e
+// poupar pelo menos ganhoMinMn e ganhoMinFracao do caminho pela linha (as baías, não os rendilhados
+// de uma costa direita). Ex.: na baía de Setúbal a linha dos 5 MN tem ~50 MN e a corda ~31, sempre
+// a ≥ 5 MN de terra.
+// Como se acham: as linhas do gerar.py têm a terra à esquerda no sentido dos índices (são um troço do
+// contorno da terra alargada), por isso uma corda A→K só passa ao largo da linha se os pontos da
+// linha entre A e K ficarem à esquerda dela (ou a ≤ toleranciaMn à direita): basta o rumo de A para
+// cada ponto (o máximo corrido), sem medir distâncias. A corda escolhida (a mais comprida que
+// cumpra o ganho) verifica-se depois a sério, contra a terra e as zonas. As cordas acham-se no
+// sentido dos índices e servem as duas viagens (A → B e B → A têm as mesmas); nos troços sem corda
+// a linha segue-se como antes (c.seguirLinha). Os pontos de uma corda (de passoMax em passoMax)
+// não têm `s`: não estão na linha (a regra do vento de terra vê-os à parte, ventoDoMarNaRota).
+const CORDA = Object.freeze({ toleranciaMn: 0.1, passoAmostraMn: 0.05, maxMn: 60, ganhoMinMn: 1, ganhoMinFracao: 0.05, anguloMax: 150 })
+// as memórias (por linha): as cordas de um troço [lo, hi] e as verificações a sério (uma corda entre
+// os mesmos dois pontos repete-se muito: as 17 partidas, os pares de projeções, a desistência)
+const MEMORIA_CORDAS = new WeakMap()
+const MEMORIA_MAX = 5000
+function memoria (linha) {
+  let m = MEMORIA_CORDAS.get(linha)
+  if (!m) { m = { trocos: new Map(), livres: new Map() }; MEMORIA_CORDAS.set(linha, m) }
+  if (m.trocos.size > MEMORIA_MAX) m.trocos.clear()
+  if (m.livres.size > MEMORIA_MAX) m.livres.clear()
+  return m
+}
+
+// A corda a→b fica a ≥ afastamento − toleranciaMn de terra em todo o comprimento e não toca em
+// terra nem em zonas. A distância à terra muda no máximo tanto como o caminho: num troço p–q de L MN,
+// nenhum ponto fica mais perto do que (d(p) + d(q) − L)/2. Divide-se ao meio só onde isso não chega
+// (perto das pontas, onde a corda sai da linha), até troços de passoAmostraMn; com as duas pontas
+// acima do mínimo, o meio desse troço fica no máximo meio troço mais perto — daí a margem.
+function cordaLivre (costa, a, b, afastamento, o, m) {
+  const k = `${afastamento}|${a.lat},${a.lon}|${b.lat},${b.lon}`
+  if (m.livres.has(k)) return m.livres.get(k)
+  let livre = !costa.verificarTroco(a, b)
+  if (livre) {
+    const dist = (p) => costa.distanciaTerra(p, 50)
+    const minimo = afastamento - o.toleranciaMn + o.passoAmostraMn / 2
+    const pilha = [[a, b, dist(a), dist(b)]]
+    while (livre && pilha.length) {
+      const [p, q, dp, dq] = pilha.pop()
+      if (dp < minimo || dq < minimo) { livre = false; break }
+      const L = c.distanciaMn(p, q)
+      // 1 % de folga na conta: as escalas da distância à terra (do ponto) e a do troço (do meio) diferem um pouco
+      if (L <= o.passoAmostraMn || (dp + dq - L * 1.01) / 2 >= minimo) continue
+      const meio = { lat: (p.lat + q.lat) / 2, lon: (p.lon + q.lon) / 2 }
+      const dm = dist(meio)
+      pilha.push([p, meio, dp, dm], [meio, q, dm, dq])
+    }
+  }
+  m.livres.set(k, livre)
+  return livre
+}
+
+// As cordas no troço [lo, hi] da linha (lo < hi): [{ a, b }] (pontos da linha com `s`, a.s < b.s),
+// por ordem, sem se sobreporem.
+function cordasNaLinha (costa, linha, lo, hi, afastamento, oo = {}) {
+  const o = { ...CORDA, ...oo }
+  const m = memoria(linha)
+  const chave = `${afastamento}|${lo}|${hi}`
+  if (m.trocos.has(chave)) return m.trocos.get(chave)
+  const cand = [c.posicao(linha, lo)]
+  for (let i = 0; i < linha.pts.length; i++) if (linha.s[i] > lo + 1e-9 && linha.s[i] < hi - 1e-9) cand.push({ lat: linha.pts[i].lat, lon: linha.pts[i].lon, s: linha.s[i] })
+  cand.push(c.posicao(linha, hi))
+  const out = []
+  let i = 0
+  while (i < cand.length - 2) {
+    const A = cand[i]
+    const rumo0 = c.vetor(A, cand[i + 1]).rumo
+    // os K que deixam todos os pontos entre A e K à esquerda (ou a ≤ toleranciaMn à direita)
+    let maximo = -Infinity
+    const validos = []
+    for (let k = i + 1; k < cand.length; k++) {
+      const v = c.vetor(A, cand[k])
+      if (v.mn > o.maxMn) break
+      const rel = c.dif(v.rumo, rumo0)
+      if (Math.abs(rel) > o.anguloMax) break
+      if (k > i + 1 && rel >= maximo) validos.push(k)
+      const folga = v.mn > o.toleranciaMn ? Math.asin(o.toleranciaMn / v.mn) * 180 / Math.PI : 180
+      maximo = Math.max(maximo, rel - folga)
+    }
+    // a mais comprida que poupe o bastante e passe a verificação a sério
+    let usada = null
+    for (let j = validos.length - 1; j >= 0 && !usada; j--) {
+      const K = cand[validos[j]]
+      const caminho = K.s - A.s
+      const ganho = caminho - c.distanciaMn(A, K)
+      if (ganho >= Math.max(o.ganhoMinMn, o.ganhoMinFracao * caminho) && cordaLivre(costa, A, K, afastamento, o, m)) usada = validos[j]
+    }
+    if (usada == null) { i++; continue }
+    out.push({ a: { lat: A.lat, lon: A.lon, s: A.s }, b: { lat: cand[usada].lat, lon: cand[usada].lon, s: cand[usada].s } })
+    i = usada
+  }
+  m.trocos.set(chave, out)
+  return out
+}
+
+// Os pontos da linha de s1 a s2 (troços ≤ o.passoMax); o primeiro chega pela ligação. Com as cordas
+// das baías (o.cordas, por omissão sim): os troços sem corda seguem a linha como antes; cada corda vai
+// direita, dividida de passoMax em passoMax (os pontos do meio sem `s`).
+function pontosLinha (costa, linha, s1, s2, afastamento, o) {
+  const seguir = (de, ate) => c.seguirLinha(linha, de, ate, { passoMax: o.passoMax, tolerancia: o.tolerancia })
+  const sentido = s2 >= s1 ? 1 : -1
+  const cordas = o.cordas === false ? [] : cordasNaLinha(costa, linha, Math.min(s1, s2), Math.max(s1, s2), afastamento, o.corda)
+  const pts = []
+  const juntar = (q) => { const u = pts.at(-1); if (!u || Math.abs(u.lat - q.lat) > 1e-12 || Math.abs(u.lon - q.lon) > 1e-12) pts.push(q) }
+  let agora = s1
+  for (const k of sentido > 0 ? cordas : [...cordas].reverse()) {
+    const [ini, fim] = sentido > 0 ? [k.a, k.b] : [k.b, k.a]
+    for (const q of seguir(agora, ini.s)) juntar({ lat: q.lat, lon: q.lon, s: q.s })
+    const n = Math.max(1, Math.ceil(c.distanciaMn(ini, fim) / o.passoMax - 1e-9))
+    for (let i = 1; i < n; i++) juntar({ lat: ini.lat + (fim.lat - ini.lat) * i / n, lon: ini.lon + (fim.lon - ini.lon) * i / n })
+    juntar({ lat: fim.lat, lon: fim.lon, s: fim.s })
+    agora = fim.s
+  }
+  for (const q of seguir(agora, s2)) juntar({ lat: q.lat, lon: q.lon, s: q.s })
+  const meio = pts.map((q, i) => ({ ...q, perna: i === 0 ? 'ligacao' : 'linha' }))
   meio[0].nome = `Linha de ${afastamento} MN`
   return meio
 }
@@ -468,9 +605,9 @@ function variantesCanal (costa, linha, inicio, entrada, { j, l }, afastamento, o
     }
     if (!melhor) continue
     const { a, b, pts } = melhor
-    const antes = a.s == null ? [] : pontosLinha(linha, j.s, a.s, afastamento, o)
+    const antes = a.s == null ? [] : pontosLinha(costa, linha, j.s, a.s, afastamento, o)
     const noCanal = pts.map((q, i) => ({ lat: q.lat, lon: q.lon, perna: i === 0 ? 'ligacao' : 'canal', ...(i === 0 ? { nome: canal.nome } : {}) }))
-    const depois = b.s == null ? [] : pontosLinha(linha, b.s, l.s, afastamento, o)
+    const depois = b.s == null ? [] : pontosLinha(costa, linha, b.s, l.s, afastamento, o)
     const pontos = [...inicio.map(p => ({ ...p })), ...antes, ...noCanal, ...depois, ...entrada.map(p => ({ ...p }))]
     if (verificarTrocos(costa, pontos)) continue
     out.push({ pontos, canal })

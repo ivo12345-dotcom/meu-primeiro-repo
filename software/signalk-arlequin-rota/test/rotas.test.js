@@ -188,6 +188,96 @@ const JUNTO_ILHEU = porto('ilheu', 'Junto ao Ilhéu', [39.2, -9.02], [39.2, -9.0
 const LAGOA = porto('lagoa', 'Lagoa', [38.7, -8.85], [38.72, -8.85])
 const inventada = c.criarCosta({ terra, destinos: [SUL_DO_CABO, NORTE, JUNTO_ILHEU, LAGOA], linhas: { 5: [[39.6, -9.15], [38.4, -9.15]] } })
 
+// Uma costa inventada com uma baía (água entre 38,8 e 39,2 N, até 8,8 W, na costa de 9,0 W) e a
+// "linha de 5 MN" desenhada à mão como a do gerar.py: de norte para sul, com a terra à esquerda,
+// a contornar as esquinas da boca (arcos de 5 MN) e a entrar na baía a 5 MN das paredes.
+const terraBaia = { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[-9.0, 38.3], [-8.5, 38.3], [-8.5, 39.7], [-9.0, 39.7], [-9.0, 39.2], [-8.8, 39.2], [-8.8, 38.8], [-9.0, 38.8], [-9.0, 38.3]]] } }] }
+const KX = c.escalas(39).kx // MN por grau de longitude a 39° N
+const LON5 = -9.0 - 5 / KX
+const arco = (lat0, lon0, de, ate, n = 6) => Array.from({ length: n + 1 }, (_, k) => { const a = (de + (ate - de) * k / n) * Math.PI / 180; return [lat0 + 5 / 60 * Math.cos(a), lon0 + 5 / KX * Math.sin(a)] })
+const linhaBaia = [
+  [39.7, LON5], [39.45, LON5],
+  ...arco(39.2, -9.0, 270, 180).slice(0, -1), // a esquina norte da boca (de oeste para sul)
+  [39.2 - 5 / 60, -9.0], [39.2 - 5 / 60, -8.8 - 5 / KX], // a parede norte e o fundo
+  [38.8 + 5 / 60, -8.8 - 5 / KX], [38.8 + 5 / 60, -9.0], // o fundo e a parede sul
+  ...arco(38.8, -9.0, 0, -90).slice(1), // a esquina sul (de norte para oeste)
+  [38.55, LON5], [38.3, LON5]
+]
+const NORTE_BAIA = porto('nb', 'Norte da Baía', [39.45, -9.03], [39.45, -9.005])
+const SUL_BAIA = porto('sb', 'Sul da Baía', [38.55, -9.03], [38.55, -9.005])
+const costaBaia = c.criarCosta({ terra: terraBaia, destinos: [NORTE_BAIA, SUL_BAIA], linhas: { 5: linhaBaia } })
+
+test('I-19 (decisão do Ivo n.º 5): a linha atalha a baía por uma corda a ≥ afastamento − 0,1 MN de terra (sempre mais de 4,9 MN); nos dois sentidos, com troços ≤ 2 MN', () => {
+  const linha = costaBaia.linha(5)
+  const sem = r.gerarRota(costaBaia, { partida: NORTE_BAIA, destino: SUL_BAIA, afastamento: 5, opcoes: { cordas: false } })
+  const com = r.gerarRota(costaBaia, { partida: NORTE_BAIA, destino: SUL_BAIA, afastamento: 5 })
+  for (const a of [sem, com]) assert.equal(a.excluida, false, a.motivo)
+  // pela linha entra na baía (até 8,9 W); pela corda fica ao largo dela (nunca a leste de 9,05 W entre 38,8 e 39,2 N)
+  assert.ok(sem.pontos.some(p => p.lon > -8.95), 'sem as cordas a linha entra na baía')
+  assert.ok(com.pontos.filter(p => p.perna === 'linha').every(p => p.lon < -9.05), JSON.stringify(com.pontos.map(p => [p.lat.toFixed(3), p.lon.toFixed(3), p.perna])))
+  // a corda poupa as voltas da baía (a linha dá ~38 MN entre as esquinas, a corda 24)
+  assert.ok(sem.milhas - com.milhas > 12, `${sem.milhas} → ${com.milhas}`)
+  // a corda respeita o afastamento (− 0,1 MN) em todo o lado, e os troços da linha ficam ≤ 2 MN
+  assert.ok(minimoNaLinha(costaBaia, com.pontos) >= 4.9, `${minimoNaLinha(costaBaia, com.pontos)}`)
+  for (let i = 1; i < com.pontos.length; i++) if (com.pontos[i].perna === 'linha') assert.ok(c.distanciaMn(com.pontos[i - 1], com.pontos[i]) <= 2 + 1e-6)
+  // os pontos da corda não têm `s` (não estão na linha); os outros da linha têm
+  assert.ok(com.pontos.some(p => p.perna === 'linha' && !Number.isFinite(p.s)))
+  // ao contrário (sul → norte), a mesma corda
+  const volta = r.gerarRota(costaBaia, { partida: SUL_BAIA, destino: NORTE_BAIA, afastamento: 5 })
+  assert.equal(volta.excluida, false, volta.motivo)
+  assert.ok(Math.abs(volta.milhas - com.milhas) < 0.5, `${volta.milhas} vs ${com.milhas}`)
+  assert.ok(volta.pontos.filter(p => p.perna === 'linha').every(p => p.lon < -9.05))
+  // com uma zona a evitar em toda a boca da baía (de 38,9 a 39,1 N), nenhuma corda a corta: a rota
+  // entra na baía (pode atalhar lá dentro, longe das paredes) e fica mais comprida
+  const zona = { nome: 'Zona da boca', poligono: [[39.1, -9.15], [39.1, -9.0], [38.9, -9.0], [38.9, -9.15], [39.1, -9.15]] }
+  const costaZona = c.criarCosta({ terra: terraBaia, destinos: [NORTE_BAIA, SUL_BAIA], zonas: [zona], linhas: { 5: linhaBaia } })
+  const z = r.gerarRota(costaZona, { partida: NORTE_BAIA, destino: SUL_BAIA, afastamento: 5 })
+  assert.equal(z.excluida, false, z.motivo)
+  for (let i = 1; i < z.pontos.length; i++) if (['linha', 'ligacao'].includes(z.pontos[i].perna)) assert.equal(costaZona.verificarTroco(z.pontos[i - 1], z.pontos[i]), null, `troço ${i}`)
+  assert.ok(z.pontos.some(p => p.perna === 'linha' && p.lon > -9.0), 'entra na baía')
+  assert.ok(minimoNaLinha(costaZona, z.pontos) >= 4.9)
+  assert.ok(z.milhas > com.milhas + 2 && z.milhas <= sem.milhas + 1e-6, `${sem.milhas} ≥ ${z.milhas} > ${com.milhas}`)
+  assert.ok(linha.total > 0)
+})
+
+test('I-19: nas costas sem baías (retas, cabos) a linha fica como era; Algés → Peniche igual; Peniche → Sines atalha a baía de Setúbal (e o Tejo) a ≥ 4,9 MN de terra', () => {
+  // a costa inventada de sempre (reta em 9,15 W): nenhuma corda
+  const a = r.gerarRota(inventada, { partida: SUL_DO_CABO, destino: NORTE, afastamento: 5 })
+  const b = r.gerarRota(inventada, { partida: SUL_DO_CABO, destino: NORTE, afastamento: 5, opcoes: { cordas: false } })
+  assert.deepEqual(a.pontos, b.pontos)
+  // Algés → Peniche a 5 e 8 MN: sem cordas (nenhuma baía com ganho que conte)
+  for (const d of [5, 8]) {
+    const x = r.gerarRota(real, { partida: D('alges'), destino: D('peniche'), afastamento: d })
+    const y = r.gerarRota(real, { partida: D('alges'), destino: D('peniche'), afastamento: d, opcoes: { cordas: false } })
+    assert.deepEqual(x.pontos, y.pontos, `${d} MN`)
+  }
+  // Peniche → Sines a 5 MN: a linha dá 123,6 MN (o Tejo, o Espichel e a baía de Setúbal por dentro)
+  const sem = r.gerarRota(real, { partida: D('peniche'), destino: D('sines'), afastamento: 5, opcoes: { cordas: false } })
+  const com = r.gerarRota(real, { partida: D('peniche'), destino: D('sines'), afastamento: 5 })
+  assert.equal(com.excluida, false, com.motivo)
+  assert.ok(Math.abs(sem.milhas - 123.6) < 0.5, `${sem.milhas}`)
+  assert.ok(com.milhas < sem.milhas - 15, `${sem.milhas} → ${com.milhas}`)
+  assert.ok(minimoNaLinha(real, com.pontos) >= 4.9, `${minimoNaLinha(real, com.pontos)}`)
+  for (let i = 1; i < com.pontos.length; i++) if (['linha', 'ligacao'].includes(com.pontos[i].perna)) assert.equal(real.verificarTroco(com.pontos[i - 1], com.pontos[i]), null, `troço ${i}`)
+  // a segurança mede a mesma geometria e deixa-a passar (mínimo 5 MN, tolerância 0,1)
+  assert.ok(require('../lib/seguranca').distanciaRotaCosta(real, com.pontos).mn >= 4.9)
+})
+
+test('I-19: a regra dos 3 MN também nos pontos de uma corda (sem `s`) a menos de 3 MN de terra, como na rota direta (a terra mais perto)', () => {
+  const costa3 = c.criarCosta({ terra: terraBaia, linhas: { 3: [[39.7, -9.0 - 3 / KX], [38.3, -9.0 - 3 / KX]] } })
+  const L3 = costa3.linha(3)
+  const p0 = { lat: 39.5, lon: -9.0 - 3 / KX }
+  const alt = { afastamento: 3, excluida: false, pontos: [{ ...p0, s: c.projetar(L3, p0).s, perna: 'ligacao' }, { lat: 39.45, lon: -9.03, perna: 'linha' }] }
+  assert.ok(costa3.distanciaTerra(alt.pontos[1], 50) < 3)
+  assert.equal(r.ventoDoMar(costa3, alt, { twd: 90 }), null) // de terra (leste) nos dois
+  // do mar (oeste) só no ponto da corda: antes não se via (só os pontos com `s` contavam)
+  assert.equal(r.ventoDoMar(costa3, alt, { twd: (lat, lon) => (lon > -9.05 ? 270 : 90) }), VENTO_DO_MAR)
+  assert.match(r.ventoDoMar(costa3, alt, { twd: (lat, lon) => (lon > -9.05 ? null : 90) }), /não há vento previsto/)
+  // a mais de 3 MN de terra o ponto da corda não conta (não há sotavento a temer ali)
+  const longe = { ...alt, pontos: [alt.pontos[0], { lat: 39.45, lon: -9.2, perna: 'linha' }] }
+  assert.equal(r.ventoDoMar(costa3, longe, { twd: (lat, lon) => (lon < -9.1 ? 270 : 90) }), null)
+})
+
 test('a ligação à linha que corta o cabo é corrigida (liga mais de lado, a sul do cabo)', () => {
   const L = inventada.linha(5)
   const p = c.P(SUL_DO_CABO.largo)
@@ -340,20 +430,26 @@ test('dados/canais.json: o Canal da Berlenga fica no mar, a ≥ 2 MN de terra e 
 })
 
 test('Canal da Berlenga: a variante corta a volta às ilhas quando a linha a dá', () => {
+  // pela linha sem as cordas das baías (I-19): a volta de sempre (59,5 MN)
+  const semCordas = r.gerarAlternativas(real, { partida: D('peniche'), destino: D('nazare'), afastamento: 5, opcoes: { cordas: false } })
+  assert.ok(semCordas[0].milhas > 55 && semCordas[0].milhas < 64, `${semCordas[0].milhas} MN`)
+  assert.ok(semCordas[1].milhas > 30 && semCordas[1].milhas < 38 && semCordas[1].milhas < 0.65 * semCordas[0].milhas, `${semCordas[1].milhas} MN`)
   const alts = r.gerarAlternativas(real, { partida: D('peniche'), destino: D('nazare'), afastamento: 5 })
   assert.equal(alts.length, 2)
   const [volta, canal] = alts
   assert.equal(volta.excluida, false, volta.motivo)
   assert.equal(volta.canal, undefined)
-  assert.ok(volta.milhas > 55 && volta.milhas < 64, `${volta.milhas} MN`)
+  // com as cordas (I-19), a volta atalha a baía entre as Berlengas e a Nazaré: 52,7 MN
+  assert.ok(volta.milhas > 50 && volta.milhas < 55, `${volta.milhas} MN`)
   assert.ok(volta.pontos.some(p => p.lon < -9.55), 'a volta passa a oeste das Berlengas')
   assert.equal(canal.excluida, false, canal.motivo)
   assert.equal(canal.canal, 'Canal da Berlenga')
   assert.equal(canal.ondasMax, 3)
   assert.equal(canal.afastamento, 5)
   // ~35 MN: do largo de Peniche direto à ponta sul do canal, o canal (8 MN) e da ponta norte de
-  // volta à linha de 5 MN até à Nazaré (19,8 MN em linha reta de cais a cais)
-  assert.ok(canal.milhas > 30 && canal.milhas < 38 && canal.milhas < 0.65 * volta.milhas, `${canal.milhas} MN`)
+  // volta à linha de 5 MN até à Nazaré (19,8 MN em linha reta de cais a cais); mesmo com a volta
+  // atalhada, o canal poupa mais de 15 MN
+  assert.ok(canal.milhas > 30 && canal.milhas < 38 && canal.milhas < volta.milhas - 15, `${canal.milhas} MN`)
   assert.equal(canal.pontos[canal.pontos.findIndex(p => p.nome === 'Canal da Berlenga') - 1].nome, 'Largo de Peniche')
   assert.ok(canal.pontos.every(p => p.lon > -9.52), 'não vai a oeste da Berlenga')
   assert.ok(canal.avisos.includes('Canal da Berlenga por confirmar na carta'))
