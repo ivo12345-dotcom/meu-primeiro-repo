@@ -29,8 +29,12 @@ test('auditoria K-11: a falha das janelas/modo noite do OpenCPN fica à vista na
   assert.doesNotMatch(barraHtml(base), /chip falha/)
   // o app.js guarda a falha e já não a engole
   const { readFileSync } = await import('node:fs')
-  const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8')
-  const janela = app.slice(app.indexOf('function janela'), app.indexOf('\n}\n', app.indexOf('function janela')))
+  // sem os \r: no Windows o git pode entregar o ficheiro com CRLF, e o fim da função não se achava
+  const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8').replace(/\r/g, '')
+  const inicio = app.indexOf('function janela')
+  const fim = app.indexOf('\n}\n', inicio)
+  assert.ok(inicio >= 0 && fim > inicio, 'a função janela do app.js tem de se achar')
+  const janela = app.slice(inicio, fim)
   assert.doesNotMatch(janela, /\.catch\(\(\) => \{\}\)/)
   assert.match(janela, /falhaJanela\(/)
 })
