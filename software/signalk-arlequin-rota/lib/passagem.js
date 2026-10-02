@@ -33,6 +33,7 @@
 //   distanciaCosta({ lat, lon }) → MN (opcional)
 
 const { VISIBILIDADE_RADAR_M, CHUVA_RADAR_MM_H } = require('./avisos')
+const { HORAS_PREVISAO } = require('./previsao')
 
 const GRAU = Math.PI / 180
 const MIN = 60000
@@ -67,7 +68,7 @@ const PADRAO = Object.freeze({
   chegadaWpMn: 0.15,
   chegadaPassagem: true, // também conta o ponto de rota ao passá-lo (não só a 0,15 MN)
   gasoleoInicial: 124,
-  maxHoras: 30,
+  maxHoras: HORAS_PREVISAO, // o fim da previsão (48 h; auditoria I-19: eram 30 h, ~120 MN a motor)
   fuso: 'Europe/Lisbon',
   textoPartida: null,
   nomeChegada: null
@@ -250,7 +251,7 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
     t += MIN
   }
   const chegou = wp >= ROTA.length
-  ev(chegou ? `Chegada a ${o.nomeChegada ?? ROTA[ROTA.length - 1].nome ?? 'destino'} (${hm(t)})` : `Não chegou dentro de ${o.maxHoras} h`, 'chegada')
+  ev(chegou ? `Chegada a ${o.nomeChegada ?? ROTA[ROTA.length - 1].nome ?? 'destino'} (${hm(t)})` : `Não chegou dentro de ${String(Math.round(o.maxHoras * 10) / 10).replace('.', ',')} h`, 'chegada')
   const duracaoH = (t - partida) / H
   const ultimo = pontos[pontos.length - 1]
   const resumo = {
