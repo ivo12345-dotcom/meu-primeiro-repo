@@ -7,6 +7,7 @@ import { tile, gasoleo, corGasoleo, num, ok, esc, motorLigado, ESTADO_MOTOR, CLA
 import { litrosPorMilha } from '../lib/consumo-milha.js'
 import { motivo } from '../lib/erros.js'
 import { diaHoraLisboa } from '../lib/rota-texto.js'
+import { porGravidade, COR_GRAVIDADE } from '../lib/alarmes.js'
 
 function buscarSessoes (ctx) {
   if (ctx.estado.aBuscar || Date.now() - (ctx.estado.sessoesEm || 0) < 30000) return
@@ -166,7 +167,9 @@ export default {
     const vm = ctx.v('electrical.batteries.motor.voltage')
     const pv1 = ctx.v('electrical.solar.mppt1.panelPower')
     const pv2 = ctx.v('electrical.solar.mppt2.panelPower')
-    const alarmes = ctx.notificacoes.filter(n => n.state !== 'normal' && /propulsion|energia|electrical|tanks/.test(n.caminho))
+    // da mais grave para a menos (revisão F3, Important 3: vinham pela ordem de chegada e a fuga de gasóleo podia
+    // ficar escondida por baixo dos botões de baixo)
+    const alarmes = porGravidade(ctx.notificacoes.filter(n => /propulsion|energia|electrical|tanks/.test(n.caminho)))
     const corSoc = !ok(soc) ? 'var(--linha)' : soc < 0.5 ? 'var(--bb)' : soc < 0.55 ? 'var(--amarelo)' : 'var(--verde)'
     const sess = ctx.estado.sessoes
     const tempC = ok(temp) ? celsius(temp) : null
@@ -185,9 +188,13 @@ export default {
       : !c || !c.faixas?.length
       ? 'Por regime: a aprender (1 min estável em cada faixa de 200 rpm)'
       : 'Por regime: ' + c.faixas.map(f => `${num(f.de, 0)} rpm ${num(f.lmn, 2)}${c.melhor?.de === f.de ? ' ★' : ''}`).join(' · ') + ' L/MN'
-    return `<div class="col estica">
+    // Os alarmes no cimo da coluna, logo a seguir às rotações, com o número no título; as duas colunas rolam (com a
+    // chave data-rolar): nada fica cortado em silêncio por baixo dos botões de baixo (revisão F3, Important 3)
+    const tileAlarmes = `<div class="tile alarmes-motor"><div class="lab">Alarmes do motor, da energia e dos depósitos${alarmes.length ? ` (${alarmes.length})` : ''}</div>${alarmes.length ? alarmes.map(n => `<div class="alarme-linha${COR_GRAVIDADE[n.state] ? ` ${COR_GRAVIDADE[n.state]}` : ''}">${esc(n.message || n.caminho)}</div>`).join('') : '<div class="ok">sem alarmes</div>'}</div>`
+    return `<div class="col estica rolar" data-rolar="motor-esq">
 <div class="tile"><div class="linha"><span class="lab">Volvo Penta D1-20B</span><span class="${CLASSE_MOTOR[estadoMotor]}">${ESTADO_MOTOR[estadoMotor]}</span></div>
   <div class="vv">${ok(rpm) ? num(rpm * 60, 0) : '—'} <span style="font-size:1.4rem;">rpm</span></div></div>
+${tileAlarmes}
 <div class="g2">
   ${tile('Temperatura', `<span class="${ok(tempC) && tempC >= TEMPERATURA_ALARME_C ? 'perigo' : ''}">${ok(tempC) ? num(tempC, 0) + ' °C' : '—'}</span>`, '', 'vv')}
   ${tile('Pressão do óleo', ligado ? `${ok(oleo) ? num(oleo / 1e5, 1) + ' bar' : '—'}` : '—', '', 'vv')}
@@ -200,9 +207,8 @@ export default {
   <div class="lab" style="margin-top:.3rem;">${esc(gasInfo)}</div>
   <div class="acoes" style="margin-top:.2rem;"><button class="btn" style="padding:.4rem .9rem;" data-acao="abrir-teclado" data-modo="abasteci">Abasteci</button><button class="btn" style="padding:.4rem .9rem;" data-acao="abrir-teclado" data-modo="calibrar">Calibrar</button><button class="btn" style="padding:.4rem .9rem;" data-acao="calib-abrir">Calibração completa</button></div>
   ${ctx.estado.msgGas ? `<div class="${ctx.estado.msgGasErro ? 'perigo' : 'ok'}">${esc(ctx.estado.msgGas)}</div>` : ''}</div>
-<div class="tile"><div class="lab">Alarmes do motor, da energia e dos depósitos</div>${alarmes.length ? alarmes.map(n => `<div class="${n.state === 'warn' ? 'atencao' : 'perigo'}">${esc(n.message)}</div>`).join('') : '<div class="ok">sem alarmes</div>'}</div>
 </div>
-<div class="col estica">
+<div class="col estica rolar" data-rolar="motor-dir">
 <div class="tile"><div class="linha"><span class="lab">Serviço · 440 Ah AGM</span><span class="vv">${ok(soc) ? num(Math.floor(soc * 100 + 1e-9), 0) + ' %' : '—'}</span></div>${barra(soc, corSoc)}
   <div class="linha" style="margin-top:.3rem;"><span>${ok(i) ? (i >= 0 ? `<span class="ok">a carregar ${num(i, 1)} A</span>` : `a gastar ${num(-i, 1)} A`) : '—'}</span><span>${ok(vs) ? num(vs, 2) + ' V' : '—'}</span></div></div>
 <div class="g2">

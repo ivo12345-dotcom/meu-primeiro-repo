@@ -99,6 +99,8 @@ body.noite .silenciar { color: var(--faixa-texto); outline: 2px solid var(--peri
 .estica .v { font-size: 1.75rem; }
 .estica .lab { font-size: 1rem; }
 .estica .linha { font-size: 1.25rem; }
+/* Os alarmes do Motor no cimo da coluna: do tamanho da lista, sem esticar (revisão F3, Important 3). */
+.estica > .alarmes-motor { flex: 0 0 auto; justify-content: flex-start; }
 .polar { width: 100%; height: 100%; }
 .barra { height: .6rem; background: var(--linha); border-radius: .3rem; overflow: hidden; margin-top: .2rem; }
 .barra > div { height: 100%; border-radius: .3rem; }
