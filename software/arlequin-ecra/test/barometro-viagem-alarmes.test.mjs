@@ -274,6 +274,29 @@ test('revisão F3, Important 4: calar pelo id (API v2 do SignalK: /silence ou /a
   assert.match(bloco, /falhaCalar\(/)
 })
 
+test('revisão F3, Important 4 (visto ponta a ponta): calado no servidor, o ecrã cala-o já no store (o stream do SignalK só o confirma até 1 s depois e a barra ficava ~2 s com o mesmo botão); um "já estava silenciado" conta como calado, não como recusa', async () => {
+  const { calar, calado } = await import('../public/lib/alarmes.js')
+  // como o SignalK o deixa (alarm.js, alignAlarmMethod): silenciado sem o sound; reconhecido: a emergência só visual, o resto sem nada
+  assert.deepEqual(calado(porao, 'silenciar'), { ...porao, method: ['visual'], status: { ...porao.status, silenced: true } })
+  const fumo = { ...fumoReconhecido, method: SOM, status: st() }
+  assert.deepEqual(calado(fumo, 'reconhecer'), { ...fumo, method: ['visual'], status: { ...fumo.status, acknowledged: true } })
+  assert.deepEqual(calado(disco, 'reconhecer').method, [])
+  // pelo caminho (sem id nem status): só visual
+  assert.deepEqual(calado({ caminho: 'notifications.x', state: 'alarm', method: SOM }, 'silenciar'), { caminho: 'notifications.x', state: 'alarm', method: ['visual'], status: { silenced: true } })
+  for (const acao of ['silenciar', 'reconhecer']) assert.equal(deveTocar(calado(porao, acao)), null, acao)
+  // o servidor diz que já estava calado (um 2.º toque, outro ecrã): é o que se queria
+  for (const message of ['Alarm already silenced or acknowledged!', 'Alarm already acknowledged!']) {
+    const ja = async () => { throw Object.assign(new Error('o alarme já estava silenciado'), { status: 400, corpo: { state: 'FAILED', statusCode: 400, message } }) }
+    assert.deepEqual(await calar(porao, 'silenciar', ja), { jaCalado: true }, message)
+  }
+  // o app.js põe o calado no store logo a seguir ao calar
+  const { readFileSync } = await import('node:fs')
+  const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8').replace(/\r/g, '')
+  const bloco = app.slice(app.indexOf("if (acao === 'silenciar' || acao === 'reconhecer')"), app.indexOf("if (acao === 'ir-alarme')"))
+  assert.ok(bloco.indexOf('await calar(') >= 0 && bloco.indexOf('calado(') > bloco.indexOf('await calar('), 'depois do calar, o calado no store')
+  assert.match(bloco, /store\.notificacoes\.set\(/)
+})
+
 test('cada alarme leva à sua página', () => {
   assert.equal(paginaDoAlarme('notifications.arlequin.ais.263000001'), 'ais')
   assert.equal(paginaDoAlarme('notifications.arlequin.energia.ligarMotor'), 'motor')
