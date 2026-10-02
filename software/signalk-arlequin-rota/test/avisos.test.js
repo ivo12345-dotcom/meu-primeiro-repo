@@ -51,6 +51,16 @@ test('avisos: rizar, pôr do sol, chuva/visibilidade (radar), rotação do vento
   assert.deepEqual(b, [])
 })
 
+test('M-03: chegada de noite a um destino sem o campo "conhecido": "um porto que não conheces"', () => {
+  const pontos = linha(60, { noite: true })
+  for (const destino of [{ nome: 'Peniche' }, { nome: 'Peniche', conhecido: false }]) {
+    const a = avisosDaPassagem({ passagem: { pontos, eventos: [], resumo: { chegou: true } }, destino, tripulacao: 'acompanhado' })
+    assert.match(a.find(x => x.tipo === 'chegada-noite').texto, /^Chegada de noite a Peniche, um porto que não conheces:/)
+  }
+  const conhecido = avisosDaPassagem({ passagem: { pontos, eventos: [], resumo: { chegou: true } }, destino: { nome: 'Peniche', conhecido: true }, tripulacao: 'acompanhado' })
+  assert.match(conhecido.find(x => x.tipo === 'chegada-noite').texto, /^Chegada de noite a Peniche: /)
+})
+
 test('avisos a partir do motor da passagem: cambadelas em popa e a frente', () => {
   const rota = [{ nome: 'A', lat: 39, lon: -9.5 }, { nome: 'B', lat: 39 + 12 / 60, lon: -9.5 }]
   let k = 0

@@ -138,7 +138,8 @@ function frase (c, agora, fuso) {
   const r = c.resumos.provavel
   // chegadaNoite: de noite em qualquer cenário (lib/seguranca.js); a hora é a do provável, que pode chegar de dia
   const noite = c.chegadaNoite ? (c.chegadaNoiteProvavel === false ? ' (pode ser de noite)' : ' (de noite)') : ' (de dia)'
-  const partes = [`chegas ${quando(Date.parse(r.chegada), agora, fuso)}${noite}`, `vento até ${Math.round(r.ventoMax)} nós`]
+  // sem vento previsto nenhum o máximo é -Infinity: "sem previsão de vento" (M-01), nunca o número
+  const partes = [`chegas ${quando(Date.parse(r.chegada), agora, fuso)}${noite}`, Number.isFinite(r.ventoMax) ? `vento até ${Math.round(r.ventoMax)} nós` : 'sem previsão de vento']
   if (Number.isFinite(r.ondasMax)) partes.push(`ondas até ${virgula(r.ondasMax)} m`)
   return partes.join(', ')
 }

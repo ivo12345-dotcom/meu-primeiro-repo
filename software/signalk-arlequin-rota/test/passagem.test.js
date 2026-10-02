@@ -278,6 +278,13 @@ test('I-17 (decisão do Ivo n.º 10): visibilidade abaixo de 5 km (a constante �
   assert.equal(vis[1].t, dois.pontos[50].t)
 })
 
+test('M-02: a passagem da frente sem previsão de ondas diz "Fica o mar (sem previsão de ondas)", nunca "(0,0 m)"', () => {
+  let n = 0
+  const r = simularPassagem(base({ tempo: () => (n++ < 30 ? ventoFixo(15, 270)() : ventoFixo(6, 330, { ondas: null })()) }))
+  assert.ok(r.eventos.some(e => e.texto === 'Passagem da frente: o vento cai de 15 para 6 nós e roda para 330°. Fica o mar (sem previsão de ondas)'), r.eventos.map(e => e.texto).join(' | '))
+  assert.ok(!r.eventos.some(e => /0,0 m/.test(e.texto)))
+})
+
 test('passagem da frente, energia, costa e "não chegou"', () => {
   let n = 0
   const frente = simularPassagem(base({ tempo: () => (n++ < 30 ? ventoFixo(15, 270)() : ventoFixo(6, 330, { ondas: 2.2 })()) }))

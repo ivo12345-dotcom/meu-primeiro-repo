@@ -109,7 +109,7 @@ function avisosDaPassagem ({ passagem, destino = null, tripulacao = 'so', opcoes
   const ult = pontos.at(-1)
   if (ult && ult.noite && passagem.resumo?.chegou) {
     const nome = destino?.nome || 'destino'
-    add(ult.t + MIN, 'chegada-noite', `Chegada de noite a ${nome}${destino && destino.conhecido === false ? ', um porto que não conheces' : ''}: entrada devagar, luzes e radar, confirma as luzes da barra`)
+    add(ult.t + MIN, 'chegada-noite', `Chegada de noite a ${nome}${destino && destino.conhecido !== true ? ', um porto que não conheces' : ''}: entrada devagar, luzes e radar, confirma as luzes da barra`)
   }
 
   // gasóleo e bateria a caminho da reserva
