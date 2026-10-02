@@ -145,5 +145,13 @@ test('/estado: os lembretes só do ecrã (velas, relógio) não aparecem nos ala
     n('notifications.arlequin.porto.fumo', 'emergency', 'FUMO a bordo!'),
     n('notifications.arlequin.energia.ligarMotor', 'normal', 'Normal'),
     { caminho: 'notifications.arlequin.porto.intrusao', state: 'alarm' }
-  ]), ['Disco a 81%', 'FUMO a bordo!', 'notifications.arlequin.porto.intrusao'])
+  ]), ['Disco a 81%', 'FUMO a bordo!', 'Alarme sem descrição (arlequin.porto.intrusao)'])
+})
+
+test('auditoria I-32: uma notificação sem texto chega ao Telegram com uma frase em pt-PT (e o caminho entre parênteses), também no "Resolvido"', () => {
+  const C = 'notifications.propulsion.main.overTemperature'
+  let r = encaminhar(novoEncaminhador(), [{ caminho: C, state: 'alarm' }, { caminho: 'notifications.x.aviso', state: 'warn', message: '' }], 0)
+  assert.deepEqual(r.mensagens, ['🚨 Alarme sem descrição (propulsion.main.overTemperature)', '⚠️ Aviso sem descrição (x.aviso)'])
+  r = encaminhar(r.enc, [{ caminho: C, state: 'normal' }], MIN)
+  assert.deepEqual(r.mensagens, ['✓ Resolvido: Alarme sem descrição (propulsion.main.overTemperature)'])
 })

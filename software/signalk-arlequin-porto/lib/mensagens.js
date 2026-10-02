@@ -31,6 +31,9 @@ const GRAVE = new Set(['alarm', 'emergency'])
 // Um caminho das listas: exato; só um que acaba em ponto final é um prefixo (notifications.rota.lembrete.)
 const casa = (caminho, p) => (p.endsWith('.') ? caminho.startsWith(p) : caminho === p)
 const casaAlgum = (caminho, lista) => lista.some(p => casa(caminho, p))
+// O texto de uma notificação; sem ele, uma frase em pt-PT com o caminho entre parênteses (auditoria
+// I-32: antes ia só o caminho, em inglês)
+const descricao = (n, state = n.state) => n.message || `${GRAVE.has(state) ? 'Alarme' : 'Aviso'} sem descrição (${String(n.caminho).replace(/^notifications\./, '')})`
 
 function encaminhar (enc0, notificacoes, agora, { intervalo = 10 * 60 * 1000, amarrado = false, ignorarAmarrado = ['notifications.arlequin.ais.'], nunca = NUNCA, soAlarme = SO_ALARME } = {}) {
   const enc = { estados: { ...enc0.estados }, mensagem: { ...enc0.mensagem }, ultimoAlarme: { ...enc0.ultimoAlarme }, pendente: { ...enc0.pendente }, porEnviar: [...(enc0.porEnviar || [])] }
@@ -49,12 +52,13 @@ function encaminhar (enc0, notificacoes, agora, { intervalo = 10 * 60 * 1000, am
       // avaliar-se em cada ciclo e segue logo que passem os 10 min, se ainda estiver ativo (um porão
       // que volta a meter água, ou uma escalada warn → alarm, não se perdem).
       if (enc.ultimoAlarme[n.caminho] !== undefined && agora - enc.ultimoAlarme[n.caminho] < intervalo) { enc.estados[n.caminho] = antes; continue }
-      mensagens.push(`${ICONE[agoraEstado]} ${n.message || n.caminho}`)
-      enc.mensagem[n.caminho] = n.message
+      const texto = descricao(n, agoraEstado)
+      mensagens.push(`${ICONE[agoraEstado]} ${texto}`)
+      enc.mensagem[n.caminho] = texto
       enc.ultimoAlarme[n.caminho] = agora
       enc.pendente[n.caminho] = true
     } else if (enc.pendente[n.caminho]) {
-      mensagens.push(`✓ Resolvido: ${enc.mensagem[n.caminho] || n.caminho}`)
+      mensagens.push(`✓ Resolvido: ${enc.mensagem[n.caminho] || descricao({ caminho: n.caminho }, 'alarm')}`)
       delete enc.pendente[n.caminho]
     }
   }
@@ -87,7 +91,7 @@ function listarNotificacoes (arvore, prefixo = 'notifications') {
 function alarmesAtivos (lista, nunca = NUNCA) {
   return lista
     .filter(n => ['alarm', 'emergency', 'warn'].includes(n.state) && !casaAlgum(n.caminho, nunca))
-    .map(n => n.message || n.caminho)
+    .map(n => descricao(n))
 }
 
 module.exports = { novoEncaminhador, encaminhar, listarNotificacoes, alarmesAtivos, NUNCA, SO_ALARME }
