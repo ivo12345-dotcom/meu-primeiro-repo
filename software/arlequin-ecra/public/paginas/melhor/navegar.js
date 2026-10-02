@@ -14,7 +14,13 @@
 //     (POST /plano-ativo/chegada; só envia com o toque);
 //   a pergunta do Terminar e as mensagens do plano ficam ligadas ao plano (idCalculo, indice,
 //     ativadoEm): saem quando o plano muda ou fecha, nunca aparecem sobre o plano seguinte;
-//   um erro da leitura que não seja 404: "sem ligação ao plugin da rota: os dados podem estar velhos".
+//   um erro da leitura que não seja 404: "sem ligação ao plugin da rota: os dados podem estar velhos";
+//   os contactos em terra (revisão final I2, I3): "contactos em terra: alarme HH:MM" na faixa e na caixa
+//     da pausa, "mensagem para terra por enviar (sem rede)" (uma na fila que já falhou), "não chegou a X
+//     (a tentar outra vez)" (o parcial) e, em pausa, "em pausa: os atrasos não seguem para terra";
+//   o atraso retido (revisão final C1, decisão do Ivo de 02/10): "A hora de alarme em terra é HH:MM e não
+//     foi adiada (barco parado / limite de 3 h). Se estás bem, carrega Estou bem." com o botão (POST
+//     /plano-ativo/estou-bem: sai um atraso com a estimativa de agora).
 // As horas ("daqui a X min", "amanhã") contam-se com a hora do plugin (o agora do GET, mais o tempo
 // desde a leitura): no barco é o mesmo relógio; na viagem acelerada do dev, o simulado.
 // Nunca mostra null, NaN nem undefined: o que falta fica de fora.
@@ -115,7 +121,34 @@ function linhasFaixa (ctx, p) {
   else if (r.semLeitura) linhas.push('<span class="lab">recursos: sem leitura</span>')
   if (p.semGps) linhas.push('<span class="perigo">sem GPS: acompanhamento parado</span>')
   if (p.barometro?.semLeitura) linhas.push('<span class="lab">barómetro: sem leitura</span>')
-  return linhas
+  return [...linhas, ...linhasTerra(p, t)]
+}
+
+// Os contactos em terra (revisão final I2, I3), só com o plano enviado: a hora de alarme que eles têm, a
+// mensagem que não chegou a alguém (o parcial), a que está por enviar e, em pausa, que os atrasos param.
+// simples: sem as cores (dentro da caixa vermelha da pausa).
+function linhasTerra (p, t, { pausa = false, simples = false } = {}) {
+  if (!p.envio?.contactos?.length) return []
+  const cor = (classe, x) => (simples ? x : `<span class="${classe}">${x}</span>`)
+  const out = []
+  const alarme = Date.parse(p.envio.alarme)
+  if (ok(alarme)) out.push(cor('lab', `contactos em terra: alarme ${horaLisboa(alarme, t)}`))
+  const fila = Array.isArray(p.filaContactos) ? p.filaContactos : []
+  const nomes = [...new Set(fila.filter(m => m.parcial).flatMap(m => (Array.isArray(m.contactos) ? m.contactos : [])))]
+  if (nomes.length) out.push(cor('atencao', `não chegou a ${esc(nomes.join(', '))} (a tentar outra vez)`))
+  if (fila.some(m => !m.parcial && m.tentativas >= 1)) out.push(cor('atencao', 'mensagem para terra por enviar (sem rede)'))
+  if (pausa) out.push(cor('atencao', 'em pausa: os atrasos não seguem para terra'))
+  return out
+}
+
+// O atraso que não seguiu para terra (revisão final C1): a hora de alarme que terra tem, o porquê e o botão.
+function retido (p, t) {
+  const r = p.atrasoRetido
+  const alarme = Date.parse(r?.alarme)
+  if (!r || !ok(alarme)) return ''
+  const porque = r.motivo === 'limite' ? 'limite de 3 h' : 'barco parado'
+  return `<div class="tile atencao plano-retido"><div class="v">A hora de alarme em terra é ${horaLisboa(alarme, t)} e não foi adiada (${porque}). Se estás bem, carrega Estou bem.</div>
+<div class="acoes"><button class="acao go" data-acao="rota-estou-bem">Estou bem</button></div></div>`
 }
 
 // a pergunta do Terminar: só a deste plano
@@ -141,13 +174,14 @@ export function render (ctx) {
   if (!p) return msg
   const semLigacao = e.semLigacao ? `<div class="perigo">${esc(SEM_LIGACAO)}</div>` : ''
   if (p.estado === 'pausado') {
-    return `<div class="tile caixa-erro plano-pausado">a rota ativa já não é a do plano: terminar o plano?${semLigacao}
+    const terra = linhasTerra(p, horaPlugin(ctx, p), { pausa: true, simples: true }).map(l => `<div>${l}</div>`).join('')
+    return `<div class="tile caixa-erro plano-pausado">a rota ativa já não é a do plano: terminar o plano?${terra}${semLigacao}
 <div class="acoes"><button class="acao stop" data-acao="rota-terminar">Terminar</button><button class="acao go" data-acao="rota-continuar">Continuar</button><button class="acao" data-acao="rota-recalcular">Recalcular</button></div></div>
 ${chegadaOutro(p)}${confirmacao(e, p)}${msg}`
   }
   return `<div class="tile plano-faixa">${linhasFaixa(ctx, p).map(l => `<div>${l}</div>`).join('')}${semLigacao}
 <div class="acoes"><button class="acao" data-acao="rota-recalcular">Recalcular</button><button class="acao stop" data-acao="rota-terminar">Terminar</button></div></div>
-${confirmacao(e, p)}${msg}`
+${retido(p, horaPlugin(ctx, p))}${confirmacao(e, p)}${msg}`
 }
 
 // As ações do plano ativo: true se a tratou.
@@ -181,6 +215,18 @@ export async function acao (nome, dados, ctx) {
     try {
       await ctx.pedir(`${URL_ROTA}/plano-ativo/continuar`, { method: 'POST' })
       e.msgPlano = null
+    } catch (err) { mensagem(motivoAcao(err), true, p) }
+    await buscarPlanoAtivo(ctx, true)
+    return true
+  }
+  if (nome === 'rota-estou-bem') {
+    const p = planoAberto(ctx)
+    if (!p?.atrasoRetido) return true
+    e.confirmarTerminar = null
+    try {
+      const r = await ctx.pedir(`${URL_ROTA}/plano-ativo/estou-bem`, { method: 'POST' })
+      const alarme = Date.parse(r?.alarme)
+      mensagem(ok(alarme) ? `Enviado aos contactos em terra: nova hora de alarme ${horaLisboa(alarme, horaPlugin(ctx, p))}.` : 'Enviado aos contactos em terra.', false, p)
     } catch (err) { mensagem(motivoAcao(err), true, p) }
     await buscarPlanoAtivo(ctx, true)
     return true

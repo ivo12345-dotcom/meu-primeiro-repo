@@ -610,3 +610,32 @@ test('escolher outro cartão a meio do envio não perde o plano: continua a segu
   await melhor.acao('rota-escolher', { i: '2' }, ctx)
   assert.equal(ctx.estado.plano, null)
 })
+
+test('revisão final I1: no Resultado, os contactos em terra têm o plano de outra alternativa ou de outro cálculo → "os contactos em terra têm o plano da 1.ª alternativa (alarme HH:MM): ao Ativar, segue o novo"', async () => {
+  const alarme = '2026-09-30T13:59:00.000Z' // 14:59 amanhã
+  for (const noite of [false, true]) {
+    const ctx = contexto({ estado: comResultado(DIRETA, { selecionada: 1, envioEmTerra: { idCalculo: 'calc-1', indice: 0, contactos: ['Mãe'], alarme } }), noite })
+    const html = melhor.render(ctx)
+    limpo(html, 'envio em terra')
+    assert.ok(semEspacos(html.replace(/<[^>]+>/g, ' ')).includes('os contactos em terra têm o plano da 1.ª alternativa (alarme amanhã 14:59): ao Ativar, segue o novo'), html)
+  }
+  // a mesma alternativa: nada
+  let ctx = contexto({ estado: comResultado(DIRETA, { selecionada: 0, envioEmTerra: { idCalculo: 'calc-1', indice: 0, contactos: ['Mãe'], alarme } }) })
+  assert.doesNotMatch(melhor.render(ctx), /contactos em terra têm o plano/)
+  // outro cálculo
+  ctx = contexto({ estado: comResultado(DIRETA, { envioEmTerra: { idCalculo: 'calc-0', indice: 2, contactos: ['Mãe'], alarme } }) })
+  assert.ok(semEspacos(melhor.render(ctx).replace(/<[^>]+>/g, ' ')).includes('os contactos em terra têm o plano de um cálculo anterior (alarme amanhã 14:59): ao Ativar, segue o novo'))
+  // o GET do resultado traz o envioEmTerra: fica no estado
+  const { seguir } = await import('../public/paginas/melhor/pedir.js')
+  const c2 = contexto({ estado: { vista: 'a-calcular', calculo: { id: 'calc-9' } }, respostas: { [`GET ${ROTA}/resultado/calc-9`]: { estado: 'pronto', resultado: DIRETA, envioEmTerra: { idCalculo: 'calc-1', indice: 0, contactos: ['Mãe'], alarme } } } })
+  await seguir(c2)
+  assert.equal(c2.estado.vista, 'resultado')
+  assert.equal(c2.estado.envioEmTerra?.idCalculo, 'calc-1')
+})
+
+test('revisão final M2: depois de um "Sair agora mesmo assim" (ou do Recalcular no mar, sairAgora), o botão desaparece (repetia o mesmo cálculo)', () => {
+  let ctx = contexto({ estado: comResultado(FUGA, { ultimoPedido: { destino: 'peniche', tripulacao: 'so', sairAgora: true } }) })
+  assert.doesNotMatch(melhor.render(ctx), /rota-sair-agora|Sair agora mesmo assim/)
+  ctx = contexto({ estado: comResultado(FUGA) })
+  assert.match(melhor.render(ctx), /data-acao="rota-sair-agora"/)
+})

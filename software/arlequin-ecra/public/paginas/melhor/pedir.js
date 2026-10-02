@@ -118,6 +118,8 @@ export function seguir (ctx) {
         // um cálculo seguido por um 409: o pedido é o do resultado
         if (!e.ultimoPedido && r.resultado.destino?.id) e.ultimoPedido = { destino: r.resultado.destino.id, tripulacao: r.resultado.tripulacao || 'so', sairAgora: !!r.resultado.sairAgora }
         e.idCalculo = id
+        // o plano que os contactos em terra têm (revisão final I1)
+        e.envioEmTerra = r.envioEmTerra && typeof r.envioEmTerra === 'object' ? r.envioEmTerra : null
         e.selecionada = 0
         e.plano = null
         e.vista = 'resultado'

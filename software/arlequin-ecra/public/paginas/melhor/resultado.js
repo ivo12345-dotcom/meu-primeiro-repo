@@ -3,7 +3,11 @@
 //   Resultado: a faixa do veredicto (cor do tipo) com as frases de porquê, a linha da previsão,
 //   os 3 cartões (a recomendada destacada), os avisos vermelhos (sempre visíveis), a linha do
 //   tempo, as precauções com caixas (guardadas por cálculo), os pontos de desistência, e os botões
-//   Mapa / Enviar plano / Ativar esta rota / Sair agora mesmo assim / Novo cálculo.
+//   Mapa / Enviar plano / Ativar esta rota / Sair agora mesmo assim / Novo cálculo. O "Sair agora mesmo
+//   assim" sai depois de um pedido já com sairAgora (revisão final M2: repetia o mesmo cálculo). Com os
+//   contactos em terra a ter o plano de outra alternativa ou de outro cálculo (envioEmTerra do GET
+//   /resultado, revisão final I1): "os contactos em terra têm o plano da N.ª alternativa (alarme HH:MM): ao
+//   Ativar, segue o novo".
 //   Nunca mostra null, NaN nem undefined: o que falta é "—".
 
 import { esc, num, horaLisboa, margem, nomeAlternativa, corVeredicto, avisosVermelhos, avisosGerais, linhaPrevisao } from '../../lib/rota-texto.js'
@@ -116,6 +120,20 @@ function estadoPlano (e) {
   return `<div class="tile perigo">não foi possível enviar: ${esc(p.motivo || p.erro || 'sem explicação')}${qual}${avisos}</div>`
 }
 
+// Os contactos em terra têm o plano de outra alternativa ou de outro cálculo (revisão final I1): ao Ativar
+// esta, o plano novo segue para eles ("Este plano substitui o anterior").
+function terraTemOutro (ctx, i) {
+  const e = ctx.estado
+  const u = e.envioEmTerra
+  if (!u || !Array.isArray(u.contactos) || !u.contactos.length) return ''
+  const mesmoCalculo = u.idCalculo === e.idCalculo
+  if (mesmoCalculo && u.indice === i) return ''
+  // o plano desta alternativa acabado de enviar neste ecrã: já o têm
+  if (e.plano?.estado === 'enviado' && e.plano.indice === i && contactosEmTerra(e.plano).length) return ''
+  const qual = mesmoCalculo && Number.isInteger(u.indice) ? `da ${u.indice + 1}.ª alternativa` : 'de um cálculo anterior'
+  return `<div class="tile atencao">os contactos em terra têm o plano ${qual} (alarme ${horaLisboa(u.alarme, agora(ctx))}): ao Ativar, segue o novo</div>`
+}
+
 // ---------- o plano pelo Telegram ----------
 function seguirPlano (ctx) {
   const e = ctx.estado
@@ -167,8 +185,7 @@ export function botoes (ctx) {
 <button class="acao" data-acao="rota-mapa"${semMapa ? ' disabled title="Este resultado vem sem o mapa"' : ''}>Mapa</button>
 <button class="acao" data-acao="rota-plano"${aEnviar ? ' disabled' : ''}>Enviar plano</button>
 <button class="acao go" data-acao="rota-ativar">Ativar esta rota</button>
-<button class="acao stop" data-acao="rota-sair-agora">Sair agora mesmo assim</button>
-<button class="acao" data-acao="rota-novo">Novo cálculo</button>
+${ctx.estado.ultimoPedido?.sairAgora === true ? '' : '<button class="acao stop" data-acao="rota-sair-agora">Sair agora mesmo assim</button>\n'}<button class="acao" data-acao="rota-novo">Novo cálculo</button>
 </div>${semMapa ? '<div class="lab">Este resultado vem sem o mapa (de uma versão antiga do plugin da rota): faz um novo cálculo para o ver.</div>' : ''}`
 }
 
@@ -189,6 +206,7 @@ ${prev || gerais.length ? `<div class="lab">${esc(prev)}${gerais.map(g => ` · <
 ${alts.length ? `<div class="g3">${alts.map((a, k) => cartao(ctx, a, k, k === i)).join('')}</div>` : '<div class="tile caixa-erro">Nenhuma alternativa passa: ver o porquê acima.</div>'}
 <div class="tile vermelhos"><div class="lab">Avisos vermelhos</div>${vermelhos.length ? vermelhos.map(x => `<div class="perigo">⚠ ${esc(x)}</div>`).join('') : '<div class="lab">nenhum</div>'}</div>
 ${estadoPlano(e)}
+${terraTemOutro(ctx, i)}
 ${e.msg ? `<div class="tile ${e.msgErro ? 'perigo' : ''}">${esc(e.msg)}</div>` : ''}
 ${botoes(ctx)}
 </div>

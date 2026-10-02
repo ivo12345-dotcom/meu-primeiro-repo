@@ -406,3 +406,76 @@ test('Tarefa 8.2: pausado sem rota ativa: o texto por baixo do título diz "a ro
     assert.match(html, /data-acao="rota-continuar"/)
   }
 })
+
+// ---------- revisão final (C1, I2, I3) ----------
+const ALARME = '2026-09-30T08:38:00.000Z' // 09:38 em Lisboa, amanhã
+
+test('revisão final C1 (decisão do Ivo de 02/10): com um atraso retido (atrasoRetido), "A hora de alarme em terra é HH:MM e não foi adiada (barco parado / limite de 3 h). Se estás bem, carrega Estou bem." com o botão; de dia e de noite', async () => {
+  for (const noite of [false, true]) {
+    for (const [motivo, porque] of [['parado', 'barco parado'], ['limite', 'limite de 3 h']]) {
+      const ctx = await leme({ ...PLANO, atrasoRetido: { motivo, alarme: ALARME } }, { noite })
+      const html = melhor.render(ctx)
+      limpo(html, `retido ${motivo}`)
+      assert.ok(texto(html).includes(`A hora de alarme em terra é amanhã 09:38 e não foi adiada (${porque}). Se estás bem, carrega Estou bem.`), texto(html))
+      assert.match(html, /data-acao="rota-estou-bem"[^>]*>Estou bem</)
+    }
+  }
+  // sem nada retido: nem o texto nem o botão
+  const ctx = await leme(PLANO)
+  assert.doesNotMatch(melhor.render(ctx), /rota-estou-bem|não foi adiada/)
+})
+
+test('revisão final C1: o "Estou bem" faz o POST /plano-ativo/estou-bem, diz a nova hora de alarme e lê o plano outra vez; o erro aparece', async () => {
+  const ctx = await leme({ ...PLANO, atrasoRetido: { motivo: 'parado', alarme: ALARME } }, {
+    respostas: {
+      [`POST ${ROTA}/plano-ativo/estou-bem`]: { ok: true, chegada: '2026-09-30T08:10:00.000Z', alarme: '2026-09-30T10:10:00.000Z' },
+      [`GET ${ROTA}/plano-ativo`]: [{ ...PLANO, atrasoRetido: { motivo: 'parado', alarme: ALARME } }, PLANO]
+    }
+  })
+  melhor.render(ctx)
+  await melhor.acao('rota-estou-bem', {}, ctx)
+  assert.ok(ctx.pedidos.some(p => p.method === 'POST' && p.url === `${ROTA}/plano-ativo/estou-bem`))
+  assert.equal(ctx.pedidos.at(-1).url, `${ROTA}/plano-ativo`)
+  const html = melhor.render(ctx)
+  assert.ok(texto(html).includes('Enviado aos contactos em terra: nova hora de alarme amanhã 11:10.'), texto(html))
+  assert.doesNotMatch(html, /rota-estou-bem/)
+  // o 409 (já não há nada retido): o motivo do plugin
+  const c2 = await leme({ ...PLANO, atrasoRetido: { motivo: 'limite', alarme: ALARME } }, { respostas: { [`POST ${ROTA}/plano-ativo/estou-bem`]: erroHttp(409, 'não há nenhum atraso por enviar') } })
+  await melhor.acao('rota-estou-bem', {}, c2)
+  assert.match(melhor.render(c2), /não há nenhum atraso por enviar/)
+})
+
+test('revisão final I2: a faixa e a caixa da pausa dizem "contactos em terra: alarme HH:MM"; uma mensagem por enviar (tentativas ≥ 1) "mensagem para terra por enviar (sem rede)"; em pausa "em pausa: os atrasos não seguem para terra"; de dia e de noite', async () => {
+  const fila = [{ tipo: 'atraso', criada: PLANO.ativadoEm, tentativas: 2, proxima: PLANO.ativadoEm, estado: 'fila', erro: 'o plugin porto não respondeu', contactos: ['Mãe'], parcial: false }]
+  for (const noite of [false, true]) {
+    let ctx = await leme({ ...PLANO, filaContactos: fila }, { noite })
+    let t = texto(melhor.render(ctx))
+    limpo(melhor.render(ctx), 'faixa')
+    assert.ok(t.includes('contactos em terra: alarme amanhã 09:38'), t)
+    assert.ok(t.includes('mensagem para terra por enviar (sem rede)'), t)
+    assert.ok(!t.includes('em pausa'), t)
+    ctx = await leme({ ...PLANO, estado: 'pausado', pausadoDe: 'a navegar' }, { noite })
+    t = texto(melhor.render(ctx))
+    limpo(melhor.render(ctx), 'pausa')
+    assert.ok(t.includes('contactos em terra: alarme amanhã 09:38'), t)
+    assert.ok(t.includes('em pausa: os atrasos não seguem para terra'), t)
+    assert.ok(!t.includes('por enviar'), 'nada na fila')
+  }
+  // a 1.ª tentativa ainda a sair (tentativas 0) não é "sem rede"; sem o plano enviado, nenhuma destas linhas
+  let ctx = await leme({ ...PLANO, filaContactos: [{ ...fila[0], tentativas: 0 }] })
+  assert.ok(!texto(melhor.render(ctx)).includes('por enviar'))
+  ctx = await leme({ ...PLANO, envio: null, estado: 'pausado', pausadoDe: 'a navegar' })
+  assert.doesNotMatch(texto(melhor.render(ctx)), /contactos em terra|atrasos não seguem/)
+})
+
+test('revisão final I3: a mensagem que não chegou a um contacto (o parcial na fila) → "não chegou a Pai (a tentar outra vez)"', async () => {
+  const fila = [{ tipo: 'atraso', criada: PLANO.ativadoEm, tentativas: 1, proxima: PLANO.ativadoEm, estado: 'fila', erro: 'Pai: bloqueou o bot', contactos: ['Pai'], parcial: true }]
+  for (const noite of [false, true]) {
+    const ctx = await leme({ ...PLANO, filaContactos: fila, enviadas: [{ tipo: 'atraso', enviadaEm: PLANO.ativadoEm, contactos: ['Mãe'], falhas: [{ nome: 'Pai', erro: 'bloqueou o bot' }] }] }, { noite })
+    const html = melhor.render(ctx)
+    limpo(html, 'parcial')
+    const t = texto(html)
+    assert.ok(t.includes('não chegou a Pai (a tentar outra vez)'), t)
+    assert.ok(!t.includes('sem rede'), 'chegou aos outros: não é falta de rede')
+  }
+})
