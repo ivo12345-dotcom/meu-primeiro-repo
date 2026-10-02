@@ -2,6 +2,7 @@
 
 import { LIMITES_AIS } from '../lib/cpa.js'
 import { acaoCalar } from '../lib/alarmes.js'
+import { tipoAis } from '../lib/ais.js'
 import { velocidade, distancia, duracao, rumo, num, tile, esc } from './comum.js'
 
 const ESTADO = { perigo: 'PERIGO', atencao: 'atenção', seguro: 'seguro', afasta: 'afasta-se', desconhecido: '—' }
@@ -13,7 +14,7 @@ export default {
       const cls = a.classe === 'perigo' ? 'perigo' : a.classe === 'atencao' ? 'atencao' : ''
       const temCpa = a.r && a.classe !== 'afasta'
       return `<tr data-mmsi="${esc(a.mmsi)}" data-acao="sel" class="${cls} ${sel === a.mmsi ? 'sel' : ''}">
-<td>${esc(a.name || a.mmsi)}</td><td>${esc(a.tipo || '—')}</td><td>${a.r ? distancia(a.r.distancia) + ' MN' : '—'}</td><td>${a.r ? rumo(a.r.marcacao) : '—'}</td>
+<td>${esc(a.name || a.mmsi)}</td><td>${esc(tipoAis(a.tipo))}</td><td>${a.r ? distancia(a.r.distancia) + ' MN' : '—'}</td><td>${a.r ? rumo(a.r.marcacao) : '—'}</td>
 <td>${velocidade(a.sog)} / ${rumo(a.cog)}</td><td>${temCpa ? distancia(a.r.cpa) + ' MN' : '—'}</td><td>${temCpa ? duracao(a.r.tcpa) : '—'}</td><td>${ESTADO[a.classe]}</td></tr>`
     }).join('')
     const a = ctx.alvos.find(x => x.mmsi === sel)
@@ -21,7 +22,7 @@ export default {
     // as mesmas regras do botão da barra (auditoria I-08): silenciar onde o servidor deixa, senão reconhecer
     const calar = n ? acaoCalar(n) : null
     const detalhe = a
-      ? `<div class="tile"><div class="linha"><span class="v">${esc(a.name || a.mmsi)}</span><span class="lab">MMSI ${esc(a.mmsi)} · ${esc(a.tipo || 'tipo desconhecido')}</span></div>
+      ? `<div class="tile"><div class="linha"><span class="v">${esc(a.name || a.mmsi)}</span><span class="lab">MMSI ${esc(a.mmsi)} · ${esc(tipoAis(a.tipo) === '—' ? 'tipo desconhecido' : tipoAis(a.tipo))}</span></div>
 <div class="g3" style="margin-top:.3rem;">${tile('Distância · marcação', `${a.r ? distancia(a.r.distancia) : '—'} MN · ${a.r ? rumo(a.r.marcacao) : '—'}`)}${tile('CPA · TCPA', a.r && a.classe !== 'afasta' ? `${distancia(a.r.cpa, 2)} MN · ${duracao(a.r.tcpa)}` : 'afasta-se')}${tile('SOG · COG', `${velocidade(a.sog)} nós · ${rumo(a.cog)}`)}</div>
 <div class="acoes" style="margin-top:.4rem;">${calar ? `<button class="acao stop" data-acao="${calar}" data-id="${esc(n.id)}">${calar === 'reconhecer' ? 'Reconhecer alarme' : 'Silenciar alarme'}</button>` : ''}<button class="acao" data-acao="fechar">Fechar</button></div></div>`
       : ''

@@ -16,6 +16,46 @@ const URL_IA = '/plugins/signalk-arlequin-ia'
 export const URL_DIARIO = '/plugins/arlequin-ecra/diario'
 // Grava uma entrada (o ctx.logbook do app.js e os testes): POST { text, category }.
 export const gravarNoDiario = (pedir, text, category = 'navigation') => pedir(URL_DIARIO, { method: 'POST', body: { text, category } })
+// As categorias do signalk-logbook (auditoria I-32: em inglês no logbook)
+const CATEGORIAS = { navigation: 'navegação', engine: 'motor', radio: 'rádio', maintenance: 'manutenção' }
+
+// As entradas automáticas do signalk-logbook vêm em inglês (auditoria I-32): o ecrã traduz as conhecidas;
+// as que o Ivo escreveu ficam tal e qual. A de hora a hora vem sem texto.
+const GRAVIDADES = { alert: 'Alerta', warn: 'Aviso', alarm: 'Alarme', emergency: 'Emergência', normal: 'Normal', nominal: 'Normal' }
+const FIXAS = {
+  'Autopilot activated': 'Piloto ligado', 'Autopilot set to wind mode': 'Piloto no modo vento', 'Autopilot set to route mode': 'Piloto no modo rota',
+  'Autopilot deactivated': 'Piloto desligado', Anchored: 'Fundeado', Stopped: 'Parado', Sailing: 'À vela', Motoring: 'A motor',
+  'Motor stopped, sailing': 'Motor desligado, à vela', 'Anchor up, motoring': 'Âncora a bordo, a motor', 'Sails down, motoring': 'Velas em baixo, a motor',
+  'Watch schedule stopped': 'Fim dos quartos'
+}
+const PADROES = [
+  [/^Motor stopped, sailing with (.+)$/, (m) => `Motor desligado, à vela com ${m[1]}`],
+  [/^Sailing with (.+)$/, (m) => `À vela com ${m[1]}`],
+  [/^Heading changed to (\d+)°$/, (m) => `Proa mudou para ${m[1]}°`],
+  [/^Tack \(Heading (\d+)°\)$/, (m) => `Virámos por davante (proa ${m[1]}°)`],
+  [/^Gybe \(Heading (\d+)°\)$/, (m) => `Cambámos (proa ${m[1]}°)`],
+  [/^Crew changed to (.*)$/, (m) => `Tripulação: ${m[1]}`],
+  [/^(.+) joined the crew$/, (m) => `${m[1]} entrou na tripulação`],
+  [/^(.+) left the crew$/, (m) => `${m[1]} saiu da tripulação`],
+  [/^(.+) took over as skipper$/, (m) => `${m[1]} passou a skipper`],
+  [/^(.+) on watch$/, (m) => `${m[1]} de quarto`],
+  [/^Changed ship's time to (.+)$/, (m) => `Hora de bordo mudada para ${m[1]}`],
+  [/^Started (.+) engine$/, (m) => `Motor ${m[1]} ligado`],
+  [/^Stopped (.+) engine$/, (m) => `Motor ${m[1]} desligado`],
+  [/^Sails set: (.+)$/, (m) => `Velas: ${m[1]}`],
+  [/^(Alert|Warn|Alarm|Emergency|Normal|Nominal): (.+) \([\w.]+\)$/, (m) => `${GRAVIDADES[m[1].toLowerCase()]}: ${m[2]}`],
+  [/^(Alert|Warn|Alarm|Emergency|Normal|Nominal) notification: (.+)$/, (m) => `${GRAVIDADES[m[1].toLowerCase()]}: ${m[2]}`],
+  [/^Cleared after (.+?): (.+?)(?: — peaked (\w+))?(?:, (\d+) transitions)?$/, (m) => `Resolvido ao fim de ${m[1]}: ${m[2]}${m[3] ? ` (chegou a ${(GRAVIDADES[m[3]] || m[3]).toLowerCase()})` : ''}${m[4] ? `, ${m[4]} mudanças` : ''}`]
+]
+export function textoDaEntrada (x) {
+  const t = typeof x?.text === 'string' ? x.text : ''
+  if (x?.origin !== 'auto') return t
+  if (!t) return 'Registo de hora a hora'
+  if (FIXAS[t]) return FIXAS[t]
+  for (const [re, f] of PADROES) { const m = re.exec(t); if (m) return f(m) }
+  return t
+}
+
 const MODELOS_IA = [['velocidade', 'Velocidade'], ['ventoForca', 'Vento'], ['consumo', 'Consumo']]
 
 const agora = (ctx) => (Number.isFinite(ctx.agora) ? ctx.agora : Date.now())
@@ -49,7 +89,8 @@ function cartaoIa (ia) {
   if (ia.erro) return `<div class="tile lab">AI: ${esc(ia.erro)}</div>`
   const linhas = MODELOS_IA.map(([nome, rotulo]) => {
     const m = ia.modelos?.[nome]
-    const texto = m?.erro ? `${esc(m.versao)} · não consegui ler o modelo: ${esc(m.erro)}`
+    // frases fixas em pt-PT (auditoria I-32): o erro técnico do plugin ("unexpected end of file"…) fica no plugin
+    const texto = m?.erro ? `${esc(m.versao)} · não consegui ler o modelo`
       : m?.versao ? `${esc(m.versao)} · ${virgula(m.horas)} h · ${esc(m.frases?.[0] || '')}` : 'a aprender'
     // o plugin diz se há uma versão anterior que tenha estado em uso (só essas servem para voltar)
     const voltar = m?.podeVoltar ? `<button class="acao" data-acao="ia-voltar" data-modelo="${nome}">Voltar atrás</button>` : ''
@@ -58,12 +99,12 @@ function cartaoIa (ia) {
   const t = ia.ultimoTreino
   const ultimo = ia.emTreino ? 'a treinar…'
     : !t ? 'ainda não treinou'
-      : t.erro ? `último treino falhou: ${esc(t.erro)}`
+      : t.erro ? `último treino falhou às ${hora(t.em)} (o motivo está no estado do plugin da AI)`
         : !Array.isArray(t.resultados) ? `último treino ${hora(t.em)}`
           : `último treino ${hora(t.em)}: ${t.resultados.filter(r => r?.aceite).length} de ${t.resultados.length} modelos melhoraram`
   const p = ia.previsao
   const ultima = p?.okEm ? `última ${hora(p.okEm)}` : ''
-  const previsao = p?.erro ? `previsão: sem rede (${esc(p.erro)})${ultima ? ' · ' + ultima : ''}`
+  const previsao = p?.erro ? `previsão: falhou ao atualizar${ultima ? ' · ' + ultima : ''}`
     : ultima ? `previsão: ${ultima}` : 'previsão: ainda nenhuma'
   return `<div class="tile"><div class="lab">AI · o que o barco aprendeu</div><table>${linhas}</table>
 <div class="lab">${previsao}</div>
@@ -77,7 +118,7 @@ export default {
     buscarIa(ctx)
     const e = ctx.estado
     const lista = (e.entradas || []).slice().reverse().map(x => {
-      return `<tr><td style="width:4.5rem;">${hora(x.datetime)}</td><td>${esc(x.text)}</td><td class="lab">${esc(x.category || '')}</td></tr>`
+      return `<tr><td style="width:4.5rem;">${hora(x.datetime)}</td><td>${esc(textoDaEntrada(x))}</td><td class="lab">${esc(CATEGORIAS[x.category] || x.category || '')}</td></tr>`
     }).join('')
     const vazio = e.erro
       ? `<div class="perigo">${esc(e.erro)}</div>`
