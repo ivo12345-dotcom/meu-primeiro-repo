@@ -103,14 +103,14 @@ test('GET /plano-ativo: 404 sem plano; com ele, o estado, o destino, o atraso, o
   s.p.stop()
 })
 
-test('"Cheguei bem a X às HH:MM" na chegada, uma vez, aos contactos do plano (tipo chegada, sem GPX), com a hora a que saiu; nada se repete depois de um reinício', async () => {
+test('"Cheguei bem a X qua 30/09 às HH:MM" na chegada (com o dia: decisão n.º 16), uma vez, aos contactos do plano (tipo chegada, sem GPX), com a hora a que saiu; nada se repete depois de um reinício', async () => {
   const s = await preparar()
   await sair(s)
   await chegar(s)
   assert.equal(s.p.planoAtivo().estado, 'chegado')
   const chegadas = s.recebidos.filter(e => e.tipo === 'chegada')
   assert.equal(chegadas.length, 1)
-  assert.match(chegadas[0].texto, /^Cheguei bem a Algés \(CNA\) às \d\d:\d\d\. Obrigado!\nref\. [A-Z]\d+$/)
+  assert.equal(chegadas[0].texto, `Cheguei bem a Algés (CNA) ${plano_.diaEHora(Date.parse(s.p.planoAtivo().chegou))}. Obrigado!\nref. ${plano(s).contactos.enviadas.find(m => m.tipo === 'chegada').ref}`)
   assert.deepEqual(chegadas[0].contactos, ['Mãe'])
   assert.deepEqual(chegadas[0].chats, ['222'], 'o porto escolhe pelo chatId')
   assert.equal(chegadas[0].destinatarios, 'contactos-do-plano')
@@ -203,7 +203,7 @@ test('fila sem rede: o porto sem responder (30 s) ou desligado, a mensagem fica 
   s.p.stop()
 })
 
-test('POST /plano-ativo/terminar: "Viagem terminada / mudança de planos: estou bem, em <posição> às HH:MM" aos contactos; o plano fecha e os avisos voltam a normal; sem plano aberto, 409', async () => {
+test('POST /plano-ativo/terminar: "Viagem terminada / mudança de planos: estou bem, em <posição> qua 30/09 às HH:MM" (com o dia: decisão n.º 16) aos contactos; o plano fecha e os avisos voltam a normal; sem plano aberto, 409', async () => {
   const s = await preparar()
   await sair(s)
   await s.ciclo(13 * H)
@@ -213,7 +213,8 @@ test('POST /plano-ativo/terminar: "Viagem terminada / mudança de planos: estou 
   assert.equal(plano(s).estado, 'terminado')
   const m = s.recebidos.filter(e => e.tipo === 'terminado')
   assert.equal(m.length, 1)
-  assert.match(m[0].texto, /^Viagem terminada \/ mudança de planos: estou bem, em \d+°\d+,\d' N \d+°\d+,\d' W às \d\d:\d\d\.\nref\. [A-Z]\d+$/)
+  assert.match(m[0].texto, /^Viagem terminada \/ mudança de planos: estou bem, em \d+°\d+,\d' N \d+°\d+,\d' W /)
+  assert.ok(m[0].texto.endsWith(` ${plano_.diaEHora(s.agora())}.\nref. ${plano(s).contactos.enviadas.at(-1).ref}`), m[0].texto)
   assert.equal(s.app.self['notifications.rota.previsao'].state, 'normal')
   assert.equal((await chamar(s.r.post['/plano-ativo/terminar'])).code, 409)
   // depois de "terminada", nenhum atraso
@@ -453,7 +454,7 @@ test('re-revisão I-1 (sonda P1): a rota limpa a ~27 % da viagem, o Ivo segue à
   assert.equal(plano(s).estado, 'chegado', 'gravado')
   const chegadas = s.recebidos.filter(e => e.tipo === 'chegada')
   assert.equal(chegadas.length, 1)
-  assert.match(chegadas[0].texto, /^Cheguei bem a Algés \(CNA\) às \d\d:\d\d\. Obrigado!\nref\. [A-Z]\d+$/)
+  assert.equal(chegadas[0].texto, `Cheguei bem a Algés (CNA) ${plano_.diaEHora(Date.parse(plano(s).chegou))}. Obrigado!\nref. ${plano(s).contactos.enviadas.find(m => m.tipo === 'chegada').ref}`)
   s.p.stop()
 })
 
@@ -479,7 +480,7 @@ test('decisão 5 (Ivo): em pausa no mar, parado 30 min noutro porto da lista →
   assert.deepEqual(c, { code: 200, ok: true, estado: 'chegado', contactos: true })
   const m = s.recebidos.filter(e => e.tipo === 'chegada')
   assert.equal(m.length, 1)
-  assert.equal(m[0].texto, `Cheguei bem a ${nome} às ${horaLisboa(Date.parse(g.agora) - 30 * MIN, s.agora())}. Obrigado!\nref. ${plano(s).contactos.enviadas.at(-1).ref}`)
+  assert.equal(m[0].texto, `Cheguei bem a ${nome} ${plano_.diaEHora(Date.parse(g.agora) - 30 * MIN)}. Obrigado!\nref. ${plano(s).contactos.enviadas.at(-1).ref}`)
   assert.equal(plano(s).estado, 'chegado')
   assert.deepEqual(plano(s).chegouA, { id: 'cascais', nome })
   assert.equal((await chamar(s.r.post['/plano-ativo/chegada'], { body: { destino: 'cascais' } })).code, 409, 'já fechado')
@@ -1129,5 +1130,41 @@ test('auditoria I-04: o "cheguei bem" da viagem 1 entregue depois de o plano da 
   assert.equal(s.recebidos.filter(e => e.tipo === 'plano').length, n + 1)
   assert.ok(s.recebidos.filter(e => e.tipo === 'plano').at(-1).texto.includes('Este plano substitui o anterior.'))
   assert.deepEqual(s.p.planoAtivo().envio.contactos, ['Mãe'])
+  s.p.stop()
+})
+
+// ---------- auditoria I-05 (decisão n.º 16): o contacto que nunca recebe ----------
+test('auditoria I-05 (sonda S3, decisão n.º 16): o Pai bloqueou o bot — o "cheguei bem" (com a data) chega à Mãe e o parcial do Pai repete-se até à hora de alarme dele; aí desiste, o Ivo recebe pelo Telegram "Pai não recebeu…: liga-lhe" e o GET diz desistencias; nada passa para o plano seguinte', async () => {
+  const s = await preparar({ contactos: [['Mãe', '222'], ['Pai', '333']] })
+  await sair(s)
+  s.porto.resposta = paiBloqueado
+  await chegar(s)
+  assert.equal(s.p.planoAtivo().estado, 'chegado')
+  const chegadas = () => s.recebidos.filter(e => e.tipo === 'chegada')
+  assert.match(chegadas()[0].texto, /^Cheguei bem a Algés \(CNA\) [a-zá]{3} \d\d\/\d\d às \d\d:\d\d\. Obrigado!\nref\. [A-Z]\d+$/)
+  const g0 = await chamar(s.r.get['/plano-ativo'])
+  const alarmePai = Date.parse(g0.envio.porContacto.find(x => x.nome === 'Pai').alarme)
+  // até à hora de alarme do Pai, o parcial repete-se de 2 em 2 min
+  while (s.agora() < alarmePai - 3 * MIN) await s.ciclo(2 * MIN)
+  const tentativas = chegadas().filter(e => e.chats.includes('333')).length
+  assert.ok(tentativas >= 3, `${tentativas}`)
+  assert.equal(s.recebidos.filter(e => e.tipo === 'aviso').length, 0)
+  // passa a hora de alarme do Pai: desiste e avisa o Ivo (só o chat do Ivo)
+  await s.ciclo(2 * MIN); await s.ciclo(2 * MIN)
+  const avisos = s.recebidos.filter(e => e.tipo === 'aviso')
+  assert.equal(avisos.length, 1)
+  assert.deepEqual(avisos[0].chats, [])
+  assert.deepEqual(avisos[0].contactos, [])
+  assert.match(avisos[0].texto, /^Pai não recebeu o «cheguei bem» \(ref\. [A-Z]\d+\) e já passou a hora de alarme \([a-zá]{3} \d\d\/\d\d às \d\d:\d\d\): desisti de o entregar\. Liga-lhe\.\nref\. [A-Z]\d+$/)
+  const g = await chamar(s.r.get['/plano-ativo'])
+  assert.deepEqual(g.desistencias.map(d => ({ tipo: d.tipo, contactos: d.contactos })), [{ tipo: 'chegada', contactos: ['Pai'] }])
+  assert.deepEqual(g.filaContactos, [])
+  const n = chegadas().length
+  for (let m = 0; m < 10; m++) await s.ciclo(2 * MIN)
+  assert.equal(chegadas().length, n, 'já não se repete')
+  // o plano seguinte não herda nada
+  const { id } = await calcular(s.r, { destino: 'cascais', tripulacao: 'so' })
+  assert.equal((await chamar(s.r.post['/ativar'], { body: { id, alternativa: 0 } })).code, 200)
+  assert.deepEqual(s.p.planoAtivo().contactos.fila, [])
   s.p.stop()
 })
