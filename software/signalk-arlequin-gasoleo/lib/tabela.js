@@ -16,6 +16,13 @@ function monotona (t) {
   return sobe || desce
 }
 
+// Uma tabela inteira (calibração completa, folha importada) é coerente se, ordenada pela razão, os
+// litros subirem sempre (ou descerem sempre). Ordenada pelos litros não serve: aí os litros sobem
+// sempre e um engano de leitura passava (auditoria I-30).
+function coerente (tabela) {
+  return monotona([...(tabela || [])].sort((a, b) => a.razao - b.razao))
+}
+
 // Devolve { tabela } ou { erro } sem mexer na tabela original.
 function acrescentarPonto (tabela, ponto, tolerancia = 0.005) {
   const p = arredondar(ponto)
@@ -27,4 +34,4 @@ function acrescentarPonto (tabela, ponto, tolerancia = 0.005) {
   return { tabela: nova }
 }
 
-module.exports = { acrescentarPonto, monotona }
+module.exports = { acrescentarPonto, monotona, coerente }

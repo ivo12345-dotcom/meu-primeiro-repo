@@ -6,7 +6,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { novoEstado, descontar, passo } = require('./lib/nivel')
-const { acrescentarPonto, monotona } = require('./lib/tabela')
+const { acrescentarPonto, coerente } = require('./lib/tabela')
 const calibracao = require('./lib/calibracao')
 
 const DUAS_HORAS = 2 * 3600 * 1000
@@ -236,7 +236,7 @@ module.exports = function (app) {
       if (!calib) return res.status(409).json({ ok: false, erro: 'não há calibração em curso' })
       let r
       try { r = calibracao.terminar(calib, { cheio: !!req.body?.cheio }) } catch (e) { return res.status(409).json({ ok: false, erro: e.message }) }
-      if (!monotona(r.tabela)) return res.status(422).json({ ok: false, erro: 'a tabela não é coerente: rever os pontos (desfazer)' })
+      if (!coerente(r.tabela)) return res.status(422).json({ ok: false, erro: 'a tabela não é coerente: rever os pontos (desfazer)' })
       aplicarTabela(r.tabela, r.capacidadeL)
       calib = null
       res.json({ ok: true, ...r })
@@ -245,7 +245,7 @@ module.exports = function (app) {
     escrever.post('/calibracao/importar', (req, res) => {
       let r
       try { r = calibracao.importar(req.body?.linhas || []) } catch (e) { return res.status(400).json({ ok: false, erro: e.message }) }
-      if (r.tabela.length < 2 || !monotona(r.tabela)) return res.status(422).json({ ok: false, erro: 'a folha não dá uma tabela coerente' })
+      if (r.tabela.length < 2 || !coerente(r.tabela)) return res.status(422).json({ ok: false, erro: 'a folha não dá uma tabela coerente' })
       const cap = req.body?.cheio ? Math.max(...(req.body.linhas || []).map(l => l.litros)) : null
       aplicarTabela(r.tabela, cap)
       res.json({ ok: true, ...r, capacidadeL: cap || o.capacidadeL })

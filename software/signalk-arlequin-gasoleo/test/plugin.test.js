@@ -319,6 +319,42 @@ test('C1: a fuga de gasóleo é publicada com apito contínuo', (t) => {
   assert.equal(fuga.apito, 'continuo')
 })
 
+// Auditoria I-30: a verificação via a tabela ordenada pelos litros (que sobem sempre): não verificava nada.
+test('I-30: uma folha incoerente (a razão desce aos 100 L, engano de leitura) é recusada com 422 e a tabela fica igual', async () => {
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ tabela: [{ razao: 0.1, litros: 0 }, { razao: 0.7, litros: 200 }] })
+  const r = rotasDe(p)
+  const linhas = [[0, 0.10], [50, 0.25], [100, 0.22], [150, 0.45], [200, 0.70]].map(([litros, razao]) => ({ litros, sonda: razao * 12.6, alimentacao: 12.6 }))
+  const res = await chamar(r.post['/calibracao/importar'], { linhas, cheio: true })
+  p.stop()
+  assert.equal(res.status, 422)
+  assert.equal(app.opcoesGuardadas, null)
+})
+
+test('I-30: uma calibração completa com um ponto incoerente (a razão desce) é recusada com 422', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ tabela: [{ razao: 0.1, litros: 0 }, { razao: 0.7, litros: 200 }] })
+  const r = rotasDe(p)
+  app.self['tanks.fuel.0.supplyVoltage'] = 12.5
+  const razaoDe = (L) => (L === 15 ? 0.15 : 0.12 + 0.004 * L) // aos 15 L a leitura desce (engano)
+  app.self['tanks.fuel.0.senderVoltage'] = razaoDe(0) * 12.5
+  await chamar(r.post['/calibracao/iniciar'], {})
+  avancar(t, 40)
+  for (let L = 5; L <= 25; L += 5) {
+    const a = await chamar(r.post['/calibracao/adicionar'], { litros: '5' })
+    assert.equal(a.ok, true, a.erro)
+    app.self['tanks.fuel.0.senderVoltage'] = razaoDe(L) * 12.5
+    avancar(t, 45)
+  }
+  const fim = await chamar(r.post['/calibracao/terminar'], {})
+  p.stop()
+  assert.equal(fim.status, 422, JSON.stringify(fim))
+  assert.equal(app.opcoesGuardadas, null)
+})
+
 test('importar a folha do multímetro', async (t) => {
   const app = appFalso()
   const p = criar(app)
