@@ -10,6 +10,8 @@
 //
 // entrada: {
 //   instrumentos: { posicao: { lat, lon }, socPct?, gasoleoL?, tendPressao3h? },
+//     (tendPressao3h: hPa, pressão agora − há 3 h, ou null — lib/cenarios.js tendenciaPressao3h com as
+//     amostras do barómetro; vai para o modelo do vento da AI como no treino)
 //   destino: 'id' | { lat, lon, nome? } | { rotaAtiva: [[lat, lon] | { lat, lon }, …] },
 //   tripulacao: 'so' | 'acompanhado', sairAgora: bool, agora: ms }
 // deps: {
@@ -531,7 +533,8 @@ async function calcularSemRede (entrada = {}, deps = {}) {
     desistencia,
     desistenciaResumo,
     previsao: { obtida: pv.obtida || previsao.obtida, idadeH: r2(Number.isFinite(pv.idadeH) ? pv.idadeH : (agora - Date.parse(previsao.obtida)) / H), aviso: pv.aviso || null, fim: iso(previsao.fim) },
-    ia: { versoes, nota: notaIa(modelos) },
+    // I-16: com um modelo do vento, a parte da previsão a mais de 12 h foi sem ele (a nota di-lo)
+    ia: { versoes, nota: notaIa(modelos, { previsaoAlemDoTreino: cenarios.previsaoAlemDoTreino }) },
     avisos: avisosGerais,
     estatisticas: { ...estat, candidatos: candidatos.length, recomendadas: candidatos.filter(x => decisao.recomendada(x, tripulacao)).length },
     mapa: mapaResultado

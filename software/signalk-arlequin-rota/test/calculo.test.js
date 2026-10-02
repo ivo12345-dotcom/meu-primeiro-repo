@@ -309,6 +309,27 @@ test('K-06 (decisão do Ivo n.º 1): "Sair agora" com o gasóleo curto, sem prev
   assert.ok(agora.length > 0 && agora.every(k => k.excluida && !k.excluidaSemSairAgora), JSON.stringify(agora.map(k => [k.id, k.excluida, k.motivos])))
 })
 
+test('I-16: a tendência do barómetro dos instrumentos vai para o modelo do vento; a AI do vento só até 12 h de previsão, e a nota do resultado di-lo', async () => {
+  const mod = require('signalk-arlequin-ia/lib/modelos')
+  const fixa = (v) => ({ feature_names: [], tree_info: [{ tree_structure: { leaf_value: v } }] })
+  const modelos = { ventoForca: { quantis: { p10: fixa(0.9), p50: fixa(1), p90: fixa(1.1) } } }
+  const orig = mod.preverVento
+  const vistos = []
+  mod.preverVento = (mF, mD, x, ...r) => { vistos.push(x); return orig(mF, mD, x, ...r) }
+  let r
+  try {
+    r = await calcular(entrada({ instrumentos: { posicao: ALGES, socPct: 90, gasoleoL: 124, tendPressao3h: -2.5 }, sairAgora: true }), deps({ modelos }))
+  } finally { mod.preverVento = orig }
+  assert.equal(r.erro, undefined, r.erro)
+  assert.ok(vistos.length > 0)
+  assert.ok(vistos.every(x => x.tendPressao3h === -2.5), 'a tendência dos instrumentos chega ao modelo')
+  assert.ok(vistos.every(x => x.idadePrevH <= 12), JSON.stringify(vistos.map(x => x.idadePrevH).filter(x => x > 12).slice(0, 3)))
+  // a passagem de 15 h com a previsão obtida às 14:00 passa das 12 h: a nota di-lo
+  assert.equal(r.ia.nota, 'AI em uso, sem alguns modelos: velocidade pela polar, direção prevista tal e qual, gasóleo pela curva da Volvo; além de 12 h de previsão, vento previsto ±10% e direção prevista tal e qual (a AI do vento só aprendeu com previsões de 0–12 h)')
+  // sem modelos do vento, a nota de sempre
+  assert.equal((await correr('agora', entrada({ sairAgora: true }), deps())).ia.nota, 'AI: a aprender (polar, previsão ±10% e curva da Volvo)')
+})
+
 test('o cálculo nunca lança: previsão estragada, sem rota ativa, posição null, entrada e dependências em falta', async () => {
   const casos = [
     [entrada(), deps({ obterPrevisao: async () => ({ previsao: { pontos: null } }) })],
