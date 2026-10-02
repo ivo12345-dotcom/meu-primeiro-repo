@@ -7,7 +7,7 @@ import { lerPolar } from './lib/polar.js'
 import { registarPressao, tendencia, lerBarometro } from './lib/barometro.js'
 import { novaViagem, acumular, lerViagem } from './lib/viagem.js'
 import { passoCiclo, desenharSeguro, escolherPagina, CAIXA_ERRO_DESENHO } from './lib/ciclo.js'
-import { alarmeDaBarra, deveTocar, paginaDoAlarme, bipDeLigacao, chipAlarme, calar } from './lib/alarmes.js'
+import { alarmeDaBarra, deveTocar, paginaDoAlarme, bipDeLigacao, chipAlarme, calar, calado } from './lib/alarmes.js'
 import { podeRedesenhar, aoEnter, aoEscrever } from './lib/interacao.js'
 import { NIVEIS, PADRAO as BRILHO_PADRAO, nivelValido, mudarNivel } from './lib/brilho.js'
 import { criarAudio, retomar, comSom, chipSemSom } from './lib/som.js'
@@ -241,7 +241,10 @@ document.addEventListener('click', async (ev) => {
   if (acao === 'silenciar' || acao === 'reconhecer') {
     ev.stopPropagation()
     try {
-      await calar(notificacaoDe(a.dataset), acao, pedir)
+      const n = notificacaoDe(a.dataset)
+      await calar(n, acao, pedir)
+      // calado já no ecrã (o stream confirma até 1 s depois; a barra passa logo ao seguinte que apita)
+      if (n.caminho && store.notificacoes.get(n.caminho) === n) store.notificacoes.set(n.caminho, calado(n, acao))
       app.falhaCalar = null
     } catch (err) {
       app.falhaCalar = { texto: falhaCalar(err, acao), ate: Date.now() + FALHA_CALAR_MS }

@@ -108,19 +108,33 @@ export function botaoCalar (al) {
 }
 
 // Cala uma notificação (acao: 'silenciar' | 'reconhecer') com o pedir do ecrã (signalk.js: o erro já vem em pt-PT).
-// Pelo id; se o servidor não gere as notificações (501), pelo caminho; sem id, pelo caminho. Outra recusa (ex.: a
-// emergência que não se silencia) passa para quem chama (a barra mostra-a).
+// Pelo id; se o servidor não gere as notificações (501), pelo caminho; sem id, pelo caminho. "Já estava calado" (um
+// 2.º toque, outro ecrã) é o que se queria: { jaCalado: true }. Outra recusa (ex.: a emergência que não se
+// silencia) passa para quem chama (a barra mostra-a).
+const JA_CALADO = /already (silenced|acknowledged)/i
 export async function calar (n, acao, pedir) {
   const id = idDoServidor(n)
   if (id) {
     try {
       return await pedir(`/signalk/v2/api/notifications/${encodeURIComponent(id)}/${acao === 'reconhecer' ? 'acknowledge' : 'silence'}`, { method: 'POST' })
     } catch (err) {
+      if (err?.status === 400 && JA_CALADO.test(err.corpo?.message || '')) return { jaCalado: true }
       if (err?.status !== 501 || !n.caminho) throw err
     }
   }
   if (typeof n?.caminho !== 'string' || !n.caminho.startsWith('notifications.')) throw Object.assign(new Error('o SignalK já não tem este alarme'), { status: 404 })
   return pedir(`/signalk/v1/api/vessels/self/${n.caminho.split('.').map(encodeURIComponent).join('/')}/method`, { method: 'PUT', body: { value: ['visual'] } })
+}
+
+// A notificação como o SignalK a deixa depois de calada (alarm.js, alignAlarmMethod): silenciada, sem o sound;
+// reconhecida, a emergência só visual e o resto sem nada; pelo caminho (sem status do servidor), só visual. O
+// app.js põe-na já no store (visto ponta a ponta: o stream só a confirma até 1 s depois — subscrição com period —
+// e a barra ficava ~2 s com o mesmo botão; um 2.º toque dava "já estava silenciado"). O delta seguinte do servidor
+// substitui-a pelo que ele tem.
+export function calado (n, acao) {
+  if (!idDoServidor(n)) return { ...n, method: ['visual'], status: { ...(n.status || {}), silenced: true } }
+  if (acao === 'reconhecer') return { ...n, method: n.state === 'emergency' ? ['visual'] : [], status: { ...(n.status || {}), acknowledged: true } }
+  return { ...n, method: (n.method || []).filter(m => m !== 'sound'), status: { ...(n.status || {}), silenced: true } }
 }
 
 // O chip do alarme na barra de cima e, ao lado, o botão de calar. O texto vem dos plugins (eventos da rota, nomes
