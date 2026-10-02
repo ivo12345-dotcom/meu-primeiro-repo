@@ -209,6 +209,30 @@ test('M-11: o pedido do mar falhado fica marcado (marFalhou) e as ondas podem vi
   assert.equal(prev.juntarMarDoArquivo(P29, a.previsao), P29)
 })
 
+test('M-11: lerArquivo com soComOndas salta as guardadas sem ondas (a de um pedido do mar falhado, também arquivada) e fica com a mais recente que as tem', async () => {
+  const pasta = temp()
+  // às 11:00 com o mar; às 13:00 só com o vento (o pedido do mar falhou, e o plugin arquiva-a na mesma)
+  prev.guardarArquivo(pasta, { ...P29, obtida: '2026-09-29T11:00:00.000Z' })
+  const semMar = await prev.obterPrevisao({ pontos: PONTOS, agora: T('2026-09-29T13:00:00Z'), fetch: async (u) => (u.includes('marine') ? { ok: false, status: 502 } : { ok: true, json: async () => FIX.forecast }) })
+  prev.guardarArquivo(pasta, semMar)
+  const q = { pontos: PONTOS, desde: T('2026-09-29T14:00Z'), ate: T('2026-09-30T02:00Z'), agora: T('2026-09-29T14:00Z') }
+  // sem a opção, a mais recente: a sem ondas (juntar dela não dá nada)
+  const recente = prev.lerArquivo(pasta, q)
+  assert.equal(recente.obtida, '2026-09-29T13:00:00.000Z')
+  assert.equal(prev.juntarMarDoArquivo(semMar, recente.previsao), semMar)
+  // com soComOndas, a das 11:00: as ondas juntam-se
+  const comOndas = prev.lerArquivo(pasta, { ...q, soComOndas: true })
+  assert.equal(comOndas.erro, undefined, comOndas.erro)
+  assert.equal(comOndas.obtida, '2026-09-29T11:00:00.000Z')
+  const junta = prev.juntarMarDoArquivo(semMar, comOndas.previsao)
+  assert.equal(junta.marDoArquivo, '2026-09-29T11:00:00.000Z')
+  for (const [i, p] of junta.pontos.entries()) assert.deepEqual(p.ondas, P29.pontos[i].ondas, `ponto ${i}`)
+  // só guardadas sem ondas: não há nenhuma que sirva
+  const so = temp()
+  prev.guardarArquivo(so, semMar)
+  assert.equal(prev.lerArquivo(so, { ...q, soComOndas: true }).erro, 'não há previsão guardada que cubra a rota')
+})
+
 test('arquivo: um ficheiro por ponto no formato da Parte 2, escrita atómica, nomes sem ":"', () => {
   const pasta = temp()
   const fs1 = prev.guardarArquivo(pasta, P29)
