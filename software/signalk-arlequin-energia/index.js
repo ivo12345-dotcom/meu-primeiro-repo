@@ -106,16 +106,26 @@ module.exports = function (app) {
   }
 
   function aoReceber (delta) {
+    const b = `electrical.batteries.${opcoes.servico}.`
+    const caminhoSoc = b + 'capacity.stateOfCharge'
     for (const u of delta.updates ?? []) {
       const ts = u.timestamp ? Date.parse(u.timestamp) : Date.now()
-      if (!Number.isNaN(ts)) desvio = ts - Date.now()
-      for (const { path: p, value } of u.values ?? []) {
-        const b = `electrical.batteries.${opcoes.servico}.`
-        if (p === b + 'capacity.stateOfCharge') { leitura.soc = value; if (typeof value === 'number') leitura.socEm = ts }
-        else if (p === b + 'current') leitura.corrente = value
+      const valores = u.values ?? []
+      // O relógio dos dados segue só o carimbo do SmartShunt (o SoC): com o simulador acelerado é o
+      // tempo simulado; outra fonte noutro relógio (no dev, o J1939 em hora real; com o Pi
+      // desacertado, um GPS com a hora dele) já não o faz saltar (auditoria M-60). As horas de cada
+      // leitura ficam nesse relógio.
+      if (!Number.isNaN(ts) && valores.some(v => v.path === caminhoSoc)) desvio = ts - Date.now()
+      const t = agora()
+      for (const { path: p, value } of valores) {
+        if (p === caminhoSoc) { leitura.soc = value; if (typeof value === 'number') leitura.socEm = t }
+        else if (p === b + 'current') { leitura.corrente = value; leitura.correnteEm = t }
         else if (p === `electrical.batteries.${opcoes.motor}.voltage`) leitura.vMotor = value
-        else if (p === `propulsion.${opcoes.propulsao}.revolutions`) { leitura.rpm = value; leitura.rpmEm = ts }
-        else if (p === 'navigation.speedOverGround') leitura.sog = value
+        else if (p === `propulsion.${opcoes.propulsao}.revolutions`) {
+          // null = rotações desconhecidas (o J1939 sem EEC1 há 5 s): não apaga as últimas; sem um número
+          // há 2 min (RPM_VELHO) o motor conta como parado — uma falha curta não parte a sessão (M-65)
+          if (typeof value === 'number') { leitura.rpm = value; leitura.rpmEm = t }
+        } else if (p === 'navigation.speedOverGround') leitura.sog = value
         else if (p === 'environment.mode') leitura.modo = value
       }
     }
