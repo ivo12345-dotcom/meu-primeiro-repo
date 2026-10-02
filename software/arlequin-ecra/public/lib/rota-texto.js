@@ -115,15 +115,15 @@ const VERMELHO_GERAL = /previs|^Sem (nível do gasóleo|estado da bateria)/i
 
 // Os avisos vermelhos de uma alternativa (índice i): os dela (segurança: limites a solo com
 // tripulação, previsão em falta, gasóleo…), a nota do canal por confirmar, a previsão aproximada
-// (avisosRota), a previsão velha (previsao.aviso) e os gerais vermelhos; e as fugas junto à costa
-// com vento do mar dos pontos de desistência — só na 1.ª, para a qual se calcularam.
+// (avisosRota) e os gerais vermelhos (a previsão velha vem aqui, com a frase: o previsao.aviso do
+// resultado é só um código, 'aviso' | 'grande', e nunca se mostra — auditoria I-28); e as fugas junto à
+// costa com vento do mar dos pontos de desistência — só na 1.ª, para a qual se calcularam.
 export function avisosVermelhos (resultado = {}, i = 0, agora = Date.now()) {
   const alt = resultado.alternativas?.[i]
   if (!alt) return []
   const out = [...(alt.avisosVermelhos || [])]
   if (alt.canal) out.push(alt.nota || `${alt.canal} por confirmar na carta`)
   for (const a of alt.avisosRota || []) if (/previs/i.test(a)) out.push(a)
-  if (resultado.previsao?.aviso) out.push(resultado.previsao.aviso)
   const temGasoleo = out.some(x => /gasóleo inicial desconhecido/.test(x))
   for (const a of resultado.avisos || []) {
     if (!VERMELHO_GERAL.test(a)) continue
