@@ -19,6 +19,8 @@
 //   versoes: { nome: 'v0001' | null },
 //   obterPrevisao: async ({ pontos, desde, ate, agora }) → { previsao, obtida, idadeH, aviso, texto } | { erro },
 //   opcoes: ver PADRAO, progresso(f, texto), aoCandidatos(lista) (diagnóstico: todos os candidatos avaliados),
+//   aoAbrigo({ destino, distanciaMn, candidatos, escolhido }) (diagnóstico: no mar, o abrigo mais perto
+//   avaliado para o "Volta ou abriga-te em X"; abrigoMaisPerto, abaixo),
 //   log(msg, erro)? (o registo dos erros de programação da geometria; no plugin, app.error) }
 //
 // As alternativas vêm de lib/rotas.js gerarAlternativas (a linha de cada afastamento e as variantes
@@ -329,6 +331,44 @@ function montarAlternativa (ctx, cand, pr, desistenciaResumo, primeira = true) {
   return alt
 }
 
+// No mar, o abrigo para "Volta ou abriga-te em X" (decisão do Ivo n.º 9, auditoria M-14): o abrigo
+// mais perto da posição, medido ao porto (a ponta da aproximação: Cascais, Oeiras e Algés partilham o
+// mesmo largo), que pode ser o próprio destino. Avalia-se para partir agora em todas as rotas do
+// cálculo até ele (as linhas dos afastamentos, a direta e o canal, como em gerarAlternativas) e nas
+// duas propulsões, e fica a melhor recomendada pelo custo (sem nenhuma recomendada, a mais barata, que
+// não dá "Volta"). Antes nunca era o destino (ia para o seguinte) e só se tentava "vela e motor" a 5 e
+// 8 MN, ficando a primeira que se simulava: perdia-se o "Volta" quando só a motor ou pela direta dava.
+// Quando o abrigo é o destino, os candidatos são as partidas de agora do cálculo (as mesmas rotas): o
+// "Volta" nunca aponta para ele, porque com uma delas recomendada o veredicto já é "Segue".
+// → { destino, distanciaMn, candidatos, escolhido } | null
+async function abrigoMaisPerto (ctx, { pos, partidaGeo, candidatos, distancia, log }) {
+  const porto = (d) => c.P(Array.isArray(d.aproximacao) && d.aproximacao.length ? d.aproximacao.at(-1) : d.largo)
+  const perto = ctx.costa.destinos.filter(d => d.abrigo).map(d => ({ d, mn: c.distanciaMn(pos, porto(d)) })).sort((a, b) => a.mn - b.mn)[0]
+  if (!perto) return null
+  let lista = []
+  if (ctx.destino.id != null && perto.d.id === ctx.destino.id) lista = candidatos.filter(k => k.partida === ctx.agora)
+  else {
+    const ctxA = { ...ctx, destino: perto.d }
+    let direta = false // a rota direta é a mesma a qualquer afastamento: só uma vez
+    for (const af of ctx.o.afastamentos) {
+      for (const alt of rotas.gerarAlternativas(ctx.costa, { partida: partidaGeo, destino: perto.d, afastamento: af, twd: ctx.twd, horaPartida: ctx.agora, log })) {
+        if (alt.excluida) continue
+        if (alt.direto) { if (direta) continue; direta = true }
+        await ceder()
+        for (const prop of ['vela', 'motor']) {
+          const k = avaliarCandidato(ctxA, alt, ctx.agora, prop, distancia(alt))
+          if (k.resumos) lista.push(k)
+        }
+      }
+    }
+  }
+  if (!lista.length) return null
+  const porCusto = (a, b) => a.custo.total - b.custo.total || a.id.localeCompare(b.id)
+  const recomendadas = lista.filter(k => decisao.recomendada(k, ctx.tripulacao)).sort(porCusto)
+  const escolhido = recomendadas[0] || lista.filter(k => !k.excluida).sort(porCusto)[0] || [...lista].sort(porCusto)[0]
+  return { destino: perto.d, distanciaMn: perto.mn, candidatos: lista, escolhido }
+}
+
 // A mensagem quando nenhuma das passagens simuladas serve: pelo que lhes aconteceu.
 function semPassagens (estat, { fim, agora, o, nome }) {
   const quando = decisao.quando(fim, agora, o.fuso)
@@ -494,15 +534,10 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   let abrigo = null
   if (emMar) {
     await progresso(0.82, 'a ver o abrigo mais perto')
-    const perto = costa.destinos.filter(d => d.abrigo && d.id !== destino.id).map(d => ({ d, mn: c.distanciaMn(pos, c.P(d.largo)) })).sort((a, b) => a.mn - b.mn)[0]
-    if (perto) {
-      const ctxA = { ...ctx, destino: perto.d }
-      for (const af of [5, 8]) {
-        const alt = rotas.gerarRota(costa, { partida: partidaGeo, destino: perto.d, afastamento: af, twd, horaPartida: agora, log })
-        if (alt.excluida) continue
-        const cand = avaliarCandidato(ctxA, alt, agora, 'vela', distancia(alt))
-        if (cand.resumos) { abrigo = { destino: perto.d, candidato: cand }; break }
-      }
+    const a = await abrigoMaisPerto(ctx, { pos, partidaGeo, candidatos, distancia, log })
+    if (a) {
+      abrigo = { destino: a.destino, candidato: a.escolhido }
+      try { await deps.aoAbrigo?.(a) } catch { /* só para diagnóstico (também se rejeitar) */ }
     }
   }
 

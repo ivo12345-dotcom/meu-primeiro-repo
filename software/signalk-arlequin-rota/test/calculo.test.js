@@ -557,6 +557,62 @@ test('no mar, sem "sair agora": continuar agora não é recomendado e o abrigo m
   assert.match(r.veredicto.porque[1], /^Até Cascais são \d+,\d MN: chegas às \d\d:\d\d \(de (dia|noite)\)/)
 })
 
+test('M-14 (decisão do Ivo n.º 9): no mar, o abrigo do "Volta" avalia todas as rotas do cálculo até ele (os 3 afastamentos, a direta e o canal) e as duas propulsões, e fica a melhor recomendada', async () => {
+  // ao largo de Cascais, a caminho de Peniche, só eu, 15:32 de 29/09 (o caso do "Volta" acima)
+  let info = null
+  const pedidas = []
+  const orig = rotas.gerarAlternativas
+  rotas.gerarAlternativas = (k, x) => { if (x.destino?.id === 'cascais') pedidas.push([x.afastamento, x.horaPartida]); return orig(k, x) }
+  let r
+  try {
+    r = await calcular(entrada({ instrumentos: { posicao: { lat: 38.66, lon: -9.47 }, socPct: 90, gasoleoL: 124 } }), deps({ aoAbrigo: (x) => { info = x } }))
+  } finally { rotas.gerarAlternativas = orig }
+  assert.equal(r.erro, undefined, r.erro)
+  // o veredicto fala da melhor recomendada até ao abrigo: só a motor (era a 1.ª que se simulava, a de 5 MN à vela, às 18:10)
+  assert.equal(r.veredicto.tipo, 'volta')
+  assert.equal(r.veredicto.texto, 'Volta ou abriga-te em Cascais')
+  assert.equal(r.veredicto.porque[1], 'Até Cascais são 10,3 MN: chegas às 17:52 (de dia), vento até 12 nós, ondas até 2,1 m.')
+  assert.ok(info, 'o abrigo avaliado chega ao aoAbrigo')
+  assert.equal(info.destino.id, 'cascais')
+  // as rotas do cálculo até ao abrigo (gerarAlternativas: as linhas, a direta e o canal) nos 3 afastamentos, a partir agora
+  assert.deepEqual(pedidas, [[3, AGORA], [5, AGORA], [8, AGORA]])
+  // cada uma à vela e só a motor (era só "vela e motor" a 5 e 8 MN)
+  assert.deepEqual([...new Set(info.candidatos.map(k => k.propulsao))].sort(), ['motor', 'vela'])
+  assert.ok(info.candidatos.every(k => k.partida === AGORA))
+  // fica a melhor recomendada, pelo custo
+  const recomendadas = info.candidatos.filter(k => decisao.recomendada(k, 'so')).sort((a, b) => a.custo.total - b.custo.total)
+  assert.ok(recomendadas.length > 1, JSON.stringify(info.candidatos.map(k => k.id)))
+  assert.equal(info.escolhido, recomendadas[0])
+  assert.equal(info.escolhido.id, '20260929T1432-5mn-motor')
+})
+
+test('M-14 (decisão do Ivo n.º 9): no mar, o abrigo é o mais perto pelo porto (não pelo largo, que Cascais, Oeiras e Algés partilham) e pode ser o próprio destino', async () => {
+  const noite = Date.parse('2026-09-29T21:00:00Z') // 22:00 em Lisboa
+  const perto = { lat: 38.665, lon: -9.33 } // a 0,9 MN do porto de Oeiras, a 5 MN de Cascais
+  // a caminho de Peniche: o abrigo mais perto é Oeiras (era Cascais, o 1.º da lista com o mesmo largo),
+  // com a rota direta (o salto curto até ao porto) entre as avaliadas
+  let info = null
+  await calcular(entrada({ instrumentos: { posicao: perto, socPct: 90, gasoleoL: 124 }, agora: noite }), deps({ aoAbrigo: (x) => { info = x } }))
+  assert.ok(info, 'o abrigo avaliado chega ao aoAbrigo')
+  assert.equal(info.destino.id, 'oeiras')
+  assert.ok(info.candidatos.some(k => k.direto), JSON.stringify(info.candidatos.map(k => k.id)))
+  // a caminho de Oeiras, o abrigo mais perto é o destino: é ele (era o seguinte da lista), com as partidas de agora dele
+  info = null
+  const r = await calcular(entrada({ instrumentos: { posicao: perto, socPct: 90, gasoleoL: 124 }, destino: 'oeiras', agora: noite }), deps({ aoAbrigo: (x) => { info = x } }))
+  assert.equal(r.erro, undefined, r.erro)
+  assert.ok(info, 'o abrigo avaliado chega ao aoAbrigo')
+  assert.equal(info.destino.id, 'oeiras')
+  assert.ok(info.candidatos.length > 0 && info.candidatos.every(k => k.partida === noite), JSON.stringify(info.candidatos.map(k => k.id)))
+  // de noite, sozinho, num porto que não conheces: nem continuar nem o abrigo (o mesmo porto) são recomendados — nunca "Volta" para outro
+  assert.equal(decisao.recomendada(info.escolhido, 'so'), false)
+  assert.notEqual(r.veredicto.tipo, 'volta')
+  // ao largo de Cascais a caminho de Cascais: o abrigo é Cascais (era Oeiras)
+  info = null
+  await calcular(entrada({ instrumentos: { posicao: { lat: 38.66, lon: -9.47 }, socPct: 90, gasoleoL: 124 }, destino: 'cascais' }), deps({ aoAbrigo: (x) => { info = x } }))
+  assert.ok(info, 'o abrigo avaliado chega ao aoAbrigo')
+  assert.equal(info.destino.id, 'cascais')
+})
+
 test('I1: a segurança recebe os 3 rastos (também o otimista) e a "chegada de noite" da alternativa é a da segurança, não só a do provável', async () => {
   const seguranca = require('../lib/seguranca')
   const orig = seguranca.avaliar
