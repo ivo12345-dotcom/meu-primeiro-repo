@@ -91,7 +91,7 @@ const registoTelegram = (e) => { const m = String(e?.message ?? e); return /^Tel
 // deps (testes): agora() o relógio (anti-spam, regras, encaminhador e fila); maxCodigos; limiteTelegramMs
 // o limite de cada chamada; tickMs, encaminharMs os ciclos (1 s e 2 s); pausaFilaMs entre duas
 // mensagens da fila (1 s: o Telegram não quer mais do que uma por segundo no mesmo chat); maxFila o
-// limite da fila (100)
+// limite da fila (100); pausaErroMs a pausa do long polling depois de um erro (10 s)
 module.exports = function (app, deps = {}) {
   const agora = deps.agora || (() => Date.now())
   const maxCodigos = deps.maxCodigos ?? MAX_CODIGOS
@@ -99,6 +99,7 @@ module.exports = function (app, deps = {}) {
   const encaminharMs = deps.encaminharMs ?? 2000
   const pausaFilaMs = deps.pausaFilaMs ?? 1000
   const maxFila = deps.maxFila ?? MAX_FILA
+  const pausaErroMs = deps.pausaErroMs ?? 10000
   const plugin = {
     id: 'signalk-arlequin-porto',
     name: 'Arlequin · porto',
@@ -333,10 +334,13 @@ module.exports = function (app, deps = {}) {
   // do Ivo feitos duas vezes.
   let geracao = 0
   let escuta = null // o AbortController do ciclo atual
+  // a pausa acaba pelo tempo ou pelo stop(); nos dois casos a escuta sai do sinal do ciclo (auditoria
+  // F4b, revisão da F4, Menor 3: antes ficava uma pendurada por cada erro, ~8600 por dia sem rede)
   const dormir = (ms, sinal) => new Promise(resolve => {
     if (sinal.aborted) return resolve()
-    const t = setTimeout(resolve, ms)
-    sinal.addEventListener('abort', () => { clearTimeout(t); resolve() }, { once: true })
+    const acabar = () => { clearTimeout(t); sinal.removeEventListener('abort', acabar); resolve() }
+    const t = setTimeout(acabar, ms)
+    sinal.addEventListener('abort', acabar, { once: true })
   })
   async function ouvirTelegram (g) {
     const ctl = new AbortController()
@@ -357,7 +361,7 @@ module.exports = function (app, deps = {}) {
       } catch (e) {
         if (g !== geracao || e?.cancelado) return
         app.error(registoTelegram(e))
-        await dormir(10000, ctl.signal)
+        await dormir(pausaErroMs, ctl.signal)
       }
     }
   }
