@@ -219,7 +219,10 @@ test('auditoria I-32: no plano, um erro do Telegram que não se conhece chega ao
     app.emit('arlequin:plano', { ...PLANO, pedido: 'e1' })
     const r = await resposta
     assert.deepEqual(r.falhas, [{ nome: 'Mãe', erro: 'erro do Telegram (código 400)' }])
-    assert.deepEqual(app.erros, ['Telegram (plano para Mãe): Telegram sendMessage: Bad Request: PEER_ID_INVALID'])
+    // um só "Telegram" à cabeça (auditoria F4b, revisão da F4, Menor 7: era "Telegram (plano para Mãe):
+    // Telegram sendMessage: …", o prefixo repetido que o M-53 tirou)
+    assert.deepEqual(app.erros, ['Telegram (plano para Mãe): sendMessage: Bad Request: PEER_ID_INVALID'])
+    assert.ok(app.erros.every(e => (e.match(/Telegram/g) || []).length === 1), JSON.stringify(app.erros))
   } finally { globalThis.fetch = original; p.stop(); await tgf.fechar() }
 })
 

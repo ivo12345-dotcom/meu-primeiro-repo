@@ -87,9 +87,14 @@ const AJUDA = `Comandos do Arlequin:
 /largar — apaga o ponto de amarração
 /ajuda — esta lista`
 
-// O erro de uma chamada ao Telegram para o registo, com um só prefixo (auditoria M-53: era "Telegram:
-// Telegram sendMessage: …"): os do cliente já começam por "Telegram <método>:".
-const registoTelegram = (e) => { const m = String(e?.message ?? e); return /^Telegram\b/.test(m) ? m : `Telegram: ${m}` }
+// O erro de uma chamada ao Telegram para o registo, com um só "Telegram" à cabeça (auditoria M-53: era
+// "Telegram: Telegram sendMessage: …"; e F4b, revisão da F4, Menor 7: o mesmo no plano): os do cliente já
+// começam por "Telegram <método>:". Com `contexto` ("plano para Mãe"): "Telegram (plano para Mãe): <método>: …".
+const registoTelegram = (e, contexto) => {
+  const m = String(e?.message ?? e)
+  if (contexto) return `Telegram (${contexto}): ${m.replace(/^Telegram\s+/, '')}`
+  return /^Telegram\b/.test(m) ? m : `Telegram: ${m}`
+}
 
 // deps (testes): agora() o relógio (anti-spam, regras, encaminhador e fila); maxCodigos; limiteTelegramMs
 // o limite de cada chamada; tickMs, encaminharMs os ciclos (1 s e 2 s); pausaFilaMs entre duas
@@ -296,7 +301,7 @@ module.exports = function (app, deps = {}) {
     // todos ao mesmo tempo; em cada um, a mensagem e depois o GPX
     const { lista, faltam } = destinatariosPlano(ev)
     // um erro que não se conhece vai ao ecrã como "erro do Telegram (código N)" e o pormenor fica aqui
-    const falhou = (nome, e) => { if (erroConhecido(e) === null) app.error(`Telegram (plano para ${nome}): ${e?.message ?? e}`); return erroEmPortugues(e) }
+    const falhou = (nome, e) => { if (erroConhecido(e) === null) app.error(registoTelegram(e, `plano para ${nome}`)); return erroEmPortugues(e) }
     const resultados = await Promise.all(lista.map(async (d) => {
       try {
         await cliente.sendMessage(d.chatId, String(ev?.texto ?? ''))
