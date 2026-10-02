@@ -93,14 +93,20 @@ test('avisos vermelhos de uma alternativa: as fugas junto à costa da desistênc
 test('avisos vermelhos: o canal por confirmar (com a nota), a previsão aproximada ou velha e a bateria assumida', () => {
   const l = t.avisosVermelhos(CANAL, 0)
   assert.ok(l.includes('Canal da Berlenga: terra dos dois lados; só com ondas < 3 m — por confirmar na carta'), JSON.stringify(l))
+  // auditoria I-28: a forma real do plugin — previsao.aviso é um código ('aviso' com mais de 6 h, 'grande' com
+  // mais de 12 h; rota/lib/previsao.js) e a frase vem nos avisos gerais (rota/lib/calculo.js)
   const r = {
     ...CANAL,
-    previsao: { ...CANAL.previsao, aviso: 'previsão com 9 h (sem rede)' },
-    avisos: ['Sem estado da bateria: assumi 80%', 'Sem dados do mar: a corrente de maré na barra do Tejo fica a 0'],
+    previsao: { ...CANAL.previsao, aviso: 'aviso' },
+    avisos: ['Previsão guardada há 9 h (sem rede)', 'Sem estado da bateria: assumi 80%', 'Sem dados do mar: a corrente de maré na barra do Tejo fica a 0'],
     alternativas: [{ ...CANAL.alternativas[0], avisosRota: ['previsão de rajadas aproximada em parte da rota (de um ponto de previsão mais longe)'] }]
   }
   const m = t.avisosVermelhos(r, 0)
-  assert.ok(m.includes('previsão com 9 h (sem rede)'))
+  assert.ok(m.includes('Previsão guardada há 9 h (sem rede)'))
+  assert.ok(!m.includes('aviso'), 'o código não se mostra')
+  const velha = t.avisosVermelhos({ ...r, previsao: { ...CANAL.previsao, aviso: 'grande' }, avisos: ['Previsão velha: a mais recente guardada tem 14 h (sem rede)'] }, 0)
+  assert.ok(velha.includes('Previsão velha: a mais recente guardada tem 14 h (sem rede)'))
+  assert.ok(!velha.includes('grande'), 'nunca "⚠ grande"')
   assert.ok(m.includes('Sem estado da bateria: assumi 80%'))
   assert.ok(m.includes('previsão de rajadas aproximada em parte da rota (de um ponto de previsão mais longe)'))
   assert.ok(!m.includes('Sem dados do mar: a corrente de maré na barra do Tejo fica a 0'))
