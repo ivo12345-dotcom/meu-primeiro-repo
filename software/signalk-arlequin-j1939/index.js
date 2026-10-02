@@ -218,18 +218,22 @@ module.exports = function (app) {
 
   // Diagnóstico: PGN vistas e mudanças da 65417 (JSON e página simples).
   // A página fica em /pagina porque o SignalK usa a raiz /plugins/<id>/ para si.
+  // Com a segurança do SignalK ligada (2.33), uma rota registada com o router simples só aceita admin
+  // (tokensecurity.js); com o router.access a leitura pede só uma sessão ("readonly"), como a conta
+  // "read/write" do ecrã (auditoria K-11, contrato C2). Sem o router.access (versões antigas): o simples.
   plugin.registerWithRouter = function (router) {
+    const ler = typeof router.access === 'function' ? router.access('readonly') : router
     const diag = () => {
       const vistas = Object.entries(desc?.vistas || {}).map(([pgn, v]) => ({ pgn: Number(pgn), n: v.n, origem: v.origem, bytes: v.bytes }))
       return { fonte: o.fonte, tramas: vistasTotal, rpm: Math.round(rpmAtual || 0), vistas, mudancas: [...mudancas].reverse() }
     }
-    router.get('/diagnostico', (req, res) => res.json(diag()))
+    ler.get('/diagnostico', (req, res) => res.json(diag()))
     // Curva de consumo aprendida no barco (para a página Motor).
-    router.get('/consumo', (req, res) => res.json({
+    ler.get('/consumo', (req, res) => res.json({
       ...resumo(curva || novaCurva()),
       consumo: CONSUMO in valores ? 'medido pelo MDI' : `estimado (curva Volvo × ${o.fatorConsumo})`
     }))
-    router.get('/pagina', (req, res) => {
+    ler.get('/pagina', (req, res) => {
       const d = diag()
       const esc = (s) => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
       res.type('html').send(`<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="2"><title>Arlequin · J1939</title>

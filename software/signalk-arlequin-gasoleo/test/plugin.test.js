@@ -38,6 +38,41 @@ const chamar = (h, body) => new Promise((resolve) => {
   h({ body }, res)
 })
 
+// Auditoria K-11 (contrato C2): com a segurança do SignalK ligada (2.33), uma rota sem router.access só
+// aceita admin; o ecrã entra com uma conta "read/write". Os GET pedem "readonly" e os POST "readwrite".
+function niveis (p) {
+  const direto = []
+  const registos = []
+  const router = {
+    get: (k) => direto.push(`GET ${k}`),
+    post: (k) => direto.push(`POST ${k}`),
+    access: (nivel) => ({
+      get: (k, h) => registos.push({ m: 'GET', k, nivel, h: typeof h }),
+      post: (k, h) => registos.push({ m: 'POST', k, nivel, h: typeof h })
+    })
+  }
+  p.registerWithRouter(router)
+  return { direto, nivel: Object.fromEntries(registos.map(x => [`${x.m} ${x.k}`, x.nivel])), funcoes: registos.every(x => x.h === 'function') }
+}
+
+test('K-11: com a segurança do SignalK (router.access) os GET registam-se "readonly" e os POST "readwrite"; nada fica só para admin', () => {
+  const r = niveis(criar(appFalso()))
+  assert.deepEqual(r.direto, [], 'nenhuma rota sem nível (ficava só para admin)')
+  assert.deepEqual(r.nivel, {
+    'GET /calibracao': 'readonly',
+    'POST /calibracao/iniciar': 'readwrite',
+    'POST /calibracao/adicionar': 'readwrite',
+    'POST /calibracao/desfazer': 'readwrite',
+    'POST /calibracao/cancelar': 'readwrite',
+    'POST /calibracao/terminar': 'readwrite',
+    'POST /calibracao/importar': 'readwrite',
+    'GET /estado': 'readonly',
+    'POST /calibrar': 'readwrite',
+    'POST /abastecimento': 'readwrite'
+  })
+  assert.ok(r.funcoes)
+})
+
 test('pontos de calibração: ordena e substitui o que está perto', () => {
   let t = acrescentarPonto([], { razao: 0.5, litros: 100 }).tabela
   t = acrescentarPonto(t, { razao: 0.2, litros: 20 }).tabela

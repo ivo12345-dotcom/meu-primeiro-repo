@@ -33,6 +33,29 @@ function appFalso () {
 
 const enviar = (app, pgn, dados) => app.emit('arlequin-j1939', linhaCandump({ t: Date.now(), pgn, dados: hex(dados) }))
 
+// Auditoria K-11 (contrato C2): com a segurança do SignalK ligada (2.33), uma rota sem router.access só
+// aceita admin; o ecrã (página Motor) entra com uma conta "read/write". Os GET pedem "readonly".
+test('K-11: com a segurança do SignalK (router.access) os GET registam-se "readonly"; nada fica só para admin', () => {
+  const direto = []
+  const registos = []
+  const router = {
+    get: (k) => direto.push(`GET ${k}`),
+    post: (k) => direto.push(`POST ${k}`),
+    access: (nivel) => ({
+      get: (k, h) => registos.push({ m: 'GET', k, nivel, h: typeof h }),
+      post: (k, h) => registos.push({ m: 'POST', k, nivel, h: typeof h })
+    })
+  }
+  criar(appFalso()).registerWithRouter(router)
+  assert.deepEqual(direto, [], 'nenhuma rota sem nível (ficava só para admin)')
+  assert.deepEqual(Object.fromEntries(registos.map(x => [`${x.m} ${x.k}`, x.nivel])), {
+    'GET /diagnostico': 'readonly',
+    'GET /consumo': 'readonly',
+    'GET /pagina': 'readonly'
+  })
+  assert.ok(registos.every(x => x.h === 'function'))
+})
+
 test('tramas do simulador → valores SignalK a 1 Hz, estado e consumo estimado', (t) => {
   t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
   const app = appFalso()
