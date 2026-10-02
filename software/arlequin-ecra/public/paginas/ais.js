@@ -12,7 +12,7 @@ export default {
     const sel = ctx.estado.sel
     const linhas = ctx.alvos.map(a => {
       const cls = a.classe === 'perigo' ? 'perigo' : a.classe === 'atencao' ? 'atencao' : ''
-      const temCpa = a.r && a.classe !== 'afasta'
+      const temCpa = a.r && a.r.tcpa >= 0
       return `<tr data-mmsi="${esc(a.mmsi)}" data-acao="sel" class="${cls} ${sel === a.mmsi ? 'sel' : ''}">
 <td>${esc(a.name || a.mmsi)}</td><td>${esc(tipoAis(a.tipo))}</td><td>${a.r ? distancia(a.r.distancia) + ' MN' : '—'}</td><td>${a.r ? rumo(a.r.marcacao) : '—'}</td>
 <td>${velocidade(a.sog)} / ${rumo(a.cog)}</td><td>${temCpa ? distancia(a.r.cpa) + ' MN' : '—'}</td><td>${temCpa ? duracao(a.r.tcpa) : '—'}</td><td>${ESTADO[a.classe]}</td></tr>`
@@ -23,7 +23,7 @@ export default {
     const calar = n ? acaoCalar(n) : null
     const detalhe = a
       ? `<div class="tile"><div class="linha"><span class="v">${esc(a.name || a.mmsi)}</span><span class="lab">MMSI ${esc(a.mmsi)} · ${esc(tipoAis(a.tipo) === '—' ? 'tipo desconhecido' : tipoAis(a.tipo))}</span></div>
-<div class="g3" style="margin-top:.3rem;">${tile('Distância · marcação', `${a.r ? distancia(a.r.distancia) : '—'} MN · ${a.r ? rumo(a.r.marcacao) : '—'}`)}${tile('CPA · TCPA', a.r && a.classe !== 'afasta' ? `${distancia(a.r.cpa, 2)} MN · ${duracao(a.r.tcpa)}` : 'afasta-se')}${tile('SOG · COG', `${velocidade(a.sog)} nós · ${rumo(a.cog)}`)}</div>
+<div class="g3" style="margin-top:.3rem;">${tile('Distância · marcação', `${a.r ? distancia(a.r.distancia) : '—'} MN · ${a.r ? rumo(a.r.marcacao) : '—'}`)}${tile('CPA · TCPA', a.r && a.r.tcpa >= 0 ? `${distancia(a.r.cpa, 2)} MN · ${duracao(a.r.tcpa)}` : a.r ? 'afasta-se' : '—')}${tile('SOG · COG', `${velocidade(a.sog)} nós · ${rumo(a.cog)}`)}</div>
 <div class="acoes" style="margin-top:.4rem;">${calar ? `<button class="acao stop" data-acao="${calar}" data-id="${esc(n.id)}">${calar === 'reconhecer' ? 'Reconhecer alarme' : 'Silenciar alarme'}</button>` : ''}<button class="acao" data-acao="fechar">Fechar</button></div></div>`
       : ''
     return `<div class="col">

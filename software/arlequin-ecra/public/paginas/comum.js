@@ -73,7 +73,7 @@ export function motorResumo (ctx) {
 
 export function linhaAlvo (a) {
   const cls = a.classe === 'perigo' ? 'perigo' : a.classe === 'atencao' ? 'atencao' : ''
-  const cpaTxt = a.r && a.classe !== 'afasta' ? `${distancia(a.r.cpa)} MN · ${duracao(a.r.tcpa)}` : a.classe === 'afasta' ? 'afasta-se' : '—'
+  const cpaTxt = a.r && a.r.tcpa >= 0 ? `${distancia(a.r.cpa)} MN · ${duracao(a.r.tcpa)}` : a.r && a.r.tcpa < 0 ? 'afasta-se' : '—'
   return `<div class="linha ${cls}"><span>${esc(a.name || a.mmsi)}</span><span>${cpaTxt}</span></div>`
 }
 

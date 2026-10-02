@@ -2,7 +2,7 @@
 
 import { criarStore, ligar, valor, idade, pedir } from './signalk.js'
 import { barraHtml } from './lib/barra.js'
-import { cpa, classificar } from './lib/cpa.js'
+import { alvosAis } from './lib/ais.js'
 import { lerPolar } from './lib/polar.js'
 import { registarPressao, tendencia, lerBarometro } from './lib/barometro.js'
 import { novaViagem, acumular, lerViagem } from './lib/viagem.js'
@@ -23,8 +23,6 @@ import velas from './paginas/velas.js'
 import { motorLigado } from './paginas/comum.js'
 
 const PAGINAS = { carta, instr, ais, motor, viagem, diario, melhor, velas }
-const ORDEM_CLASSE = { perigo: 0, atencao: 1, seguro: 2, afasta: 3, desconhecido: 4 }
-const AIS_VELHO = 10 * 60 * 1000
 const FALHA_CALAR_MS = 15000 // a falha do silenciar/reconhecer fica 15 s na barra
 
 const store = criarStore()
@@ -57,20 +55,6 @@ const app = {
 }
 
 // ---------- contexto passado às páginas ----------
-function alvosAis () {
-  const eu = {
-    position: valor(store, 'navigation.position'),
-    cog: valor(store, 'navigation.courseOverGroundTrue'),
-    sog: valor(store, 'navigation.speedOverGround')
-  }
-  const lista = []
-  for (const a of store.vessels.values()) {
-    if (!a.position || Date.now() - a.em > AIS_VELHO) continue
-    const r = cpa(eu, a)
-    lista.push({ ...a, r, classe: classificar(r) })
-  }
-  return lista.sort((x, y) => (ORDEM_CLASSE[x.classe] - ORDEM_CLASSE[y.classe]) || ((x.r?.distancia ?? 1e9) - (y.r?.distancia ?? 1e9)))
-}
 
 function contexto () {
   if (!app.estados[app.pagina]) app.estados[app.pagina] = {}
@@ -81,7 +65,13 @@ function contexto () {
     polar: app.polar,
     baro: tendencia(app.baro, Date.now()),
     viagem: app.viagem,
-    alvos: alvosAis(),
+    // os alvos AIS por ordem de perigo (lib/ais.js; "perigo" enquanto o alarme do plugin AIS estiver ativo)
+    alvos: alvosAis({
+      vessels: store.vessels.values(),
+      eu: { position: valor(store, 'navigation.position'), cog: valor(store, 'navigation.courseOverGroundTrue'), sog: valor(store, 'navigation.speedOverGround') },
+      notificacoes: [...store.notificacoes.values()],
+      agora: Date.now()
+    }),
     notificacoes: [...store.notificacoes.values()],
     estado: app.estados[app.pagina],
     demo: parametros.has('demo'),

@@ -1,4 +1,4 @@
-// Desenha as 9 páginas com 13 minutos de dados do simulador (sem browser),
+// Desenha as 8 páginas com 13 minutos de dados do simulador (sem browser),
 // para apanhar erros e confirmar o que cada página mostra.
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -76,10 +76,13 @@ test('Carta mostra o vento, o WP e o NORDIC STAR como perigo', () => {
   assert.match(html, /NORDIC STAR/)
 })
 
-test('AIS: o NORDIC STAR vem primeiro; tocar mostra o botão de silenciar', () => {
-  const ctx = contexto(store)
-  const primeiro = ctx.alvos.sort((a, b) => (a.classe === 'perigo' ? -1 : 0) - (b.classe === 'perigo' ? -1 : 0))[0]
-  assert.equal(primeiro.name, 'NORDIC STAR')
+test('AIS: o NORDIC STAR vem primeiro; tocar mostra o botão de silenciar', async () => {
+  // auditoria M-46: a ordem é a do alvosAis do ecrã (lib/ais.js, o que o app.js usa), não uma feita no teste
+  const { alvosAis } = await import('../public/lib/ais.js')
+  const eu = { position: store.self.get('navigation.position')?.value, cog: store.self.get('navigation.courseOverGroundTrue')?.value, sog: store.self.get('navigation.speedOverGround')?.value }
+  const ordem = alvosAis({ vessels: store.vessels.values(), eu, notificacoes: [...store.notificacoes.values()], agora: Date.now() })
+  assert.equal(ordem[0].name, 'NORDIC STAR')
+  assert.equal(ordem[0].classe, 'perigo')
   const estado = { sel: '263000001' }
   const html = ais.render(contexto(store, estado))
   assert.match(html, /Silenciar alarme/)
@@ -699,6 +702,25 @@ test('auditoria M-43: a nota do Diário fica no estado (um desenho não a apaga)
   // o valor escapa-se
   await diario.acao('campo', { campo: 'nota', valor: '"<b>' }, ctx)
   assert.match(diario.render(ctx), /value="&quot;&lt;b&gt;"/)
+})
+
+// ---------- auditoria M-50: "perigo" enquanto o alarme do plugin AIS estiver ativo ----------
+test('auditoria M-50: um alvo com o alarme do plugin AIS ativo é "perigo" no ecrã (o plugin só o limpa acima de 0,6 MN), mesmo com o CPA a 0,55 MN', async () => {
+  const { alvosAis } = await import('../public/lib/ais.js')
+  const NO = 1852 / 3600
+  const eu = { position: { latitude: 39.36, longitude: -9.40 }, cog: 0, sog: 0 }
+  // a 0,55 MN a leste, a ir para sul a 5 nós: CPA 0,55 MN (acima dos 0,5) → "seguro" pelo cálculo
+  const alvo = { mmsi: '263000007', name: 'X', position: { latitude: 39.36 + 0.0005, longitude: -9.40 + 0.55 * 1852 / (111320 * Math.cos(39.36 * Math.PI / 180)) }, cog: Math.PI, sog: 5 * NO, em: Date.now() }
+  const sem = alvosAis({ vessels: [alvo], eu, notificacoes: [], agora: Date.now() })
+  assert.equal(sem[0].classe, 'seguro')
+  const alarme = { caminho: 'notifications.arlequin.ais.263000007', state: 'alarm', method: ['visual', 'sound'], message: 'X em rota de colisão' }
+  const com = alvosAis({ vessels: [alvo], eu, notificacoes: [alarme], agora: Date.now() })
+  assert.equal(com[0].classe, 'perigo')
+  // o alarme já limpo (normal) não conta; um alvo velho (mais de 10 min) sai da lista
+  assert.equal(alvosAis({ vessels: [alvo], eu, notificacoes: [{ ...alarme, state: 'normal' }], agora: Date.now() })[0].classe, 'seguro')
+  assert.equal(alvosAis({ vessels: [{ ...alvo, em: Date.now() - 11 * 60e3 }], eu, notificacoes: [alarme], agora: Date.now() }).length, 0)
+  // o app.js usa este alvosAis
+  assert.match(readFileSync(new URL('../public/app.js', import.meta.url), 'utf8'), /alvos:\s*alvosAis\(\{/)
 })
 
 // ---------- auditoria M-45 e M-48 ----------
