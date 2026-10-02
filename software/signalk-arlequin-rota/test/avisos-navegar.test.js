@@ -281,3 +281,11 @@ test('auditoria K-12: com o plano fechado e o "cheguei bem"/"viagem terminada" p
   assert.equal(av.alarmeTerra({ aberto: false, alarme, fecho: 'terminado' }, alarme + 2 * H).message, 'A «viagem terminada» ainda não chegou a terra: os contactos ligam ao MRCC às 18:00 — liga-lhes')
   assert.equal(av.alarmeTerra({ aberto: false, alarme, fecho: null }, alarme).state, 'normal')
 })
+
+test('auditoria I-02 (decisão n.º 15): terra tem um plano que não é o do plano ativo — sem plano ativo "ativa-o ou avisa-os", com outro plano ativo "o plano de outra alternativa"; 60 min antes, e apaga-se à hora de alarme (terra já não espera)', () => {
+  const alarme = T0 + 3 * H // 18:00 em Lisboa
+  assert.equal(av.alarmeTerra({ semPlano: 'nenhum', alarme }, alarme - 61 * MIN).state, 'normal')
+  assert.deepEqual(av.alarmeTerra({ semPlano: 'nenhum', alarme }, alarme - 59 * MIN), { state: 'alert', method: METODO, message: 'Os contactos em terra têm um plano com alarme às 18:00 e não há plano ativo: ativa-o ou avisa-os', apito: 'curto', chave: `${iso(alarme)} sem-plano` })
+  assert.equal(av.alarmeTerra({ semPlano: 'outro', alarme }, alarme - 10 * MIN).message, 'Os contactos em terra têm o plano de outra alternativa, com alarme às 18:00: avisa-os')
+  assert.equal(av.alarmeTerra({ semPlano: 'nenhum', alarme }, alarme).state, 'normal')
+})

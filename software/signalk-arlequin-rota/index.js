@@ -626,12 +626,26 @@ module.exports = function (app, deps = {}) {
   }
   // O aviso da hora de alarme em terra (revisão final I2): com o plano aberto e enviado a contactos em
   // terra; e com o plano fechado enquanto o "cheguei bem"/"terminada" não chega a terra (auditoria K-12).
+  // E (decisão do Ivo n.º 15, auditoria I-02) quando os contactos em terra têm um plano entregue que não é o
+  // do plano ativo (enviado e nunca ativado, ou o plano ativo é outro): conta a hora de alarme mais cedo.
   function avisoTerra (agora) {
     const p = planoAtivo
     const comEnvio = !!p?.envio?.contactos?.length
     const fecho = comEnvio && !pa.aberto(p) ? fechoPorEntregar(p) : null
-    return { [av.CAMINHO_ALARME_TERRA]: av.alarmeTerra({ aberto: comEnvio && pa.aberto(p), alarme: alarmeEmTerra(), fecho: fecho?.tipo ?? null }, agora) }
+    const doPlano = av.alarmeTerra({ aberto: comEnvio && pa.aberto(p), alarme: alarmeEmTerra(), fecho: fecho?.tipo ?? null }, agora)
+    const u = terraSemPlano(agora)
+    const alarmeOutro = u ? Date.parse(u.alarmeMaisCedo ?? u.alarme) : NaN
+    const doOutro = u ? av.alarmeTerra({ semPlano: pa.aberto(p) ? 'outro' : 'nenhum', alarme: alarmeOutro }, agora) : null
+    const escolhido = doOutro && doOutro.state !== 'normal' && (doPlano.state === 'normal' || alarmeOutro < alarmeEmTerra()) ? doOutro : doPlano
+    return { [av.CAMINHO_ALARME_TERRA]: escolhido }
   }
+  // O plano que os contactos em terra têm (ultimo-envio.json, ainda a contar) quando não é o do plano ativo.
+  function terraSemPlano (agora) {
+    const u = envioEmTerra(agora)
+    if (!u || (planoAtivo && u.idCalculo === planoAtivo.idCalculo && u.indice === planoAtivo.indice)) return null
+    return u
+  }
+  const envioEmTerraGet = (u) => (u ? { idCalculo: u.idCalculo, indice: u.indice, contactos: [...u.contactos], alarme: new Date(Date.parse(u.alarmeMaisCedo ?? u.alarme)).toISOString() } : null)
   function publicarAvisos (avisos) {
     avisosPublicados = avisos
     const r = av.publicar(publicados, avisos)
@@ -793,6 +807,9 @@ module.exports = function (app, deps = {}) {
       // o "cheguei bem"/"terminada" deste plano ainda por entregar (auditoria K-12): o ecrã diz "ainda não
       // chegou a terra: liga-lhes"
       fechoPorEntregar: fechoPorEntregar(p),
+      // o plano que os contactos em terra têm, quando não é este (decisão n.º 15, auditoria I-02): o ecrã diz
+      // "os contactos em terra têm o plano de outra alternativa, com alarme HH:MM"
+      envioEmTerra: envioEmTerraGet(terraSemPlano(relogio())),
       chegadaOutro: sug ? { id: sug.id, nome: sug.nome } : null,
       // contactos: a quem vai; parcial: só para os que falharam (revisão final I3)
       filaContactos: c.fila.map(m => ({ tipo: m.tipo, criada: m.criada, tentativas: m.tentativas, proxima: m.proxima, estado: m.estado, erro: m.erro, contactos: [...(m.contactos || [])], parcial: !!m.parcial })),
@@ -1177,7 +1194,9 @@ module.exports = function (app, deps = {}) {
 
     ler.get('/plano-ativo', (req, res) => {
       if (!ligado()) return parado(res)
-      if (!planoAtivo) return res.status(404).json({ ok: false, erro: 'não há plano ativo' })
+      // sem plano: 404, com o plano que os contactos em terra têm (decisão n.º 15, auditoria I-02: o ecrã diz
+      // "os contactos em terra têm um plano com alarme HH:MM e não há plano ativo: ativa-o ou avisa-os")
+      if (!planoAtivo) return res.status(404).json({ ok: false, erro: 'não há plano ativo', envioEmTerra: envioEmTerraGet(terraSemPlano(relogio())) })
       res.json(estadoPlanoAtivo())
     })
 
