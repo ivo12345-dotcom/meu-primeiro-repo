@@ -133,7 +133,7 @@ module.exports = function (app, deps = {}) {
   let o = {}
   let estado = novoEstado()
   let enc = novoEncaminhador()
-  let persist = { armado: false, ponto: null }
+  let persist = { armado: false, ponto: null, ativos: {} }
   let ficheiro
   let temporizadores = []
   let aCorrer = false
@@ -326,6 +326,7 @@ module.exports = function (app, deps = {}) {
   let geracao = 0
   let escuta = null // o AbortController do ciclo atual
   const dormir = (ms, sinal) => new Promise(resolve => {
+    if (sinal.aborted) return resolve()
     const t = setTimeout(resolve, ms)
     sinal.addEventListener('abort', () => { clearTimeout(t); resolve() }, { once: true })
   })
@@ -562,7 +563,7 @@ module.exports = function (app, deps = {}) {
     temporizadores = []
     tg = null
     // os alarmes ativos passam a normal na árvore e ficam no porto.json para o arranque seguinte (I-21)
-    publicar(comoNotificacao(estado.ativos, true))
+    try { publicar(comoNotificacao(estado.ativos, true)) } catch (e) { app.error(`não pus a normal os alarmes do porto: ${e.message}`) }
   }
 
   return plugin
