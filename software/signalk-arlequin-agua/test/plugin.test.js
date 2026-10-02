@@ -6,11 +6,12 @@ const os = require('node:os')
 const path = require('node:path')
 const criar = require('..')
 
+// Como o SignalK, cada valor vem com a hora (timestamp): a de agora, ou a posta em app.ts (um sensor calado).
 function appFalso (dir) {
-  const app = { self: {}, valores: {}, notificacoes: [], estado: '', opcoes: null }
+  const app = { self: {}, ts: {}, valores: {}, notificacoes: [], estado: '', opcoes: null }
   app.dir = dir || fs.mkdtempSync(path.join(os.tmpdir(), 'arlequin-agua-'))
   app.getDataDirPath = () => app.dir
-  app.getSelfPath = (p) => (p in app.self ? { value: app.self[p] } : undefined)
+  app.getSelfPath = (p) => (p in app.self ? { value: app.self[p], timestamp: app.ts[p] ?? new Date().toISOString() } : undefined)
   app.handleMessage = (id, d) => { for (const u of d.updates) for (const v of u.values) { if (v.path.startsWith('notifications.')) app.notificacoes.push({ path: v.path, ...v.value }); else app.valores[v.path] = v.value } }
   app.setPluginStatus = (s) => { app.estado = s }
   app.error = () => {}
@@ -100,6 +101,66 @@ test('I-21: ao parar, os avisos ativos passam a normal; ao arrancar, os presos n
   p2.start({})
   p2.stop()
   assert.deepEqual(app2.notificacoes.map(n => `${n.path}:${n.state}`), ['notifications.tanks.freshWater.1.baixo:normal'])
+})
+
+// Auditoria I-29 (decisão n.º 23): sem sensor (ou sem nunca carregar em "Enchi") os depósitos apareciam
+// cheios (80 L / 100 %) no ecrã, no /estado do Telegram e no diário.
+test('I-29: sem sensor (nunca houve contador) nenhum depósito aparece cheio: o nível vai sem valor (null)', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({})
+  segundos(t, 2)
+  p.stop()
+  for (const id of [0, 1]) {
+    assert.equal(app.valores[`tanks.freshWater.${id}.currentLevel`], null)
+    assert.equal(app.valores[`tanks.freshWater.${id}.currentVolume`], null)
+    assert.equal(app.valores[`tanks.freshWater.${id}.capacity`], 0.08)
+  }
+  assert.match(app.estado, /Cozinha \(BB\) sem sensor/)
+})
+
+test('I-29: com o contador mas sem nunca "Enchi" nem nível à mão: sem nível; depois do "Enchi", cheio', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({})
+  const r = rotas(p)
+  app.self['tanks.freshWater.0.pedaladas'] = 12
+  segundos(t, 2)
+  assert.equal(app.valores['tanks.freshWater.0.currentVolume'], null)
+  const e = await new Promise(res => r.get['/estado']({}, { json: res }))
+  assert.deepEqual([e.tanques[0].litros, e.tanques[0].semSensor, e.tanques[0].nivelConhecido], [null, false, false])
+  await chamar(r.post['/encher'], { id: 0 })
+  segundos(t, 2)
+  p.stop()
+  assert.ok(Math.abs(app.valores['tanks.freshWater.0.currentVolume'] * 1000 - 80) < 1e-9)
+})
+
+test('I-29: o contador calado há mais de 10 min: "sem sensor" (sem valor), mesmo depois de "Enchi"; volta quando o contador volta', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({})
+  const r = rotas(p)
+  await chamar(r.post['/encher'], { id: 0 })
+  app.self['tanks.freshWater.0.pedaladas'] = 0
+  segundos(t, 2)
+  app.self['tanks.freshWater.0.pedaladas'] = 20 // 7 L
+  segundos(t, 2)
+  assert.ok(Math.abs(app.valores['tanks.freshWater.0.currentVolume'] * 1000 - 73) < 1e-9)
+  app.ts['tanks.freshWater.0.pedaladas'] = new Date().toISOString() // o ESP32 cala-se
+  segundos(t, 9 * 60)
+  assert.ok(Math.abs(app.valores['tanks.freshWater.0.currentVolume'] * 1000 - 73) < 1e-9)
+  segundos(t, 2 * 60)
+  assert.equal(app.valores['tanks.freshWater.0.currentVolume'], null)
+  const e = await new Promise(res => r.get['/estado']({}, { json: res }))
+  assert.equal(e.tanques[0].semSensor, true)
+  delete app.ts['tanks.freshWater.0.pedaladas'] // volta, com as pedaladas que contou entretanto
+  app.self['tanks.freshWater.0.pedaladas'] = 40
+  segundos(t, 2)
+  p.stop()
+  assert.ok(Math.abs(app.valores['tanks.freshWater.0.currentVolume'] * 1000 - 66) < 1e-9)
 })
 
 test('calibrar a bomba com uma jarra de 1 L grava os litros por pedalada', async (t) => {

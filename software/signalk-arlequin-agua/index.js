@@ -7,6 +7,8 @@ const fs = require('node:fs')
 const path = require('node:path')
 const agua = require('./lib/agua')
 
+const SEM_SENSOR = 10 * 60 * 1000 // contador sem atualizar há mais disto = sem sensor
+
 const TANQUES = [
   { id: 0, nome: 'Cozinha (BB)', capacidadeL: 80, caminhoPedaladas: 'tanks.freshWater.0.pedaladas', litrosPorPedalada: 0.35 },
   { id: 1, nome: 'WC (EB)', capacidadeL: 80, caminhoPedaladas: 'tanks.freshWater.1.pedaladas', litrosPorPedalada: 0.35 }
@@ -53,6 +55,25 @@ module.exports = function (app) {
 
   const cfgDe = (id) => o.tanques.find(t => t.id === id)
 
+  // O contador de pedaladas de um depósito, se o sensor (ESP32) o publicou há menos de 10 min; senão
+  // undefined: "sem sensor" (auditoria I-29). O ESP32 tem de o mandar de tempos a tempos, mesmo parado.
+  function contadorDe (cfg, agora) {
+    const v = app.getSelfPath?.(cfg.caminhoPedaladas)
+    return typeof v?.value === 'number' && agora - Date.parse(v.timestamp) <= SEM_SENSOR ? v.value : undefined
+  }
+
+  // O nível publicado: sem sensor, ou sem nunca "Enchi" nem nível à mão, vai sem valor (null) — nunca
+  // "cheio" por omissão (decisão n.º 23 do Ivo).
+  function nivelDe (t, cfg, comSensor) {
+    return comSensor ? agua.nivel(t, cfg) : { litros: null, fracao: null }
+  }
+
+  function textoNivel (cfg, t, comSensor, n) {
+    if (!comSensor) return `${cfg.nome} sem sensor`
+    if (n.litros === null) return `${cfg.nome} sem nível (carrega em "Enchi" ou põe o nível à mão)`
+    return `${cfg.nome} ${Math.round(n.litros)} L`
+  }
+
   function guardar () {
     try { fs.writeFileSync(ficheiro, JSON.stringify(estados)) } catch (e) { app.error(`não guardei a água: ${e.message}`) }
   }
@@ -72,15 +93,15 @@ module.exports = function (app) {
     const notif = []
     const resumo = []
     for (const cfg of o.tanques) {
-      const contador = app.getSelfPath?.(cfg.caminhoPedaladas)?.value
+      const contador = contadorDe(cfg, agora)
       let t = estados[cfg.id] || agua.novoTanque()
       t = agua.contagem(t, contador, agora, cfg)
       estados[cfg.id] = t
-      const n = agua.nivel(t, cfg)
+      const n = nivelDe(t, cfg, contador !== undefined)
       const b = `tanks.freshWater.${cfg.id}.`
       values.push(
         { path: b + 'currentLevel', value: n.fracao },
-        { path: b + 'currentVolume', value: n.litros / 1000 },
+        { path: b + 'currentVolume', value: n.litros === null ? null : n.litros / 1000 },
         { path: b + 'capacity', value: cfg.capacidadeL / 1000 },
         { path: b + 'name', value: cfg.nome }
       )
@@ -94,7 +115,7 @@ module.exports = function (app) {
             : { state: 'normal', method: [], message: 'Normal' }
         })
       }
-      resumo.push(`${cfg.nome} ${Math.round(n.litros)} L`)
+      resumo.push(textoNivel(cfg, t, contador !== undefined, n))
     }
     app.handleMessage(plugin.id, { updates: [{ values: [...values, ...notif] }] })
     app.setPluginStatus(resumo.join(' · '))
@@ -144,12 +165,16 @@ module.exports = function (app) {
     ler.get('/estado', (req, res) => {
       const agora = Date.now()
       res.json({
+        // semSensor: o contador não chegou há 10 min (ou nunca); nivelConhecido: já houve um "Enchi" ou
+        // um nível posto à mão (sem isso, ou sem sensor, litros e fracao vêm null)
         tanques: o.tanques.map(cfg => {
           const t = estados[cfg.id] || agua.novoTanque()
-          const n = agua.nivel(t, cfg)
+          const comSensor = contadorDe(cfg, agora) !== undefined
+          const n = nivelDe(t, cfg, comSensor)
           return {
             id: cfg.id, nome: cfg.nome, capacidadeL: cfg.capacidadeL, litrosPorPedalada: cfg.litrosPorPedalada,
-            litros: n.litros, fracao: n.fracao, ritmo: agua.ritmoDiario(t, agora, cfg),
+            litros: n.litros, fracao: n.fracao, ritmo: comSensor ? agua.ritmoDiario(t, agora, cfg) : null,
+            semSensor: !comSensor, nivelConhecido: !!t.nivelConhecido,
             calibrando: !!t.calibracao, pedaladasCalibracao: t.calibracao?.pedaladas ?? null
           }
         })
