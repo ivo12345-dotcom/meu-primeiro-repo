@@ -47,11 +47,11 @@ os dois valores.
 | Tema | Decisão | Porquê |
 |---|---|---|
 | Cérebro | **Raspberry Pi 5 8 GB com OpenPlotter** | Traz OpenCPN e SignalK prontos a usar. Consumo baixo e custo baixo |
-| Interfaces | **MacArthur HAT** (€60) | Uma placa com NMEA 2000, NMEA 0183 e SeaTalk1 |
+| Interfaces | **MacArthur HAT** (~€76 c/IVA) | Uma placa com NMEA 2000, NMEA 0183 e SeaTalk1 |
 | Programa de carta | **OpenCPN** | É o único que junta todos os dados por cima da carta (ver §3) |
 | Cartas | **o-charts "Portugal"** (oeSENC, €16 s/IVA) | Oficiais do Instituto Hidrográfico: continente, Açores e Madeira. Até 5 aparelhos |
 | Navionics | **Fica no telemóvel**, como segunda carta | Lê o Wi-Fi do Pi (posição, profundidade e AIS) |
-| Ecrã (fase 1, testes) | **Waveshare 7" HDMI LCD (C)** (€56,90) | Barato, HDMI + USB como o definitivo. Serve para provar o sistema |
+| Ecrã (fase 1, testes) | **LAFVIN 7" HDMI, tátil** (€48,78) | Barato, HDMI + USB como o definitivo. Serve para provar o sistema |
 | Ecrã (fase 2, definitivo) | **SailProof STS10, 10"** (€499) | Só se a fase 1 correr bem. 1500 nits, IP65, toque com água e luvas |
 | Suporte | **Impresso em ASA**, com pala e tampa | O PETG degrada-se ao sol. O ASA foi feito para o exterior |
 | Piloto automático | **Por decidir** (Ivo, 02/10). **Hoje não há piloto**: o ST4000+ não governa (falta a unidade de roda) e só dá a proa | As opções estão lado a lado no `PILOTO-AUTOMATICO.md` (§3). A única reserva de governo é a cana de emergência (§6) |
@@ -646,6 +646,11 @@ Fontes: [signalk-derived-data](https://github.com/SignalK/signalk-derived-data),
 
 ### Melhor rota (routing meteorológico), pedido do Ivo, 28/09
 
+**Substituído (29/09–01/10)** pelo plugin `signalk-arlequin-rota` (ver "Melhor rota (cálculo)" e
+"A navegar", na secção 11); o Weather Routing do OpenCPN fica disponível à parte. A polar
+aprende-se com a AI do barco ("AI a bordo"), e não com o `signalk-polar-builder`. O texto abaixo é
+o de 28/09.
+
 Dá, com três peças no OpenCPN/SignalK:
 1. **Previsão (GRIB):** vento, ondulação, pressão e correntes para os
    próximos dias. Descarregada pelo **plugin GRIB do OpenCPN** quando há
@@ -913,7 +918,7 @@ Com tudo num ecrã só, esse ecrã passa a ser um ponto único de falha.
 | Motor | Rotações, temperatura, tensão, horas, alarmes do MDI, consumo estimado, gasóleo |
 | Viagem | Rota em track, XTE, VMG ao WP + **resumo da viagem** (distância, tempo, médias, vela/motor, polar, gasóleo, vento, pressão, abatimento, corrente, GPX) |
 | Diário | signalk-logbook: hora a hora, motor, **velas**, **rota**, **alarmes (e se foram por Mesh)**, entradas de um toque, cópia Wi-Fi |
-| Melhor rota | GRIB + polar + Weather Routing: isócronas, rota ótima vs direta, limites a solo, **ativar no piloto** |
+| Melhor rota | (28/09: GRIB + polar + Weather Routing, isócronas, ativar no piloto: **substituído**.) Hoje é o plugin `signalk-arlequin-rota` (secção 11): o destino e a tripulação, as 3 melhores alternativas com o veredicto, o mini-mapa, o plano para terra pelo Telegram, Ativar e o Leme a navegar |
 | Velas (era "Rec. velas") | O estado da grande e da genoa (a AI precisa dele) e o Recolher velas **sem piloto**, passo a passo: liga o motor, aproa ao vento com o rumo indicado, recolhe, terminado; tudo no diário. (Em 28/09 aproava com o EV-100: piloto por decidir) |
 | Noite | As cores do dia muito escurecidas, com − e + para o brilho (ver abaixo) |
 
@@ -1267,7 +1272,8 @@ node software/ferramentas/sincronizar/sincronizar.mjs --host pi@arlequin
 
 Desenho completo em `docs/superpowers/specs/2026-09-30-melhor-rota-calculo-design.md`. Esta
 parte (3a) é o cálculo; a página do ecrã, o mini-mapa e o plano pelo Telegram (3b-1) estão em
-"No ecrã e pelo Telegram", mais abaixo; os avisos durante a viagem (3b-2) ainda não existem.
+"No ecrã e pelo Telegram", mais abaixo; os avisos e o acompanhamento durante a viagem (3b-2) estão
+em "A navegar", mais abaixo.
 
 - **O que faz:** cobre a costa continental, de Caminha a Vila Real de Santo António. Para um
   destino e a tripulação ("só eu" ou "acompanhado"), gera as alternativas por afastamento à
