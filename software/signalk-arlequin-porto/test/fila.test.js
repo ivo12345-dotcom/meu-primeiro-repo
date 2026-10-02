@@ -673,6 +673,42 @@ test('auditoria F4b (revisão, Menor 13): sem mexer nos limites do plugin: 101 a
   } finally { p.stop(); await tgf.fechar() }
 })
 
+test('segurança: o token do bot nunca vai para a fila gravada, o registo, o estado do plugin nem as mensagens, mesmo quando o erro do fetch ou a descrição do Telegram trazem o URL inteiro (sem rede e com uma mensagem recusada)', async () => {
+  const SEGREDO = '123456:SEGREDO-DO-BOT'
+  const tgf = await criarTelegramFalso()
+  const app = appFalso()
+  const rel = relogio()
+  const original = globalThis.fetch
+  let semRede = true
+  globalThis.fetch = async (url, o) => {
+    if (String(url).endsWith('/sendMessage')) {
+      // o erro do fetch com o URL todo; e a descrição do Telegram com o URL todo
+      if (semRede) throw new TypeError(`fetch falhou: ${url}`)
+      if (JSON.parse(o.body).text.startsWith('⚠️ mensagem RECUSADA')) return new Response(JSON.stringify({ ok: false, error_code: 400, description: `Bad Request: message is too long (${url})` }), { status: 400 })
+    }
+    return original(url, o)
+  }
+  const p = criar(app, { ...rel.deps, ...RAPIDO })
+  p.start({ telegramToken: SEGREDO, chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 })
+  try {
+    app.pôr('sensors.porao.agua', 1)
+    assert.ok(await falhadas(app, 1), app.estado)
+    semRede = false
+    app.pôr('notifications.outro.relatorio', { state: 'warn', message: 'mensagem RECUSADA pelo Telegram' })
+    // o tempo passa até a recusada sair da fila (3 recusas) e o alarme chegar
+    for (let i = 0; i < 40 && !app.erros.some(e => /desisti/.test(e)); i++) { rel.passar(MIN); await mais(app, 2) }
+    assert.ok(app.erros.some(e => /desisti/.test(e)), JSON.stringify(app.erros))
+    assert.ok(await ate(() => naFila(app).length === 0 && textos(tgf).some(t => /Água no porão/.test(t))), app.estado)
+    // o que ficou escrito: o registo (com as linhas que interessam), o estado, o que foi ao Telegram e os ficheiros
+    assert.ok(app.erros.some(e => /sem ligação/.test(e)), JSON.stringify(app.erros))
+    const ficheiros = fs.readdirSync(app.dir).map(f => fs.readFileSync(path.join(app.dir, f), 'utf8'))
+    assert.ok(ficheiros.length >= 2)
+    for (const [onde, conteudo] of Object.entries({ registo: JSON.stringify(app.erros), estado: app.estado, telegram: JSON.stringify(tgf.enviados), ficheiros: ficheiros.join('\n') })) {
+      assert.ok(!conteudo.includes(SEGREDO), `o token apareceu em: ${onde}`)
+    }
+  } finally { globalThis.fetch = original; p.stop(); await tgf.fechar() }
+})
+
 test('auditoria K-09: sem chats autorizados (ou sem token) não se guarda nada na fila', async () => {
   const tgf = await criarTelegramFalso()
   const app = appFalso()
