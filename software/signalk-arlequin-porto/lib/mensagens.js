@@ -25,11 +25,14 @@ function novoEncaminhador () {
 // O limite de 10 min só trava ALARMES repetidos do mesmo caminho; o "resolvido"
 // de um alarme que foi enviado segue sempre (senão ficava-se a julgar que continua).
 const SO_ALARME = ['notifications.arlequin.caixanegra.disco', 'notifications.rota.previsao']
-// Lembretes e avisos só para o ecrã: nunca seguem para o Telegram.
-const NUNCA = ['notifications.arlequin.caixanegra.velas', 'notifications.arlequin.caixanegra.relogio', 'notifications.rota.lembrete.', 'notifications.rota.comer', 'notifications.rota.alarmeTerra']
+// Lembretes e avisos só para o ecrã: nunca seguem para o Telegram. Também os de uma sonda, de um sensor
+// ou de uma ligação perdidos, de qualquer plugin (contrato C11: os caminhos que acabam em .sondaPerdida,
+// .sensorPerdido ou .semLigacao).
+const NUNCA = ['notifications.arlequin.caixanegra.velas', 'notifications.arlequin.caixanegra.relogio', 'notifications.rota.lembrete.', 'notifications.rota.comer', 'notifications.rota.alarmeTerra', '.sondaPerdida', '.sensorPerdido', '.semLigacao']
 const GRAVE = new Set(['alarm', 'emergency'])
-// Um caminho das listas: exato; só um que acaba em ponto final é um prefixo (notifications.rota.lembrete.)
-const casa = (caminho, p) => (p.endsWith('.') ? caminho.startsWith(p) : caminho === p)
+// Um caminho das listas: exato; um que acaba em ponto final é um prefixo (notifications.rota.lembrete.);
+// um que começa por ponto, o fim do caminho (.sondaPerdida)
+const casa = (caminho, p) => (p.startsWith('.') ? caminho.endsWith(p) : p.endsWith('.') ? caminho.startsWith(p) : caminho === p)
 const casaAlgum = (caminho, lista) => lista.some(p => casa(caminho, p))
 // O texto de uma notificação; sem ele, uma frase em pt-PT com o caminho entre parênteses (auditoria
 // I-32: antes ia só o caminho, em inglês)
@@ -43,7 +46,10 @@ function encaminhar (enc0, notificacoes, agora, { intervalo = 10 * 60 * 1000, am
   const itens = []
   const enviar = (texto, caminho, estado) => { mensagens.push(texto); itens.push({ texto, caminho, estado }) }
   for (const n of notificacoes) {
-    if (casaAlgum(n.caminho, nunca)) continue // lembretes só para o ecrã
+    if (casaAlgum(n.caminho, nunca)) { // só para o ecrã (o que uma versão antiga gravou dele esquece-se, sem mensagem)
+      for (const k of ['estados', 'mensagem', 'ultimoAlarme', 'pendente']) delete enc[k][n.caminho]
+      continue
+    }
     const antes = enc.estados[n.caminho] || 'normal'
     const soGrave = casaAlgum(n.caminho, soAlarme)
     // Para estes caminhos um aviso conta como normal: não segue, e o "resolvido" só sai se houve alarme.

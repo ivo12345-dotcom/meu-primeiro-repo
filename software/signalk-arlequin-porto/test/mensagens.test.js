@@ -157,6 +157,30 @@ test('auditoria M-54: o /estado conta também o estado alert (como o encaminhado
   ]), ['Um aviso em alert', 'FUMO a bordo!'])
 })
 
+test('contrato C11: os avisos só do ecrã (os caminhos que acabam em .sondaPerdida, .sensorPerdido ou .semLigacao) nunca vão para o Telegram nem aparecem no /estado; um gravado ativo por uma versão antiga sai sem "Resolvido"', () => {
+  const lista = [
+    n('notifications.tanks.fuel.0.sondaPerdida', 'warn', 'Sem a sonda do gasóleo há mais de 5 min'),
+    n('notifications.arlequin.energia.sensorPerdido', 'warn', 'Sem dados do SmartShunt há mais de 5 min'),
+    n('notifications.propulsion.main.semLigacao', 'warn', 'Sem ligação ao motor (J1939)'),
+    n('notifications.x.semLigacaoAoCais', 'warn', 'outro aviso'), // só o fim do caminho conta
+    n('notifications.arlequin.porto.fumo', 'emergency', 'FUMO a bordo!')
+  ]
+  const r = encaminhar(novoEncaminhador(), lista, 0)
+  assert.deepEqual(r.mensagens, ['⚠️ outro aviso', '🔥 FUMO a bordo!'])
+  assert.deepEqual(alarmesAtivos(lista), ['outro aviso', 'FUMO a bordo!'])
+  // nem em alarme
+  assert.deepEqual(encaminhar(novoEncaminhador(), [n('notifications.propulsion.main.semLigacao', 'alarm', 'x')], 0).mensagens, [])
+  // um que a versão anterior já tinha enviado (gravado ativo no encaminhador.json): sai em silêncio
+  const C = 'notifications.tanks.fuel.0.sondaPerdida'
+  let e = { ...novoEncaminhador(), estados: { [C]: 'warn' }, mensagem: { [C]: 'Sem a sonda' }, ultimoAlarme: { [C]: 0 }, pendente: { [C]: true } }
+  for (const m of [1, 2, 5, 30]) {
+    const x = encaminhar(e, [n(C, m < 5 ? 'warn' : 'normal', 'Sem a sonda')], m * MIN)
+    assert.deepEqual(x.mensagens, [], `${m} min`)
+    e = x.enc
+  }
+  assert.deepEqual(encaminhar(e, [], 60 * MIN).mensagens, [])
+})
+
 test('auditoria I-32: uma notificação sem texto chega ao Telegram com uma frase em pt-PT (e o caminho entre parênteses), também no "Resolvido"', () => {
   const C = 'notifications.propulsion.main.overTemperature'
   let r = encaminhar(novoEncaminhador(), [{ caminho: C, state: 'alarm' }, { caminho: 'notifications.x.aviso', state: 'warn', message: '' }], 0)
