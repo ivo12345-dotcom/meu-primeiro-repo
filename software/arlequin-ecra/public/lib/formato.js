@@ -1,5 +1,7 @@
 // Conversões SI → unidades de bordo e formatação pt-PT. Sem dado → "—".
 
+import { hmLisboa } from './rota-texto.js'
+
 export const nos = (ms) => ms * 3600 / 1852
 export const graus = (rad) => rad * 180 / Math.PI
 export const celsius = (k) => Math.round((k - 273.15) * 1e6) / 1e6
@@ -40,6 +42,6 @@ export function duracao (s) {
   return `${h} h ${String(m).padStart(2, '0')}`
 }
 
-export function hora (d) {
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
+// HH:MM na hora de Lisboa (auditoria I-31, decisão do Ivo n.º 22: nunca a hora local do browser, que no Pi
+// em UTC dava uma hora a menos do que a faixa da rota no mesmo ecrã); "—" sem hora.
+export const hora = (d) => hmLisboa(d)

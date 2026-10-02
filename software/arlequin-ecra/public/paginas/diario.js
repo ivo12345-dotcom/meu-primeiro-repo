@@ -1,7 +1,7 @@
 // Diário de bordo (signalk-logbook): entradas de hoje, botões de um toque, notas,
 // e o cartão da AI (o que o barco aprendeu, "Treinar agora", "Voltar atrás").
 
-import { esc, dataLisboa } from '../lib/rota-texto.js'
+import { esc, dataLisboa, hmLisboa } from '../lib/rota-texto.js'
 import { motivo } from '../lib/erros.js'
 
 // [texto no diário, categoria, rótulo do botão (se for diferente do texto)]
@@ -22,7 +22,8 @@ const agora = (ctx) => (Number.isFinite(ctx.agora) ? ctx.agora : Date.now())
 // o dia de Lisboa (o plugin do ecrã junta os dois dias UTC do logbook que lhe tocam)
 const hoje = (ctx) => dataLisboa(agora(ctx))
 const virgula = (x) => String(Math.round(x * 10) / 10).replace('.', ',')
-const hora = (iso) => { const d = new Date(iso); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` }
+// a hora de Lisboa (auditoria I-31)
+const hora = (iso) => hmLisboa(iso)
 
 function buscar (ctx, forcar = false) {
   if (ctx.estado.aBuscar || (!forcar && Date.now() - (ctx.estado.em || 0) < 20000)) return
@@ -76,8 +77,7 @@ export default {
     buscarIa(ctx)
     const e = ctx.estado
     const lista = (e.entradas || []).slice().reverse().map(x => {
-      const d = new Date(x.datetime)
-      return `<tr><td style="width:4.5rem;">${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}</td><td>${esc(x.text)}</td><td class="lab">${esc(x.category || '')}</td></tr>`
+      return `<tr><td style="width:4.5rem;">${hora(x.datetime)}</td><td>${esc(x.text)}</td><td class="lab">${esc(x.category || '')}</td></tr>`
     }).join('')
     const vazio = e.erro
       ? `<div class="perigo">${esc(e.erro)}</div>`

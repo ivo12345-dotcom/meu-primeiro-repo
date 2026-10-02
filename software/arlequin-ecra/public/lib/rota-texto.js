@@ -9,7 +9,7 @@ const SEMANA_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 export const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
 
-const ms = (x) => (typeof x === 'number' ? x : typeof x === 'string' ? Date.parse(x) : NaN)
+const ms = (x) => (typeof x === 'number' ? x : typeof x === 'string' ? Date.parse(x) : x instanceof Date ? x.getTime() : NaN)
 const ok = (x) => typeof x === 'number' && Number.isFinite(x)
 
 let formato = null
@@ -33,6 +33,21 @@ function dia (t, agora) {
   if (a.data === hoje) return ''
   if (a.data === diaSeguinte(hoje)) return 'amanhã'
   return `${a.semana} ${a.dia}/${a.mes}`
+}
+
+// A hora de Lisboa, sem o dia: "14:32"; "—" sem hora (auditoria I-31: o ecrã dá sempre a hora de Lisboa,
+// seja qual for o fuso do Pi).
+export function hmLisboa (t) {
+  t = ms(t)
+  return ok(t) ? partes(t).hm : SEM
+}
+
+// O dia e a hora de Lisboa: "15/7 00:30"; "—" sem hora.
+export function diaHoraLisboa (t) {
+  t = ms(t)
+  if (!ok(t)) return SEM
+  const p = partes(t)
+  return `${Number(p.dia)}/${Number(p.mes)} ${p.hm}`
 }
 
 // O dia de Lisboa de uma hora: "2026-10-02"; "—" sem hora.

@@ -2,32 +2,33 @@
 
 import { barraXte } from '../lib/desenho.js'
 import { hpa } from '../lib/formato.js'
+import { hmLisboa, diaHoraLisboa } from '../lib/rota-texto.js'
 import { tile, proximoWp, velocidade, distancia, duracao, num, rumo, ok, esc } from './comum.js'
 
-const hm = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+// as horas de Lisboa (auditoria I-31)
+const agora = (ctx) => (Number.isFinite(ctx.agora) ? ctx.agora : Date.now())
 
 export default {
   render (ctx) {
     const wp = proximoWp(ctx)
-    const eta = ok(wp.ttg) ? new Date(Date.now() + wp.ttg * 1000) : null
+    const eta = ok(wp.ttg) ? agora(ctx) + wp.ttg * 1000 : null
     const v = ctx.viagem
     const tempo = (v.ultimo ?? v.inicio) - v.inicio
     const media = tempo > 60000 ? v.distancia / (tempo / 1000) : null
     const dp = ok(v.pressaoInicial) && ok(v.pressaoFinal) ? hpa(v.pressaoFinal - v.pressaoInicial) : null
-    const inicio = new Date(v.inicio)
     const esquerda = wp.ativo
       ? `<div class="tile"><div class="lab">Próximo ponto</div><div class="vv">${esc(wp.nome)}</div></div>
 <div class="grelha" style="grid-template-columns:1fr 1fr;flex:2;">
   ${tile('Distância', `${distancia(wp.dist)} MN`, '', 'vv')}
   ${tile('Rumo ao WP', rumo(wp.rumoWp), '', 'vv')}
-  ${tile('Chegada', eta ? hm(eta) : '—', `<div class="lab">falta ${duracao(wp.ttg)}</div>`, 'vv')}
+  ${tile('Chegada', eta ? hmLisboa(eta) : '—', `<div class="lab">falta ${duracao(wp.ttg)}</div>`, 'vv')}
   ${tile('VMG ao WP', `${velocidade(wp.vmg)} nós`, '', 'vv')}
 </div>
 <div class="tile"><div class="lab">XTE ${ok(wp.xte) ? `${distancia(Math.abs(wp.xte), 2)} MN ${wp.xte > 0 ? '(estás a EB da rota)' : '(estás a BB da rota)'}` : '—'}</div>${barraXte(wp.xte)}</div>`
       : '<div class="tile centro" style="flex:1;"><div class="vv">Sem rota ativa</div><div class="lab">Ativa uma rota no OpenCPN.</div></div>'
     return `<div class="col">${esquerda}</div>
 <div class="col">
-<div class="tile"><div class="linha"><span class="lab">Resumo da viagem · desde ${inicio.getDate()}/${inicio.getMonth() + 1} ${hm(inicio)}</span>
+<div class="tile"><div class="linha"><span class="lab">Resumo da viagem · desde ${diaHoraLisboa(v.inicio)}</span>
   ${ctx.estado.confirmarNova ? '' : '<button class="btn" style="padding:.5rem 1rem;" data-acao="nova">Nova viagem</button>'}</div>
 ${ctx.estado.confirmarNova ? `<div class="plano-confirmar"><div class="v">Começar uma viagem nova? O resumo atual é apagado.</div>
 <div class="acoes"><button class="acao stop" data-acao="nova-sim">Sim, começar outra</button><button class="acao" data-acao="nova-nao">Não</button></div></div>` : ''}</div>

@@ -258,7 +258,8 @@ test('Diário: "Voltar atrás" só quando o plugin diz podeVoltar', () => {
 
 test('Diário: o cartão da AI mostra o estado do arquivo da previsão', () => {
   const store = criarStore()
-  const okEm = new Date(2026, 8, 30, 9, 5).getTime()
+  // 09:05 em Lisboa (auditoria I-31: a hora de Lisboa, não a do fuso da máquina)
+  const okEm = Date.parse('2026-09-30T08:05:00Z')
   const html = (previsao) => diario.render(contexto(store, { ia: { modelos: {}, previsao }, iaEm: Date.now() }))
   assert.match(html({ okEm, tentativaEm: null, erro: null }), /previsão: última 09:05/)
   assert.match(html({ okEm, tentativaEm: okEm, erro: 'fetch failed' }), /previsão: sem rede \(fetch failed\) · última 09:05/)
@@ -581,6 +582,19 @@ test('auditoria I-29: um depósito sem nível (o plugin publica null sem sensor,
   const st2 = storeSimulado(1)
   aplicarDelta(st2, { updates: [{ timestamp: new Date().toISOString(), values: [{ path: 'tanks.freshWater.0.name', value: 'Cozinha (BB)' }] }] })
   assert.match(motor.render(contexto(st2)), /Cozinha \(BB\)[\s\S]*sem sensor/)
+})
+
+// ---------- auditoria I-31 (decisão do Ivo n.º 22): sempre a hora de Lisboa ----------
+test('auditoria I-31: a Viagem, as cargas do Motor e o Diário dão a hora de Lisboa (23:30 UTC de 14/07 = 00:30 de 15/07)', async () => {
+  const T = Date.parse('2026-07-14T23:30:00Z')
+  const v = viagem.render({ ...contexto(store, {}), agora: T + 60e3, viagem: { ...novaViagem(T), ultimo: T + 60e3 }, v: (p) => (p === 'navigation.course.calcValues.distance' ? 1852 : p === 'navigation.course.calcValues.timeToGo' ? 1800 : undefined) })
+  assert.match(v, /Resumo da viagem · desde 15\/7 00:30/)
+  assert.match(v, /Chegada<\/div><div class="vv">01:01/, 'a chegada ao WP (agora + 30 min)')
+  const m = motor.render(contexto(store, { sessoes: [{ inicio: new Date(T).toISOString(), duracaoMin: 95, ah: 42.5, socInicial: 0.55, socFinal: 0.81 }], sessoesEm: Date.now() }))
+  assert.match(m, /<span>15\/7 00:30<\/span>/)
+  const d = diario.render(contexto(store, { entradas: [{ datetime: new Date(T).toISOString(), text: 'Largámos', category: 'navigation' }], em: Date.now(), ia: { modelos: {}, ultimoTreino: { em: new Date(T).toISOString(), resultados: [] } }, iaEm: Date.now() }))
+  assert.match(d, /<td style="width:4\.5rem;">00:30<\/td><td>Largámos/)
+  assert.match(d, /último treino 00:30/)
 })
 
 test('Diário: cartão da AI mostra mensagem genérica para erro sem status', async () => {

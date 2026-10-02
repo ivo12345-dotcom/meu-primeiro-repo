@@ -6,6 +6,7 @@ import { celsius } from '../lib/formato.js'
 import { tile, gasoleo, corGasoleo, num, ok, esc, motorLigado, ESTADO_MOTOR, CLASSE_MOTOR } from './comum.js'
 import { litrosPorMilha } from '../lib/consumo-milha.js'
 import { motivo } from '../lib/erros.js'
+import { diaHoraLisboa } from '../lib/rota-texto.js'
 
 function buscarSessoes (ctx) {
   if (ctx.estado.aBuscar || Date.now() - (ctx.estado.sessoesEm || 0) < 30000) return
@@ -131,7 +132,8 @@ ${ctx.estado.msgAgua ? `<div class="perigo">${esc(ctx.estado.msgAgua)}</div>` : 
 </div></div>`
 }
 
-const hm = (iso) => { const d = new Date(iso); return `${d.getDate()}/${d.getMonth() + 1} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` }
+// o dia e a hora de Lisboa (auditoria I-31)
+const hm = (iso) => diaHoraLisboa(iso)
 
 export default {
   aoEntrar (ctx) { ctx.estado.sessoesEm = 0; ctx.estado.curvaEm = 0; ctx.estado.gasEm = 0; buscarSessoes(ctx); buscarCurva(ctx); buscarGasoleo(ctx) },
