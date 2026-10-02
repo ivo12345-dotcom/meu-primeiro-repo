@@ -1,6 +1,6 @@
 """Treino dos modelos (LightGBM por quantis P10/P50/P90), teste com a última
 saída (com as anteriores juntas até o teste ter 1 h), aceitação só se errar menos do que o modelo em uso (ou, no 1.º modelo,
-do que a polar/curva de origem), versões em modelos/<nome>/vNNNN.json.gz e o
+do que a origem: a polar, a previsão em bruto ou a curva da Volvo), versões em modelos/<nome>/vNNNN.json.gz e o
 registo de tudo em modelos/registo.json."""
 
 import gzip
@@ -55,22 +55,26 @@ MODELOS = {
         'filtro': lambda d: d['prevTws'].notna() & d['twaPrevAbs'].notna() & d['stw'].notna() & a_vela(d),
         # a origem é a polar com a mesma informação que o modelo tem: a previsão em bruto
         'base': lambda d, polar: stw_polar(polar, d['twaPrevAbs'], d['prevTws']),
+        'origem': 'a polar',  # com que o 1.º modelo se compara (no motivo do registo)
     },
     'ventoForca': {
         'alvo': 'ventoRazao', 'variaveis': VARS_VENTO,
         'filtro': lambda d: d['ventoRazao'].notna(),
         'base': lambda d, polar: np.ones(len(d)),
+        'origem': 'a previsão em bruto',
     },
     'ventoDirecao': {
         'alvo': 'ventoDif', 'variaveis': VARS_VENTO,
         'filtro': lambda d: d['ventoDif'].notna(),
         'base': lambda d, polar: np.zeros(len(d)),
+        'origem': 'a previsão em bruto',
     },
     'consumo': {
         'alvo': 'litrosHora', 'variaveis': ['rpm', 'prevOndas', 'ondasAnguloRel'],
         # só o caudal medido pelo MDI: a estimativa do plugin J1939 é a própria curva da Volvo (seria circular)
         'filtro': lambda d: (d['rpm'] > MOTOR_PARADO_RPM) & d['litrosHora'].notna() & (d['consumoMedido'] == 1),
         'base': lambda d, polar: litros_volvo(d['rpm']),
+        'origem': 'a curva da Volvo',
     },
 }
 
@@ -126,10 +130,16 @@ def frases(nome, d, x, p50, polar):
                        f'(a Volvo diz {virgula(float(litros_volvo([r])[0]))})')
         return out
     media = float(np.median(p50.predict(x)))
+    # arredonda-se primeiro: com menos de 1 (0% ou 0°) a frase é neutra, nunca "0% mais forte"
     if nome == 'ventoForca':
         pct = round((media - 1) * 100)
-        return [f'o vento real é em média {abs(pct)}% mais {"forte" if pct >= 0 else "fraco"} do que a previsão']
-    return [f'o vento real vem em média {abs(media):.0f}° mais {"à direita" if media >= 0 else "à esquerda"} '
+        if pct == 0:
+            return ['o vento real é em média igual ao previsto']
+        return [f'o vento real é em média {abs(pct)}% mais {"forte" if pct > 0 else "fraco"} do que a previsão']
+    graus = round(media)
+    if graus == 0:
+        return ['o vento real vem em média da direção prevista']
+    return [f'o vento real vem em média {abs(graus)}° mais {"à direita" if graus > 0 else "à esquerda"} '
             f'do que a previsão']
 
 
@@ -252,8 +262,8 @@ def treinar_um(nome, d, pasta_modelos, agora, polar):
     escrever(pasta / f'{versao}.json.gz', gzip.compress(json.dumps(modelo).encode('utf-8')))
     if aceite:
         escrever(pasta / 'atual', versao.encode('utf-8'))
-    motivo = ('erra menos do que ' + ('a versão em uso' if em_uso is not None else 'a polar/curva de origem')) if aceite \
-        else ('erra mais do que ' + ('a versão em uso' if em_uso is not None else 'a polar/curva de origem'))
+    comparado = 'a versão em uso' if em_uso is not None else spec['origem']
+    motivo = f'erra menos do que {comparado}' if aceite else f'erra mais do que {comparado}'
     return {**res, 'versao': versao, 'aceite': aceite, 'motivo': motivo, 'nTeste': modelo['nTeste'], 'mae': modelo['mae'],
             'maeAtual': modelo['maeAtual'], 'maeBase': modelo['maeBase'], 'frases': modelo['frases']}
 
