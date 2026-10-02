@@ -54,6 +54,12 @@ const ATRASO_ESCORREGA_MS = 15 * MIN
 const ATRASO_MARGEM_MS = 30 * MIN // o 1.º atraso: a chegada prevista 30 min ou mais depois da p90
 const ALARME_DEPOIS_MS = 2 * H
 const FECHO = new Set(['chegada', 'terminado'])
+// Do plano anterior só ficam (herdar) o "cheguei bem"/"terminada" e os avisos ao Ivo: terra ainda espera
+// por eles. Um atraso ou um plano do plano anterior que estava "a enviar" e falhou já não interessa (o
+// plano dele acabou; o novo tem os seus, e um plano antigo a chegar depois do novo enganava os contactos:
+// auditoria K-13).
+const HERDAM = new Set(['chegada', 'terminado', 'aviso'])
+const doAnteriorSemInteresse = (m) => !!m.anterior && !HERDAM.has(m.tipo)
 const MARCA_MS = 5 * MIN // as marcas { t, s } de 5 em 5 min
 const MARCAS_MS = 2 * H // guardam-se as das últimas 2 h
 const PROGRESSO_MIN_MS = 15 * MIN // com menos marcas do que isto não se sabe o progresso
@@ -188,7 +194,7 @@ function porNaFila (c0, msg, agora) {
 function herdar (c0) {
   if (!c0) return novaFila()
   const c = { ...novaFila(), ...c0 }
-  const fica = (m) => m.estado === 'a enviar' || FECHO.has(m.tipo)
+  const fica = (m) => m.estado === 'a enviar' || HERDAM.has(m.tipo)
   return { fila: c.fila.filter(fica).map(m => ({ ...m, anterior: true })), enviadas: [], seq: c.seq, letra: letraSeguinte(c.letra) }
 }
 
@@ -206,22 +212,23 @@ const tirarSe = (c, f) => ({ ...c, fila: c.fila.filter(m => !(m.estado === 'fila
 // (auditoria K-02); o do "Estou bem" (confirmado) e os do plano anterior não são.
 const atrasoAutomatico = (m) => m?.tipo === 'atraso' && !m.anterior && !m.confirmado
 
-// A próxima a enviar: a primeira da fila, se já for a hora dela e nenhuma estiver "a enviar". Uma
-// cabeça que já falhou 3 vezes não prende a fila (revisão final M4): um 'plano' deixa passar à frente o
-// "cheguei bem"/"terminada"; um parcial (só os contactos que falharam, I3) deixa passar qualquer uma.
+// A próxima a enviar (auditoria K-13): uma de cada vez (nenhuma "a enviar") e só as que já estão na hora.
+// As que guardam a ordem — as deste plano com menos de 3 tentativas — saem pela ordem da fila: a 1.ª
+// delas que ainda não está na hora faz esperar as seguintes. As outras nunca prendem nenhuma, seja de
+// que tipo for: as que já falharam 3 vezes (um contacto que bloqueou o bot ou saiu dos "Contactos do
+// plano": a sonda S6 prendia os atrasos e o "cheguei bem" da viagem seguinte), as do plano anterior (vão
+// para o fim da fila) e os avisos ao Ivo; saem quando nenhuma das que guardam a ordem está pronta (e
+// assim nunca se perdem). (Revisão final M4: um 'plano' que falhou 3 vezes deixa passar o "cheguei bem".)
 // saltar(m): as que não podem sair agora (auditoria K-02: um atraso sem GPS fica retido), nem prendem.
 const TENTATIVAS_PRENDE = 3
+const guardaOrdem = (m) => !(m.tentativas >= TENTATIVAS_PRENDE || m.anterior || m.tipo === 'aviso')
 function proxima (c, agora, { saltar = () => false } = {}) {
   if (!c?.fila?.length || c.fila.some(m => m.estado === 'a enviar')) return null
   const pronta = (m) => Date.parse(m.proxima) <= agora
   const fila = c.fila.filter(m => !saltar(m))
-  const m = fila[0]
-  if (!m) return null
-  if (m.tentativas >= TENTATIVAS_PRENDE && (m.tipo === 'plano' || m.parcial)) {
-    const outra = fila.slice(1).find(x => pronta(x) && (m.parcial || FECHO.has(x.tipo)))
-    if (outra) return outra
-  }
-  return pronta(m) ? m : null
+  const primeira = fila.find(guardaOrdem)
+  if (primeira && pronta(primeira)) return primeira
+  return fila.find(m => !guardaOrdem(m) && pronta(m)) ?? null
 }
 
 const mudar = (c, f, fn) => ({ ...c, fila: c.fila.map(m => (f(m) ? fn(m) : m)) })
@@ -229,7 +236,9 @@ const mudar = (c, f, fn) => ({ ...c, fila: c.fila.map(m => (f(m) ? fn(m) : m)) }
 const marcarAEnviar = (c, id, pedido, agora, texto) => mudar(c, m => m.id === id, m => ({ ...m, estado: 'a enviar', pedido, tentativas: m.tentativas + 1, tentadaEm: iso(agora), ...(texto != null ? { texto } : {}) }))
 
 function falhou (c, pedido, erro, agora) {
-  if (!c.fila.some(m => m.pedido === pedido)) return c
+  const m0 = c.fila.find(m => m.pedido === pedido)
+  if (!m0) return c
+  if (doAnteriorSemInteresse(m0)) return { ...c, fila: c.fila.filter(m => m !== m0) }
   return mudar(c, m => m.pedido === pedido, m => ({ ...m, estado: 'fila', pedido: null, erro, proxima: iso(agora + REPETIR_MS) }))
 }
 
@@ -256,7 +265,7 @@ function resposta (c, pedido, r = {}, agora) {
   // os que falharam: a mesma mensagem, só para eles
   const pedidos = Array.isArray(m.chats) ? m.chats.map(String) : []
   const faltam = pedidos.map((id, i) => ({ id, nome: pedidos.length === (m.contactos || []).length ? m.contactos[i] : `chat ${id}` })).filter(x => !chats.includes(x.id))
-  if (faltam.length) {
+  if (faltam.length && !doAnteriorSemInteresse(m)) {
     const seq = out.seq + 1
     const nova = { ...m, id: `m${seq}`, contactos: faltam.map(x => x.nome), chats: faltam.map(x => x.id), parcial: true, ...(ivo ? { ivoRecebeu: true } : {}), estado: 'fila', pedido: null, erro: falhas.map(x => `${x.nome}: ${x.erro}`).join('; ') || null, proxima: iso(agora + REPETIR_MS) }
     out = { ...out, seq, fila: [...out.fila, nova] }

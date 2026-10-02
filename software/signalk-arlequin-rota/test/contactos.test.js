@@ -323,3 +323,43 @@ test('revisão final C1: o progresso conta em cada troço no máximo o que o bar
   assert.ok(ct.progressoNaHora(m.map(({ t, s }) => ({ t, s })), atual.s, T0 + 65 * MIN) > 1)
   assert.deepEqual(ct.juntarMarca([], { t: T0, s: 1, lat: 38.7, lon: -9.2 }), [{ t: T0, s: 1, lat: 38.7, lon: -9.2 }])
 })
+
+test('auditoria K-13: uma cabeça com 3 ou mais tentativas nunca prende as outras, seja de que tipo for; entre as que guardam a ordem, a 1.ª que ainda não está na hora faz esperar as seguintes', () => {
+  const msg = (id, tipo, tentativas, proxima, extra = {}) => ({ id, ref: `A${id}`, tipo, texto: tipo, contactos: ['Mãe'], chats: ['222'], criada: iso(T0), tentativas, proxima: iso(proxima), estado: 'fila', pedido: null, erro: null, ...extra })
+  const fila = (...m) => ({ ...ct.novaFila(), fila: m })
+  // um atraso (ou um "cheguei bem") que falhou 3 vezes, já na hora: a mensagem seguinte vai primeiro
+  assert.equal(ct.proxima(fila(msg(1, 'atraso', 3, T0), msg(2, 'plano', 0, T0)), T0).id, 2)
+  assert.equal(ct.proxima(fila(msg(1, 'chegada', 5, T0), msg(2, 'atraso', 0, T0)), T0).id, 2)
+  // ainda não na hora (a esperar os 2 min): a seguinte também passa
+  assert.equal(ct.proxima(fila(msg(1, 'terminado', 3, T0 + MIN), msg(2, 'atraso', 0, T0)), T0).id, 2)
+  // sem outra pronta, a que falhou volta a tentar (nunca se perde)
+  assert.equal(ct.proxima(fila(msg(1, 'chegada', 7, T0)), T0).id, 1)
+  // com menos de 3 tentativas e fora da hora, guarda a ordem: as seguintes esperam por ela
+  assert.equal(ct.proxima(fila(msg(1, 'plano', 1, T0 + MIN), msg(2, 'chegada', 0, T0)), T0), null)
+})
+
+test('auditoria K-13: as mensagens do plano anterior (anterior: true) não prendem as do plano novo — vão para o fim da fila; e um atraso ou um plano do plano anterior que falha deixa de interessar (sai da fila), um "cheguei bem" fica', () => {
+  const msg = (id, tipo, tentativas, proxima, extra = {}) => ({ id, ref: `A${id}`, tipo, texto: tipo, contactos: ['Mãe'], chats: ['222'], criada: iso(T0), tentativas, proxima: iso(proxima), estado: 'fila', pedido: null, erro: null, ...extra })
+  const fila = (...m) => ({ ...ct.novaFila(), fila: m })
+  // o "cheguei bem" da viagem 1 (herdado), mesmo pronto, vai depois do atraso da viagem 2
+  assert.equal(ct.proxima(fila(msg(1, 'chegada', 0, T0, { anterior: true }), msg(2, 'atraso', 0, T0)), T0).id, 2)
+  assert.equal(ct.proxima(fila(msg(1, 'chegada', 1, T0 + MIN, { anterior: true }), msg(2, 'atraso', 0, T0)), T0).id, 2)
+  // sozinho, sai
+  assert.equal(ct.proxima(fila(msg(1, 'chegada', 0, T0, { anterior: true })), T0).id, 1)
+  // a resposta que falha: o atraso e o plano do plano anterior saem da fila; o "cheguei bem" volta à fila
+  let c = fila(msg(1, 'atraso', 0, T0, { anterior: true }), msg(2, 'plano', 0, T0, { anterior: true }), msg(3, 'chegada', 0, T0, { anterior: true }))
+  for (const [id, p] of [[1, 'p1'], [2, 'p2'], [3, 'p3']]) {
+    c = ct.marcarAEnviar(c, id, p, T0)
+    c = ct.falhou(c, p, 'sem resposta', T0)
+  }
+  assert.deepEqual(c.fila.map(m => [m.id, m.estado]), [[3, 'fila']])
+  // nem um parcial de um atraso do plano anterior (só o "cheguei bem")
+  let d = fila(msg(1, 'atraso', 0, T0, { anterior: true, contactos: ['Mãe', 'Pai'], chats: ['222', '333'] }))
+  d = ct.marcarAEnviar(d, 1, 'q1', T0)
+  d = ct.resposta(d, 'q1', { contactos: ['Mãe'], chats: ['222'], entregues: ['Mãe'], falhas: [{ nome: 'Pai', erro: 'x' }] }, T0)
+  assert.deepEqual(d.fila, [])
+  let e = fila(msg(1, 'chegada', 0, T0, { anterior: true, contactos: ['Mãe', 'Pai'], chats: ['222', '333'] }))
+  e = ct.marcarAEnviar(e, 1, 'q2', T0)
+  e = ct.resposta(e, 'q2', { contactos: ['Mãe'], chats: ['222'], entregues: ['Mãe'], falhas: [{ nome: 'Pai', erro: 'x' }] }, T0)
+  assert.deepEqual(e.fila.map(m => [m.tipo, m.chats, m.parcial, m.anterior]), [['chegada', ['333'], true, true]])
+})
