@@ -5,7 +5,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawn } = require('node:child_process')
-const { lerLinha, descodificar } = require('./lib/j1939')
+const { lerLinha, descodificar, BYTES } = require('./lib/j1939')
 const { litrosHora, m3s } = require('./lib/consumo')
 const { novoEstadoMotor, avaliarMotor } = require('./lib/motor')
 const { novaDescoberta, registar, alarmesDoMapa } = require('./lib/descoberta')
@@ -84,7 +84,9 @@ module.exports = function (app) {
       vistoEm[v.path] = agora
       if (v.path === REV) rpmAtual = v.value * 60
     }
-    if (t.pgn === 65417) vistoEm[MAPA] = agora
+    // a 65417 só conta inteira (8 bytes): uma curta lia os bytes em falta como 0 e limpava alarmes (M-61)
+    const mapaInteiro = t.pgn === 65417 && t.dados.length >= BYTES
+    if (mapaInteiro) vistoEm[MAPA] = agora
     const r = registar(desc, t, rpmAtual)
     desc = r.d
     if (r.mudou) {
@@ -92,7 +94,7 @@ module.exports = function (app) {
       fs.appendFile(ficheiroDesc, JSON.stringify(r.mudou) + '\n', () => {})
       app.debug(`PGN ${r.mudou.pgn} mudou: ${r.mudou.bytes} ${r.mudou.bitsMudados.join(', ')}`)
     }
-    if (t.pgn === 65417 && o.mapaAlarmes?.length) {
+    if (mapaInteiro && o.mapaAlarmes?.length) {
       const m = alarmesDoMapa(o.mapaAlarmes, t.dados, ativosMapa)
       ativosMapa = m.ativos
       publicarNotificacoes(m.notificacoes)

@@ -82,9 +82,13 @@ const DESCODIFICADORES = {
   }
 }
 
+// As PGN daqui têm 8 bytes; uma trama mais curta (candump cortado, outro aparelho no barramento) não
+// dá valores — com bytes em falta o u8 dava NaN e o u16 lia-os como 0 (auditoria M-61).
+const BYTES = 8
+
 function descodificar (pgn, dados) {
   const f = DESCODIFICADORES[pgn]
-  return f ? f(dados) : []
+  return f && dados && dados.length >= BYTES ? f(dados) : []
 }
 
-module.exports = { partesId, construirId, lerLinha, linhaCandump, descodificar, PGNS: Object.keys(DESCODIFICADORES).map(Number) }
+module.exports = { partesId, construirId, lerLinha, linhaCandump, descodificar, BYTES, PGNS: Object.keys(DESCODIFICADORES).map(Number) }

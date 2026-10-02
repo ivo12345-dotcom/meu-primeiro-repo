@@ -86,6 +86,14 @@ test('VEP1 65271: usa a primeira tensão disponível (167, 168, 158)', () => {
   assert.deepEqual(descodificar(65271, hex('FFFFFFFFFFFFFFFF')), [])
 })
 
+// Auditoria M-61 (E-M3): com bytes em falta o u8 dava undefined (→ NaN) e o u16 lia-os como 0.
+test('M-61: tramas com menos de 8 bytes (candump cortado, outro aparelho) não dão valores', () => {
+  assert.deepEqual(descodificar(61444, hex('FFFFFF00')), []) // dava 0,27 Hz (16 rpm)
+  assert.deepEqual(descodificar(65262, Uint8Array.from([])), []) // dava a temperatura NaN e o óleo 0,15 K
+  assert.deepEqual(descodificar(65271, hex('FFFFFFFFFFFF1C')), [])
+  assert.deepEqual(descodificar(65253, hex('266100')), [])
+})
+
 test('PGN desconhecida: nada', () => {
   assert.deepEqual(descodificar(65417, hex('0300000000000000')), [])
 })
