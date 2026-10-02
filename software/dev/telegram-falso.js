@@ -126,9 +126,10 @@ function criarTelegramFalso ({ porta = 0 } = {}) {
         const pedido = { res, offset: j.offset || 0 }
         espera.push(pedido)
         maxEspera = Math.max(maxEspera, espera.length)
-        // quem desiste (o barco cortou o pedido) sai da espera
-        res.on('close', () => tirarDaEspera(pedido))
-        setTimeout(() => { if (tirarDaEspera(pedido)) responder(res, 200, { ok: true, result: [] }) }, Math.min(j.timeout, 30) * 1000)
+        const prazo = setTimeout(() => { if (tirarDaEspera(pedido)) responder(res, 200, { ok: true, result: [] }) }, Math.min(j.timeout, 30) * 1000)
+        // quem desiste (o barco cortou o pedido) sai da espera; e o prazo acaba com o pedido (senão, depois
+        // de um long polling de 20 s cortado, o processo dos testes ficava 20 s à espera dele)
+        res.on('close', () => { tirarDaEspera(pedido); clearTimeout(prazo) })
         return
       }
       if (['sendMessage', 'sendLocation'].includes(metodo)) {
