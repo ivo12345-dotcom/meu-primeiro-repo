@@ -33,10 +33,11 @@ function fetchFalso (registo = []) {
 }
 
 function appFalso ({ comApi = true, rotaAtiva = null } = {}) {
-  const app = { self: {}, estado: '', erroPlugin: null, erros: [], recursos: new Map(), ativacoes: [], leiturasFalhadas: 2 }
+  const app = { self: {}, horas: {}, estado: '', erroPlugin: null, erros: [], recursos: new Map(), ativacoes: [], leiturasFalhadas: 2 }
   app.dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arlequin-rota-'))
   app.getDataDirPath = () => path.join(app.dir, 'plugin')
-  app.getSelfPath = (p) => (p in app.self ? { value: app.self[p] } : undefined)
+  // cada valor com a hora (como o SignalK): a de app.horas, ou a do relógio do plugin (um valor fresco)
+  app.getSelfPath = (p) => (p in app.self ? { value: app.self[p], timestamp: app.horas[p] ?? new Date(app.relogio ? app.relogio() : AGORA).toISOString() } : undefined)
   app.setPluginStatus = (s) => { app.estado = s }
   app.setPluginError = (s) => { app.erroPlugin = s }
   app.error = (e) => { app.erros.push(e) }
@@ -77,6 +78,7 @@ async function esperarResultado (r, id) {
 function plugin (app, extra = {}) {
   let agora = AGORA
   const registo = []
+  app.relogio = () => agora
   const p = criar(app, { fetch: fetchFalso(registo), relogio: () => agora, esperar: async () => {}, costa, ...extra })
   return { p, r: rotas(p), registo, avancar: (ms) => { agora += ms } }
 }
@@ -631,4 +633,48 @@ test('o id dos destinos do Ivo usa o mesmo slug (30 letras)', async () => {
   assert.equal(x.code, 201, x.erro)
   assert.equal(x.destino.id, `meu-${require('../lib/slug').slug('Praia da Ursa — fundeadouro do norte', 30)}`)
   p.stop()
+})
+
+test('auditoria I-12: o gasóleo e o SoC só contam com leitura fresca (≤ 2 min, como as outras) e sem o aviso de sonda perdida (gasóleo) ou de sensor perdido (SmartShunt); senão ficam desconhecidos — falha segura: o cálculo assume e avisa em vermelho', async () => {
+  const calculo = require('../lib/calculo')
+  const original = calculo.calcular
+  const vistos = []
+  calculo.calcular = async (entrada) => { vistos.push(entrada.instrumentos); return { veredicto: { tipo: 'segue', texto: 'Segue', porque: [] }, destino: { id: 'peniche', nome: 'Peniche' }, alternativas: [] } }
+  try {
+    const app = appFalso()
+    const pl = plugin(app)
+    pl.p.start({ pasta: path.join(app.dir, 'dados') })
+    const instrumentos = async () => { await esperarResultado(pl.r, (await chamar(pl.r.post['/calcular'], { body: { destino: 'peniche', tripulacao: 'so' } })).id); return vistos.at(-1) }
+    let i = await instrumentos()
+    assert.equal(i.socPct, 90)
+    assert.equal(i.gasoleoL, 124)
+    // velhos (mais de 2 min): desconhecidos
+    app.horas['tanks.fuel.0.currentVolume'] = new Date(AGORA - 3 * 60000).toISOString()
+    app.horas['electrical.batteries.servico.capacity.stateOfCharge'] = new Date(AGORA - 3 * 60000).toISOString()
+    i = await instrumentos()
+    assert.equal(i.gasoleoL, null)
+    assert.equal(i.socPct, null)
+    // frescos, mas com a sonda do gasóleo e o SmartShunt perdidos (o plugin do gasóleo continua a publicar os
+    // litros descontados pelo consumo; o do SoC pode ficar parado)
+    app.horas = {}
+    app.self['notifications.tanks.fuel.0.sondaPerdida'] = { state: 'warn', method: ['visual'], message: 'Sonda do gasóleo sem leitura há mais de 5 min' }
+    app.self['notifications.arlequin.energia.sensorPerdido'] = { state: 'warn', method: ['visual'], message: 'Sem dados do SmartShunt há mais de 5 min' }
+    i = await instrumentos()
+    assert.equal(i.gasoleoL, null)
+    assert.equal(i.socPct, null)
+    // de volta a normal: contam outra vez
+    app.self['notifications.tanks.fuel.0.sondaPerdida'] = { state: 'normal', method: [], message: 'Normal' }
+    app.self['notifications.arlequin.energia.sensorPerdido'] = { state: 'normal', method: [], message: 'Normal' }
+    i = await instrumentos()
+    assert.equal(i.gasoleoL, 124)
+    assert.equal(i.socPct, 90)
+    // pelo nível e pela capacidade (sem o volume): também só fresco
+    delete app.self['tanks.fuel.0.currentVolume']
+    app.self['tanks.fuel.0.currentLevel'] = 0.5
+    app.self['tanks.fuel.0.capacity'] = 0.2
+    assert.equal((await instrumentos()).gasoleoL, 100)
+    app.horas['tanks.fuel.0.currentLevel'] = new Date(AGORA - 3 * 60000).toISOString()
+    assert.equal((await instrumentos()).gasoleoL, null)
+    pl.p.stop()
+  } finally { calculo.calcular = original }
 })
