@@ -671,13 +671,14 @@ test('revisão F3, Important 5: o app.js guarda o scrollTop antes de refazer a p
 })
 
 // ---------- auditoria I-29 (decisão do Ivo n.º 23): água sem sensor ----------
-test('auditoria I-29: um depósito sem nível (o plugin publica null sem sensor, até ao 1.º "Enchi" ou nível posto à mão) diz "sem sensor" — nunca "0 L" a vermelho nem "cheio"', () => {
+test('auditoria I-29: um depósito sem nível, sem sensor (o /estado do plugin diz semSensor), diz "sem sensor" — nunca "0 L" a vermelho nem "cheio"', () => {
   const st = storeSimulado(1)
   aplicarDelta(st, { updates: [{ timestamp: new Date().toISOString(), values: [
     { path: 'tanks.freshWater.0.name', value: 'Cozinha (BB)' }, { path: 'tanks.freshWater.0.currentVolume', value: null }, { path: 'tanks.freshWater.0.currentLevel', value: null },
     { path: 'tanks.freshWater.1.name', value: 'WC (EB)' }, { path: 'tanks.freshWater.1.currentVolume', value: 0.012 }, { path: 'tanks.freshWater.1.currentLevel', value: 0.15 }
   ] }] })
-  const html = motor.render(contexto(st, { agua: { tanques: [{ id: 0, nome: 'Cozinha (BB)', ritmo: { litrosDia: 9, dias: 5 } }] } }))
+  // (revisão F3, Minor 8: o "sem sensor" só vale quando o /estado do plugin da água diz que não há sensor)
+  const html = motor.render(contexto(st, { agua: { tanques: [{ id: 0, nome: 'Cozinha (BB)', ritmo: { litrosDia: 9, dias: 5 }, semSensor: true, nivelConhecido: false }] } }))
   const cozinha = html.slice(html.indexOf('Cozinha (BB)'), html.indexOf('WC (EB)'))
   assert.match(cozinha, /sem sensor/)
   assert.doesNotMatch(cozinha, /0 L|dias/)
@@ -685,10 +686,66 @@ test('auditoria I-29: um depósito sem nível (o plugin publica null sem sensor,
   assert.match(cozinha, /data-acao="agua-encher"/, 'o Enchi continua (é ele que tira o "sem sensor")')
   // o outro depósito, com sensor, continua com os litros
   assert.match(html.slice(html.indexOf('WC (EB)')), /12 L/)
-  // sem o caminho publicado (undefined), o mesmo
+  // sem o caminho publicado (undefined) nem o /estado do plugin não se sabe porquê: "sem nível", nunca "0 L" nem
+  // "sem sensor" (revisão F3, Minor 8: antes dizia "sem sensor" a tudo)
   const st2 = storeSimulado(1)
   aplicarDelta(st2, { updates: [{ timestamp: new Date().toISOString(), values: [{ path: 'tanks.freshWater.0.name', value: 'Cozinha (BB)' }] }] })
-  assert.match(motor.render(contexto(st2)), /Cozinha \(BB\)[\s\S]*sem sensor/)
+  const h2 = motor.render(contexto(st2))
+  assert.match(h2, /Cozinha \(BB\)[\s\S]*sem nível/)
+  assert.doesNotMatch(h2, /sem sensor/)
+})
+
+// ---------- revisão F3, Minor 8: a água lê o /estado do plugin (semSensor e nivelConhecido) ----------
+test('revisão F3 (Minor 8): "sem sensor" só quando o /estado diz que não há sensor; com sensor mas sem o 1.º "Enchi", "nível por confirmar: carrega Enchi"; sem o /estado, "sem nível"; com nível, os litros', () => {
+  const nulos = [
+    { path: 'tanks.freshWater.0.name', value: 'Cozinha (BB)' }, { path: 'tanks.freshWater.0.currentVolume', value: null }, { path: 'tanks.freshWater.0.currentLevel', value: null },
+    { path: 'tanks.freshWater.1.name', value: 'WC (EB)' }, { path: 'tanks.freshWater.1.currentVolume', value: null }, { path: 'tanks.freshWater.1.currentLevel', value: null }
+  ]
+  const stNulos = storeSimulado(1)
+  aplicarDelta(stNulos, { updates: [{ timestamp: new Date().toISOString(), values: nulos }] })
+  // as formas do GET /estado do plugin da água (signalk-arlequin-agua/index.js): litros e fracao a null sem nível
+  const tq = (id, nome, semSensor, nivelConhecido) => ({ id, nome, capacidadeL: 80, litrosPorPedalada: 0.5, litros: null, fracao: null, ritmo: null, semSensor, nivelConhecido, calibrando: false, pedaladasCalibracao: null })
+  const parte = (html, nome, ate) => html.slice(html.indexOf(nome), ate ? html.indexOf(ate) : undefined)
+  const POR_CONFIRMAR = /nível por confirmar: carrega Enchi/
+
+  // a Cozinha com sensor e sem nenhum "Enchi" ainda; o WC sem sensor
+  const h = motor.render(contexto(stNulos, { agua: { tanques: [tq(0, 'Cozinha (BB)', false, false), tq(1, 'WC (EB)', true, false)] } }))
+  const cozinha = parte(h, 'Cozinha (BB)', 'WC (EB)')
+  const wc = parte(h, 'WC (EB)', 'Últimas cargas pelo motor')
+  assert.match(cozinha, POR_CONFIRMAR)
+  assert.doesNotMatch(cozinha, /sem sensor/, 'com sensor não se diz "sem sensor"')
+  assert.match(wc, /sem sensor/)
+  assert.doesNotMatch(wc, POR_CONFIRMAR, 'sem sensor o Enchi não resolve: só "sem sensor"')
+  for (const t of [cozinha, wc]) {
+    assert.doesNotMatch(t, /\b0 L\b|dias|cheio/)
+    assert.doesNotMatch(t, /background:var\(--bb\)/, 'sem barra vermelha')
+    assert.match(t, /data-acao="agua-encher"/, 'o Enchi continua')
+  }
+  // sem sensor, mesmo com um "Enchi" ou um nível posto à mão (nivelConhecido): continua sem sensor
+  const h2 = motor.render(contexto(stNulos, { agua: { tanques: [tq(0, 'Cozinha (BB)', true, true), tq(1, 'WC (EB)', true, true)] } }))
+  assert.equal((h2.match(/sem sensor/g) || []).length, 2)
+  assert.doesNotMatch(h2, POR_CONFIRMAR)
+  // com sensor e o nível já conhecido, mas ainda sem o valor no SignalK (o stream chega até 1 s depois do Enchi):
+  // nem "sem sensor" nem "por confirmar" (já carregou no Enchi)
+  const h3 = motor.render(contexto(stNulos, { agua: { tanques: [tq(0, 'Cozinha (BB)', false, true), tq(1, 'WC (EB)', false, true)] } }))
+  assert.doesNotMatch(h3, /sem sensor/)
+  assert.doesNotMatch(h3, POR_CONFIRMAR)
+  assert.match(h3, /sem nível/)
+  // sem o /estado (a 1.ª leitura, ou um plugin de antes): não se sabe porquê, "sem nível"
+  const h4 = motor.render(contexto(stNulos, {}))
+  assert.doesNotMatch(h4, /sem sensor/)
+  assert.doesNotMatch(h4, POR_CONFIRMAR)
+  assert.equal((h4.match(/sem nível/g) || []).length, 2)
+  // com o nível (o Enchi já foi carregado e o sensor conta), os litros e a barra: nenhum dos avisos
+  const stCom = storeSimulado(1)
+  aplicarDelta(stCom, { updates: [{ timestamp: new Date().toISOString(), values: [
+    { path: 'tanks.freshWater.0.name', value: 'Cozinha (BB)' }, { path: 'tanks.freshWater.0.currentVolume', value: 0.045 }, { path: 'tanks.freshWater.0.currentLevel', value: 0.56 },
+    { path: 'tanks.freshWater.1.name', value: 'WC (EB)' }, { path: 'tanks.freshWater.1.currentVolume', value: 0.012 }, { path: 'tanks.freshWater.1.currentLevel', value: 0.15 }
+  ] }] })
+  const h5 = motor.render(contexto(stCom, { agua: { tanques: [{ ...tq(0, 'Cozinha (BB)', false, true), litros: 45, fracao: 0.56 }, { ...tq(1, 'WC (EB)', false, true), litros: 12, fracao: 0.15 }] } }))
+  assert.match(h5, /45 L/)
+  assert.match(h5, /12 L/)
+  assert.doesNotMatch(h5, /sem sensor|sem nível|nível por confirmar/)
 })
 
 // ---------- auditoria I-31 (decisão do Ivo n.º 22): sempre a hora de Lisboa ----------
@@ -741,7 +798,7 @@ test('auditoria I-32: o Diário mostra as categorias e as entradas automáticas 
   assert.match(html, /manutenção/)
   assert.match(html, /rádio/)
   // no texto que se vê (os data-cat dos botões ficam com os nomes do logbook)
-  assert.doesNotMatch(html.replace(/<[^>]+>/g, ' '), /navigation|engine|maintenance|radio/)
+  assert.doesNotMatch(html.replace(/<[^>]+>/g, ' '), /navigation|engine|maintenance|radio\b/)
 })
 
 test('auditoria I-32: o cartão da AI dá frases fixas em pt-PT (o erro técnico do plugin — "fetch failed", "unexpected end of file"… — fica no plugin)', () => {
