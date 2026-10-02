@@ -110,14 +110,15 @@ test('tempo: o ponto mais perto, linear no tempo, ângulos por seno e cosseno', 
 })
 
 test('tempo: ponto mais perto com null → o próximo ponto com dados, marcado aproximado; se nenhum tiver, null e semDados', () => {
-  // A (mais perto de 39,-9) tem ondas null nas duas horas; B (mais longe) tem dados
+  // A (mais perto de 39,-9) tem ondas null nas duas horas; B (mais longe, a 12 MN) tem dados
+  // (M-09: com B a 30 MN, como era este teste, já não serve — ver o teste abaixo)
   const dois = {
     obtida: 0,
     inicio: 0,
     fim: H,
     pontos: [
       { lat: 39, lon: -9, t: [0, H], tws: [10, 12], ondas: [null, null], corrente: [null, null] }, // A: mais perto
-      { lat: 39.5, lon: -9, t: [0, H], tws: [20, 22], ondas: [2, 3], corrente: [null, null] } // B: mais longe
+      { lat: 39.2, lon: -9, t: [0, H], tws: [20, 22], ondas: [2, 3], corrente: [null, null] } // B: mais longe
     ]
   }
   const tempo = prev.criarTempo(dois)
@@ -130,6 +131,37 @@ test('tempo: ponto mais perto com null → o próximo ponto com dados, marcado a
   assert.ok(w.semDados.includes('corrente'))
   assert.ok(!w.semDados.includes('ondas'))
   assert.ok(!w.semDados.includes('tws'))
+})
+
+test('M-09: o valor em falta só vem de outro ponto da previsão a ≤ 15 MN; mais longe é "sem dados" (nunca o mar de dezenas de MN dali)', () => {
+  const pontos = (latB) => ({
+    obtida: 0,
+    inicio: 0,
+    fim: H,
+    pontos: [
+      { lat: 39, lon: -9, t: [0, H], tws: [10, 12], ondas: [null, null] },
+      { lat: latB, lon: -9, t: [0, H], tws: [20, 22], ondas: [2, 3] }
+    ]
+  })
+  const perto = prev.criarTempo(pontos(39 + 14 / 60))(39, -9, 0) // B a 14 MN
+  assert.equal(perto.ondas, 2)
+  assert.deepEqual(perto.aproximado, ['ondas'])
+  const longe = prev.criarTempo(pontos(39.5))(39, -9, 0) // B a 30 MN
+  assert.equal(longe.ondas, null)
+  assert.ok(longe.semDados.includes('ondas'))
+  assert.equal(longe.aproximado, undefined)
+  assert.equal(longe.tws, 10) // o ponto mais perto, esse, serve sempre
+})
+
+test('M-09: a ordem dos pontos por célula não depende de qual consulta chegou primeiro (o mesmo ponto dá sempre o mesmo tempo)', () => {
+  // dois pontos de previsão quase à mesma distância de uma célula de 0,01°
+  const P = { obtida: 0, inicio: 0, fim: H, pontos: [{ lat: 39, lon: -9.1, t: [0, H], tws: [10, 10] }, { lat: 39, lon: -8.9, t: [0, H], tws: [20, 20] }] }
+  const a = { lat: 39.001, lon: -9.0049 } // um pouco mais perto do de oeste
+  const b = { lat: 39.001, lon: -8.9951 } // um pouco mais perto do de leste (a mesma célula de 0,01°)
+  const um = prev.criarTempo(P); const ra1 = um(a.lat, a.lon, 0).tws; const rb1 = um(b.lat, b.lon, 0).tws
+  const outro = prev.criarTempo(P); const rb2 = outro(b.lat, b.lon, 0).tws; const ra2 = outro(a.lat, a.lon, 0).tws
+  assert.equal(ra1, ra2)
+  assert.equal(rb1, rb2)
 })
 
 test('nível do mar de Cascais para a maré', () => {
