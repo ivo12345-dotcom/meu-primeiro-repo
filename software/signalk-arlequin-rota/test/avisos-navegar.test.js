@@ -273,3 +273,11 @@ test('revisão final I2: notifications.rota.alarmeTerra (alert, apito curto, só
   assert.equal(av.alarmeTerra({ aberto: true, alarme: NaN }, alarme - 10 * MIN).state, 'normal')
   assert.equal(av.CAMINHO_ALARME_TERRA, 'notifications.rota.alarmeTerra')
 })
+
+test('auditoria K-12: com o plano fechado e o "cheguei bem"/"viagem terminada" por entregar (fecho), o aviso de terra sai 60 min antes e fica depois da hora de alarme, com o texto do fecho', () => {
+  const alarme = T0 + 3 * H // 18:00 em Lisboa
+  assert.equal(av.alarmeTerra({ aberto: false, alarme, fecho: 'chegada' }, alarme - 61 * MIN).state, 'normal')
+  assert.deepEqual(av.alarmeTerra({ aberto: false, alarme, fecho: 'chegada' }, alarme - 59 * MIN), { state: 'alert', method: METODO, message: 'O «cheguei bem» ainda não chegou a terra: os contactos ligam ao MRCC às 18:00 — liga-lhes', apito: 'curto', chave: `${iso(alarme)} chegada` })
+  assert.equal(av.alarmeTerra({ aberto: false, alarme, fecho: 'terminado' }, alarme + 2 * H).message, 'A «viagem terminada» ainda não chegou a terra: os contactos ligam ao MRCC às 18:00 — liga-lhes')
+  assert.equal(av.alarmeTerra({ aberto: false, alarme, fecho: null }, alarme).state, 'normal')
+})
