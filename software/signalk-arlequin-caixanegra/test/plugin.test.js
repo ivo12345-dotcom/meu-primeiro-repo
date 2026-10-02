@@ -284,11 +284,11 @@ test('disco a 95%: o alarme pede o apito curto (o contínuo fica para o perigo i
   correr(t, app, 60, 'nmea0183.GP')
   usoFalso = 85 // a 85% (sem nada confirmado para apagar) passa a aviso, só visual
   correr(t, app, 60, 'nmea0183.GP')
-  p.stop()
   const disco = app.notificacoes.filter(n => n.path === 'notifications.arlequin.caixanegra.disco')
   assert.deepEqual(disco.map(n => [n.state, n.apito]), [['alarm', 'curto'], ['warn', undefined]])
   assert.deepEqual(disco[0].method, ['visual', 'sound'])
   assert.deepEqual(disco[1].method, ['visual'])
+  p.stop()
 })
 
 test('disco a 81% com bruto confirmado: apaga e não avisa (o aviso aos 80% não pode ir e vir)', (t) => {
@@ -329,9 +329,9 @@ test('disco a 96% com um confirmado que mudou depois de confirmado: não conta c
   const alarme = app.notificacoes.filter(n => n.path === 'notifications.arlequin.caixanegra.disco')
   assert.deepEqual(alarme.map(n => n.state), ['alarm'])
   correr(t, app, 120, 'nmea0183.GP')
-  p.stop()
   assert.match(app.estado, /BRUTO PARADO/, 'e continua nos minutos seguintes (não volta a contar como libertado)')
   assert.equal(app.notificacoes.filter(n => n.path === 'notifications.arlequin.caixanegra.disco').length, 1)
+  p.stop() // (o stop limpa o alarme: auditoria I-21)
   assert.equal(fs.existsSync(antigo), true, 'não se apaga')
   assert.deepEqual(Object.keys(confirmados.lerConfirmados(base)), ['bruto/2026-09-28T10.ndjson.gz'], 'nem sai do confirmados.json')
 })
@@ -351,8 +351,8 @@ test('disco a 81% com um confirmado que mudou: o aviso dos 80% não fica escondi
   const p = criar(app)
   p.start({ pasta: base })
   correr(t, app, 180, 'nmea0183.GP')
-  p.stop()
   assert.deepEqual(app.notificacoes.filter(n => n.path === 'notifications.arlequin.caixanegra.disco').map(n => n.state), ['warn'])
+  p.stop() // (o stop limpa o aviso: auditoria I-21)
 })
 
 test('um só orçamento de sha256 por minuto: o apagar recebe o que a entrada já gastou', (t) => {
@@ -494,5 +494,83 @@ test('relógio do Pi: com a hora do GPS a mais de 60 s avisa uma vez (só no ecr
   assert.equal(relogio()[1].state, 'normal')
   comGps(30, 2000)
   assert.equal(relogio().length, 2, 'não repete')
+  p.stop()
+})
+
+// Uma mensagem com a hora do GPS (navigation.datetime) desviada de `desvioMs` da hora do Pi, a cada segundo.
+function comGps (t, app, n, desvioMs) {
+  for (let i = 0; i < n; i++) {
+    app.signalk.emit('unfilteredDelta', { context: EU, updates: [{ $source: 'nmea0183.GP', values: [{ path: 'navigation.datetime', value: new Date(Date.now() + desvioMs).toISOString() }] }] })
+    t.mock.timers.tick(1000)
+  }
+}
+const daCaixa = (app, id) => app.notificacoes.filter(n => n.path === `notifications.arlequin.caixanegra.${id}`)
+
+test('parar o plugin com avisos ativos publica "normal" para cada um: parado já não vigia e ficavam presos no ecrã (auditoria I-21)', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 96
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  comGps(t, app, 60, -5 * 60000) // disco a 96% (alarme) e o relógio do Pi 5 min adiantado (aviso)
+  assert.deepEqual(daCaixa(app, 'disco').map(n => n.state), ['alarm'])
+  assert.deepEqual(daCaixa(app, 'relogio').map(n => n.state), ['warn'])
+  p.stop()
+  assert.deepEqual(daCaixa(app, 'disco').map(n => n.state), ['alarm', 'normal'])
+  assert.deepEqual(daCaixa(app, 'relogio').map(n => n.state), ['warn', 'normal'])
+  assert.deepEqual(daCaixa(app, 'velas'), [], 'o que não estava ativo não se publica')
+  p.stop()
+  assert.equal(app.notificacoes.length, 4, 'um segundo stop não repete nada')
+})
+
+test('parar o plugin com o lembrete das velas ativo também o limpa (auditoria I-21)', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 50
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  correr(t, app, 130, 'nmea0183.GP', { tws: 5 })
+  await chamar(rotas(p).post['/velas'], { grandeRizos: 0 })
+  correr(t, app, 3700, 'nmea0183.GP', { tws: 8 })
+  assert.equal(daCaixa(app, 'velas').at(-1).state, 'warn')
+  p.stop()
+  assert.equal(daCaixa(app, 'velas').at(-1).state, 'normal')
+})
+
+// A árvore do SignalK como o servidor a guarda: { value: { state, method, message }, $source, timestamp }.
+function arvoreCom (app, avisos) {
+  const arvore = {}
+  for (const [id, state] of Object.entries(avisos)) {
+    arvore[`notifications.arlequin.caixanegra.${id}`] = { value: { state, method: ['visual'], message: `aviso antigo (${id})` }, $source: 'signalk-arlequin-caixanegra' }
+  }
+  app.getSelfPath = (p) => arvore[p]
+}
+
+test('ao arrancar, os avisos que um arranque anterior deixou na árvore retomam-se: limpam-se quando a condição já passou (auditoria I-21)', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 50
+  const app = appFalso()
+  arvoreCom(app, { disco: 'alarm', relogio: 'warn' })
+  const p = criar(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  comGps(t, app, 60, 2000) // disco a 50% e o relógio certo
+  p.stop()
+  assert.deepEqual(daCaixa(app, 'disco').map(n => n.state), ['normal'], 'o "Resolvido" do disco sai')
+  assert.deepEqual(daCaixa(app, 'relogio').map(n => n.state), ['normal'], 'e o do relógio')
+})
+
+test('ao arrancar com o alarme do disco na árvore e o disco ainda cheio: não se repete o alarme e o bruto continua parado (auditoria I-21)', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 96
+  const app = appFalso()
+  arvoreCom(app, { disco: 'alarm' })
+  const p = criar(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  correr(t, app, 120, 'nmea0183.GP')
+  assert.deepEqual(daCaixa(app, 'disco'), [], 'o alarme que já estava na árvore não sai outra vez')
+  assert.match(app.estado, /BRUTO PARADO/)
+  usoFalso = 50
+  correr(t, app, 60, 'nmea0183.GP')
+  assert.deepEqual(daCaixa(app, 'disco').map(n => n.state), ['normal'], 'quando o disco esvazia, limpa-se')
   p.stop()
 })
