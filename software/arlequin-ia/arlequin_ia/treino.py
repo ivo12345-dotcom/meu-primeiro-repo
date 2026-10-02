@@ -155,16 +155,24 @@ def escrever(caminho, dados):
     os.replace(tmp, caminho)
 
 
-def _numeros_versoes(pasta):
-    """Os números das vNNNN que existem (legíveis ou não), do maior para o menor."""
-    return sorted((int(m.group(1)) for f in pasta.glob('v*.json.gz') if (m := re.fullmatch(r'v(\d+)\.json\.gz', f.name))),
-                  reverse=True)
+# O prefixo das versões diz onde se treinaram (decisão n.º 26): 'v' no barco (o plugin da AI, no Pi: as vNNNN entram
+# em uso) e 'p' no portátil (as pNNNN nunca se confundem com as do Pi, não mexem no "atual" nem no registo.json que a
+# sincronização traz do barco, e só vão para o Pi por cópia confirmada). Cada prefixo tem a sua numeração.
+BARCO = 'v'
+PORTATIL = 'p'
+REGISTO = {BARCO: 'registo.json', PORTATIL: 'registo-portatil.json'}
 
 
-def proxima_versao(pasta):
-    """A maior vNNNN que já existe + 1 (as versões nunca se apagam nem se reescrevem)."""
-    recente = versao_mais_recente(pasta)
-    return f'v{(int(recente[1:]) if recente else 0) + 1:04d}'
+def _numeros_versoes(pasta, prefixo=BARCO):
+    """Os números das versões com este prefixo (vNNNN ou pNNNN) que existem (legíveis ou não), do maior para o menor."""
+    return sorted((int(m.group(1)) for f in pasta.glob(f'{prefixo}*.json.gz')
+                   if (m := re.fullmatch(rf'{prefixo}(\d+)\.json\.gz', f.name))), reverse=True)
+
+
+def proxima_versao(pasta, prefixo=BARCO):
+    """A maior versão com este prefixo que já existe + 1 (as versões nunca se apagam nem se reescrevem)."""
+    recente = versao_mais_recente(pasta, prefixo)
+    return f'{prefixo}{(int(recente[1:]) if recente else 0) + 1:04d}'
 
 
 def versao_atual(pasta):
@@ -172,10 +180,10 @@ def versao_atual(pasta):
     return f.read_text(encoding='utf-8').strip() if f.exists() else None
 
 
-def versao_mais_recente(pasta):
-    """A maior vNNNN que já existe (legível ou não, aceite ou não), ou None se não houver nenhuma."""
-    numeros = _numeros_versoes(pasta)
-    return f'v{numeros[0]:04d}' if numeros else None
+def versao_mais_recente(pasta, prefixo=BARCO):
+    """A maior versão com este prefixo que já existe (legível ou não, aceite ou não), ou None se não houver nenhuma."""
+    numeros = _numeros_versoes(pasta, prefixo)
+    return f'{prefixo}{numeros[0]:04d}' if numeros else None
 
 
 def carregar(pasta, versao):
@@ -191,11 +199,11 @@ def carregar_seguro(pasta, versao):
         return None
 
 
-def versao_legivel_mais_recente(pasta):
-    """A versão mais recente que se consiga mesmo ler, saltando as corrompidas (sem lhes tocar).
+def versao_legivel_mais_recente(pasta, prefixo=BARCO):
+    """A versão mais recente com este prefixo que se consiga mesmo ler, saltando as corrompidas (sem lhes tocar).
     None se não houver nenhuma versão legível."""
-    for n in _numeros_versoes(pasta):
-        modelo = carregar_seguro(pasta, f'v{n:04d}')
+    for n in _numeros_versoes(pasta, prefixo):
+        modelo = carregar_seguro(pasta, f'{prefixo}{n:04d}')
         if modelo is not None:
             return modelo
     return None
@@ -206,8 +214,9 @@ def prever_guardado(modelo_json, d, quantil='p50'):
     return b.predict(d[modelo_json['variaveis']])
 
 
-def treinar_um(nome, d, pasta_modelos, agora, polar):
+def treinar_um(nome, d, pasta_modelos, agora, polar, prefixo=BARCO):
     spec = MODELOS[nome]
+    portatil = prefixo == PORTATIL
     linhas = d[spec['filtro'](d) & (d['sessao'] >= 0)]
     horas = len(linhas) * SEGUNDOS_POR_LINHA / 3600
     res = {'modelo': nome, 'data': agora.isoformat(), 'horas': round(horas, 2), 'n': int(len(linhas)),
@@ -232,10 +241,11 @@ def treinar_um(nome, d, pasta_modelos, agora, polar):
     # se a versão apontada por "atual" estiver ilegível (corrompida), conta como se não houvesse modelo em uso:
     # nunca apaga nem sobrescreve o ficheiro, só deixa de o usar como referência
     em_uso = carregar_seguro(pasta, atual) if atual else None
-    # idem para a versão mais recente: salta as ilegíveis em vez de rebentar, sem lhes tocar
-    recente = versao_legivel_mais_recente(pasta)
-    # a última versão gravada e legível (mesmo rejeitada) já foi testada com esta saída: repetir dava a mesma versão outra vez
-    referencia = recente if recente is not None and recente.get('ultimaSaida') else em_uso
+    # idem para a versão mais recente (do mesmo sítio: barco ou portátil): salta as ilegíveis, sem lhes tocar
+    recente = versao_legivel_mais_recente(pasta, prefixo)
+    # a última versão gravada e legível (mesmo rejeitada) já foi testada com esta saída: repetir dava a mesma versão outra vez.
+    # No portátil só contam as pNNNN: o modelo do barco pode já ter visto esta saída, e é para isso que se treina lá
+    referencia = recente if recente is not None and recente.get('ultimaSaida') else (None if portatil else em_uso)
     if referencia is not None and referencia.get('ultimaSaida') and pd.Timestamp(referencia['ultimaSaida']) >= ultima_saida:
         return {**res, 'motivo': 'sem saída nova para testar desde a última versão'}
     if len(teste) < LINHAS_TESTE_MINIMAS:
@@ -247,7 +257,7 @@ def treinar_um(nome, d, pasta_modelos, agora, polar):
     mae_atual = mae(prever_guardado(em_uso, teste), teste[spec['alvo']]) if em_uso is not None else None
     aceite = mae_novo <= mae_atual if em_uso is not None else mae_novo < mae_base
     final = treinar_quantis(linhas[spec['variaveis']], linhas[spec['alvo']]) if aceite else novo
-    versao = proxima_versao(pasta)
+    versao = proxima_versao(pasta, prefixo)
     modelo = {
         'modelo': nome, 'versao': versao, 'criado': agora.isoformat(), 'alvo': spec['alvo'],
         'variaveis': spec['variaveis'], 'horas': res['horas'], 'n': res['n'], 'sessoes': len(sess),
@@ -260,10 +270,12 @@ def treinar_um(nome, d, pasta_modelos, agora, polar):
         'frases': frases(nome, linhas, linhas[spec['variaveis']], final['p50'], polar),
     }
     escrever(pasta / f'{versao}.json.gz', gzip.compress(json.dumps(modelo).encode('utf-8')))
-    if aceite:
+    if aceite and not portatil:  # no portátil o "atual" é o do barco (vem pela sincronização)
         escrever(pasta / 'atual', versao.encode('utf-8'))
     comparado = 'a versão em uso' if em_uso is not None else spec['origem']
     motivo = f'erra menos do que {comparado}' if aceite else f'erra mais do que {comparado}'
+    if portatil:
+        motivo += ' (treinado no portátil: só vai para o Pi por cópia confirmada)'
     return {**res, 'versao': versao, 'aceite': aceite, 'motivo': motivo, 'nTeste': modelo['nTeste'], 'mae': modelo['mae'],
             'maeAtual': modelo['maeAtual'], 'maeBase': modelo['maeBase'], 'frases': modelo['frases']}
 
@@ -288,21 +300,25 @@ def so_perto_das_saidas(df, saidas):
     return df[dentro]
 
 
-def gravar_registo(pasta_modelos, resultados):
-    """Acrescenta ao registo.json. Ilegível (ou sem ser uma lista) fica como está: não se apaga o histórico."""
-    registo = pasta_modelos / 'registo.json'
+def gravar_registo(pasta_modelos, resultados, nome='registo.json'):
+    """Acrescenta ao registo (registo.json no barco, registo-portatil.json no portátil). Ilegível (ou sem ser uma
+    lista) fica como está: não se apaga o histórico."""
+    registo = pasta_modelos / nome
     try:
         antigo = json.loads(registo.read_text(encoding='utf-8')) if registo.exists() else []
         if not isinstance(antigo, list):
             raise ValueError('não é uma lista')
     except Exception as e:
-        print(f'aviso: registo.json ilegível ({e}); não foi alterado', file=sys.stderr)
+        print(f'aviso: {nome} ilegível ({e}); não foi alterado', file=sys.stderr)
         return
     escrever(registo, json.dumps(antigo + resultados, ensure_ascii=False, indent=1).encode('utf-8'))
 
 
-def treinar(base, polar, agora=None, incluir_simulado=False, modelos=None):
-    """Treina todos os modelos com os dados de `base` (a pasta da caixa negra) e devolve o resumo."""
+def treinar(base, polar, agora=None, incluir_simulado=False, modelos=None, prefixo=BARCO):
+    """Treina todos os modelos com os dados de `base` (a pasta da caixa negra) e devolve o resumo. `prefixo`: BARCO
+    (vNNNN, no Pi) ou PORTATIL (pNNNN, no portátil; ver REGISTO e treinar_um)."""
+    if prefixo not in REGISTO:
+        raise ValueError(f'prefixo das versões desconhecido: {prefixo!r}')
     agora = agora or pd.Timestamp.now(tz='UTC')
     pasta_modelos = Path(base, 'modelos')
     pasta_modelos.mkdir(parents=True, exist_ok=True)
@@ -310,7 +326,7 @@ def treinar(base, polar, agora=None, incluir_simulado=False, modelos=None):
     if not saidas:  # sem saídas não há como separar treino e teste (nem se inventam sessões pelos buracos)
         resultados = [{'modelo': n, 'data': agora.isoformat(), 'horas': 0.0, 'n': 0, 'versao': None, 'aceite': False,
                        'motivo': 'sem saídas gravadas'} for n in (modelos or MODELOS)]
-        gravar_registo(pasta_modelos, resultados)
+        gravar_registo(pasta_modelos, resultados, REGISTO[prefixo])
         return resultados
     df = so_perto_das_saidas(ler_tabela(base, dias_das_saidas(saidas)), saidas)
     if not incluir_simulado:
@@ -320,10 +336,10 @@ def treinar(base, polar, agora=None, incluir_simulado=False, modelos=None):
     resultados = []
     for n in (modelos or MODELOS):
         try:
-            resultados.append(treinar_um(n, d, pasta_modelos, agora, polar))
+            resultados.append(treinar_um(n, d, pasta_modelos, agora, polar, prefixo))
         except Exception as e:  # um modelo estragado não pára os outros
             print(traceback.format_exc(), file=sys.stderr)
             resultados.append({'modelo': n, 'data': agora.isoformat(), 'horas': None, 'n': None,
                                'versao': None, 'aceite': False, 'motivo': f'erro: {e}'})
-    gravar_registo(pasta_modelos, resultados)
+    gravar_registo(pasta_modelos, resultados, REGISTO[prefixo])
     return resultados
