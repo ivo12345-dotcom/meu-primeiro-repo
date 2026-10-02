@@ -269,25 +269,42 @@ function ventoJuntoACosta (costa, q, milhas, { twd, horaPartida }, o) {
   return paraTerra != null && Math.abs(c.dif(vento, paraTerra)) > o.toleranciaVento ? 'mar' : null
 }
 
+// Uma ligação a um canal (a que chega à 1.ª ponta ou a que sai da última): fica de fora da regra do
+// vento de terra, como os troços do canal (terra dos dois lados, decisão do Ivo de 30/09).
+const ligacaoDoCanal = (pontos, i) => pontos[i + 1]?.perna === 'canal' || pontos[i - 1]?.perna === 'canal'
+
 // A regra dos 3 MN (desenho: "3 MN só com vento de terra", decisão do Ivo de 30/09): em cada ponto
 // da linha seguida (os que têm `s`), o vento previsto tem de vir do lado de terra da linha (a normal
 // que aponta para terra, ±o.toleranciaVento). Os pontos de uma corda (sem `s`, auditoria I-19) com a
-// costa a menos de afastamentoVentoTerra contam como na rota direta (a terra mais perto). Devolve o
-// motivo da exclusão, ou null.
+// costa a menos de afastamentoVentoTerra contam como na rota direta (a terra mais perto); e as
+// ligações ao largo da partida e da chegada (decisão do Ivo n.º 7, auditoria M-04), também como na
+// rota direta: de passoMax em passoMax, onde a costa fica a menos de afastamentoVentoTerra. As
+// ligações a um canal ficam de fora (ligacaoDoCanal). Devolve o motivo da exclusão, ou null.
 function ventoDoMarNaRota (costa, linha, pontos, { twd, horaPartida }, o) {
   const semVento = `a ${o.afastamentoVentoTerra} MN só com vento de terra, e não há vento previsto para a rota`
+  const resposta = (r) => (r === 'sem vento' ? semVento : r === 'mar' ? MOTIVO_VENTO_MAR : null)
   let milhas = 0
   for (let i = 0; i < pontos.length; i++) {
-    if (i > 0) milhas += c.distanciaMn(pontos[i - 1], pontos[i])
     const p = pontos[i]
+    if (i > 0 && p.perna === 'ligacao' && !ligacaoDoCanal(pontos, i)) {
+      // a ligação que chega a p, de passoMax em passoMax (as pontas na linha, com `s`, vêem-se abaixo)
+      const a = pontos[i - 1]
+      const L = c.distanciaMn(a, p)
+      const n = Math.max(1, Math.ceil(L / o.passoMax))
+      for (let k = Number.isFinite(a.s) ? 1 : 0; k <= (Number.isFinite(p.s) ? n - 1 : n); k++) {
+        const q = { lat: a.lat + (p.lat - a.lat) * k / n, lon: a.lon + (p.lon - a.lon) * k / n }
+        const m = resposta(ventoJuntoACosta(costa, q, milhas + L * k / n, { twd, horaPartida }, o))
+        if (m) return m
+      }
+    }
+    if (i > 0) milhas += c.distanciaMn(pontos[i - 1], p)
     if (Number.isFinite(p.s)) {
       const vento = ventoEm(twd, p, milhas, horaPartida, o)
       if (!Number.isFinite(vento)) return semVento
       if (!ventoDeTerra(costa, linha, p.s, vento, o.toleranciaVento)) return MOTIVO_VENTO_MAR
     } else if (p.perna === 'linha') {
-      const r = ventoJuntoACosta(costa, p, milhas, { twd, horaPartida }, o)
-      if (r === 'sem vento') return semVento
-      if (r === 'mar') return MOTIVO_VENTO_MAR
+      const m = resposta(ventoJuntoACosta(costa, p, milhas, { twd, horaPartida }, o))
+      if (m) return m
     }
   }
   return null

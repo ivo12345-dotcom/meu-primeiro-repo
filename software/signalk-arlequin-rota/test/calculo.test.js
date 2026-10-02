@@ -291,10 +291,13 @@ test('K-06 (decisão do Ivo n.º 1): "Sair agora" com o gasóleo curto, sem prev
     // a sonda do auditor (Algés → Peniche, acompanhado, 45 L no depósito): era "Segue" a verde
     ['gasóleo', entrada({ instrumentos: { posicao: ALGES, socPct: 90, gasoleoL: 45 }, tripulacao: 'acompanhado', sairAgora: true }), deps(), 'chegas com 22 L de gasóleo no pior caso (mínimo 40 L)'],
     ['sem mar', entrada({ tripulacao: 'acompanhado', sairAgora: true }), comPrevisao(P29_SEM_MAR), 'sem previsão de ondas em parte da rota: desconhecido não conta como calmo'],
-    ['previsão curta', entrada({ tripulacao: 'acompanhado', sairAgora: true }), comPrevisao({ ...P29, fim: AGORA + 2 * H }), 'a previsão acaba antes da chegada (07:22): o fim da passagem é sem previsão']
+    // a hora é a da chegada mais tarde da 1.ª alternativa (p90), em Lisboa
+    ['previsão curta', entrada({ tripulacao: 'acompanhado', sairAgora: true }), comPrevisao({ ...P29, fim: AGORA + 2 * H }), (r) => `a previsão acaba antes da chegada (${hmLisboa(Date.parse(r.alternativas[0].chegada.p90))}): o fim da passagem é sem previsão`]
   ]
-  for (const [nome, e, d, motivo] of casos) {
+  const hmLisboa = (t) => new Intl.DateTimeFormat('pt-PT', { timeZone: 'Europe/Lisbon', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(t)
+  for (const [nome, e, d, m] of casos) {
     const r = await calcular(e, d)
+    const motivo = typeof m === 'function' ? m(r) : m
     assert.equal(r.erro, undefined, `${nome}: ${r.erro}`)
     assert.equal(r.veredicto.tipo, 'nao-recomendado', `${nome}: ${JSON.stringify(r.veredicto)}`)
     assert.equal(r.veredicto.texto, 'Não recomendado')

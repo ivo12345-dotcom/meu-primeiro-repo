@@ -75,6 +75,27 @@ test('3 MN só com vento de terra EM TODA a linha seguida; os 5 e 8 MN não depe
   assert.ok(Math.abs(c.dif(r.rumoParaTerra(real, L, s), 90)) < 30)
 })
 
+test('M-04 (decisão do Ivo n.º 7): a 3 MN, a regra do vento de terra vale também nas ligações ao largo da partida e da chegada (como na rota direta); os troços do canal continuam isentos', () => {
+  const figueira = c.P(D('figueira').largo)
+  // vento de leste (de terra) em toda a parte, menos a ≤ 0,3 MN do largo da Figueira (só a ligação de chegada passa lá)
+  const twd = (lat, lon) => (c.distanciaMn({ lat, lon }, figueira) <= 0.3 ? 270 : 90)
+  const alt = r.gerarRota(real, { partida: D('nazare'), destino: D('figueira'), afastamento: 3, twd })
+  assert.equal(alt.excluida, true)
+  assert.equal(alt.motivo, VENTO_DO_MAR)
+  // o mesmo vento de leste em todo o lado passa (a terra mais perto das ligações fica a leste)
+  assert.equal(r.gerarRota(real, { partida: D('nazare'), destino: D('figueira'), afastamento: 3, twd: 90 }).excluida, false)
+  // a 5 MN não há regra do vento de terra (nem na linha, nem nas ligações)
+  assert.equal(r.gerarRota(real, { partida: D('nazare'), destino: D('figueira'), afastamento: 5, twd }).excluida, false)
+  // ventoDoMar (o cálculo volta a usá-la nos rastos) diz o mesmo
+  const ok = r.gerarRota(real, { partida: D('nazare'), destino: D('figueira'), afastamento: 3, twd: 90 })
+  assert.equal(r.ventoDoMar(real, ok, { twd }), VENTO_DO_MAR)
+  // o canal (terra dos dois lados, decisão do Ivo de 30/09): as ligações a ele e dele ficam de fora
+  const canal = r.gerarAlternativas(real, { partida: D('peniche'), destino: D('nazare'), afastamento: 3, twd: 90 }).find(a => a.canal)
+  assert.equal(canal.excluida, false, canal.motivo)
+  const pontaSul = c.P(JSON.parse(fs.readFileSync(path.join(c.PASTA_DADOS, 'canais.json'), 'utf8'))[0].pontos[0])
+  assert.equal(r.ventoDoMar(real, canal, { twd: (lat, lon) => (c.distanciaMn({ lat, lon }, pontaSul) <= 1.5 ? 270 : 90) }), null)
+})
+
 test('3 MN: o vento de terra à saída não chega, conta a linha toda (costa a sotavento mais à frente)', () => {
   // Algés → Peniche com NW: à saída (Cascais, terra a norte) o vento é de terra, mas na costa
   // oeste vem do mar
@@ -312,14 +333,20 @@ test('no mar entre as Berlengas e o continente: a projeção na linha não dá a
   const pos = { lat: 39.39, lon: -9.45 }
   const alts = r.gerarRotas(real, { posicao: pos, destino: D('peniche'), afastamentos: [3, 5, 8], twd: 90 })
   assert.equal(alts.length, 3, JSON.stringify(alts.map(a => [a.afastamento, a.direto, a.excluida])))
+  // a de 3 MN: com vento de leste a ligação da posição à linha passa a menos de 3 MN da Berlenga, a
+  // sotavento — excluída pela regra do vento de terra nas ligações (decisão do Ivo n.º 7, M-04), como
+  // a direta abaixo. A geometria (a projeção) vê-se sem a regra (afastamentoVentoTerra 0)
   const a3 = alts.find(a => a.afastamento === 3)
-  assert.equal(a3.excluida, false, a3.motivo)
-  assert.ok(a3.milhas > 9 && a3.milhas < 11, `3 MN: ${a3.milhas} MN`)
-  assert.ok(a3.pontos.every(p => p.lon > -9.55), '3 MN: passa a oeste das Berlengas')
+  assert.equal(a3.excluida, true)
+  assert.equal(a3.motivo, VENTO_DO_MAR)
+  const g3 = r.gerarRota(real, { partida: pos, destino: D('peniche'), afastamento: 3, twd: 90, opcoes: { afastamentoVentoTerra: 0 } })
+  assert.equal(g3.excluida, false, g3.motivo)
+  assert.ok(g3.milhas > 9 && g3.milhas < 11, `3 MN: ${g3.milhas} MN`)
+  assert.ok(g3.pontos.every(p => p.lon > -9.55), '3 MN: não passa a oeste das Berlengas')
   const a5 = alts.find(a => a.afastamento === 5)
   assert.equal(a5.excluida, false, a5.motivo)
   assert.ok(a5.milhas > 12 && a5.milhas < 14.5, `5 MN: ${a5.milhas} MN`)
-  assert.ok(a5.pontos.every(p => p.lon > -9.55), '5 MN: passa a oeste das Berlengas')
+  assert.ok(a5.pontos.every(p => p.lon > -9.55), '5 MN: não passa a oeste das Berlengas')
   // a direta (8 MN, mesma rota a qualquer afastamento) fica excluída: a menos de 3 MN da costa
   // (a Berlenga) com vento do mar
   const dir = alts.find(a => a.direto)
