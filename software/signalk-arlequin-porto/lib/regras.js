@@ -25,6 +25,11 @@ function distancia (a, b) {
   return 2 * r * Math.asin(Math.sqrt(h))
 }
 
+// Os alarmes que este plugin publica (notifications.arlequin.porto.<id>).
+const ALARMES = Object.freeze(['deriva', 'aguaPorao', 'bombaPorao', 'fumo', 'fugaGasoleo', 'intrusao'])
+
+// ativos: { id: { state, message } } os alarmes publicados ativos (o plugin grava-os no porto.json para
+// os repor depois de um reinício: auditoria I-21)
 function novoEstado () {
   return {
     ativos: {},
@@ -42,7 +47,7 @@ function passo (e0, l, t, lim = LIMITES) {
   const acoes = []
   const mudar = (id, deve, estado, mensagem) => {
     if (deve === null || deve === undefined || deve === !!e.ativos[id]) return
-    if (deve) { e.ativos[id] = true; notificacoes.push({ id, state: estado, method: ['visual', 'sound'], message: mensagem }) }
+    if (deve) { e.ativos[id] = { state: estado, message: mensagem }; notificacoes.push({ id, state: estado, method: ['visual', 'sound'], message: mensagem }) }
     else { delete e.ativos[id]; notificacoes.push({ id, state: 'normal', method: [], message: 'Normal' }) }
   }
 
@@ -107,4 +112,4 @@ function passo (e0, l, t, lim = LIMITES) {
   return { estado: e, notificacoes, acoes }
 }
 
-module.exports = { LIMITES, novoEstado, passo, distancia }
+module.exports = { LIMITES, ALARMES, novoEstado, passo, distancia }
