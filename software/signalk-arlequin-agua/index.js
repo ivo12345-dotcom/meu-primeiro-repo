@@ -40,7 +40,7 @@ module.exports = function (app) {
       avisoPct: { type: 'number', title: 'Aviso de água a acabar (%)', default: 20 },
       logbook: { type: 'boolean', title: 'Escrever os enchimentos no diário (signalk-logbook)', default: false },
       logbookUrl: { type: 'string', title: 'URL do logbook', default: 'http://localhost:3000/plugins/signalk-logbook/logs' },
-      token: { type: 'string', title: 'Token de acesso', default: '' }
+      token: { type: 'string', title: 'Token de admin do SignalK para escrever no diário (com a segurança ligada o signalk-logbook só aceita admin; fica só aqui, nunca no ecrã)', default: '' }
     }
   }
 
@@ -119,6 +119,12 @@ module.exports = function (app) {
   }
 
   plugin.registerWithRouter = function (router) {
+    // Com a segurança do SignalK ligada (2.33), uma rota registada com o router simples só aceita admin
+    // (tokensecurity.js); com o router.access os GET pedem uma sessão ("readonly") e os POST um utilizador
+    // "read/write", como a conta do ecrã (auditoria K-11, contrato C2). Sem o router.access: os simples.
+    const comNivel = typeof router.access === 'function'
+    const ler = comNivel ? router.access('readonly') : router
+    const escrever = comNivel ? router.access('readwrite') : router
     const tanque = (req, res) => {
       const cfg = cfgDe(Number(req.body?.id))
       if (!cfg) { res.status(404).json({ ok: false, erro: 'depósito desconhecido' }); return null }
@@ -126,7 +132,7 @@ module.exports = function (app) {
     }
     const numero = (x) => Number(String(x ?? '').replace(',', '.'))
 
-    router.get('/estado', (req, res) => {
+    ler.get('/estado', (req, res) => {
       const agora = Date.now()
       res.json({
         tanques: o.tanques.map(cfg => {
@@ -140,14 +146,14 @@ module.exports = function (app) {
         })
       })
     })
-    router.post('/encher', (req, res) => {
+    escrever.post('/encher', (req, res) => {
       const cfg = tanque(req, res); if (!cfg) return
       estados[cfg.id] = agua.encher(estados[cfg.id] || agua.novoTanque(), Date.now())
       guardar()
       diario(`Enchi a água: ${cfg.nome} (${cfg.capacidadeL} L)`)
       res.json({ ok: true })
     })
-    router.post('/nivel', (req, res) => {
+    escrever.post('/nivel', (req, res) => {
       const cfg = tanque(req, res); if (!cfg) return
       const litros = numero(req.body?.litros)
       if (!(litros >= 0 && litros <= cfg.capacidadeL)) return res.status(400).json({ ok: false, erro: `litros entre 0 e ${cfg.capacidadeL}` })
@@ -155,17 +161,17 @@ module.exports = function (app) {
       guardar()
       res.json({ ok: true })
     })
-    router.post('/calibrar-bomba/iniciar', (req, res) => {
+    escrever.post('/calibrar-bomba/iniciar', (req, res) => {
       const cfg = tanque(req, res); if (!cfg) return
       estados[cfg.id] = agua.iniciarCalibracao(estados[cfg.id] || agua.novoTanque())
       res.json({ ok: true })
     })
-    router.post('/calibrar-bomba/cancelar', (req, res) => {
+    escrever.post('/calibrar-bomba/cancelar', (req, res) => {
       const cfg = tanque(req, res); if (!cfg) return
       estados[cfg.id] = { ...(estados[cfg.id] || agua.novoTanque()), calibracao: null }
       res.json({ ok: true })
     })
-    router.post('/calibrar-bomba/terminar', (req, res) => {
+    escrever.post('/calibrar-bomba/terminar', (req, res) => {
       const cfg = tanque(req, res); if (!cfg) return
       let r
       try { r = agua.terminarCalibracao(estados[cfg.id] || agua.novoTanque(), numero(req.body?.litros ?? 1)) } catch (e) { return res.status(409).json({ ok: false, erro: e.message }) }

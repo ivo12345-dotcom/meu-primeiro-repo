@@ -120,6 +120,30 @@ test('parado no porto de noite: o aviso dos 55% fica só no ecrã', () => {
   assert.deepEqual(aviso.method, ['visual'])
 })
 
+// Auditoria K-11 (contrato C2): com a segurança do SignalK ligada (2.33), uma rota sem router.access só
+// aceita admin; o ecrã entra com uma conta "read/write". Os GET pedem "readonly" e os POST "readwrite".
+function niveis (p) {
+  const direto = []
+  const registos = []
+  const router = {
+    get: (k) => direto.push(`GET ${k}`),
+    post: (k) => direto.push(`POST ${k}`),
+    access: (nivel) => ({
+      get: (k, h) => registos.push({ m: 'GET', k, nivel, h: typeof h }),
+      post: (k, h) => registos.push({ m: 'POST', k, nivel, h: typeof h })
+    })
+  }
+  p.registerWithRouter(router)
+  return { direto, nivel: Object.fromEntries(registos.map(x => [`${x.m} ${x.k}`, x.nivel])), funcoes: registos.every(x => x.h === 'function') }
+}
+
+test('K-11: com a segurança do SignalK (router.access) o GET /sessoes regista-se "readonly"; nada fica só para admin', () => {
+  const r = niveis(criarPlugin(appFalso()))
+  assert.deepEqual(r.direto, [], 'nenhuma rota sem nível (ficava só para admin)')
+  assert.deepEqual(r.nivel, { 'GET /sessoes': 'readonly' })
+  assert.ok(r.funcoes)
+})
+
 test('GET /sessoes devolve as cargas, a mais recente primeiro', async () => {
   const { app } = correrCenario('inverno-navegar')
   await new Promise(r => setTimeout(r, 50))

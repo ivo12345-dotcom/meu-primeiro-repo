@@ -25,7 +25,7 @@ module.exports = function (app) {
       propulsao: { type: 'string', title: 'ID do motor em propulsion.*', default: 'main' },
       logbook: { type: 'boolean', title: 'Escrever as cargas no diário de bordo (signalk-logbook)', default: false },
       logbookUrl: { type: 'string', title: 'URL do logbook', default: 'http://localhost:3000/plugins/signalk-logbook/logs' },
-      token: { type: 'string', title: 'Token de acesso ao SignalK (se a segurança estiver ligada)', default: '' }
+      token: { type: 'string', title: 'Token de admin do SignalK para escrever no diário (com a segurança ligada o signalk-logbook só aceita admin; fica só aqui, nunca no ecrã)', default: '' }
     }
   }
 
@@ -153,8 +153,12 @@ module.exports = function (app) {
   }
 
   // Para o ecrã: as últimas sessões de carga (mais recente primeiro).
+  // Com a segurança do SignalK ligada (2.33), uma rota registada com o router simples só aceita admin
+  // (tokensecurity.js); com o router.access a leitura pede só uma sessão ("readonly"), como a conta
+  // "read/write" do ecrã (auditoria K-11, contrato C2). Sem o router.access (versões antigas): o simples.
   plugin.registerWithRouter = function (router) {
-    router.get('/sessoes', (req, res) => {
+    const ler = typeof router.access === 'function' ? router.access('readonly') : router
+    ler.get('/sessoes', (req, res) => {
       let linhas = []
       try {
         linhas = fs.readFileSync(ficheiroSessoes, 'utf8').trim().split('\n').filter(Boolean)

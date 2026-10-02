@@ -32,7 +32,7 @@ module.exports = function (app) {
       },
       logbook: { type: 'boolean', title: 'Escrever os abastecimentos no diário (signalk-logbook)', default: false },
       logbookUrl: { type: 'string', title: 'URL do logbook', default: 'http://localhost:3000/plugins/signalk-logbook/logs' },
-      token: { type: 'string', title: 'Token de acesso (se a segurança estiver ligada)', default: '' }
+      token: { type: 'string', title: 'Token de admin do SignalK para escrever no diário (com a segurança ligada o signalk-logbook só aceita admin; fica só aqui, nunca no ecrã)', default: '' }
     }
   }
 
@@ -145,6 +145,12 @@ module.exports = function (app) {
   }
 
   plugin.registerWithRouter = function (router) {
+    // Com a segurança do SignalK ligada (2.33), uma rota registada com o router simples só aceita admin
+    // (tokensecurity.js); com o router.access os GET pedem uma sessão ("readonly") e os POST um utilizador
+    // "read/write", como a conta do ecrã (auditoria K-11, contrato C2). Sem o router.access: os simples.
+    const comNivel = typeof router.access === 'function'
+    const ler = comNivel ? router.access('readonly') : router
+    const escrever = comNivel ? router.access('readwrite') : router
     const litrosDoPedido = (req) => Number(String(req.body?.litros ?? '').replace(',', '.'))
 
     // ---- Calibração completa (depósito vazio e limpo, gasóleo aos 5 L) ----
@@ -158,25 +164,25 @@ module.exports = function (app) {
       estado = novoEstado() // o nível volta a sair da tabela nova
       try { fs.unlinkSync(ficheiroNivel) } catch { }
     }
-    router.get('/calibracao', (req, res) => res.json(vistaCalib() || { ativa: false, tabela: o.tabela, capacidadeL: o.capacidadeL }))
-    router.post('/calibracao/iniciar', (req, res) => {
+    ler.get('/calibracao', (req, res) => res.json(vistaCalib() || { ativa: false, tabela: o.tabela, capacidadeL: o.capacidadeL }))
+    escrever.post('/calibracao/iniciar', (req, res) => {
       const litros = req.body?.litros === undefined ? 0 : litrosDoPedido(req)
       if (!(litros >= 0)) return res.status(400).json({ ok: false, erro: 'litros inválidos' })
       calib = calibracao.iniciar(litros)
       res.json({ ok: true, ...vistaCalib() })
     })
-    router.post('/calibracao/adicionar', (req, res) => {
+    escrever.post('/calibracao/adicionar', (req, res) => {
       if (!calib) return res.status(409).json({ ok: false, erro: 'não há calibração em curso' })
       try { calib = calibracao.adicionar(calib, litrosDoPedido(req), Date.now()) } catch (e) { return res.status(409).json({ ok: false, erro: e.message }) }
       res.json({ ok: true, ...vistaCalib() })
     })
-    router.post('/calibracao/desfazer', (req, res) => {
+    escrever.post('/calibracao/desfazer', (req, res) => {
       if (!calib) return res.status(409).json({ ok: false, erro: 'não há calibração em curso' })
       calib = calibracao.desfazer(calib)
       res.json({ ok: true, ...vistaCalib() })
     })
-    router.post('/calibracao/cancelar', (req, res) => { calib = null; res.json({ ok: true, ativa: false }) })
-    router.post('/calibracao/terminar', (req, res) => {
+    escrever.post('/calibracao/cancelar', (req, res) => { calib = null; res.json({ ok: true, ativa: false }) })
+    escrever.post('/calibracao/terminar', (req, res) => {
       if (!calib) return res.status(409).json({ ok: false, erro: 'não há calibração em curso' })
       let r
       try { r = calibracao.terminar(calib, { cheio: !!req.body?.cheio }) } catch (e) { return res.status(409).json({ ok: false, erro: e.message }) }
@@ -186,7 +192,7 @@ module.exports = function (app) {
       res.json({ ok: true, ...r })
     })
     // Folha do multímetro: { linhas: [{ litros, sonda, alimentacao }], cheio }
-    router.post('/calibracao/importar', (req, res) => {
+    escrever.post('/calibracao/importar', (req, res) => {
       let r
       try { r = calibracao.importar(req.body?.linhas || []) } catch (e) { return res.status(400).json({ ok: false, erro: e.message }) }
       if (r.tabela.length < 2 || !monotona(r.tabela)) return res.status(422).json({ ok: false, erro: 'a folha não dá uma tabela coerente' })
@@ -195,14 +201,14 @@ module.exports = function (app) {
       res.json({ ok: true, ...r, capacidadeL: cap || o.capacidadeL })
     })
 
-    router.get('/estado', (req, res) => res.json({
+    ler.get('/estado', (req, res) => res.json({
       litros: estado.litros, mediana: estado.mediana, razao: estado.razao, razaoMediana: estado.razaoMediana,
       tabela: o.tabela, capacidadeL: o.capacidadeL, alarmes: Object.keys(estado.ativos), ultimoAbastecimento,
       ultimaSessao: estado.ultimaSessao // última saída a motor: medido pela sonda, esperado pelo J1939, fator sugerido
     }))
 
     // "O depósito tem agora X litros" (cheio = 200, ou uma marca do desenho do dono anterior).
-    router.post('/calibrar', (req, res) => {
+    escrever.post('/calibrar', (req, res) => {
       const litros = litrosDoPedido(req)
       if (!(litros >= 0 && litros <= o.capacidadeL)) return res.status(400).json({ ok: false, erro: `litros entre 0 e ${o.capacidadeL}` })
       if (estado.razaoMediana === null) return res.status(409).json({ ok: false, erro: 'ainda a medir (3 min com o barco direito)' })
@@ -213,7 +219,7 @@ module.exports = function (app) {
     })
 
     // "Meti X litros": o ponto é (razão agora, litros antes + X).
-    router.post('/abastecimento', (req, res) => {
+    escrever.post('/abastecimento', (req, res) => {
       const litros = litrosDoPedido(req)
       if (!(litros > 0 && litros <= o.capacidadeL)) return res.status(400).json({ ok: false, erro: 'litros inválidos' })
       if (estado.razaoMediana === null) return res.status(409).json({ ok: false, erro: 'ainda a medir (3 min com o barco direito)' })

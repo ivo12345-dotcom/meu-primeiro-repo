@@ -21,6 +21,37 @@ const rotas = (p) => { const r = { get: {}, post: {} }; p.registerWithRouter({ g
 const chamar = (h, body) => new Promise((resolve) => { const res = { code: 200, status (c) { this.code = c; return this }, json (j) { resolve({ code: this.code, ...j }) } }; h({ body }, res) })
 const segundos = (t, n) => { for (let i = 0; i < n; i++) t.mock.timers.tick(1000) }
 
+// Auditoria K-11 (contrato C2): com a segurança do SignalK ligada (2.33), uma rota sem router.access só
+// aceita admin; o ecrã entra com uma conta "read/write". Os GET pedem "readonly" e os POST "readwrite".
+function niveis (p) {
+  const direto = []
+  const registos = []
+  const router = {
+    get: (k) => direto.push(`GET ${k}`),
+    post: (k) => direto.push(`POST ${k}`),
+    access: (nivel) => ({
+      get: (k, h) => registos.push({ m: 'GET', k, nivel, h: typeof h }),
+      post: (k, h) => registos.push({ m: 'POST', k, nivel, h: typeof h })
+    })
+  }
+  p.registerWithRouter(router)
+  return { direto, nivel: Object.fromEntries(registos.map(x => [`${x.m} ${x.k}`, x.nivel])), funcoes: registos.every(x => x.h === 'function') }
+}
+
+test('K-11: com a segurança do SignalK (router.access) os GET registam-se "readonly" e os POST "readwrite"; nada fica só para admin', () => {
+  const r = niveis(criar(appFalso()))
+  assert.deepEqual(r.direto, [], 'nenhuma rota sem nível (ficava só para admin)')
+  assert.deepEqual(r.nivel, {
+    'GET /estado': 'readonly',
+    'POST /encher': 'readwrite',
+    'POST /nivel': 'readwrite',
+    'POST /calibrar-bomba/iniciar': 'readwrite',
+    'POST /calibrar-bomba/cancelar': 'readwrite',
+    'POST /calibrar-bomba/terminar': 'readwrite'
+  })
+  assert.ok(r.funcoes)
+})
+
 test('encher, pedalar, aviso a 20%, e o nível sobrevive a um reinício', async (t) => {
   t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
   const app = appFalso()
