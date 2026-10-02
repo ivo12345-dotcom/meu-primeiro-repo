@@ -31,6 +31,23 @@ test('cabos: um L inventado roda 90° num ponto; uma reta não tem cabos', () =>
   assert.deepEqual(m.map(x => x.milhas), [5, 10, 15, 20])
 })
 
+test('M-08: a hora de cada sítio é a da passagem mais perto PARA A FRENTE da do anterior (numa ida e volta, a ida; nunca a volta mais perto)', () => {
+  // ida para norte por 9,51 W (o rasto ao lado da rota, a 0,47 MN) e volta por 9,50 W, em cima dela
+  const MIN = 60000
+  const T0 = Date.UTC(2026, 8, 30, 8)
+  const linhaTempo = []
+  for (let i = 0; i <= 120; i++) linhaTempo.push({ lat: 39 + (i / 120) * 0.2, lon: -9.51, t: T0 + i * MIN })
+  for (let i = 1; i <= 120; i++) linhaTempo.push({ lat: 39.2 - (i / 120) * 0.2, lon: -9.5, t: T0 + (120 + i) * MIN })
+  // os sítios pela ordem da rota: dois na ida (a 39,05 e a 39,15) e um na volta (a 39,10)
+  const sitios = [{ lat: 39.05, lon: -9.5, milhas: 3 }, { lat: 39.15, lon: -9.5, milhas: 9 }, { lat: 39.1, lon: -9.5, milhas: 18 }]
+  const r = D.horasNosSitios(sitios, linhaTempo)
+  assert.deepEqual(r.map(x => x.i), [30, 90, 180]) // a ida para os dois primeiros, a volta para o terceiro
+  assert.deepEqual(r.map(x => x.t), [T0 + 30 * MIN, T0 + 90 * MIN, T0 + 180 * MIN])
+  // a ordem dos sítios é a da rota (milhas), não a da lista
+  assert.deepEqual(D.horasNosSitios([sitios[2], sitios[0], sitios[1]], linhaTempo).map(x => x.i), [180, 30, 90])
+  assert.deepEqual(D.horasNosSitios(sitios, []).map(x => x.t), [null, null, null])
+})
+
 test('Algés → Peniche a 5 MN: marcos, o Cabo Raso, o abrigo mais perto, voltar e o resumo', async () => {
   const alt = rotas.gerarRota(costa, { partida: dest('alges'), destino: dest('peniche'), afastamento: 5 })
   const t0 = Date.UTC(2026, 8, 30, 5, 30)

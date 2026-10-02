@@ -94,6 +94,8 @@ function cabos (linha, s1, s2, opcoes = {}) {
 // ligações e a linha de costa). Mede-se na geometria da rota e não só na linha de costa,
 // porque a ligação do largo à linha também dobra cabos (de Cascais para norte, a rota
 // liga-se à linha já a norte do Cabo da Roca).
+// Cada cabo leva também milhasRota: as milhas desde o início da rota (para os sítios irem pela ordem
+// da rota, horasNosSitios).
 function cabosDaRota (pontosRota, opcoes = {}) {
   const i0 = pontosRota.findIndex(p => p.perna === 'ligacao')
   let i1 = -1
@@ -101,7 +103,31 @@ function cabosDaRota (pontosRota, opcoes = {}) {
   if (i0 < 1 || i1 <= i0) return []
   const sub = pontosRota.slice(i0 - 1, i1 + 1)
   const linha = c.prepararLinha(sub)
-  return linha.total > 0 ? cabos(linha, 0, linha.total, opcoes) : []
+  let antes = 0
+  for (let i = 1; i < i0; i++) antes += c.distanciaMn(pontosRota[i - 1], pontosRota[i])
+  return linha.total > 0 ? cabos(linha, 0, linha.total, opcoes).map(k => ({ ...k, milhasRota: antes + k.s })) : []
+}
+
+// A passagem "perto" de um sítio: o corredor dos bordos é de ±0,7 MN à volta da perna.
+const PERTO_MN = 1.5
+// A hora de cada sítio (auditoria M-08): pela ordem da rota (milhas), o ponto da linha do tempo mais
+// perto PARA A FRENTE do do sítio anterior — a 1.ª aproximação (a ≤ PERTO_MN), não a mais perto de
+// todas: numa ida e volta (ou à volta das Berlengas) a volta pode passar mais perto e roubava a hora
+// da ida. → os sítios pela ordem dada, cada um com { i, t } (−1 e null sem linha do tempo).
+function horasNosSitios (sitios, linhaTempo) {
+  const ordem = sitios.map((s, k) => ({ s, k })).sort((a, b) => (a.s.milhasRota ?? a.s.milhas ?? 0) - (b.s.milhasRota ?? b.s.milhas ?? 0) || a.k - b.k)
+  const out = new Array(sitios.length)
+  let desde = 0
+  for (const { s, k } of ordem) {
+    let melhor = -1; let d = Infinity
+    for (let i = desde; i < linhaTempo.length; i++) {
+      const di = c.distanciaMn(s, linhaTempo[i])
+      if (di < d) { d = di; melhor = i } else if (d <= PERTO_MN && di > d + 0.25) break
+    }
+    out[k] = { ...s, i: melhor, t: melhor >= 0 ? linhaTempo[melhor].t : null }
+    if (melhor >= 0) desde = melhor
+  }
+  return out
 }
 
 // Pontos a cada passoMn ao longo da geometria da rota: [{ lat, lon, milhas }].
@@ -238,16 +264,10 @@ async function pontosDesistencia ({ costa, rota, linhaTempo, partida = null, des
   const abrigos = costa.destinos.filter(d => d.abrigo) // o próprio destino também conta, se for abrigo
   // os sítios: marcos de 5 em 5 MN e cabos
   const sitios = marcos(rota.pontos, o.passoMn).map(m => ({ ...m, tipo: 'marco' }))
-  for (const k of cabosDaRota(rota.pontos, o)) sitios.push({ lat: k.lat, lon: k.lon, tipo: 'cabo', nome: k.nome, rodaGraus: k.rodaGraus })
-  // a hora em cada sítio: o ponto da linha do tempo mais perto (para a frente do anterior)
-  const comHora = sitios.map(s => {
-    let melhor = -1; let d = Infinity
-    for (let i = 0; i < linhaTempo.length; i++) {
-      const di = c.distanciaMn(s, linhaTempo[i])
-      if (di < d) { d = di; melhor = i }
-    }
-    return { ...s, i: melhor, t: melhor >= 0 ? linhaTempo[melhor].t : null }
-  }).filter(s => s.t != null).sort((a, b) => a.t - b.t)
+  for (const k of cabosDaRota(rota.pontos, o)) sitios.push({ lat: k.lat, lon: k.lon, tipo: 'cabo', nome: k.nome, rodaGraus: k.rodaGraus, milhasRota: k.milhasRota })
+  // a hora em cada sítio: o ponto da linha do tempo mais perto para a frente do do sítio anterior
+  // (pela ordem da rota; horasNosSitios)
+  const comHora = horasNosSitios(sitios, linhaTempo).filter(s => s.t != null).sort((a, b) => a.t - b.t)
   const out = []
   for (const s of comHora) {
     await ceder()
@@ -282,4 +302,4 @@ async function pontosDesistencia ({ costa, rota, linhaTempo, partida = null, des
   return { pontos: out, resumo: resumir(itens, alvo) }
 }
 
-module.exports = { PADRAO, CABOS, ventoNaPerna, cabos, cabosDaRota, marcos, rotaAte, pontosDesistencia }
+module.exports = { PADRAO, CABOS, ventoNaPerna, cabos, cabosDaRota, marcos, horasNosSitios, rotaAte, pontosDesistencia }
