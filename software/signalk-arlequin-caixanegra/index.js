@@ -2,7 +2,8 @@
 // Plugin SignalK: caixa negra do Arlequin. Grava TUDO desde o primeiro dia em
 // ~/arlequin-dados: bruto/ (todas as mensagens, 1 ficheiro por hora), tabela/
 // (uma linha a cada 10 s para a AI), saidas/ (resumo de cada saída) e
-// previsoes/ (escrita pelo plugin da AI, signalk-arlequin-ia). Só apaga do bruto o que o portátil
+// previsoes/ (escrita por dois plugins: o da AI, signalk-arlequin-ia, de hora a hora para a posição
+// do barco, e o da rota, um ficheiro por ponto de cada cálculo). Só apaga do bruto o que o portátil
 // já confirmou, e só quando o disco passa os 80%. Guarda o estado das velas.
 
 const fs = require('node:fs')
