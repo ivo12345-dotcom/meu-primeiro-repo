@@ -4,7 +4,7 @@
 // gravada no encaminhador.json com a hora a que devia ter saído, e tenta-se outra vez com um recuo de
 // 2 s até 1 min, até ser entregue a pelo menos um chat autorizado. Uma falta de rede nunca a faz caducar
 // (um "Água no porão" não caduca); chega com "(atrasado N min)" quando sai com 1 min ou mais de atraso.
-// Lógica pura: o plugin (index.js) envia e grava.
+// Lógica pura: o envio e a gravação são de lib/entrega.js e do plugin (index.js).
 //
 // Revisão da F4 (auditoria F4b, Importante 1): uma mensagem que o Telegram recusa sempre já não prende a
 // fila. O texto entra cortado abaixo do limite do Telegram (4096 caracteres) e bem formado (sem meios

@@ -82,6 +82,15 @@ function erroEmPortugues (e) {
   return erroConhecido(e) ?? (e?.codigo != null ? `erro do Telegram (código ${e.codigo})` : 'erro do Telegram')
 }
 
+// O erro de uma chamada ao Telegram para o registo, com um só "Telegram" à cabeça (auditoria M-53: era
+// "Telegram: Telegram sendMessage: …"; e F4b, revisão da F4, Menor 7: o mesmo no plano): os do cliente já
+// começam por "Telegram <método>:". Com `contexto` ("plano para Mãe"): "Telegram (plano para Mãe): <método>: …".
+function registoTelegram (e, contexto) {
+  const m = String(e?.message ?? e)
+  if (contexto) return `Telegram (${contexto}): ${m.replace(/^Telegram\s+/, '')}`
+  return /^Telegram\b/.test(m) ? m : `Telegram: ${m}`
+}
+
 // Uma recusa do Telegram que não passa com outra tentativa (auditoria F4b, revisão da F4, Importante 1):
 // 'chat' (esse chat não recebe nada: bloqueou o bot, não existe, um código mal escrito) ou 'mensagem' (o
 // Telegram não aceita esse texto: demasiado longo, vazio, mal codificado — qualquer outro 400). null: a
@@ -96,4 +105,4 @@ function recusaDoTelegram (e) {
   return null
 }
 
-module.exports = { criarTelegram, erroEmPortugues, erroConhecido, recusaDoTelegram, LIMITE_MS }
+module.exports = { criarTelegram, erroEmPortugues, erroConhecido, recusaDoTelegram, registoTelegram, LIMITE_MS }

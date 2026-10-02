@@ -125,4 +125,4 @@ function alarmesAtivos (lista, nunca = NUNCA) {
     .map(n => descricao(n))
 }
 
-module.exports = { novoEncaminhador, encaminhar, listarNotificacoes, alarmesAtivos, NUNCA, SO_ALARME }
+module.exports = { novoEncaminhador, encaminhar, listarNotificacoes, alarmesAtivos, ATIVO, NUNCA, SO_ALARME }
