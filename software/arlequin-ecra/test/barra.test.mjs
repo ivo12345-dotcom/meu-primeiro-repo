@@ -8,11 +8,12 @@ const base = { agora: Date.parse('2026-09-29T14:32:00Z'), gps: true, pressao: 10
 test('a barra: nome, GPS, barómetro com a seta, piloto e, sem ligação, "SEM LIGAÇÃO AO SIGNALK"', () => {
   const html = barraHtml(base)
   assert.match(html, /ARLEQUIN/)
-  assert.match(html, /class="chip bom">GPS/)
+  assert.match(html, /class="chip info bom">GPS/)
   assert.match(html, /1016 hPa ▼/)
   assert.match(html, /Piloto: standby/)
   assert.doesNotMatch(html, /SEM LIGAÇÃO/)
-  assert.match(barraHtml({ ...base, ligado: false, gps: false, pressao: undefined, tendencia: null, piloto: undefined }), /class="chip off">GPS[\s\S]*— hPa[\s\S]*Piloto: manual[\s\S]*SEM LIGAÇÃO AO SIGNALK/)
+  // (revisão F3, Important 1: o "sem ligação" passou para antes do GPS, junto dos avisos)
+  assert.match(barraHtml({ ...base, ligado: false, gps: false, pressao: undefined, tendencia: null, piloto: undefined }), /SEM LIGAÇÃO AO SIGNALK[\s\S]*class="chip info off">GPS[\s\S]*— hPa[\s\S]*Piloto: manual/)
 })
 
 test('auditoria K-11: a falha das janelas/modo noite do OpenCPN fica à vista na barra (antes calava-se), numa frase curta em pt-PT', async () => {
@@ -37,6 +38,22 @@ test('auditoria K-11: a falha das janelas/modo noite do OpenCPN fica à vista na
   const janela = app.slice(inicio, fim)
   assert.doesNotMatch(janela, /\.catch\(\(\) => \{\}\)/)
   assert.match(janela, /falhaJanela\(/)
+})
+
+test('revisão F3, Important 1: na barra o alarme e o botão de calar vêm logo a seguir ao nome e à hora, depois o "sem som", as falhas e o "sem ligação"; o GPS, Mesh, 4G, barómetro e piloto ficam no fim (são os que encolhem primeiro)', async () => {
+  const { chipAlarme } = await import('../public/lib/alarmes.js')
+  const { chipSemSom } = await import('../public/lib/som.js')
+  const alarme = { caminho: 'notifications.tanks.fuel.0.fuga', id: '0b6f3c2e-1d2a-4c55-9d1e-6a1f2b3c4d5e', state: 'alarm', method: ['visual', 'sound'], apito: 'continuo', message: 'Possível fuga de gasóleo: −6,0 L em 2 h com o motor parado!!', status: { silenced: false, acknowledged: false, canSilence: true, canAcknowledge: true } }
+  const html = barraHtml({ ...base, ligado: false, somHtml: chipSemSom({ state: 'suspended' }), alarmeHtml: chipAlarme(alarme), falhas: ['OpenCPN: as janelas não mudaram'] })
+  const onde = (t) => { const i = html.indexOf(t); assert.ok(i >= 0, `falta ${t}`); return i }
+  const ordem = ['class="nome"', 'class="hora"', 'data-acao="ir-alarme"', 'class="silenciar"', 'class="chip sem-som"', 'class="chip falha"', 'SEM LIGAÇÃO AO SIGNALK', '>GPS<', '>Mesh<', '>4G<', 'hPa', 'Piloto:']
+  for (let k = 1; k < ordem.length; k++) assert.ok(onde(ordem[k - 1]) < onde(ordem[k]), `${ordem[k - 1]} antes de ${ordem[k]}`)
+  // os de informação levam a classe que os faz encolher primeiro (estilo.css)
+  for (const t of ['>GPS<', '>Mesh<', '>4G<', 'hPa', 'Piloto:']) assert.match(html.slice(html.lastIndexOf('<span', onde(t)), onde(t)), /class="chip info\b/, t)
+  // sem alarme nem avisos a barra continua igual no resto
+  const calma = barraHtml(base)
+  assert.match(calma, /<span class="nome">ARLEQUIN<\/span><span class="hora">15:32<\/span>/)
+  assert.doesNotMatch(calma, /chip falha|sem-som|SEM LIGAÇÃO/)
 })
 
 test('auditoria K-04: o estado do piloto vem do SignalK e passa pelo esc', () => {

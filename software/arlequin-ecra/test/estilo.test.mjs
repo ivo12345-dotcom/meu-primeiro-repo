@@ -126,6 +126,26 @@ test('auditoria I-26: cada alvo de toque tem 44 px no mínimo (em px, não encol
   }
 })
 
+test('revisão F3, Important 1: a barra de cima nunca empurra o alarme nem o botão de calar para fora do ecrã — os chips encolhem com reticências, os de informação primeiro, o alarme fica com largura para se ler e o botão de calar, o nome e a hora não encolhem', () => {
+  // cada chip pode encolher (sem o min-width: 0 um flex item não fica mais estreito do que o texto) e corta com "…"
+  const chip = regra('.chip')
+  for (const r of [/min-width:\s*0/, /overflow:\s*hidden/, /text-overflow:\s*ellipsis/, /white-space:\s*nowrap/]) assert.match(chip, r, `.chip ${r}`)
+  // o chip que se toca não pode ser flex: num flex o texto vira um item anónimo e as reticências não aparecem
+  assert.doesNotMatch(regra('.chip[data-acao]'), /display:\s*(inline-)?flex/)
+  assert.match(regra('.chip[data-acao]'), /line-height:\s*calc\(44px - \.3rem\)/, 'o texto ao meio dos 44 px')
+  // o alarme: largura mínima (o começo lê-se sempre) e encolhe pouco
+  assert.match(regra('.chip[data-acao="ir-alarme"]'), /min-width:\s*7rem/)
+  // os de informação (GPS, Mesh, 4G, barómetro, piloto) encolhem primeiro
+  const info = /flex-shrink:\s*(\d+)/.exec(regra('.chip.info'))
+  assert.ok(info && Number(info[1]) >= 4, '.chip.info { flex-shrink ≥ 4 }')
+  // o botão de calar, o nome e a hora nunca encolhem
+  assert.match(regra('.silenciar'), /flex:\s*0 0 auto/)
+  assert.match(regra('.nome'), /flex:\s*0 0 auto/)
+  assert.match(regra('.hora'), /flex:\s*0 0 auto/)
+  // a barra não parte (com duas linhas a página perdia altura a 1024×600), a não ser ao alto
+  assert.doesNotMatch(regra('#barra'), /flex-wrap:\s*wrap/)
+})
+
 test('9: o Terminar dentro da caixa vermelha da rota mudada vê-se de dia e de noite (contorno; de noite, fundo preto e letra e contorno no cinzento do texto)', () => {
   assert.match(regra('.plano-pausado .acao.stop'), /outline:\s*2px solid #fff/)
   const n = regra('body.noite .plano-pausado .acao.stop')

@@ -44,20 +44,28 @@ html, body { margin: 0; height: 100%; background: var(--fundo); color: var(--tex
 #app { display: flex; flex-direction: column; height: 100vh; }
 
 /* Barra de cima */
-/* sempre com a altura do chip de 44 px: o desenho não salta quando chega um alarme */
+/* sempre com a altura do chip de 44 px: o desenho não salta quando chega um alarme.
+   Nunca parte (com duas linhas a página perdia altura a 1024×600): quando não cabe, os chips encolhem com
+   reticências (revisão F3, Important 1) — os de informação (GPS, Mesh, 4G, barómetro, piloto) primeiro; o
+   alarme fica com 7rem no mínimo (a mensagem inteira está na página do alarme) e o botão de calar, o nome e a
+   hora nunca encolhem: com uma falha, o "sem som" e um alarme de 60 letras o calar continua no ecrã. */
 #barra { display: flex; align-items: center; gap: .5rem; background: var(--barra); padding: .35rem .6rem; font-size: 1rem; min-height: calc(44px + .7rem); }
-.nome { font-weight: bold; letter-spacing: .15rem; color: var(--amarelo); }
-.chip { border-radius: .3rem; padding: .15rem .5rem; background: var(--botao); white-space: nowrap; }
+.nome { flex: 0 0 auto; font-weight: bold; letter-spacing: .15rem; color: var(--amarelo); }
+.hora { flex: 0 0 auto; }
+.chip { border-radius: .3rem; padding: .15rem .5rem; background: var(--botao); white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .chip.off { opacity: .45; }
-/* o chip que se toca (o alarme, o "sem som"): 44 px de altura, para o dedo */
-.chip[data-acao] { display: inline-flex; align-items: center; min-height: 44px; }
+/* o chip que se toca (o alarme, o "sem som"): 44 px de altura, para o dedo. Em bloco, não em flex: num flex o
+   texto passa a um item anónimo e as reticências não aparecem; o line-height põe o texto ao meio. */
+.chip[data-acao] { min-height: 44px; line-height: calc(44px - .3rem); }
+.chip[data-acao="ir-alarme"] { min-width: 7rem; }
+/* os de informação encolhem primeiro e ficam encostados à direita */
+.chip.info { flex-shrink: 8; }
+#barra > :not(.info) + .info { margin-left: auto; }
 .chip.bom { color: var(--ok); }
-.chip.alarme { background: var(--perigo-fundo); color: #fff; font-weight: bold; cursor: pointer; margin-left: auto; }
-.chip.aviso { background: var(--aviso-fundo); color: #fff; font-weight: bold; cursor: pointer; margin-left: auto; }
-/* Uma falha do ecrã (ex.: o modo noite do OpenCPN não mudou): âmbar, sem empurrar o alarme. */
-.chip.falha { background: var(--aviso-fundo); color: #fff; }
-.chip.piloto { margin-left: auto; }
-.chip.alarme + .chip.piloto, .chip.aviso + .chip.piloto { margin-left: 0; }
+.chip.alarme { background: var(--perigo-fundo); color: #fff; font-weight: bold; cursor: pointer; }
+.chip.aviso { background: var(--aviso-fundo); color: #fff; font-weight: bold; cursor: pointer; }
+/* Uma falha do ecrã (ex.: o modo noite do OpenCPN não mudou): âmbar, sem empurrar o alarme (encolhe antes dele). */
+.chip.falha { background: var(--aviso-fundo); color: #fff; flex-shrink: 3; }
 /* Calar o alarme (auditoria I-08 e I-26): um botão próprio ao lado do chip, para o dedo, 44 × 44 px no mínimo. */
 .silenciar { flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 0 .8rem; font-weight: bold; background: var(--perigo-fundo); color: #fff; }
 body.noite .silenciar { color: var(--faixa-texto); outline: 2px solid var(--perigo); outline-offset: -2px; }
