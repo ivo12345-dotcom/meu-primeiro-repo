@@ -363,3 +363,24 @@ test('auditoria K-13: as mensagens do plano anterior (anterior: true) não prend
   e = ct.resposta(e, 'q2', { contactos: ['Mãe'], chats: ['222'], entregues: ['Mãe'], falhas: [{ nome: 'Pai', erro: 'x' }] }, T0)
   assert.deepEqual(e.fila.map(m => [m.tipo, m.chats, m.parcial, m.anterior]), [['chegada', ['333'], true, true]])
 })
+
+test('auditoria I-01 (decisão n.º 14): a hora de alarme de cada contacto — só muda com o que LHE chegou; a mais cedo dos que ainda esperam conta para o aviso, a mais tarde para "terra ainda espera"; o "cheguei bem" fecha', () => {
+  const plano = T0 + 4 * H
+  let t = ct.terraInicial({ contactos: ['Mãe', 'Pai'], chats: ['222', '333'], alarme: iso(plano) })
+  assert.deepEqual(t, [{ chat: '222', nome: 'Mãe', alarme: plano, fechado: false }, { chat: '333', nome: 'Pai', alarme: plano, fechado: false }])
+  // o atraso chegou só à Mãe
+  t = ct.terraEntregue(t, { contactos: ['Mãe'], chats: ['222'] }, { alarme: plano + 90 * MIN })
+  assert.equal(ct.alarmeMaisCedo(t), plano, 'a do Pai')
+  assert.equal(ct.alarmeMaisTarde(t), plano + 90 * MIN, 'a da Mãe')
+  // o "cheguei bem" chegou só à Mãe: só o Pai ainda espera
+  t = ct.terraEntregue(t, { contactos: ['Mãe'], chats: ['222'] }, { fechado: true })
+  assert.equal(ct.alarmeMaisTarde(t), plano)
+  t = ct.terraEntregue(t, { contactos: ['Pai'], chats: ['333'] }, { fechado: true })
+  assert.ok(Number.isNaN(ct.alarmeMaisCedo(t)), 'ninguém espera')
+  // um contacto novo (o plano reenviado a mais um) junta-se; sem chats, pelo nome
+  const u = ct.terraEntregue(ct.terraInicial({ contactos: ['Mãe'], alarme: plano }), { contactos: ['Mãe', 'Tio'] }, { alarme: plano + H })
+  assert.deepEqual(u.map(a => [a.nome, a.alarme]), [['Mãe', plano + H], ['Tio', plano + H]])
+  assert.deepEqual(ct.terraInicial(null), [])
+  // o plano novo guarda a hora de alarme dele na mensagem
+  assert.equal(ct.porNaFila(ct.novaFila(), { tipo: 'plano', texto: 'p', alarme: plano }, T0).fila[0].alarme, plano)
+})

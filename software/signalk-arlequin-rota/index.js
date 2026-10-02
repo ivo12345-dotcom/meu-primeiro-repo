@@ -272,10 +272,14 @@ module.exports = function (app, deps = {}) {
     try { escreverAtomico(ficheiroUltimoEnvio(), JSON.stringify(x)) } catch (e) { app.error(`não gravei o último envio: ${e.message}`) }
   }
   // O do plano ativo (o envio dele chegou a terra, ou um atraso dele): passa a ser o último entregue.
+  // alarme: a mais tarde que algum contacto tem (até lá terra ainda espera notícias); alarmeMaisCedo: a mais
+  // cedo (a do aviso de 60 min, auditoria I-01).
   function ultimoEnvioDoPlano () {
     const p = planoAtivo
-    if (!p?.envio?.contactos?.length || !Number.isFinite(alarmeEmTerra(p))) return
-    gravarUltimoEnvio({ idCalculo: p.idCalculo, indice: p.indice, contactos: [...p.envio.contactos], chats: [...(p.envio.chats || [])], alarme: new Date(alarmeEmTerra(p)).toISOString(), enviadoEm: p.envio.enviadoEm ?? null, fechado: false })
+    const terra = terraDe(p)
+    const tarde = ct.alarmeMaisTarde(terra)
+    if (!p?.envio?.contactos?.length || !Number.isFinite(tarde)) return
+    gravarUltimoEnvio({ idCalculo: p.idCalculo, indice: p.indice, contactos: [...p.envio.contactos], chats: [...(p.envio.chats || [])], alarme: new Date(tarde).toISOString(), alarmeMaisCedo: new Date(ct.alarmeMaisCedo(terra)).toISOString(), enviadoEm: p.envio.enviadoEm ?? null, fechado: false })
   }
   // O último entregue em terra que ainda conta: com contactos, sem "cheguei bem"/"terminada" e com a hora de
   // alarme por passar; senão null.
@@ -321,7 +325,8 @@ module.exports = function (app, deps = {}) {
     if (pa.aberto(planoAtivo) && p.contactos.length && p.id === planoAtivo.idCalculo && p.indice === planoAtivo.indice) {
       const alt = trabalhos.get(p.id)?.resultado?.alternativas?.[p.indice]
       const envio = alt && envioDe(p.id, p.indice, alt)
-      if (envio) { planoAtivo = { ...planoAtivo, envio }; gravarPlanoAtivo() }
+      // quem o recebeu passa a ter a hora de alarme do plano (auditoria I-01)
+      if (envio) { planoAtivo = { ...planoAtivo, envio, terra: ct.terraEntregue(terraDe(planoAtivo), { contactos: p.contactos, chats: p.chats }, { alarme: Date.parse(envio.alarme) }) }; gravarPlanoAtivo() }
     }
   }
   // Os mais antigos saem primeiro, mas nunca um "a enviar" (o ecrã ainda o está a seguir).
@@ -482,6 +487,15 @@ module.exports = function (app, deps = {}) {
     planoAtivo = { ...planoAtivo, contactos: ct.resposta(planoAtivo.contactos, m.pedido, m, agora) }
     const enviada = planoAtivo.contactos.enviadas.at(-1)
     const entregue = !!msg && !msg.anterior && enviada?.id === msg.id
+    // a hora de alarme de cada contacto que a recebeu (auditoria I-01): a do plano novo, a do atraso, ou
+    // fechado com o "cheguei bem"/"terminada"
+    if (entregue) {
+      const upd = msg.tipo === 'chegada' || msg.tipo === 'terminado' ? { fechado: true }
+        : msg.tipo === 'atraso' ? { alarme: enviada.alarme }
+          : msg.tipo === 'plano' ? { alarme: Number.isFinite(msg.alarme) ? msg.alarme : Date.parse(planoAtivo.envio?.alarmePendente ?? planoAtivo.envio?.alarme) }
+            : null
+      if (upd) planoAtivo = { ...planoAtivo, terra: ct.terraEntregue(terraDe(planoAtivo), enviada, upd) }
+    }
     // o plano novo entregue: o envio passa a ser este (a quem chegou, mais os que falharam e estão a
     // receber o parcial, revisão final I3)
     if (entregue && msg.tipo === 'plano' && planoAtivo.envio && !msg.parcial) {
@@ -503,8 +517,18 @@ module.exports = function (app, deps = {}) {
     gravarPlanoAtivo()
     enviarFila(agora)
   }
-  // A hora de alarme que terra tem (ms): a do último atraso entregue; sem nenhum, a do envio.
-  const alarmeEmTerra = (p = planoAtivo) => (Number.isFinite(p?.atrasoEnviado?.alarme) ? p.atrasoEnviado.alarme : Date.parse(p?.envio?.alarme))
+  // A hora de alarme de cada contacto em terra deste plano (auditoria I-01): a guardada no plano (terra);
+  // num plano gravado antes dela, a do último atraso entregue (ou a do envio) para todos.
+  function terraDe (p = planoAtivo) {
+    if (Array.isArray(p?.terra)) return p.terra
+    if (!p?.envio?.contactos?.length) return []
+    const antiga = Number.isFinite(p.atrasoEnviado?.alarme) ? p.atrasoEnviado.alarme : Date.parse(p.envio.alarme)
+    const fechou = (p.contactos?.enviadas || []).some(m => (m.tipo === 'chegada' || m.tipo === 'terminado') && !m.anterior)
+    return ct.terraInicial({ ...p.envio, alarme: antiga }).map(a => ({ ...a, fechado: fechou }))
+  }
+  // A hora de alarme que terra tem (ms): a mais cedo que algum contacto à espera tem (decisão do Ivo n.º 14,
+  // auditoria I-01: o aviso de 60 min tem de chegar antes da primeira chamada ao MRCC).
+  const alarmeEmTerra = (p = planoAtivo) => ct.alarmeMaisCedo(terraDe(p))
   // A hora de alarme do plano (a do plano ativo, também a de um plano novo ainda por entregar): a base do teto.
   const alarmeDoPlano = (p = planoAtivo) => Date.parse(p?.envio?.alarmePendente ?? p?.envio?.alarme)
   // As guardas do atraso automático (revisão final C1, decisão do Ivo de 02/10): null (pode sair),
@@ -527,9 +551,11 @@ module.exports = function (app, deps = {}) {
     for (const [i, id] of (parcial?.chats || []).entries()) if (!chats.includes(id)) { chats.push(id); contactos.push(parcial.contactos?.[i] ?? `chat ${id}`) }
     return { contactos, chats }
   }
-  // O texto do atraso: "em vez de" o último alarme entregue em terra (sem nenhum, o do plano).
+  // O texto do atraso: "em vez de" o último alarme entregue em terra (sem nenhum, o do plano): com horas
+  // diferentes por contacto (uma entrega parcial), a mais tarde (a do último atraso que chegou).
   function textoAtraso (m, agora) {
-    const antes = alarmeEmTerra()
+    const tarde = ct.alarmeMaisTarde(terraDe())
+    const antes = Number.isFinite(tarde) ? tarde : Date.parse(planoAtivo?.envio?.alarme)
     return ct.textoAtraso({ chegada: m.chegada, alarme: m.alarme, alarmeAntes: antes, agora })
   }
   // O atraso para terra (só a navegar, com GPS e o plano enviado). Decide-se contra o último entregue;
@@ -759,8 +785,9 @@ module.exports = function (app, deps = {}) {
       barometro: { semLeitura: u ? !!u.barometroSemLeitura : true, quedaHpa: Number.isFinite(u?.quedaBarometro) ? Math.round(u.quedaBarometro * 10) / 10 : null },
       previsaoIdadeH: Number.isFinite(u?.previsaoIdadeH) ? Math.round(u.previsaoIdadeH * 10) / 10 : null,
       avisos: ativos,
-      // a hora de alarme: a do último atraso entregue em terra (sem nenhum, a do plano)
-      envio: p.envio ? { contactos: p.envio.contactos, alarme: Number.isFinite(p.atrasoEnviado?.alarme) ? new Date(p.atrasoEnviado.alarme).toISOString() : p.envio.alarme, alarmePlano: p.envio.alarmePendente ?? p.envio.alarme } : null,
+      // alarme: a mais cedo que algum contacto à espera tem (decisão n.º 14); porContacto: a de cada um (o ecrã
+      // diz "Pai: alarme HH:MM" quando diferem, auditoria I-01)
+      envio: p.envio ? { contactos: p.envio.contactos, alarme: Number.isFinite(alarmeEmTerra(p)) ? new Date(alarmeEmTerra(p)).toISOString() : p.envio.alarme, alarmePlano: p.envio.alarmePendente ?? p.envio.alarme, porContacto: terraDe(p).map(a => ({ nome: a.nome, alarme: Number.isFinite(a.alarme) ? new Date(a.alarme).toISOString() : null, fechado: !!a.fechado })) } : null,
       // o atraso que não seguiu para terra (revisão final C1): o ecrã pede o "Estou bem"
       atrasoRetido: retido && p.estado === pa.ESTADOS.NAVEGAR && Number.isFinite(alarmeEmTerra(p)) ? { motivo: retido.motivo, alarme: new Date(alarmeEmTerra(p)).toISOString() } : null,
       // o "cheguei bem"/"terminada" deste plano ainda por entregar (auditoria K-12): o ecrã diz "ainda não
@@ -1090,11 +1117,16 @@ module.exports = function (app, deps = {}) {
             // um plano novo começa limpo (decisão do Ivo de 01/10): só herda do antigo o "cheguei
             // bem"/"terminada" por enviar e o que está "a enviar"; o antigo vai para planos-fechados.json
             planoAtivo = pa.criarPlano({ idCalculo: id, resultado: t.resultado, indice, href: r.href, aproximacao, envio, agora })
+            // a hora de alarme de cada contacto (auditoria I-01): com o plano antigo aberto e reenviado, a que
+            // cada um tinha dele; com o plano de terra (ultimo-envio.json), a mais cedo; senão, a do envio
+            planoAtivo.terra = reenviar ? terraDe(anterior?.envio?.contactos?.length ? anterior : antigo).map(a => ({ ...a }))
+              : terraOutro ? ct.terraInicial({ ...envio, alarme: Date.parse(emTerra.alarmeMaisCedo ?? emTerra.alarme) })
+                : envio ? ct.terraInicial(envio) : []
             if (anterior) {
               planoAtivo.contactos = ct.herdar(anterior.contactos)
               try { pa.arquivar(dirPlugin, anterior, agora) } catch (e) { app.error(`não arquivei o plano antigo: ${e.message}`) }
             }
-            if (reenviar || terraOutro) porMensagem('plano', ct.textoSubstitui(novoTexto.texto), agora, { gpx: novoTexto.gpx, nomeFicheiro: novoTexto.nomeFicheiro })
+            if (reenviar || terraOutro) porMensagem('plano', ct.textoSubstitui(novoTexto.texto), agora, { gpx: novoTexto.gpx, nomeFicheiro: novoTexto.nomeFicheiro, alarme: plano.horaAlarme(alt) ?? undefined })
             memPlano = pa.novaMemoria(); estAcomp = ac.novoEstado(); estAvisos = av.novoEstado(); ventos = []; ultimo = null; retido = null
           }
           gravarPlanoAtivo()
