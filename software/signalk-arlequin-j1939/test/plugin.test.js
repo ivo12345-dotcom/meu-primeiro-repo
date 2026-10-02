@@ -240,6 +240,19 @@ test('I-21: ao arrancar, as notificações deste plugin presas na árvore passam
   ])
 })
 
+test('M-61: uma 65417 curta não limpa (nem acende) os alarmes do mapa do MDI', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ fonte: 'simulador', mapaAlarmes: [{ byte: 0, bit: 0, id: 'lowOilPressure', mensagem: 'Pressão de óleo baixa' }, { byte: 5, bit: 0, id: 'noCharge', mensagem: 'Sem carga' }] })
+  enviar(app, 65417, '0100000000010000') // óleo e carga
+  enviar(app, 65417, '01000000') // só 4 bytes: o byte 5 não veio
+  t.mock.timers.tick(1000)
+  const estados = app.notificacoes.map(n => `${n.path.split('.').pop()}:${n.state}`)
+  p.stop()
+  assert.deepEqual(estados, ['lowOilPressure:alarm', 'noCharge:alarm'])
+})
+
 test('sobreaquecimento vira notificação; o mapa do MDI também', (t) => {
   t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
   const app = appFalso()
