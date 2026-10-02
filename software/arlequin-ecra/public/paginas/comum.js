@@ -8,6 +8,9 @@ const ok = (v) => typeof v === 'number' && Number.isFinite(v)
 
 export const CONSUMO_CRUZEIRO = 0.9 / 3600 / 1000 // m³/s (0,9 L/h)
 export const VELOCIDADE_MOTOR = 5.5 * 1852 / 3600 // m/s
+// Os limites dos alarmes (auditoria M-51): a cor do ecrã muda onde o alarme dispara.
+export const RESERVA_GASOLEO_L = 40 // a reserva do plugin do gasóleo (≤ 40 L, signalk-arlequin-gasoleo/lib/nivel.js)
+export const TEMPERATURA_ALARME_C = 95 // o sobreaquecimento do J1939 (≥ 95 °C, signalk-arlequin-j1939/lib/motor.js)
 
 export function tile (lab, valorHtml, extra = '', cls = 'v') {
   return `<div class="tile"><div class="lab">${lab}</div><div class="${cls}">${valorHtml}</div>${extra}</div>`
@@ -28,7 +31,7 @@ export function ventoTexto (ctx) {
 export function gasoleo (ctx) {
   const nivel = ctx.v('tanks.fuel.0.currentLevel')
   const cap = ctx.v('tanks.fuel.0.capacity')
-  if (!ok(nivel) || !ok(cap)) return { html: '<span class="lab">sem dados do depósito</span>', nivel: null }
+  if (!ok(nivel) || !ok(cap)) return { html: '<span class="lab">sem dados do depósito</span>', nivel: null, litros: null }
   const litros = nivel * cap * 1000
   const taxa = ctx.v('propulsion.main.fuel.rate')
   const consumo = ok(taxa) && taxa > 0 ? taxa : CONSUMO_CRUZEIRO
@@ -38,12 +41,14 @@ export function gasoleo (ctx) {
   const milhas = horas * 3600 * vel / 1852
   return {
     nivel,
+    litros,
     html: `${num(litros, 0)} L de ${num(cap * 1000, 0)} · ~${num(horas, 0)} h · ~${num(milhas, 0)} MN`
   }
 }
 
 // a cor da barra do gasóleo
-export const corGasoleo = (g) => (g.nivel !== null && g.nivel < 0.2 ? 'var(--bb)' : 'var(--verde)')
+// vermelho a ≤ 40 L, como a reserva do plugin (antes: < 20 % da capacidade, que só dava 40 L com 200 L)
+export const corGasoleo = (g) => (ok(g.litros) && g.litros <= RESERVA_GASOLEO_L + 1e-9 ? 'var(--bb)' : 'var(--verde)')
 
 export function tileGasoleo (ctx, grande = false) {
   const g = gasoleo(ctx)
@@ -67,7 +72,8 @@ export function motorResumo (ctx) {
     ligado,
     semLeitura: m === null,
     estado: ligado ? `<span class="amarelo">a trabalhar · ${num(rpm * 60, 0)} rpm</span>` : `<span class="${CLASSE_MOTOR[m]}">${ESTADO_MOTOR[m]}</span>`,
-    detalhe: `${ok(horas) ? num(horas / 3600, 0) + ' h' : '— h'} · serviço ${ok(soc) ? num(soc * 100, 0) + '%' : '—'}`
+    // o SoC para baixo, como a página Motor e o plugin da energia (49,6 % é 49 %, auditoria M-51)
+    detalhe: `${ok(horas) ? num(horas / 3600, 0) + ' h' : '— h'} · serviço ${ok(soc) ? num(Math.floor(soc * 100 + 1e-9), 0) + '%' : '—'}`
   }
 }
 

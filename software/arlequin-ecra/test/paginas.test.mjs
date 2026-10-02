@@ -736,6 +736,23 @@ test('auditoria M-49: o próximo ponto sem nome diz qual é na rota ativa ("pont
   assert.match(html, /Próximo ponto<\/div><div class="vv">ponto 1 de 4</)
 })
 
+// ---------- auditoria M-51: limites e cores como os alarmes ----------
+test('auditoria M-51: o gasóleo fica vermelho a ≤ 40 L (a reserva do plugin, seja qual for a capacidade), a temperatura a ≥ 95 °C e o SoC arredonda para baixo', async () => {
+  const { tileGasoleo, motorResumo } = await import('../public/paginas/comum.js')
+  const com = (valores) => ({ ...contexto(store, {}), v: (p) => valores[p] })
+  const cor = (litros, cap) => /background:([^"]+)"/.exec(tileGasoleo(com({ 'tanks.fuel.0.currentLevel': litros / cap, 'tanks.fuel.0.capacity': cap / 1000 })))[1]
+  assert.equal(cor(40, 200), 'var(--bb)', '40 L de 200: reserva')
+  assert.equal(cor(41, 200), 'var(--verde)')
+  assert.equal(cor(39, 300), 'var(--bb)', 'com outra capacidade (antes: < 20 % = 60 L)')
+  assert.equal(cor(55, 300), 'var(--verde)', '55 L de 300 já não é vermelho')
+  // a temperatura: o alarme do J1939 dispara a ≥ 95 °C
+  const temp = (c) => motor.render(com({ 'propulsion.main.temperature': c + 273.15 }))
+  assert.match(temp(95), /<span class="perigo">95 °C<\/span>/)
+  assert.doesNotMatch(temp(94.4), /class="perigo">94 °C/)
+  // o SoC: para baixo, como a página Motor e a energia (49,6 % é 49 %, não 50 %)
+  assert.match(motorResumo(com({ 'electrical.batteries.servico.capacity.stateOfCharge': 0.496 })).detalhe, /serviço 49%/)
+})
+
 // ---------- auditoria M-45 e M-48 ----------
 test('auditoria M-45: a página diz que é pt-PT (lang="pt-PT")', () => {
   assert.match(readFileSync(new URL('../public/index.html', import.meta.url), 'utf8'), /<html lang="pt-PT">/)
