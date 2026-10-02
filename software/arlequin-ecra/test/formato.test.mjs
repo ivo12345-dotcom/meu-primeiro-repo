@@ -40,9 +40,13 @@ test('velocidade em nós, distância em MN, duração', () => {
   assert.equal(f.duracao(null), '—')
 })
 
-test('hora local HH:MM', () => {
-  const d = new Date(2026, 8, 29, 14, 32)
-  assert.equal(f.hora(d), '14:32')
+// auditoria I-31 (decisão do Ivo n.º 22): a hora do ecrã é sempre a de Lisboa, seja qual for o fuso do Pi
+// (antes: a hora local do browser — o teste construía a data no fuso da máquina)
+test('hora de Lisboa HH:MM (verão UTC+1, inverno UTC+0), nunca a do fuso do browser', () => {
+  assert.equal(f.hora(new Date(Date.parse('2026-09-29T13:32:00Z'))), '14:32')
+  assert.equal(f.hora(new Date(Date.parse('2026-12-01T13:32:00Z'))), '13:32')
+  assert.equal(f.hora(new Date(Date.parse('2026-07-14T23:30:00Z'))), '00:30')
+  assert.equal(f.hora(new Date(NaN)), '—')
 })
 
 import { litrosPorMilha } from '../public/lib/consumo-milha.js'
