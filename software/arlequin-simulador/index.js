@@ -33,7 +33,8 @@ module.exports = function (app) {
       cicloVelaMin: { type: 'number', title: 'navegar-demo: minutos à vela em cada ciclo', default: 20 },
       cicloMotorMin: { type: 'number', title: 'navegar-demo: minutos a motor em cada ciclo', default: 5 },
       servico: { type: 'string', title: 'ID do banco de serviço', default: 'servico' },
-      motor: { type: 'string', title: 'ID do banco do motor', default: 'motor' }
+      motor: { type: 'string', title: 'ID do banco do motor', default: 'motor' },
+      pastaPassagem: { type: 'string', title: 'Passagem simulada: a pasta do passagem.json e do rota.json (vazio = software/ferramentas/passagem)', default: '' }
     }
   }
 
@@ -74,13 +75,22 @@ module.exports = function (app) {
 
   // Navegação + energia ao ritmo do relógio (1 passo por segundo), para o ecrã.
   function comecarTempoReal (o, cenario) {
+    let m = criarModelo(cenario.opcoes, Date.now())
     let nav = criarNavegacao({
       ventoDir: (o.ventoDeGraus ?? 20) * Math.PI / 180,
       colisaoRepeteMin: o.colisaoRepeteMin ?? 0,
       cicloVelaS: (o.cicloVelaMin ?? 20) * 60,
-      cicloMotorS: (o.cicloMotorMin ?? 5) * 60
+      cicloMotorS: (o.cicloMotorMin ?? 5) * 60,
+      rpmMotor: m.c.rpmMotorHz * 60 // o consumo da sonda pelas mesmas rotações que o J1939 (M-69)
     }, Date.now())
-    let m = criarModelo(cenario.opcoes, Date.now())
+    // Duas fontes de rumo no dev (auditoria M-49): com um destino na API de rumo (a rota ativada pelo
+    // plugin da rota) o course-provider calcula navigation.course.*, e o simulador deixa de publicar os
+    // do seu WP do demo; sem destino nenhum publica-os (o ecrã mostra o WP). Vê-se de 5 em 5 s.
+    let destinoExterno = false
+    const verDestino = () => Promise.resolve()
+      .then(() => (typeof app.getCourse === 'function' ? app.getCourse() : null))
+      .then((c) => { destinoExterno = !!(c?.activeRoute?.href || c?.nextPoint?.position) }, () => {})
+    verDestino()
     let segundos = 0
     // O D1-20B do Arlequin tem ~3200–3300 h (Ivo, 29/09): começa mesmo antes do
     // limite dos 2 bytes (3276,75 h) para o demo o atravessar.
@@ -95,7 +105,8 @@ module.exports = function (app) {
       const porSonda = o.gasoleoPorSonda !== false
       // Com J1939 e com a sonda, os propulsion.main.* e o nível do depósito vêm
       // dos plugins do motor e do gasóleo, não daqui.
-      const tirar = (p) => (j1939 && p.startsWith('propulsion.main.')) || (porSonda && p.startsWith('tanks.fuel.0.'))
+      const tirar = (p) => (j1939 && p.startsWith('propulsion.main.')) || (porSonda && p.startsWith('tanks.fuel.0.')) ||
+        (destinoExterno && p.startsWith('navigation.course.'))
       const semMotor = (d) => !d.context
         ? { ...d, updates: d.updates.map(u => ({ ...u, values: u.values.filter(v => !tirar(v.path)) })) }
         : d
@@ -121,6 +132,7 @@ module.exports = function (app) {
         const volt = r.motor ? 14.2 : en.leitura.vMotor
         for (const l of tramasMotor({ t: Date.now(), rpm: en.leitura.rpm * 60, tempK: nav.tempMotor, volt, horasS: horasMotorS })) app.emit('arlequin-j1939', l)
       }
+      if (segundos % 5 === 4) verDestino()
       if (++segundos % 30 === 0) {
         app.setPluginStatus(`${o.cenario} · ${r.motor ? 'a motor' : 'à vela'} · SOG ${(r.sog * 3600 / 1852).toFixed(1)} nós · serviço ${Math.round(en.leitura.soc * 100)}%`)
       }
@@ -128,11 +140,18 @@ module.exports = function (app) {
     app.setPluginStatus(`A simular "${o.cenario}": ${cenario.descricao}`)
   }
 
-  // Passagem simulada (ferramentas/passagem): o sistema "vive" um instante dela.
+  // Passagem simulada (ferramentas/passagem): o sistema "vive" um instante dela. Sem os ficheiros (não
+  // estão no git: gera-os o simular.mjs) diz o que falta em vez de rebentar no start (auditoria M-69).
   function comecarPassagem (o) {
-    const dir = path.join(__dirname, '..', 'ferramentas', 'passagem')
-    const pontos = JSON.parse(fs.readFileSync(path.join(dir, 'passagem.json'), 'utf8'))
-    const { ROTA } = JSON.parse(fs.readFileSync(path.join(dir, 'rota.json'), 'utf8'))
+    const dir = o.pastaPassagem || path.join(__dirname, '..', 'ferramentas', 'passagem')
+    let pontos, ROTA
+    try {
+      pontos = JSON.parse(fs.readFileSync(path.join(dir, 'passagem.json'), 'utf8'))
+      ROTA = JSON.parse(fs.readFileSync(path.join(dir, 'rota.json'), 'utf8')).ROTA
+      if (!Array.isArray(pontos) || !pontos.length || !Array.isArray(ROTA)) throw new Error('ficheiros sem pontos ou sem rota')
+    } catch (e) {
+      return app.setPluginError(`a passagem simulada precisa do passagem.json e do rota.json em ${dir} (gera-os com node software/ferramentas/passagem/simular.mjs): ${e.message}`)
+    }
     const p = pontoMaisPerto(pontos, new Date(o.instantePassagem).getTime())
     let horas = 3276.5 * 3600
     temporizador = setInterval(() => {

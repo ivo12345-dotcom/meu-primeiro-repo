@@ -14,20 +14,36 @@ function pontoMaisPerto (pontos, t) {
   return melhor
 }
 
+// A corrente do banco de serviço (como a rota conta: 4,5 A de dia, 6 A de noite; o alternador a motor).
+const correnteServico = (p) => (p.motor ? 45 : p.noite ? -6 : -4.5)
+
 // ROTA: [{ nome, lat, lon }] — para o próximo WP, distância, XTE.
+// O próximo WP é o do ponto (p.wp), também o 1.º (aí a perna começa no próprio ponto: XTE 0); com um
+// WP que a rota não tem não se inventa rumo nenhum (auditoria M-69: o Math.max(1, …) mostrava outro).
 function deltaDoPonto (p, ROTA) {
-  const i = Math.max(1, ROTA.findIndex(w => w.nome === p.wp))
-  const wp = ROTA[i]
-  const ant = ROTA[i - 1]
+  const i = ROTA.findIndex(w => w.nome === p.wp)
   const vet = (a, b) => {
     const dx = (b.lon - a.lon) * 60 * Math.cos(a.lat * GRAU); const dy = (b.lat - a.lat) * 60
     return { mn: Math.hypot(dx, dy), rumo: norm(Math.atan2(dx, dy) / GRAU) }
   }
-  const aoWp = vet({ lat: p.lat, lon: p.lon }, wp)
-  const perna = vet(ant, wp)
-  const desde = vet(ant, { lat: p.lat, lon: p.lon })
-  const xte = desde.mn * Math.sin((desde.rumo - perna.rumo) * GRAU) * 1852
-  const vmg = p.sog * Math.cos((p.cog - aoWp.rumo) * GRAU)
+  const aqui = { lat: p.lat, lon: p.lon }
+  const wp = ROTA[i]
+  const ant = i > 0 ? ROTA[i - 1] : aqui
+  const aoWp = wp ? vet(aqui, wp) : null
+  const perna = wp ? vet(ant, wp) : null
+  const desde = vet(ant, aqui)
+  const xte = wp && desde.mn > 0 ? desde.mn * Math.sin((desde.rumo - perna.rumo) * GRAU) * 1852 : 0
+  const vmg = aoWp ? p.sog * Math.cos((p.cog - aoWp.rumo) * GRAU) : null
+  const rumo = !wp
+    ? []
+    : [
+        { path: 'navigation.course.calcValues.bearingTrue', value: aoWp.rumo * GRAU },
+        { path: 'navigation.course.calcValues.distance', value: aoWp.mn * 1852 },
+        { path: 'navigation.course.calcValues.crossTrackError', value: xte },
+        { path: 'navigation.course.calcValues.velocityMadeGood', value: vmg * NO },
+        { path: 'navigation.course.calcValues.timeToGo', value: vmg > 0.2 ? aoWp.mn / vmg * 3600 : null },
+        { path: 'navigation.course.nextPoint', value: { name: wp.nome, position: { latitude: wp.lat, longitude: wp.lon } } }
+      ]
   // Vento real (de onde vem) → aparente, com a velocidade na água e a proa.
   const tws = p.tws * NO; const stw = p.stw * NO
   const wx = -tws * Math.sin(p.twd * GRAU) - stw * Math.sin(p.proa * GRAU)
@@ -53,14 +69,9 @@ function deltaDoPonto (p, ROTA) {
         { path: 'environment.wind.directionTrue', value: p.twd * GRAU },
         { path: 'environment.depth.belowTransducer', value: 60 },
         { path: 'environment.outside.pressure', value: 101200 },
-        { path: 'navigation.course.calcValues.bearingTrue', value: aoWp.rumo * GRAU },
-        { path: 'navigation.course.calcValues.distance', value: aoWp.mn * 1852 },
-        { path: 'navigation.course.calcValues.crossTrackError', value: xte },
-        { path: 'navigation.course.calcValues.velocityMadeGood', value: vmg * NO },
-        { path: 'navigation.course.calcValues.timeToGo', value: vmg > 0.2 ? aoWp.mn / vmg * 3600 : null },
-        { path: 'navigation.course.nextPoint', value: { name: wp.nome, position: { latitude: wp.lat, longitude: wp.lon } } },
+        ...rumo,
         { path: 'electrical.batteries.servico.capacity.stateOfCharge', value: p.soc },
-        { path: 'electrical.batteries.servico.current', value: p.motor ? 45 : -4.5 },
+        { path: 'electrical.batteries.servico.current', value: correnteServico(p) },
         { path: 'electrical.batteries.servico.voltage', value: p.motor ? 14.1 : 12.7 },
         { path: 'electrical.batteries.motor.voltage', value: p.motor ? 14.2 : 12.7 },
         { path: 'electrical.solar.mppt1.panelPower', value: p.noite ? 0 : 60 },
