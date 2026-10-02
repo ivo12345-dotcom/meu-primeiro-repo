@@ -103,14 +103,30 @@ function buscarAgua (ctx, intervalo = 10000) {
     .finally(() => { ctx.estado.aBuscarAgua = false; ctx.estado.aguaEm = Date.now() })
 }
 
+// Porque é que um depósito não tem nível (revisão F3, Minor 8; o GET /estado do plugin da água diz semSensor — o
+// contador não chegou há 10 min — e nivelConhecido — já houve um "Enchi" ou um nível posto à mão): "sem sensor"
+// só quando não há sensor; com sensor mas sem nenhum "Enchi" ainda, o que fazer; sem o /estado (a 1.ª leitura, ou
+// um plugin de antes) ou com o nível já conhecido mas ainda por chegar pelo stream, só "sem nível".
+// (a frase do "Enchi" é comprida: vai debaixo do nome, e pode partir, para os botões da linha ficarem numa fila só)
+function semNivelHtml (t) {
+  if (t.semSensor === true) return '<span class="lab">sem sensor</span>'
+  if (t.semSensor === false && t.nivelConhecido === false) return '<span class="lab atencao" style="display:block;">nível por confirmar: carrega Enchi</span>'
+  return '<span class="lab">sem nível</span>'
+}
+
 function tileAgua (ctx) {
-  const tanques = [0, 1].map(id => ({
-    id,
-    nome: ctx.v(`tanks.freshWater.${id}.name`),
-    litros: ctx.v(`tanks.freshWater.${id}.currentVolume`),
-    frac: ctx.v(`tanks.freshWater.${id}.currentLevel`),
-    ritmo: ctx.estado.agua?.tanques?.find(t => t.id === id)?.ritmo
-  })).filter(t => t.nome)
+  const tanques = [0, 1].map(id => {
+    const estado = ctx.estado.agua?.tanques?.find(t => t.id === id)
+    return {
+      id,
+      nome: ctx.v(`tanks.freshWater.${id}.name`),
+      litros: ctx.v(`tanks.freshWater.${id}.currentVolume`),
+      frac: ctx.v(`tanks.freshWater.${id}.currentLevel`),
+      ritmo: estado?.ritmo,
+      semSensor: estado?.semSensor,
+      nivelConhecido: estado?.nivelConhecido
+    }
+  }).filter(t => t.nome)
   const erro = ctx.estado.msgAgua || ctx.estado.aguaErro
   const erroHtml = erro && !(ctx.estado.bombaCalib !== undefined && ctx.estado.bombaCalib !== null) ? `<div class="perigo">${esc(erro)}</div>` : ''
   if (!tanques.length) return `<div class="tile"><div class="lab">Água doce</div><div class="lab">sem dados das bombas</div>${erroHtml}</div>`
@@ -118,12 +134,12 @@ function tileAgua (ctx) {
   return `<div class="tile" style="flex:0 0 auto;"><div class="lab">Água doce</div>${erroHtml}${tanques.map(t => {
     const confirmar = ctx.estado.confirmarEncher === t.id
     // sem nível (auditoria I-29, decisão do Ivo n.º 23): o plugin da água publica null sem sensor, até ao 1.º
-    // "Enchi" ou a um nível posto à mão — "sem sensor", nunca "0 L" (null × 1000) a vermelho nem "cheio"
-    const semSensor = !ok(t.litros) || !ok(t.frac)
-    const botoes = confirmar ? '' : `<span class="acoes"><button class="btn" style="padding:.3rem .8rem;" data-acao="agua-encher" data-id="${t.id}">Enchi</button><button class="btn" style="padding:.3rem .8rem;" data-acao="agua-calib" data-id="${t.id}">Calibrar bomba</button></span>`
+    // "Enchi" ou a um nível posto à mão — nunca "0 L" (null × 1000) a vermelho nem "cheio"; o porquê, em semNivelHtml
+    const semNivel = !ok(t.litros) || !ok(t.frac)
+    const botoes = confirmar ? '' : `<span class="acoes" style="flex:0 0 auto;"><button class="btn" style="padding:.3rem .8rem;" data-acao="agua-encher" data-id="${t.id}">Enchi</button><button class="btn" style="padding:.3rem .8rem;" data-acao="agua-calib" data-id="${t.id}">Calibrar bomba</button></span>`
     return `
-<div class="linha" style="margin-top:.25rem;align-items:center;"><span>${esc(t.nome)} ${semSensor ? '<span class="lab">sem sensor</span>' : `<span class="v">${num(t.litros * 1000, 0)} L</span>${t.ritmo?.dias ? ` <span class="lab">· ~${num(t.ritmo.dias, 1)} dias</span>` : ''}`}</span>${botoes}</div>
-${semSensor ? barra(null, 'var(--linha)') : barra(t.frac, t.frac <= 0.2 ? 'var(--bb)' : 'var(--azul)')}
+<div class="linha" style="margin-top:.25rem;align-items:center;"><span>${esc(t.nome)} ${semNivel ? semNivelHtml(t) : `<span class="v">${num(t.litros * 1000, 0)} L</span>${t.ritmo?.dias ? ` <span class="lab">· ~${num(t.ritmo.dias, 1)} dias</span>` : ''}`}</span>${botoes}</div>
+${semNivel ? barra(null, 'var(--linha)') : barra(t.frac, t.frac <= 0.2 ? 'var(--bb)' : 'var(--azul)')}
 ${confirmar ? pergunta(`Encheste o depósito ${esc(t.nome)}?`, 'agua-encher-sim', 'Sim, enchi', 'agua-encher-nao') : ''}`
   }).join('')}</div>`
 }
