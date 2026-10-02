@@ -5,7 +5,7 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
-const { novoEstado, descontar, passo } = require('./lib/nivel')
+const { novoEstado, descontar, avisoReserva, passo } = require('./lib/nivel')
 const { acrescentarPonto, coerente } = require('./lib/tabela')
 const calibracao = require('./lib/calibracao')
 
@@ -118,9 +118,11 @@ module.exports = function (app) {
       // a ser publicados; aos 5 min, o aviso sondaPerdida (só no ecrã).
       if (semSondaDesde === null) semSondaDesde = agora
       if (!calib) {
-        estado = descontar(estado, motor)
+        const rv = avisoReserva(descontar(estado, motor)) // a reserva também pelos litros do consumo
+        estado = rv.estado
         guardarNivel()
         publicarNivel()
+        if (rv.notificacoes.length) publicar(rv.notificacoes.map(n => ({ path: `notifications.tanks.fuel.0.${n.id}`, value: { state: n.state, method: n.method, message: n.message } })))
       }
       if (agora - semSondaDesde >= SONDA_PERDIDA) avisarSonda(true)
       app.setPluginStatus(`À espera das tensões do ADS1115 (app I2C do OpenPlotter)${estado.litros !== null ? ` · ${Math.round(estado.litros)} L pelo consumo do motor` : ''}`)

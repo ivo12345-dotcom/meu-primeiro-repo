@@ -74,6 +74,24 @@ function descontar (e0, l) {
   return e
 }
 
+// O aviso da reserva pelos litros: com a sonda e, sem ela, pelos litros que o consumo do motor vai
+// descontando (auditoria I-12). → { estado, notificacoes }
+function avisoReserva (e0, lim = LIMITES) {
+  const e = { ...e0, ativos: { ...e0.ativos } }
+  const notificacoes = []
+  if (e.litros !== null) {
+    const deve = e.ativos.reserva ? e.litros <= lim.reservaLimpa : e.litros <= lim.reserva
+    if (deve && !e.ativos.reserva) {
+      e.ativos.reserva = true
+      notificacoes.push({ id: 'reserva', state: 'warn', method: ['visual', 'sound'], message: `Gasóleo na reserva: ${Math.round(e.litros)} L` })
+    } else if (!deve && e.ativos.reserva) {
+      delete e.ativos.reserva
+      notificacoes.push({ id: 'reserva', state: 'normal', method: [], message: 'Normal' })
+    }
+  }
+  return { estado: e, notificacoes }
+}
+
 // l: { t, sonda (V), alimentacao (V), roll (rad) | null, fuelRate (m³/s) | null, motorLigado }
 function passo (e0, l, tabela, lim = LIMITES) {
   // 1. Consumo desde a última amostra (e o esperado da saída a motor); o motor a mudar.
@@ -139,10 +157,9 @@ function passo (e0, l, tabela, lim = LIMITES) {
     if (deve) { e.ativos[id] = true; notificacoes.push({ id, state: estado, method: ['visual', 'sound'], message: mensagem, ...apito }) }
     else { delete e.ativos[id]; notificacoes.push({ id, state: 'normal', method: [], message: 'Normal' }) }
   }
-  if (e.litros !== null) {
-    const L = Math.round(e.litros)
-    mudar('reserva', e.ativos.reserva ? e.litros <= lim.reservaLimpa : e.litros <= lim.reserva, 'warn', `Gasóleo na reserva: ${L} L`)
-  }
+  const rv = avisoReserva(e, lim)
+  e.ativos = rv.estado.ativos
+  notificacoes.push(...rv.notificacoes)
   if (e.parado.length >= 2 && e.mediana !== null) {
     const maximo = Math.max(...e.parado.map(p => p.litros))
     const desceu = maximo - e.mediana
@@ -155,4 +172,4 @@ function passo (e0, l, tabela, lim = LIMITES) {
   return { estado: e, notificacoes, abastecimento }
 }
 
-module.exports = { LIMITES, litrosDaRazao, mediana, novoEstado, descontar, passo }
+module.exports = { LIMITES, litrosDaRazao, mediana, novoEstado, descontar, avisoReserva, passo }

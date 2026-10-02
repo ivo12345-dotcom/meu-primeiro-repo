@@ -247,6 +247,20 @@ test('I-12: sonda perdida (as tensões deixam de atualizar): os litros continuam
   assert.deepEqual(app.notificacoes.filter(n => n.path.endsWith('sondaPerdida')).map(n => n.state), ['warn', 'normal'])
 })
 
+test('I-12: sem a sonda, os litros pelo consumo também acendem a reserva (≤ 40 L)', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  fs.writeFileSync(path.join(app.dir, 'nivel.json'), JSON.stringify({ litros: 41, t: '2026-09-29T08:00:00Z' }))
+  const p = criar(app)
+  p.start({ tabela: [{ razao: 0.1, litros: 0 }, { razao: 0.7, litros: 200 }] })
+  Object.assign(app.self, { 'propulsion.main.revolutions': 30, 'propulsion.main.fuel.rate': 2 / 3600 / 1000 }) // 2 L/h, sem sonda
+  avancar(t, 3600)
+  const reserva = app.notificacoes.filter(n => n.path === 'notifications.tanks.fuel.0.reserva').map(n => n.state)
+  p.stop()
+  assert.ok(Math.abs(app.valores['tanks.fuel.0.currentVolume'] * 1000 - 39) < 0.05)
+  assert.deepEqual(reserva, ['warn'])
+})
+
 test('I-12 (E-M15): sem a sonda, rotações e consumo velhos (o J1939 parou) não descontam litros', (t) => {
   t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
   const app = appFalso()
