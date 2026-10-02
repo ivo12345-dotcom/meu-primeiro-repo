@@ -47,6 +47,8 @@ html, body { margin: 0; height: 100%; background: var(--fundo); color: var(--tex
 .chip.piloto { margin-left: auto; }
 .chip.alarme + .chip.piloto, .chip.aviso + .chip.piloto { margin-left: 0; }
 .x { margin-left: .4rem; padding: 0 .4rem; border-radius: .2rem; background: rgba(0,0,0,.35); }
+/* Sem som (auditoria K-03): vermelho e grande — sem som o ecrã não protege. */
+.chip.sem-som { background: var(--perigo-fundo); color: #fff; font-weight: bold; font-size: 1.15rem; cursor: pointer; }
 
 /* Página */
 #pagina { flex: 1; min-height: 0; display: flex; gap: .3rem; padding: .3rem; }
@@ -116,9 +118,8 @@ input[type=text] { font: inherit; font-size: 1.1rem; padding: .5rem; flex: 1; ba
 .passo { display: flex; gap: .6rem; align-items: center; padding: .45rem .3rem; border-bottom: 1px solid var(--botao); font-size: 1.15rem; }
 .passo .n { flex: 0 0 2rem; height: 2rem; border-radius: 1rem; background: var(--botao); display: flex; align-items: center; justify-content: center; font-weight: bold; }
 .passo.feito .n { background: #0f6e56; } .passo.atual { background: var(--tile); }
-.aviso-som { cursor: pointer; }
 /* De noite nada pode ser branco: a letra dos alarmes fica no cinzento claro das faixas. */
-body.noite .chip.alarme, body.noite .chip.aviso { color: var(--faixa-texto); }
+body.noite .chip.alarme, body.noite .chip.aviso, body.noite .chip.sem-som { color: var(--faixa-texto); }
 /* De noite o fundo do alarme e o do aviso quase não se distinguem pela luminância (1,01:1): o contorno. */
 body.noite .chip.alarme { outline: 2px solid var(--perigo); outline-offset: -2px; }
 body.noite button, body.noite .btn { color: var(--texto); }
