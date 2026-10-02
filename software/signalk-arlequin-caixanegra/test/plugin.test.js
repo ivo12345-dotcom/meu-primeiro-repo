@@ -76,6 +76,50 @@ test('dados reais firmes ao largo: a linha fica estável depois de 2 min', (t) =
   assert.equal(linhas[linhas.length - 1][linhas[0].indexOf('tws')], (6 / NO).toFixed(2))
 })
 
+// As bússolas do barco (ST4000+, ST50) dão a proa magnética: sem headingTrue no SignalK.
+function enviarMagnetica (app, { proaMag = 0.5, declinacao = -2 * Math.PI / 180 } = {}) {
+  const values = [
+    { path: 'navigation.position', value: { latitude: 39.0, longitude: -9.6 } },
+    { path: 'navigation.headingMagnetic', value: proaMag },
+    { path: 'navigation.speedThroughWater', value: 2.5 },
+    { path: 'navigation.speedOverGround', value: 2.5 },
+    { path: 'environment.wind.speedTrue', value: 6 }
+  ]
+  if (declinacao !== null) values.push({ path: 'navigation.magneticVariation', value: declinacao }) // null: o barco não a publica
+  app.signalk.emit('unfilteredDelta', { context: EU, updates: [{ $source: 'nmea0183.II', timestamp: new Date().toISOString(), values }] })
+}
+
+test('só com a proa magnética: a proa verdadeira é a magnética + a declinação; a linha fica estável e a coluna proa preenchida (auditoria I-11)', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 50
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  for (let i = 0; i < 130; i++) { enviarMagnetica(app); t.mock.timers.tick(1000) }
+  p.stop()
+  const linhas = csv(path.join(app.dir, 'dados', 'tabela', '2026-09-29.csv.gz'))
+  const cab = linhas[0]
+  const ultima = linhas[linhas.length - 1]
+  assert.equal(ultima[cab.indexOf('estavel')], '1', 'aos 130 s, com a proa firme, a linha é estável (a AI pode aprender)')
+  assert.equal(ultima[cab.indexOf('proa')], ((0.5 * 180 / Math.PI) - 2).toFixed(1), 'proa verdadeira = magnética + declinação (−2°)')
+})
+
+test('só com a proa magnética e sem declinação: não se inventa a verdadeira (coluna vazia, nunca estável)', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 50
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  for (let i = 0; i < 130; i++) { enviarMagnetica(app, { declinacao: null }); t.mock.timers.tick(1000) }
+  p.stop()
+  const linhas = csv(path.join(app.dir, 'dados', 'tabela', '2026-09-29.csv.gz'))
+  const cab = linhas[0]
+  for (const l of linhas.slice(1)) {
+    assert.equal(l[cab.indexOf('proa')], '')
+    assert.equal(l[cab.indexOf('estavel')], '0')
+  }
+})
+
 test('velas: POST muda, publica e sobrevive a um reinício; inválido dá 400', async (t) => {
   t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
   const app = appFalso()
