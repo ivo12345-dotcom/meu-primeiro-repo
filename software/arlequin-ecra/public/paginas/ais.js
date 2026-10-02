@@ -1,7 +1,7 @@
 // AIS: todos os alvos por ordem de perigo, detalhe ao tocar e silenciar.
 
 import { LIMITES_AIS } from '../lib/cpa.js'
-import { velocidade, distancia, duracao, rumo, num, tile } from './comum.js'
+import { velocidade, distancia, duracao, rumo, num, tile, esc } from './comum.js'
 
 const ESTADO = { perigo: 'PERIGO', atencao: 'atenção', seguro: 'seguro', afasta: 'afasta-se', desconhecido: '—' }
 
@@ -11,16 +11,16 @@ export default {
     const linhas = ctx.alvos.map(a => {
       const cls = a.classe === 'perigo' ? 'perigo' : a.classe === 'atencao' ? 'atencao' : ''
       const temCpa = a.r && a.classe !== 'afasta'
-      return `<tr data-mmsi="${a.mmsi}" data-acao="sel" class="${cls} ${sel === a.mmsi ? 'sel' : ''}">
-<td>${a.name || a.mmsi}</td><td>${a.tipo || '—'}</td><td>${a.r ? distancia(a.r.distancia) + ' MN' : '—'}</td><td>${a.r ? rumo(a.r.marcacao) : '—'}</td>
+      return `<tr data-mmsi="${esc(a.mmsi)}" data-acao="sel" class="${cls} ${sel === a.mmsi ? 'sel' : ''}">
+<td>${esc(a.name || a.mmsi)}</td><td>${esc(a.tipo || '—')}</td><td>${a.r ? distancia(a.r.distancia) + ' MN' : '—'}</td><td>${a.r ? rumo(a.r.marcacao) : '—'}</td>
 <td>${velocidade(a.sog)} / ${rumo(a.cog)}</td><td>${temCpa ? distancia(a.r.cpa) + ' MN' : '—'}</td><td>${temCpa ? duracao(a.r.tcpa) : '—'}</td><td>${ESTADO[a.classe]}</td></tr>`
     }).join('')
     const a = ctx.alvos.find(x => x.mmsi === sel)
     const n = a && ctx.notificacoes.find(x => x.caminho === `notifications.arlequin.ais.${a.mmsi}` && x.state !== 'normal')
     const detalhe = a
-      ? `<div class="tile"><div class="linha"><span class="v">${a.name || a.mmsi}</span><span class="lab">MMSI ${a.mmsi} · ${a.tipo || 'tipo desconhecido'}</span></div>
+      ? `<div class="tile"><div class="linha"><span class="v">${esc(a.name || a.mmsi)}</span><span class="lab">MMSI ${esc(a.mmsi)} · ${esc(a.tipo || 'tipo desconhecido')}</span></div>
 <div class="g3" style="margin-top:.3rem;">${tile('Distância · marcação', `${a.r ? distancia(a.r.distancia) : '—'} MN · ${a.r ? rumo(a.r.marcacao) : '—'}`)}${tile('CPA · TCPA', a.r && a.classe !== 'afasta' ? `${distancia(a.r.cpa, 2)} MN · ${duracao(a.r.tcpa)}` : 'afasta-se')}${tile('SOG · COG', `${velocidade(a.sog)} nós · ${rumo(a.cog)}`)}</div>
-<div class="acoes" style="margin-top:.4rem;">${n && n.id && !n.status?.silenced ? `<button class="acao stop" data-acao="silenciar" data-id="${n.id}">Silenciar alarme</button>` : ''}<button class="acao" data-acao="fechar">Fechar</button></div></div>`
+<div class="acoes" style="margin-top:.4rem;">${n && n.id && !n.status?.silenced ? `<button class="acao stop" data-acao="silenciar" data-id="${esc(n.id)}">Silenciar alarme</button>` : ''}<button class="acao" data-acao="fechar">Fechar</button></div></div>`
       : ''
     return `<div class="col">
 <div class="tile" style="flex:1;overflow:auto;"><table class="grande"><tr><th>Nome</th><th>Tipo</th><th>Dist.</th><th>Marc.</th><th>SOG/COG</th><th>CPA</th><th>TCPA</th><th>Estado</th></tr>${linhas || '<tr><td colspan="8" class="lab">Sem alvos AIS</td></tr>'}</table></div>

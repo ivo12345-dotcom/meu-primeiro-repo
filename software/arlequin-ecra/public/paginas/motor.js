@@ -3,7 +3,7 @@
 
 import { barra } from '../lib/desenho.js'
 import { celsius } from '../lib/formato.js'
-import { tile, tileGasoleo, num, ok } from './comum.js'
+import { tile, tileGasoleo, num, ok, esc } from './comum.js'
 import { litrosPorMilha } from '../lib/consumo-milha.js'
 
 function buscarSessoes (ctx) {
@@ -58,22 +58,23 @@ function buscarCalib (ctx) {
 }
 
 function painelCalib (c, msg) {
-  const nf = (x, d = 0) => String(x.toFixed(d)).replace('.', ',')
+  // números do plugin do gasóleo: "—" se não forem números (nunca rebenta nem passa texto cru)
+  const nf = (x, d = 0) => num(x, d)
   if (!c) return '<div class="lab">A ligar ao plugin do gasóleo…</div>'
   if (!c.ativa) {
     return `<div class="vv">Calibração completa do depósito</div>
 <div style="font-size:1.15rem;margin:.5rem 0;">Com o depósito <b>vazio e limpo</b>, o barco direito e o motor desligado. Depois deitas o gasóleo aos 5 L e carregas em "+5 L" de cada vez: o sistema espera que a leitura estabilize e grava.</div>
-<div class="lab">Tabela atual: ${c.tabela?.length || 0} pontos · capacidade ${c.capacidadeL} L</div>
+<div class="lab">Tabela atual: ${num(c.tabela?.length || 0, 0)} pontos · capacidade ${num(c.capacidadeL, 0)} L</div>
 <div class="acoes" style="margin-top:.6rem;"><button class="acao go" data-acao="calib-iniciar">Começar (depósito vazio)</button><button class="acao" data-acao="calib-fechar">Fechar</button></div>`
   }
-  const ultimos = c.pontos.slice(-6).reverse().map(p => `<div class="linha"><span>${nf(p.litros)} L</span><span class="lab">razão ${nf(p.razao, 4)}</span></div>`).join('')
+  const ultimos = (Array.isArray(c.pontos) ? c.pontos : []).slice(-6).reverse().map(p => `<div class="linha"><span>${nf(p.litros)} L</span><span class="lab">razão ${nf(p.razao, 4)}</span></div>`).join('')
   const pronto = !c.pendente
   return `<div class="linha"><span class="vv">No depósito: ${nf(c.total)} L</span><span class="${pronto ? 'ok' : 'atencao'}" style="font-size:1.3rem;">${pronto ? '✓ pronto: deita mais' : '⏳ a estabilizar…'}</span></div>
-<div class="lab">${c.pontos.length} pontos gravados · razão agora ${c.razaoAtual != null ? nf(c.razaoAtual, 4) : '—'}</div>
+<div class="lab">${num((c.pontos || []).length, 0)} pontos gravados · razão agora ${nf(c.razaoAtual, 4)}</div>
 ${c.boiaParada ? `<div class="atencao">A boia não mexeu entre ${nf(c.boiaParada.de)} e ${nf(c.boiaParada.ate)} L: aí o medidor não vê diferença.</div>` : ''}
 <div class="acoes" style="margin:.6rem 0;"><button class="acao go" data-acao="calib-mais" data-l="5" ${pronto ? '' : 'disabled style="opacity:.5"'}>+5 L</button><button class="acao go" data-acao="calib-mais" data-l="10" ${pronto ? '' : 'disabled style="opacity:.5"'}>+10 L</button><button class="acao" data-acao="calib-desfazer">Desfazer</button></div>
 <div style="max-height:9rem;overflow:auto;">${ultimos}</div>
-${msg ? `<div class="perigo">${msg}</div>` : ''}
+${msg ? `<div class="perigo">${esc(msg)}</div>` : ''}
 <div class="acoes" style="margin-top:.6rem;"><button class="acao go" data-acao="calib-terminar" data-cheio="1">Terminar: está cheio</button><button class="acao" data-acao="calib-terminar" data-cheio="">Terminar (não está cheio)</button><button class="acao stop" data-acao="calib-cancelar">Cancelar</button></div>`
 }
 
@@ -97,7 +98,7 @@ function tileAgua (ctx) {
   })).filter(t => t.nome)
   if (!tanques.length) return '<div class="tile"><div class="lab">Água doce</div><div class="lab">sem dados das bombas</div></div>'
   return `<div class="tile" style="flex:0 0 auto;"><div class="lab">Água doce</div>${tanques.map(t => `
-<div class="linha" style="margin-top:.25rem;"><span>${t.nome}</span><span class="v">${num(t.litros * 1000, 0)} L${t.ritmo?.dias ? ` <span class="lab">· ~${num(t.ritmo.dias, 1)} dias</span>` : ''}</span></div>
+<div class="linha" style="margin-top:.25rem;"><span>${esc(t.nome)}</span><span class="v">${num(t.litros * 1000, 0)} L${t.ritmo?.dias ? ` <span class="lab">· ~${num(t.ritmo.dias, 1)} dias</span>` : ''}</span></div>
 ${barra(t.frac, t.frac <= 0.2 ? 'var(--bb)' : 'var(--azul)')}
 <div class="acoes" style="margin-top:.2rem;"><button class="btn" style="padding:.3rem .8rem;" data-acao="agua-encher" data-id="${t.id}">Enchi</button><button class="btn" style="padding:.3rem .8rem;" data-acao="agua-calib" data-id="${t.id}">Calibrar bomba</button></div>`).join('')}</div>`
 }
@@ -106,10 +107,10 @@ function painelBomba (ctx) {
   const id = ctx.estado.bombaCalib
   const t = ctx.estado.agua?.tanques?.find(x => x.id === id)
   return `<div class="teclado"><div class="tile teclado-caixa">
-<div class="vv">Calibrar a bomba: ${t?.nome || ''}</div>
+<div class="vv">Calibrar a bomba: ${esc(t?.nome || '')}</div>
 <div style="font-size:1.15rem;margin:.5rem 0;">Bombeia água para uma <b>jarra de 1 L</b> até encher e carrega em Terminar.</div>
 <div class="vvv">${t?.pedaladasCalibracao ?? 0} <span style="font-size:1.4rem;">pedaladas</span></div>
-${ctx.estado.msgAgua ? `<div class="perigo">${ctx.estado.msgAgua}</div>` : ''}
+${ctx.estado.msgAgua ? `<div class="perigo">${esc(ctx.estado.msgAgua)}</div>` : ''}
 <div class="acoes" style="margin-top:.6rem;"><button class="acao go" data-acao="bomba-terminar">Terminar (1 L)</button><button class="acao stop" data-acao="bomba-cancelar">Cancelar</button></div>
 </div></div>`
 }
@@ -152,7 +153,7 @@ export default {
     const c = ctx.estado.curva
     const regimes = !c || !c.faixas?.length
       ? 'Por regime: a aprender (1 min estável em cada faixa de 200 rpm)'
-      : 'Por regime: ' + c.faixas.map(f => `${f.de} rpm ${num(f.lmn, 2)}${c.melhor?.de === f.de ? ' ★' : ''}`).join(' · ') + ' L/MN'
+      : 'Por regime: ' + c.faixas.map(f => `${num(f.de, 0)} rpm ${num(f.lmn, 2)}${c.melhor?.de === f.de ? ' ★' : ''}`).join(' · ') + ' L/MN'
     return `<div class="col estica">
 <div class="tile"><div class="linha"><span class="lab">Volvo Penta D1-20B</span><span class="${ligado ? 'amarelo' : 'ok'}">${ligado ? 'a trabalhar' : 'desligado'}</span></div>
   <div class="vvv">${ok(rpm) ? num(rpm * 60, 0) : '—'} <span style="font-size:1.4rem;">rpm</span></div></div>
@@ -167,8 +168,8 @@ export default {
 ${tileGasoleo(ctx, true)}
 <div class="tile" style="flex:0 0 auto;"><div class="linha"><span class="lab">${gasInfo}</span>
   <span class="acoes"><button class="btn" style="padding:.4rem .9rem;" data-acao="abrir-teclado" data-modo="abasteci">Abasteci</button><button class="btn" style="padding:.4rem .9rem;" data-acao="abrir-teclado" data-modo="calibrar">Calibrar</button><button class="btn" style="padding:.4rem .9rem;" data-acao="calib-abrir">Calibração completa</button></span></div>
-  ${ctx.estado.msgGas ? `<div class="${ctx.estado.msgGasErro ? 'perigo' : 'ok'}">${ctx.estado.msgGas}</div>` : ''}</div>
-<div class="tile"><div class="lab">Alarmes do motor, da energia e dos depósitos</div>${alarmes.length ? alarmes.map(n => `<div class="${n.state === 'warn' ? 'atencao' : 'perigo'}">${n.message}</div>`).join('') : '<div class="ok">sem alarmes</div>'}</div>
+  ${ctx.estado.msgGas ? `<div class="${ctx.estado.msgGasErro ? 'perigo' : 'ok'}">${esc(ctx.estado.msgGas)}</div>` : ''}</div>
+<div class="tile"><div class="lab">Alarmes do motor, da energia e dos depósitos</div>${alarmes.length ? alarmes.map(n => `<div class="${n.state === 'warn' ? 'atencao' : 'perigo'}">${esc(n.message)}</div>`).join('') : '<div class="ok">sem alarmes</div>'}</div>
 </div>
 <div class="col estica">
 <div class="tile"><div class="linha"><span class="lab">Serviço · 440 Ah AGM</span><span class="vv">${ok(soc) ? num(Math.floor(soc * 100 + 1e-9), 0) + ' %' : '—'}</span></div>${barra(soc, corSoc)}

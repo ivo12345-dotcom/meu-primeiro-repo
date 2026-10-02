@@ -4,7 +4,7 @@
 // terminar. Tudo no diário.
 
 import { correcaoLeme, rumoAproar } from '../lib/rumo.js'
-import { rumo, velocidade, ok } from './comum.js'
+import { rumo, velocidade, ok, esc } from './comum.js'
 
 const PASSOS = ['Liga o motor', 'Aproa ao vento', 'Recolhe as velas', 'Terminado']
 
@@ -51,7 +51,7 @@ ${!motor ? '' : '<div class="ok" style="margin-top:.4rem;">Motor já está ligad
       ? '<button class="acao go" data-acao="comecar">Começar</button>'
       : `${p === 1 ? `<button class="acao go" data-acao="aproado" ${aproado ? '' : 'style="opacity:.6"'}>Estou aproado</button>` : ''}${p === 2 ? '<button class="acao go" data-acao="recolhidas">Velas recolhidas</button>' : ''}<button class="acao stop" data-acao="cancelar">Cancelar</button>`
     return `<div class="col" style="flex:1.3;">${guia}</div>
-<div class="col">${estadoVelas(ctx)}<div class="tile" style="flex:1;">${lista}</div>${e.msg ? `<div class="tile ${e.msgErro ? 'perigo' : 'lab'}">${e.msg}</div>` : ''}<div class="acoes">${botoes}</div></div>`
+<div class="col">${estadoVelas(ctx)}<div class="tile" style="flex:1;">${lista}</div>${e.msg ? `<div class="tile ${e.msgErro ? 'perigo' : 'lab'}">${esc(e.msg)}</div>` : ''}<div class="acoes">${botoes}</div></div>`
   },
   async acao (nome, dados, ctx) {
     const e = ctx.estado

@@ -282,6 +282,48 @@ test('Diário: cartão da AI mostra mensagem do plugin quando rejeita com HTTP s
   assert.match(html, /AI: a AI não está ligada/)
 })
 
+// ---------- auditoria K-04: o texto que vem de fora (rádio AIS, plugins, OpenCPN) passa sempre pelo esc ----------
+const MAU = '<i id=x>"&'
+const semCru = (html, nome) => {
+  assert.ok(!html.includes('<!--'), `${nome}: um comentário HTML cru`)
+  assert.ok(!html.includes('<i id=x>'), `${nome}: <i id=x> cru`)
+}
+
+test('auditoria K-04: um navio chamado "<!--" não esconde os alvos seguintes (AIS e Carta, com os blocos Motor e Gasóleo)', () => {
+  const alvo = (mmsi, name, distancia, classe) => ({ mmsi, name, tipo: MAU, sog: 6, cog: 1, r: { cpa: 100, tcpa: 300, distancia, marcacao: 0.5 }, classe })
+  const ctx = { ...contexto(store), alvos: [alvo('111', '<!--', 900, 'perigo'), alvo('222', 'PERIGO REAL', 1200, 'perigo')] }
+  const a = ais.render(ctx)
+  semCru(a, 'AIS')
+  assert.match(a, /&lt;!--/)
+  assert.match(a, /PERIGO REAL/)
+  const c = carta.render(ctx)
+  semCru(c, 'Carta')
+  assert.match(c, /PERIGO REAL/)
+  assert.ok(c.indexOf('PERIGO REAL') < c.indexOf('Motor') && c.indexOf('Motor') < c.indexOf('Gasóleo'), 'os blocos Motor e Gasóleo continuam depois')
+  // o detalhe do alvo (nome, MMSI, tipo) e o id da notificação também
+  const sel = { ...ctx, estado: { sel: '111' }, notificacoes: [{ caminho: 'notifications.arlequin.ais.111', id: '<b>', state: 'alarm', method: ['visual', 'sound'], status: {} }] }
+  const d = ais.render(sel)
+  semCru(d, 'AIS detalhe')
+  assert.doesNotMatch(d, /data-id="<b>"/)
+})
+
+test('auditoria K-04: Motor, Viagem, Carta, Velas e Diário escapam as mensagens dos plugins, os nomes dos depósitos e do WP e os erros', async () => {
+  const st = storeSimulado(1)
+  aplicarDelta(st, { updates: [{ timestamp: new Date().toISOString(), values: [
+    { path: 'navigation.course.nextPoint', value: { name: MAU } },
+    { path: 'navigation.course.calcValues.distance', value: 1852 },
+    { path: 'tanks.freshWater.0.name', value: MAU }, { path: 'tanks.freshWater.0.currentVolume', value: 0.04 }, { path: 'tanks.freshWater.0.currentLevel', value: 0.5 },
+    { path: 'notifications.propulsion.main.overTemperature', value: { state: 'alarm', method: ['visual', 'sound'], message: `Motor ${MAU}` } }
+  ] }] })
+  const motorCtx = { ...contexto(st, { msgGas: MAU, msgGasErro: true, msgAgua: MAU, bombaCalib: 0, calibAberta: true, calib: { ativa: true, total: 5, pontos: [], pendente: null, razaoAtual: null }, msgCalib: MAU, agua: { tanques: [{ id: 0, nome: MAU }] } }) }
+  semCru(motor.render(motorCtx), 'Motor')
+  semCru(viagem.render(contexto(st)), 'Viagem')
+  semCru(carta.render(contexto(st)), 'Carta')
+  semCru(velas.render(contexto(st, { msg: MAU, msgErro: true })), 'Velas')
+  const ia = { modelos: { velocidade: { versao: MAU, versoes: [], podeVoltar: false, horas: 1, frases: [MAU] } } }
+  semCru(diario.render(contexto(st, { ia, iaEm: Date.now(), msg: MAU, msgErro: true })), 'Diário')
+})
+
 test('Diário: cartão da AI mostra mensagem genérica para erro sem status', async () => {
   const estado = {}
   const ctx = {

@@ -2,6 +2,7 @@
 
 import { velocidade, distancia, duracao, num, rumo, anguloBordo, graus, nos } from '../lib/formato.js'
 import { barra } from '../lib/desenho.js'
+import { esc } from '../lib/rota-texto.js'
 
 const ok = (v) => typeof v === 'number' && Number.isFinite(v)
 
@@ -62,7 +63,7 @@ export function motorResumo (ctx) {
 export function linhaAlvo (a) {
   const cls = a.classe === 'perigo' ? 'perigo' : a.classe === 'atencao' ? 'atencao' : ''
   const cpaTxt = a.r && a.classe !== 'afasta' ? `${distancia(a.r.cpa)} MN · ${duracao(a.r.tcpa)}` : a.classe === 'afasta' ? 'afasta-se' : '—'
-  return `<div class="linha ${cls}"><span>${a.name || a.mmsi}</span><span>${cpaTxt}</span></div>`
+  return `<div class="linha ${cls}"><span>${esc(a.name || a.mmsi)}</span><span>${cpaTxt}</span></div>`
 }
 
 export function proximoWp (ctx) {
@@ -75,4 +76,4 @@ export function proximoWp (ctx) {
   return { ativo: ok(dist), dist, rumoWp, xte, ttg, vmg, nome }
 }
 
-export { velocidade, distancia, duracao, num, rumo, anguloBordo, graus, nos, ok }
+export { velocidade, distancia, duracao, num, rumo, anguloBordo, graus, nos, ok, esc }

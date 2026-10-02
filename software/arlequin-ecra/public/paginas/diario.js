@@ -1,6 +1,8 @@
 // Diário de bordo (signalk-logbook): entradas de hoje, botões de um toque, notas,
 // e o cartão da AI (o que o barco aprendeu, "Treinar agora", "Voltar atrás").
 
+import { esc } from '../lib/rota-texto.js'
+
 // [texto no diário, categoria, rótulo do botão (se for diferente do texto)]
 const RAPIDAS = [
   ['Motor ligado', 'engine'], ['Motor desligado', 'engine'], ['Rizei', 'navigation'], ['Mudei de vela', 'navigation'],
@@ -13,7 +15,6 @@ const MODELOS_IA = [['velocidade', 'Velocidade'], ['ventoForca', 'Vento'], ['con
 const hoje = () => new Date().toISOString().slice(0, 10)
 const virgula = (x) => String(Math.round(x * 10) / 10).replace('.', ',')
 const hora = (iso) => { const d = new Date(iso); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` }
-const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
 
 function buscar (ctx, forcar = false) {
   if (ctx.estado.aBuscar || (!forcar && Date.now() - (ctx.estado.em || 0) < 20000)) return
@@ -39,8 +40,8 @@ function cartaoIa (ia) {
   if (ia.erro) return `<div class="tile lab">AI: ${esc(ia.erro)}</div>`
   const linhas = MODELOS_IA.map(([nome, rotulo]) => {
     const m = ia.modelos?.[nome]
-    const texto = m?.erro ? `${m.versao} · não consegui ler o modelo: ${esc(m.erro)}`
-      : m?.versao ? `${m.versao} · ${virgula(m.horas)} h · ${esc(m.frases?.[0] || '')}` : 'a aprender'
+    const texto = m?.erro ? `${esc(m.versao)} · não consegui ler o modelo: ${esc(m.erro)}`
+      : m?.versao ? `${esc(m.versao)} · ${virgula(m.horas)} h · ${esc(m.frases?.[0] || '')}` : 'a aprender'
     // o plugin diz se há uma versão anterior que tenha estado em uso (só essas servem para voltar)
     const voltar = m?.podeVoltar ? `<button class="acao" data-acao="ia-voltar" data-modelo="${nome}">Voltar atrás</button>` : ''
     return `<tr><td>${rotulo}</td><td>${texto}</td><td>${voltar}</td></tr>`

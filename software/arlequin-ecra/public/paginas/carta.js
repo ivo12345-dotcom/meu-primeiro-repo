@@ -3,7 +3,7 @@
 
 import { mostradorVento } from '../lib/desenho.js'
 import { percentagem } from '../lib/polar.js'
-import { tile, ventoTexto, tileGasoleo, motorResumo, linhaAlvo, proximoWp, velocidade, distancia, duracao, num, rumo, anguloBordo, ok } from './comum.js'
+import { tile, ventoTexto, tileGasoleo, motorResumo, linhaAlvo, proximoWp, velocidade, distancia, duracao, num, rumo, anguloBordo, ok, esc } from './comum.js'
 
 export default {
   render (ctx) {
@@ -27,7 +27,7 @@ export default {
   ${tile('Polar', `<span class="amarelo">${ok(perc) ? num(perc * 100, 0) + ' %' : '—'}</span>`)}
   ${tile('Abatim.', `<span class="amarelo">${anguloBordo(ctx.v('navigation.leewayAngle'))}</span>`)}
 </div>
-<div class="tile"><div class="linha"><span class="lab">${wp.ativo ? wp.nome : 'Sem rota ativa'}</span><span>${wp.ativo ? `${distancia(wp.dist)} MN · ${duracao(wp.ttg)}` : ''}</span></div><div class="lab">${xteTxt}</div></div>
+<div class="tile"><div class="linha"><span class="lab">${wp.ativo ? esc(wp.nome) : 'Sem rota ativa'}</span><span>${wp.ativo ? `${distancia(wp.dist)} MN · ${duracao(wp.ttg)}` : ''}</span></div><div class="lab">${xteTxt}</div></div>
 <div class="tile"><div class="linha"><span class="lab">AIS</span><span class="lab">CPA · TCPA</span></div>${alvos.length ? alvos.map(linhaAlvo).join('') : '<div class="lab">sem alvos</div>'}</div>
 <div class="tile"><div class="linha"><span class="lab">Motor</span>${m.estado}</div><div class="lab">${m.detalhe}</div></div>
 ${tileGasoleo(ctx)}
