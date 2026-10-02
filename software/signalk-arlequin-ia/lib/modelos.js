@@ -62,6 +62,8 @@ function versaoAtual (pasta, nome) {
   try { return fs.readFileSync(path.join(pasta, nome, 'atual'), 'utf8').trim() } catch { return null }
 }
 
+// As versões do barco (vNNNN), por ordem. Um modelo treinado no portátil (pNNNN) só chega ao Pi por
+// cópia confirmada e entra em uso pelo `atual` (decisão n.º 26); não conta aqui.
 function versoes (pasta, nome) {
   try { return fs.readdirSync(path.join(pasta, nome)).filter(n => /^v\d{4}\.json\.gz$/.test(n)).map(n => n.slice(0, 5)).sort() } catch { return [] }
 }

@@ -501,3 +501,49 @@ def test_velocidade_aguenta_uma_previsao_com_erro(tmp_path):
     r = treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])[0]
     assert r['aceite'] is True, r
     assert r['mae'] < r['maeBase'], r
+
+
+def test_no_portatil_as_versoes_sao_pNNNN_e_nao_mexem_no_que_veio_do_barco(tmp_path):
+    # decisão n.º 26: os modelos do portátil têm outro nome e nunca se confundem com os vNNNN do Pi; o "atual" e o
+    # registo.json da pasta sincronizada são os do barco (a sincronização trá-los), por isso o portátil não lhes toca
+    gerar(tmp_path, POLAR)
+    assert all(x['versao'] == 'v0001' for x in treinar(tmp_path, POLAR, agora=AGORA))  # o treino do barco
+    pasta = tmp_path / 'modelos'
+    registo_barco = (pasta / 'registo.json').read_bytes()
+    r = {x['modelo']: x for x in treinar(tmp_path, POLAR, agora=AGORA, prefixo='p')}  # no portátil, os mesmos dados
+    for nome in ('velocidade', 'ventoForca', 'ventoDirecao', 'consumo'):
+        assert r[nome]['versao'] == 'p0001', r[nome]
+        assert (pasta / nome / 'p0001.json.gz').exists()
+        assert (pasta / nome / 'atual').read_text() == 'v0001', 'o modelo em uso continua a ser o do barco'
+        assert r[nome]['maeAtual'] is not None, 'comparado com o modelo em uso no barco'
+        assert 'cópia confirmada' in r[nome]['motivo'], r[nome]['motivo']
+        assert not (pasta / nome / 'v0002.json.gz').exists()
+    assert (pasta / 'registo.json').read_bytes() == registo_barco, 'o registo do barco não muda'
+    portatil = json.loads((pasta / 'registo-portatil.json').read_text(encoding='utf-8'))
+    assert [x['versao'] for x in portatil] == ['p0001'] * 4
+    # sem saída nova desde a última versão do portátil, não repete (as do barco não contam para isto)
+    assert all(x['versao'] is None and x['motivo'].startswith('sem saída nova') for x in treinar(tmp_path, POLAR, agora=AGORA, prefixo='p'))
+
+
+def test_um_modelo_do_portatil_posto_em_uso_no_barco_e_a_referencia_do_treino_seguinte(tmp_path):
+    # depois da cópia confirmada para o Pi, o "atual" aponta para a pNNNN: o treino do barco compara-se com ela e
+    # continua a numerar as suas vNNNN (decisão n.º 26)
+    gerar(tmp_path, POLAR)
+    assert treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'], prefixo='p')[0]['versao'] == 'p0001'
+    pasta = tmp_path / 'modelos' / 'velocidade'
+    (pasta / 'atual').write_text('p0001', encoding='utf-8')
+    gerar(tmp_path, POLAR, sessoes=1, inicio='2026-06-10T08:00:00Z', semente=2)  # uma saída nova, no barco
+    r = treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])[0]
+    assert r['versao'] == 'v0001' and r['maeAtual'] is not None, r
+
+
+def test_linha_de_comandos_no_portatil_da_pNNNN_e_com_barco_da_vNNNN(tmp_path):
+    # o plugin da AI (no Pi) passa --barco; à mão, no portátil, sem ele nunca sai uma vNNNN (decisão n.º 26)
+    gerar(tmp_path, POLAR)
+    correr = lambda *extra: [json.loads(l) for l in subprocess.run(
+        [sys.executable, '-m', 'arlequin_ia', 'treinar', '--dados', str(tmp_path), '--agora', AGORA.isoformat(), '--modelo', 'consumo', *extra],
+        cwd=RAIZ, capture_output=True, text=True, encoding='utf-8', check=True).stdout.strip().splitlines()]
+    assert [x['versao'] for x in correr()] == ['p0001']
+    assert not (tmp_path / 'modelos' / 'consumo' / 'atual').exists()
+    assert [x['versao'] for x in correr('--barco')] == ['v0001']
+    assert (tmp_path / 'modelos' / 'consumo' / 'atual').read_text() == 'v0001'

@@ -369,3 +369,36 @@ test('o estado do plugin dá a hora de Lisboa, seja qual for o fuso do Pi (decis
   p.stop()
   assert.match(app.estado, /última previsão 15:00:05$/, app.estado) // 14:00:05 UTC = 15:00:05 em Lisboa (verão)
 })
+
+test('o treino do plugin (no Pi) corre com --barco: as versões do barco são as vNNNN (sem ele, à mão no portátil, saem pNNNN; decisão n.º 26)', async (t) => {
+  const app = appFalso()
+  const comandos = []
+  const p = criar(app, { lancarTreino: async ({ comando }) => { comandos.push(comando); return [] }, nice: false })
+  p.start({ pasta: path.join(app.dir, 'dados'), python: 'python3', treinoAutomatico: false })
+  t.after(() => p.stop())
+  assert.equal((await chamar(rotas(p).post['/treinar'], {})).code, 202)
+  await esperar(async () => (await chamar(rotas(p).get['/ia'])).ultimoTreino)
+  assert.deepEqual(comandos, [['python3', '-m', 'arlequin_ia', 'treinar', '--dados', path.join(app.dir, 'dados'), '--barco']])
+})
+
+test('um modelo do portátil (pNNNN) posto em uso no Pi: o /ia mostra-o e "voltar atrás" vai para a última versão do barco que esteve em uso (decisão n.º 26)', async (t) => {
+  const app = appFalso()
+  const pv = path.join(app.dir, 'dados', 'modelos', 'velocidade')
+  fs.mkdirSync(pv, { recursive: true })
+  for (const [versao, aceite] of [['v0001', true], ['v0002', true], ['v0003', false], ['p0001', true]]) {
+    fs.writeFileSync(path.join(pv, `${versao}.json.gz`), zlib.gzipSync(JSON.stringify({ ...fixture.modelo, versao, aceite })))
+  }
+  fs.writeFileSync(path.join(pv, 'atual'), 'p0001') // a cópia confirmada do portátil
+  const p = criar(app, { comando: UMA_LINHA, nice: false })
+  p.start({ pasta: path.join(app.dir, 'dados'), treinoAutomatico: false })
+  t.after(() => p.stop())
+  const r = rotas(p)
+  const ia = await chamar(r.get['/ia'])
+  assert.equal(ia.modelos.velocidade.versao, 'p0001')
+  assert.equal(ia.modelos.velocidade.podeVoltar, true)
+  const v = await chamar(r.post['/voltar'], { modelo: 'velocidade' })
+  assert.equal(v.versao, 'v0002', 'a v0003 nunca esteve em uso')
+  assert.equal(fs.readFileSync(path.join(pv, 'atual'), 'utf8'), 'v0002')
+  const registo = JSON.parse(fs.readFileSync(path.join(app.dir, 'dados', 'modelos', 'registo.json'), 'utf8'))
+  assert.match(registo.at(-1).motivo, /voltou atrás à mão \(estava p0001\)/)
+})

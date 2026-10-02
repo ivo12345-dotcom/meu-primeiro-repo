@@ -42,6 +42,7 @@ function escreverAtomico (f, texto) {
 
 module.exports = function (app, deps = {}) {
   const fetchFn = deps.fetch || ((...a) => fetch(...a))
+  const lancar = deps.lancarTreino || lancarTreino
   const plugin = {
     id: 'signalk-arlequin-ia',
     name: 'Arlequin · AI',
@@ -84,9 +85,11 @@ module.exports = function (app, deps = {}) {
 
   function treinar (motivo) {
     if (emTreino || semPacote) return false
-    const comando = deps.comando || [o.python, '-m', 'arlequin_ia', 'treinar', '--dados', base]
+    // --barco: o treino do Pi faz as versões vNNNN, que entram em uso; sem ele (à mão, no portátil) saem
+    // pNNNN, que nunca se confundem com estas e só vêm para o Pi por cópia confirmada (decisão n.º 26).
+    const comando = deps.comando || [o.python, '-m', 'arlequin_ia', 'treinar', '--dados', base, '--barco']
     app.setPluginStatus(`A treinar (${motivo})…`)
-    emTreino = lancarTreino({ comando, cwd: o.pastaIa, nice: deps.nice })
+    emTreino = lancar({ comando, cwd: o.pastaIa, nice: deps.nice })
       .then(resultados => { estado.ultimoTreino = { em: new Date().toISOString(), motivo, resultados } })
       .catch(e => { estado.ultimoTreino = { em: new Date().toISOString(), motivo, erro: e.message }; app.error(`treino: ${e.message}`) })
       .finally(() => {
@@ -132,8 +135,11 @@ module.exports = function (app, deps = {}) {
       return cacheAceite.get(chave)
     } catch { return false }
   }
-  // A versão anterior à em uso que tenha estado em uso (a mais recente), ou undefined.
-  const versaoAnterior = (nome, atual, versoes) => versoes.filter(x => atual && x < atual).reverse().find(x => foiAceite(nome, x))
+  // A versão anterior à em uso que tenha estado em uso (a mais recente), ou undefined. As `versoes` são as do
+  // barco (vNNNN); com um modelo do portátil (pNNNN, posto em uso por cópia confirmada) em uso, é a última
+  // do barco que esteve em uso (decisão n.º 26).
+  const doPortatil = (versao) => /^p\d{4}$/.test(versao)
+  const versaoAnterior = (nome, atual, versoes) => versoes.filter(x => atual && (doPortatil(atual) || x < atual)).reverse().find(x => foiAceite(nome, x))
 
   // O resumo de cada modelo em uso, guardado por nome|versão|mtime: o /ia não
   // descomprime o modelo inteiro a cada pedido. Uma entrada por modelo.
