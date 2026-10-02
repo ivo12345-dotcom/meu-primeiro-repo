@@ -452,6 +452,37 @@ test('auditoria I-10: "Nova viagem" pergunta na própria página e só apaga o r
   assert.doesNotMatch(viagem.render(ctx), /nova-sim/)
 })
 
+// ---------- auditoria I-11: a proa verdadeira, ou a magnética + a declinação (as bússolas do barco são magnéticas) ----------
+test('auditoria I-11: sem headingTrue, a proa é a magnética + a declinação, com "(mag.)" à vista (Carta, Instr., Leme e Recolher velas); sem a declinação, "—"', async () => {
+  const GRAU = Math.PI / 180
+  // proa magnética 100°, declinação 2° W (−2°): verdadeira 098°; o rumo ao WP 090°, vento real de 270°
+  const base = { 'navigation.position': { latitude: 39.35, longitude: -9.38 }, 'navigation.course.calcValues.distance': 9000, 'navigation.course.calcValues.bearingTrue': 90 * GRAU, 'environment.wind.directionTrue': 270 * GRAU, 'environment.wind.speedTrue': 5 }
+  const com = (extra) => {
+    const valores = { ...base, ...extra }
+    return { ...contexto(store, {}), v: (p) => valores[p], alvos: [], notificacoes: [] }
+  }
+  const mag = com({ 'navigation.headingMagnetic': 100 * GRAU, 'navigation.magneticVariation': -2 * GRAU })
+  assert.match(carta.render(mag), /Proa \(mag\.\)<\/div><div class="v">098°/)
+  assert.match(instr.render(mag), /Proa \(mag\.\) · fundo<\/div><div class="vv">098°/)
+  const leme = melhor.render({ ...mag, estado: {}, pedir: () => new Promise(() => {}) })
+  assert.match(leme, /◀ 8° BB/, 'a correção ao leme (098° → 090°)')
+  assert.match(leme, /proa atual 098° \(mag\.\)/)
+  const estado = { passo: 1 }
+  const v = velas.render({ ...mag, estado })
+  assert.match(v, /proa 098° \(mag\.\)/)
+  // com a verdadeira, ela manda (sem "(mag.)")
+  const verdadeira = com({ 'navigation.headingTrue': 95 * GRAU, 'navigation.headingMagnetic': 100 * GRAU, 'navigation.magneticVariation': -2 * GRAU })
+  assert.match(carta.render(verdadeira), /Proa<\/div><div class="v">095°/)
+  // sem a declinação não se inventa: "—"
+  const semDecl = com({ 'navigation.headingMagnetic': 100 * GRAU })
+  assert.match(carta.render(semDecl), /Proa<\/div><div class="v">—/)
+  assert.match(melhor.render({ ...semDecl, estado: {}, pedir: () => new Promise(() => {}) }), /proa atual —/)
+  // o "Estou aproado" do Recolher velas grava no diário a proa que se mostra
+  const gravados = []
+  await velas.acao('aproado', {}, { ...mag, estado: { passo: 1 }, logbook: async (t) => { gravados.push(t) } })
+  assert.deepEqual(gravados, ['Aproado ao vento (098° (mag.))'])
+})
+
 test('Diário: cartão da AI mostra mensagem genérica para erro sem status', async () => {
   const estado = {}
   const ctx = {
