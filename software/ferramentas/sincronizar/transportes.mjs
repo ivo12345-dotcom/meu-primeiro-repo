@@ -14,6 +14,11 @@ const PASTAS = ['bruto', 'tabela', 'saidas', 'previsoes', 'modelos']
 // nome no fim). Ficam de fora da lista: o Pi pode mudar-lhes o nome entre a lista e a cópia, e
 // então o tar falhava a sincronização toda.
 const temporario = (nome) => nome.endsWith('.tmp')
+// Um modelo do portátil para pôr no barco (lib.mjs, porNoBarco): o nome e a versão entram num
+// comando do Pi, por isso só letras e pNNNN.
+function modeloValido (nome, versao) {
+  if (!/^[A-Za-z]+$/.test(nome) || !/^p\d{4}$/.test(versao)) throw new Error(`modelo inválido: ${nome}/${versao}`)
+}
 
 // O confirmados.json do Pi: sem ficheiro, ou estragado, é como não haver nada
 // confirmado (volta-se a mandar e o Pi confere outra vez; não se perde nada).
@@ -56,6 +61,16 @@ export function transporteLocal (origem, { podeConfirmar = false } = {}) {
       mkdirSync(dir, { recursive: true })
       writeFileSync(path.join(dir, nome + '.tmp'), texto)
       renameSync(path.join(dir, nome + '.tmp'), path.join(dir, nome))
+    },
+    // (só quando a pasta faz de Pi, nos testes: pela pen o porNoBarco recusa antes)
+    async porModelo (nome, versao, bytes) {
+      modeloValido(nome, versao)
+      const dir = path.join(origem, 'modelos', nome)
+      mkdirSync(dir, { recursive: true })
+      writeFileSync(path.join(dir, `${versao}.json.gz.tmp`), bytes)
+      renameSync(path.join(dir, `${versao}.json.gz.tmp`), path.join(dir, `${versao}.json.gz`))
+      writeFileSync(path.join(dir, 'atual.tmp'), versao)
+      renameSync(path.join(dir, 'atual.tmp'), path.join(dir, 'atual'))
     }
   }
 }
@@ -119,6 +134,14 @@ export function transporteSsh (host, { pasta = 'arlequin-dados', exec = executar
     async escreverEntrada (nome, texto) {
       const e = `${dir}/entrada`
       await exec('ssh', [host, `mkdir -p ${e} && cat > ${e}/${nome}.tmp && mv ${e}/${nome}.tmp ${e}/${nome}`], { entrada: texto })
+    },
+    // Um modelo do portátil (pNNNN) posto em uso no barco, só pelo porNoBarco (com o sim do Ivo): o
+    // ficheiro e o `atual` vão com .tmp e mudança de nome. Recusa se a AI está a treinar no Pi (o
+    // treino escreve o `atual` no fim); o [a] do padrão evita que o pgrep apanhe este comando.
+    async porModelo (nome, versao, bytes) {
+      modeloValido(nome, versao)
+      const m = `${dir}/modelos/${nome}`
+      await exec('ssh', [host, `mkdir -p ${m} && cd ${m} || exit 1; if pgrep -f 'arlequin_i[a] treinar' >/dev/null 2>&1; then echo 'a AI está a treinar no barco: tenta daqui a pouco' >&2; exit 3; fi; cat > ${versao}.json.gz.tmp && mv ${versao}.json.gz.tmp ${versao}.json.gz && printf %s ${versao} > atual.tmp && mv atual.tmp atual`], { entrada: bytes })
     }
   }
 }
