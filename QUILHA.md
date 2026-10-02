@@ -16,8 +16,8 @@ quilha**, não no porão.
 - Resto da quilha: camadas velhas de antivegetativo empilhadas, adesão
   duvidosa, alguma ferrugem no bordo.
 
-**Mecanismo:** a ferrugem a empurrar a massa (*rust jacking*). Humidade entra pela pintura, o ferro fundido
-oxida dentro do bolso, a ferrugem ocupa mais volume e empurra a massa até a
+**Mecanismo:** a ferrugem a empurrar a massa (*rust jacking*). Humidade entra pela pintura, o
+ferro fundido oxida dentro do bolso, a ferrugem ocupa mais volume e empurra a massa até a
 fissurar. A lavagem à pressão só revelou o que já estava solto.
 
 ### Verificações estruturais — FEITAS, ambas negativas
@@ -148,9 +148,10 @@ em 3–5 anos sem repintar, mas o desembolso é todo à cabeça.
 
 ## Material
 
-*(Lista de 08/09, de antes das decisões abaixo. O "NÃO Interprotect" da secção do Silic One só
-valia para esse sistema, que foi abandonado a 09/09. O primário epóxi comprado e verificado a
-09/09 é o Jotun Yachting Antipest Primer: ver "Material confirmado", no fim.)*
+*(Lista de 08/09, escrita antes da escolha do Silic One (acima) e das atualizações de 09/09
+(abaixo). O "NÃO Interprotect" da secção do Silic One só valia para esse sistema, que foi
+abandonado a 09/09. O primário epóxi comprado e verificado a 09/09 é o Jotun Yachting Antipest
+Primer: ver "Material confirmado", no fim.)*
 
 Primário epóxi para metal (Interprotect 2000E ou Hempel Light Primer);
 resina epóxi + carga 404 (alta densidade); carga 407/410 (leve, alisar);
