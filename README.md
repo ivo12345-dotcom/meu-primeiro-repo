@@ -1,13 +1,31 @@
-# Meu Primeiro Repo
+# Arlequin — Jeanneau Melody 34
 
-Um repositório de exemplo para aprender Git e GitHub.
+Notas, desenhos e software do veleiro Arlequin, que navega sobretudo a solo.
 
-## Como usar
+## Por onde começar
 
-1. Clone o repositório
-2. Explore os arquivos
-3. Faça sua primeira contribuição!
+- [`NAVEGACAO.md`](NAVEGACAO.md) — o sistema de navegação a bordo (Raspberry Pi com OpenPlotter,
+  OpenCPN, SignalK e o ecrã da roda), os dados do barco (§0b) e o software a bordo (§11): o que
+  faz e o que é preciso no Pi.
+- [`software/README.md`](software/README.md) — o código: que pasta é o quê e como se testa no
+  portátil.
 
-## Contribuindo
+## Notas do barco
 
-Pull requests são bem-vindos. Para mudancas maiores, abra uma issue primeiro.
+- [`PILOTO-AUTOMATICO.md`](PILOTO-AUTOMATICO.md) — o piloto automático: hoje não há, e o plano
+  está por decidir (as opções lado a lado).
+- [`LEME-EMERGENCIA.md`](LEME-EMERGENCIA.md) — o leme de emergência: a cana, o leme de painel e o
+  governo com drogue.
+- [`MASTREACAO.md`](MASTREACAO.md) — a mastreação fixa.
+- [`CABOS.md`](CABOS.md) — o cordame de manobra.
+- [`QUILHA.md`](QUILHA.md) — a quilha, a osmose e a pintura do fundo.
+- [`TREM-DE-TRAS.md`](TREM-DE-TRAS.md) — o hélice, o veio e o casquilho.
+
+## Desenhos e outros documentos
+
+- `docs/superpowers/specs/` — os desenhos aprovados pelo Ivo, cada um com a data;
+  `docs/superpowers/plans/` — os planos de implementação.
+- `docs/` — a lista de compras, a folha de calibração do gasóleo e as capturas do ecrã.
+- Na raiz: a planta, o esquema de ligações e o esquema de energia (`*-arlequin.svg` e `.pdf`), a
+  maqueta do ecrã de 28/09, a polar estimada (uma cópia; o código usa a do ecrã) e os PDF da lista
+  de compras, da folha de calibração e da proposta da melhor rota de 29/09.
