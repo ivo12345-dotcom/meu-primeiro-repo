@@ -102,6 +102,13 @@ test('reserva: aviso a 40 L, limpa acima de 45 L', () => {
   assert.deepEqual(r3.notif.filter(n => n.id === 'reserva').map(n => n.state), ['normal'])
 })
 
+// Auditoria M-51 (E-M11): o limite da reserva é "≤ 40 L" dos dois lados (o plugin e a rota): com 40 L
+// certos já se está na reserva; 40,5 L ainda não.
+test('M-51: a reserva acende com 40 L certos e não com 40,5 L', () => {
+  assert.deepEqual(correr(4 * MIN, () => amostra(40)).notif.filter(n => n.id === 'reserva').map(n => n.state), ['warn'])
+  assert.deepEqual(correr(4 * MIN, () => amostra(40.5)).notif.filter(n => n.id === 'reserva'), [])
+})
+
 test('fuga: 6 L em 10 h com o motor parado → alarme', () => {
   const r = correr(10 * H, (t) => amostra(150 - 6 * t / (10 * H)))
   const f = r.notif.filter(n => n.id === 'fuga')
