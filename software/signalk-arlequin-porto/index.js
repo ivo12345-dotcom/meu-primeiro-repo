@@ -36,14 +36,13 @@
 // que não se conhece fica no registo: auditoria I-32).
 
 const fs = require('node:fs')
-const os = require('node:os')
 const path = require('node:path')
-const { exec } = require('node:child_process')
 const { performance } = require('node:perf_hooks')
 const { ALARMES, APITO, ACAO, novoEstado, passo, distancia } = require('./lib/regras')
 const { novoEncaminhador, encaminhar, listarNotificacoes, alarmesAtivos, ATIVO } = require('./lib/mensagens')
 const { filaValida, paraDisco } = require('./lib/fila')
 const { criarEntrega } = require('./lib/entrega')
+const { tirarFoto } = require('./lib/foto')
 const { EXTRAS, lerDestinosDaRota, lugaresDaConfiguracao, lugarPerto } = require('./lib/lugares')
 const { resumo } = require('./lib/resumo')
 const { criarTelegram, erroEmPortugues, erroConhecido, registoTelegram } = require('./lib/telegram')
@@ -184,17 +183,6 @@ module.exports = function (app, deps = {}) {
     }
   }
 
-  function tirarFoto () {
-    return new Promise((resolve, reject) => {
-      if (!o.comandoFoto) return reject(Object.assign(new Error('sem câmara configurada'), { semCamara: true }))
-      const f = path.join(os.tmpdir(), `arlequin-foto-${Date.now()}.jpg`)
-      exec(o.comandoFoto.replace('{ficheiro}', f), { timeout: 20000 }, (e) => {
-        if (e) return reject(new Error(`câmara: ${e.message}`))
-        try { const b = fs.readFileSync(f); fs.unlink(f, () => {}); resolve(b) } catch (err) { reject(new Error(`câmara: ${err.message}`)) }
-      })
-    })
-  }
-
   // Ao Telegram vai uma frase em pt-PT; o erro da linha de comandos ou do Telegram fica só no registo
   // (auditoria I-32: antes chegava "📷 câmara: Command failed: rpicam-still …").
   async function enviarFoto (legenda, paraId) {
@@ -203,7 +191,7 @@ module.exports = function (app, deps = {}) {
     const destinos = paraId ? [paraId] : chatsAutorizados()
     let jpeg
     try {
-      jpeg = await tirarFoto()
+      jpeg = await tirarFoto(o.comandoFoto)
     } catch (e) {
       if (!e.semCamara) app.error(`foto: ${e.message}`)
       for (const id of destinos) await cliente.sendMessage(id, e.semCamara ? '📷 sem câmara configurada' : '📷 a câmara falhou').catch(() => {})
