@@ -29,7 +29,8 @@
 // O plano com o texto entregue conta como entregue mesmo que o GPX falhe (o GPX vai para as falhas, "GPX: …").
 // O plano vai a todos os destinatários em paralelo e cada chamada ao Telegram tem um limite de 10 s,
 // para a resposta chegar bem antes dos 30 s que o plugin da rota espera; as falhas vão em pt-PT
-// ("bloqueou o bot", "sem ligação ao Telegram", "erro do Telegram: …").
+// ("bloqueou o bot", "sem ligação ao Telegram", "erro do Telegram (código N)"; o pormenor de um erro
+// que não se conhece fica no registo: auditoria I-32).
 
 const fs = require('node:fs')
 const os = require('node:os')
@@ -40,7 +41,7 @@ const { novoEncaminhador, encaminhar, listarNotificacoes, alarmesAtivos } = requ
 const { porNaFila, textoAEnviar, recuoMs, filaValida } = require('./lib/fila')
 const { EXTRAS, lerDestinosDaRota, lugaresDaConfiguracao, lugarPerto } = require('./lib/lugares')
 const { resumo } = require('./lib/resumo')
-const { criarTelegram, erroEmPortugues } = require('./lib/telegram')
+const { criarTelegram, erroEmPortugues, erroConhecido } = require('./lib/telegram')
 
 const CAMINHOS = {
   agua: 'sensors.porao.agua',
@@ -148,23 +149,36 @@ module.exports = function (app, deps = {}) {
 
   function tirarFoto () {
     return new Promise((resolve, reject) => {
-      if (!o.comandoFoto) return reject(new Error('sem câmara configurada'))
+      if (!o.comandoFoto) return reject(Object.assign(new Error('sem câmara configurada'), { semCamara: true }))
       const f = path.join(os.tmpdir(), `arlequin-foto-${Date.now()}.jpg`)
       exec(o.comandoFoto.replace('{ficheiro}', f), { timeout: 20000 }, (e) => {
         if (e) return reject(new Error(`câmara: ${e.message}`))
-        try { const b = fs.readFileSync(f); fs.unlink(f, () => {}); resolve(b) } catch (err) { reject(err) }
+        try { const b = fs.readFileSync(f); fs.unlink(f, () => {}); resolve(b) } catch (err) { reject(new Error(`câmara: ${err.message}`)) }
       })
     })
   }
 
+  // Ao Telegram vai uma frase em pt-PT; o erro da linha de comandos ou do Telegram fica só no registo
+  // (auditoria I-32: antes chegava "📷 câmara: Command failed: rpicam-still …").
   async function enviarFoto (legenda, paraId) {
-    if (!tg) return
+    const cliente = tg
+    if (!cliente) return
     const destinos = paraId ? [paraId] : chatsAutorizados()
+    let jpeg
     try {
-      const jpeg = await tirarFoto()
-      for (const id of destinos) await tg.sendPhoto(id, jpeg, legenda)
+      jpeg = await tirarFoto()
     } catch (e) {
-      for (const id of destinos) await tg.sendMessage(id, `📷 ${e.message}`).catch(() => {})
+      if (!e.semCamara) app.error(`foto: ${e.message}`)
+      for (const id of destinos) await cliente.sendMessage(id, e.semCamara ? '📷 sem câmara configurada' : '📷 a câmara falhou').catch(() => {})
+      return
+    }
+    for (const id of destinos) {
+      try {
+        await cliente.sendPhoto(id, jpeg, legenda)
+      } catch (e) {
+        app.error(`foto: ${registoTelegram(e)}`)
+        await cliente.sendMessage(id, `📷 não consegui enviar a fotografia: ${erroEmPortugues(e)}`).catch(() => {})
+      }
     }
   }
 
@@ -238,15 +252,17 @@ module.exports = function (app, deps = {}) {
     const gpx = comGpx && typeof ev?.gpx === 'string' && ev.gpx ? Buffer.from(ev.gpx, 'utf8') : null
     // todos ao mesmo tempo; em cada um, a mensagem e depois o GPX
     const { lista, faltam } = destinatariosPlano(ev)
+    // um erro que não se conhece vai ao ecrã como "erro do Telegram (código N)" e o pormenor fica aqui
+    const falhou = (nome, e) => { if (erroConhecido(e) === null) app.error(`Telegram (plano para ${nome}): ${e?.message ?? e}`); return erroEmPortugues(e) }
     const resultados = await Promise.all(lista.map(async (d) => {
       try {
         await cliente.sendMessage(d.chatId, String(ev?.texto ?? ''))
-      } catch (e) { return { nome: d.nome, erro: erroEmPortugues(e) } }
+      } catch (e) { return { nome: d.nome, erro: falhou(d.nome, e) } }
       // o texto chegou: conta como entregue mesmo que o GPX falhe (revisão final M4: a mensagem não
       // fica a repetir-se nem prende a fila); o GPX que falhou vai para as falhas
       let erroGpx = null
       if (gpx) {
-        try { await cliente.sendDocument(d.chatId, gpx, ev.nomeFicheiro || 'plano.gpx') } catch (e) { erroGpx = `GPX: ${erroEmPortugues(e)}` }
+        try { await cliente.sendDocument(d.chatId, gpx, ev.nomeFicheiro || 'plano.gpx') } catch (e) { erroGpx = `GPX: ${falhou(d.nome, e)}` }
       }
       return { nome: d.nome, chatId: d.chatId, emTerra: d.emTerra, erroGpx }
     }))

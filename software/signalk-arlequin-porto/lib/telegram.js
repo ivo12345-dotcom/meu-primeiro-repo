@@ -58,15 +58,25 @@ function criarTelegram ({ token, base = 'https://api.telegram.org', fetchFn = gl
   }
 }
 
-// O erro de uma chamada em pt-PT, para o ecrã (falhas[].erro do plano).
-function erroEmPortugues (e) {
+// O erro de uma chamada em pt-PT, para o ecrã (falhas[].erro do plano) e para o Telegram: nunca a
+// descrição em inglês do Telegram (auditoria I-32; o pormenor fica no registo). null: um erro que não
+// se conhece.
+function erroConhecido (e) {
+  const d = String(e?.descricao ?? '')
   if (e?.semLigacao) return 'sem ligação ao Telegram'
-  if (e?.codigo === 403) return 'bloqueou o bot'
-  if (e?.codigo === 400 && /chat not found/i.test(e.descricao)) return 'o chat não existe ou nunca falou com o bot: confirma o código'
-  if (e?.codigo === 401) return 'token do bot inválido'
+  if (e?.codigo === 403) return /kicked/i.test(d) ? 'tirou o bot do grupo' : /deactivated/i.test(d) ? 'a conta do Telegram já não existe' : 'bloqueou o bot'
+  if (e?.codigo === 400 && /chat not found/i.test(d)) return 'o chat não existe ou nunca falou com o bot: confirma o código'
+  if (e?.codigo === 400 && /too long/i.test(d)) return 'a mensagem é demasiado longa para o Telegram'
+  if (e?.codigo === 400 && /text is empty/i.test(d)) return 'a mensagem está vazia'
+  if (e?.codigo === 413 || (e?.codigo === 400 && /too (big|large)/i.test(d))) return 'o ficheiro é demasiado grande para o Telegram'
+  if (e?.codigo === 401 || e?.codigo === 404) return 'token do bot inválido'
+  if (e?.codigo === 409) return 'outro programa está a ler as mensagens deste bot'
   if (e?.codigo === 429) return `o Telegram pediu para esperar: tenta daqui a ${Number.isFinite(e.esperarS) ? `${e.esperarS} s` : 'pouco'}`
-  if (e?.codigo != null) return `erro do Telegram: ${e.descricao}`
-  return `erro do Telegram: ${e?.message ?? e}`
+  if (Number.isInteger(e?.codigo) && e.codigo >= 500) return `o Telegram está com problemas (código ${e.codigo})`
+  return null
+}
+function erroEmPortugues (e) {
+  return erroConhecido(e) ?? (e?.codigo != null ? `erro do Telegram (código ${e.codigo})` : 'erro do Telegram')
 }
 
-module.exports = { criarTelegram, erroEmPortugues, LIMITE_MS }
+module.exports = { criarTelegram, erroEmPortugues, erroConhecido, LIMITE_MS }

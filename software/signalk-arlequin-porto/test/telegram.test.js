@@ -69,3 +69,28 @@ test('Telegram: autorização, comandos, alarme de intrusão com foto e "resolvi
     await tgf.fechar()
   }
 })
+
+test('auditoria I-32: a câmara que falha dá "📷 a câmara falhou" no Telegram (o erro da linha de comandos só no registo); sem câmara, "sem câmara configurada"', async () => {
+  const tgf = await criarTelegramFalso()
+  try {
+    const app = appFalso()
+    const p = criar(app)
+    p.start({ telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1, comandoFoto: 'node -e "process.exit(3)" "{ficheiro}"' })
+    try {
+      tgf.escrever(111, '/foto')
+      assert.ok(await ate(() => tgf.enviados.some(m => /📷/.test(m.text || ''))), JSON.stringify(tgf.enviados))
+      assert.deepEqual(tgf.enviados.map(m => m.text), ['📷 a câmara falhou'])
+      assert.equal(app.erros.length, 1)
+      assert.match(app.erros[0], /^foto: câmara: Command failed/)
+    } finally { p.stop() }
+    const app2 = appFalso()
+    const p2 = criar(app2)
+    p2.start({ telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 })
+    try {
+      tgf.escrever(111, '/foto')
+      assert.ok(await ate(() => tgf.enviados.length === 2))
+      assert.equal(tgf.enviados[1].text, '📷 sem câmara configurada')
+      assert.deepEqual(app2.erros, [])
+    } finally { p2.stop() }
+  } finally { await tgf.fechar() }
+})

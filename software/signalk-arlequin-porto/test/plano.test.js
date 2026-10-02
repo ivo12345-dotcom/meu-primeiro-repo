@@ -139,7 +139,7 @@ test('um contacto do plano não comanda; um desconhecido recebe o código (uma v
 
 // ---------- revisão: erros em pt-PT, limites de tempo, envio em paralelo, chats normalizados ----------
 
-test('erros do Telegram em pt-PT: bloqueado → "bloqueou o bot"; sem resposta → "sem ligação ao Telegram"; outro → "erro do Telegram: <descrição>"', async () => {
+test('erros do Telegram em pt-PT: bloqueado → "bloqueou o bot"; sem resposta → "sem ligação ao Telegram"; mensagem longa → em pt-PT (auditoria I-32)', async () => {
   const { erroEmPortugues } = require('../lib/telegram')
   const tgf = await criarTelegramFalso()
   try {
@@ -152,8 +152,9 @@ test('erros do Telegram em pt-PT: bloqueado → "bloqueou o bot"; sem resposta �
     assert.equal(erroEmPortugues(await erroDe(tg.sendMessage('444', 'x'))), 'sem ligação ao Telegram')
     assert.ok(Date.now() - t0 < 2000, 'o limite de tempo corta a chamada pendurada')
     assert.equal(erroEmPortugues(await erroDe(tg.sendDocument('444', Buffer.from('x'), 'a.gpx'))), 'sem ligação ao Telegram')
-    // outro erro descrito pelo Telegram (o cliente guarda o código e a descrição)
-    assert.equal(erroEmPortugues(Object.assign(new Error('Telegram sendMessage: Bad Request: message is too long'), { codigo: 400, descricao: 'Bad Request: message is too long' })), 'erro do Telegram: Bad Request: message is too long')
+    // outro erro descrito pelo Telegram (o cliente guarda o código e a descrição): em pt-PT, nunca a
+    // descrição em inglês (auditoria I-32)
+    assert.equal(erroEmPortugues(Object.assign(new Error('Telegram sendMessage: Bad Request: message is too long'), { codigo: 400, descricao: 'Bad Request: message is too long' })), 'a mensagem é demasiado longa para o Telegram')
     // sem servidor nenhum (ligação recusada)
     const morto = criarTelegram({ token: 'T', base: 'http://127.0.0.1:9', limiteMs: 2000 })
     assert.equal(erroEmPortugues(await erroDe(morto.sendMessage('111', 'x'))), 'sem ligação ao Telegram')
@@ -173,8 +174,51 @@ test('erros do Telegram em pt-PT: 400 "chat not found" → confirmar o código; 
   assert.equal(erroEmPortugues(e429), 'o Telegram pediu para esperar: tenta daqui a 35 s')
   // 429 sem retry_after: sem número
   assert.equal(erroEmPortugues(await erroDe(responde(429, { ok: false, error_code: 429, description: 'Too Many Requests' }).sendMessage('111', 'x'))), 'o Telegram pediu para esperar: tenta daqui a pouco')
-  // os outros 400 continuam com a descrição
-  assert.equal(erroEmPortugues(await erroDe(responde(400, { ok: false, error_code: 400, description: 'Bad Request: message text is empty' }).sendMessage('111', ''))), 'erro do Telegram: Bad Request: message text is empty')
+  // os outros erros conhecidos em pt-PT (auditoria I-32: a descrição em inglês do Telegram já não chega ao ecrã)
+  assert.equal(erroEmPortugues(await erroDe(responde(400, { ok: false, error_code: 400, description: 'Bad Request: message text is empty' }).sendMessage('111', ''))), 'a mensagem está vazia')
+})
+
+test('auditoria I-32: os erros do Telegram em pt-PT, também os que não se conhecem ("erro do Telegram (código N)"): nunca a descrição em inglês', async () => {
+  const { erroEmPortugues } = require('../lib/telegram')
+  const responde = (status, corpo) => criarTelegram({ token: 'T', base: 'http://x', fetchFn: async () => new Response(JSON.stringify(corpo), { status }) })
+  const erroDe = (p) => p.then(() => null, e => e)
+  const casos = [
+    [403, 'Forbidden: bot was kicked from the group chat', 'tirou o bot do grupo'],
+    [403, 'Forbidden: user is deactivated', 'a conta do Telegram já não existe'],
+    [400, 'Bad Request: file is too big', 'o ficheiro é demasiado grande para o Telegram'],
+    [413, 'Request Entity Too Large', 'o ficheiro é demasiado grande para o Telegram'],
+    [404, 'Not Found', 'token do bot inválido'],
+    [409, 'Conflict: terminated by other getUpdates request; make sure that only one bot instance is running', 'outro programa está a ler as mensagens deste bot'],
+    [502, 'Bad Gateway', 'o Telegram está com problemas (código 502)'],
+    [400, 'Bad Request: can\'t parse entities: Unsupported start tag', 'erro do Telegram (código 400)']
+  ]
+  for (const [status, description, esperado] of casos) {
+    assert.equal(erroEmPortugues(await erroDe(responde(status, { ok: false, error_code: status, description }).sendMessage('111', 'x'))), esperado, description)
+  }
+  // uma resposta que não é do Telegram (um proxy, uma página de erro): pelo código HTTP
+  const html = criarTelegram({ token: 'T', base: 'http://x', fetchFn: async () => new Response('<html>Service Unavailable</html>', { status: 503 }) })
+  assert.equal(erroEmPortugues(await erroDe(html.sendMessage('111', 'x'))), 'o Telegram está com problemas (código 503)')
+  // um erro que nem chegou a ser do Telegram (um defeito do programa): genérico, sem o texto em inglês
+  assert.equal(erroEmPortugues(new TypeError('Cannot read properties of undefined (reading \'x\')')), 'erro do Telegram')
+})
+
+test('auditoria I-32: no plano, um erro do Telegram que não se conhece chega ao ecrã em pt-PT e o pormenor fica no registo', async () => {
+  const tgf = await criarTelegramFalso()
+  const app = appFalso()
+  const original = globalThis.fetch
+  globalThis.fetch = async (url, o) => {
+    if (String(url).endsWith('/sendMessage') && JSON.parse(o.body).chat_id === '222') return new Response(JSON.stringify({ ok: false, error_code: 400, description: 'Bad Request: PEER_ID_INVALID' }), { status: 400 })
+    return original(url, o)
+  }
+  const p = criar(app)
+  p.start({ telegramToken: 'TESTE', chatIds: ['111'], contactosPlano: [{ nome: 'Mãe', chatId: '222' }], telegramBase: tgf.url, pollTimeout: 1 })
+  try {
+    const resposta = respostaDe(app, 'e1')
+    app.emit('arlequin:plano', { ...PLANO, pedido: 'e1' })
+    const r = await resposta
+    assert.deepEqual(r.falhas, [{ nome: 'Mãe', erro: 'erro do Telegram (código 400)' }])
+    assert.deepEqual(app.erros, ['Telegram (plano para Mãe): Telegram sendMessage: Bad Request: PEER_ID_INVALID'])
+  } finally { globalThis.fetch = original; p.stop(); await tgf.fechar() }
 })
 
 test('o .gpx reconhece-se sem olhar a maiúsculas (ROTA.GPX → application/gpx+xml)', async () => {
