@@ -121,6 +121,15 @@ export function nomeAlternativa (alt = {}) {
   return semVela(alt) ? alt.nome.replace(/vela e motor$/, SEM_VENTO_VELA) : alt.nome
 }
 
+// As preposições com os nomes dos portos (auditoria M-19): os femininos levam o artigo — "à Nazaré", "na
+// Figueira da Foz", "à Ericeira" —, os outros não ("a Cascais", "em Peniche"). A mesma lista que o plugin da
+// rota (os portos da rota, os fundeadouros e os nomes de sítio femininos dos pontos).
+// (sem \b: no JavaScript o \b não conta o \"é\" como letra)
+const FEMININOS = /^(Nazaré|Figueira|Ericeira|Berlengas?|Póvoa|Costa|Fonte|Praia|Ponta|Baía|Ilha|Barra|Enseada|Lagoa|Linha|Foz|Boia|Bóia)(?!\p{L})/iu
+const feminino = (nome) => FEMININOS.test(String(nome ?? '').trim())
+export const aNome = (nome) => `${feminino(nome) ? 'à' : 'a'} ${nome}`
+export const emNome = (nome) => `${feminino(nome) ? 'na' : 'em'} ${nome}`
+
 const CORES = { segue: 'verde', espera: 'amarelo', 'nao-recomendado': 'laranja', volta: 'vermelho' }
 export const corVeredicto = (tipo) => CORES[tipo] || 'cinzento'
 

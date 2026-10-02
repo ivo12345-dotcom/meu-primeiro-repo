@@ -501,6 +501,35 @@ test('auditoria I-25: em pausa sem rota ativa → Recalcular → Novo cálculo �
   assert.match(texto(melhor.render(ctx)), /a rota ativa já não é a do plano/)
 })
 
+// ---------- auditoria M-19 e M-35 ----------
+test('auditoria M-19: "Chegaste à Nazaré? Enviar \'cheguei bem à Nazaré\'" (os nomes femininos levam o artigo); "a Cascais" fica', async () => {
+  const { aNome, emNome } = await import('../public/lib/rota-texto.js')
+  for (const [nome, a, em] of [['Nazaré', 'à Nazaré', 'na Nazaré'], ['Figueira da Foz', 'à Figueira da Foz', 'na Figueira da Foz'], ['Ericeira', 'à Ericeira', 'na Ericeira'], ['Berlenga', 'à Berlenga', 'na Berlenga'], ['Póvoa de Varzim', 'à Póvoa de Varzim', 'na Póvoa de Varzim'], ['Praia da Ursa', 'à Praia da Ursa', 'na Praia da Ursa'], ['Cascais', 'a Cascais', 'em Cascais'], ['Peniche', 'a Peniche', 'em Peniche'], ['Algés (CNA)', 'a Algés (CNA)', 'em Algés (CNA)'], ['Viana do Castelo', 'a Viana do Castelo', 'em Viana do Castelo']]) {
+    assert.equal(aNome(nome), a, nome)
+    assert.equal(emNome(nome), em, nome)
+  }
+  const p = { ...PLANO, estado: 'pausado', pausadoDe: 'a navegar', chegadaOutro: { id: 'nazare', nome: 'Nazaré' } }
+  const ctx = await leme(p, { respostas: { [`POST ${ROTA}/plano-ativo/chegada`]: { ok: true, estado: 'chegado', contactos: true } } })
+  assert.match(texto(melhor.render(ctx)), /Chegaste à Nazaré\? Enviar 'cheguei bem à Nazaré'/)
+  await melhor.acao('rota-chegada', {}, ctx)
+  assert.match(texto(melhor.render(ctx)), /Enviado aos contactos em terra: 'cheguei bem à Nazaré'/)
+})
+
+test('auditoria M-35: o estado "à espera de sair" com o acento (o do plugin novo) e o antigo "a espera de sair" contam os dois como plano aberto', async () => {
+  for (const estado of ['à espera de sair', 'a espera de sair']) {
+    const ctx = await leme({ ...PLANO, estado, saida: null, atrasoMin: null }, { respostas: { [`POST ${ROTA}/calcular`]: { id: 'calc-9' } } })
+    const html = melhor.render(ctx)
+    assert.match(texto(html), /plano ativo · à espera de sair/, estado)
+    assert.match(html, /data-acao="rota-terminar"/, estado)
+    await melhor.acao('rota-recalcular', {}, ctx)
+    assert.equal(ctx.pedidos.find(x => x.method === 'POST').body.sairAgora, false, `${estado}: todas as partidas`)
+  }
+  // em pausa a partir do "à espera de sair": no porto, todas as partidas
+  const ctx = await leme({ ...PLANO, estado: 'pausado', pausadoDe: 'à espera de sair' }, { respostas: { [`POST ${ROTA}/calcular`]: { id: 'calc-9' } } })
+  await melhor.acao('rota-recalcular', {}, ctx)
+  assert.equal(ctx.pedidos.find(x => x.method === 'POST').body.sairAgora, false)
+})
+
 // ---------- revisão final (C1, I2, I3) ----------
 const ALARME = '2026-09-30T08:38:00.000Z' // 09:38 em Lisboa, amanhã
 
