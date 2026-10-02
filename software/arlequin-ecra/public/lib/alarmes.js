@@ -7,11 +7,13 @@ const GRAVIDADE = { normal: 0, nominal: 0, alert: 1, warn: 2, alarm: 3, emergenc
 
 const nivel = (n) => GRAVIDADE[n.state] ?? 0
 
+// O mais grave para a barra. Entre os da mesma gravidade, primeiro o que ainda apita (auditoria I-08: com
+// dois alarmes AIS, o chip ficava preso no 1.º, já silenciado, e o 2.º — o que apitava — não se calava).
 export function maisGrave (lista) {
   let melhor = null
   for (const n of lista) {
     if (nivel(n) === 0) continue
-    if (!melhor || nivel(n) > nivel(melhor)) melhor = n
+    if (!melhor || nivel(n) > nivel(melhor) || (nivel(n) === nivel(melhor) && deveTocar(n) && !deveTocar(melhor))) melhor = n
   }
   return melhor
 }
@@ -46,9 +48,27 @@ export function bipDeLigacao (estavaLigado, ligado) {
   return estavaLigado === true && ligado === false
 }
 
-// O chip do alarme na barra de cima (o mais grave), com o "silenciar" se apita. O texto vem dos plugins
+// Como calar uma notificação que apita (auditoria I-08): 'silenciar' onde o servidor deixa (o SignalK recusa
+// silenciar uma emergência, "Cannot silence Emergency Alarm!", e respeita o canSilence de cada uma);
+// senão 'reconhecer' (o reconhecido deixa de apitar e continua à vista); senão null. Só com o id do
+// servidor e enquanto apita.
+export function acaoCalar (al) {
+  if (!al?.id || !deveTocar(al)) return null
+  const st = al.status || {}
+  if (al.state !== 'emergency' && st.canSilence !== false) return 'silenciar'
+  if (st.canAcknowledge !== false) return 'reconhecer'
+  return null
+}
+
+// O botão de calar, para o dedo (44 px), fora do chip que leva à página do alarme.
+export function botaoCalar (al) {
+  const a = acaoCalar(al)
+  return a ? `<button class="silenciar" data-acao="${a}" data-id="${esc(al.id)}">${a}</button>` : ''
+}
+
+// O chip do alarme na barra de cima (o mais grave) e, ao lado, o botão de calar. O texto vem dos plugins
 // (eventos da rota, nomes dos destinos do Ivo): passa sempre pelo esc.
 export function chipAlarme (al) {
   if (!al) return ''
-  return `<span class="chip ${al.state === 'warn' || al.state === 'alert' ? 'aviso' : 'alarme'}" data-acao="ir-alarme" data-caminho="${esc(al.caminho)}">⚠ ${esc(al.message || al.caminho)}${al.id && !al.status?.silenced && al.method?.includes('sound') ? `<span class="x" data-acao="silenciar" data-id="${esc(al.id)}">silenciar</span>` : ''}</span>`
+  return `<span class="chip ${al.state === 'warn' || al.state === 'alert' ? 'aviso' : 'alarme'}" data-acao="ir-alarme" data-caminho="${esc(al.caminho)}">⚠ ${esc(al.message || al.caminho)}</span>${botaoCalar(al)}`
 }

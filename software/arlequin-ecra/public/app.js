@@ -11,7 +11,7 @@ import { maisGrave, deveTocar, paginaDoAlarme, bipDeLigacao, chipAlarme } from '
 import { podeRedesenhar, aoEnter, aoEscrever } from './lib/interacao.js'
 import { NIVEIS, PADRAO as BRILHO_PADRAO, nivelValido, mudarNivel } from './lib/brilho.js'
 import { criarAudio, retomar, comSom, chipSemSom } from './lib/som.js'
-import { falhaJanela } from './lib/erros.js'
+import { falhaJanela, falhaCalar } from './lib/erros.js'
 import carta from './paginas/carta.js'
 import instr from './paginas/instr.js'
 import ais from './paginas/ais.js'
@@ -24,6 +24,7 @@ import velas from './paginas/velas.js'
 const PAGINAS = { carta, instr, ais, motor, viagem, diario, melhor, velas }
 const ORDEM_CLASSE = { perigo: 0, atencao: 1, seguro: 2, afasta: 3, desconhecido: 4 }
 const AIS_VELHO = 10 * 60 * 1000
+const FALHA_CALAR_MS = 15000 // a falha do silenciar/reconhecer fica 15 s na barra
 
 const store = criarStore()
 const parametros = new URLSearchParams(location.search)
@@ -50,6 +51,7 @@ const app = {
   sons: [], // últimos sons tocados (diagnóstico: window.arlequin.app.sons)
   premidoEm: null, // quando um dedo tocou no ecrã (do pointerdown ao pointerup; null: nenhum)
   falhaJanela: null, // a falha do último pedido das janelas/modo noite do OpenCPN (auditoria K-11), na barra
+  falhaCalar: null, // { texto, ate }: a falha do último silenciar/reconhecer (auditoria I-08), na barra uns segundos
   erros: [] // registo dos últimos erros (diagnóstico: window.arlequin.app.erros); no ecrã só a frase em pt-PT
 }
 
@@ -109,7 +111,7 @@ function barra (ctx) {
     alarmeHtml: chipAlarme(maisGrave(ctx.notificacoes)),
     piloto: ctx.v('steering.autopilot.state'),
     ligado: store.ligado,
-    falhas: [app.falhaJanela]
+    falhas: [app.falhaJanela, app.falhaCalar && app.falhaCalar.ate > Date.now() ? app.falhaCalar.texto : null]
   })
 }
 
@@ -229,9 +231,17 @@ document.addEventListener('click', async (ev) => {
     retomar(app.audio)
     return render()
   }
-  if (acao === 'silenciar') {
+  // calar o alarme (lib/alarmes.js, acaoCalar): silenciar onde o servidor deixa; a emergência reconhece-se
+  // (auditoria I-08); a falha fica à vista na barra
+  if (acao === 'silenciar' || acao === 'reconhecer') {
     ev.stopPropagation()
-    await pedir(`/signalk/v2/api/notifications/${a.dataset.id}/silence`, { method: 'POST' }).catch(() => {})
+    try {
+      await pedir(`/signalk/v2/api/notifications/${encodeURIComponent(a.dataset.id)}${acao === 'reconhecer' ? '/acknowledge' : '/silence'}`, { method: 'POST' })
+      app.falhaCalar = null
+    } catch (err) {
+      app.falhaCalar = { texto: falhaCalar(err, acao), ate: Date.now() + FALHA_CALAR_MS }
+      registarErro(acao, err)
+    }
     return render()
   }
   if (acao === 'ir-alarme') return irPara(paginaDoAlarme(a.dataset.caminho))

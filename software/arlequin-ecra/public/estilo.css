@@ -48,7 +48,9 @@ html, body { margin: 0; height: 100%; background: var(--fundo); color: var(--tex
 .chip.falha { background: var(--aviso-fundo); color: #fff; }
 .chip.piloto { margin-left: auto; }
 .chip.alarme + .chip.piloto, .chip.aviso + .chip.piloto { margin-left: 0; }
-.x { margin-left: .4rem; padding: 0 .4rem; border-radius: .2rem; background: rgba(0,0,0,.35); }
+/* Calar o alarme (auditoria I-08 e I-26): um botão próprio ao lado do chip, para o dedo, 44 × 44 px no mínimo. */
+.silenciar { flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 0 .8rem; font-weight: bold; background: var(--perigo-fundo); color: #fff; }
+body.noite .silenciar { color: var(--faixa-texto); outline: 2px solid var(--perigo); outline-offset: -2px; }
 /* Sem som (auditoria K-03): vermelho e grande — sem som o ecrã não protege. */
 .chip.sem-som { background: var(--perigo-fundo); color: #fff; font-weight: bold; font-size: 1.15rem; cursor: pointer; }
 
