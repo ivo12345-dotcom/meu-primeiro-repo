@@ -6,8 +6,12 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const agua = require('./lib/agua')
+const { criarAtivos } = require('./lib/ativos')
 
 const SEM_SENSOR = 10 * 60 * 1000 // contador sem atualizar há mais disto = sem sensor
+// Nota do SignalK 2.33 (adenda 2): ao parar o plugin o servidor apaga da árvore os valores dele. Os avisos
+// ativos ficam em alarmes-ativos.json (lib/ativos.js) e o arranque seguinte volta a publicá-los e a pô-los
+// ativos na regra (a histerese dos 20/25 % continua); o stop() continua a pôr a árvore a normal (I-21).
 
 const TANQUES = [
   { id: 0, nome: 'Cozinha (BB)', capacidadeL: 80, caminhoPedaladas: 'tanks.freshWater.0.pedaladas', litrosPorPedalada: 0.35 },
@@ -52,6 +56,7 @@ module.exports = function (app) {
   let temporizador = null
   let ficheiro
   let ultimaGravacao = 0
+  let ativosArq = null // os avisos ativos no ficheiro (lib/ativos.js)
 
   const cfgDe = (id) => o.tanques.find(t => t.id === id)
 
@@ -120,6 +125,8 @@ module.exports = function (app) {
       resumo.push(textoNivel(cfg, t, contador !== undefined, n))
     }
     app.handleMessage(plugin.id, { updates: [{ values: [...values, ...notif] }] })
+    ativosArq?.registar(notif)
+    ativosArq?.gravar()
     app.setPluginStatus(resumo.join(' · '))
     if (agora - ultimaGravacao > 30000) { ultimaGravacao = agora; guardar() }
   }
@@ -132,21 +139,42 @@ module.exports = function (app) {
     try { estados = JSON.parse(fs.readFileSync(ficheiro, 'utf8')) } catch { estados = {} }
     alarmes = {}
     ultimaGravacao = 0
+    // Os avisos que estavam ativos antes do reinício (nota do SignalK 2.33): voltam a publicar-se, com o
+    // mesmo valor, e ficam ativos na regra (um depósito que já não está na configuração fica de fora).
+    ativosArq = criarAtivos(path.join(dir, 'alarmes-ativos.json'), { erro: (e) => app.error(e) })
+    const repostos = []
+    for (const [caminho, valor] of Object.entries(ativosArq.repor().ativos)) {
+      const cfg = o.tanques.find(t => caminho === baixo(t.id))
+      if (!cfg) continue
+      alarmes[cfg.id] = true
+      repostos.push({ path: caminho, value: valor })
+    }
+    if (repostos.length) {
+      app.handleMessage(plugin.id, { updates: [{ values: repostos }] })
+      ativosArq.registar(repostos)
+    }
     // Um aviso não pode ficar preso na árvore (auditoria I-21): os deste plugin que ficaram ativos de
-    // antes passam a normal (a regra volta a avisar se ainda for verdade); no stop(), os ativos.
-    normal(o.tanques.map(t => t.id).filter(id => { const s = app.getSelfPath?.(`notifications.tanks.freshWater.${id}.baixo`)?.value?.state; return s && s !== 'normal' }))
+    // antes e não se repuseram passam a normal (a regra volta a avisar se ainda for verdade); no stop(),
+    // os ativos.
+    normal(o.tanques.map(t => t.id).filter(id => !alarmes[id]).filter(id => { const s = app.getSelfPath?.(baixo(id))?.value?.state; return s && s !== 'normal' }))
     temporizador = setInterval(tick, 1000)
   }
 
-  function normal (ids) {
-    if (ids.length) app.handleMessage(plugin.id, { updates: [{ values: ids.map(id => ({ path: `notifications.tanks.freshWater.${id}.baixo`, value: { state: 'normal', method: [], message: 'Normal' } })) }] })
+  const baixo = (id) => `notifications.tanks.freshWater.${id}.baixo`
+  function normal (ids, { registar = true } = {}) {
+    if (!ids.length) return
+    const values = ids.map(id => ({ path: baixo(id), value: { state: 'normal', method: [], message: 'Normal' } }))
+    app.handleMessage(plugin.id, { updates: [{ values }] })
+    if (registar) ativosArq?.registar(values)
   }
 
   plugin.stop = function () {
     if (temporizador) clearInterval(temporizador)
     temporizador = null
     if (ficheiro) guardar()
-    normal(Object.keys(alarmes).filter(id => alarmes[id]))
+    // o ficheiro fica com os ativos (o arranque seguinte repõe-nos); a árvore passa a normal (I-21)
+    ativosArq?.gravar({ forcar: true })
+    normal(Object.keys(alarmes).filter(id => alarmes[id]), { registar: false })
     alarmes = {}
   }
 

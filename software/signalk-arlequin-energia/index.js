@@ -6,12 +6,19 @@ const path = require('node:path')
 const { novoEstado, avaliar, LIMITES, IDS } = require('./lib/regras')
 const { novaSessao, passoSessao } = require('./lib/sessao')
 const { registar, textoSessao } = require('./lib/diario')
+const { criarAtivos } = require('./lib/ativos')
 
 const RPM_VELHO = 2 * 60 * 1000 // sem rotação há 2 min = motor considerado parado
 // A corrente sem atualizar há mais disto não entra nos Ah da sessão (o SmartShunt calou-se com o motor
 // a trabalhar: antes integrava-se a última corrente e os Ah eram inventados — auditoria M-65).
 const CORRENTE_VELHA = 2 * 60 * 1000
 const PREFIXO = 'notifications.arlequin.energia.'
+// Nota do SignalK 2.33 (adenda 2): ao parar o plugin o servidor apaga da árvore os valores dele. Os alarmes
+// ativos ficam em alarmes-ativos.json (lib/ativos.js), com o estado das regras (os ativos, o navegar e o
+// motor) e as últimas rotações; o arranque seguinte volta a publicá-los e continua a partir daí: a
+// histerese do crítico, o "já podes desligar" com o motor ainda a trabalhar (as rotações de antes contam
+// como recentes até chegarem outras, no máximo 2 min), o "sem dados do SmartShunt" até chegar um SoC.
+// O stop() continua a pôr a árvore a normal (auditoria I-21).
 
 module.exports = function (app) {
   const plugin = {
@@ -37,21 +44,26 @@ module.exports = function (app) {
   let estado, sessao, leitura, desvio, ficheiroRunTime, ficheiroSessoes, opcoes
   let runTimePublicado = false
   let inicioDados = null
+  let ativosArq = null // os alarmes ativos no ficheiro (lib/ativos.js)
 
   // Hora "dos dados": o relógio do sistema corrigido pelo carimbo do último SoC
   // do SmartShunt (ver aoReceber). No barco dá o mesmo; com o simulador acelerado
   // segue o tempo simulado.
   const agora = () => Date.now() + desvio
 
-  function publicar (values) {
+  // registar: o ficheiro dos ativos segue as notificações publicadas (o "normal" do stop() não)
+  function publicar (values, { registar = true } = {}) {
     app.handleMessage(plugin.id, { updates: [{ timestamp: new Date(agora()).toISOString(), values }] })
+    if (registar) ativosArq?.registar(values)
   }
 
   // Um alarme não pode ficar preso na árvore (auditoria I-21): no stop() os ativos passam a normal; no
-  // start() também os que ficaram de antes (a regra volta a dar o alarme se ainda for verdade).
-  function normal (ids) {
-    if (ids.length) publicar(ids.map(id => ({ path: PREFIXO + id, value: { state: 'normal', method: [], message: 'Normal' } })))
+  // start() também os que ficaram de antes e não se repuseram (a regra volta a dar o alarme se ainda for
+  // verdade).
+  function normal (ids, o = {}) {
+    if (ids.length) publicar(ids.map(id => ({ path: PREFIXO + id, value: { state: 'normal', method: [], message: 'Normal' } })), o)
   }
+  const gravarAtivos = (o = {}) => estado && ativosArq?.gravar({ estado: { regras: estado, rpm: leitura.rpm }, ...o })
 
   function guardarRunTime () {
     try {
@@ -114,6 +126,7 @@ module.exports = function (app) {
         token: opcoes.token
       }).then(r => { if (r.erro) app.error(r.erro) }, e => app.error(e.message))
     }
+    gravarAtivos()
   }
 
   function aoReceber (delta) {
@@ -151,10 +164,34 @@ module.exports = function (app) {
     leitura = { soc: null, socEm: agora(), corrente: 0, correnteEm: -Infinity, vMotor: null, rpm: null, rpmEm: 0, sog: 0, modo: 'day' }
     runTimePublicado = false
     inicioDados = null
-    normal(IDS.filter(id => { const s = app.getSelfPath?.(PREFIXO + id)?.value?.state; return s && s !== 'normal' }))
 
     const dir = app.getDataDirPath()
     fs.mkdirSync(dir, { recursive: true })
+    // Os alarmes que estavam ativos antes do reinício (nota do SignalK 2.33): voltam a publicar-se, com o
+    // mesmo valor, e as regras continuam do estado em que estavam.
+    ativosArq = criarAtivos(path.join(dir, 'alarmes-ativos.json'), { erro: (e) => app.error(e) })
+    const r = ativosArq.repor()
+    const repostos = Object.entries(r.ativos)
+      .filter(([caminho]) => caminho.startsWith(PREFIXO) && IDS.includes(caminho.slice(PREFIXO.length)))
+      .map(([caminho, valor]) => ({ path: caminho, value: valor }))
+    if (repostos.length) {
+      const regras = r.estado?.regras
+      const ids = repostos.map(x => x.path.slice(PREFIXO.length))
+      const t = agora()
+      const antes = regras?.ativos && typeof regras.ativos === 'object' ? regras.ativos : {}
+      estado = {
+        ...novoEstado(),
+        ...(regras?.navegar && typeof regras.navegar === 'object' ? { navegar: regras.navegar } : {}),
+        ...(regras?.motor && typeof regras.motor === 'object' ? { motor: regras.motor } : {}),
+        ativos: Object.fromEntries(ids.map(id => [id, { desde: antes[id]?.desde ?? t, ultimoEnvio: antes[id]?.ultimoEnvio ?? t }]))
+      }
+      // as rotações de antes contam como recentes (até chegarem outras, ou 2 min: RPM_VELHO)
+      if (typeof r.estado?.rpm === 'number') { leitura.rpm = r.estado.rpm; leitura.rpmEm = t }
+      // sem dados do SmartShunt antes do reinício: continua sem, até chegar um SoC (não 5 min depois)
+      if (ids.includes('sensorPerdido')) leitura.socEm = -Infinity
+      publicar(repostos)
+    }
+    normal(IDS.filter(id => !repostos.some(x => x.path === PREFIXO + id)).filter(id => { const s = app.getSelfPath?.(PREFIXO + id)?.value?.state; return s && s !== 'normal' }))
     ficheiroRunTime = path.join(dir, 'runtime.json')
     ficheiroSessoes = path.join(dir, 'sessoes-carga.jsonl')
     sessao = novaSessao()
@@ -208,7 +245,9 @@ module.exports = function (app) {
     if (temporizador) clearInterval(temporizador)
     temporizador = null
     if (sessao) guardarRunTime()
-    if (estado) normal(Object.keys(estado.ativos))
+    // o ficheiro fica com os ativos (o arranque seguinte repõe-nos); a árvore passa a normal (I-21)
+    gravarAtivos({ forcar: true })
+    if (estado) normal(Object.keys(estado.ativos), { registar: false })
     estado = null
   }
 

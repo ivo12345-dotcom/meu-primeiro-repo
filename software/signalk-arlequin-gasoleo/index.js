@@ -8,6 +8,7 @@ const path = require('node:path')
 const { novoEstado, descontar, avisoReserva, passo } = require('./lib/nivel')
 const { acrescentarPonto, coerente } = require('./lib/tabela')
 const calibracao = require('./lib/calibracao')
+const { criarAtivos } = require('./lib/ativos')
 
 const DUAS_HORAS = 2 * 3600 * 1000
 // Valores da árvore só contam com a hora recente (auditoria I-12, E-M15): as rotações e o consumo do
@@ -23,6 +24,11 @@ const SONDA_PERDIDA = 5 * 60 * 1000 // sem a sonda há tanto tempo: aviso sondaP
 // motor sabido desligado (propulsion.main.ligacao 'calado', a ignição desligada). Sem nada disso (o J1939
 // sem ligação ou parado) o nível não se republica como novo: a hora dele na árvore envelhece.
 const SEM_SONDA = 'sem leitura da sonda do gasóleo (ADS1115, app I2C do OpenPlotter): não gravei nada; tenta outra vez quando a sonda voltar'
+// Nota do SignalK 2.33 (adenda 2): ao parar o plugin o servidor apaga da árvore os valores dele. Os alarmes
+// ativos ficam em alarmes-ativos.json (lib/ativos.js) e o arranque seguinte volta a publicá-los e a pô-los
+// ativos nas regras (a reserva, a fuga com a janela dos litros com o motor parado, o consumo anormal, a
+// sonda perdida), que decidem depois se continuam; o stop() continua a pôr a árvore a normal (I-21).
+const JANELA_FUGA = 12 * 3600 * 1000 // a janela da fuga (lib/nivel.js): o que se repõe dela
 const FOLGA_CHEIO = 5 // L: "Abasteci" até 5 L acima da capacidade conta como cheio; mais, não cabia (M-68)
 
 // A razão sonda/alimentação no estado do plugin: com vírgula, e "—" sem ela (nunca "undefined", M-67).
@@ -62,6 +68,7 @@ module.exports = function (app) {
   let ultimaGravacao = 0
   let semSondaDesde = null // desde quando faltam (ou estão velhas) as tensões da sonda
   let avisoSonda = false // o aviso sondaPerdida está publicado
+  let ativosArq = null // os alarmes ativos no ficheiro (lib/ativos.js)
 
   // Um valor da árvore (um número, ou do tipo pedido) com a hora há menos de maxIdade ms; sem hora não se
   // sabe a idade: não conta.
@@ -70,8 +77,10 @@ module.exports = function (app) {
     return typeof v?.value === tipo && Date.now() - Date.parse(v.timestamp) <= maxIdade ? v.value : null
   }
 
-  function publicar (values) {
+  // registar: o ficheiro dos ativos segue as notificações publicadas (o "normal" do stop() não)
+  function publicar (values, { registar = true } = {}) {
     app.handleMessage(plugin.id, { updates: [{ values }] })
+    if (registar) ativosArq?.registar(values)
   }
 
   // Guarda o nível de minuto a minuto: num arranque com o barco adornado (ou sem a sonda), parte daqui.
@@ -93,9 +102,11 @@ module.exports = function (app) {
   // Um alarme não pode ficar preso na árvore (auditoria I-21): no stop() os ativos passam a normal; no
   // start() também os que ficaram de antes (a regra volta a dar o alarme se ainda for verdade).
   const IDS = ['reserva', 'fuga', 'consumoAnormal', 'sondaPerdida']
-  function normal (ids) {
-    if (ids.length) publicar(ids.map(id => ({ path: `notifications.tanks.fuel.0.${id}`, value: { state: 'normal', method: [], message: 'Normal' } })))
+  function normal (ids, o2 = {}) {
+    if (ids.length) publicar(ids.map(id => ({ path: `notifications.tanks.fuel.0.${id}`, value: { state: 'normal', method: [], message: 'Normal' } })), o2)
   }
+  // a janela da fuga vai com os alarmes enquanto a fuga está ativa (sem ela a fuga dava-se por resolvida)
+  const gravarAtivos = (o2 = {}) => ativosArq?.gravar({ estado: estado.ativos.fuga ? { parado: estado.parado } : null, ...o2 })
 
   // O que se sabe dos litros sem a sonda: pelo consumo do motor, ou parados sem leitura do motor.
   const semSondaTexto = (acompanha) => estado.litros === null ? 'nível desconhecido'
@@ -120,6 +131,11 @@ module.exports = function (app) {
   }
 
   function tick () {
+    umSegundo()
+    gravarAtivos()
+  }
+
+  function umSegundo () {
     const agora = Date.now()
     const sonda = fresco(o.caminhoSonda, SONDA_VELHA)
     const alimentacao = fresco(o.caminhoAlimentacao, SONDA_VELHA)
@@ -202,7 +218,6 @@ module.exports = function (app) {
     ultimoAbastecimento = null
     semSondaDesde = null
     avisoSonda = false
-    normal(IDS.filter(id => { const s = app.getSelfPath?.(`notifications.tanks.fuel.0.${id}`)?.value?.state; return s && s !== 'normal' }))
     const dir = app.getDataDirPath()
     fs.mkdirSync(dir, { recursive: true })
     ficheiroAbast = path.join(dir, 'abastecimentos.jsonl')
@@ -212,13 +227,33 @@ module.exports = function (app) {
       const guardado = JSON.parse(fs.readFileSync(ficheiroNivel, 'utf8'))
       if (typeof guardado.litros === 'number') estado.litros = guardado.litros
     } catch { /* primeira vez */ }
+    // Os alarmes que estavam ativos antes do reinício (nota do SignalK 2.33): voltam a publicar-se, com o
+    // mesmo valor, e ficam ativos nas regras.
+    ativosArq = criarAtivos(path.join(dir, 'alarmes-ativos.json'), { erro: (e) => app.error?.(e) })
+    const PREFIXO = 'notifications.tanks.fuel.0.'
+    const r = ativosArq.repor()
+    const repostos = []
+    for (const [caminho, valor] of Object.entries(r.ativos)) {
+      const id = caminho.startsWith(PREFIXO) ? caminho.slice(PREFIXO.length) : null
+      if (id === 'sondaPerdida') { avisoSonda = true; semSondaDesde = Date.now() - SONDA_PERDIDA } else if (['reserva', 'fuga', 'consumoAnormal'].includes(id)) estado.ativos[id] = true
+      else continue
+      repostos.push({ path: caminho, value: valor })
+    }
+    const parado = Array.isArray(r.estado?.parado) ? r.estado.parado.filter(x => Number.isFinite(x?.t) && Number.isFinite(x?.litros) && x.t > Date.now() - JANELA_FUGA && x.t <= Date.now()) : []
+    if (estado.ativos.fuga && parado.length) estado.parado = parado
+    if (repostos.length) publicar(repostos)
+    // Um alarme não pode ficar preso na árvore (auditoria I-21): os deste plugin que ficaram ativos de antes
+    // e não se repuseram passam a normal (a regra volta a dar o alarme se ainda for verdade).
+    normal(IDS.filter(id => !repostos.some(x => x.path === PREFIXO + id)).filter(id => { const s = app.getSelfPath?.(PREFIXO + id)?.value?.state; return s && s !== 'normal' }))
     temporizador = setInterval(tick, 1000)
   }
 
   plugin.stop = function () {
     if (temporizador) clearInterval(temporizador)
     temporizador = null
-    normal([...Object.keys(estado.ativos), ...(avisoSonda ? ['sondaPerdida'] : [])])
+    // o ficheiro fica com os ativos (o arranque seguinte repõe-nos); a árvore passa a normal (I-21)
+    gravarAtivos({ forcar: true })
+    normal([...Object.keys(estado.ativos), ...(avisoSonda ? ['sondaPerdida'] : [])], { registar: false })
     estado = { ...estado, ativos: {} }
     avisoSonda = false
   }
