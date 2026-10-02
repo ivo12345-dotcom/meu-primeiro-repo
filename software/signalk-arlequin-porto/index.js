@@ -265,11 +265,26 @@ module.exports = function (app, deps = {}) {
     await cliente.sendMessage(chatId, textoCodigo(chatId)).catch(e => app.error(`Telegram (código para ${chatId}): ${erroEmPortugues(e)}`))
   }
 
-  async function ouvirTelegram () {
-    while (aCorrer && tg) {
+  // Um só ciclo de long polling (auditoria I-22): cada start() abre uma geração nova e o ciclo só
+  // continua enquanto for o da geração atual; o stop() corta o pedido pendente (e a pausa de 10 s
+  // depois de um erro). Antes, um stop() e start() seguidos (gravar a configuração) deixavam o ciclo
+  // antigo vivo: dois getUpdates ao mesmo tempo (o Telegram verdadeiro dá 409 Conflict) e os comandos
+  // do Ivo feitos duas vezes.
+  let geracao = 0
+  let escuta = null // o AbortController do ciclo atual
+  const dormir = (ms, sinal) => new Promise(resolve => {
+    const t = setTimeout(resolve, ms)
+    sinal.addEventListener('abort', () => { clearTimeout(t); resolve() }, { once: true })
+  })
+  async function ouvirTelegram (g) {
+    const ctl = new AbortController()
+    escuta = ctl
+    const cliente = tg
+    while (aCorrer && tg === cliente && g === geracao) {
       try {
-        const updates = await tg.getUpdates(offset, o.pollTimeout)
+        const updates = await cliente.getUpdates(offset, o.pollTimeout, ctl.signal)
         for (const u of updates) {
+          if (g !== geracao) return // reiniciou a meio: o ciclo novo volta a pedir estas
           offset = u.update_id + 1
           const chatId = String(u.message?.chat?.id ?? '')
           if (chatId && chatsAutorizados().includes(chatId)) { await comando(chatId, u.message?.text); continue }
@@ -278,8 +293,9 @@ module.exports = function (app, deps = {}) {
           await desconhecido(chatId)
         }
       } catch (e) {
+        if (g !== geracao || e?.cancelado) return
         app.error(`Telegram: ${e.message}`)
-        await new Promise(r => setTimeout(r, 10000))
+        await dormir(10000, ctl.signal)
       }
     }
   }
@@ -424,12 +440,16 @@ module.exports = function (app, deps = {}) {
     }
     app.removeListener?.('arlequin:plano', aoPlano)
     app.on?.('arlequin:plano', aoPlano)
-    if (tg) ouvirTelegram()
+    const g = ++geracao
+    if (tg) ouvirTelegram(g)
   }
 
   plugin.stop = function () {
     app.removeListener?.('arlequin:plano', aoPlano)
     aCorrer = false
+    geracao++
+    escuta?.abort()
+    escuta = null
     temporizadores.forEach(clearInterval)
     temporizadores = []
     tg = null

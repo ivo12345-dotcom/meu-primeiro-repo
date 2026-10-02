@@ -2,25 +2,30 @@
 // Cliente mínimo da API de bots do Telegram. Só ligações de SAÍDA (long
 // polling): o barco não abre portas. `base` muda para o Telegram falso nos testes.
 // Cada chamada tem um limite de tempo (limiteMs, 10 s); o getUpdates, que fica à espera até
-// `timeout` s (long polling), tem esse tempo mais o limite. Os erros trazem `codigo` e `descricao`
-// quando o Telegram respondeu (e `esperarS`, o retry_after de um 429), ou `semLigacao` quando não
-// respondeu (sem rede, recusado, o limite).
+// `timeout` s (long polling), tem esse tempo mais o limite, e pode ser cortado por quem o pediu (o
+// sinal: o stop() do plugin, auditoria I-22) — aí o erro traz `cancelado`. Os erros trazem `codigo` e
+// `descricao` quando o Telegram respondeu (e `esperarS`, o retry_after de um 429), ou `semLigacao`
+// quando não respondeu (sem rede, recusado, o limite).
 
 const LIMITE_MS = 10000
 
 function criarTelegram ({ token, base = 'https://api.telegram.org', fetchFn = globalThis.fetch, limiteMs = LIMITE_MS }) {
   const url = (metodo) => `${base}/bot${token}/${metodo}`
+  const cancelado = (metodo) => Object.assign(new Error(`Telegram ${metodo}: cancelado`), { cancelado: true })
 
-  async function pedir (metodo, opcoes, ms = limiteMs) {
+  async function pedir (metodo, opcoes, ms = limiteMs, sinal = null) {
+    const signal = sinal ? AbortSignal.any([AbortSignal.timeout(ms), sinal]) : AbortSignal.timeout(ms)
     let r
     try {
-      r = await fetchFn(url(metodo), { ...opcoes, signal: AbortSignal.timeout(ms) })
+      r = await fetchFn(url(metodo), { ...opcoes, signal })
     } catch (e) {
+      if (sinal?.aborted) throw cancelado(metodo)
       const porque = e?.name === 'TimeoutError' ? `sem resposta em ${Math.round(ms / 1000)} s` : e?.cause?.code || e?.message
       throw Object.assign(new Error(`Telegram ${metodo}: sem ligação (${porque})`), { semLigacao: true })
     }
     let j
     try { j = await r.json() } catch (e) {
+      if (sinal?.aborted) throw cancelado(metodo)
       if (e?.name === 'TimeoutError' || e?.name === 'AbortError') throw Object.assign(new Error(`Telegram ${metodo}: sem ligação (a resposta não chegou toda)`), { semLigacao: true })
       throw Object.assign(new Error(`Telegram ${metodo}: resposta inválida (HTTP ${r.status})`), { codigo: r.status, descricao: `resposta inválida (HTTP ${r.status})` })
     }
@@ -32,7 +37,7 @@ function criarTelegram ({ token, base = 'https://api.telegram.org', fetchFn = gl
     return j.result
   }
 
-  const chamar = (metodo, corpo, ms) => pedir(metodo, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }, ms)
+  const chamar = (metodo, corpo, ms, sinal) => pedir(metodo, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }, ms, sinal)
 
   // multipart/form-data (fotografias e ficheiros): o campo do ficheiro com o nome dado
   function enviarFicheiro (metodo, chatId, campo, dados, tipo, nomeFicheiro, caption) {
@@ -44,7 +49,7 @@ function criarTelegram ({ token, base = 'https://api.telegram.org', fetchFn = gl
   }
 
   return {
-    getUpdates: (offset, timeout = 25) => chamar('getUpdates', { offset, timeout, allowed_updates: ['message'] }, timeout * 1000 + limiteMs),
+    getUpdates: (offset, timeout = 25, sinal = null) => chamar('getUpdates', { offset, timeout, allowed_updates: ['message'] }, timeout * 1000 + limiteMs, sinal),
     sendMessage: (chatId, text) => chamar('sendMessage', { chat_id: chatId, text }),
     sendLocation: (chatId, latitude, longitude) => chamar('sendLocation', { chat_id: chatId, latitude, longitude }),
     sendPhoto: (chatId, jpeg, caption) => enviarFicheiro('sendPhoto', chatId, 'photo', jpeg, 'image/jpeg', 'foto.jpg', caption),
