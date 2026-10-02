@@ -37,6 +37,16 @@ const ok = (x) => typeof x === 'number' && Number.isFinite(x)
 // o plano a que a pergunta do Terminar e as mensagens se referem
 const chave = (p) => (p ? `${p.idCalculo ?? ''}|${p.indice ?? ''}|${p.ativadoEm ?? ''}` : null)
 const aberto = (p) => (ABERTOS.has(p?.estado) ? p : null)
+// Os avisos da rota ativos (auditoria I-24: com vários ao mesmo tempo só se via um, no chip da barra): o campo
+// avisos do GET /plano-ativo, os mais graves primeiro; o dos recursos já tem a sua linha na faixa.
+const GRAVIDADE = { alert: 1, warn: 2, alarm: 3, emergency: 4 }
+const COR_AVISO = { alert: '', warn: 'atencao', alarm: 'perigo', emergency: 'perigo' }
+const CAMINHO_RECURSOS = 'notifications.rota.recursos'
+function avisosAtivos (p) {
+  return (Array.isArray(p.avisos) ? p.avisos : [])
+    .filter(a => a && GRAVIDADE[a.state] && typeof a.message === 'string' && a.message.trim() && a.caminho !== CAMINHO_RECURSOS)
+    .sort((a, b) => GRAVIDADE[b.state] - GRAVIDADE[a.state])
+}
 
 // Com o plano lido: a pergunta e a mensagem de outro plano saem (o plano mudou ou fechou).
 function acertar (e) {
@@ -119,6 +129,7 @@ function linhasFaixa (ctx, p) {
   const r = p.recursos || {}
   if (r.aviso) linhas.push(`<span class="atencao">recursos: ${esc(String(r.aviso).replace(/^Recursos:\s*/, ''))}</span>`)
   else if (r.semLeitura) linhas.push('<span class="lab">recursos: sem leitura</span>')
+  for (const a of avisosAtivos(p)) linhas.push(`<span${COR_AVISO[a.state] ? ` class="${COR_AVISO[a.state]}"` : ''}>⚠ ${esc(a.message)}</span>`)
   if (p.semGps) linhas.push('<span class="perigo">sem GPS: acompanhamento parado</span>')
   if (p.barometro?.semLeitura) linhas.push('<span class="lab">barómetro: sem leitura</span>')
   return [...linhas, ...linhasTerra(p, t)]
