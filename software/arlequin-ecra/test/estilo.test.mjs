@@ -85,6 +85,47 @@ test('as caixas das precauções têm pelo menos 44 px de altura (para o dedo, a
   assert.match(regra('.caixa'), /min-height:\s*44px/)
 })
 
+// ---------- auditoria I-26: alvos de toque ≥ 44 px também no LAFVIN 7" (1024×600) da roda ----------
+// o tamanho em px de uma propriedade de uma regra (só px: o rem encolhe com o ecrã)
+const px = (seletor, prop) => {
+  const m = new RegExp(`(?:^|[;{\\s])${prop}:\\s*([\\d.]+)px`).exec(regra(seletor))
+  return m ? Number(m[1]) : null
+}
+
+test('auditoria I-26: a letra de base tem um mínimo de 14 px (a 600 px de altura o rem dava 12 px e os botões ~34 px)', () => {
+  const m = /^html\s*\{\s*font-size:\s*max\((\d+)px,\s*([\d.]+)vh\);/m.exec(css)
+  assert.ok(m, 'html { font-size: max(14px, 2vh); }')
+  const rem = (altura) => Math.max(Number(m[1]), Number(m[2]) * altura / 100)
+  assert.equal(rem(600), 14, 'LAFVIN 7" (1024×600)')
+  assert.equal(rem(800), 16, '10" (1280×800), como antes')
+})
+
+test('auditoria I-26: cada alvo de toque tem 44 px no mínimo (em px, não encolhe): botões, linhas das tabelas tocáveis, campos, chip do alarme, silenciar, brilho, precauções e cartões', () => {
+  for (const [seletor, prop, minimo] of [
+    ['button, .btn', 'min-height', 44],
+    ['button, .btn', 'min-width', 44],
+    ['input[type=text]', 'min-height', 44],
+    ['tr[data-acao] > td, tr[data-mmsi] > td', 'height', 44],
+    ['.chip[data-acao]', 'min-height', 44],
+    ['.silenciar', 'min-height', 44],
+    ['.silenciar', 'min-width', 44],
+    ['#botoes button.brilho', 'min-height', 44],
+    ['#botoes button.brilho', 'min-width', 44],
+    ['.caixa', 'min-height', 44],
+    ['.cartao', 'min-height', 44]
+  ]) assert.ok(px(seletor, prop) >= minimo, `${seletor} { ${prop} } = ${px(seletor, prop)}`)
+  // a barra de cima tem sempre a altura do chip de 44 px (o desenho não salta quando chega um alarme)
+  assert.match(regra('#barra'), /min-height:\s*calc\(44px \+ \.7rem\)/)
+  // nenhuma regra põe um alvo de toque mais baixo do que 44 px
+  for (const [, sel, corpo] of css.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+    if (!/button|\.btn|\.acao|input|\.chip|\.silenciar|\.caixa|\.cartao/.test(sel)) continue
+    for (const [, prop, v] of corpo.matchAll(/\b((?:max-|min-)?height):\s*([\d.]+)px/g)) {
+      if (prop !== 'max-height' && Number(v) < 44) assert.fail(`${sel.trim()} { ${prop}: ${v}px }`)
+      if (prop === 'max-height') assert.fail(`${sel.trim()} { max-height }`)
+    }
+  }
+})
+
 test('9: o Terminar dentro da caixa vermelha da rota mudada vê-se de dia e de noite (contorno; de noite, fundo preto e letra e contorno no cinzento do texto)', () => {
   assert.match(regra('.plano-pausado .acao.stop'), /outline:\s*2px solid #fff/)
   const n = regra('body.noite .plano-pausado .acao.stop')
