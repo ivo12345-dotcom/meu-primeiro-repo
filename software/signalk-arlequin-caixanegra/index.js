@@ -20,6 +20,8 @@ const { PORTOS, portoMaisPerto } = require('./lib/geo')
 const { proaVerdadeira, DECLINACAO_MAX_MS } = require('./lib/proa')
 
 const NOME_GRANDE = { 0: 'inteira', 1: '1 rizo', 2: '2 rizos', '-1': 'arriada' }
+// As notificações do plugin: notifications.arlequin.caixanegra.<id>.
+const NOTIFICACOES = ['disco', 'relogio', 'velas']
 
 module.exports = function (app) {
   const plugin = {
@@ -77,9 +79,26 @@ module.exports = function (app) {
   }
 
   const publicar = (values) => app.handleMessage(plugin.id, { updates: [{ values }] })
+  // As notificações deste plugin que estão na árvore sem ser "normal" (id → state): o stop()
+  // limpa-as e o start() retoma-as (auditoria I-21).
+  let ativas = {}
   // `extra` vai no valor da notificação (ex.: { apito: 'curto' }, o contrato C1 com o ecrã).
-  const notificar = (id, state, message, method = ['visual'], extra = {}) =>
+  const notificar = (id, state, message, method = ['visual'], extra = {}) => {
+    if (state === 'normal') delete ativas[id]
+    else ativas[id] = state
     publicar([{ path: `notifications.arlequin.caixanegra.${id}`, value: { state, method: state === 'normal' ? [] : method, message, ...extra } }])
+  }
+  // Depois de um reinício do plugin (não do servidor) a árvore pode ainda ter um aviso dele:
+  // retoma-se o estado, para a regra o limpar quando já não for verdade e não o repetir
+  // enquanto for. (O SignalK 2.33 apaga da árvore o que o plugin publicou quando o pára; um
+  // servidor mais antigo, ou um stop que não correu, deixa-os lá.)
+  function retomarAvisos () {
+    ativas = {}
+    for (const id of NOTIFICACOES) {
+      const state = app.getSelfPath?.(`notifications.arlequin.caixanegra.${id}`)?.value?.state
+      if (typeof state === 'string' && state !== 'normal') ativas[id] = state
+    }
+  }
   const publicarVelas = () =>
     publicar([{ path: 'sails.grande.rizos', value: velas.grandeRizos }, { path: 'sails.genoa.percentagem', value: velas.genoaPct }])
 
@@ -281,8 +300,9 @@ module.exports = function (app) {
     contador = 0
     ultimaLinha = null
     infoDisco = null
-    avisoDisco = 'normal'
-    relogioErrado = false
+    retomarAvisos()
+    avisoDisco = ativas.disco ?? 'normal'
+    relogioErrado = ativas.relogio !== undefined
     mudados = new Set()
     erros = 0
     ultimoErroDelta = -Infinity
@@ -297,6 +317,11 @@ module.exports = function (app) {
     if (temporizador) clearInterval(temporizador)
     temporizador = null
     app.signalk?.removeListener('unfilteredDelta', aoDelta)
+    // Parado, o plugin já não vigia: um aviso deixado ativo ficava preso no ecrã (que só o
+    // limpa quando recebe o "normal") e no /estado. Volta a disparar ao arrancar, se ainda for verdade.
+    for (const id of Object.keys(ativas)) {
+      try { notificar(id, 'normal', 'Normal') } catch (e) { app.error(`caixa negra: ${e.message}`) }
+    }
     if (bruto) { try { bruto.despejar() } catch (e) { app.error(`bruto: ${e.message}`) } }
     if (saidas && dirPlugin) guardar(ficheiroSaida(), saidas)
   }
