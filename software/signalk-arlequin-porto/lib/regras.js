@@ -11,6 +11,9 @@ const NO = 1852 / 3600
 const LIMITES = Object.freeze({
   raio: 30, raioLimpa: 24, // m
   paradoParaAmarrar: 30 * MIN, sogParado: 0.3 * NO,
+  // largou sem motor (à vela, ou com as rotações em falta): a mais de 2 × o raio e a mais de 2 nós
+  // durante 1 min seguido (auditoria I-20)
+  raioLargou: 60, sogLargou: 2 * NO, largouDurante: 1 * MIN,
   arranquesHora: 4, bombaSeguida: 3 * MIN,
   lembrete: 12 * H
 })
@@ -39,14 +42,15 @@ const APITO = Object.freeze({ fumo: 'continuo', aguaPorao: 'continuo', bombaPora
 function novoEstado () {
   return {
     ativos: {},
-    amarracao: { ponto: null, paradoDesde: null },
+    amarracao: { ponto: null, paradoDesde: null, largouDesde: null },
     bomba: { ligada: false, desde: null, arranques: [] },
     ultimoMovimento: null,
     ultimoLembrete: null
   }
 }
 
-// l: { posicao, sog, motorLigado, agua, bomba, fumo, liquidoGasoleo, gaiuta, movimento, armado }
+// l: { posicao, sog, motorLigado, juntoAPorto, agua, bomba, fumo, liquidoGasoleo, gaiuta, movimento, armado }
+// juntoAPorto: true junto a um porto ou fundeadouro conhecido (lib/lugares.js)
 function passo (e0, l, t, lim = LIMITES) {
   const e = { ...e0, ativos: { ...e0.ativos }, amarracao: { ...e0.amarracao }, bomba: { ...e0.bomba } }
   const notificacoes = []
@@ -57,16 +61,25 @@ function passo (e0, l, t, lim = LIMITES) {
     else { delete e.ativos[id]; notificacoes.push({ id, state: 'normal', method: [], message: 'Normal' }) }
   }
 
-  // Deriva: grava o ponto com 30 min parado; alarme fora do raio.
+  // Deriva: grava o ponto com 30 min parado junto a um porto ou fundeadouro conhecido (no mar nunca:
+  // decisão n.º 24); alarme fora do raio. Apaga-se ao largar, com ou sem motor (auditoria I-20): a motor
+  // e a andar, ou a mais de 60 m e a mais de 2 nós durante 1 min — este só com o alarme desarmado (com
+  // ele armado não há ninguém a bordo para largar: um barco a afastar-se assim é deriva ou roubo).
   const pos = l.posicao
   if (pos) {
     const parado = !l.motorLigado && (l.sog ?? 0) < lim.sogParado
     if (!parado) {
       e.amarracao.paradoDesde = null
-      if (l.motorLigado && (l.sog ?? 0) > 1 * NO) e.amarracao.ponto = null // largou
+      if (l.motorLigado && (l.sog ?? 0) > 1 * NO) e.amarracao.ponto = null // largou a motor
     } else {
       e.amarracao.paradoDesde = e.amarracao.paradoDesde ?? t
-      if (!e.amarracao.ponto && t - e.amarracao.paradoDesde >= lim.paradoParaAmarrar) e.amarracao.ponto = pos
+      if (!e.amarracao.ponto && l.juntoAPorto === true && t - e.amarracao.paradoDesde >= lim.paradoParaAmarrar) e.amarracao.ponto = pos
+    }
+    const aLargar = !!e.amarracao.ponto && !l.armado && (l.sog ?? 0) > lim.sogLargou && distancia(e.amarracao.ponto, pos) > lim.raioLargou
+    if (!aLargar) e.amarracao.largouDesde = null
+    else {
+      e.amarracao.largouDesde = e.amarracao.largouDesde ?? t
+      if (t - e.amarracao.largouDesde >= lim.largouDurante) { e.amarracao.ponto = null; e.amarracao.largouDesde = null } // largou sem motor
     }
     if (e.amarracao.ponto) {
       const d = distancia(e.amarracao.ponto, pos)
