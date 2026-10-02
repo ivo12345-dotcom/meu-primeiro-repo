@@ -151,6 +151,39 @@ function retencaoAtraso ({ progressoMnH, ritmoAgoraMnH, distRotaMn, alarmeNovo, 
   return null
 }
 
+// ---------- a hora de alarme de cada contacto em terra (auditoria I-01, decisão n.º 14) ----------
+// terra: [{ chat, nome, alarme (ms) | null, fechado }] — para cada contacto do envio do plano, a hora de
+// alarme que ele tem (a do plano ou do último atraso que LHE chegou: só conta o que foi entregue) e se já
+// recebeu o "cheguei bem"/"terminada" deste plano. Com uma entrega parcial (o Pai bloqueou o bot) os
+// contactos ficam com horas diferentes, e o aviso de 60 min tem de chegar antes da primeira chamada.
+const msValida = (t) => (valido(t) ? t : typeof t === 'string' ? (Number.isFinite(Date.parse(t)) ? Date.parse(t) : null) : null)
+const mesmoContacto = (a, chat, nome) => (a.chat != null && chat != null ? String(a.chat) === String(chat) : a.nome === nome)
+// a partir do envio { contactos, chats, alarme }: todos com a hora de alarme do envio
+function terraInicial (envio) {
+  const nomes = Array.isArray(envio?.contactos) ? envio.contactos.map(String) : []
+  const chats = Array.isArray(envio?.chats) ? envio.chats.map(String) : []
+  return nomes.map((nome, i) => ({ chat: chats[i] ?? null, nome, alarme: msValida(envio.alarme), fechado: false }))
+}
+// os contactos que receberam uma mensagem ({ contactos, chats }, pela mesma ordem) passam a ter a hora de
+// alarme dela (plano ou atraso) ou ficam fechados ("cheguei bem"/"terminada"); um que não estava junta-se
+function terraEntregue (terra0, { contactos = [], chats = [] } = {}, { alarme = null, fechado = false } = {}) {
+  const terra = (Array.isArray(terra0) ? terra0 : []).map(a => ({ ...a }))
+  for (const [i, nome0] of contactos.entries()) {
+    const nome = String(nome0)
+    const chat = chats[i] != null ? String(chats[i]) : null
+    let a = terra.find(x => mesmoContacto(x, chat, nome))
+    if (!a) { a = { chat, nome, alarme: null, fechado: false }; terra.push(a) }
+    if (fechado) a.fechado = true
+    else if (valido(alarme)) { a.alarme = alarme; a.fechado = false }
+  }
+  return terra
+}
+const alarmesEmEspera = (terra) => (Array.isArray(terra) ? terra : []).filter(a => !a.fechado && valido(a.alarme)).map(a => a.alarme)
+// a mais cedo que algum contacto (ainda à espera) tem: a do aviso de 60 min e a que o ecrã mostra
+const alarmeMaisCedo = (terra) => { const l = alarmesEmEspera(terra); return l.length ? Math.min(...l) : NaN }
+// a mais tarde: até ela terra ainda espera notícias
+const alarmeMaisTarde = (terra) => { const l = alarmesEmEspera(terra); return l.length ? Math.max(...l) : NaN }
+
 // ---------- a fila ----------
 // letra: a letra das referências deste plano ("ref. A3"); o plano seguinte passa à seguinte (Z → A)
 const novaFila = () => ({ fila: [], enviadas: [], seq: 0, letra: 'A' })
@@ -176,6 +209,8 @@ function porNaFila (c0, msg, agora) {
     ...(msg.gpx ? { gpx: msg.gpx, nomeFicheiro: msg.nomeFicheiro } : {}),
     // o atraso: a chegada e o alarme (ms), para o texto à hora de sair e para o registo na entrega
     ...(msg.tipo === 'atraso' && valido(msg.chegada) && valido(msg.alarme) ? { chegada: msg.chegada, alarme: msg.alarme } : {}),
+    // o plano novo: a hora de alarme dele (ms), que cada contacto passa a ter quando lhe chega (I-01)
+    ...(msg.tipo === 'plano' && valido(msg.alarme) ? { alarme: msg.alarme } : {}),
     // o atraso libertado pelo "Estou bem" do Ivo (passa as guardas, também à hora de sair)
     ...(msg.tipo === 'atraso' && msg.confirmado === true ? { confirmado: true } : {}),
     criada: iso(agora),
@@ -295,4 +330,4 @@ function evento (msg, pedido, contactos = msg.contactos || [], chats = msg.chats
   }
 }
 
-module.exports = { SUBSTITUI, REPETIR_MS, ATRASO_ESCORREGA_MS, ATRASO_MARGEM_MS, TETO_MS, PROGRESSO_MN_H, DIST_ROTA_MAX_MN, juntarMarca, progressoNaHora, retencaoAtraso, grausMinutos, textoChegada, textoAtraso, textoTerminado, textoSubstitui, decidirAtraso, novaFila, porNaFila, herdar, atualizarAtraso, tirar, tirarSe, atrasoAutomatico, proxima, marcarAEnviar, falhou, resposta, aoArrancar, evento }
+module.exports = { SUBSTITUI, REPETIR_MS, ATRASO_ESCORREGA_MS, ATRASO_MARGEM_MS, TETO_MS, PROGRESSO_MN_H, DIST_ROTA_MAX_MN, juntarMarca, progressoNaHora, retencaoAtraso, grausMinutos, textoChegada, textoAtraso, textoTerminado, textoSubstitui, decidirAtraso, terraInicial, terraEntregue, alarmeMaisCedo, alarmeMaisTarde, novaFila, porNaFila, herdar, atualizarAtraso, tirar, tirarSe, atrasoAutomatico, proxima, marcarAEnviar, falhou, resposta, aoArrancar, evento }

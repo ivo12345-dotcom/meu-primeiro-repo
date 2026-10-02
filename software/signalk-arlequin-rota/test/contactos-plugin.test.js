@@ -997,3 +997,29 @@ test('auditoria K-12: Terminar sem rede perto da hora de alarme — "A «viagem 
   assert.equal((await chamar(s.r.get['/plano-ativo'])).fechoPorEntregar.tipo, 'terminado')
   s.p.stop()
 })
+
+// ---------- auditoria I-01 (decisão n.º 14): a hora de alarme de cada contacto ----------
+// o Pai bloqueou o bot: os atrasos chegam à Mãe e não a ele
+const paiBloqueado = (e) => ({ pedido: e.pedido, entregues: [...(e.tentativa ? [] : ['chat 111']), ...((e.chats || []).includes('222') ? ['Mãe'] : [])], contactos: (e.chats || []).includes('222') ? ['Mãe'] : [], chats: (e.chats || []).filter(c => c === '222'), falhas: (e.chats || []).includes('333') ? [{ nome: 'Pai', erro: 'bloqueou o bot' }] : [] })
+
+test('auditoria I-01 (sonda S3b, decisão n.º 14): entrega parcial — os atrasos chegam à Mãe e não ao Pai: o GET e o aviso de terra contam pela hora de alarme mais cedo (a do Pai, a do plano); envio.porContacto diz a de cada um', async () => {
+  const s = await preparar({ contactos: [['Mãe', '222'], ['Pai', '333']] })
+  await sair(s)
+  s.porto.resposta = paiBloqueado
+  const anda = devagar(s, 0.3)
+  const aMae = () => atrasosDe(s).filter(e => e.chats.includes('222')).length
+  for (let m = 0; m < 400 && aMae() < 2; m++) await anda()
+  assert.equal(aMae(), 2)
+  const g = await chamar(s.r.get['/plano-ativo'])
+  const pai = Date.parse(g.envio.alarmePlano)
+  assert.equal(g.envio.alarme, g.envio.alarmePlano, 'a hora de alarme mais cedo que terra tem: a do Pai')
+  const mae = g.envio.porContacto.find(x => x.nome === 'Mãe')
+  assert.ok(Date.parse(mae.alarme) > pai + 30 * MIN, JSON.stringify(g.envio.porContacto))
+  assert.deepEqual(g.envio.porContacto.find(x => x.nome === 'Pai'), { nome: 'Pai', alarme: g.envio.alarmePlano, fechado: false })
+  // o aviso de terra 60 min antes da hora do Pai (antes saía 60 min antes da da Mãe, já depois de o Pai ligar)
+  s.acertar(pai - 59 * MIN)
+  await s.ciclo(0)
+  assert.equal(s.app.self[ALARME_TERRA].state, 'alert')
+  assert.equal(s.app.self[ALARME_TERRA].message, `Os contactos em terra ligam ao MRCC ${asHoras(pai, s.agora())}: avisa-os ou Terminar`)
+  s.p.stop()
+})
