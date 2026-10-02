@@ -25,9 +25,9 @@
 // desde a leitura): no barco é o mesmo relógio; na viagem acelerada do dev, o simulado.
 // Nunca mostra null, NaN nem undefined: o que falta fica de fora.
 
-import { esc, horaLisboa, quandoAs } from '../../lib/rota-texto.js'
+import { esc, horaLisboa, quandoAs, aNome } from '../../lib/rota-texto.js'
 import { URL_ROTA, calcular, motivoAcao } from './pedir.js'
-import { aberto, planoAberto, pausado } from './aberto.js'
+import { aberto, planoAberto, pausado, aEspera } from './aberto.js'
 
 const LER_MS = 10000
 const CONFIRMAR = "Terminar o plano? Os contactos em terra recebem 'viagem terminada, estou bem'"
@@ -111,7 +111,7 @@ function horaPlugin (ctx, p) {
 function linhasFaixa (ctx, p) {
   const t = horaPlugin(ctx, p)
   const linhas = []
-  if (p.estado === 'a espera de sair') linhas.push('plano ativo · à espera de sair')
+  if (aEspera(p)) linhas.push('plano ativo · à espera de sair')
   else {
     const partes = []
     const hora = Date.parse(p.proximo?.hora)
@@ -170,7 +170,7 @@ function confirmacao (e, p) {
 function chegadaOutro (p) {
   const nome = p.chegadaOutro?.nome
   if (!p.chegadaOutro?.id || !nome) return ''
-  return `<div class="tile atencao plano-chegada"><div class="v">Chegaste a ${esc(nome)}? Enviar 'cheguei bem a ${esc(nome)}'</div>
+  return `<div class="tile atencao plano-chegada"><div class="v">Chegaste ${esc(aNome(nome))}? Enviar 'cheguei bem ${esc(aNome(nome))}'</div>
 <div class="acoes"><button class="acao go" data-acao="rota-chegada">Enviar</button></div></div>`
 }
 
@@ -255,7 +255,7 @@ export async function acao (nome, dados, ctx) {
     e.confirmarTerminar = null
     try {
       const r = await ctx.pedir(`${URL_ROTA}/plano-ativo/chegada`, { method: 'POST', body: { destino: outro.id } })
-      mensagem(r?.contactos ? `Enviado aos contactos em terra: 'cheguei bem a ${outro.nome}'.` : `Plano fechado: chegaste a ${outro.nome}.`, false, p)
+      mensagem(r?.contactos ? `Enviado aos contactos em terra: 'cheguei bem ${aNome(outro.nome)}'.` : `Plano fechado: chegaste ${aNome(outro.nome)}.`, false, p)
     } catch (err) { mensagem(motivoAcao(err), true, p) }
     await buscarPlanoAtivo(ctx, true)
     return true
