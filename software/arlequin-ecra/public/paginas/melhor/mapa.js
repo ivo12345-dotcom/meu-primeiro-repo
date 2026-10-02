@@ -18,7 +18,7 @@ export function render (ctx) {
   return `<div class="tile mapa-caixa" style="flex:2.2;">${svg || '<div class="caixa-erro">Este resultado vem sem o mapa.</div>'}</div>
 <div class="col rolar" style="flex:1;">
 ${cartoes}
-<div class="tile lab">Azul: à vela · cinzento: a motor · mais escuro: de noite · ▲ avisos · ● pontos de desistência (da 1.ª) · tracejado vermelho: zonas a evitar</div>
+<div class="tile lab">Azul: à vela · cinzento tracejado: a motor · mais escuro: de noite · ▲ avisos · ● pontos de desistência (da 1.ª) · tracejado vermelho: zonas a evitar</div>
 ${e.msg ? `<div class="tile ${e.msgErro ? 'caixa-erro' : ''}">${esc(e.msg)}</div>` : ''}
 <div class="acoes"><button class="acao go" data-acao="rota-voltar">Voltar ao resultado</button><button class="acao" data-acao="rota-ativar">Ativar esta rota</button></div>
 </div>`

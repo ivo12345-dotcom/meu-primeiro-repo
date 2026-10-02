@@ -119,6 +119,8 @@ input[type=text] { font: inherit; font-size: 1.1rem; padding: .5rem; flex: 1; ba
 .aviso-som { cursor: pointer; }
 /* De noite nada pode ser branco: a letra dos alarmes fica no cinzento claro das faixas. */
 body.noite .chip.alarme, body.noite .chip.aviso { color: var(--faixa-texto); }
+/* De noite o fundo do alarme e o do aviso quase não se distinguem pela luminância (1,01:1): o contorno. */
+body.noite .chip.alarme { outline: 2px solid var(--perigo); outline-offset: -2px; }
 body.noite button, body.noite .btn { color: var(--texto); }
 /* Ecrãs ao alto (telemóvel): sem a zona da carta e a barra pode partir. */
 @media (max-aspect-ratio: 1/1) {

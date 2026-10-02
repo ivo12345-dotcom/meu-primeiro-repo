@@ -7,6 +7,21 @@
 <link rel="stylesheet" href="estilo.css">
 </head>
 <body>
+<script>
+// O modo noite e o brilho antes do primeiro desenho (revisão final M6): o app.js (um módulo) só corre
+// depois, e abrir o ecrã de noite mostrava uma fração de segundo com as cores do dia. O mesmo que o
+// app.js faz: ?noite=1/?brilho=N ou o guardado (arlequin.noite, arlequin.brilho; 1–5, senão o 2).
+(function () {
+  var ler = function (k) { try { return JSON.parse(localStorage.getItem(k)) } catch (e) { return null } }
+  try {
+    var q = new URLSearchParams(location.search)
+    var noite = q.has('noite') ? q.get('noite') === '1' : ler('arlequin.noite') === true
+    var b = Number(q.has('brilho') ? q.get('brilho') : ler('arlequin.brilho'))
+    document.body.classList.toggle('noite', noite)
+    document.body.dataset.brilho = String(Number.isInteger(b) && b >= 1 && b <= 5 ? b : 2)
+  } catch (e) { /* fica o dia: o app.js acerta a seguir */ }
+})()
+</script>
 <div id="app">
   <header id="barra"></header>
   <main id="pagina"></main>

@@ -65,7 +65,9 @@ function desenharAlternativa (pr, alt, i, sel) {
     corpo = tr.map(t => {
       const [modo, noite] = t.chave.split(' ')
       const cor = modo === 'vela' ? 'var(--azul)' : 'var(--texto-2)'
-      return `<polyline class="rasto ${t.chave}" points="${pontosSvg(pr, t.pontos.map(p => [p.lat, p.lon]))}" fill="none" stroke="${cor}"${noite ? ' stroke-opacity="0.5"' : ''} stroke-linejoin="round" stroke-linecap="round"/>`
+      // o motor tracejado (revisão final M5): de noite a vela e o motor têm quase a mesma luminância
+      const traco = modo === 'vela' ? ' stroke-linecap="round"' : ' stroke-dasharray="6 6" stroke-linecap="butt"'
+      return `<polyline class="rasto ${t.chave}" points="${pontosSvg(pr, t.pontos.map(p => [p.lat, p.lon]))}" fill="none" stroke="${cor}"${noite ? ' stroke-opacity="0.5"' : ''} stroke-linejoin="round"${traco}/>`
     }).join('')
   } else {
     corpo = `<polyline class="rota" points="${pontosSvg(pr, alt.rota || [])}" fill="none" stroke="var(--texto-2)" stroke-linejoin="round"/>`

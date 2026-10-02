@@ -122,3 +122,37 @@ test('brilho de noite no estilo: cada nível escurece a página toda (#app) só 
   assert.match(html.slice(i - 200, i + 300), /data-acao="brilho-menos"[^>]*>−</)
   assert.match(html.slice(i - 200, i + 300), /data-acao="brilho-mais"[^>]*>\+</)
 })
+
+test('revisão final M5: no brilho por omissão (nível 2) o texto lê-se (≥ 3:1) e as linhas do mini-mapa (vela e motor) destacam-se do mar (≥ 1,5:1); o chip de alarme tem contorno no vermelho de perigo (o de aviso não)', () => {
+  const k = NIVEIS[PADRAO - 1]
+  // o filter: brightness(k) multiplica cada componente
+  const escurecer = (hex) => `#${rgb(hex).map(x => Math.round(x * k * 255).toString(16).padStart(2, '0')).join('')}`
+  assert.ok(contraste(escurecer(noite.texto), escurecer(noite.fundo)) >= 3, 'o texto no nível 2')
+  for (const linha of ['azul', 'texto-2']) {
+    assert.ok(contraste(escurecer(noite[linha]), escurecer(noite.mar)) >= 1.5, `${linha} sobre o mar no nível 2`)
+    assert.ok(contraste(escurecer(noite[linha]), escurecer(noite.fundo)) >= 1.5, `${linha} sobre o fundo no nível 2`)
+  }
+  assert.match(regra('body.noite .chip.alarme'), /outline:\s*2px solid var\(--perigo\)/)
+  assert.match(regra('body.noite .chip.alarme'), /outline-offset:\s*-2px/)
+  assert.doesNotMatch(regra('body.noite .chip.aviso'), /outline/)
+})
+
+test('revisão final M6: um <script> clássico logo a seguir ao <body> põe o modo noite e o brilho (localStorage ou ?noite=/?brilho=) antes do primeiro desenho; um armazenamento que falha não rebenta', async () => {
+  const { runInNewContext } = await import('node:vm')
+  const m = /<body>\s*<script>([\s\S]*?)<\/script>/.exec(html)
+  assert.ok(m, 'o script logo a seguir ao <body>')
+  assert.ok(html.indexOf(m[0]) < html.indexOf('<div id="app">'))
+  const correr = ({ guardado = {}, busca = '', falha = false }) => {
+    const classes = new Set()
+    const body = { classList: { toggle: (c, on) => (on ? classes.add(c) : classes.delete(c)) }, dataset: {} }
+    const localStorage = { getItem: (k) => { if (falha) throw new Error('bloqueado'); return k in guardado ? guardado[k] : null } }
+    runInNewContext(m[1], { document: { body }, localStorage, location: { search: busca }, URLSearchParams, JSON, Number, String })
+    return { noite: classes.has('noite'), brilho: body.dataset.brilho }
+  }
+  assert.deepEqual(correr({ guardado: { 'arlequin.noite': 'true', 'arlequin.brilho': '4' } }), { noite: true, brilho: '4' })
+  assert.deepEqual(correr({ guardado: { 'arlequin.noite': 'false' } }), { noite: false, brilho: '2' })
+  assert.deepEqual(correr({ guardado: { 'arlequin.noite': 'false', 'arlequin.brilho': '9' }, busca: '?noite=1&brilho=1' }), { noite: true, brilho: '1' })
+  assert.deepEqual(correr({ busca: '?noite=0' }), { noite: false, brilho: '2' })
+  assert.deepEqual(correr({ falha: true }), { noite: false, brilho: '2' })
+  assert.deepEqual(correr({ guardado: { 'arlequin.noite': '{estragado', 'arlequin.brilho': '"x"' } }), { noite: false, brilho: '2' })
+})

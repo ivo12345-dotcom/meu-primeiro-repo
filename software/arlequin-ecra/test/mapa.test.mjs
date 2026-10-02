@@ -138,3 +138,13 @@ test('a bolinha da desistência só é verde com uma fuga limpa: sem abrigo e co
   assert.equal(cor({ abrigo: fuga(), voltar: fuga({ avisoVermelho: VERMELHO }) }), 'var(--ok)')
   assert.equal(cor({ abrigo: fuga({ avisoVermelho: VERMELHO }), voltar: fuga() }), 'var(--ok)')
 })
+
+test('revisão final M5: o rasto a motor é tracejado (de noite a vela e o motor têm quase a mesma luminância: o traço distingue-os); a vela é cheia; a legenda diz "cinzento tracejado: a motor"', async () => {
+  for (const noite of [false, true]) {
+    const svg = desenhar(FUGA, { selecionada: 0, noite })
+    assert.match(svg, /<polyline class="rasto motor[^"]*"[^>]*stroke-dasharray="6 6"/)
+    assert.doesNotMatch(svg, /<polyline class="rasto vela[^"]*"[^>]*stroke-dasharray/)
+  }
+  const pag = readFileSync(new URL('../public/paginas/melhor/mapa.js', import.meta.url), 'utf8')
+  assert.match(pag, /cinzento tracejado: a motor/)
+})
