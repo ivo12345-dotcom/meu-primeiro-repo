@@ -16,11 +16,16 @@ export function render (ctx) {
   const cartoes = alts.map((a, k) => `<div class="tile cartao${k === i ? ' sel' : ''}" data-acao="rota-escolher" data-i="${k}">
 <div class="nome-alt">${k + 1}. ${esc(nomeAlternativa(a))}</div>
 <div class="lab">${horaLisboa(a.partida, ag)} → ${horaLisboa(a.chegada?.p50, ag)} · ${num(a.milhas, 1)} MN${a.naoRecomendada ? ' · <span class="perigo">não recomendada</span>' : ''}</div></div>`).join('')
+  // os cartões e a legenda rolam; a resposta do Ativar e os botões ficam fixos por baixo (revisão F3, Important 2)
   return `<div class="tile mapa-caixa" style="flex:2.2;">${svg || '<div class="caixa-erro">Este resultado vem sem o mapa.</div>'}</div>
-<div class="col rolar" style="flex:1;">
+<div class="col" style="flex:1;">
+<div class="col rolar" data-rolar="mapa-dir">
 ${cartoes}
 <div class="tile lab">Azul: à vela · cinzento tracejado: a motor · mais escuro: de noite · ▲ avisos · ● pontos de desistência (da 1.ª) · tracejado vermelho: zonas a evitar</div>
+</div>
+<div class="fixos">
 ${e.msg ? `<div class="tile ${e.msgErro ? 'caixa-erro' : ''}">${esc(e.msg)}</div>` : ''}
 <div class="acoes"><button class="acao go" data-acao="rota-voltar">Voltar ao resultado</button><button class="acao" data-acao="rota-ativar">Ativar esta rota</button>${botaoVoltarLeme(ctx)}</div>
+</div>
 </div>`
 }

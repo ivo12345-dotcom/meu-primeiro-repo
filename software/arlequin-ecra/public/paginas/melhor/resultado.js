@@ -1,9 +1,10 @@
 // Melhor rota, estados A calcular, Resultado e Erro (desenho 3b-1).
 //   A calcular: o progresso, e "Cancelar" (deixa de seguir; o plugin continua a calcular).
 //   Resultado: a faixa do veredicto (cor do tipo) com as frases de porquê, a linha da previsão,
-//   os 3 cartões (a recomendada destacada), os avisos vermelhos (sempre visíveis), a linha do
-//   tempo, as precauções com caixas (guardadas por cálculo), os pontos de desistência, e os botões
-//   Mapa / Enviar plano / Ativar esta rota / Sair agora mesmo assim / Novo cálculo. O "Sair agora mesmo
+//   os 3 cartões (a recomendada destacada), os avisos vermelhos (sempre visíveis: no cimo da coluna da
+//   direita), a linha do tempo, as precauções com caixas (guardadas por cálculo), os pontos de desistência,
+//   e os botões Mapa / Enviar plano / Ativar esta rota / Sair agora mesmo assim / Novo cálculo, fixos por
+//   baixo da parte que rola (revisão F3, Important 2). O "Sair agora mesmo
 //   assim" sai depois de um pedido já com sairAgora (revisão final M2: repetia o mesmo cálculo). Com os
 //   contactos em terra a ter o plano de outra alternativa ou de outro cálculo (envioEmTerra do GET
 //   /resultado, revisão final I1): "os contactos em terra têm o plano da N.ª alternativa (alarme HH:MM): ao
@@ -203,17 +204,25 @@ export function render (ctx) {
   const vermelhos = avisosVermelhos(r, i, ag)
   const gerais = avisosGerais(r)
   const prev = linhaPrevisao(r, ag)
-  return `<div class="col rolar" style="flex:1.6;">
+  // A coluna da esquerda: em cima a parte que rola (faixa, cartões); em baixo, fixos, o estado do plano, a
+  // resposta da última ação e os botões (revisão F3, Important 2: a 1024×600 o "Ativar esta rota" e o "Voltar ao
+  // leme" ficavam por baixo da dobra, e voltar ao rumo tem de ser um toque). Os avisos vermelhos passaram para o
+  // cimo da coluna da direita: por baixo dos cartões, com os botões fixos, deixavam de se ver sem rolar.
+  return `<div class="col" style="flex:1.6;">
+<div class="col rolar" data-rolar="resultado-esq">
 <div class="faixa ${corVeredicto(v.tipo)}"><div class="vv">${esc(v.texto || '—')}</div>${(v.porque || []).map(p => `<div>${esc(p)}</div>`).join('')}</div>
 ${prev || gerais.length ? `<div class="lab">${esc(prev)}${gerais.map(g => ` · <span class="atencao">${esc(g)}</span>`).join('')}</div>` : ''}
 ${alts.length ? `<div class="g3">${alts.map((a, k) => cartao(ctx, a, k, k === i)).join('')}</div>` : '<div class="tile caixa-erro">Nenhuma alternativa passa: ver o porquê acima.</div>'}
-<div class="tile vermelhos"><div class="lab">Avisos vermelhos</div>${vermelhos.length ? vermelhos.map(x => `<div class="perigo">⚠ ${esc(x)}</div>`).join('') : '<div class="lab">nenhum</div>'}</div>
-${estadoPlano(e)}
 ${terraTemOutro(ctx, i)}
+</div>
+<div class="fixos">
+${estadoPlano(e)}
 ${e.msg ? `<div class="tile ${e.msgErro ? 'perigo' : ''}">${esc(e.msg)}</div>` : ''}
 ${botoes(ctx)}
 </div>
-<div class="col rolar" style="flex:1;">
+</div>
+<div class="col rolar" style="flex:1;" data-rolar="resultado-dir">
+<div class="tile vermelhos"><div class="lab">Avisos vermelhos</div>${vermelhos.length ? vermelhos.map(x => `<div class="perigo">⚠ ${esc(x)}</div>`).join('') : '<div class="lab">nenhum</div>'}</div>
 <div class="tile"><div class="lab">Linha do tempo · ${esc(nomeAlternativa(alt))}</div>${linhaTempo(ctx, alt)}</div>
 <div class="tile"><div class="lab">Precauções</div><div class="caixas">${precaucoes(ctx, alt)}</div></div>
 <div class="tile"><div class="lab">Pontos de desistência</div>${desistencia(ctx, r, i)}</div>
