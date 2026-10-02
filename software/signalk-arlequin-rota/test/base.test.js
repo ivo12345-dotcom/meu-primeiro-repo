@@ -280,3 +280,18 @@ test('I2: o vento que decide no pessimista nunca fica abaixo da previsão em bru
   const k2 = criarCenarios({ tempoBruto: tempoFixo({ tws: 20, rajada: 25 }), modelos: { ventoForca: { quantis: { p10: fixa(0.9), p50: fixa(1), p90: fixa(1.3) } } }, polar, obtida: 0 })
   assert.ok(Math.abs(k2.pessimista.tempo(39, -9.5, 0).tws - 26) < 1e-9)
 })
+
+test('M-20: uma constante por número — a rotação de cruzeiro (2100 rpm), o afastamento mínimo, a tolerância à costa e os 3 MN do vento de terra vêm de um só sítio', () => {
+  const { RPM_CRUZEIRO } = require('../lib/base')
+  const SEG = require('../lib/seguranca').PADRAO
+  const calculo = require('../lib/calculo')
+  const passagem = require('../lib/passagem')
+  const rotas = require('../lib/rotas')
+  assert.equal(RPM_CRUZEIRO, 2100)
+  assert.equal(passagem.PADRAO.rpmCruzeiro, RPM_CRUZEIRO)
+  assert.equal(calculo.PADRAO.rpmCruzeiro, RPM_CRUZEIRO)
+  assert.equal(calculo.PADRAO.afastamentoMinimo, SEG.afastamentoMinimo)
+  assert.equal(rotas.VENTO.afastamentoVentoTerra, SEG.afastamentoVentoTerra)
+  assert.equal(rotas.CORDA.toleranciaMn, SEG.toleranciaMn)
+  assert.equal(rotas.MOTIVO_VENTO_MAR, `vento do mar em parte da rota: a ${SEG.afastamentoVentoTerra} MN ficava perto de uma costa a sotavento`)
+})

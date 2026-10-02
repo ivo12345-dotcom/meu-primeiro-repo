@@ -24,6 +24,7 @@ const VISIBILIDADE_RADAR_M = 5000
 const CHUVA_RADAR_MM_H = 0.5
 
 const { sitio } = require('./costa')
+const { PADRAO: SEGURANCA } = require('./seguranca')
 
 const PADRAO = Object.freeze({
   fuso: 'Europe/Lisbon',
@@ -40,8 +41,9 @@ const PADRAO = Object.freeze({
   // barco a cada minuto (decisão do Ivo n.º 11, auditoria M-18)
   viragemGraus: 40,
   juntarManobrasH: 2,
-  reservaGasoleoL: 40,
-  reservaBateriaPct: 50,
+  // a reserva dos avisos é o mínimo à chegada da segurança (40 L, 50 %: M-20, um só número)
+  reservaGasoleoL: SEGURANCA.gasoleoMinL,
+  reservaBateriaPct: SEGURANCA.bateriaMinPct,
   comerCadaH: 3,
   rajadaBarra: 20,
   popaTwa: 120
@@ -53,6 +55,7 @@ const norm = (a) => ((a % 360) + 360) % 360
 const dif = (a, b) => { let d = norm(a - b); if (d > 180) d -= 360; return d }
 const virgula = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toFixed(d).replace('.', ',')
 const rumo3 = (x) => String(Math.round(norm(x)) % 360).padStart(3, '0')
+const numero = (x) => String(x).replace('.', ',')
 
 // passagem: { pontos, eventos, resumo }; destino: { nome, conhecido }; tripulacao; gasoleoInicial (L).
 // → [{ t (ISO), hora, tipo, texto, antecedenciaMin }] por ordem.
@@ -132,7 +135,7 @@ function avisosDaPassagem ({ passagem, destino = null, tripulacao = 'so', opcoes
 
   // só eu: come e bebe de 3 em 3 h
   if (tripulacao === 'so' && pontos.length) {
-    for (let t = pontos[0].t + o.comerCadaH * H; t < ult.t; t += o.comerCadaH * H) add(t, 'comer', 'Come e bebe (3 h ao leme)')
+    for (let t = pontos[0].t + o.comerCadaH * H; t < ult.t; t += o.comerCadaH * H) add(t, 'comer', `Come e bebe (${numero(o.comerCadaH)} h ao leme)`)
   }
   return out.sort((a, b) => Date.parse(a.t) - Date.parse(b.t))
 }
@@ -153,7 +156,7 @@ function precaucoes ({ passagem, tripulacao = 'so', sairAgora = false, desistenc
   ]
   const temNoite = pontos.some(p => p.noite)
   if (temNoite || tripulacao === 'so') out.push({ id: 'arnes', texto: 'Arnês e linha de vida montada', sempre: false, porque: temNoite && tripulacao === 'so' ? 'de noite e sozinho' : temNoite ? 'de noite' : 'sozinho' })
-  if (pontos.some(p => !p.motor && p.twd != null && Math.abs(dif(p.twd, p.proa)) > o.popaTwa)) out.push({ id: 'retenida', texto: 'Retenida na retranca', sempre: false, porque: 'vento de popa (TWA > 120°)' })
+  if (pontos.some(p => !p.motor && p.twd != null && Math.abs(dif(p.twd, p.proa)) > o.popaTwa)) out.push({ id: 'retenida', texto: 'Retenida na retranca', sempre: false, porque: `vento de popa (TWA > ${o.popaTwa}°)` })
   if (pontos.some(p => (p.vis != null && p.vis < o.visibilidadeRadar) || (p.chuva != null && p.chuva >= o.chuvaRadar))) out.push({ id: 'radar', texto: 'Radar ligado e luzes', sempre: false, porque: 'chuva ou pouca visibilidade' })
   // "antes da barra": até ao barco chegar à linha de costa (o primeiro ponto 'Linha de …'), ou a 1.ª hora
   let iBarra = pontos.findIndex(p => typeof p.wp === 'string' && p.wp.startsWith('Linha de'))
@@ -171,7 +174,7 @@ function precaucoes ({ passagem, tripulacao = 'so', sairAgora = false, desistenc
     const a = pontos[i - 60]; const b = pontos[i]
     if (a.twd != null && b.twd != null && a.tws >= o.ventoMinRotacao && b.tws >= o.ventoMinRotacao && Math.abs(dif(b.twd, a.twd)) > o.rotacaoVento) roda = true
   }
-  if (frente || cai || roda) out.push({ id: 'retranca-motor', texto: 'Prender a retranca, motor pronto', sempre: false, porque: frente ? 'passagem da frente' : roda ? 'o vento roda mais de 45°' : 'o vento cai' })
+  if (frente || cai || roda) out.push({ id: 'retranca-motor', texto: 'Prender a retranca, motor pronto', sempre: false, porque: frente ? 'passagem da frente' : roda ? `o vento roda mais de ${o.rotacaoVento}°` : 'o vento cai' })
   if (sairAgora) {
     // "Sair agora mesmo assim": as precauções do nível acima + os pontos de desistência
     if (!out.some(x => x.id === 'arnes')) out.push({ id: 'arnes', texto: 'Arnês e linha de vida montada', sempre: false, porque: 'sair contra a recomendação' })

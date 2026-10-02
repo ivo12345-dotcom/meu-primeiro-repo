@@ -38,6 +38,7 @@
 
 const { PADRAO: SEGURANCA } = require('./seguranca')
 const { sitio } = require('./costa')
+const { HORAS_PREVISAO } = require('./previsao')
 
 const H = 3600000
 const MEIA_HORA = 1800000
@@ -89,7 +90,7 @@ function custo ({ resumo, esperaH = 0, tripulacao, lemeEq = 0, contraVentoH = 0,
 }
 
 // As horas de partida (ms). fim: o fim da previsão (as partidas depois dele não servem).
-function partidas (agora, { sairAgora = false, horas = 48, passoH = 3, fim = Infinity } = {}) {
+function partidas (agora, { sairAgora = false, horas = HORAS_PREVISAO, passoH = 3, fim = Infinity } = {}) {
   const out = [agora]
   if (sairAgora) return out
   for (let k = passoH; k <= horas; k += passoH) {
@@ -175,7 +176,8 @@ const juntar = (motivos, n = 2) => motivos.slice(0, n).join(' e ')
 const MESMO_ASSIM = 'Se saíres mesmo assim, revê as precauções e os pontos de desistência.'
 // no mar (o Recalcular a navegar) o Ivo já saiu (revisão final M2)
 const MESMO_ASSIM_MAR = 'Se continuares mesmo assim, revê as precauções e os pontos de desistência.'
-function decidir ({ candidatos, agora, tripulacao, sairAgora = false, emMar = false, abrigo = null, fuso = 'Europe/Lisbon', excluidasAgora = [] }) {
+// horasPartidas: o horizonte das partidas do cálculo (lib/calculo.js; por omissão o da previsão, 48 h), no texto.
+function decidir ({ candidatos, agora, tripulacao, sairAgora = false, emMar = false, abrigo = null, fuso = 'Europe/Lisbon', excluidasAgora = [], horasPartidas = HORAS_PREVISAO }) {
   // todas por ordem (sem repetidas); a melhor recomendada sai desta mesma lista e é sempre a 1.ª das 3
   const ordem = melhores([...candidatos], { tripulacao, sairAgora, n: Infinity })
   const melhorRec = ordem.find(c => recomendada(c, tripulacao)) || null
@@ -221,7 +223,7 @@ function decidir ({ candidatos, agora, tripulacao, sairAgora = false, emMar = fa
   } else {
     const melhor = top[0]
     const porque = []
-    if (melhor) porque.push(`${sairAgora ? 'A melhor para sair agora' : 'Nenhuma partida nas próximas 48 h passa nos limites; a melhor'} (${nomeRota(melhor)}, ${melhor.partida === agora ? 'agora' : quando(melhor.partida, agora, fuso)}): ${juntar(melhor.motivos)}.`)
+    if (melhor) porque.push(`${sairAgora ? 'A melhor para sair agora' : `Nenhuma partida nas próximas ${horasPartidas} h passa nos limites; a melhor`} (${nomeRota(melhor)}, ${melhor.partida === agora ? 'agora' : quando(melhor.partida, agora, fuso)}): ${juntar(melhor.motivos)}.`)
     else porque.push(porqueAgora())
     if (sairAgora && melhor) porque.push(emMar ? MESMO_ASSIM_MAR : MESMO_ASSIM)
     else if (melhor && melhor.partida !== agora) porque.push(porqueAgora())

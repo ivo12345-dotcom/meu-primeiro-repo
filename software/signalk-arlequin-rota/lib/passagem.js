@@ -35,6 +35,7 @@
 const { VISIBILIDADE_RADAR_M, CHUVA_RADAR_MM_H } = require('./avisos')
 const { HORAS_PREVISAO } = require('./previsao')
 const { sitio } = require('./costa')
+const { RPM_CRUZEIRO } = require('./base')
 
 const GRAU = Math.PI / 180
 const MIN = 60000
@@ -51,7 +52,7 @@ const rumo3 = (x) => String(Math.round(x)).padStart(3, '0')
 const ONDAS_DESCONHECIDAS_M = 3
 
 const PADRAO = Object.freeze({
-  rpmCruzeiro: 2100,
+  rpmCruzeiro: RPM_CRUZEIRO, // lib/base.js (M-20)
   stwMotor: 4.3, // nós, × fator de mar
   stwMotorRio: 4.8, // dentro dos portos e do rio
   fatorLeme: 0.85, // leme à mão, sozinho
