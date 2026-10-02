@@ -23,6 +23,8 @@ export default {
     const twd = ctx.v('environment.wind.directionTrue')
     const tws = ctx.v('environment.wind.speedTrue')
     const plano = navegar.render(ctx)
+    // os avisos da rota ativos (auditoria I-24), num mosaico à parte: o rumo nunca sai do ecrã
+    const avisos = navegar.avisosRota(ctx)
     // com o plano ativo (Tarefa 8.2), só o Recalcular da faixa: sem o "Novo cálculo" nem o texto do OpenCPN
     const comPlano = !!navegar.planoAberto(ctx)
     if (!wp.ativo) {
@@ -33,7 +35,7 @@ export default {
       const explica = navegar.pausado(ctx) && !nome
         ? 'a rota do plano já não está ativa: Continuar volta a ativá-la.'
         : 'À espera do rumo do SignalK (o OpenCPN mostra a rota ativa). Aqui aparece o rumo a seguir ao leme.'
-      return `<div class="col" style="flex:1;">${plano}<div class="tile centro" style="flex:1;"><div class="vv">${titulo}</div>
+      return `<div class="col" style="flex:1;">${plano}${avisos}<div class="tile centro" style="flex:1;"><div class="vv">${titulo}</div>
 ${nome ? `<div class="v" style="margin-top:.4rem;">${esc(nome)}</div>` : ''}
 <div style="font-size:1.3rem;max-width:40rem;margin:.6rem 0;">${explica}</div>
 ${ctx.estado?.msgAtivar ? `<div class="lab" style="max-width:40rem;">${esc(ctx.estado.msgAtivar)}</div>` : ''}
@@ -69,7 +71,7 @@ ${plano}
 ${bordos}
 </div>
 <div class="col estica">
-<div class="tile"><div class="lab">${esc(wp.nome)}</div><div class="vv">${distancia(wp.dist)} MN · ${duracao(wp.ttg)}</div><div class="lab">rumo direto ${rumo(wp.rumoWp)}</div></div>
+${avisos}<div class="tile"><div class="lab">${esc(wp.nome)}</div><div class="vv">${distancia(wp.dist)} MN · ${duracao(wp.ttg)}</div><div class="lab">rumo direto ${rumo(wp.rumoWp)}</div></div>
 <div class="tile"><div class="lab">XTE ${ok(wp.xte) ? `${distancia(Math.abs(wp.xte), 2)} MN ${wp.xte > 0 ? 'EB' : 'BB'}` : '—'}</div>${barraXte(wp.xte)}</div>
 <div class="tile"><div class="lab">VMG ao WP</div><div class="vv">${velocidade(wp.vmg)} nós</div></div>
 <div class="tile"><div class="lab">Vento real</div><div class="vv">${velocidade(tws)} nós de ${rumo(twd)}</div></div>

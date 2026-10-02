@@ -409,7 +409,16 @@ test('Tarefa 8.2: pausado sem rota ativa: o texto por baixo do título diz "a ro
 })
 
 // ---------- auditoria I-24: os avisos da rota ativos ao mesmo tempo, todos à vista no Leme ----------
-test('auditoria I-24: a faixa mostra uma linha por aviso ativo da rota (o campo avisos do GET /plano-ativo), com a cor da gravidade e escapada; o dos recursos só uma vez', async () => {
+test('auditoria I-24: o Leme mostra uma linha por aviso ativo da rota (o campo avisos do GET /plano-ativo), com a cor da gravidade e escapada; o dos recursos só uma vez; no mosaico "Avisos da rota" da coluna da direita (o rumo nunca sai do ecrã)', async () => {
+  // com muitos avisos na faixa, o "Rumo a seguir" saía por baixo do ecrã a 1024×600 (visto no browser)
+  const comAvisos = melhor.render(await leme({ ...PLANO, avisos: [{ caminho: 'notifications.rota.recalcula', state: 'warn', message: 'Recalcula a rota: atraso de 40 min' }] }))
+  const faixa = comAvisos.slice(comAvisos.indexOf('plano-faixa'), comAvisos.indexOf('Rumo a seguir'))
+  assert.doesNotMatch(faixa, /Recalcula a rota: atraso/, 'fora da faixa')
+  assert.ok(comAvisos.indexOf('Rumo a seguir') < comAvisos.indexOf('<div class="tile avisos-rota">'), 'na coluna da direita')
+  assert.match(comAvisos, /<div class="tile avisos-rota"><div class="lab">Avisos da rota<\/div>/)
+  // à espera do rumo (sem rota ativa no SignalK): numa só coluna, por baixo da faixa
+  const semRumo = melhor.render(await leme({ ...PLANO, avisos: [{ caminho: 'notifications.rota.recalcula', state: 'warn', message: 'Recalcula a rota: atraso de 40 min' }] }, { valores: { 'navigation.course.activeRoute': { href: '/resources/routes/r1', name: 'Arlequin → Peniche' } } }))
+  assert.match(semRumo, /avisos-rota[\s\S]*Recalcula a rota: atraso de 40 min/)
   const avisos = [
     { caminho: 'notifications.rota.lembrete.e3', state: 'alert', message: 'Às 15:57: rizar' },
     { caminho: 'notifications.rota.recalcula', state: 'warn', message: 'Recalcula a rota: atraso de 40 min' },

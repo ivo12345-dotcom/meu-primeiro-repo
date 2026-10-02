@@ -37,7 +37,8 @@ const ok = (x) => typeof x === 'number' && Number.isFinite(x)
 // o plano a que a pergunta do Terminar e as mensagens se referem
 const chave = (p) => (p ? `${p.idCalculo ?? ''}|${p.indice ?? ''}|${p.ativadoEm ?? ''}` : null)
 // Os avisos da rota ativos (auditoria I-24: com vários ao mesmo tempo só se via um, no chip da barra): o campo
-// avisos do GET /plano-ativo, os mais graves primeiro; o dos recursos já tem a sua linha na faixa.
+// avisos do GET /plano-ativo, os mais graves primeiro; o dos recursos já tem a sua linha na faixa. Num mosaico
+// próprio, na coluna da direita do Leme: na faixa, a 1024×600, empurravam o "Rumo a seguir" para fora do ecrã.
 const GRAVIDADE = { alert: 1, warn: 2, alarm: 3, emergency: 4 }
 const COR_AVISO = { alert: '', warn: 'atencao', alarm: 'perigo', emergency: 'perigo' }
 const CAMINHO_RECURSOS = 'notifications.rota.recursos'
@@ -127,7 +128,6 @@ function linhasFaixa (ctx, p) {
   const r = p.recursos || {}
   if (r.aviso) linhas.push(`<span class="atencao">recursos: ${esc(String(r.aviso).replace(/^Recursos:\s*/, ''))}</span>`)
   else if (r.semLeitura) linhas.push('<span class="lab">recursos: sem leitura</span>')
-  for (const a of avisosAtivos(p)) linhas.push(`<span${COR_AVISO[a.state] ? ` class="${COR_AVISO[a.state]}"` : ''}>⚠ ${esc(a.message)}</span>`)
   if (p.semGps) linhas.push('<span class="perigo">sem GPS: acompanhamento parado</span>')
   if (p.barometro?.semLeitura) linhas.push('<span class="lab">barómetro: sem leitura</span>')
   return [...linhas, ...linhasTerra(p, t)]
@@ -172,6 +172,14 @@ function chegadaOutro (p) {
   if (!p.chegadaOutro?.id || !nome) return ''
   return `<div class="tile atencao plano-chegada"><div class="v">Chegaste a ${esc(nome)}? Enviar 'cheguei bem a ${esc(nome)}'</div>
 <div class="acoes"><button class="acao go" data-acao="rota-chegada">Enviar</button></div></div>`
+}
+
+// O mosaico "Avisos da rota" (auditoria I-24): uma linha por aviso ativo, com a cor da gravidade; '' sem nenhum.
+export function avisosRota (ctx) {
+  const p = planoAberto(ctx)
+  const lista = p && p.estado !== 'pausado' ? avisosAtivos(p) : []
+  if (!lista.length) return ''
+  return `<div class="tile avisos-rota"><div class="lab">Avisos da rota</div>${lista.map(a => `<div><span${COR_AVISO[a.state] ? ` class="${COR_AVISO[a.state]}"` : ''}>⚠ ${esc(a.message)}</span></div>`).join('')}</div>`
 }
 
 // O que o Leme mostra do plano: '' sem plano aberto.
