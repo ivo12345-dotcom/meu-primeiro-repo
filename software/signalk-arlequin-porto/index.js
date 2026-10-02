@@ -55,14 +55,21 @@ const CAMINHOS = {
 const UMA_HORA = 3600000
 const ATIVO = new Set(['warn', 'alert', 'alarm', 'emergency'])
 
-// Escrita atómica: escreve um .tmp ao lado, fsync, e rename por cima (um corte a meio deixa o antigo).
+// Escrita atómica: escreve um .tmp ao lado, fsync, e rename por cima (um corte a meio deixa o antigo;
+// uma escrita que falha não deixa o .tmp).
 function escreverAtomico (ficheiro, texto) {
   const tmp = `${ficheiro}.${process.pid}.tmp`
-  const fd = fs.openSync(tmp, 'w')
-  try { fs.writeSync(fd, texto); fs.fsyncSync(fd) } finally { fs.closeSync(fd) }
-  try { fs.renameSync(tmp, ficheiro) } catch (e) { try { fs.unlinkSync(tmp) } catch { /* já não existe */ } throw e }
+  try {
+    const fd = fs.openSync(tmp, 'w')
+    try { fs.writeSync(fd, texto); fs.fsyncSync(fd) } finally { fs.closeSync(fd) }
+    fs.renameSync(tmp, ficheiro)
+  } catch (e) {
+    try { fs.unlinkSync(tmp) } catch { /* já não existe */ }
+    throw e
+  }
 }
 const FORA_DA_LISTA = 'já não está nos "Contactos do plano" do plugin porto'
+const AVISO_PORTO_ILEGIVEL = '⚠️ Perdi o estado do porto (porto.json ilegível): o alarme de intrusão ficou desarmado e sem ponto de amarração. Arma outra vez com /armar.'
 const MAX_CODIGOS = 500 // os desconhecidos de que se guarda a hora do código (os mais antigos saem)
 const textoCodigo = (chatId) => `Para receberes os planos do ARLEQUIN, dá este código ao Ivo: ${chatId}`
 
@@ -135,7 +142,23 @@ module.exports = function (app, deps = {}) {
 
   const val = (p) => app.getSelfPath?.(p)?.value
   const bool = (p) => { const x = val(p); return x === undefined || x === null ? undefined : !!x }
-  const guardar = () => { try { fs.writeFileSync(ficheiro, JSON.stringify(persist)) } catch (e) { app.error(e.message) } }
+  // o porto.json (armado, ponto, alarmes ativos) com escrita atómica: um corte a meio não o estraga
+  // (auditoria M-52; antes um porto.json estragado desarmava a intrusão em silêncio)
+  const guardar = () => { try { escreverAtomico(ficheiro, JSON.stringify(persist)) } catch (e) { app.error(`não gravei o porto.json: ${e.message}`) } }
+  const PORTO_VAZIO = () => ({ armado: false, ponto: null, ativos: {} })
+  const pontoValido = (p) => p && typeof p === 'object' && Number.isFinite(p.latitude) && Number.isFinite(p.longitude)
+  // → { persist, erro } (erro: o ficheiro existe mas não se lê; sem ficheiro, começa vazio em silêncio)
+  function lerPorto () {
+    let x
+    try { x = JSON.parse(fs.readFileSync(ficheiro, 'utf8')) } catch (e) {
+      return { persist: PORTO_VAZIO(), erro: e.code === 'ENOENT' ? null : e.message }
+    }
+    if (!x || typeof x !== 'object' || Array.isArray(x)) return { persist: PORTO_VAZIO(), erro: 'não é o estado do porto' }
+    return {
+      persist: { armado: x.armado === true, ponto: pontoValido(x.ponto) ? { ...x.ponto } : null, ativos: x.ativos && typeof x.ativos === 'object' && !Array.isArray(x.ativos) ? x.ativos : {} },
+      erro: null
+    }
+  }
 
   // os chats autorizados: sem espaços, sem vazios, sem repetir (o mesmo para enviar e para autorizar)
   const chatsAutorizados = () => [...new Set((Array.isArray(o.chatIds) ? o.chatIds : []).map(id => String(id ?? '').trim()).filter(Boolean))]
@@ -490,7 +513,9 @@ module.exports = function (app, deps = {}) {
     const dir = app.getDataDirPath()
     fs.mkdirSync(dir, { recursive: true })
     ficheiro = path.join(dir, 'porto.json')
-    try { persist = { armado: false, ponto: null, ativos: {}, ...JSON.parse(fs.readFileSync(ficheiro, 'utf8')) } } catch { persist = { armado: false, ponto: null, ativos: {} } }
+    const lido = lerPorto()
+    persist = lido.persist
+    if (lido.erro) app.error(`porto.json ilegível (começa desarmado e sem ponto de amarração): ${lido.erro}`)
     estado = novoEstado()
     estado.amarracao.ponto = persist.ponto
     estado.ativos = ativosNoArranque()
@@ -505,6 +530,12 @@ module.exports = function (app, deps = {}) {
     offset = 0
     aCorrer = true
     tg = o.telegramToken ? criarTelegram({ token: o.telegramToken, base: o.telegramBase, ...(deps.limiteTelegramMs ? { limiteMs: deps.limiteTelegramMs } : {}) }) : null
+    // o Ivo sabe que o alarme ficou desarmado (pela fila: depois de um corte de energia o router do 4G
+    // arranca depois do Pi)
+    if (lido.erro && tg && chatsAutorizados().length) {
+      enc = { ...enc, porEnviar: porNaFila(enc.porEnviar, [AVISO_PORTO_ILEGIVEL], agora()).fila }
+      gravarEncaminhador()
+    }
     temporizadores = [setInterval(tick, tickMs), setInterval(encaminharAlarmes, encaminharMs)]
     if (o.batimentoUrl) {
       const bater = () => fetch(o.batimentoUrl).catch(e => app.error(`batimento: ${e.message}`))
