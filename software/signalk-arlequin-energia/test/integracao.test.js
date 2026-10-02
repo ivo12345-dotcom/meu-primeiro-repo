@@ -88,6 +88,7 @@ test('descarga sem motor: 55% no ecrã e depois alarme crítico com som', () => 
   assert.ok(seq.indexOf('ligarMotor:warn') < seq.indexOf('servicoCritico:alarm'), seq.join(' '))
   const critico = app.notificacoes.find(n => n.id === 'servicoCritico')
   assert.deepEqual(critico.method, ['visual', 'sound'])
+  assert.equal(critico.apito, 'curto') // contrato C1: o apito vai no valor publicado
 })
 
 test('bateria do motor fraca (motor parado há horas): alarme na 1.ª leitura baixa, limpa a 12,6 V', () => {

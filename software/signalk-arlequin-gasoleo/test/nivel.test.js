@@ -109,6 +109,14 @@ test('fuga: 6 L em 10 h com o motor parado → alarme', () => {
   assert.match(f[0].message, /fuga/i)
 })
 
+// Auditoria I-07 (decisão n.º 2, contrato C1): a fuga de gasóleo é perigo imediato → apito contínuo.
+test('C1: a fuga de gasóleo leva apito contínuo; a reserva (aviso) não leva o campo', () => {
+  const r = correr(10 * H, (t) => amostra(150 - 6 * t / (10 * H)))
+  assert.equal(r.notif.find(n => n.id === 'fuga' && n.state === 'alarm').apito, 'continuo')
+  const reserva = correr(4 * MIN, () => amostra(39)).notif.find(n => n.id === 'reserva')
+  assert.equal(reserva.apito, undefined)
+})
+
 test('sem fuga: dilatação de ~1,7 L e ruído não disparam', () => {
   const r = correr(12 * H, (t) => amostra(150 - 1.7 * Math.sin(Math.PI * t / (12 * H)), { ruido: Math.sin(t / 5000) * 0.02 }))
   assert.deepEqual(r.notif.filter(n => n.id === 'fuga'), [])

@@ -111,6 +111,17 @@ test('abaixo de 50%: servicoCritico alarm com som mesmo de noite parado', () => 
   assert.deepEqual(critico.method, ['visual', 'sound'])
 })
 
+// Auditoria I-07 (decisão n.º 2, contrato C1): o apito contínuo é só para o perigo imediato; a bateria
+// de serviço crítica e a do motor fraca são alarmes com apito curto. Os avisos não precisam do campo.
+test('C1: servicoCritico e motorFraca levam apito curto; os avisos não levam o campo', () => {
+  const { todas } = correr([
+    [T0, { soc: 0.49, vMotor: 12.0 }],
+    [T0 + 5 * MIN, { soc: 0.49, vMotor: 12.0 }]
+  ])
+  const apito = Object.fromEntries(todas.map(n => [n.id, n.apito]))
+  assert.deepEqual(apito, { ligarMotor: undefined, servicoCritico: 'curto', motorFraca: 'curto' })
+})
+
 test('servicoCritico limpa só acima de 52%', () => {
   const { todas } = correr([
     [T0, { soc: 0.49 }],
