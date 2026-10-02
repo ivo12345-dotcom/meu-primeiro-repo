@@ -63,3 +63,19 @@ ESP32 (SensESP) ou do GPIO do Pi.
 Testes das regras e das mensagens; teste de ponta a ponta com o Telegram
 falso (comandos, alarme, foto, utilizador não autorizado); no SignalK local,
 eventos do simulador (`POST /plugins/arlequin-simulador/evento`).
+
+## Notas (02/10): o que o código e os desenhos seguintes acrescentaram
+
+- **Quem escreve sem estar autorizado** recebe "Para receberes os planos do ARLEQUIN, dá este
+  código ao Ivo: NNNN", no máximo uma vez por hora (desenho 3b-1), e não fica autorizado.
+- **Contactos do plano** (`contactosPlano`, nome e código): recebem os planos de navegação e as
+  mensagens para terra da 3b-2, mas não comandam; as mensagens deles são ignoradas.
+- **Que notificações seguem para o Telegram** (`lib/mensagens.js`): as que passam a `warn`,
+  `alert`, `alarm` ou `emergency` (também o `alert`). Algumas só seguem em alarme (`SO_ALARME`: o
+  disco da caixa negra e a previsão velha da rota) e outras nunca seguem (`NUNCA`: o lembrete das
+  velas, o relógio do Pi, os lembretes da rota, o "come e bebe" e a hora de alarme em terra). Com o
+  barco amarrado (ponto de amarração gravado), os alarmes AIS não seguem. Tudo isto só para os
+  chats autorizados, nunca para os contactos do plano.
+- **O que já foi mandado** fica em `encaminhador.json` (escrita atómica): um reinício do plugin
+  não repete os avisos nem o "✓ Resolvido"; depois de um reinício do servidor, um aviso ainda ativo
+  volta a seguir uma vez (revisão final da 3b-2, C2: mais vale repetido do que perdido).
