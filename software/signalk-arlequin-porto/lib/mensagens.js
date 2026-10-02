@@ -16,8 +16,9 @@
 const ICONE = { warn: '⚠️', alert: '⚠️', alarm: '🚨', emergency: '🔥' }
 const ATIVO = new Set(['warn', 'alert', 'alarm', 'emergency'])
 
+// porEnviar: a fila das mensagens que o Telegram ainda não aceitou (lib/fila.js, auditoria K-09)
 function novoEncaminhador () {
-  return { estados: {}, mensagem: {}, ultimoAlarme: {}, pendente: {} }
+  return { estados: {}, mensagem: {}, ultimoAlarme: {}, pendente: {}, porEnviar: [] }
 }
 
 // notificacoes: [{ caminho, state, message }]
@@ -32,7 +33,7 @@ const casa = (caminho, p) => (p.endsWith('.') ? caminho.startsWith(p) : caminho 
 const casaAlgum = (caminho, lista) => lista.some(p => casa(caminho, p))
 
 function encaminhar (enc0, notificacoes, agora, { intervalo = 10 * 60 * 1000, amarrado = false, ignorarAmarrado = ['notifications.arlequin.ais.'], nunca = NUNCA, soAlarme = SO_ALARME } = {}) {
-  const enc = { estados: { ...enc0.estados }, mensagem: { ...enc0.mensagem }, ultimoAlarme: { ...enc0.ultimoAlarme }, pendente: { ...enc0.pendente } }
+  const enc = { estados: { ...enc0.estados }, mensagem: { ...enc0.mensagem }, ultimoAlarme: { ...enc0.ultimoAlarme }, pendente: { ...enc0.pendente }, porEnviar: [...(enc0.porEnviar || [])] }
   const mensagens = []
   for (const n of notificacoes) {
     if (casaAlgum(n.caminho, nunca)) continue // lembretes só para o ecrã

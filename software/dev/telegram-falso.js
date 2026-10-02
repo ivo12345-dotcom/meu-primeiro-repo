@@ -6,20 +6,29 @@
 //   POST /_escrever { chatId, text }      → mensagem do "telemóvel"
 //   POST /_bloquear { chatId }            → esse chat passa a recusar (como quem bloqueou o bot)
 //   POST /_pendurar { chatId }            → os envios para esse chat nunca têm resposta (rede pendurada)
+//   POST /_cortar · POST /_religar        → os envios (send*) perdem a ligação / voltam a passar
+//                                           (a rede do barco em baixo; o getUpdates continua)
 //   GET  /_enviados                       → o que o barco enviou (sendDocument: nomeFicheiro e conteudo)
+// Nos testes: cortados (os envios que perderam a ligação), esperasAbertas() / maxEsperas() /
+// reporMaxEsperas() (quantos getUpdates estão à espera ao mesmo tempo: o Telegram verdadeiro dá 409
+// Conflict com dois).
 
 const http = require('node:http')
 
 function criarTelegramFalso ({ porta = 0 } = {}) {
   const enviados = []
+  const cortados = [] // { metodo, chatId } dos envios que perderam a ligação (cortar)
   const fila = []
   let proximoId = 1
   const espera = [] // pedidos getUpdates em long polling
+  let maxEspera = 0
   const bloqueados = new Set()
   const pendurados = new Set()
   const pendentes = [] // as respostas que nunca chegam (só se fecham no fim)
+  let cortado = false
 
-  const responder = (res, codigo, obj) => { res.writeHead(codigo, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)) }
+  const responder = (res, codigo, obj) => { if (res.destroyed || res.writableEnded) return; res.writeHead(codigo, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)) }
+  const tirarDaEspera = (pedido) => { const i = espera.indexOf(pedido); if (i >= 0) espera.splice(i, 1); return i >= 0 }
   const entregar = () => {
     while (espera.length && fila.length) {
       const { res, offset } = espera.shift()
@@ -65,9 +74,18 @@ function criarTelegramFalso ({ porta = 0 } = {}) {
       if (url === '/_escrever') { const j = JSON.parse(corpo.toString() || '{}'); escrever(j.chatId, j.text); return responder(res, 200, { ok: true }) }
       if (url === '/_bloquear') { const j = JSON.parse(corpo.toString() || '{}'); bloqueados.add(String(j.chatId)); return responder(res, 200, { ok: true }) }
       if (url === '/_pendurar') { const j = JSON.parse(corpo.toString() || '{}'); pendurados.add(String(j.chatId)); return responder(res, 200, { ok: true }) }
+      if (url === '/_cortar') { cortado = true; return responder(res, 200, { ok: true }) }
+      if (url === '/_religar') { cortado = false; return responder(res, 200, { ok: true }) }
       const m = /^\/bot([^/]+)\/(\w+)$/.exec(url)
       if (!m) return responder(res, 404, { ok: false, description: 'Not Found' })
       const metodo = m[2]
+      // a rede cortada: o envio perde a ligação, sem resposta nenhuma (fetch failed do lado do barco)
+      if (cortado && metodo.startsWith('send')) {
+        let chatId = null
+        try { chatId = metodo === 'sendPhoto' || metodo === 'sendDocument' ? lerMultipart(corpo, req.headers['content-type']).chat_id?.dados.toString('utf8') ?? null : String(JSON.parse(corpo.toString() || '{}').chat_id) } catch { /* corpo ilegível */ }
+        cortados.push({ metodo, chatId })
+        return req.socket.destroy()
+      }
       // um chat bloqueado recusa, como o Telegram quando a pessoa bloqueou o bot
       // um chat pendurado nunca responde (como uma ligação que fica a meio)
       const recusar = (chat) => {
@@ -99,7 +117,10 @@ function criarTelegramFalso ({ porta = 0 } = {}) {
         if (r.length || !j.timeout) return responder(res, 200, { ok: true, result: r })
         const pedido = { res, offset: j.offset || 0 }
         espera.push(pedido)
-        setTimeout(() => { const i = espera.indexOf(pedido); if (i >= 0) { espera.splice(i, 1); responder(res, 200, { ok: true, result: [] }) } }, Math.min(j.timeout, 30) * 1000)
+        maxEspera = Math.max(maxEspera, espera.length)
+        // quem desiste (o barco cortou o pedido) sai da espera
+        res.on('close', () => tirarDaEspera(pedido))
+        setTimeout(() => { if (tirarDaEspera(pedido)) responder(res, 200, { ok: true, result: [] }) }, Math.min(j.timeout, 30) * 1000)
         return
       }
       if (['sendMessage', 'sendLocation'].includes(metodo)) {
@@ -116,9 +137,15 @@ function criarTelegramFalso ({ porta = 0 } = {}) {
       resolve({
         url,
         enviados,
+        cortados,
         escrever,
         bloquear: (chatId) => bloqueados.add(String(chatId)),
         pendurar: (chatId) => pendurados.add(String(chatId)),
+        cortar: () => { cortado = true },
+        religar: () => { cortado = false },
+        esperasAbertas: () => espera.length,
+        maxEsperas: () => maxEspera,
+        reporMaxEsperas: () => { maxEspera = espera.length },
         fechar: () => new Promise(r => {
           espera.splice(0).forEach(({ res }) => responder(res, 200, { ok: true, result: [] }))
           pendentes.splice(0).forEach(res => res.destroy())
