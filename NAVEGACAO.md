@@ -834,7 +834,9 @@ Com tudo num ecrã só, esse ecrã passa a ser um ponto único de falha.
 - O **plotter atual mantém-se** ligado à rede, como segundo ecrã.
 - **VHF, AIS e Navtex funcionam sozinhos** se o Pi falhar.
 - A **Navionics no telemóvel** tem GPS próprio e cartas offline.
-- O **ST4000+** governa por bússola sem o Pi; só perde o modo track.
+- O **ST4000+** ainda **não governa** (falta a unidade de roda: ver `PILOTO-AUTOMATICO.md`).
+  Hoje a única reserva de governo é a cana de emergência (`LEME-EMERGENCIA.md`, Camada A). Do
+  ST4000+ só se lê a proa (bússola fluxgate), e essa funciona sem o Pi.
 
 ## 7. Suporte e pala (impressão 3D)
 
