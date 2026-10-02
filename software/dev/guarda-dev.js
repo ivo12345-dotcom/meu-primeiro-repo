@@ -23,6 +23,8 @@ function verificarDev ({ rota, porto }, { viagem = true } = {}) {
   else {
     if (cr.modoTeste !== true) motivos.push('o plugin da rota não tem o modoTeste ligado (só no dev)')
     if (viagem && cr.horaSimulada !== true) motivos.push('o plugin da rota não tem a horaSimulada ligada (com o modoTeste)')
+    // com o ciclo de 60 s e --fator 60 as amostras ficavam a 60 min umas das outras (auditoria M-72)
+    if (viagem && cr.cicloSegundos !== 1) motivos.push('o plugin da rota não tem o cicloSegundos 1 (a viagem acelerada mede de segundo em segundo)')
   }
   const cp = porto?.configuration
   if (!porto) motivos.push('não consegui ler a configuração do plugin porto')
