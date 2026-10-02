@@ -192,9 +192,11 @@ module.exports = function (app) {
         linhas = fs.readFileSync(ficheiroSessoes, 'utf8').trim().split('\n').filter(Boolean)
       } catch { /* ainda não há sessões */ }
       const n = Math.min(Number(req.query?.n) || 10, 100)
+      // uma linha cortada (corte de energia a meio de uma escrita) salta-se: não parte a página Motor (M-66)
+      const sessoes = linhas.flatMap(l => { try { return [JSON.parse(l)] } catch { return [] } })
       res.json({
         runTimeS: sessao ? Math.round(sessao.runTimeS) : 0,
-        sessoes: linhas.slice(-n).reverse().map(l => JSON.parse(l))
+        sessoes: sessoes.slice(-n).reverse()
       })
     })
   }
