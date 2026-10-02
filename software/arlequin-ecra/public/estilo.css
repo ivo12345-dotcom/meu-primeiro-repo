@@ -66,6 +66,8 @@ html, body { margin: 0; height: 100%; background: var(--fundo); color: var(--tex
 .chip.aviso { background: var(--aviso-fundo); color: #fff; font-weight: bold; cursor: pointer; }
 /* Uma falha do ecrã (ex.: o modo noite do OpenCPN não mudou): âmbar, sem empurrar o alarme (encolhe antes dele). */
 .chip.falha { background: var(--aviso-fundo); color: #fff; flex-shrink: 3; }
+/* Porque é que o alarme não se calou (revisão F3, Important 4): ao lado do botão, encolhe como o alarme. */
+.chip.falha.calar { flex-shrink: 1; }
 /* Calar o alarme (auditoria I-08 e I-26): um botão próprio ao lado do chip, para o dedo, 44 × 44 px no mínimo. */
 .silenciar { flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 0 .8rem; font-weight: bold; background: var(--perigo-fundo); color: #fff; }
 body.noite .silenciar { color: var(--faixa-texto); outline: 2px solid var(--perigo); outline-offset: -2px; }

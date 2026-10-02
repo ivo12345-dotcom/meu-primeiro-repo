@@ -364,10 +364,12 @@ test('decisão 5 (Ivo): em pausa, parado noutro porto (chegadaOutro) → "Chegas
 })
 
 test('9: a mensagem do alarme na barra de cima passa pelo esc (texto do plugin: eventos, nomes dos destinos do Ivo)', () => {
-  const html = chipAlarme({ caminho: 'notifications.rota.lembrete.e3', id: 'n1', state: 'alert', method: ['visual', 'sound'], message: 'Às 22:50: chegada de noite a <b>A&B</b> "x"' })
+  // (revisão F3, Important 4: o id é o do servidor, um UUID; um id que não o é cala-se pelo caminho)
+  const html = chipAlarme({ caminho: 'notifications.rota.lembrete.e3', id: '11111111-1111-4111-8111-1111111111e3', state: 'alert', method: ['visual', 'sound'], message: 'Às 22:50: chegada de noite a <b>A&B</b> "x"' })
   assert.match(html, /chegada de noite a &lt;b&gt;A&amp;B&lt;\/b&gt; &quot;x&quot;/)
   assert.match(html, /data-caminho="notifications\.rota\.lembrete\.e3"/)
-  assert.match(html, /data-acao="silenciar" data-id="n1"/)
+  assert.match(html, /data-acao="silenciar" data-id="11111111-1111-4111-8111-1111111111e3"/)
+  assert.match(chipAlarme({ caminho: 'notifications.rota.lembrete.e3', id: 'n1', state: 'alert', method: ['visual', 'sound'], message: 'x' }), /data-acao="silenciar" data-caminho="notifications\.rota\.lembrete\.e3">/)
   assert.doesNotMatch(chipAlarme({ caminho: 'x', state: 'warn', message: 'm', method: ['visual'] }), /silenciar/)
   assert.equal(chipAlarme(null), '')
 })
