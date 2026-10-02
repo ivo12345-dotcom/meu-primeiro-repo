@@ -1168,3 +1168,26 @@ test('auditoria I-05 (sonda S3, decisão n.º 16): o Pai bloqueou o bot — o "c
   assert.deepEqual(s.p.planoAtivo().contactos.fila, [])
   s.p.stop()
 })
+
+// ---------- auditoria M-32 (B-M15): o plano da alternativa ativa mandado outra vez ----------
+test('auditoria M-32 (B-M15): o plano da alternativa ativa mandado outra vez pelo Telegram depois de um atraso entregue — quem o recebe volta à hora de alarme do plano (o GET e o aviso usam-na) e o atraso volta a decidir-se contra ela: sai logo, sem esperar 1 h', async () => {
+  const s = await preparar()
+  await sair(s)
+  const anda = devagar(s, 0.4)
+  for (let m = 0; m < 150 && !atrasosDe(s).length; m++) await anda()
+  assert.equal(atrasosDe(s).length, 1)
+  let g = await chamar(s.r.get['/plano-ativo'])
+  assert.notEqual(g.envio.alarme, g.envio.alarmePlano)
+  // o Ivo manda outra vez o plano desta alternativa (o 422 de um cálculo antigo só deixa fazê-lo na 1.ª hora
+  // depois da partida: no teste, a partida guardada da alternativa passa a ser de há 30 min)
+  const guardado = (await chamar(s.r.get['/resultado/:id'], { params: { id: s.id } })).resultado
+  guardado.alternativas[0].partida = new Date(s.agora() - 30 * MIN).toISOString()
+  assert.equal((await chamar(s.r.post['/plano-telegram'], { body: { id: s.id, alternativa: 0 } })).code, 202)
+  g = await chamar(s.r.get['/plano-ativo'])
+  assert.equal(g.envio.alarme, g.envio.alarmePlano, 'a Mãe tem outra vez a hora de alarme do plano')
+  assert.equal(plano(s).atrasoEnviado ?? null, null)
+  for (let m = 0; m < 10 && atrasosDe(s).length < 2; m++) await anda()
+  assert.equal(atrasosDe(s).length, 2, 'o atraso volta a sair logo')
+  assert.ok(atrasosDe(s)[1].texto.includes(`(em vez de ${horaLisboa(Date.parse(g.envio.alarmePlano), s.agora())})`), atrasosDe(s)[1].texto)
+  s.p.stop()
+})

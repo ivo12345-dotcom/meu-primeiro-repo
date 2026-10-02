@@ -67,10 +67,12 @@ test('o envio do plano fica no plano ativo: enviado antes de Ativar (a quem, os 
   await chamar(r.post['/ativar'], { body: { id, alternativa: 1 } })
   assert.deepEqual(lerPlano(app).envio.contactos, ['Mãe'])
   assert.equal(lerPlano(app).envio.substitui, true)
-  // enviado pelo Ivo depois de Ativar: fica no plano ativo quando o porto responde
+  // enviado pelo Ivo depois de Ativar: fica no plano ativo quando o porto responde; a Mãe (que tem a hora de
+  // alarme do plano anterior e o "substitui" a caminho) continua no envio — auditoria M-32: ninguém com uma
+  // hora de alarme fica sem as mensagens seguintes
   const z = await chamar(r.post['/plano-telegram'], { body: { id, alternativa: 1 } })
   app.emit('arlequin:plano-enviado', { pedido: z.pedido, entregues: ['chat 111', 'Tio'], contactos: ['Tio'], falhas: [] })
-  assert.deepEqual(lerPlano(app).envio.contactos, ['Tio'])
+  assert.deepEqual(lerPlano(app).envio.contactos, ['Mãe', 'Tio'])
   assert.equal(lerPlano(app).envio.alarme, new Date(planoTexto.horaAlarme(resultado.alternativas[1])).toISOString())
   p.stop()
 })

@@ -330,9 +330,32 @@ module.exports = function (app, deps = {}) {
     if (pa.aberto(planoAtivo) && p.contactos.length && p.id === planoAtivo.idCalculo && p.indice === planoAtivo.indice) {
       const alt = trabalhos.get(p.id)?.resultado?.alternativas?.[p.indice]
       const envio = alt && envioDe(p.id, p.indice, alt)
-      // quem o recebeu passa a ter a hora de alarme do plano (auditoria I-01)
-      if (envio) { planoAtivo = { ...planoAtivo, envio, terra: ct.terraEntregue(terraDe(planoAtivo), { contactos: p.contactos, chats: p.chats }, { alarme: Date.parse(envio.alarme) }) }; gravarPlanoAtivo() }
+      // quem o recebeu passa a ter a hora de alarme do plano (auditoria I-01) e o atraso volta a decidir-se
+      // contra ela (auditoria M-32: antes ficava o atraso entregue antes, e terra tinha uma hora e o barco
+      // outra); os que já tinham o plano e não o receberam outra vez continuam no envio (ninguém com uma hora
+      // de alarme fica sem o "cheguei bem")
+      if (envio) {
+        planoAtivo = { ...planoAtivo, envio: { ...envio, ...unirContactos(planoAtivo.envio, envio) }, atrasoEnviado: null, estouBem: null, terra: ct.terraEntregue(terraDe(planoAtivo), { contactos: p.contactos, chats: p.chats }, { alarme: Date.parse(envio.alarme) }) }
+        ultimoEnvioDoPlano()
+        gravarPlanoAtivo()
+      }
     }
+  }
+  // Os contactos de dois envios juntos ({ contactos, chats }, pela mesma ordem), sem repetir (pelo chatId; sem
+  // ele, pelo nome): quem já tinha um plano não sai do envio por o plano ir a mais alguém.
+  function unirContactos (a, b) {
+    const contactos = [...(a?.contactos || [])].map(String)
+    const chats = [...(a?.chats || [])].map(String)
+    const porChat = chats.length === contactos.length
+    for (const [i, nome0] of (b?.contactos || []).entries()) {
+      const nome = String(nome0)
+      const chat = b?.chats?.[i] != null ? String(b.chats[i]) : null
+      const ja = porChat && chat != null ? chats.includes(chat) : contactos.includes(nome)
+      if (ja) continue
+      contactos.push(nome)
+      if (chat != null) chats.push(chat)
+    }
+    return { contactos, chats }
   }
   // Os mais antigos saem primeiro, mas nunca um "a enviar" (o ecrã ainda o está a seguir).
   function guardarPlano (pedido, p) {
@@ -521,7 +544,8 @@ module.exports = function (app, deps = {}) {
     // receber o parcial, revisão final I3)
     if (entregue && msg.tipo === 'plano' && planoAtivo.envio && !msg.parcial) {
       const { alarmePendente, ...envio } = planoAtivo.envio
-      const quem = juntarContactos(enviada, planoAtivo.contactos.fila.find(x => x.parcial && x.ref === msg.ref))
+      // (os que já estavam no envio ficam: auditoria M-32)
+      const quem = unirContactos(envio, juntarContactos(enviada, planoAtivo.contactos.fila.find(x => x.parcial && x.ref === msg.ref)))
       // a hora de alarme do plano novo passa a contar agora que chegou (re-revisão M-3)
       planoAtivo = { ...planoAtivo, envio: { ...envio, ...(alarmePendente !== undefined ? { alarme: alarmePendente } : {}), ...quem, pedido: m.pedido, enviadoEm: enviada.enviadaEm } }
     }
