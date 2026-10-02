@@ -75,9 +75,9 @@ Fontes: [Yacht Devices](https://www.yachtd.com/news/navonics_app_sonarchart_live
 ("Portas da MacArthur"), a decisão do §2c e o esquema final `esquema-arlequin.pdf` (§7d): o AIS
 (B330, com GPS) entra pela NMEA 2000; as duas entradas 0183 são o vento e o log, e a sonda vai por
 um adaptador USB–0183 (ou pelo ESP32); a 0183 OUT 1 dá posição e proa ao radar JRC 1000, que fica
-autónomo no ecrã dele, e a posição ao VHF; a OUT 2 fica livre, porque não se liga nada à entrada NMEA do
-ST4000+ (não governa); a SeaTalk1 IN lê a proa do ST4000+ e do ST50. O piloto está por decidir. O
-comprimento do cabo do ecrã está por medir (§8, ponto 7).
+autónomo no ecrã dele, e a posição ao VHF; a OUT 2 fica livre, porque não se liga nada à entrada
+NMEA do ST4000+ (não governa); a SeaTalk1 IN lê a proa do ST4000+ e do ST50. O piloto está por
+decidir. O comprimento do cabo do ecrã está por medir (§8, ponto 7).
 
 ```
  NO POÇO (roda de leme)                 DENTRO (seco, perto do quadro)
@@ -378,7 +378,8 @@ Fontes: [em-trak B330, manual](https://alphatronmarine.com/files/secured/docuwar
 **Decisão de 28/09 (Ivo):** o ST4000+ **não governa** (falta a unidade de roda) e o
 EV-100 **não vem para já**. Do piloto **só se lê a proa** (a bússola) pelo
 SeaTalk1. Não se liga nada à entrada NMEA dele. O que está abaixo sobre a rota
-fica para quando houver unidade de roda.
+fica para quando houver unidade de roda. (A 02/10 o Ivo deixou o plano do piloto por decidir: as
+opções estão no `PILOTO-AUTOMATICO.md`.)
 
 | Aparelho | O que diz a documentação | Consequência |
 |---|---|---|
@@ -694,7 +695,8 @@ nem a data. Se avançar, **substitui o SailProof** como ecrã da roda.
   Raymarine. O OpenCPN no Pi fica como reserva e o Wi-Fi continua a servir o
   telemóvel.
 - **O Axiom só mostra radares Raymarine** (Quantum, Cyclone, Magnum e alguns
-  digitais antigos). O radar atual tem de ser identificado primeiro.
+  digitais antigos). O radar atual tem de ser identificado primeiro. (Foi: é um JRC Radar 1000,
+  que o Axiom não mostra; fica no ecrã dele, §2b.)
 - A acrescentar nessa altura: rede NMEA 2000 (cabo de backbone, T,
   terminadores, cabo DeviceNet micro) e o cartão de cartas Navionics.
 - **Nada do que se compra agora se perde.** A porta NMEA 2000 da MacArthur é o
@@ -711,8 +713,8 @@ e as ligações são os mesmos nas duas fases; só se troca o ecrã. Na fase 1:
 - **Não é estanque nem se lê ao sol.** Testar à sombra, na cabine ou debaixo
   da capota, e protegê-lo dos salpicos (saco estanque ou caixa impressa).
 - Serve para validar tudo o resto: leitura de cada aparelho, proa do ST4000+,
-  AIS, vento, a rota para o piloto (quando houver piloto), o Wi-Fi para a Navionics e o consumo
-  real.
+  AIS, vento, a rota para o piloto (quando houver piloto), o Wi-Fi para a
+  Navionics e o consumo real.
 - Passa-se à **fase 2 (SailProof STS10, €499,17)** só quando o sistema estiver
   estável. O ecrã de 7" fica depois como segundo ecrã na mesa de cartas.
 - O **suporte e a pala impressos** desenham-se para o ecrã definitivo. Para a
@@ -1373,12 +1375,13 @@ em "A navegar", mais abaixo.
     (enfiamento Santa Marta–Guia, 104,7°) ao largo da Parede (o antigo ponto "Largo de
     Carcavelos", dentro dos 10 m do Cachopo do Norte, já saiu do `destinos.json` a 30/09);
   - as aproximações e entradas de todos os portos;
-  - quais destinos são abrigo (no `destinos.json`, todos menos a Figueira da Foz e Olhão, por
-    confirmar). **Portos conhecidos** (decisão do Ivo de 02/10): só **Peniche, Cascais e Algés**; uma
-    chegada de noite a qualquer outro dá "Não recomendado sozinho";
+  - quais destinos são abrigo (no `destinos.json`, todos menos a Figueira da Foz e Olhão);
   - o **Canal da Berlenga** (`dados/canais.json`): eixo desenhado à mão entre o Cabo Carvoeiro e
     a Berlenga a partir do OSM, com os fundos, as correntes e as Estelas/Farilhões por
     confirmar.
+- **Portos conhecidos** (confirmado pelo Ivo a 02/10): só **Peniche, Cascais e Algés**
+  (`conhecido: true` no `destinos.json`). Com "só eu", uma chegada de noite a qualquer outro dá
+  "Não recomendado sozinho".
 - **Como marcar como confirmado:** editar `dados/destinos.json`, `dados/zonas.json` e
   `dados/canais.json`, pondo `"confirmado": true` no que já foi visto na carta.
 - **Regra da calma para as horas ao leme:** vento < 10 nós **e** (ondas < 2 m, **ou** ondulação
@@ -1450,8 +1453,8 @@ estado, de dia e de noite, em `docs/capturas-3b1/`.
   **avisos vermelhos** (sempre visíveis), a linha do tempo, as **precauções** (caixas para marcar;
   não bloqueiam nada e ficam guardadas no ecrã para esse cálculo) e os pontos de desistência
   (calculados para a 1.ª alternativa).
-- **Mapa:** o mini-mapa das 3 alternativas (azul à vela, cinzento tracejado a motor, mais escuro de noite;
-  triângulos nos avisos; bolinhas nos pontos de desistência, verdes com uma fuga limpa e
+- **Mapa:** o mini-mapa das 3 alternativas (azul à vela, cinzento tracejado a motor, mais escuro de
+  noite; triângulos nos avisos; bolinhas nos pontos de desistência, verdes com uma fuga limpa e
   vermelhas sem nenhuma; tracejado vermelho nas zonas a evitar). Toca num cartão para destacar
   outra alternativa.
 - **Enviar plano:** manda o plano de navegação (texto com a hora de alarme + o ficheiro GPX) pelo
