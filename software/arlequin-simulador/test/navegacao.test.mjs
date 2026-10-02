@@ -71,6 +71,19 @@ test('gasóleo só desce com o motor', () => {
   assert.ok(n25 < n19)
 })
 
+// Auditoria M-69 (E-M14): a sonda descia 0,9 L/h e o J1939 estimava 1,0 L/h às 1800 rpm; a rota
+// cruza a 2100 rpm (1,45 L/h). Agora tudo pela curva da Volvo às mesmas rotações.
+test('M-69: a motor o consumo (e a descida do depósito) é o da curva da Volvo às rotações de cruzeiro da rota (2100 rpm)', () => {
+  const { litrosHora } = require('../../signalk-arlequin-j1939/lib/consumo.js')
+  const { hist } = correr(26 * 60)
+  const lh = valor(hist[21 * 60], 'propulsion.main.fuel.rate') * 3600 * 1000
+  assert.ok(Math.abs(lh - litrosHora(2100)) < 1e-9, `${lh} L/h`)
+  assert.ok(Math.abs(litrosHora(2100) - 1.45) < 1e-9)
+  // e quem cria a navegação pode dar as rotações do modelo
+  const { hist: h2 } = correr(26 * 60, { rpmMotor: 1800 })
+  assert.ok(Math.abs(valor(h2[21 * 60], 'propulsion.main.fuel.rate') * 3600 * 1000 - litrosHora(1800)) < 1e-9)
+})
+
 test('o NORDIC STAR só aparece uma vez (por omissão)', () => {
   const { hist } = correr(70 * 60)
   const nasceu = new Set(hist.map(r => r.estado.alvos[0].nasceu))

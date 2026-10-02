@@ -63,6 +63,12 @@ test('AGM: acima de 80% a corrente de carga cai', () => {
   assert.ok(Math.abs(r2.leitura.corrente - (PADRAO.alternadorA - PADRAO.consumoPortoA)) < 0.01)
 })
 
+// Auditoria M-69: o motor do simulador cruza às rotações de cruzeiro da rota (2100 rpm).
+test('M-69: o motor do simulador anda a 2100 rpm (35 Hz)', () => {
+  const m = criarModelo({}, MEIA_NOITE)
+  assert.equal(avancar(m, MIN, { motor: true }).leitura.rpm * 60, 2100)
+})
+
 test('bateria do motor: 14,2 V com o motor ligado, valor do passo em repouso', () => {
   const m = criarModelo({}, MEIA_NOITE)
   assert.equal(avancar(m, MIN, { motor: true }).leitura.vMotor, 14.2)

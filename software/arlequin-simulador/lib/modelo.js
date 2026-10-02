@@ -17,7 +17,7 @@ const PADRAO = Object.freeze({
   consumoNoiteNavegarA: 1.75, // radar + luzes de navegação à noite (~21 Ah/noite)
   frigorificoA: 1.5, // ~35 Ah/dia
   alternadorA: 60,
-  rpmMotorHz: 30, // 1800 rpm
+  rpmMotorHz: 35, // 2100 rpm: as rotações de cruzeiro da rota (auditoria M-69)
   sogNavegarMs: 2.57, // 5 nós
   vMotorRepouso: 12.7
 })

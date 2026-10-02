@@ -4,6 +4,10 @@
 // corrente, três alvos AIS (um em rota de colisão) e ciclo vela/motor.
 // Lógica pura: avancarNav(estado, dt) devolve o novo estado e as deltas.
 
+// O consumo a motor pela curva da Volvo (a mesma que o J1939 usa para estimar): assim a sonda simulada
+// desce o que o J1939 estima, às rotações de cruzeiro da rota (auditoria M-69).
+const { litrosHora } = require('../../signalk-arlequin-j1939/lib/consumo')
+
 const NO = 1852 / 3600
 const GRAU = Math.PI / 180
 const M_POR_GRAU = 111320
@@ -31,7 +35,8 @@ const PADRAO = Object.freeze({
   combustivelM3: 0.2 * 0.62,
   capacidadeM3: 0.2,
   pressaoPa: 101600,
-  colisaoRepeteMin: 0 // 0 = o NORDIC STAR só aparece uma vez
+  colisaoRepeteMin: 0, // 0 = o NORDIC STAR só aparece uma vez
+  rpmMotor: 2100 // rotações a motor (as do modelo de energia: quem cria a navegação passa-as)
 })
 
 // Deslocamento em metros para lat/lon (plano local).
@@ -148,7 +153,7 @@ function avancarNav (e0, dtMs) {
   // Motor: temperatura sobe a ~85 °C a trabalhar e desce parado.
   const alvoTemp = motor ? 358 : 290
   e.tempMotor += (alvoTemp - e.tempMotor) * Math.min(1, dt / 120)
-  const fuelRate = motor ? 0.9 / 3600 / 1000 : 0
+  const fuelRate = motor ? litrosHora(c.rpmMotor) / 3600 / 1000 : 0
   e.combustivel = Math.max(0, e.combustivel - fuelRate * dt)
 
   // Rota: distância, XTE à perna, tempo e VMG ao WP.
