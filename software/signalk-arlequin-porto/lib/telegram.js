@@ -82,4 +82,18 @@ function erroEmPortugues (e) {
   return erroConhecido(e) ?? (e?.codigo != null ? `erro do Telegram (código ${e.codigo})` : 'erro do Telegram')
 }
 
-module.exports = { criarTelegram, erroEmPortugues, erroConhecido, LIMITE_MS }
+// Uma recusa do Telegram que não passa com outra tentativa (auditoria F4b, revisão da F4, Importante 1):
+// 'chat' (esse chat não recebe nada: bloqueou o bot, não existe, um código mal escrito) ou 'mensagem' (o
+// Telegram não aceita esse texto: demasiado longo, vazio, mal codificado — qualquer outro 400). null: a
+// que passa com o tempo (sem rede, o Telegram com problemas, 429, o token inválido que se corrige na
+// configuração, um erro do programa).
+const RECUSA_DO_CHAT = /chat not found|peer_id_invalid|user not found|chat_write_forbidden|not enough rights|have no rights|bot was blocked|bot is not a member|group chat was upgraded/i
+function recusaDoTelegram (e) {
+  if (e?.semLigacao || e?.cancelado) return null
+  if (e?.codigo === 403) return 'chat'
+  if (e?.codigo === 400) return RECUSA_DO_CHAT.test(String(e?.descricao ?? '')) ? 'chat' : 'mensagem'
+  if (e?.codigo === 413) return 'mensagem'
+  return null
+}
+
+module.exports = { criarTelegram, erroEmPortugues, erroConhecido, recusaDoTelegram, LIMITE_MS }
