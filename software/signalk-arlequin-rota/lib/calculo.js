@@ -239,10 +239,9 @@ const nomeAlternativa = (cand, agora, fuso) => {
 }
 
 // O rasto provável para o mini-mapa (desenho 3b-1): de 10 em 10 min desde a partida, mais a chegada
-// (no último ponto da rota, à hora de chegada do resumo). → [{ lat, lon, t, motor, noite, twd?, tws?, vis?, chuva? }]
+// (no último ponto da rota, à hora de chegada do resumo). → [{ lat, lon, t, motor, noite, twd?, tws?, vis? }]
 // twd (graus) e vis (m, à centena): o vento e a visibilidade previstos, quando a previsão os tem (os
-// lembretes da rotação do vento e da chuva a navegar, lib/acompanhamento.js, Tarefa 8.5); chuva
-// (mm/h, à décima): para o lembrete dizer "Chuva e visibilidade" só a chover (auditoria I-17).
+// lembretes da rotação do vento e da chuva a navegar, lib/acompanhamento.js, Tarefa 8.5).
 const PASSO_RASTO = 10 * 60000
 function rastoProvavel (pr, pontosRota) {
   const out = []
@@ -250,8 +249,7 @@ function rastoProvavel (pr, pontosRota) {
     ...(Number.isFinite(p.twd) ? { twd: Math.round(((p.twd % 360) + 360) % 360) % 360 } : {}),
     // o vento previsto (nós, à décima): a rotação do vento a navegar só conta com 6 nós ou mais (revisão final I4)
     ...(Number.isFinite(p.tws) ? { tws: Math.round(p.tws * 10) / 10 } : {}),
-    ...(Number.isFinite(p.vis) ? { vis: Math.round(p.vis / 100) * 100 } : {}),
-    ...(Number.isFinite(p.chuva) ? { chuva: Math.round(p.chuva * 10) / 10 } : {})
+    ...(Number.isFinite(p.vis) ? { vis: Math.round(p.vis / 100) * 100 } : {})
   })
   const ponto = (p, t, lat = p.lat, lon = p.lon) => ({ lat: Math.round(lat * 1e4) / 1e4, lon: Math.round(lon * 1e4) / 1e4, t: iso(t), motor: !!p.motor, noite: !!p.noite, ...tempo(p) })
   let alvo = pr.pontos[0]?.t
