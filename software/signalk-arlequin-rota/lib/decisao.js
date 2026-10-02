@@ -36,11 +36,18 @@
 //                   recomendado e ir para o abrigo mais perto é ("Volta ou abriga-te em X"); também
 //                   com "sair agora" (o Recalcular a navegar, decisão do Ivo de 01/10).
 
+const { PADRAO: SEGURANCA } = require('./seguranca')
+
 const H = 3600000
 const MEIA_HORA = 1800000
 
 const PESOS = Object.freeze({ espera: 0.25, noite: 1.5, leme: 1.0, rajada: 0.5, rajadaBase: 20, ondas: 2, ondasBase: 2, contraVento: 0.5 })
 const CONTRA = Object.freeze({ angulo: 50, ventoMin: 7 })
+// O desconhecido no custo (auditoria M-05): com a previsão incompleta (só em "Sair agora": fora dele a
+// alternativa fica excluída) a rajada e as ondas sem previsão contam como os limites a solo de
+// lib/seguranca.js (o pior caso ainda plausível, como as ondas desconhecidas do lib/passagem.js), e o
+// vento sem previsão como contra o vento — nunca como zero, que punha a incompleta à frente.
+const DESCONHECIDO = Object.freeze({ rajada: SEGURANCA.rajadaMax, ondas: SEGURANCA.ondasMax })
 
 const norm = (a) => ((a % 360) + 360) % 360
 const dif = (a, b) => { let d = norm(a - b); if (d > 180) d -= 360; return d }
@@ -48,19 +55,28 @@ const virgula = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toFixed(d).rep
 
 function horasContraVento (pontos, o = CONTRA) {
   let n = 0
-  for (const p of pontos) if (p.tws >= o.ventoMin && p.twd != null && Math.abs(dif(p.twd, p.proa)) <= o.angulo) n++
+  for (const p of pontos) {
+    // sem previsão de vento (força ou direção): o pior caso, contra (M-05)
+    if (!Number.isFinite(p.tws) || !Number.isFinite(p.twd)) { n++; continue }
+    if (p.tws >= o.ventoMin && Math.abs(dif(p.twd, p.proa)) <= o.angulo) n++
+  }
   return n / 60
 }
 
-// resumo: o do cenário provável; lemeEq: horas equivalentes ao leme (provável); contraVentoH.
-function custo ({ resumo, esperaH = 0, tripulacao, lemeEq = 0, contraVentoH = 0 }) {
+// resumo: o do cenário provável; lemeEq: horas equivalentes ao leme (provável); contraVentoH;
+// semDados: os campos sem previsão em parte do rasto provável (lib/seguranca.js previsaoIncompleta).
+function custo ({ resumo, esperaH = 0, tripulacao, lemeEq = 0, contraVentoH = 0, semDados = [] }) {
+  const falta = new Set(semDados)
+  const conhecido = (x) => (Number.isFinite(x) ? x : -Infinity)
+  const rajada = falta.has('rajada') ? Math.max(conhecido(resumo.rajadaMax), DESCONHECIDO.rajada) : conhecido(resumo.rajadaMax)
+  const ondas = falta.has('ondas') ? Math.max(conhecido(resumo.ondasMax), DESCONHECIDO.ondas) : conhecido(resumo.ondasMax)
   const partes = {
     horas: resumo.duracaoH,
     espera: PESOS.espera * esperaH,
     noite: PESOS.noite * resumo.horasNoite,
     leme: tripulacao === 'so' ? PESOS.leme * lemeEq : 0,
-    rajada: PESOS.rajada * Math.max(0, resumo.rajadaMax - PESOS.rajadaBase),
-    ondas: PESOS.ondas * Math.max(0, (Number.isFinite(resumo.ondasMax) ? resumo.ondasMax : 0) - PESOS.ondasBase),
+    rajada: PESOS.rajada * Math.max(0, rajada - PESOS.rajadaBase),
+    ondas: PESOS.ondas * Math.max(0, ondas - PESOS.ondasBase),
     contraVento: PESOS.contraVento * contraVentoH
   }
   const total = Object.values(partes).reduce((a, b) => a + b, 0)
