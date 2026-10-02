@@ -94,3 +94,20 @@ test('auditoria I-32: a câmara que falha dá "📷 a câmara falhou" no Telegra
     } finally { p2.stop() }
   } finally { await tgf.fechar() }
 })
+
+test('auditoria M-54: a ajuda lista também o /ajuda (o desenho do porto lista-o); o /ajuda e qualquer outro texto mostram-na', async () => {
+  const tgf = await criarTelegramFalso()
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 })
+  try {
+    tgf.escrever(111, '/ajuda')
+    tgf.escrever(111, 'olá')
+    assert.ok(await ate(() => tgf.enviados.length === 2))
+    for (const m of tgf.enviados) {
+      assert.match(m.text, /^Comandos do Arlequin:/)
+      assert.match(m.text, /\n\/ajuda — esta lista$/)
+      for (const c of ['/estado', '/foto', '/posicao', '/armar', '/desarmar', '/amarrar', '/largar']) assert.ok(m.text.includes(c), c)
+    }
+  } finally { p.stop(); await tgf.fechar() }
+})

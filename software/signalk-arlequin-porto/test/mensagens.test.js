@@ -148,6 +148,15 @@ test('/estado: os lembretes só do ecrã (velas, relógio) não aparecem nos ala
   ]), ['Disco a 81%', 'FUMO a bordo!', 'Alarme sem descrição (arlequin.porto.intrusao)'])
 })
 
+test('auditoria M-54: o /estado conta também o estado alert (como o encaminhador), menos os lembretes só do ecrã', () => {
+  assert.deepEqual(alarmesAtivos([
+    n('notifications.arlequin.x.aviso', 'alert', 'Um aviso em alert'),
+    n('notifications.rota.lembrete.e3', 'alert', 'Às 22:50: Rizar'),
+    n('notifications.rota.alarmeTerra', 'alert', 'Os contactos em terra ligam ao MRCC às 19:41'),
+    n('notifications.arlequin.porto.fumo', 'emergency', 'FUMO a bordo!')
+  ]), ['Um aviso em alert', 'FUMO a bordo!'])
+})
+
 test('auditoria I-32: uma notificação sem texto chega ao Telegram com uma frase em pt-PT (e o caminho entre parênteses), também no "Resolvido"', () => {
   const C = 'notifications.propulsion.main.overTemperature'
   let r = encaminhar(novoEncaminhador(), [{ caminho: C, state: 'alarm' }, { caminho: 'notifications.x.aviso', state: 'warn', message: '' }], 0)
