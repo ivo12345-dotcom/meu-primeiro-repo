@@ -5,9 +5,14 @@ todo antes de responder para recuperares o contexto.
 
 ## 1. O barco
 
-- **Jeanneau Melody 34** (projeto Briand, anos 80, ~10,4 m).
-- Deslocamento aproximado: **4,5–5 toneladas**.
-- **Governo por roda de leme**, sistema mecânico.
+Os dados do barco (projeto, comprimento, deslocamento) estão no quadro "Dados do barco" do
+`NAVEGACAO.md` (§0b), que é a referência. Para o piloto, conta isto:
+
+- **Jeanneau Melody 34**, com **~6 t** de deslocamento (6000 kg na ficha técnica, 6 046 kg no
+  sailboatdata). As primeiras notas desta página (07/09) diziam "projeto Briand, anos 80, ~10,4 m,
+  4,5–5 t"; o `LEME-EMERGENCIA.md` (27/09) corrigiu-as.
+- **Governo por roda de leme**, sistema mecânico, **com travão** (Ivo, 29/09). O barco nasceu
+  com cana; a cana de inox de emergência encaixa no topo da madre (`LEME-EMERGENCIA.md`, Camada A).
 - Já comprado. É do proprietário.
 - **Navegação prevista: muito a solo.** Isto é o fator dominante em todas as
   decisões abaixo — o piloto automático é tripulação, não conforto.
@@ -108,7 +113,8 @@ Ordem acordada com o proprietário:
 - Atuador **Type 1** linear 12 V: ~€1.400–1.700 s/IVA (a confirmar por
   cotação — é o número menos firme).
 - **Não sobredimensionar para Type 2:** o Type 1 está especificado até
-  11.000 kg e o barco anda pelas 5 t. Margem de mais do dobro já.
+  11 000 kg e o barco tem ~6 t (6 046 kg no sailboatdata, ver §1): margem de ~1,8×. (Esta nota
+  dizia "o barco anda pelas 5 t, margem de mais do dobro", com o deslocamento errado de 07/09.)
 - A parte mecânica (braço na mecha do leme, chumaceira, fundação do
   atuador) é agnóstica à marca. Fazer bem uma vez; se um dia se quiser
   saltar para NKE, troca-se só o cérebro.

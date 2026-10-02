@@ -16,6 +16,32 @@ sabe nada.
 
 Navegação sobretudo **a solo**. Isto obriga a manter uma reserva (ver §6).
 
+## 0b. Dados do barco
+
+Este é o quadro de referência: as outras notas (`PILOTO-AUTOMATICO.md`, `LEME-EMERGENCIA.md`,
+`CABOS.md`, `MASTREACAO.md`) remetem para aqui. Fontes: a **ficha técnica** do Melody (versão GTE,
+sailboat-data.com/fr, especificação de 1982), guardada em `Documents\Veleiro\brochura`, e o
+quadro do `LEME-EMERGENCIA.md` (27/09, Wikipedia e sailboatdata). Onde as fontes não batem, ficam
+os dois valores.
+
+| | |
+|---|---|
+| Barco | **Arlequin**, Jeanneau Melody ("Melody 34"), sloop de topo |
+| Projeto | **André Mauric** (ficha técnica); a Wikipedia e o sailboatdata juntam Gilles Vaton. As primeiras notas (07/09, `PILOTO-AUTOMATICO.md`) diziam "Briand, anos 80", sem fonte. Por confirmar pelo Ivo |
+| Construção | Jeanneau, **1976–1982** na ficha (1974–1982 no sailboatdata), 607 unidades. O ano do Arlequin está por confirmar pelo Ivo |
+| Comprimento | **10,55 m** fora a fora e **10,25 m** de casco; **8,70 m** na flutuação (8,69 m no sailboatdata). As notas de 07/09 diziam ~10,4 m |
+| Boca / calado | **3,38 m** / **1,90 m** |
+| Deslocamento / lastro | **~6 t**: 6000 kg (deslocamento leve, ficha) ou 6 046 kg (sailboatdata) / **2 900 kg** em ferro fundido. As notas de 07/09 diziam 4,5–5 t |
+| Mastreação | Mastro pousado no convés, com **14,20 m** de comprimento (ficha), e **um só par de cruzetas**; a mastreação fixa tem **12 anos** (`MASTREACAO.md`). O `CABOS.md` conta "~13 m acima do convés": por confirmar pelo Ivo (muda o comprimento das drizas) |
+| Leme | Semi-suspenso, num patilhão (*skeg*) que protege a parte de cima da lâmina |
+| Popa | Espelho invertido (o painel inclina-se para vante) |
+| Governo | **Roda de leme, com travão** (Ivo, 29/09). O barco nasceu com cana (a ficha diz "barre franche"); a cana de inox de emergência encaixa no topo da madre (`LEME-EMERGENCIA.md`, Camada A) |
+| Piloto automático | **Não há.** O ST4000+ não governa (falta a unidade de roda) e só dá a proa. O plano está **por decidir** (`PILOTO-AUTOMATICO.md`) |
+| Motor | **Volvo Penta D1-20B** (de origem: Yanmar 2QM) |
+| Gasóleo | **200 L**, depósito de inox que parece ter sido prolongado para trás (de origem: 90 L) |
+| Água doce | 2 depósitos flexíveis, debaixo dos beliches da sala (de origem: 180 L ao todo); a capacidade de cada um está por medir (§8b, ponto 11) |
+| Baterias | 3 bancos × 2 × 110 Ah, seladas, provavelmente AGM: banco 1 = motor; bancos 2+3 = serviço, **440 Ah** (§5b) |
+
 ## 1. Decisões tomadas
 
 | Tema | Decisão | Porquê |
@@ -1103,7 +1129,7 @@ funcionar também ali:
     o topo passa do espelho. Falta decidir: serralheiro (soldado) ou o Ivo
     (aparafusado com peças de inox).
     **Comprimento na marina (Ivo, 29/09): sem problema até aos 12 m** (o
-    Melody tem 10,55 m fora a fora, 10,25 m de casco; 6000 kg). A D centrada
+    Melody tem 10,55 m fora a fora e 10,25 m de casco: ver §0b). A D centrada
     (+~0,8 m, ~11,4 m) fica dentro do escalão; a escolha entre D centrada e D
     ajustada passa a ser só **sombra na roda** contra **estrutura mais simples**.
 
@@ -1266,7 +1292,8 @@ parte (3a) é o cálculo; a página do ecrã, o mini-mapa e o plano pelo Telegra
 - **Como marcar como confirmado:** editar `dados/destinos.json`, `dados/zonas.json` e
   `dados/canais.json`, pondo `"confirmado": true` no que já foi visto na carta.
 - **Regra da calma para as horas ao leme:** vento < 10 nós **e** (ondas < 2 m, **ou** ondulação
-  comprida ≤ 3 m com período ≥ 9 s).
+  comprida ≤ 3 m com período ≥ 9 s). Nessa calma, as horas a motor contam metade, porque **a roda
+  tem travão** (confirmado pelo Ivo a 29/09) e dá para pausas curtas.
 
 **O que convém saber sobre o comportamento do cálculo:**
 - A alternativa de 3 MN só existe com **vento de terra ao longo de toda a linha seguida**
