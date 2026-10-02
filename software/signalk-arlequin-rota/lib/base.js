@@ -61,6 +61,11 @@ function velocidadePolar (p, twaGraus, twsNos) {
   return (v00 * (1 - fj) + v01 * fj) * (1 - fi) + (v10 * (1 - fj) + v11 * fj) * fi
 }
 
+// A rotação de cruzeiro do motor (rpm) no planeamento: a do cálculo (lib/calculo.js) e a do motor da
+// passagem (lib/passagem.js); o acompanhamento a navegar e o esquema do plugin (F2) devem usar esta
+// (auditoria M-20: estava escrita à mão em 6 sítios).
+const RPM_CRUZEIRO = 2100
+
 // Consumo do D1-20 pelas rotações (L/h): "Fuel Consumption, at calculated propeller
 // load exp. 3" da ficha da Volvo Penta. Cópia de signalk-arlequin-j1939/lib/consumo.js.
 const CURVA = [
@@ -81,4 +86,4 @@ function litrosHora (rpm, fator = 1) {
   return CURVA[CURVA.length - 1][1] * fator
 }
 
-module.exports = { POLAR_PADRAO, lerPolar, carregarPolar, velocidadePolar, CURVA, litrosHora }
+module.exports = { POLAR_PADRAO, lerPolar, carregarPolar, velocidadePolar, RPM_CRUZEIRO, CURVA, litrosHora }

@@ -131,3 +131,23 @@ test('precauções: as de sempre e as condicionais da tabela; "sair agora" refor
   assert.deepEqual(s.map(x => x.id), [...sempre, 'arnes', 'rizo-saida', 'retranca-motor', 'desistencia', 'plano-hora'])
   assert.equal(s.find(x => x.id === 'desistencia').texto, 'Pontos de desistência revistos: até às 20:10 ainda voltas a Algés (CNA) com vento a favor')
 })
+
+test('M-20: os números dos textos são os das opções (comer, rotação do vento, popa) e a reserva é o mínimo à chegada da segurança', () => {
+  const { PADRAO } = require('../lib/avisos')
+  const SEG = require('../lib/seguranca').PADRAO
+  assert.equal(PADRAO.reservaGasoleoL, SEG.gasoleoMinL)
+  assert.equal(PADRAO.reservaBateriaPct, SEG.bateriaMinPct)
+  // come e bebe de 2 em 2 h: o texto diz 2 h (dizia sempre "3 h")
+  const a = avisosDaPassagem({ passagem: { pontos: linha(5 * 60), eventos: [], resumo: { chegou: true } }, tripulacao: 'so', opcoes: { comerCadaH: 2 } })
+  assert.deepEqual(a.filter(x => x.tipo === 'comer').map(x => x.texto), ['Come e bebe (2 h ao leme)', 'Come e bebe (2 h ao leme)'])
+  assert.deepEqual(avisosDaPassagem({ passagem: { pontos: linha(4 * 60), eventos: [], resumo: { chegou: true } }, tripulacao: 'so' }).filter(x => x.tipo === 'comer').map(x => x.texto), ['Come e bebe (3 h ao leme)'])
+  // as precauções dizem os limites dados (diziam sempre 45° e 120°)
+  const m = {}
+  for (let i = 100; i < 200; i++) m[i] = { twd: 310 } // roda 40° em 1 h
+  const pr = precaucoes({ passagem: { pontos: linha(200, { twd: 270, proa: 150 }, m), eventos: [] }, tripulacao: 'acompanhado', opcoes: { rotacaoVento: 30, popaTwa: 100 } })
+  assert.equal(pr.find(x => x.id === 'retranca-motor').porque, 'o vento roda mais de 30°')
+  assert.equal(pr.find(x => x.id === 'retenida').porque, 'vento de popa (TWA > 100°)')
+  const pd = precaucoes({ passagem: { pontos: linha(200, { twd: 270, proa: 120 }, Object.fromEntries(Object.entries(m).map(([k]) => [k, { twd: 330 }]))), eventos: [] }, tripulacao: 'acompanhado' })
+  assert.equal(pd.find(x => x.id === 'retranca-motor').porque, 'o vento roda mais de 45°')
+  assert.equal(pd.find(x => x.id === 'retenida').porque, 'vento de popa (TWA > 120°)')
+})

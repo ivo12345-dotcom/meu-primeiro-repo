@@ -362,3 +362,9 @@ test('o veredicto fala sempre da 1.ª alternativa mostrada (top[0]): 400 casos a
     if (lista.some(c => d.recomendada(c))) assert.ok(d.recomendada(r.top[0]), caso)
   }
 })
+
+test('M-20: o horizonte das partidas no texto é o do cálculo (horasPartidas; por omissão o da previsão, 48 h), nunca "48 h" escrito à mão', () => {
+  const nr = { ...cand({ custo: 10 }), afastamento: null, direto: true, naoRecomendada: true, motivos: ['x'] }
+  assert.equal(d.decidir({ candidatos: [nr], agora: AGORA, tripulacao: 'so' }).veredicto.porque[0], 'Nenhuma partida nas próximas 48 h passa nos limites; a melhor (direta, agora): x.')
+  assert.equal(d.decidir({ candidatos: [nr], agora: AGORA, tripulacao: 'so', horasPartidas: 24 }).veredicto.porque[0], 'Nenhuma partida nas próximas 24 h passa nos limites; a melhor (direta, agora): x.')
+})

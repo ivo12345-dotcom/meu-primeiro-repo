@@ -36,6 +36,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const c = require('./costa')
+const { PADRAO: SEGURANCA } = require('./seguranca')
 
 const RAIO_PORTO_MN = 0.5
 const AVISO_ROTA_ATIVA = 'último troço por confirmar na carta'
@@ -43,7 +44,8 @@ const MOTIVO_ERRO_INTERNO = 'erro interno ao gerar esta rota'
 const MOTIVO_COORDENADAS = 'coordenadas inválidas: a posição ou um ponto da rota não tem latitude e longitude válidas'
 const MOTIVO_SEM_ROTA_ATIVA = 'não há rota ativa no OpenCPN'
 const MOTIVO_SEM_POSICAO = 'sem posição do GPS: não sei de onde parte o barco'
-const MOTIVO_VENTO_MAR = 'vento do mar em parte da rota: a 3 MN ficava perto de uma costa a sotavento'
+// os 3 MN do vento de terra e a tolerância à costa são os de lib/seguranca.js (M-20: um só número)
+const MOTIVO_VENTO_MAR = `vento do mar em parte da rota: a ${SEGURANCA.afastamentoVentoTerra} MN ficava perto de uma costa a sotavento`
 const MOTIVO_SEM_ROTA_TEJO = 'sem rota dentro do Tejo: sair pela barra ou navegar à vista'
 const H_MS = 3600e3
 const NOTA_DIRETO = 'salto curto entre portos vizinhos: rota direta junto à costa'
@@ -52,7 +54,7 @@ const fmtMn = (x) => x.toFixed(1).replace('.', ',')
 const logPadrao = (...a) => console.error(...a)
 // A regra do vento de terra (os 3 MN e a rota direta perto da costa): nosEta, os nós da hora
 // estimada de passagem em cada ponto; passoMax, as amostras (MN) nos troços da rota direta.
-const VENTO = Object.freeze({ toleranciaVento: 60, afastamentoVentoTerra: 3, nosEta: 5, passoMax: 2 })
+const VENTO = Object.freeze({ toleranciaVento: 60, afastamentoVentoTerra: SEGURANCA.afastamentoVentoTerra, nosEta: 5, passoMax: 2 })
 
 // Um canal só entra na lista se tiver nome, ≥ 2 pontos com lat/lon finitos e ondasMax (usado pela
 // Task 9); um canal inválido fica de fora (registado), sem impedir os outros.
@@ -458,7 +460,7 @@ function tracarPar (costa, linha, pA, pB, sA, sB, afastamento, o) {
 // sentido dos índices e servem as duas viagens (A → B e B → A têm as mesmas); nos troços sem corda
 // a linha segue-se como antes (c.seguirLinha). Os pontos de uma corda (de passoMax em passoMax)
 // não têm `s`: não estão na linha (a regra do vento de terra vê-os à parte, ventoDoMarNaRota).
-const CORDA = Object.freeze({ toleranciaMn: 0.1, passoAmostraMn: 0.05, maxMn: 60, ganhoMinMn: 1, ganhoMinFracao: 0.05, anguloMax: 150 })
+const CORDA = Object.freeze({ toleranciaMn: SEGURANCA.toleranciaMn, passoAmostraMn: 0.05, maxMn: 60, ganhoMinMn: 1, ganhoMinFracao: 0.05, anguloMax: 150 })
 // as memórias (por linha): as cordas de um troço [lo, hi] e as verificações a sério (uma corda entre
 // os mesmos dois pontos repete-se muito: as 17 partidas, os pares de projeções, a desistência)
 const MEMORIA_CORDAS = new WeakMap()
@@ -815,4 +817,4 @@ function gerarRotas (costa, { posicao, destino, afastamentos = [3, 5, 8], twd, h
   }
 }
 
-module.exports = { RAIO_PORTO_MN, AVISO_ROTA_ATIVA, CANAIS, carregarCanais, portoDePartida, destinoDaRotaAtiva, rumoParaTerra, ventoDeTerra, ventoDoMarNoDireto, ventoDoMar, gerarRota, gerarAlternativas, gerarRotas }
+module.exports = { RAIO_PORTO_MN, AVISO_ROTA_ATIVA, MOTIVO_VENTO_MAR, VENTO, CORDA, CANAIS, carregarCanais, portoDePartida, destinoDaRotaAtiva, rumoParaTerra, ventoDeTerra, ventoDoMarNoDireto, ventoDoMar, gerarRota, gerarAlternativas, gerarRotas }

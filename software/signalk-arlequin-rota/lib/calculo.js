@@ -40,6 +40,7 @@ const prev = require('./previsao')
 const mare = require('./mare')
 const passagem = require('./passagem') // passagem.simularPassagem pelo módulo (os testes contam as simulações)
 const { criarEnergia } = require('./energia')
+const { RPM_CRUZEIRO } = require('./base')
 const { nasceresPores } = require('./sol')
 const { criarCenarios, notaIa, NOMES: CENARIOS } = require('./cenarios')
 const seguranca = require('./seguranca')
@@ -51,9 +52,9 @@ const mapa = require('./mapa')
 const H = 3600000
 const MOTIVO_SEM_ROTA_ATIVA = 'não há rota ativa no OpenCPN'
 const PADRAO = Object.freeze({
-  afastamentoMinimo: 5,
+  afastamentoMinimo: seguranca.PADRAO.afastamentoMinimo, // 5 MN (M-20: um só número, o da segurança)
   afastamentos: [3, 5, 8],
-  rpmCruzeiro: 2100,
+  rpmCruzeiro: RPM_CRUZEIRO, // lib/base.js
   horasPartidas: prev.HORAS_PREVISAO, // as partidas até ao fim da previsão (48 h)
   passoPartidasH: 3,
   energia: {}, // lib/energia.js PADRAO (capacidadeAh, consumoDiaA, …)
@@ -559,7 +560,7 @@ async function calcularSemRede (entrada = {}, deps = {}) {
 
   // ---------- decisão ----------
   await progresso(0.85, 'a escolher as 3 melhores')
-  const { top, veredicto } = decisao.decidir({ candidatos, agora, tripulacao, sairAgora, emMar, abrigo, fuso: o.fuso, excluidasAgora })
+  const { top, veredicto } = decisao.decidir({ candidatos, agora, tripulacao, sairAgora, emMar, abrigo, fuso: o.fuso, excluidasAgora, horasPartidas: o.horasPartidas })
 
   // ---------- desistência (da melhor) e o objeto de cada alternativa ----------
   let desistencia = []
