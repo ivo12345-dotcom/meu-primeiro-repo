@@ -76,6 +76,14 @@ function asHoras (t, agora, fuso = FUSO) {
   const hm = `${a.hm}${horaRepetida(t, fuso)}`
   return partes(agora, fuso).data === a.data ? `às ${hm}` : `${a.semana} ${a.dia}/${a.mes} às ${hm}`
 }
+// "qua 30/09 às 17:09", sempre com o dia (auditoria I-05, decisão n.º 16: as mensagens de fecho, que podem
+// chegar a terra muito depois, nunca parecem de agora); "—" sem hora.
+function diaEHora (t, fuso = FUSO) {
+  t = ms(t)
+  if (!valido(t)) return SEM
+  const a = partes(t, fuso)
+  return `${a.semana} ${a.dia}/${a.mes} às ${a.hm}${horaRepetida(t, fuso)}`
+}
 // "até às 17:09" (hoje) ou "até qua 30/09 às 17:09".
 const ateAs = (t, agora, fuso = FUSO) => `até ${asHoras(t, agora, fuso)}`
 
@@ -208,4 +216,4 @@ function montarPlano ({ resultado, indice = 0, barco = {}, telefones = {}, agora
   return { texto: linhas.join('\n'), gpx, nomeFicheiro }
 }
 
-module.exports = { MRCC, EMERGENCIA_PADRAO, SEM_ALARME, CALCULO_ANTIGO, calculoAntigo, horaLisboa, asHoras, horaAlarme, rotaTexto, propulsaoTexto, semVela, posicaoTexto, montarPlano }
+module.exports = { MRCC, EMERGENCIA_PADRAO, SEM_ALARME, CALCULO_ANTIGO, calculoAntigo, horaLisboa, asHoras, diaEHora, horaAlarme, rotaTexto, propulsaoTexto, semVela, posicaoTexto, montarPlano }

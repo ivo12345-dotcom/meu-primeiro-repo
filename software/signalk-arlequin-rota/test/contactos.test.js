@@ -12,12 +12,12 @@ const T0 = Date.parse('2026-09-29T20:00:00Z') // 21:00 em Lisboa, ter 29/09
 const iso = (t) => new Date(t).toISOString()
 
 test('as mensagens: "cheguei bem", o atraso com a nova hora de alarme, "viagem terminada" com a posição em graus e minutos; horas de Lisboa com o dia quando não é hoje', () => {
-  assert.equal(ct.textoChegada({ destino: 'Peniche', chegou: T0 + 10 * H, agora: T0 + 10 * H }), 'Cheguei bem a Peniche às 07:00. Obrigado!')
+  // (o "cheguei bem" e a "terminada" levam sempre a data: auditoria I-05, decisão n.º 16)
   assert.equal(ct.textoChegada({ destino: 'Peniche', chegou: T0 + 10 * H, agora: T0 }), 'Cheguei bem a Peniche qua 30/09 às 07:00. Obrigado!')
   assert.equal(ct.textoAtraso({ chegada: T0 + 2 * H, alarme: T0 + 4 * H, alarmeAntes: T0 + 3 * H, agora: T0 }), 'Ainda a navegar, tudo bem. Nova chegada prevista ~23:00. Nova hora de alarme: qua 30/09 01:00 (em vez de qua 30/09 00:00).')
   assert.equal(ct.textoAtraso({ chegada: T0 + H, alarme: T0 + 2.5 * H, alarmeAntes: T0 + 2 * H, agora: T0 }), 'Ainda a navegar, tudo bem. Nova chegada prevista ~22:00. Nova hora de alarme: 23:30 (em vez de 23:00).')
-  assert.equal(ct.textoTerminado({ posicao: { lat: 38.6928, lon: -9.4159 }, agora: T0 }), "Viagem terminada / mudança de planos: estou bem, em 38°41,6' N 9°25,0' W às 21:00.")
-  assert.equal(ct.textoTerminado({ posicao: null, agora: T0 }), 'Viagem terminada / mudança de planos: estou bem, às 21:00.')
+  assert.equal(ct.textoTerminado({ posicao: { lat: 38.6928, lon: -9.4159 }, agora: T0 }), "Viagem terminada / mudança de planos: estou bem, em 38°41,6' N 9°25,0' W ter 29/09 às 21:00.")
+  assert.equal(ct.textoTerminado({ posicao: null, agora: T0 }), 'Viagem terminada / mudança de planos: estou bem, ter 29/09 às 21:00.')
   assert.equal(ct.grausMinutos({ lat: -0.5, lon: 0.25 }), "0°30,0' S 0°15,0' E")
   // nunca null, NaN nem undefined
   for (const t of [ct.textoChegada({ destino: null, chegou: NaN, agora: T0 }), ct.textoAtraso({ chegada: NaN, alarme: NaN, alarmeAntes: NaN, agora: T0 })]) assert.doesNotMatch(t, /null|NaN|undefined/)
@@ -383,4 +383,53 @@ test('auditoria I-01 (decisão n.º 14): a hora de alarme de cada contacto — s
   assert.deepEqual(ct.terraInicial(null), [])
   // o plano novo guarda a hora de alarme dele na mensagem
   assert.equal(ct.porNaFila(ct.novaFila(), { tipo: 'plano', texto: 'p', alarme: plano }, T0).fila[0].alarme, plano)
+})
+
+test('auditoria I-05 (decisão n.º 16): os textos de fecho levam sempre a data ("qua 30/09 às 07:00") — entregues mais tarde, nunca parecem de agora', () => {
+  assert.equal(ct.textoChegada({ destino: 'Peniche', chegou: T0 + 10 * H, agora: T0 + 10 * H }), 'Cheguei bem a Peniche qua 30/09 às 07:00. Obrigado!')
+  assert.equal(ct.textoTerminado({ posicao: null, agora: T0 }), 'Viagem terminada / mudança de planos: estou bem, ter 29/09 às 21:00.')
+})
+
+test('auditoria I-05 (decisão n.º 16): um contacto que nunca recebe — desistir no fim da hora de alarme desse envio, só quando a falha é dele (outro contacto ou o Ivo recebeu), nunca sem rede; o plano novo que passou a hora de alarme dele também sai; ficam registadas', () => {
+  const msg = (id, tipo, extra = {}) => ({ id, ref: `A${id}`, tipo, texto: tipo, contactos: ['Pai'], chats: ['333'], criada: iso(T0), tentativas: 4, proxima: iso(T0), estado: 'fila', pedido: null, erro: 'Pai: bloqueou o bot', desisteEm: T0 + H, ...extra })
+  const fila = (...m) => ({ ...ct.novaFila(), fila: m })
+  // um parcial (a Mãe recebeu): à hora de alarme do Pai, desiste
+  assert.equal(ct.desistir(fila(msg(1, 'chegada', { parcial: true })), T0 + H - 1).desistidas.length, 0)
+  const r = ct.desistir(fila(msg(1, 'chegada', { parcial: true })), T0 + H)
+  assert.deepEqual(r.c.fila, [])
+  assert.deepEqual(r.desistidas.map(m => m.ref), ['A1'])
+  assert.deepEqual(r.c.desistencias.map(d => ({ ref: d.ref, tipo: d.tipo, contactos: d.contactos, em: d.em })), [{ ref: 'A1', tipo: 'chegada', contactos: ['Pai'], em: iso(T0 + H) }])
+  // a mensagem inteira que só o Ivo recebeu (a falha é do contacto): também
+  assert.equal(ct.desistir(fila(msg(1, 'chegada', { ivoRecebeu: true })), T0 + H).desistidas.length, 1)
+  // sem ninguém a receber (sem rede, o porto desligado): nunca — chega quando a rede voltar
+  assert.equal(ct.desistir(fila(msg(1, 'chegada')), T0 + 10 * H).desistidas.length, 0)
+  // a que está "a enviar" ou nunca foi tentada, e a de antes (sem a hora): não
+  assert.equal(ct.desistir(fila(msg(1, 'chegada', { parcial: true, estado: 'a enviar' })), T0 + 2 * H).desistidas.length, 0)
+  assert.equal(ct.desistir(fila(msg(1, 'chegada', { parcial: true, tentativas: 0 })), T0 + 2 * H).desistidas.length, 0)
+  assert.equal(ct.desistir(fila(msg(1, 'chegada', { parcial: true, desisteEm: undefined })), T0 + 2 * H).desistidas.length, 0)
+  // o plano novo montado no Ativar e nunca entregue, já depois da hora de alarme dele: sai, com ou sem rede
+  assert.equal(ct.desistir(fila(msg(1, 'plano', { alarme: T0 + 30 * MIN, desisteEm: T0 + 2 * H })), T0 + 30 * MIN).desistidas.length, 1)
+  // os avisos ao Ivo desistem ao fim de 24 h, com ou sem rede
+  assert.equal(ct.desistir(fila(msg(1, 'aviso', { contactos: [], chats: [], desisteEm: T0 + 24 * H, tentativas: 9 })), T0 + 24 * H).desistidas.length, 1)
+  // a hora de desistir guarda-se na mensagem
+  assert.equal(ct.porNaFila(ct.novaFila(), { tipo: 'chegada', texto: 'c', desisteEm: T0 + H }, T0).fila[0].desisteEm, T0 + H)
+  // o plano novo começa sem as desistências do anterior
+  assert.deepEqual(ct.herdar(r.c).desistencias, [])
+})
+
+test('auditoria I-05: o aviso ao Ivo (tipo "aviso") vai só ao chat do Ivo (sem contactos) e conta como entregue quando o Ivo o recebe; o texto diz a quem não chegou, o quê e a hora de alarme', () => {
+  let c = ct.porNaFila(ct.novaFila(), { tipo: 'aviso', texto: 'x', contactos: [], chats: [], desisteEm: T0 + 24 * H }, T0)
+  const m = c.fila[0]
+  c = ct.marcarAEnviar(c, m.id, 'p1', T0)
+  assert.deepEqual(ct.evento(c.fila[0], 'p1'), { pedido: 'p1', tipo: 'aviso', texto: `x\nref. ${m.ref}`, destinatarios: 'contactos-do-plano', contactos: [], chats: [] })
+  // sem o Ivo a recebê-lo: volta à fila
+  c = ct.resposta(c, 'p1', { entregues: [], contactos: [], chats: [], falhas: [{ nome: 'chat 111', erro: 'sem ligação ao Telegram' }] }, T0)
+  assert.equal(c.fila[0].estado, 'fila')
+  c = ct.marcarAEnviar(c, m.id, 'p2', T0 + 2 * MIN)
+  c = ct.resposta(c, 'p2', { entregues: ['chat 111'], contactos: [], chats: [], falhas: [] }, T0 + 2 * MIN)
+  assert.deepEqual(c.fila, [])
+  assert.equal(c.enviadas.at(-1).tipo, 'aviso')
+  assert.equal(ct.textoDesisti({ tipo: 'chegada', ref: 'A5', contactos: ['Pai'], desisteEm: T0 + H }), 'Pai não recebeu o «cheguei bem» (ref. A5) e já passou a hora de alarme (ter 29/09 às 22:00): desisti de o entregar. Liga-lhe.')
+  assert.equal(ct.textoDesisti({ tipo: 'terminado', ref: 'A6', contactos: ['Mãe', 'Pai'], desisteEm: T0 + H }), 'Mãe e Pai não receberam a «viagem terminada» (ref. A6) e já passou a hora de alarme (ter 29/09 às 22:00): desisti de a entregar. Liga-lhes.')
+  assert.equal(ct.textoDesisti({ tipo: 'plano', ref: 'C1', contactos: ['Mãe'], alarme: T0 + 30 * MIN, desisteEm: T0 + 2 * H }), 'Mãe não recebeu o plano novo (ref. C1) antes da hora de alarme dele (ter 29/09 às 21:30): ficou com o plano antigo. Liga-lhe.')
 })

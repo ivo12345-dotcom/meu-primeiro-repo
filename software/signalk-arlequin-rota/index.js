@@ -131,6 +131,7 @@ const SEGUIMENTO_MN = 0.1 // a posição na rota grava-se no plano ativo quando 
 const LEITURA_VELHA_MS = 2 * MIN // posição, SOG, vento e pressão com mais de 2 min: em falta
 const ESPERA_RUMO_MS = 10000 // a API de rumo sem resposta em 10 s: não se sabe a rota
 const BARO_GRAVAR_MS = 10 * MIN // o barometro.json no máximo de 10 em 10 min
+const AVISO_IVO_MS = 24 * 3600000 // o aviso ao Ivo de uma mensagem que não chegou: tenta-se durante 24 h
 // a escrita atómica (com o fsync do ficheiro e da pasta, onde o sistema deixa): uma só, a do lib/previsao.js
 const { escreverAtomico } = prev
 
@@ -424,7 +425,11 @@ module.exports = function (app, deps = {}) {
   function porMensagem (tipo, texto, agora, extra = {}) {
     const contactos = planoAtivo?.envio?.contactos
     if (!contactos?.length) return false
-    planoAtivo = { ...planoAtivo, contactos: ct.porNaFila(planoAtivo.contactos || ct.novaFila(), { tipo, texto, contactos, chats: planoAtivo.envio.chats || [], idCalculo: planoAtivo.idCalculo, indice: planoAtivo.indice, ...extra }, agora) }
+    // a hora de alarme que estes contactos têm: passada ela, desiste-se de quem nunca a recebe (auditoria
+    // I-05, decisão do Ivo n.º 16)
+    const tarde = ct.alarmeMaisTarde(terraDe())
+    const desisteEm = Number.isFinite(tarde) ? tarde : Date.parse(planoAtivo.envio.alarme)
+    planoAtivo = { ...planoAtivo, contactos: ct.porNaFila(planoAtivo.contactos || ct.novaFila(), { tipo, texto, contactos, chats: planoAtivo.envio.chats || [], idCalculo: planoAtivo.idCalculo, indice: planoAtivo.indice, ...(Number.isFinite(desisteEm) ? { desisteEm } : {}), ...extra }, agora) }
     return true
   }
   function falharContactos (pedido, motivo) {
@@ -442,6 +447,18 @@ module.exports = function (app, deps = {}) {
   // receberam — a mesma ref, o mesmo texto —, mas também só com o barco a avançar.
   function enviarFila (agora) {
     if (!planoAtivo?.contactos) return
+    // auditoria I-05 (decisão do Ivo n.º 16): de quem nunca recebe, desiste-se no fim da hora de alarme desse
+    // envio, e o Ivo é avisado pelo Telegram (só o chat dele) para lhe ligar
+    const des = ct.desistir(planoAtivo.contactos, agora)
+    if (des.desistidas.length) {
+      let c = des.c
+      for (const m of des.desistidas) {
+        app.error(`desisti de entregar a mensagem ${m.ref} (${m.tipo}) a ${(m.contactos || []).join(', ') || 'o Ivo'}: ${m.erro || 'nunca chegou'}`)
+        if (m.tipo !== 'aviso') c = ct.porNaFila(c, { tipo: 'aviso', texto: ct.textoDesisti(m), contactos: [], chats: [], desisteEm: agora + AVISO_IVO_MS }, agora)
+      }
+      planoAtivo = { ...planoAtivo, contactos: c }
+      gravarPlanoAtivo()
+    }
     if (planoAtivo.estado !== pa.ESTADOS.NAVEGAR && planoAtivo.contactos.fila.some(m => m.estado === 'fila' && ct.atrasoAutomatico(m))) {
       planoAtivo = { ...planoAtivo, contactos: ct.tirarSe(planoAtivo.contactos, ct.atrasoAutomatico) }
       gravarPlanoAtivo()
@@ -821,8 +838,12 @@ module.exports = function (app, deps = {}) {
       envioEmTerra: envioEmTerraGet(terraSemPlano(relogio())),
       chegadaOutro: sug ? { id: sug.id, nome: sug.nome } : null,
       // contactos: a quem vai; parcial: só para os que falharam (revisão final I3)
-      filaContactos: c.fila.map(m => ({ tipo: m.tipo, criada: m.criada, tentativas: m.tentativas, proxima: m.proxima, estado: m.estado, erro: m.erro, contactos: [...(m.contactos || [])], parcial: !!m.parcial })),
-      enviadas: c.enviadas.map(m => ({ tipo: m.tipo, enviadaEm: m.enviadaEm, contactos: m.contactos, falhas: Array.isArray(m.falhas) ? m.falhas.map(f => ({ nome: String(f?.nome ?? ''), erro: String(f?.erro ?? '') })) : [] }))
+      // (as mensagens para terra; os avisos ao Ivo de uma desistência não são para terra)
+      filaContactos: c.fila.filter(m => m.tipo !== 'aviso').map(m => ({ tipo: m.tipo, criada: m.criada, tentativas: m.tentativas, proxima: m.proxima, estado: m.estado, erro: m.erro, contactos: [...(m.contactos || [])], parcial: !!m.parcial })),
+      enviadas: c.enviadas.filter(m => m.tipo !== 'aviso').map(m => ({ tipo: m.tipo, enviadaEm: m.enviadaEm, contactos: m.contactos, falhas: Array.isArray(m.falhas) ? m.falhas.map(f => ({ nome: String(f?.nome ?? ''), erro: String(f?.erro ?? '') })) : [] })),
+      // as mensagens de que se desistiu (auditoria I-05, decisão n.º 16): o ecrã diz "Pai não recebeu o
+      // «cheguei bem»: liga-lhe" (o Ivo também recebe o aviso pelo Telegram)
+      desistencias: (c.desistencias || []).map(d => ({ tipo: d.tipo, ref: d.ref, contactos: [...(d.contactos || [])], em: d.em, alarme: d.alarme ?? null }))
     }
   }
 
