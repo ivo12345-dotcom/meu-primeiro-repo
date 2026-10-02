@@ -262,7 +262,7 @@ Todos são LightGBM com **regressão por quantis: P10, P50 e P90** (pessimista, 
 | **Mapa** | costa, rota, rasto previsto por cor (vela ou motor, noite), marcas dos avisos e dos pontos de desistência |
 | **Leme** (com rota ativa) | o modo atual (rumo a seguir, bordos, VIRA AGORA) + faixa "próximo: rizar às 22:50 (daqui a 25 min)" + "Recalcular" |
 
-- O modo noite e o tamanho de letra são os já aprovados para o ecrã. A maquete foi mostrada ao Ivo a 29/09.
+- O modo noite e o tamanho de letra são os já aprovados para o ecrã. A maqueta foi mostrada ao Ivo a 29/09.
 
 ### Avisos (`notifications.rota.*`, regras de apito já aprovadas)
 

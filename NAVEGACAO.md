@@ -913,14 +913,18 @@ Com tudo num ecrã só, esse ecrã passa a ser um ponto único de falha.
   e ângulo de visão: ao leme a solo está-se muitas vezes de lado. Imprimir
   primeiro uma pala curta de teste e afinar no barco.
 - Antes de desenhar, **mostrar fotos de palas reais** instaladas em barcos
-  para escolher o estilo. Não gerar maquetes 3D como referência.
+  para escolher o estilo. Não gerar maquetas 3D como referência.
 - Prever um **comando físico** (teclado ou roda pequena Bluetooth/USB) para
   zoom e confirmar alarmes com luvas ou com o ecrã molhado.
 
 ## 7a. Produto final: maqueta e funções (28/09)
 
-**Maqueta interativa completa:** [`maquete-arlequin.html`](maquete-arlequin.html)
-(abrir no browser; 9 botões a funcionar). **Polar estimada:**
+**Maqueta interativa de 28/09 (histórico):** [`maqueta-arlequin.html`](maqueta-arlequin.html)
+(abrir no browser; 9 botões a funcionar). Foi substituída em quatro pontos: os limites a solo que
+mostra (25 nós, ondas de 2,5 m, motor abaixo de 5 nós) passaram a 22 nós de vento médio, 30 de
+rajada e 3 m de ondas, com o motor abaixo de 7 nós; o consumo (~4 L/h a 2 150 rpm) é ~1,5 L/h pela
+curva da Volvo; o modo noite deixou de ser vermelho (abaixo); e a melhor rota é o plugin próprio
+(secção 11). O ecrã a sério é o `software/arlequin-ecra`. **Polar estimada:**
 [`polar-arlequin-estimada.csv`](polar-arlequin-estimada.csv) é uma cópia de 28/09, com os mesmos
 números: o código (o ecrã, a AI e a rota) lê a `software/arlequin-ecra/public/polar-arlequin.csv`,
 e é essa que conta. Trocar a da raiz não muda nada.

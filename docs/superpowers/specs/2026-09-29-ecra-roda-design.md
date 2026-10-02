@@ -1,11 +1,11 @@
 # ARLEQUIN · Ecrã da roda (desenho)
 
 Data: 29/09/2026 · Aprovado pelo Ivo no chat (opção A, "mete as páginas todas").
-Base visual: `maquete-arlequin.html` e NAVEGACAO.md §7a/§7b.
+Base visual: `maqueta-arlequin.html` e NAVEGACAO.md §7a/§7b.
 
 ## Objetivo
 
-Um painel web do Arlequin, ao lado do OpenCPN, com as 9 páginas da maquete a
+Um painel web do Arlequin, ao lado do OpenCPN, com as 9 páginas da maqueta a
 funcionar com dados reais do SignalK. Sem EV-100, a Melhor rota e o Recolher
 velas guiam o Ivo ao leme. O painel abre também no telemóvel e no 2.º ecrã.
 
@@ -81,7 +81,7 @@ software/
 
 ## Páginas
 
-Iguais à maquete (§7a/§7b). Ajustes aprovados:
+Iguais à maqueta (§7a/§7b). Ajustes aprovados:
 
 - **Motor** inclui a **energia**: SoC, corrente, tensão, painéis, bateria do
   motor e as últimas sessões de carga. Para isto, o plugin de energia ganha
