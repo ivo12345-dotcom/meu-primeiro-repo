@@ -159,6 +159,29 @@ test('veredicto "Volta ou abriga-te em X": só no mar, continuar não é recomen
   assert.equal(d.decidir({ candidatos: [cand({ custo: 30 })], agora: AGORA, tripulacao: 'so', sairAgora: true, emMar: true, abrigo }).veredicto.tipo, 'segue')
 })
 
+test('I-15: no mar, com a partida de agora recomendada e uma mais tarde mais barata, nunca "Volta ou abriga-te" (nem "Agora: ."): espera, e partir agora também dá', () => {
+  const agoraRec = cand({ custo: 30 })
+  const depois = cand({ partida: AGORA + 3 * H, custo: 25 })
+  const abrigo = { destino: { nome: 'Cascais' }, candidato: { ...cand({ custo: 5, chegada: AGORA + 2 * H }), milhas: 8.2 } }
+  for (const sairAgora of [false, true]) {
+    const cands = sairAgora ? [agoraRec] : [agoraRec, depois]
+    const r = d.decidir({ candidatos: cands, agora: AGORA, tripulacao: 'so', emMar: true, abrigo, sairAgora })
+    assert.notEqual(r.veredicto.tipo, 'volta', JSON.stringify(r.veredicto))
+    assert.doesNotMatch(JSON.stringify(r.veredicto), /Agora: \./)
+    if (!sairAgora) {
+      assert.equal(r.veredicto.tipo, 'espera')
+      assert.equal(r.veredicto.texto, 'Espera até às 18:32')
+      assert.match(r.veredicto.porque[0], /^Partir agora também dá, mas custa mais: chegas /)
+    } else assert.equal(r.veredicto.tipo, 'segue')
+  }
+  // com a de agora não recomendada, o "Volta" de sempre
+  const agoraNr = cand({ custo: 30, naoRecomendada: true, motivos: ['rajadas até 33 nós no pior caso (limite 30 sozinho)'] })
+  assert.equal(d.decidir({ candidatos: [agoraNr, depois], agora: AGORA, tripulacao: 'so', emMar: true, abrigo }).veredicto.tipo, 'volta')
+  // uma de agora não recomendada e sem motivos (não devia haver): a frase genérica, nunca "Agora: ."
+  const semMotivos = Object.assign(cand({ custo: 10 }), { excluidaSemSairAgora: true })
+  assert.equal(d.decidir({ candidatos: [semMotivos, depois], agora: AGORA, tripulacao: 'so' }).veredicto.porque[0], 'Agora não há alternativa recomendada.')
+})
+
 test('a rota direta (afastamento null) e a variante por um canal no texto do veredicto: nunca "a null MN"', () => {
   const direta = { ...cand({ custo: 10 }), afastamento: null, direto: true }
   const r = d.decidir({ candidatos: [direta], agora: AGORA, tripulacao: 'so' })

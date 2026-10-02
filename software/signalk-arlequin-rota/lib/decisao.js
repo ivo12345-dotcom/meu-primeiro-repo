@@ -150,18 +150,24 @@ function decidir ({ candidatos, agora, tripulacao, sairAgora = false, emMar = fa
   const sozinho = tripulacao === 'so'
   const agoraCands = candidatos.filter(c => c.partida === agora)
   const melhorAgora = [...agoraCands].sort((a, b) => a.custo.total - b.custo.total)[0] || null
+  // "Agora: <motivos>." — nunca "Agora: ." (sem motivos, a frase genérica)
+  const agoraPorque = (motivos) => (motivos?.length ? `Agora: ${juntar(motivos)}.` : 'Agora não há alternativa recomendada.')
   const porqueAgora = () => {
     if (!melhorAgora) return excluidasAgora.length ? `Agora: ${juntar([...new Set(excluidasAgora)])}.` : 'Agora não há alternativa possível.'
     const nrAgora = agoraCands.filter(c => !c.excluida)
-    if (!nrAgora.length) return `Agora: ${juntar(melhorAgora.motivos)}.`
+    if (!nrAgora.length) return agoraPorque(melhorAgora.motivos)
     const melhorNr = nrAgora.sort((a, b) => a.custo.total - b.custo.total)[0]
-    return `Agora: ${juntar(melhorNr.motivos)}.`
+    return agoraPorque(melhorNr.motivos)
   }
 
+  // uma partida de agora recomendada (a melhor pode ser mais tarde): então continuar agora dá
+  const agoraRecomendada = agoraCands.some(c => recomendada(c, tripulacao))
   let veredicto
   if (melhorRec && melhorRec.partida === agora) {
     veredicto = { tipo: 'segue', texto: 'Segue', porque: [`Parte agora pela rota ${nomeRota(melhorRec)}: ${frase(melhorRec, agora, fuso)}.`] }
-  } else if (emMar && abrigo && abrigo.candidato && recomendada(abrigo.candidato, tripulacao)) {
+  } else if (emMar && !agoraRecomendada && abrigo && abrigo.candidato && recomendada(abrigo.candidato, tripulacao)) {
+    // "Volta" só quando continuar agora não é recomendado (auditoria I-15): com a de agora
+    // recomendada e uma mais tarde mais barata, é o ramo "espera" ("Partir agora também dá…")
     const a = abrigo.candidato
     veredicto = {
       tipo: 'volta',
