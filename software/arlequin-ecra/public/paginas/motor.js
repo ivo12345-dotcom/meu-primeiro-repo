@@ -3,7 +3,7 @@
 
 import { barra } from '../lib/desenho.js'
 import { celsius } from '../lib/formato.js'
-import { tile, gasoleo, corGasoleo, num, ok, esc, motorLigado, ESTADO_MOTOR, CLASSE_MOTOR } from './comum.js'
+import { tile, gasoleo, corGasoleo, num, ok, esc, motorLigado, ESTADO_MOTOR, CLASSE_MOTOR, TEMPERATURA_ALARME_C } from './comum.js'
 import { litrosPorMilha } from '../lib/consumo-milha.js'
 import { motivo } from '../lib/erros.js'
 import { diaHoraLisboa } from '../lib/rota-texto.js'
@@ -189,7 +189,7 @@ export default {
 <div class="tile"><div class="linha"><span class="lab">Volvo Penta D1-20B</span><span class="${CLASSE_MOTOR[estadoMotor]}">${ESTADO_MOTOR[estadoMotor]}</span></div>
   <div class="vv">${ok(rpm) ? num(rpm * 60, 0) : '—'} <span style="font-size:1.4rem;">rpm</span></div></div>
 <div class="g2">
-  ${tile('Temperatura', `<span class="${tempC > 95 ? 'perigo' : ''}">${ok(tempC) ? num(tempC, 0) + ' °C' : '—'}</span>`, '', 'vv')}
+  ${tile('Temperatura', `<span class="${ok(tempC) && tempC >= TEMPERATURA_ALARME_C ? 'perigo' : ''}">${ok(tempC) ? num(tempC, 0) + ' °C' : '—'}</span>`, '', 'vv')}
   ${tile('Pressão do óleo', ligado ? `${ok(oleo) ? num(oleo / 1e5, 1) + ' bar' : '—'}` : '—', '', 'vv')}
   ${tile('Alternador', ligado && ok(alt) ? `${num(alt, 1)} V` : '—', '', 'vv')}
   ${tile('Horas de motor', ok(horas) ? `${num(horas / 3600, 1)} h` : '—', '', 'vv')}
