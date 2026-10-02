@@ -28,7 +28,9 @@ export default {
     return `<div class="col">${esquerda}</div>
 <div class="col">
 <div class="tile"><div class="linha"><span class="lab">Resumo da viagem · desde ${inicio.getDate()}/${inicio.getMonth() + 1} ${hm(inicio)}</span>
-  <button class="btn" style="padding:.5rem 1rem;" data-acao="nova">Nova viagem</button></div></div>
+  ${ctx.estado.confirmarNova ? '' : '<button class="btn" style="padding:.5rem 1rem;" data-acao="nova">Nova viagem</button>'}</div>
+${ctx.estado.confirmarNova ? `<div class="plano-confirmar"><div class="v">Começar uma viagem nova? O resumo atual é apagado.</div>
+<div class="acoes"><button class="acao stop" data-acao="nova-sim">Sim, começar outra</button><button class="acao" data-acao="nova-nao">Não</button></div></div>` : ''}</div>
 <div class="grelha" style="grid-template-columns:1fr 1fr;">
   ${tile('Distância', `${distancia(v.distancia)} MN`, '', 'vv')}
   ${tile('Tempo', duracao(tempo / 1000), '', 'vv')}
@@ -41,7 +43,10 @@ export default {
 </div>
 </div>`
   },
+  // a pergunta dentro da página (auditoria I-10: a caixa de confirmação do browser parava o ciclo e o apito)
   acao (nome, dados, ctx) {
-    if (nome === 'nova' && confirm('Começar uma viagem nova? O resumo atual é apagado.')) window.arlequin.novaViagemAgora()
+    if (nome === 'nova') ctx.estado.confirmarNova = true
+    if (nome === 'nova-nao') ctx.estado.confirmarNova = false
+    if (nome === 'nova-sim') { ctx.estado.confirmarNova = false; ctx.novaViagem?.() }
   }
 }

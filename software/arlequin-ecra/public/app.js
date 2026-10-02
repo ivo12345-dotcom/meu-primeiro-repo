@@ -96,6 +96,8 @@ function contexto () {
     }),
     // o diário pelo plugin do ecrã (contrato C3)
     logbook: (text, category = 'navigation') => gravarNoDiario(pedir, text, category),
+    // "Nova viagem" (página Viagem): o resumo recomeça
+    novaViagem: () => novaViagemAgora(),
     refrescar: () => render()
   }
 }
