@@ -241,13 +241,41 @@ test('corrente e maré somam à velocidade no fundo; chuva, noite e nascer do so
   const textos = r.eventos.map(e => e.texto)
   assert.ok(textos.includes('Pôr do sol (19:23): ecrã em modo noite, luzes de navegação'))
   assert.ok(textos.includes('Nascer do sol (07:32): ecrã em modo dia'))
-  assert.ok(textos.includes('Chuva e visibilidade 2,5 km: radar ligado'))
+  // sem chuva (o ventoFixo tem chuva 0) é só "Visibilidade" (I-17); era "Chuva e visibilidade"
+  assert.ok(textos.includes('Visibilidade 2,5 km: radar ligado'), textos.join(' | '))
   assert.ok(Math.abs(r.resumo.horasNoite - (12 * 60 + 9) / 60) < 0.02)
   // noitePeloSol fora dos dias dados: o dia mais perto, deslocado
   assert.equal(noite(Date.UTC(2026, 9, 5, 12)), false)
   assert.equal(noite(Date.UTC(2026, 9, 5, 23)), true)
   const deNoite = simularPassagem(base({ partida: Date.UTC(2026, 8, 29, 22), noite }))
   assert.equal(deNoite.eventos[1].texto, 'Partida de noite (23:00): ecrã em modo noite, luzes de navegação')
+})
+
+test('I-17 (decisão do Ivo n.º 10): visibilidade abaixo de 5 km (a constante única), um evento por episódio, "Chuva e" só a chover', () => {
+  const { VISIBILIDADE_RADAR_M, CHUVA_RADAR_MM_H, PADRAO: AVISOS } = require('../lib/avisos')
+  assert.equal(VISIBILIDADE_RADAR_M, 5000)
+  assert.equal(AVISOS.visibilidadeRadar, VISIBILIDADE_RADAR_M)
+  assert.equal(AVISOS.chuvaRadar, CHUVA_RADAR_MM_H)
+  // 4 km (entre os 3 e os 5 km): antes não dava evento nenhum
+  const quatro = simularPassagem(base({ tempo: ventoFixo(12, 270, { visibilidade: 4000 }) }))
+  assert.deepEqual(quatro.eventos.filter(e => e.tipo === 'tempo').map(e => e.texto), ['Visibilidade 4,0 km: radar ligado'])
+  // no limite (5 km) não; um pouco abaixo sim
+  assert.equal(simularPassagem(base({ tempo: ventoFixo(12, 270, { visibilidade: 5000 }) })).eventos.filter(e => e.tipo === 'tempo').length, 0)
+  assert.equal(simularPassagem(base({ tempo: ventoFixo(12, 270, { visibilidade: 4999 }) })).eventos.filter(e => e.tipo === 'tempo').length, 1)
+  // dois episódios (fraca, boa, fraca): dois eventos; a chover, "Chuva e visibilidade"
+  let n = 0
+  const tempo = () => {
+    const k = n++
+    if (k < 20) return ventoFixo(12, 270, { visibilidade: 3000, chuva: 1.2 })()
+    if (k < 40) return ventoFixo(12, 270, { visibilidade: 20000 })()
+    if (k < 50) return ventoFixo(12, 270, { visibilidade: null })() // sem previsão: acaba o episódio
+    return ventoFixo(12, 270, { visibilidade: 2000, chuva: 0.1 })()
+  }
+  const dois = simularPassagem(base({ tempo }))
+  const vis = dois.eventos.filter(e => e.tipo === 'tempo')
+  assert.deepEqual(vis.map(e => e.texto), ['Chuva e visibilidade 3,0 km: radar ligado', 'Visibilidade 2,0 km: radar ligado'])
+  assert.equal(vis[0].t, dois.pontos[0].t)
+  assert.equal(vis[1].t, dois.pontos[50].t)
 })
 
 test('passagem da frente, energia, costa e "não chegou"', () => {

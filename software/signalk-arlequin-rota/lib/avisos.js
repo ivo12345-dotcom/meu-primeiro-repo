@@ -15,11 +15,18 @@
 //
 // precaucoes: a tabela "Precauções" do desenho geral (2026-09-29), por alternativa.
 
+// A visibilidade abaixo da qual se liga o radar: 5 km (decisão do Ivo n.º 10, auditoria I-17), a
+// MESMA nos três sítios — os avisos e as precauções daqui, o evento da linha do tempo
+// (lib/passagem.js) e os lembretes a navegar (lib/acompanhamento.js, VIS_LEMBRETE_M).
+const VISIBILIDADE_RADAR_M = 5000
+// A chuva que conta para o radar e para o "Chuva e visibilidade" do evento (mm/h)
+const CHUVA_RADAR_MM_H = 0.5
+
 const PADRAO = Object.freeze({
   fuso: 'Europe/Lisbon',
   antecedenciaMin: 30,
-  visibilidadeRadar: 5000, // m
-  chuvaRadar: 0.5, // mm/h
+  visibilidadeRadar: VISIBILIDADE_RADAR_M, // m
+  chuvaRadar: CHUVA_RADAR_MM_H, // mm/h
   rotacaoVento: 45, // graus em 1 h
   ventoMinRotacao: 6, // nós
   viragemGraus: 40, // as cambadelas do motor da passagem mudam 50° (popa a 180 ± 25), as viragens 90°
@@ -162,4 +169,4 @@ function precaucoes ({ passagem, tripulacao = 'so', sairAgora = false, desistenc
   return out
 }
 
-module.exports = { PADRAO, avisosDaPassagem, precaucoes }
+module.exports = { PADRAO, VISIBILIDADE_RADAR_M, CHUVA_RADAR_MM_H, avisosDaPassagem, precaucoes }
