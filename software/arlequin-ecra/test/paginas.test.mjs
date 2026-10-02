@@ -13,7 +13,7 @@ import instr from '../public/paginas/instr.js'
 import ais from '../public/paginas/ais.js'
 import motor from '../public/paginas/motor.js'
 import viagem from '../public/paginas/viagem.js'
-import diario from '../public/paginas/diario.js'
+import diario, { gravarNoDiario } from '../public/paginas/diario.js'
 import melhor from '../public/paginas/melhor.js'
 import velas from '../public/paginas/velas.js'
 
@@ -194,9 +194,13 @@ test('Velas: estado atual marcado e os toques mandam para a caixa negra', async 
     { url: '/plugins/signalk-arlequin-caixanegra/velas', method: 'POST', body: { grandeRizos: 2 } },
     { url: '/plugins/signalk-arlequin-caixanegra/velas', method: 'POST', body: { genoaPct: 0 } }
   ])
-  const falha = { ...contexto(st, {}), pedir: async () => { throw new Error('caixa negra desligada') } }
+  // auditoria K-11/I-32: sem resposta (sem código) não se mostra o erro técnico; com o motivo do plugin, o motivo
+  const falha = { ...contexto(st, {}), pedir: async () => { throw new Error('Failed to fetch') } }
   await velas.acao('grande', { valor: '1' }, falha)
-  assert.match(falha.estado.msg, /Velas não gravadas \(caixa negra desligada\)/)
+  assert.equal(falha.estado.msg, 'Velas não gravadas: a caixa negra não responde')
+  const parada = { ...contexto(st, {}), pedir: async () => { throw Object.assign(new Error('a caixa negra não está a gravar (disco cheio)'), { status: 503 }) } }
+  await velas.acao('grande', { valor: '1' }, parada)
+  assert.equal(parada.estado.msg, 'Velas não gravadas: a caixa negra não está a gravar (disco cheio)')
 })
 
 test('Diário: botão "Orcas" de um toque grava "Orcas avistadas"', async () => {
@@ -322,6 +326,71 @@ test('auditoria K-04: Motor, Viagem, Carta, Velas e Diário escapam as mensagens
   semCru(velas.render(contexto(st, { msg: MAU, msgErro: true })), 'Velas')
   const ia = { modelos: { velocidade: { versao: MAU, versoes: [], podeVoltar: false, horas: 1, frases: [MAU] } } }
   semCru(diario.render(contexto(st, { ia, iaEm: Date.now(), msg: MAU, msgErro: true })), 'Diário')
+})
+
+// ---------- auditoria K-11: a conta "read/write" do ecrã; os erros à vista e em pt-PT; o diário pelo plugin do ecrã ----------
+const SEM_SESSAO = 'o SignalK recusou o pedido (sem sessão iniciada neste ecrã?): entra no SignalK e tenta outra vez'
+const recusa = () => Object.assign(new Error(SEM_SESSAO), { status: 401 }) // como o pedir do signalk.js
+const esperar = () => new Promise(resolve => setTimeout(resolve, 0))
+
+test('auditoria K-11: com um 401, o Motor diz que o SignalK recusou (nunca "não responde" nem "401"), também no Abasteci, na calibração e no Enchi', async () => {
+  const st = storeSimulado(1)
+  aplicarDelta(st, { updates: [{ timestamp: new Date().toISOString(), values: [{ path: 'tanks.freshWater.0.name', value: 'Cozinha (BB)' }, { path: 'tanks.freshWater.0.currentVolume', value: 0.04 }, { path: 'tanks.freshWater.0.currentLevel', value: 0.5 }] }] })
+  const estado = {}
+  const ctx = { ...contexto(st, estado), pedir: async () => { throw recusa() } }
+  motor.aoEntrar(ctx)
+  motor.render(ctx) // pede a água
+  await esperar()
+  let html = motor.render(ctx)
+  assert.ok(html.includes(`Sonda do gasóleo: ${SEM_SESSAO}`), 'o estado do gasóleo')
+  assert.ok(html.includes(`Últimas cargas pelo motor</div>\n<div class="lab">${SEM_SESSAO}`), 'as sessões de carga')
+  assert.ok(html.includes(`Por regime: ${SEM_SESSAO}`), 'a curva do J1939')
+  assert.doesNotMatch(html, /não responde|>401</)
+  await motor.acao('abrir-teclado', { modo: 'abasteci' }, ctx)
+  await motor.acao('tecla', { t: '8' }, ctx)
+  await motor.acao('teclado-ok', {}, ctx)
+  assert.equal(estado.msgGas, `Não gravou: ${SEM_SESSAO}`)
+  await motor.acao('calib-abrir', {}, ctx)
+  await motor.acao('calib-iniciar', {}, ctx)
+  assert.equal(estado.msgCalib, SEM_SESSAO)
+  // o "Enchi" que falha aparece no mosaico da água (antes só dentro da calibração da bomba)
+  estado.calibAberta = false
+  estado.msgAgua = null
+  await motor.acao('agua-calib', { id: '0' }, ctx)
+  await motor.acao('bomba-cancelar', {}, ctx)
+  html = motor.render(ctx)
+  assert.ok(html.includes(SEM_SESSAO), 'o erro da água à vista')
+})
+
+test('auditoria K-11: com um 401, a Velas e o Diário dizem que o SignalK recusou (nunca "o signalk-logbook está ligado?")', async () => {
+  const v = { ...contexto(store, {}), pedir: async () => { throw recusa() }, logbook: async () => { throw recusa() } }
+  await velas.acao('grande', { valor: '1' }, v)
+  assert.equal(v.estado.msg, `Velas não gravadas: ${SEM_SESSAO}`)
+  await velas.acao('comecar', {}, v)
+  assert.equal(v.estado.msg, `Diário não gravou: ${SEM_SESSAO}`)
+  const d = { ...contexto(store, {}), pedir: async () => { throw recusa() }, logbook: async () => { throw recusa() } }
+  diario.aoEntrar(d)
+  await esperar()
+  const html = diario.render(d)
+  assert.ok(html.includes(SEM_SESSAO), 'a leitura do diário')
+  assert.ok(html.includes(`AI: ${SEM_SESSAO}`), 'o cartão da AI')
+  await diario.acao('rapida', { texto: 'Rizei', cat: 'navigation' }, d)
+  assert.equal(d.estado.msg, `Não gravou: ${SEM_SESSAO}`)
+  assert.doesNotMatch(diario.render(d), /signalk-logbook está/)
+})
+
+test('contrato C3: o Diário lê o dia de Lisboa pelo plugin do ecrã (GET /plugins/arlequin-ecra/diario/AAAA-MM-DD) e grava por ele (POST { text, category })', async () => {
+  const pedidos = []
+  const entradas = [{ datetime: '2026-07-14T23:30:00.000Z', text: 'Largámos', category: 'navigation', origin: 'manual', author: 'ecra' }]
+  const ctx = { ...contexto(store, {}), agora: Date.parse('2026-07-14T23:40:00Z'), pedir: async (url, o = {}) => { pedidos.push([o.method || 'GET', url, o.body]); return url.includes('/arlequin-ecra/diario/') ? { dia: '2026-07-15', entradas } : new Promise(() => {}) } }
+  diario.aoEntrar(ctx)
+  await esperar()
+  // 23:40 UTC do dia 14 = 00:40 do dia 15 em Lisboa (verão)
+  assert.ok(pedidos.some(([m, u]) => m === 'GET' && u === '/plugins/arlequin-ecra/diario/2026-07-15'), JSON.stringify(pedidos))
+  assert.match(diario.render(ctx), /Largámos/)
+  const enviados = []
+  await gravarNoDiario(async (url, o) => { enviados.push([url, o]); return { ok: true } }, 'Rizei', 'navigation')
+  assert.deepEqual(enviados, [['/plugins/arlequin-ecra/diario', { method: 'POST', body: { text: 'Rizei', category: 'navigation' } }]])
 })
 
 test('Diário: cartão da AI mostra mensagem genérica para erro sem status', async () => {

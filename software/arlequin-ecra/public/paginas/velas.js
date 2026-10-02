@@ -5,6 +5,7 @@
 
 import { correcaoLeme, rumoAproar } from '../lib/rumo.js'
 import { rumo, velocidade, ok, esc } from './comum.js'
+import { motivo } from '../lib/erros.js'
 
 const PASSOS = ['Liga o motor', 'Aproa ao vento', 'Recolhe as velas', 'Terminado']
 
@@ -57,11 +58,11 @@ ${!motor ? '' : '<div class="ok" style="margin-top:.4rem;">Motor já está ligad
     const e = ctx.estado
     if (nome === 'grande' || nome === 'genoa') {
       const body = nome === 'grande' ? { grandeRizos: Number(dados.valor) } : { genoaPct: Number(dados.valor) }
-      try { await ctx.pedir(URL_VELAS, { method: 'POST', body }); e.msg = null } catch (err) { e.msg = `Velas não gravadas (${err.message})`; e.msgErro = true }
+      try { await ctx.pedir(URL_VELAS, { method: 'POST', body }); e.msg = null } catch (err) { e.msg = `Velas não gravadas: ${motivo(err, 'a caixa negra')}`; e.msgErro = true }
       return
     }
     const registar = async (t) => {
-      try { await ctx.logbook(t, 'navigation'); e.msg = `Diário: ${t}`; e.msgErro = false } catch (err) { e.msg = `Diário não gravou (${err.message})`; e.msgErro = true }
+      try { await ctx.logbook(t, 'navigation'); e.msg = `Diário: ${t}`; e.msgErro = false } catch (err) { e.msg = `Diário não gravou: ${motivo(err, 'o diário')}`; e.msgErro = true }
     }
     if (nome === 'comecar') { e.passo = 0; await registar('Início de recolher velas') }
     if (nome === 'aproado') { e.passo = 2; await registar(`Aproado ao vento (${rumo(ctx.v('navigation.headingTrue'))})`) }

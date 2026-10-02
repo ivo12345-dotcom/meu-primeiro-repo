@@ -6,11 +6,11 @@ import { esc } from './rota-texto.js'
 import { hora, num, hpa } from './formato.js'
 
 // { agora (ms ou Date), gps (bool), pressao (Pa), tendencia ({ sentido } | null), somHtml, alarmeHtml,
-//   piloto (texto do SignalK), ligado (bool) }
-export function barraHtml ({ agora = Date.now(), gps = false, pressao, tendencia, somHtml = '', alarmeHtml = '', piloto, ligado = false } = {}) {
+//   piloto (texto do SignalK), ligado (bool), falhas: [texto] (ex.: a do modo noite do OpenCPN) }
+export function barraHtml ({ agora = Date.now(), gps = false, pressao, tendencia, somHtml = '', alarmeHtml = '', piloto, ligado = false, falhas = [] } = {}) {
   const seta = !tendencia ? '' : tendencia.sentido === 'sobe' ? ' ▲' : tendencia.sentido === 'desce' ? ' ▼' : ' ▬'
   return `<span class="nome">ARLEQUIN</span><span>${hora(new Date(agora))}</span>
 <span class="chip ${gps ? 'bom' : 'off'}">GPS</span><span class="chip off" title="Meshtastic: depois de validar o sistema">Mesh</span><span class="chip off" title="4G: a instalar">4G</span>
-<span class="chip">${pressao ? num(hpa(pressao), 0) : '—'} hPa${seta}</span>${somHtml}${alarmeHtml}
+<span class="chip">${pressao ? num(hpa(pressao), 0) : '—'} hPa${seta}</span>${somHtml}${falhas.filter(Boolean).map(f => `<span class="chip falha">⚠ ${esc(f)}</span>`).join('')}${alarmeHtml}
 <span class="chip piloto">Piloto: ${esc(piloto || 'manual')}</span>${ligado ? '' : '<span class="chip alarme">SEM LIGAÇÃO AO SIGNALK</span>'}`
 }

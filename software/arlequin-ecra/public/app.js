@@ -10,12 +10,13 @@ import { maisGrave, deveTocar, paginaDoAlarme, bipDeLigacao, chipAlarme } from '
 import { podeRedesenhar, aoEnter, aoEscrever } from './lib/interacao.js'
 import { NIVEIS, PADRAO as BRILHO_PADRAO, nivelValido, mudarNivel } from './lib/brilho.js'
 import { criarAudio, retomar, comSom, chipSemSom } from './lib/som.js'
+import { falhaJanela } from './lib/erros.js'
 import carta from './paginas/carta.js'
 import instr from './paginas/instr.js'
 import ais from './paginas/ais.js'
 import motor from './paginas/motor.js'
 import viagem from './paginas/viagem.js'
-import diario from './paginas/diario.js'
+import diario, { gravarNoDiario } from './paginas/diario.js'
 import melhor from './paginas/melhor.js'
 import velas from './paginas/velas.js'
 
@@ -44,7 +45,9 @@ const app = {
   bipados: new Set(),
   estavaLigado: null,
   sons: [], // últimos sons tocados (diagnóstico: window.arlequin.app.sons)
-  premidoEm: null // quando um dedo tocou no ecrã (do pointerdown ao pointerup; null: nenhum)
+  premidoEm: null, // quando um dedo tocou no ecrã (do pointerdown ao pointerup; null: nenhum)
+  falhaJanela: null, // a falha do último pedido das janelas/modo noite do OpenCPN (auditoria K-11), na barra
+  erros: [] // registo dos últimos erros (diagnóstico: window.arlequin.app.erros); no ecrã só a frase em pt-PT
 }
 
 // ---------- contexto passado às páginas ----------
@@ -80,8 +83,14 @@ function contexto () {
     // armazenamento do ecrã (as marcas das precauções da melhor rota, por cálculo)
     guardado,
     guardar,
-    pedir,
-    logbook: (text, category = 'navigation') => pedir('/plugins/signalk-logbook/logs', { method: 'POST', body: { text, category } }),
+    // o pedido comum (signalk.js: o erro já vem em pt-PT); o erro verdadeiro fica no registo (um 404 de uma
+    // leitura é normal, ex.: sem plano ativo, e não entra)
+    pedir: (url, o = {}) => pedir(url, o).catch((err) => {
+      if (!(err?.status === 404 && (o.method || 'GET') === 'GET')) registarErro(url, err)
+      throw err
+    }),
+    // o diário pelo plugin do ecrã (contrato C3)
+    logbook: (text, category = 'navigation') => gravarNoDiario(pedir, text, category),
     refrescar: () => render()
   }
 }
@@ -96,7 +105,8 @@ function barra (ctx) {
     somHtml: chipSemSom(app.audio),
     alarmeHtml: chipAlarme(maisGrave(ctx.notificacoes)),
     piloto: ctx.v('steering.autopilot.state'),
-    ligado: store.ligado
+    ligado: store.ligado,
+    falhas: [app.falhaJanela]
   })
 }
 
@@ -153,8 +163,16 @@ function aplicarNoite () {
   document.body.dataset.brilho = String(app.brilho)
 }
 
+// o registo dos erros (o erro verdadeiro; o ecrã só mostra a frase em pt-PT)
+function registarErro (onde, err) {
+  app.erros = [...app.erros.slice(-19), { t: new Date().toISOString(), onde, erro: String(err?.message ?? err), detalhe: err?.detalhe ?? null }]
+}
+
+// As janelas e o modo noite do OpenCPN (plugin do ecrã): a falha fica na barra até um pedido correr bem.
 function janela (corpo) {
-  pedir('/plugins/arlequin-ecra/janela', { method: 'POST', body: corpo }).catch(() => {})
+  pedir('/plugins/arlequin-ecra/janela', { method: 'POST', body: corpo })
+    .then(() => { app.falhaJanela = null })
+    .catch((err) => { app.falhaJanela = falhaJanela(err, corpo); registarErro('janela', err) })
 }
 
 function irPara (pag) {

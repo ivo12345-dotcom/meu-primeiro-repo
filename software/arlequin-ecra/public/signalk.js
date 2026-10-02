@@ -1,7 +1,9 @@
 // Ligação ao SignalK: WebSocket com reconexão, e o "store" com os últimos
 // valores do nosso barco, dos alvos AIS e das notificações.
 
-const CAMINHOS_AIS = ['navigation.position', 'navigation.courseOverGroundTrue', 'navigation.speedOverGround', 'name', 'mmsi', 'design.aisShipType']
+import { SEM_AUTORIZACAO, SEM_LIGACAO, doServidor } from './lib/erros.js'
+
+const CAMINHOS_AIS =['navigation.position', 'navigation.courseOverGroundTrue', 'navigation.speedOverGround', 'name', 'mmsi', 'design.aisShipType']
 
 export function criarStore () {
   return {
@@ -88,22 +90,36 @@ export function idade (store, caminho) {
   return Number.isNaN(t) ? Infinity : Date.now() - t
 }
 
+// O pedido comum de todas as páginas. O erro fala pt-PT (auditoria K-11 e I-32): a explicação do plugin
+// ({ erro: '…' }), o 401/403 da segurança do SignalK (SEM_AUTORIZACAO), o "sem ligação ao SignalK" (sem
+// resposta, sem e.status) e as mensagens conhecidas da API do SignalK; senão o código (o motivo() de cada
+// página diz o que é). Leva também o código, o corpo (ex.: o id do cálculo que já está a correr, num 409 da
+// melhor rota) e o erro verdadeiro em e.detalhe (para o registo, nunca para o ecrã).
 export async function pedir (url, opcoes = {}) {
-  const r = await fetch(url, {
-    credentials: 'include',
-    headers: opcoes.body ? { 'Content-Type': 'application/json' } : undefined,
-    ...opcoes,
-    body: opcoes.body ? JSON.stringify(opcoes.body) : undefined
-  })
+  let r
+  try {
+    r = await fetch(url, {
+      credentials: 'include',
+      headers: opcoes.body ? { 'Content-Type': 'application/json' } : undefined,
+      ...opcoes,
+      body: opcoes.body ? JSON.stringify(opcoes.body) : undefined
+    })
+  } catch (causa) {
+    const e = new Error(SEM_LIGACAO)
+    e.detalhe = String(causa?.message ?? causa)
+    throw e
+  }
   if (!r.ok) {
-    // O erro leva a explicação do plugin, se houver ({ erro: '…' }), o código e o corpo (ex.: o
-    // id do cálculo que já está a correr, num 409 da melhor rota).
     let msg = String(r.status)
     let corpo = null
-    try { corpo = await r.json(); if (corpo?.erro) msg = corpo.erro } catch { /* sem corpo */ }
+    try { corpo = await r.json() } catch { /* sem corpo */ }
+    if (typeof corpo?.erro === 'string' && corpo.erro.trim()) msg = corpo.erro
+    else if (r.status === 401 || r.status === 403) msg = SEM_AUTORIZACAO
+    else if (doServidor(corpo?.message)) msg = doServidor(corpo.message)
     const e = new Error(msg)
     e.status = r.status
     e.corpo = corpo
+    e.detalhe = `HTTP ${r.status}${corpo ? ` ${JSON.stringify(corpo)}` : ''}`
     throw e
   }
   const tipo = r.headers.get('content-type') || ''

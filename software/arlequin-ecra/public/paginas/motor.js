@@ -5,13 +5,14 @@ import { barra } from '../lib/desenho.js'
 import { celsius } from '../lib/formato.js'
 import { tile, tileGasoleo, num, ok, esc } from './comum.js'
 import { litrosPorMilha } from '../lib/consumo-milha.js'
+import { motivo } from '../lib/erros.js'
 
 function buscarSessoes (ctx) {
   if (ctx.estado.aBuscar || Date.now() - (ctx.estado.sessoesEm || 0) < 30000) return
   ctx.estado.aBuscar = true
   ctx.pedir('/plugins/signalk-arlequin-energia/sessoes?n=4')
-    .then(r => { ctx.estado.sessoes = r.sessoes })
-    .catch(() => { ctx.estado.sessoes = null })
+    .then(r => { ctx.estado.sessoes = r.sessoes; ctx.estado.sessoesErro = null })
+    .catch(err => { ctx.estado.sessoes = null; ctx.estado.sessoesErro = motivo(err, 'o plugin da energia') })
     .finally(() => { ctx.estado.aBuscar = false; ctx.estado.sessoesEm = Date.now() })
 }
 
@@ -20,8 +21,8 @@ function buscarCurva (ctx) {
   if (ctx.estado.aBuscarCurva || Date.now() - (ctx.estado.curvaEm || 0) < 30000) return
   ctx.estado.aBuscarCurva = true
   ctx.pedir('/plugins/signalk-arlequin-j1939/consumo')
-    .then(r => { ctx.estado.curva = r })
-    .catch(() => { ctx.estado.curva = null })
+    .then(r => { ctx.estado.curva = r; ctx.estado.curvaErro = null })
+    .catch(err => { ctx.estado.curva = null; ctx.estado.curvaErro = motivo(err, 'o plugin do J1939') })
     .finally(() => { ctx.estado.aBuscarCurva = false; ctx.estado.curvaEm = Date.now() })
 }
 
@@ -30,8 +31,8 @@ function buscarGasoleo (ctx) {
   if (ctx.estado.aBuscarGas || Date.now() - (ctx.estado.gasEm || 0) < 30000) return
   ctx.estado.aBuscarGas = true
   ctx.pedir('/plugins/signalk-arlequin-gasoleo/estado')
-    .then(r => { ctx.estado.gas = r })
-    .catch(() => { ctx.estado.gas = null })
+    .then(r => { ctx.estado.gas = r; ctx.estado.gasErro = null })
+    .catch(err => { ctx.estado.gas = null; ctx.estado.gasErro = motivo(err, 'o plugin do gasóleo') })
     .finally(() => { ctx.estado.aBuscarGas = false; ctx.estado.gasEm = Date.now() })
 }
 
@@ -52,15 +53,15 @@ function buscarCalib (ctx) {
   if (ctx.estado.aBuscarCalib || Date.now() - (ctx.estado.calibEm || 0) < 2000) return
   ctx.estado.aBuscarCalib = true
   ctx.pedir('/plugins/signalk-arlequin-gasoleo/calibracao')
-    .then(r => { ctx.estado.calib = r })
-    .catch(() => { ctx.estado.calib = null })
+    .then(r => { ctx.estado.calib = r; ctx.estado.calibErro = null })
+    .catch(err => { ctx.estado.calib = null; ctx.estado.calibErro = motivo(err, 'o plugin do gasóleo') })
     .finally(() => { ctx.estado.aBuscarCalib = false; ctx.estado.calibEm = Date.now() })
 }
 
-function painelCalib (c, msg) {
+function painelCalib (c, msg, erro) {
   // números do plugin do gasóleo: "—" se não forem números (nunca rebenta nem passa texto cru)
   const nf = (x, d = 0) => num(x, d)
-  if (!c) return '<div class="lab">A ligar ao plugin do gasóleo…</div>'
+  if (!c) return erro ? `<div class="perigo">${esc(erro)}</div><div class="acoes" style="margin-top:.6rem;"><button class="acao" data-acao="calib-fechar">Fechar</button></div>` : '<div class="lab">A ligar ao plugin do gasóleo…</div>'
   if (!c.ativa) {
     return `<div class="vv">Calibração completa do depósito</div>
 <div style="font-size:1.15rem;margin:.5rem 0;">Com o depósito <b>vazio e limpo</b>, o barco direito e o motor desligado. Depois deitas o gasóleo aos 5 L e carregas em "+5 L" de cada vez: o sistema espera que a leitura estabilize e grava.</div>
@@ -83,8 +84,8 @@ function buscarAgua (ctx, intervalo = 10000) {
   if (ctx.estado.aBuscarAgua || Date.now() - (ctx.estado.aguaEm || 0) < intervalo) return
   ctx.estado.aBuscarAgua = true
   ctx.pedir('/plugins/signalk-arlequin-agua/estado')
-    .then(r => { ctx.estado.agua = r })
-    .catch(() => { ctx.estado.agua = null })
+    .then(r => { ctx.estado.agua = r; ctx.estado.aguaErro = null })
+    .catch(err => { ctx.estado.agua = null; ctx.estado.aguaErro = motivo(err, 'o plugin da água') })
     .finally(() => { ctx.estado.aBuscarAgua = false; ctx.estado.aguaEm = Date.now() })
 }
 
@@ -96,8 +97,10 @@ function tileAgua (ctx) {
     frac: ctx.v(`tanks.freshWater.${id}.currentLevel`),
     ritmo: ctx.estado.agua?.tanques?.find(t => t.id === id)?.ritmo
   })).filter(t => t.nome)
-  if (!tanques.length) return '<div class="tile"><div class="lab">Água doce</div><div class="lab">sem dados das bombas</div></div>'
-  return `<div class="tile" style="flex:0 0 auto;"><div class="lab">Água doce</div>${tanques.map(t => `
+  const erro = ctx.estado.msgAgua || ctx.estado.aguaErro
+  const erroHtml = erro && !(ctx.estado.bombaCalib !== undefined && ctx.estado.bombaCalib !== null) ? `<div class="perigo">${esc(erro)}</div>` : ''
+  if (!tanques.length) return `<div class="tile"><div class="lab">Água doce</div><div class="lab">sem dados das bombas</div>${erroHtml}</div>`
+  return `<div class="tile" style="flex:0 0 auto;"><div class="lab">Água doce</div>${erroHtml}${tanques.map(t => `
 <div class="linha" style="margin-top:.25rem;"><span>${esc(t.nome)}</span><span class="v">${num(t.litros * 1000, 0)} L${t.ritmo?.dias ? ` <span class="lab">· ~${num(t.ritmo.dias, 1)} dias</span>` : ''}</span></div>
 ${barra(t.frac, t.frac <= 0.2 ? 'var(--bb)' : 'var(--azul)')}
 <div class="acoes" style="margin-top:.2rem;"><button class="btn" style="padding:.3rem .8rem;" data-acao="agua-encher" data-id="${t.id}">Enchi</button><button class="btn" style="padding:.3rem .8rem;" data-acao="agua-calib" data-id="${t.id}">Calibrar bomba</button></div>`).join('')}</div>`
@@ -144,14 +147,15 @@ export default {
     const tempC = ok(temp) ? celsius(temp) : null
     const g = ctx.estado.gas
     const gasInfo = g === undefined ? 'Sonda do gasóleo: a ligar…'
-      : g === null ? 'Sonda do gasóleo: plugin não responde'
+      : g === null ? `Sonda do gasóleo: ${ctx.estado.gasErro || 'o plugin do gasóleo não responde'}`
         : (g.tabela?.length || 0) < 2 ? `Sonda do gasóleo: falta calibrar (${g.tabela?.length || 0} pontos)`
           : `Sonda do gasóleo: ${g.tabela.length} pontos de calibração${g.ultimaSessao ? ` · última saída: ${num(g.ultimaSessao.medido, 1)} L medidos / ${num(g.ultimaSessao.esperado, 1)} L esperados` : ''}`
     // Litros por milha ao vivo: consumo ÷ velocidade (na água, senão no fundo).
     const vel = ctx.v('navigation.speedThroughWater') ?? ctx.v('navigation.speedOverGround')
     const lmn = litrosPorMilha(ligado && ok(taxa) ? taxa * 3600 * 1000 : null, vel)
     const c = ctx.estado.curva
-    const regimes = !c || !c.faixas?.length
+    const regimes = c === null && ctx.estado.curvaErro ? `Por regime: ${ctx.estado.curvaErro}`
+      : !c || !c.faixas?.length
       ? 'Por regime: a aprender (1 min estável em cada faixa de 200 rpm)'
       : 'Por regime: ' + c.faixas.map(f => `${num(f.de, 0)} rpm ${num(f.lmn, 2)}${c.melhor?.de === f.de ? ' ★' : ''}`).join(' · ') + ' L/MN'
     return `<div class="col estica">
@@ -164,9 +168,9 @@ export default {
   ${tile('Horas de motor', ok(horas) ? `${num(horas / 3600, 1)} h` : '—', '', 'vv')}
 </div>
 <div class="tile"><div class="linha"><span class="lab">Consumo</span><span class="v">${ligado && ok(taxa) ? `${num(taxa * 3600 * 1000, 1)} L/h · ${ok(lmn) ? num(lmn, 2) + ' L/MN' : '— L/MN'}` : '—'}</span></div>
-  <div class="lab">${regimes}</div></div>
+  <div class="lab">${esc(regimes)}</div></div>
 ${tileGasoleo(ctx, true)}
-<div class="tile" style="flex:0 0 auto;"><div class="linha"><span class="lab">${gasInfo}</span>
+<div class="tile" style="flex:0 0 auto;"><div class="linha"><span class="lab">${esc(gasInfo)}</span>
   <span class="acoes"><button class="btn" style="padding:.4rem .9rem;" data-acao="abrir-teclado" data-modo="abasteci">Abasteci</button><button class="btn" style="padding:.4rem .9rem;" data-acao="abrir-teclado" data-modo="calibrar">Calibrar</button><button class="btn" style="padding:.4rem .9rem;" data-acao="calib-abrir">Calibração completa</button></span></div>
   ${ctx.estado.msgGas ? `<div class="${ctx.estado.msgGasErro ? 'perigo' : 'ok'}">${esc(ctx.estado.msgGas)}</div>` : ''}</div>
 <div class="tile"><div class="lab">Alarmes do motor, da energia e dos depósitos</div>${alarmes.length ? alarmes.map(n => `<div class="${n.state === 'warn' ? 'atencao' : 'perigo'}">${esc(n.message)}</div>`).join('') : '<div class="ok">sem alarmes</div>'}</div>
@@ -180,10 +184,10 @@ ${tileGasoleo(ctx, true)}
 </div>
 ${tileAgua(ctx)}
 <div class="tile" style="flex:1;"><div class="lab">Últimas cargas pelo motor</div>
-${sess === undefined ? '<div class="lab">a carregar…</div>' : sess === null ? '<div class="lab">plugin de energia não responde</div>' : sess.length === 0 ? '<div class="lab">ainda nenhuma</div>'
+${sess === undefined ? '<div class="lab">a carregar…</div>' : sess === null ? `<div class="lab">${esc(ctx.estado.sessoesErro || 'o plugin da energia não responde')}</div>` : sess.length === 0 ? '<div class="lab">ainda nenhuma</div>'
   : sess.map(s => `<div class="linha"><span>${hm(s.inicio)}</span><span>${Math.floor(s.duracaoMin / 60)} h ${String(s.duracaoMin % 60).padStart(2, '0')} · +${num(s.ah, 1)} Ah · ${Math.round(s.socInicial * 100)}→${Math.round(s.socFinal * 100)}%</span></div>`).join('')}
 </div>
-</div>${ctx.estado.teclado ? teclado(ctx.estado.teclado) : ''}${ctx.estado.bombaCalib !== undefined && ctx.estado.bombaCalib !== null ? painelBomba(ctx) : ''}${ctx.estado.calibAberta ? `<div class="teclado"><div class="tile teclado-caixa" style="width:min(44rem,94vw);">${painelCalib(ctx.estado.calib, ctx.estado.msgCalib)}</div></div>` : ''}`
+</div>${ctx.estado.teclado ? teclado(ctx.estado.teclado) : ''}${ctx.estado.bombaCalib !== undefined && ctx.estado.bombaCalib !== null ? painelBomba(ctx) : ''}${ctx.estado.calibAberta ? `<div class="teclado"><div class="tile teclado-caixa" style="width:min(44rem,94vw);">${painelCalib(ctx.estado.calib, ctx.estado.msgCalib, ctx.estado.calibErro)}</div></div>` : ''}`
   },
   async acao (nome, dados, ctx) {
     const e = ctx.estado
@@ -191,11 +195,11 @@ ${sess === undefined ? '<div class="lab">a carregar…</div>' : sess === null ? 
       try {
         e.calib = await ctx.pedir(`/plugins/signalk-arlequin-gasoleo/calibracao${rota}`, { method: 'POST', body: corpo })
         e.msgCalib = null
-      } catch (err) { e.msgCalib = err.message }
+      } catch (err) { e.msgCalib = motivo(err, 'o plugin do gasóleo') }
       e.calibEm = 0
     }
     const aguaPost = async (rota, corpo) => {
-      try { await ctx.pedir(`/plugins/signalk-arlequin-agua/${rota}`, { method: 'POST', body: corpo }); e.msgAgua = null; return true } catch (err) { e.msgAgua = err.message; return false } finally { e.aguaEm = 0 }
+      try { await ctx.pedir(`/plugins/signalk-arlequin-agua/${rota}`, { method: 'POST', body: corpo }); e.msgAgua = null; return true } catch (err) { e.msgAgua = motivo(err, 'o plugin da água'); return false } finally { e.aguaEm = 0 }
     }
     if (nome === 'agua-encher' && confirm('Encheste este depósito de água?')) await aguaPost('encher', { id: Number(dados.id) })
     if (nome === 'agua-calib') { e.bombaCalib = Number(dados.id); e.msgAgua = null; await aguaPost('calibrar-bomba/iniciar', { id: e.bombaCalib }) }
@@ -229,7 +233,7 @@ ${sess === undefined ? '<div class="lab">a carregar…</div>' : sess === null ? 
         e.msgGasErro = false
         e.gasEm = 0
       } catch (err) {
-        e.msgGas = err.status === 409 ? 'Ainda a medir: espera 3 min com o barco direito' : `Não gravou: ${err.message}`
+        e.msgGas = err.status === 409 ? 'Ainda a medir: espera 3 min com o barco direito' : `Não gravou: ${motivo(err, 'o plugin do gasóleo')}`
         e.msgGasErro = true
       }
     }
