@@ -11,9 +11,7 @@ const NO = 1852 / 3600
 const LIMITES = Object.freeze({
   raio: 30, raioLimpa: 24, // m
   paradoParaAmarrar: 30 * MIN, sogParado: 0.3 * NO,
-  // largou sem motor (à vela, ou com as rotações em falta): a mais de 2 × o raio e a mais de 2 nós
-  // durante 1 min seguido (auditoria I-20)
-  raioLargou: 60, sogLargou: 2 * NO, largouDurante: 1 * MIN,
+  sogLargou: 1 * NO, // a motor e a andar a mais do que isto: largou de propósito (Adenda 2 do dono)
   arranquesHora: 4, bombaSeguida: 3 * MIN,
   lembrete: 12 * H
 })
@@ -37,12 +35,16 @@ const ALARMES = Object.freeze(['deriva', 'aguaPorao', 'bombaPorao', 'fumo', 'fug
 // apito curto. O Telegram não muda com isto.
 const APITO = Object.freeze({ fumo: 'continuo', aguaPorao: 'continuo', bombaPorao: 'continuo', fugaGasoleo: 'continuo', intrusao: 'curto', deriva: 'curto' })
 
+// A ação que o ecrã oferece num alarme (contrato C10; o campo `acao` no valor da notificação): no "saiu
+// do lugar", o botão "Larguei" (o mesmo que o /largar do Telegram e o POST /largar do plugin).
+const ACAO = Object.freeze({ deriva: 'largar' })
+
 // ativos: { id: { state, message } } os alarmes publicados ativos (o plugin grava-os no porto.json para
 // os repor depois de um reinício: auditoria I-21)
 function novoEstado () {
   return {
     ativos: {},
-    amarracao: { ponto: null, paradoDesde: null, largouDesde: null },
+    amarracao: { ponto: null, paradoDesde: null },
     bomba: { ligada: false, desde: null, arranques: [] },
     ultimoMovimento: null,
     ultimoLembrete: null
@@ -50,44 +52,42 @@ function novoEstado () {
 }
 
 // l: { posicao, sog, motorLigado, juntoAPorto, agua, bomba, fumo, liquidoGasoleo, gaiuta, movimento, armado }
-// juntoAPorto: true junto a um porto ou fundeadouro conhecido (lib/lugares.js)
+// juntoAPorto: true junto a um porto ou fundeadouro conhecido (lib/lugares.js); motorLigado: as rotações
+// lidas do motor (sem leitura, falso)
 function passo (e0, l, t, lim = LIMITES) {
   const e = { ...e0, ativos: { ...e0.ativos }, amarracao: { ...e0.amarracao }, bomba: { ...e0.bomba } }
   const notificacoes = []
   const acoes = []
   const mudar = (id, deve, estado, mensagem) => {
     if (deve === null || deve === undefined || deve === !!e.ativos[id]) return
-    if (deve) { e.ativos[id] = { state: estado, message: mensagem }; notificacoes.push({ id, state: estado, method: ['visual', 'sound'], message: mensagem, apito: APITO[id] }) }
+    if (deve) { e.ativos[id] = { state: estado, message: mensagem }; notificacoes.push({ id, state: estado, method: ['visual', 'sound'], message: mensagem, apito: APITO[id], ...(ACAO[id] ? { acao: ACAO[id] } : {}) }) }
     else { delete e.ativos[id]; notificacoes.push({ id, state: 'normal', method: [], message: 'Normal' }) }
   }
 
   // Deriva: grava o ponto com 30 min parado junto a um porto ou fundeadouro conhecido (no mar nunca:
-  // decisão n.º 24); alarme fora do raio. Apaga-se ao largar, com ou sem motor (auditoria I-20): a motor
-  // e a andar, ou a mais de 60 m e a mais de 2 nós durante 1 min — este só com o alarme desarmado (com
-  // ele armado não há ninguém a bordo para largar: um barco a afastar-se assim é deriva ou roubo).
+  // decisão n.º 24); alarme fora do raio. Largar (Adenda 2 do dono, 02/10): com o motor a trabalhar e o
+  // barco a andar o ponto apaga-se sozinho (largada de propósito) — nunca com o alarme de intrusão armado
+  // (ninguém a bordo: a sair a motor é roubo, e o alarme sai aos 30 m). Sem motor (ou sem leitura do
+  // motor) o "saiu do lugar" nunca se apaga sozinho, nem a andar depressa (âncora a garrar, amarra
+  // partida): só com o "Larguei" do ecrã ou o /largar do Telegram, que apagam o ponto (index.js). Antes
+  // (auditoria I-20) apagava-se a mais de 60 m e a mais de 2 nós durante 1 min, com um "✓ Resolvido".
   const pos = l.posicao
   if (pos) {
     const parado = !l.motorLigado && (l.sog ?? 0) < lim.sogParado
     if (!parado) {
       e.amarracao.paradoDesde = null
-      if (l.motorLigado && (l.sog ?? 0) > 1 * NO) e.amarracao.ponto = null // largou a motor
+      if (l.motorLigado && !l.armado && (l.sog ?? 0) > lim.sogLargou) e.amarracao.ponto = null // largou a motor
     } else {
       e.amarracao.paradoDesde = e.amarracao.paradoDesde ?? t
       if (!e.amarracao.ponto && l.juntoAPorto === true && t - e.amarracao.paradoDesde >= lim.paradoParaAmarrar) e.amarracao.ponto = pos
     }
-    const aLargar = !!e.amarracao.ponto && !l.armado && (l.sog ?? 0) > lim.sogLargou && distancia(e.amarracao.ponto, pos) > lim.raioLargou
-    if (!aLargar) e.amarracao.largouDesde = null
-    else {
-      e.amarracao.largouDesde = e.amarracao.largouDesde ?? t
-      if (t - e.amarracao.largouDesde >= lim.largouDurante) { e.amarracao.ponto = null; e.amarracao.largouDesde = null } // largou sem motor
-    }
     if (e.amarracao.ponto) {
       const d = distancia(e.amarracao.ponto, pos)
       mudar('deriva', e.ativos.deriva ? d > lim.raioLimpa : d > lim.raio, 'alarm', `O barco saiu do lugar: está a ${Math.round(d)} m do ponto de amarração`)
-    } else if (e.ativos.deriva) {
-      mudar('deriva', false)
     }
   }
+  // sem o ponto (largou a motor, ou o "Larguei"), o "saiu do lugar" limpa, mesmo sem posição do GPS
+  if (!e.amarracao.ponto && e.ativos.deriva) mudar('deriva', false)
 
   // Porão.
   if (typeof l.agua === 'boolean') mudar('aguaPorao', l.agua, 'alarm', 'Água no porão!')
@@ -131,4 +131,4 @@ function passo (e0, l, t, lim = LIMITES) {
   return { estado: e, notificacoes, acoes }
 }
 
-module.exports = { LIMITES, ALARMES, APITO, novoEstado, passo, distancia }
+module.exports = { LIMITES, ALARMES, APITO, ACAO, novoEstado, passo, distancia }
