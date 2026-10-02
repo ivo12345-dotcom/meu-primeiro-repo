@@ -63,6 +63,9 @@ const iso = (t) => new Date(t).toISOString()
 const r2 = (x) => (Number.isFinite(x) ? Math.round(x * 100) / 100 : null)
 const r1 = (x) => (Number.isFinite(x) ? Math.round(x * 10) / 10 : null)
 const avisoGasoleoAssumido = (L) => `gasóleo inicial desconhecido: confirma o depósito (assumi ${L} L)`
+// auditoria I-14: como o gasóleo, a bateria desconhecida nunca é assumida em silêncio (a regra dos
+// 50 % à chegada corre com o valor assumido): aviso vermelho em cada alternativa
+const avisoBateriaAssumida = (soc) => `estado da bateria desconhecido: confirma a carga (assumi ${Math.round(soc * 100)}%)`
 
 function resolverDestino (costa, destino) {
   if (typeof destino === 'string') {
@@ -186,6 +189,7 @@ function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
     seg.motivos = [...seg.motivos, texto]
   }
   if (ctx.gasoleoAssumido) avisosVermelhos.push(avisoGasoleoAssumido(ctx.gasoleoInicial))
+  if (ctx.socAssumido) avisosVermelhos.push(avisoBateriaAssumida(ctx.soc))
   // as horas equivalentes ao leme vêm só de lib/seguranca.js (a mesma regra da calma para o custo e para os limites)
   const lemeEqProvavel = seguranca.horasLemeEquivalentes(pr.pontos)
   const contraVentoH = decisao.horasContraVento(pr.pontos)
@@ -384,14 +388,15 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   const cenarios = criarCenarios({ tempoBruto, modelos, polar, obtida, tendPressao3h: Number.isFinite(inst.tendPressao3h) ? inst.tendPressao3h : null })
 
   let soc = Number.isFinite(inst.socPct) ? inst.socPct / 100 : null
-  if (soc == null) { soc = o.socDesconhecido; avisosGerais.push(`Sem estado da bateria: assumi ${Math.round(soc * 100)}%`) }
+  const socAssumido = soc == null
+  if (socAssumido) { soc = o.socDesconhecido; avisosGerais.push(`Sem estado da bateria: assumi ${Math.round(soc * 100)}%`) }
   let gasoleoInicial = Number.isFinite(inst.gasoleoL) ? inst.gasoleoL : null
   const gasoleoAssumido = gasoleoInicial == null
   if (gasoleoAssumido) { gasoleoInicial = o.gasoleoDesconhecidoL; avisosGerais.push(`Sem nível do gasóleo: assumi ${gasoleoInicial} L`) }
 
   // o vento previsto (a direção P50 corrigida, a mesma nos três cenários) para a regra do vento de terra
   const twd = (lat, lon, t) => cenarios.provavel.tempo(lat, lon, t).twd
-  const ctx = { o, agora, costa, destino, tripulacao, sairAgora, previsao, cenarios, correnteExtra, noite, soc, gasoleoInicial, gasoleoAssumido, twd }
+  const ctx = { o, agora, costa, destino, tripulacao, sairAgora, previsao, cenarios, correnteExtra, noite, soc, socAssumido, gasoleoInicial, gasoleoAssumido, twd }
   const log = typeof deps.log === 'function' ? deps.log : undefined
 
   // ---------- as alternativas ----------
@@ -498,9 +503,11 @@ async function calcularSemRede (entrada = {}, deps = {}) {
     await ceder()
     alternativas.push(montarAlternativa(ctx, cand, rastos.get(cand) || simularProvavel(ctx, cand), desistenciaResumo, i === 0))
   }
-  // em "Sair agora" os avisos vermelhos da 1.ª vão também para os gerais (o gasóleo assumido já lá
-  // está, "Sem nível do gasóleo: assumi … L": não se repete)
-  if (sairAgora && alternativas[0]?.avisosVermelhos?.length) avisosGerais.push(...alternativas[0].avisosVermelhos.filter(x => !(gasoleoAssumido && x === avisoGasoleoAssumido(gasoleoInicial))))
+  // em "Sair agora" os avisos vermelhos da 1.ª vão também para os gerais (o gasóleo e a bateria
+  // assumidos já lá estão, "Sem nível do gasóleo: assumi … L" e "Sem estado da bateria: assumi …%":
+  // não se repetem)
+  const jaNosGerais = new Set([...(gasoleoAssumido ? [avisoGasoleoAssumido(gasoleoInicial)] : []), ...(socAssumido ? [avisoBateriaAssumida(soc)] : [])])
+  if (sairAgora && alternativas[0]?.avisosVermelhos?.length) avisosGerais.push(...alternativas[0].avisosVermelhos.filter(x => !jaNosGerais.has(x)))
 
   // o mini-mapa (desenho 3b-1): a janela das rotas, dos rastos e dos pontos de desistência; nunca
   // derruba o cálculo (sem mapa, o ecrã desativa o botão Mapa)
