@@ -231,6 +231,22 @@ test('disco a 96% sem nada confirmado: pára o bruto e dá alarme; a 50% retoma'
   p.stop()
 })
 
+test('disco a 95%: o alarme pede o apito curto (o contínuo fica para o perigo imediato: decisão n.º 2, contrato C1; auditoria I-07)', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 96
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  correr(t, app, 60, 'nmea0183.GP')
+  usoFalso = 85 // a 85% (sem nada confirmado para apagar) passa a aviso, só visual
+  correr(t, app, 60, 'nmea0183.GP')
+  p.stop()
+  const disco = app.notificacoes.filter(n => n.path === 'notifications.arlequin.caixanegra.disco')
+  assert.deepEqual(disco.map(n => [n.state, n.apito]), [['alarm', 'curto'], ['warn', undefined]])
+  assert.deepEqual(disco[0].method, ['visual', 'sound'])
+  assert.deepEqual(disco[1].method, ['visual'])
+})
+
 test('disco a 81% com bruto confirmado: apaga e não avisa (o aviso aos 80% não pode ir e vir)', (t) => {
   t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
   usoFalso = 81
