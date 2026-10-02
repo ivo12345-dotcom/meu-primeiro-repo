@@ -12,7 +12,7 @@ profundidade, radar e rota enviada ao piloto (quando houver piloto: hoje não h�
 
 A eletrónica que existe a bordo: **anemómetro, plotter, radar, VHF, AIS,
 Navtex** e o piloto **ST4000+** (SeaTalk1). Das marcas e modelos ainda não se
-sabe nada.
+sabe nada. (Ficaram identificados por fotos no mesmo dia: §2b.)
 
 Navegação sobretudo **a solo**. Isto obriga a manter uma reserva (ver §6).
 
@@ -71,11 +71,19 @@ Fontes: [Yacht Devices](https://www.yachtd.com/news/navonics_app_sonarchart_live
 
 ## 2. Arquitetura
 
+**Proposta inicial (28/09 de manhã), antes do inventário por fotos.** Valem as ligações do §2b
+("Portas da MacArthur"), a decisão do §2c e o esquema final `esquema-arlequin.pdf` (§7d): o AIS
+(B330, com GPS) entra pela NMEA 2000; as duas entradas 0183 são o vento e o log, e a sonda vai por
+um adaptador USB–0183 (ou pelo ESP32); a 0183 OUT 1 dá posição e proa ao radar JRC 1000, que fica
+autónomo no ecrã dele, e a posição ao VHF; a OUT 2 fica livre, porque não se liga nada à entrada NMEA do
+ST4000+ (não governa); a SeaTalk1 IN lê a proa do ST4000+ e do ST50. O piloto está por decidir. O
+comprimento do cabo do ecrã está por medir (§8, ponto 7).
+
 ```
  NO POÇO (roda de leme)                 DENTRO (seco, perto do quadro)
  ┌──────────────────────┐   HDMI+USB   ┌──────────────────────────────────┐
  │ Ecrã tátil (7" → 10")│◄────────────►│ Raspberry Pi 5 + SSD NVMe         │
- │ suporte ASA + pala   │  (2 + 1,5 m) │ OpenPlotter: OpenCPN + SignalK    │
+ │ suporte ASA + pala   │  (a medir)   │ OpenPlotter: OpenCPN + SignalK    │
  └──────────────────────┘              │ MacArthur HAT                     │
                                        │  ├ NMEA 2000 ◄► (futuro EV-100)   │
  Plotter atual (reserva) ◄─────────────┤  ├ 0183 IN ×2 ◄── AIS, VHF, Navtex│
@@ -96,7 +104,8 @@ outra app.
 - **SeaTalk1 só entra.** O Pi lê o ST4000+ mas não lhe escreve por SeaTalk.
   A rota vai por uma **saída NMEA 0183** para a entrada NMEA do piloto.
   **Confirmar no manual do ST4000+ os terminais NMEA IN e as frases que ele
-  aceita** (normalmente APB/RMB/XTE).
+  aceita** (normalmente APB/RMB/XTE). (Confirmado no §2c: tem NMEA IN. Mas, como o ST4000+ não
+  governa, hoje não se lhe envia rota nenhuma.)
 - As saídas 0183 e o NMEA 2000 **não são isolados**. O Pi e os instrumentos
   têm de ter o **mesmo negativo** no quadro, para não haver loops de terra.
 - Só há **2 entradas 0183**. AIS, VHF, Navtex e anemómetro podem ser mais do
@@ -337,21 +346,16 @@ depósito) dá o nível de cada um.
 **Falta saber:** a capacidade de cada depósito, se há **válvula seletora** ou
 se estão em paralelo, e onde está a bomba de água.
 
-**Motor: painel Volvo Penta EVC** (conta-rotações, temperatura, painel EVC de
-arranque e paragem, e medidor de gasóleo analógico). Os motores D1/D2 com EVC
-falam um protocolo CAN da Volvo. **Opcional:** o gateway **Yacht Devices
-YDEG-04** (~$249) liga ao multilink do EVC e põe na rede NMEA 2000 as
-rotações, a temperatura, a pressão do óleo, as horas do motor, a tensão da
-bateria e o consumo (se o motor o medir). Assim os dados do motor aparecem no
-OpenCPN, no telemóvel e no diário de bordo. **Falta: o modelo exato do motor**
-(chapa no bloco) e confirmar a versão do EVC. O medidor de gasóleo é
-analógico e não entra na rede sem um sensor à parte. Fontes:
+**Motor (nota de 28/09 de manhã, resolvida no mesmo dia):** o motor é um **Volvo Penta D1-20B**
+(§2b, "O que o D1-20B dá de facto"; a foto da chapa continua no §8b, ponto 4) e os dados vão ao Pi
+pelo J1939 do MDI, por um adaptador USB–CAN feito por nós (§2b, "Alternativa DIY", e §4, "Motor
+J1939: compras"). O gateway Yacht Devices YDEG-04 fica como plano B. O nível do gasóleo vem da
+sonda analógica, à parte ("Nível do gasóleo", acima). Fontes do YDEG-04:
 [Yacht Devices YDEG-04](https://www.yachtd.com/products/engine_gateway.html),
 [notícia YD sobre EVC](https://www.yachtd.com/news/j1939_volvo_penta_evc_gateway.html).
 
-**O ST4000+ tem a tecla `track`**, por isso aceita rota vinda de fora. Falta
-confirmar nos terminais de trás se entra por NMEA 0183 ou só por SeaTalk1. Se
-for só por SeaTalk1, a rota não lhe chega pela MacArthur, que só lê SeaTalk1.
+**O ST4000+ tem a tecla `track`** e tem entrada NMEA 0183 (confirmado no §2c). Mas não governa
+(falta a unidade de roda), por isso não se lhe liga nada.
 
 **Radar:** a antena JRC é um radome no arco de popa. O suporte tem ferrugem:
 ver o estado dos parafusos e da base.
@@ -418,6 +422,11 @@ Fontes: [ST4000+, ligações NMEA](https://www.manualslib.com/manual/138185/Raym
 
 ## 3. O radar é a incógnita
 
+**Resolvido a 28/09 (§2b):** o radar é um **JRC Radar 1000**, que não é suportado pelo radar_pi
+nem pelo Axiom. Fica autónomo no ecrã dele e só recebe posição e proa pela 0183 OUT 1. O Pi 5 de
+8 GB ficou escolhido na mesma (§1 e §4, item 1). O texto abaixo é o de antes de identificar o
+radar.
+
 Os radares falam protocolos fechados de cada marca. O plugin **radar_pi** do
 OpenCPN suporta vários modelos (Navico: Simrad/B&G/Lowrance BR24, 3G, 4G,
 HALO; Garmin HD/xHD; alguns Raymarine e Furuno recentes), mas **um radar
@@ -448,7 +457,7 @@ alimentação da HAT a alimentar tudo
 | 5 | MacArthur HAT | [OpenMarine](https://shop.openmarine.net/home/23-macarthur-hat.html) | **~€76** (€62 s/IVA) | 36 em stock. Só envia às segundas e terças |
 | 6 | Módulo de alimentação 12→5 V da HAT | OpenMarine | **~€28** (desde €23 s/IVA) | Alimenta o conjunto todo a partir dos 12 V |
 | 7 | Ecrã de testes LAFVIN 7" HDMI, tátil capacitivo, 1024×600 | [Amazon.es](https://www.amazon.es/dp/B0BVW7J1J8) | **€48,78** | HDMI + toque por USB, como o definitivo. Há versão de 10,1" a €71,14 |
-| 7b | Cabo **micro-HDMI → HDMI** (o Pi 5 só tem micro-HDMI), com o comprimento até à roda (3–5 m) | Amazon | a confirmar (1 m: €9,95) | + cabo USB do mesmo comprimento para o toque |
+| 7b | Cabo **micro-HDMI → HDMI** (o Pi 5 só tem micro-HDMI), com o comprimento até à roda (3–5 m; por medir: §8, ponto 7) | Amazon | a confirmar (1 m: €9,95) | + cabo USB do mesmo comprimento para o toque |
 | 8 | Cartas o-charts Portugal | [o-charts](https://o-charts.org/shop/en/oesenc/79-portugal.html) | **~€20** (€16 s/IVA) | Continente, Açores e Madeira |
 | 9 | Chave USB de licença o-charts | [o-charts](https://o-charts.org/shop/en/hardware/38-usb-key-dongle.html) | **~€23** (€19 s/IVA) | Recomendada: reinstalar o OpenPlotter apaga a licença; com a chave não se perde |
 | 10 | ASA preto 1 kg | [EVOLT](https://evolt.pt/produto/asa-1kg-black-esun/) | **€17,73** (Winkle, em stock) | eSUN €21,39 esgotado. 1 bobina chega para o suporte e a pala |
@@ -474,7 +483,8 @@ alimentação da HAT a alimentar tudo
 - Multiplexer ou adaptador USB–NMEA 0183, se houver mais de 2 fontes 0183.
 - Cabos e conector em T de NMEA 2000, se algum aparelho for N2K.
 - Comando físico Bluetooth/USB para usar com luvas ou com o ecrã molhado.
-- Pi 5 de **8 GB** em vez de 4 GB, se o radar entrar no ecrã.
+- ~~Pi 5 de **8 GB** em vez de 4 GB, se o radar entrar no ecrã.~~ Resolvido: o 8 GB já está na
+  lista (item 1) e o radar fica autónomo (§3).
 
 ### Motor J1939: compras (preços vistos a 29/09/2026 na Amazon.es, c/IVA)
 
@@ -791,6 +801,10 @@ confirmar na etiqueta). Banco 1 = motor; bancos 2+3 = **serviço 440 Ah**.
 "Com EV-100", aqui e no §5c, quer dizer com um piloto elétrico de 2–4 A. Hoje não há piloto e o
 plano está por decidir (`PILOTO-AUTOMATICO.md`).
 
+As duas linhas dos ecrãs juntam o LAFVIN na roda e um 2.º ecrã na mesa, o que não acontece ao mesmo
+tempo: na fase 1 não há ecrã 2 (menos ~6 Ah); na fase 2 a roda leva o STS10, que gasta mais (~19 W
+no brilho máximo, §5), e o LAFVIN passa para a mesa.
+
 **O que isto quer dizer:**
 - **No porto:** 220 Ah úteis ÷ 27 Ah/dia ≈ **8 dias** sem carregar.
 - **A navegar:** com o EV-100, gasta-se **quase toda a janela útil num dia**.
@@ -954,14 +968,16 @@ O Ivo escolheu a **primeira maqueta do ecrã de 10"**, na **horizontal**
   - **lista AIS** com CPA e TCPA;
   - motor (rotações, temperatura, tensão, horas, óleo e carga);
   - gasóleo (L, autonomia em horas e em MN).
-- **Botões em baixo:** Carta, Instrumentos, AIS, Motor, Rota, **Diário** e Noite.
+- **Botões em baixo:** Carta, Instrumentos, AIS, Motor, Rota, **Diário** e Noite. Hoje, no ecrã,
+  são 9: Carta, Instr., AIS, Motor, Viagem, Diário, Melhor rota, Velas e Noite (com − e + de
+  noite).
 - Montagem na **horizontal**: o suporte e a pala desenham-se para isso.
 - Implementação: OpenCPN (carta, AIS, rota) + painel de instrumentos do
   **KIP** (SignalK) ou do próprio OpenCPN (dashboard), a decidir na montagem.
 
 ## 7c. Diário de bordo (pedido do Ivo, 28/09)
 
-Página **Diário** no ecrã (7.º botão, entre Rota e Noite). Base: o plugin do
+Página **Diário** no ecrã (hoje o 6.º botão, entre Viagem e Melhor rota). Base: o plugin do
 SignalK **signalk-logbook** (semi-automático, com interface web que funciona
 no ecrã e no telemóvel).
 - **Entradas automáticas:** **de hora a hora** a navegar (posição, rumo,
@@ -974,9 +990,9 @@ no ecrã e no telemóvel).
   (`~/.signalk/plugin-config-data/signalk-logbook/AAAA-MM-DD.yml`): fáceis de
   ler, de copiar e de exportar para PDF.
 - **A juntar aos alarmes:** registar também os alarmes AIS e do motor.
-- **Sugestão:** um **barómetro** I²C (BME280, ~€5–10) na MacArthur. O diário
-  passa a registar a **pressão atmosférica** de hora a hora, que é o dado mais
-  útil para ver o tempo a mudar a solo. A cotar.
+- **Barómetro** I²C (BME280) na MacArthur: já está na lista de material (§4, item 14: DFRobot
+  Gravity, €23,80). O diário passa a registar a **pressão atmosférica** de hora a hora, que é o
+  dado mais útil para ver o tempo a mudar a solo.
 - Alternativas: `signalk-sailing-logbook` (acrescenta viragens e cambadas) ou
   o plugin de diário do OpenCPN.
 
@@ -1043,8 +1059,9 @@ janelas, um bocado do mastro e os manómetros do motor. O sistema tem de
 funcionar também ali:
 - **O Pi fica instalado junto à mesa de navegação**, que é seca e perto do
   quadro. O cabo longo é só o do ecrã da roda.
-- **Dois ecrãs no mesmo Pi:** o Pi 5 tem **duas saídas micro-HDMI**.
-  - Ecrã 1: o de 10" na roda.
+- **Dois ecrãs no mesmo Pi** (na fase 2; na fase 1 o LAFVIN está na roda e não há ecrã 2): o Pi
+  5 tem **duas saídas micro-HDMI**.
+  - Ecrã 1: o de 10" na roda (o SailProof STS10).
   - Ecrã 2: o **LAFVIN 7" dos testes** fica **na mesa de navegação, virado
     para a porta da cabine de popa**. A cabine do Ivo só tem a cama; com a
     porta aberta vê-se a mesa de navegação (confirmado 28/09). Assim vê-se o
@@ -1061,16 +1078,20 @@ funcionar também ali:
 
 ## 8. Fotos e medidas em falta (próxima ida ao barco)
 
-1. **Radar**: a etiqueta da antena e da unidade (modelo exato). **Prioridade.**
+1. ~~**Radar**: a etiqueta da antena e da unidade (modelo exato). **Prioridade.**~~ Resolvido a
+   28/09: JRC Radar 1000 (§2b).
 2. **Plotter**: a frente, a etiqueta de trás e **as fichas e os fios de trás**.
 3. **AIS, VHF, Navtex, anemómetro**: a etiqueta e as fichas de cada um. As
    fichas mostram se o aparelho é NMEA 0183, SeaTalk ou NMEA 2000.
-4. **ST4000+**: os terminais de trás do painel (se tem NMEA IN).
+4. ~~**ST4000+**: os terminais de trás do painel (se tem NMEA IN).~~ Resolvido pela documentação
+   (§2c): tem NMEA IN.
 5. **Quadro elétrico e baterias**: as etiquetas e quantas são.
 6. **Pedestal da roda**: foto de frente e **diâmetro do tubo da guarda**
    (paquímetro; costuma ser 25,4 mm).
-7. **Caminho do cabo** do pedestal até ao sítio seco onde fica o Pi (máximo
-   3,5 m com as extensões do ecrã).
+7. **Caminho do cabo** do pedestal até ao sítio seco onde fica o Pi. O comprimento está por medir
+   e decide os cabos HDMI e USB do ecrã (§4, item 7b). As notas de 28/09 davam dois valores: no
+   máximo 3,5 m com as extensões do ecrã (este ponto, e o diagrama do §2, que dizia "2 + 1,5 m")
+   e 3–5 m (§4): por confirmar pelo Ivo. O USB 2.0 passivo, o do toque, não passa dos 5 m.
 
 ## 8b. Lista para a próxima ida ao barco (28/09)
 
