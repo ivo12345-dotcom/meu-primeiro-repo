@@ -4,8 +4,9 @@ import { criarStore, ligar, valor, idade, pedir } from './signalk.js'
 import { barraHtml } from './lib/barra.js'
 import { cpa, classificar } from './lib/cpa.js'
 import { lerPolar } from './lib/polar.js'
-import { criarBarometro, registarPressao, tendencia } from './lib/barometro.js'
-import { novaViagem, acumular } from './lib/viagem.js'
+import { registarPressao, tendencia, lerBarometro } from './lib/barometro.js'
+import { novaViagem, acumular, lerViagem } from './lib/viagem.js'
+import { passoCiclo, desenharSeguro, escolherPagina, CAIXA_ERRO_DESENHO } from './lib/ciclo.js'
 import { maisGrave, deveTocar, paginaDoAlarme, bipDeLigacao, chipAlarme } from './lib/alarmes.js'
 import { podeRedesenhar, aoEnter, aoEscrever } from './lib/interacao.js'
 import { NIVEIS, PADRAO as BRILHO_PADRAO, nivelValido, mudarNivel } from './lib/brilho.js'
@@ -31,13 +32,15 @@ const guardar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } c
 
 const app = {
   // ?pagina=ais e ?noite=1 abrem direto numa página (atalhos e capturas).
-  pagina: PAGINAS[parametros.get('pagina')] ? parametros.get('pagina') : guardado('arlequin.pagina', 'carta'),
+  // (a pedida ou a guardada só valem se existirem: uma estragada impedia o ciclo de arrancar, auditoria I-06)
+  pagina: escolherPagina(parametros.get('pagina'), guardado('arlequin.pagina', null), PAGINAS),
   noite: parametros.has('noite') ? parametros.get('noite') === '1' : guardado('arlequin.noite', false),
   // o brilho de noite, 1–5 (2 por omissão; ?brilho=1 abre direto num nível, para as capturas)
   brilho: nivelValido(parametros.has('brilho') ? parametros.get('brilho') : guardado('arlequin.brilho', BRILHO_PADRAO)),
   polar: null,
-  baro: guardado('arlequin.baro', criarBarometro()),
-  viagem: guardado('arlequin.viagem', null) || novaViagem(Date.now()),
+  // o guardado no browser valida-se ao ler (auditoria I-06): estragado, começa vazio
+  baro: lerBarometro(guardado('arlequin.baro', null)),
+  viagem: lerViagem(guardado('arlequin.viagem', null), Date.now()),
   estados: {}, // estado de cada página (seleções, passos…)
   // o som nasce já no arranque (auditoria K-03): no Pi o kiosk arranca com o autoplay; sem ele, o browser
   // deixa-o suspenso até ao 1.º toque e o ciclo tenta retomá-lo de segundo a segundo
@@ -125,9 +128,10 @@ function bip (duracao = 0.25, freq = 880, motivo = '') {
   o.stop(app.audio.currentTime + duracao)
 }
 
-function tocar (ctx) {
+// O som lê as notificações direto do store (nunca depende do contexto nem do desenho, auditoria I-06).
+function tocar (notificacoes) {
   let continuo = false
-  for (const n of ctx.notificacoes) {
+  for (const n of notificacoes) {
     const t = deveTocar(n)
     if (t === 'continuo') continuo = true
     const chave = `${n.caminho}@${n.timestamp}`
@@ -137,24 +141,32 @@ function tocar (ctx) {
 }
 
 // ---------- render ----------
+// Cada parte no seu try (auditoria I-06): uma página que rebenta mostra a caixa do erro e o resto continua.
+const BARRA_ERRO = '<span class="nome">ARLEQUIN</span><span class="chip alarme">erro ao desenhar a barra</span>'
+function contextoSeguro () {
+  try { return contexto() } catch (e) { registarErro('contexto', e); return null }
+}
 function render (forcar = false) {
-  const ctx = contexto()
-  document.getElementById('barra').innerHTML = barra(ctx)
+  const ctx = contextoSeguro()
+  document.getElementById('barra').innerHTML = ctx ? desenharSeguro(() => barra(ctx), BARRA_ERRO, (e) => registarErro('barra', e)) : BARRA_ERRO
   const el = document.getElementById('pagina')
   const aEscrever = el.contains(document.activeElement) && document.activeElement.tagName === 'INPUT'
-  if (podeRedesenhar({ forcar, aEscrever, premidoHaMs: app.premidoEm == null ? null : Date.now() - app.premidoEm })) el.innerHTML = PAGINAS[app.pagina].render(ctx)
-  document.querySelectorAll('#botoes [data-pag]').forEach(b => {
-    b.classList.toggle('on', b.dataset.pag === app.pagina)
-    if (b.dataset.pag === 'ais') {
-      const n = ctx.alvos.filter(a => a.classe === 'perigo').length
-      b.textContent = `AIS (${ctx.alvos.length})${n ? ' ⚠' : ''}`
-    }
-  })
-  document.getElementById('b-noite').classList.toggle('on', app.noite)
-  document.getElementById('b-noite').textContent = app.noite ? `Noite ${app.brilho}/${NIVEIS.length}` : 'Noite'
-  document.getElementById('b-brilho-menos').disabled = app.brilho <= 1
-  document.getElementById('b-brilho-mais').disabled = app.brilho >= NIVEIS.length
-  return ctx
+  if (podeRedesenhar({ forcar, aEscrever, premidoHaMs: app.premidoEm == null ? null : Date.now() - app.premidoEm })) {
+    el.innerHTML = ctx ? desenharSeguro(() => PAGINAS[app.pagina].render(ctx), CAIXA_ERRO_DESENHO, (e) => registarErro(`página ${app.pagina}`, e)) : CAIXA_ERRO_DESENHO
+  }
+  try {
+    document.querySelectorAll('#botoes [data-pag]').forEach(b => {
+      b.classList.toggle('on', b.dataset.pag === app.pagina)
+      if (b.dataset.pag === 'ais' && ctx) {
+        const n = ctx.alvos.filter(a => a.classe === 'perigo').length
+        b.textContent = `AIS (${ctx.alvos.length})${n ? ' ⚠' : ''}`
+      }
+    })
+    document.getElementById('b-noite').classList.toggle('on', app.noite)
+    document.getElementById('b-noite').textContent = app.noite ? `Noite ${app.brilho}/${NIVEIS.length}` : 'Noite'
+    document.getElementById('b-brilho-menos').disabled = app.brilho <= 1
+    document.getElementById('b-brilho-mais').disabled = app.brilho >= NIVEIS.length
+  } catch (e) { registarErro('botões', e) }
 }
 
 // o modo noite e o brilho no body (o estilo.css faz o resto)
@@ -176,12 +188,12 @@ function janela (corpo) {
 }
 
 function irPara (pag) {
-  app.pagina = pag
-  guardar('arlequin.pagina', pag)
-  janela({ layout: pag === 'carta' ? 'carta' : 'inteiro' })
+  app.pagina = escolherPagina(pag, null, PAGINAS)
+  guardar('arlequin.pagina', app.pagina)
+  janela({ layout: app.pagina === 'carta' ? 'carta' : 'inteiro' })
   document.activeElement?.blur?.()
-  const ctx = contexto()
-  PAGINAS[pag].aoEntrar?.(ctx)
+  // um aoEntrar que rebenta não impede a página nem o ciclo (auditoria I-06)
+  try { PAGINAS[app.pagina].aoEntrar?.(contexto()) } catch (e) { registarErro(`entrar em ${app.pagina}`, e) }
   render(true)
 }
 
@@ -223,40 +235,49 @@ document.addEventListener('click', async (ev) => {
     return render()
   }
   if (acao === 'ir-alarme') return irPara(paginaDoAlarme(a.dataset.caminho))
-  const ctx = contexto()
-  await PAGINAS[app.pagina].acao?.(acao, a.dataset, ctx)
+  try { await PAGINAS[app.pagina].acao?.(acao, a.dataset, contexto()) } catch (e) { registarErro(`ação ${acao}`, e) }
   render()
 })
 
 document.addEventListener('keydown', (ev) => {
-  if (ev.key === 'Enter' && ev.target.tagName === 'INPUT') aoEnter(PAGINAS[app.pagina], contexto(), ev.target, render)
+  if (ev.key !== 'Enter' || ev.target.tagName !== 'INPUT') return
+  try { aoEnter(PAGINAS[app.pagina], contexto(), ev.target, render).catch((e) => registarErro('enter', e)) } catch (e) { registarErro('enter', e) }
 })
 
 // o que se escreve nos campos com data-campo fica no estado da página (um render não o apaga)
 document.addEventListener('input', (ev) => {
-  if (ev.target.tagName === 'INPUT') aoEscrever(PAGINAS[app.pagina], contexto(), ev.target)
+  if (ev.target.tagName !== 'INPUT') return
+  try { aoEscrever(PAGINAS[app.pagina], contexto(), ev.target) } catch (e) { registarErro('campo', e) }
 })
 
 // ---------- ciclo ----------
 let segundos = 0
-function ciclo () {
-  retomar(app.audio)
-  const ctx = render()
-  tocar(ctx)
-  const p = ctx.v('environment.outside.pressure')
+// os dados de cada segundo: o barómetro (de minuto a minuto) e o resumo da viagem
+function registarDados () {
+  const v = (p) => valor(store, p)
+  const p = v('environment.outside.pressure')
   if (segundos % 60 === 0 && p) {
     app.baro = registarPressao(app.baro, p, Date.now())
     guardar('arlequin.baro', app.baro)
   }
   app.viagem = acumular(app.viagem, {
     t: Date.now(),
-    sog: ctx.v('navigation.speedOverGround'),
-    motor: (ctx.v('propulsion.main.revolutions') || 0) > 5,
-    fuelRate: ctx.v('propulsion.main.fuel.rate'),
-    ventoReal: ctx.v('environment.wind.speedTrue'),
+    sog: v('navigation.speedOverGround'),
+    motor: (v('propulsion.main.revolutions') || 0) > 5,
+    fuelRate: v('propulsion.main.fuel.rate'),
+    ventoReal: v('environment.wind.speedTrue'),
     pressao: p
   })
   if (segundos % 30 === 0) guardar('arlequin.viagem', app.viagem)
+}
+// o apito primeiro, depois o desenho e os dados, cada um no seu try (auditoria I-06)
+function ciclo () {
+  retomar(app.audio)
+  passoCiclo({
+    tocar: () => tocar([...store.notificacoes.values()]),
+    desenhar: () => render(),
+    dados: () => registarDados()
+  }, (parte, e) => registarErro(parte, e))
   segundos++
 }
 
@@ -279,5 +300,6 @@ function aoMudarLigacao () {
 }
 
 ligar(store, { aoMudar: aoMudarLigacao })
-irPara(app.pagina)
+// o ciclo arranca antes da 1.ª página: nada no desenho o impede de começar (auditoria I-06)
 setInterval(ciclo, 1000)
+irPara(app.pagina)

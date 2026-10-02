@@ -58,7 +58,8 @@ function cartaoIa (ia) {
   const ultimo = ia.emTreino ? 'a treinar…'
     : !t ? 'ainda não treinou'
       : t.erro ? `último treino falhou: ${esc(t.erro)}`
-        : `último treino ${hora(t.em)}: ${t.resultados.filter(r => r.aceite).length} de ${t.resultados.length} modelos melhoraram`
+        : !Array.isArray(t.resultados) ? `último treino ${hora(t.em)}`
+          : `último treino ${hora(t.em)}: ${t.resultados.filter(r => r?.aceite).length} de ${t.resultados.length} modelos melhoraram`
   const p = ia.previsao
   const ultima = p?.okEm ? `última ${hora(p.okEm)}` : ''
   const previsao = p?.erro ? `previsão: sem rede (${esc(p.erro)})${ultima ? ' · ' + ultima : ''}`

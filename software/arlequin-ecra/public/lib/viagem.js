@@ -39,3 +39,16 @@ export function acumular (v, l) {
   }
   return n
 }
+
+// A viagem guardada no browser (auditoria I-06): sem um início válido começa outra; os números em falta ou
+// estragados voltam ao valor de uma viagem nova (nunca NaN no resumo).
+export function lerViagem (x, agora) {
+  if (!x || typeof x !== 'object' || Array.isArray(x) || !ok(x.inicio)) return novaViagem(agora)
+  const v = novaViagem(x.inicio)
+  for (const k of Object.keys(v)) {
+    if (k === 'inicio') continue
+    const nulo = k === 'ultimo' || k === 'pressaoInicial' || k === 'pressaoFinal'
+    if (ok(x[k]) || (nulo && x[k] === null)) v[k] = x[k]
+  }
+  return v
+}
