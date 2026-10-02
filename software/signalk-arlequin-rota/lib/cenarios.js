@@ -80,7 +80,9 @@ function criarCorrecaoVento ({ tempoBruto, modelos = {}, obtida, tendPressao3h =
     if (idadePrevH == null || idadePrevH > IDADE_MAX_TREINO_H) { foraDoTreino = true; return { w, razao: RAZAO_SEM_MODELO, twd: w.twd, corrigido: false } }
     const latCel = Math.floor(lat * 10) / 10
     const lonCel = Math.floor(lon * 10) / 10
-    const k = `${latCel}|${lonCel}|${Math.floor(t / 600000)}`
+    // a chave diz também se havia vento e direção previstos (M-10): a 1.ª consulta da célula sem
+    // vento não pode deixar as seguintes, com vento, com os ±10% e sem a direção corrigida
+    const k = `${latCel}|${lonCel}|${Math.floor(t / 600000)}|${w.tws > 0 ? 1 : 0}|${w.twd != null ? 1 : 0}`
     let r = cache.get(k)
     if (!r) {
       const d = new Date(t)
