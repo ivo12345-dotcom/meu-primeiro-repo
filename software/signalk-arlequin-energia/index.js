@@ -8,6 +8,9 @@ const { novaSessao, passoSessao } = require('./lib/sessao')
 const { registar, textoSessao } = require('./lib/diario')
 
 const RPM_VELHO = 2 * 60 * 1000 // sem rotação há 2 min = motor considerado parado
+// A corrente sem atualizar há mais disto não entra nos Ah da sessão (o SmartShunt calou-se com o motor
+// a trabalhar: antes integrava-se a última corrente e os Ah eram inventados — auditoria M-65).
+const CORRENTE_VELHA = 2 * 60 * 1000
 const PREFIXO = 'notifications.arlequin.energia.'
 
 module.exports = function (app) {
@@ -87,10 +90,17 @@ module.exports = function (app) {
       for (const n of r.notificacoes) app.debug(`${n.id} ${n.state}: ${n.message}`)
     }
 
-    const s = passoSessao(sessao, { motorLigado, corrente: leitura.corrente, soc: leitura.soc }, t)
+    // A sessão só com a corrente e o SoC recentes (sem eles: 0 Ah e "—" no diário, auditoria M-65).
+    const corrente = t - leitura.correnteEm <= CORRENTE_VELHA ? leitura.corrente : null
+    const soc = typeof leitura.soc === 'number' && t - leitura.socEm <= LIMITES.dadosVelhos ? leitura.soc : null
+    const s = passoSessao(sessao, { motorLigado, corrente, soc }, t)
     const minutoAntes = Math.floor(sessao.runTimeS / 60)
     sessao = s.sessao
-    if ((Math.floor(sessao.runTimeS / 60) !== minutoAntes || !runTimePublicado) && !outraFonteDeHoras(t)) {
+    const outroMinuto = Math.floor(sessao.runTimeS / 60) !== minutoAntes
+    // As horas de motor gravam-se de minuto a minuto: um corte de energia a meio de horas a motor já
+    // não as perde (antes só se gravavam ao fechar a sessão ou no stop — auditoria M-65).
+    if (outroMinuto) guardarRunTime()
+    if ((outroMinuto || !runTimePublicado) && !outraFonteDeHoras(t)) {
       runTimePublicado = true
       publicar([{ path: `propulsion.${opcoes.propulsao}.runTime`, value: Math.round(sessao.runTimeS) }])
     }
@@ -137,7 +147,7 @@ module.exports = function (app) {
     estado = novoEstado()
     desvio = 0
     // socEm começa na hora do arranque: o sensor perdido conta 5 min a partir daqui (auditoria M-59)
-    leitura = { soc: null, socEm: agora(), corrente: 0, vMotor: null, rpm: null, rpmEm: 0, sog: 0, modo: 'day' }
+    leitura = { soc: null, socEm: agora(), corrente: 0, correnteEm: -Infinity, vMotor: null, rpm: null, rpmEm: 0, sog: 0, modo: 'day' }
     runTimePublicado = false
     inicioDados = null
     normal(IDS.filter(id => { const s = app.getSelfPath?.(PREFIXO + id)?.value?.state; return s && s !== 'normal' }))

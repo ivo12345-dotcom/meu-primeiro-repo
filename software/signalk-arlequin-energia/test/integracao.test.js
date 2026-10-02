@@ -125,6 +125,42 @@ test('M-65: rotações null (o J1939 sem EEC1) não param o motor antes dos 2 mi
   assert.equal(sessoes[0].duracaoMin, 30)
 })
 
+test('M-65: com o SmartShunt calado e o motor a trabalhar, a corrente velha (mais de 2 min) não conta Ah', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: Date.parse('2026-10-02T10:00:00Z') })
+  const app = appFalso()
+  const plugin = criarPlugin(app)
+  plugin.start({})
+  const d = (values) => app.receber({ updates: [{ timestamp: new Date().toISOString(), values }] })
+  for (let s = 0; s < 30 * 60; s += 10) {
+    const values = [{ path: 'propulsion.main.revolutions', value: 30 }]
+    if (s < 5 * 60) values.push({ path: 'electrical.batteries.servico.capacity.stateOfCharge', value: 0.6 }, { path: 'electrical.batteries.servico.current', value: 60 })
+    d(values)
+    t.mock.timers.tick(10 * 1000)
+  }
+  d([{ path: 'propulsion.main.revolutions', value: 0 }])
+  plugin.stop()
+  t.mock.timers.reset()
+  await new Promise(r => setTimeout(r, 50))
+  const s = JSON.parse(fs.readFileSync(path.join(app.dir, 'sessoes-carga.jsonl'), 'utf8').trim().split('\n')[0])
+  assert.equal(s.duracaoMin, 30)
+  assert.ok(s.ah >= 5 && s.ah <= 7.1, `Ah ${s.ah}`) // 5 min a 60 A + no máximo 2 min da corrente ainda recente
+})
+
+test('M-65: as horas do motor gravam-se de minuto a minuto (um corte de energia a meio não as perde)', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: Date.parse('2026-10-02T10:00:00Z') })
+  const app = appFalso()
+  const plugin = criarPlugin(app)
+  plugin.start({})
+  for (let s = 0; s <= 3 * 60; s += 10) {
+    app.receber({ updates: [{ timestamp: new Date().toISOString(), values: [{ path: 'propulsion.main.revolutions', value: 30 }, { path: 'electrical.batteries.servico.capacity.stateOfCharge', value: 0.6 }] }] })
+    t.mock.timers.tick(10 * 1000)
+  }
+  // o Pi perde a energia aqui: sem stop()
+  const guardado = JSON.parse(fs.readFileSync(path.join(app.dir, 'runtime.json'), 'utf8'))
+  assert.ok(guardado.runTimeS >= 120, JSON.stringify(guardado))
+  plugin.stop()
+})
+
 test('descarga sem motor: 55% no ecrã e depois alarme crítico com som', () => {
   const { app } = correrCenario('descarga-critica')
   const seq = sequencia(app.notificacoes)

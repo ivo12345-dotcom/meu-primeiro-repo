@@ -22,6 +22,12 @@ test('texto da sessão em pt-PT', () => {
   assert.equal(textoSessao({ ...SESSAO, duracaoMin: 45 }), 'Carga pelo motor: 45 min, +61,6 Ah, serviço 55% → 81%')
 })
 
+// Auditoria M-65 (E-M8): sem SoC quando o motor arrancou o texto dizia "serviço 0% → 81%".
+test('M-65: sem SoC no início ou no fim, o texto diz "—" (nunca 0%)', () => {
+  assert.equal(textoSessao({ ...SESSAO, socInicial: null }), 'Carga pelo motor: 1 h 20 min, +61,6 Ah, serviço — → 81%')
+  assert.equal(textoSessao({ ...SESSAO, socFinal: undefined }), 'Carga pelo motor: 1 h 20 min, +61,6 Ah, serviço 55% → —')
+})
+
 test('grava uma linha JSON por sessão', async () => {
   const ficheiro = path.join(tmp(), 'sessoes-carga.jsonl')
   await registar(SESSAO, { ficheiro })

@@ -4,7 +4,8 @@
 
 const fs = require('node:fs/promises')
 
-const pct = (soc) => `${Math.round(soc * 100)}%`
+// Sem SoC (o SmartShunt ainda não chegou ou calou-se): "—", nunca "0%" (auditoria M-65).
+const pct = (soc) => (typeof soc === 'number' && Number.isFinite(soc) ? `${Math.round(soc * 100)}%` : '—')
 
 function duracao (min) {
   const h = Math.floor(min / 60)
