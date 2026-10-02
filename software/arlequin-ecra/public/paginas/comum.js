@@ -97,7 +97,12 @@ export function proximoWp (ctx) {
   const xte = ctx.v('navigation.course.calcValues.crossTrackError') ?? ctx.v('navigation.courseRhumbline.crossTrackError')
   const ttg = ctx.v('navigation.course.calcValues.timeToGo')
   const vmg = ctx.v('navigation.course.calcValues.velocityMadeGood')
-  const nome = ctx.v('navigation.course.nextPoint')?.name || 'WP'
+  // o nome do ponto (o SignalK põe o do coordinatesMeta da rota); sem ele, qual é na rota ativa ("ponto 3 de
+  // 57", auditoria M-49: dizia sempre "WP"); sem rota, "WP"
+  const np = ctx.v('navigation.course.nextPoint')?.name
+  const ar = ctx.v('navigation.course.activeRoute')
+  const nome = typeof np === 'string' && np.trim() ? np
+    : Number.isInteger(ar?.pointIndex) && Number.isInteger(ar?.pointTotal) ? `ponto ${ar.pointIndex + 1} de ${ar.pointTotal}` : 'WP'
   return { ativo: ok(dist), dist, rumoWp, xte, ttg, vmg, nome }
 }
 
