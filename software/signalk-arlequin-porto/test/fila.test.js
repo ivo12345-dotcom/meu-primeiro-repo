@@ -646,6 +646,33 @@ test('auditoria F4b (revisão, Menor 11): as mensagens lidas do disco no arranqu
   } finally { p.stop(); await tgf.fechar() }
 })
 
+test('auditoria F4b (revisão, Menor 13): sem mexer nos limites do plugin: 101 alarmes sem rede deixam 100 na fila (uma linha no registo); quando a rede volta saem todos com a pausa de 1 s entre cada um', async () => {
+  const tgf = await criarTelegramFalso()
+  const app = appFalso()
+  const rel = relogio()
+  const pausas = []
+  // sem pausaFilaMs nem maxFila: os de origem (1 s e 100); só a espera é espiada, para não demorar 99 s
+  const p = criar(app, { ...rel.deps, tickMs: 50, encaminharMs: 50, pausar: async (ms) => { pausas.push(ms) } })
+  p.start({ telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 })
+  const cheia = () => app.erros.filter(e => /fila do Telegram cheia/.test(e))
+  try {
+    tgf.cortar()
+    for (let i = 0; i < 101; i++) app.pôr(`notifications.outro.n${i}`, { state: 'alarm', message: `Alarme ${i}` })
+    assert.ok(await ate(() => cheia().length >= 1), JSON.stringify(app.erros))
+    assert.ok(await ate(() => naFila(app).length === 100))
+    assert.deepEqual(cheia(), ['fila do Telegram cheia: já não vou entregar "🚨 Alarme 0"'])
+    assert.ok(await falhadas(app, 1), app.estado) // a tentativa sem rede já falhou: só então a rede volta
+    tgf.religar()
+    rel.passar(MIN)
+    assert.ok(await ate(() => textos(tgf).length === 100), `${textos(tgf).length}`)
+    assert.equal(textos(tgf)[0], '🚨 Alarme 1 (atrasado 1 min)')
+    assert.equal(textos(tgf).at(-1), '🚨 Alarme 100 (atrasado 1 min)')
+    assert.ok(await ate(() => naFila(app).length === 0))
+    assert.deepEqual(pausas, new Array(99).fill(1000), 'uma pausa de 1 s entre mensagens seguidas, nenhuma depois da última')
+    assert.equal(cheia().length, 1)
+  } finally { p.stop(); await tgf.fechar() }
+})
+
 test('auditoria K-09: sem chats autorizados (ou sem token) não se guarda nada na fila', async () => {
   const tgf = await criarTelegramFalso()
   const app = appFalso()
