@@ -26,6 +26,7 @@
 // Nunca mostra null, NaN nem undefined: o que falta fica de fora.
 
 import { esc, horaLisboa, quandoAs, aNome } from '../../lib/rota-texto.js'
+import { GRAVIDADE, COR_GRAVIDADE } from '../../lib/alarmes.js'
 import { URL_ROTA, calcular, motivoAcao } from './pedir.js'
 import { aberto, planoAberto, pausado, aEspera } from './aberto.js'
 
@@ -39,8 +40,7 @@ const chave = (p) => (p ? `${p.idCalculo ?? ''}|${p.indice ?? ''}|${p.ativadoEm 
 // Os avisos da rota ativos (auditoria I-24: com vários ao mesmo tempo só se via um, no chip da barra): o campo
 // avisos do GET /plano-ativo, os mais graves primeiro; o dos recursos já tem a sua linha na faixa. Num mosaico
 // próprio, na coluna da direita do Leme: na faixa, a 1024×600, empurravam o "Rumo a seguir" para fora do ecrã.
-const GRAVIDADE = { alert: 1, warn: 2, alarm: 3, emergency: 4 }
-const COR_AVISO = { alert: '', warn: 'atencao', alarm: 'perigo', emergency: 'perigo' }
+// A gravidade e a cor vêm do lib/alarmes.js (uma só fonte, revisão F3 Minor 15).
 const CAMINHO_RECURSOS = 'notifications.rota.recursos'
 function avisosAtivos (p) {
   return (Array.isArray(p.avisos) ? p.avisos : [])
@@ -182,7 +182,7 @@ export function avisosRota (ctx) {
   const p = planoAberto(ctx)
   const lista = p && p.estado !== 'pausado' ? avisosAtivos(p) : []
   if (!lista.length) return ''
-  return `<div class="tile avisos-rota"><div class="lab">Avisos da rota</div>${lista.map(a => `<div><span${COR_AVISO[a.state] ? ` class="${COR_AVISO[a.state]}"` : ''}>⚠ ${esc(a.message)}</span></div>`).join('')}</div>`
+  return `<div class="tile avisos-rota"><div class="lab">Avisos da rota</div>${lista.map(a => `<div><span${COR_GRAVIDADE[a.state] ? ` class="${COR_GRAVIDADE[a.state]}"` : ''}>⚠ ${esc(a.message)}</span></div>`).join('')}</div>`
 }
 
 // O que o Leme mostra do plano: '' sem plano aberto.

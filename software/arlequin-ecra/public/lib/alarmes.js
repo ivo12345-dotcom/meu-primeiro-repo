@@ -3,9 +3,16 @@
 
 import { esc } from './rota-texto.js'
 
-const GRAVIDADE = { normal: 0, nominal: 0, alert: 1, warn: 2, alarm: 3, emergency: 4 }
+// A gravidade de cada estado do SignalK (uma só fonte: a barra, os avisos da rota no Leme e a lista do Motor).
+export const GRAVIDADE = Object.freeze({ normal: 0, nominal: 0, alert: 1, warn: 2, alarm: 3, emergency: 4 })
+// A cor do texto de cada gravidade nas listas: o alerta sem cor, o aviso âmbar, o alarme e a emergência a vermelho.
+export const COR_GRAVIDADE = Object.freeze({ alert: '', warn: 'atencao', alarm: 'perigo', emergency: 'perigo' })
 
-const nivel = (n) => GRAVIDADE[n.state] ?? 0
+export const nivel = (n) => GRAVIDADE[n?.state] ?? 0
+
+// As ativas (acima de normal), da mais grave para a menos; entre iguais, pela ordem de chegada (revisão F3,
+// Important 3: a lista do Motor vinha pela ordem de chegada e a mais grave podia ficar por baixo).
+export const porGravidade = (lista) => [...(lista || [])].filter(n => nivel(n) > 0).sort((a, b) => nivel(b) - nivel(a))
 
 // O mais grave para a barra. Entre os da mesma gravidade, primeiro o que ainda apita (auditoria I-08: com
 // dois alarmes AIS, o chip ficava preso no 1.º, já silenciado, e o 2.º — o que apitava — não se calava).

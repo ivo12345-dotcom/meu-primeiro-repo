@@ -571,6 +571,44 @@ test('auditoria I-26: em todas as páginas e estados, cada elemento tocável é 
   assert.ok(vistos > 80, `${vistos} alvos vistos`)
 })
 
+// ---------- revisão F3, Important 3: os alarmes do Motor por gravidade, nunca cortados em silêncio ----------
+test('revisão F3, Important 3: no Motor os alarmes vêm por gravidade (emergência, alarme, aviso, alerta), com a cor de cada uma, o número no título e no cimo da coluna (que rola): a fuga de gasóleo nunca fica por baixo dos botões', async () => {
+  const { ancestrais, dentroDeRolar } = await import('./ajuda-html.mjs')
+  const st = storeSimulado(1)
+  // pela ordem de chegada (a fuga, que apita contínuo, é a 5.ª)
+  const chegada = [
+    ['notifications.propulsion.main.alternadorNaoCarrega', 'warn', 'Alternador a 12,4 V — não está a carregar'],
+    ['notifications.arlequin.energia.ligarMotor', 'alert', 'Bateria de serviço a 52 %: liga o motor'],
+    ['notifications.tanks.fuel.0.consumoAnormal', 'warn', 'Gastou 6,0 L em vez de ~2,0 L'],
+    ['notifications.arlequin.energia.motorFraca', 'alarm', 'Bateria do motor fraca: 11,9 V'],
+    ['notifications.tanks.fuel.0.fuga', 'alarm', 'Possível fuga de gasóleo: −6,0 L com o motor parado'],
+    ['notifications.tanks.freshWater.0.baixo', 'warn', 'Água a acabar: Cozinha (BB) com 9 L'],
+    ['notifications.electrical.batteries.servico.emergencia', 'emergency', 'Bateria de serviço em curto-circuito'],
+    ['notifications.propulsion.main.normal', 'normal', 'Normal']
+  ]
+  const ctx = { ...contexto(st, {}), notificacoes: chegada.map(([caminho, state, message]) => ({ caminho, id: `${caminho}-id`, state, method: ['visual', 'sound'], message, status: {} })) }
+  const html = motor.render(ctx)
+  const inicio = html.indexOf('Alarmes do motor, da energia e dos depósitos')
+  assert.ok(inicio > 0)
+  const bloco = html.slice(inicio, html.indexOf('</div></div>', inicio) + 12)
+  const linhas = [...bloco.matchAll(/<div class="([^"]*)">([^<]*)<\/div>/g)].map(m => [m[1], m[2]])
+  assert.deepEqual(linhas.map(l => l[1]), [
+    'Bateria de serviço em curto-circuito', 'Bateria do motor fraca: 11,9 V', 'Possível fuga de gasóleo: −6,0 L com o motor parado',
+    'Alternador a 12,4 V — não está a carregar', 'Gastou 6,0 L em vez de ~2,0 L', 'Água a acabar: Cozinha (BB) com 9 L',
+    'Bateria de serviço a 52 %: liga o motor'
+  ], 'por gravidade; entre iguais, pela ordem de chegada; o normal não conta')
+  assert.deepEqual(linhas.map(l => l[0]), ['alarme-linha perigo', 'alarme-linha perigo', 'alarme-linha perigo', 'alarme-linha atencao', 'alarme-linha atencao', 'alarme-linha atencao', 'alarme-linha'], 'a cor de cada gravidade (o alerta já não sai a vermelho)')
+  assert.match(bloco, /Alarmes do motor, da energia e dos depósitos \(7\)/, 'o número no título')
+  // no cimo da coluna (logo a seguir às rotações), que rola: nunca por baixo dos botões de baixo
+  assert.ok(inicio < html.indexOf('Temperatura') && inicio < html.indexOf('Gasóleo'), 'antes da temperatura e do gasóleo')
+  const coluna = ancestrais(html, 'Alarmes do motor, da energia e dos depósitos')
+  assert.ok(coluna.some(a => a.rolar === 'motor-esq'), 'a coluna da esquerda rola (data-rolar)')
+  assert.ok(dentroDeRolar(ancestrais(html, 'data-acao="calib-abrir"')), 'os botões do gasóleo chegam-se a rolar')
+  // sem alarmes, "sem alarmes" e sem número
+  const calmo = motor.render({ ...contexto(st, {}), notificacoes: [] })
+  assert.match(calmo, /Alarmes do motor, da energia e dos depósitos<\/div><div class="ok">sem alarmes<\/div>/)
+})
+
 // ---------- auditoria I-29 (decisão do Ivo n.º 23): água sem sensor ----------
 test('auditoria I-29: um depósito sem nível (o plugin publica null sem sensor, até ao 1.º "Enchi" ou nível posto à mão) diz "sem sensor" — nunca "0 L" a vermelho nem "cheio"', () => {
   const st = storeSimulado(1)
