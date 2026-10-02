@@ -182,6 +182,16 @@ test('chegada de noite a um porto desconhecido (no pessimista ou no provável)',
   assert.equal(s.avaliar(base({ destino: desconhecido })).naoRecomendada, false)
 })
 
+test('M-03: um destino sem o campo "conhecido" (destinos.json editado à mão) não conta como conhecido: desconhecido nunca é seguro', () => {
+  const noite = (p) => { p.pontos.at(-1).noite = true; return p }
+  for (const destino of [{ nome: 'Peniche' }, { nome: 'Peniche', conhecido: undefined }, { nome: 'Peniche', conhecido: 'sim' }]) {
+    const r = s.avaliar(base({ destino, pessimista: noite(passagem()) }))
+    assert.equal(r.naoRecomendada, true, JSON.stringify(destino))
+    assert.deepEqual(r.motivos, ['chegada de noite a Peniche, um porto que não conheces'])
+  }
+  assert.equal(s.avaliar(base({ destino: { nome: 'Peniche', conhecido: true }, pessimista: noite(passagem()) })).naoRecomendada, false)
+})
+
 test('rota direta (afastamento null, rotas.js): sem mínimo pelo afastamento, fica a distância real à costa; afastamento null sem direto usa o mínimo por omissão', () => {
   // salto curto junto à costa: todos os troços são aproximação ou ligação (costaLivre)
   const direta = {

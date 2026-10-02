@@ -237,7 +237,7 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
     const visAgora = Number.isFinite(w.visibilidade) && w.visibilidade < VISIBILIDADE_RADAR_M
     if (visAgora && !visBaixa) ev(`${Number.isFinite(w.chuva) && w.chuva >= CHUVA_RADAR_MM_H ? 'Chuva e visibilidade' : 'Visibilidade'} ${virgula(w.visibilidade / 1000)} km: radar ligado`, 'tempo')
     visBaixa = visAgora
-    if (!frenteAnunciada && !semVento && pontos.length && pontos[pontos.length - 1].tws > 12 && w.tws < 8) { frenteAnunciada = true; ev(`Passagem da frente: o vento cai de ${Math.round(pontos[pontos.length - 1].tws)} para ${Math.round(w.tws)} nós e roda para ${rumo3(w.twd)}°. Fica o mar (${virgula(w.ondas ?? 0)} m)`, 'tempo') }
+    if (!frenteAnunciada && !semVento && pontos.length && pontos[pontos.length - 1].tws > 12 && w.tws < 8) { frenteAnunciada = true; ev(`Passagem da frente: o vento cai de ${Math.round(pontos[pontos.length - 1].tws)} para ${Math.round(w.tws)} nós e roda para ${rumo3(w.twd)}°. Fica o mar (${Number.isFinite(w.ondas) ? `${virgula(w.ondas)} m` : 'sem previsão de ondas'})`, 'tempo') }
     const costa = distanciaCosta ? distanciaCosta(pos) : null
     // semDados/aproximado da previsão (lib/previsao.js), só quando os há: a segurança trata o
     // desconhecido como desconhecido (nunca calmo) e avisa do aproximado.

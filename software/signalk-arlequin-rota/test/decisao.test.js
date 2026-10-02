@@ -198,6 +198,16 @@ test('I-15: no mar, com a partida de agora recomendada e uma mais tarde mais bar
   assert.equal(d.decidir({ candidatos: [semMotivos, depois], agora: AGORA, tripulacao: 'so' }).veredicto.porque[0], 'Agora não há alternativa recomendada.')
 })
 
+test('M-01: sem vento previsto no provável (o máximo é -Infinity) a frase diz "sem previsão de vento", nunca "vento até -Infinity nós"', () => {
+  const c = cand({ custo: 10 })
+  c.resumos.provavel.ventoMax = -Infinity
+  c.resumos.provavel.ondasMax = -Infinity
+  const r = d.decidir({ candidatos: [c], agora: AGORA, tripulacao: 'acompanhado' })
+  assert.equal(r.veredicto.porque[0], 'Parte agora pela rota a 5 MN: chegas amanhã às 03:32 (de dia), sem previsão de vento.')
+  const s = d.decidir({ candidatos: [{ ...c, naoRecomendada: true, motivos: ['x'] }], agora: AGORA, tripulacao: 'so', sairAgora: true })
+  assert.doesNotMatch(JSON.stringify(s.veredicto), /Infinity|NaN|undefined|null/)
+})
+
 test('a rota direta (afastamento null) e a variante por um canal no texto do veredicto: nunca "a null MN"', () => {
   const direta = { ...cand({ custo: 10 }), afastamento: null, direto: true }
   const r = d.decidir({ candidatos: [direta], agora: AGORA, tripulacao: 'so' })

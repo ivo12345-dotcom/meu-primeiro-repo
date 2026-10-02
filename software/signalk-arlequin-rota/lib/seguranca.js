@@ -43,7 +43,7 @@
 //     vento < 10 nós E (ondas < 2 m, OU ondas ≤ 3 m com período ≥ 9 s — ondulação comprida,
 //     que a roda com travão aguenta). Desconhecido nunca é calma: sem vento ou sem ondas
 //     previstos (null) não é calma; acima de 2 m sem período conhecido também não;
-//   - chegada de noite a um porto com `conhecido: false`. Conta a chegada de noite em qualquer
+//   - chegada de noite a um porto que não seja `conhecido: true` (sem o campo também não: M-03). Conta a chegada de noite em qualquer
 //     um dos 3 cenários (pessimista, provável ou otimista).
 // "Não recomendada" com tripulação "acompanhado" (decisão do Ivo de 01/10, "limites mais largos";
 //   revisão final, I4): vento médio > 28 nós, rajadas > 35 ou ondas > 4 m (o máximo dos 3 resumos,
@@ -294,7 +294,8 @@ function avaliar ({ alternativa, pessimista, provavel, otimista, destino, tripul
     const nr = []
     for (const [v, texto, solo] of limites) if (v > solo) nr.push(texto(solo, 'sozinho'))
     if (out.horasLemeEq > o.lemeMaxH) nr.push(`${virgulaAcima(out.horasLemeEq)} h equivalentes ao leme (limite ${o.lemeMaxH} h sozinho)`)
-    if (out.chegadaNoite && destino && destino.conhecido === false) nr.push(`chegada de noite a ${destino.nome}, um porto que não conheces`)
+    // desconhecido nunca é seguro (M-03): sem o campo `conhecido` (destinos.json editado à mão) não conta como conhecido
+    if (out.chegadaNoite && destino && destino.conhecido !== true) nr.push(`chegada de noite a ${destino.nome}, um porto que não conheces`)
     if (nr.length) { out.naoRecomendada = true; out.motivos.push(...nr) }
   }
   return out
