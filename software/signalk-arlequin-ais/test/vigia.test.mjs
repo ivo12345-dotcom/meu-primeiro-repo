@@ -407,6 +407,19 @@ test('revisão F6 (Menor 8): o SOG/COG de um alvo mais velho do que a posição 
   assert.deepEqual(novo.notificacoes.map(n => n.state), ['alarm'])
 })
 
+// F6b: o nosso GPS manda o SOG/COG de segundo a segundo — 10 s sem um novo é um GPS calado (a revisão pede
+// > 10 s para os nossos; os 30 s ficam para os alvos, que falam de 10 em 10 s ou menos)
+test('revisão F6 (Menor 8): o nosso SOG/COG sem mudar há mais de 10 s já não conta; com 8 s ainda conta (o COG que falha numa RMC sim e noutra não)', () => {
+  const fundeado = { mmsi: '2', nome: 'F', position: ponto(0.3, 0), sog: 0, em: T }
+  const eu = (idade) => ({ position: EU.position, sog: 6 * NO, cog: 0, sogEm: T - idade, cogEm: T - idade })
+  assert.deepEqual(avaliarAlvos({}, eu(15000), [fundeado], T, calc).notificacoes, [], 'o SOG de 6 nós de há 15 s ainda dava rota de colisão')
+  assert.deepEqual(avaliarAlvos({}, eu(8000), [fundeado], T, calc).notificacoes.map(n => n.state), ['alarm'])
+  // o último que houve também só vale 10 s: com o COG em falta há 12 s não há o nosso rumo (nem rasto)
+  const r1 = avaliarAlvos({}, { position: EU.position, sog: 6 * NO, cog: 0 }, [fundeado], T, calc)
+  const r2 = avaliarAlvos({}, { position: EU.position, sog: 6 * NO, cog: null }, [fundeado], T + 12000, calc, r1.memoria)
+  assert.equal(r2.memoria.eu.cog, null)
+})
+
 test('revisão F6 (Menor 8): o nosso SOG/COG sem mudar há mais de 30 s não conta (fica a velocidade do rasto)', () => {
   // o GPS deixou de mandar a velocidade há 40 s (posição a chegar): o SOG de 6 nós a norte que ficou na árvore não conta
   const eu = { position: EU.position, sog: 6 * NO, cog: 0, sogEm: T - 40000, cogEm: T - 40000 }
