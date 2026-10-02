@@ -55,9 +55,10 @@ export function polarSvg (polar, twsNos, alvo, real) {
   }
   // Curva interpolada para o TWS atual.
   const j = polar.tws.findIndex(t => t >= twsNos)
+  // acima da última coluna, a última (auditoria M-37: o j = −1 caía no "j <= 0" e dava a 1.ª, a dos 6 nós)
   const lin = (i) => {
-    if (j <= 0) return polar.v[i][0]
     if (j === -1) return polar.v[i][polar.tws.length - 1]
+    if (j === 0) return polar.v[i][0]
     const f = (twsNos - polar.tws[j - 1]) / (polar.tws[j] - polar.tws[j - 1])
     return polar.v[i][j - 1] * (1 - f) + polar.v[i][j] * f
   }
