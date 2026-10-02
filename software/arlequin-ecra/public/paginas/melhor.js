@@ -36,7 +36,9 @@ function reverAtivada (ctx) {
 
 export function vista (ctx) {
   const e = ctx.estado
-  if (e.ativada || ((rotaAtiva(ctx) || navegar.pausado(ctx)) && !e.novo)) return 'leme'
+  // com um plano aberto (também sem rota ativa no SignalK, antes de o plugin o pausar: auditoria C-M7) ou
+  // uma rota ativa, o Leme — a não ser depois de "Novo cálculo"/Recalcular (e.novo)
+  if (e.ativada || ((rotaAtiva(ctx) || navegar.planoAberto(ctx)) && !e.novo)) return 'leme'
   const v = e.vista || 'pedir'
   if ((v === 'resultado' || v === 'mapa') && !e.resultado) return 'pedir'
   return v
@@ -46,8 +48,9 @@ export default {
   aoEntrar (ctx) {
     const e = ctx.estado
     reverAtivada(ctx)
-    // voltar à página com o Pedir aberto (um "Novo cálculo" por engano) repõe o Leme
-    if (e.novo && (!e.vista || e.vista === 'pedir')) e.novo = false
+    // voltar à página com o Pedir aberto (um "Novo cálculo" por engano) repõe o Leme; com o plano aberto, de
+    // qualquer vista (o Resultado ou o Mapa de um Recalcular: auditoria I-25)
+    if (e.novo && (navegar.planoAberto(ctx) || !e.vista || e.vista === 'pedir')) e.novo = false
     navegar.buscarPlanoAtivo(ctx, true)
     if (vista(ctx) === 'pedir') buscarDestinos(ctx, true)
   },

@@ -436,6 +436,62 @@ test('auditoria I-24: a faixa mostra uma linha por aviso ativo da rota (o campo 
   for (const lixo of [[], null, 'x', [null, { state: 'warn' }, { caminho: 'x', state: 'warn', message: 7 }]]) assert.doesNotMatch(melhor.render(await leme({ ...PLANO, avisos: lixo })), /⚠ /)
 })
 
+// ---------- auditoria I-25 (e C-M7): o caminho de volta ao Leme é sempre um toque ----------
+test('auditoria I-25: depois de Recalcular no mar, o A calcular, o Resultado e o Mapa têm "Voltar ao leme" (um toque volta ao rumo, sem ativar nada)', async () => {
+  const ctx = await leme(PLANO, { respostas: { [`POST ${ROTA}/calcular`]: { id: 'calc-2' }, [`GET ${ROTA}/resultado/calc-2`]: [{ estado: 'a calcular', progresso: 0.3, texto: 'a simular' }, { estado: 'pronto', progresso: 1, texto: 'pronto', resultado: DIRETA }] } })
+  ctx.agendar = (f) => { ctx.proximo = f }
+  await melhor.acao('rota-recalcular', {}, ctx)
+  assert.match(melhor.render(ctx), /A calcular a melhor rota/)
+  assert.match(melhor.render(ctx), /data-acao="rota-voltar-leme"[^>]*>Voltar ao leme</, 'no A calcular')
+  await ctx.proximo()
+  let html = melhor.render(ctx)
+  assert.match(html, /data-acao="rota-ativar"/, 'o Resultado')
+  assert.match(html, /data-acao="rota-voltar-leme"[^>]*>Voltar ao leme</, 'no Resultado')
+  await melhor.acao('rota-mapa', {}, ctx)
+  html = melhor.render(ctx)
+  assert.match(html, /<svg class="mapa"/)
+  assert.match(html, /data-acao="rota-voltar-leme"[^>]*>Voltar ao leme</, 'no Mapa')
+  await melhor.acao('rota-voltar-leme', {}, ctx)
+  html = melhor.render(ctx)
+  assert.match(html, /Rumo a seguir/)
+  assert.match(texto(html), /próximo: rizar/)
+  assert.equal(ctx.pedidos.filter(p => p.url.endsWith('/ativar')).length, 0, 'não ativou nada')
+})
+
+test('auditoria I-25: sair da página e voltar com o plano aberto repõe o Leme (também do Resultado e do Mapa); sem plano nem rota ativa não há "Voltar ao leme"', async () => {
+  const ctx = await leme(PLANO, { respostas: { [`POST ${ROTA}/calcular`]: { id: 'calc-2' }, [`GET ${ROTA}/resultado/calc-2`]: { estado: 'pronto', resultado: DIRETA } } })
+  await melhor.acao('rota-recalcular', {}, ctx)
+  await esperar()
+  assert.match(melhor.render(ctx), /data-acao="rota-ativar"/)
+  melhor.aoEntrar(ctx)
+  assert.match(melhor.render(ctx), /Rumo a seguir/)
+  // sem plano e sem rota ativa: o Resultado sem o botão
+  const sem = contexto({ valores: {}, estado: { vista: 'resultado', resultado: DIRETA, idCalculo: 'calc-1', selecionada: 0 } })
+  assert.doesNotMatch(melhor.render(sem), /rota-voltar-leme/)
+})
+
+test('auditoria C-M7: com o plano aberto mas sem rota ativa no SignalK (antes de o plugin o pausar), a página mostra o Leme com a faixa e o Terminar, não o Pedir', async () => {
+  for (const noite of [false, true]) {
+    const html = melhor.render(await leme(PLANO, { valores: {}, noite }))
+    limpo(html, 'plano sem rota')
+    assert.doesNotMatch(html, /Para onde\?/)
+    assert.match(texto(html), /próximo: rizar/)
+    assert.match(html, /data-acao="rota-terminar"/)
+  }
+})
+
+test('auditoria I-25: em pausa sem rota ativa → Recalcular → Novo cálculo → o Pedir tem "Voltar ao leme"', async () => {
+  const ctx = await leme({ ...PLANO, estado: 'pausado', pausadoDe: 'a navegar' }, { valores: {}, respostas: { [`POST ${ROTA}/calcular`]: { id: 'calc-2' }, [`GET ${ROTA}/resultado/calc-2`]: { estado: 'pronto', resultado: DIRETA } } })
+  await melhor.acao('rota-recalcular', {}, ctx)
+  await esperar()
+  await melhor.acao('rota-novo', {}, ctx)
+  const html = melhor.render(ctx)
+  assert.match(html, /Para onde\?/)
+  assert.match(html, /data-acao="rota-voltar-leme"/)
+  await melhor.acao('rota-voltar-leme', {}, ctx)
+  assert.match(texto(melhor.render(ctx)), /a rota ativa já não é a do plano/)
+})
+
 // ---------- revisão final (C1, I2, I3) ----------
 const ALARME = '2026-09-30T08:38:00.000Z' // 09:38 em Lisboa, amanhã
 
