@@ -289,7 +289,8 @@ Todos são LightGBM com **regressão por quantis: P10, P50 e P90** (pessimista, 
 
 ## Fora de âmbito (por agora)
 
-- Piloto automático (EV-100): quando vier, o rumo da rota ativa vai para o piloto.
+- Piloto automático (EV-100): quando vier, o rumo da rota ativa vai para o piloto. (Nota de 02/10:
+  o piloto está por decidir e hoje não há nenhum; as opções estão no `PILOTO-AUTOMATICO.md`.)
 - Meshtastic (só depois do sistema validado).
 - Estado das barras automático (AMN): fica como precaução manual.
 - Isócronas contínuas: o OpenCPN Weather Routing continua disponível à parte.
