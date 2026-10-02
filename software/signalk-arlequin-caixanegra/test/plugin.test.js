@@ -654,3 +654,46 @@ test('sem o ficheiro dos destinos da rota: diz porquê (erro e estado do plugin)
   assert.ok(mensagens.some(m => /destinos da rota/.test(m) && /nao-existe\.json/.test(m)), mensagens.join(' | '))
   assert.match(app.estado, /^SEM OS PORTOS DA ROTA · /)
 })
+
+test('velas.json, saida-em-curso.json e saidas/: escritos com fsync antes de mudar o nome (um corte de energia não os deixa vazios; auditoria M-55)', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 50
+  const original = fs.fsyncSync
+  let chamadas = 0
+  fs.fsyncSync = (fd) => { chamadas++; return original(fd) }
+  t.after(() => { fs.fsyncSync = original })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  await chamar(rotas(p).post['/velas'], { grandeRizos: 1 })
+  assert.equal(chamadas, 1, 'o velas.json')
+  correr(t, app, 60, 'nmea0183.GP')
+  assert.equal(chamadas, 2, 'o saida-em-curso.json de minuto a minuto')
+  p.stop()
+  const dir = app.getDataDirPath()
+  assert.deepEqual(fs.readdirSync(dir).filter(n => n.endsWith('.tmp')), [], 'sem .tmp esquecidos')
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'velas.json'), 'utf8')).grandeRizos, 1)
+})
+
+test('um saida-em-curso.json ou velas.json ilegível ao arrancar: avisa, conta o erro e guarda-o à parte em vez de o perder calado (auditoria M-55)', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 50
+  const app = appFalso()
+  const mensagens = []
+  app.error = (m) => mensagens.push(m)
+  const dir = app.getDataDirPath()
+  fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(path.join(dir, 'saida-em-curso.json'), '{"emCurso": {"inicio": 17')
+  fs.writeFileSync(path.join(dir, 'velas.json'), '"inteira"') // JSON, mas não é o estado das velas
+  const p = criar(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  const est = await chamar(rotas(p).get['/estado'], {})
+  p.stop()
+  assert.ok(est.erros >= 2, `erros: ${est.erros}`)
+  assert.ok(mensagens.some(m => /saida-em-curso\.json/.test(m) && /ilegível/.test(m)), mensagens.join(' | '))
+  assert.ok(mensagens.some(m => /velas\.json/.test(m) && /ilegível/.test(m)), mensagens.join(' | '))
+  assert.deepEqual(est.velas, { grandeRizos: 0, genoaPct: 100 }, 'recomeça com as velas por omissão')
+  const guardados = fs.readdirSync(dir).filter(n => /\.ilegivel-/.test(n)).sort()
+  assert.equal(guardados.length, 2, fs.readdirSync(dir).join(', '))
+  assert.equal(fs.readFileSync(path.join(dir, guardados.find(n => n.startsWith('saida-em-curso'))), 'utf8'), '{"emCurso": {"inicio": 17')
+})

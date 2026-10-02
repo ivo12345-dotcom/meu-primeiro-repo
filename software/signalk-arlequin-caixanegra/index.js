@@ -109,13 +109,43 @@ module.exports = function (app) {
 
   const ficheiroVelas = () => path.join(dirPlugin, 'velas.json')
   const ficheiroSaida = () => path.join(dirPlugin, 'saida-em-curso.json')
-  const ler = (f, omissao) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')) } catch { return omissao } }
-  // Escreve num .tmp e muda o nome no fim: um corte de energia a meio nunca
-  // deixa o velas.json ou o saida-em-curso.json cortado.
+  // Sem ficheiro → a omissão (primeiro arranque). Ilegível, ou sem a forma de um objeto → a
+  // omissão também, mas diz-se e o ficheiro fica à parte (<nome>.ilegivel-<hora>), senão o
+  // próximo guardar escrevia-lhe por cima e uma saída em curso perdia-se calada.
+  function ler (f, omissao) {
+    let texto
+    try { texto = fs.readFileSync(f, 'utf8') } catch (e) {
+      if (e.code !== 'ENOENT') { erros++; app.error(`caixa negra: ${path.basename(f)} ilegível (${e.message}); começo do zero`) }
+      return omissao
+    }
+    try {
+      const x = JSON.parse(texto)
+      if (!x || typeof x !== 'object' || Array.isArray(x)) throw new Error('não é um objeto')
+      return x
+    } catch (e) {
+      erros++
+      let aParte = ''
+      try {
+        const novo = `${f}.ilegivel-${new Date().toISOString().replace(/[:.]/g, '-')}`
+        fs.renameSync(f, novo)
+        aParte = `; ficou como ${path.basename(novo)}`
+      } catch { /* fica onde está */ }
+      app.error(`caixa negra: ${path.basename(f)} ilegível (${e.message}); começo do zero${aParte}`)
+      return omissao
+    }
+  }
+  // Escreve num .tmp, força-o para o disco (fsync) e só então muda o nome: um corte de energia
+  // a meio nunca deixa o velas.json, o saida-em-curso.json ou uma saída cortados ou vazios (sem
+  // o fsync, o nome novo podia chegar ao disco antes do conteúdo).
   function guardar (f, obj) {
     try {
-      fs.writeFileSync(f + '.tmp', JSON.stringify(obj))
-      fs.renameSync(f + '.tmp', f)
+      const tmp = f + '.tmp'
+      const fd = fs.openSync(tmp, 'w')
+      try {
+        fs.writeSync(fd, JSON.stringify(obj))
+        fs.fsyncSync(fd)
+      } finally { fs.closeSync(fd) }
+      fs.renameSync(tmp, f)
     } catch (e) { erros++; app.error(`não guardei ${path.basename(f)}: ${e.message}`) }
   }
 
@@ -298,6 +328,8 @@ module.exports = function (app) {
     for (const d of ['bruto', 'tabela', 'saidas', 'previsoes', 'entrada']) fs.mkdirSync(path.join(base, d), { recursive: true })
     dirPlugin = app.getDataDirPath()
     fs.mkdirSync(dirPlugin, { recursive: true })
+    erros = 0
+    ultimoErroDelta = -Infinity
     bruto = criarGravadorBruto(path.join(base, 'bruto'))
     estado = est.novoEstado()
     janela = estavel.novaJanela()
@@ -310,8 +342,6 @@ module.exports = function (app) {
     avisoDisco = ativas.disco ?? 'normal'
     relogioErrado = ativas.relogio !== undefined
     mudados = new Set()
-    erros = 0
-    ultimoErroDelta = -Infinity
     // Os portos das saídas: os destinos da rota (lidos agora: uma atualização do repositório
     // conta no arranque seguinte) e os extras. Sem o ficheiro da rota, só os extras, e diz-se.
     let daRota = []
