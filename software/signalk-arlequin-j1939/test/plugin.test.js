@@ -198,7 +198,10 @@ test('K-07: as horas do motor não se republicam velhas (a hora delas na árvore
   assert.ok(horas.every(h => h === 1243.5 * 3600), JSON.stringify(horas))
 })
 
-test('K-07: os alarmes do mapa do MDI (65417) limpam quando a PGN deixa de chegar; o sobreaquecimento ativo não limpa por faltarem dados', (t) => {
+// F6b (contrato C11): com o MDI calado e a ligação de pé ("calado": a ignição desligada) o sobreaquecimento
+// também volta a normal (antes ficava ativo, a apitar em contínuo até alguém o silenciar); com a ligação
+// perdida ("sem-ligacao") fica — ver os testes do C11 mais abaixo.
+test('K-07: os alarmes do mapa do MDI (65417) limpam quando a PGN deixa de chegar; com o MDI calado (C11) o sobreaquecimento também', (t) => {
   t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
   const app = appFalso()
   const p = criar(app)
@@ -209,7 +212,7 @@ test('K-07: os alarmes do mapa do MDI (65417) limpam quando a PGN deixa de chega
   for (let s = 0; s < 7; s++) t.mock.timers.tick(1000) // ignição desligada: o MDI cala-se
   const seq = (id) => app.notificacoes.filter(n => n.path === `notifications.propulsion.main.${id}`).map(n => n.state)
   assert.deepEqual(seq('lowOilPressure'), ['alarm', 'normal'])
-  assert.deepEqual(seq('overTemperature'), ['alarm'])
+  assert.deepEqual(seq('overTemperature'), ['alarm', 'normal'])
   p.stop()
 })
 

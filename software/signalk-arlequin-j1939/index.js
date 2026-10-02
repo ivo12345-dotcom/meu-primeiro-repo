@@ -10,26 +10,43 @@ const { litrosHora, m3s } = require('./lib/consumo')
 const { novoEstadoMotor, avaliarMotor } = require('./lib/motor')
 const { novaDescoberta, registar, alarmesDoMapa } = require('./lib/descoberta')
 const { criarDetetor, estavel, novaCurva, amostra, resumo } = require('./lib/curva')
+const { lerInterface, avaliarLigacao } = require('./lib/ligacao')
 
 // Cada caminho guarda a hora da última trama que o trouxe com um valor (vistoEm). Sem ele há mais de
 // 5 s — a PGN deixou de chegar ou chega com o campo "sem dado" — o caminho passa a desconhecido (null),
-// nunca um valor velho como se fosse atual (auditoria K-07). Tanto pode ser a ignição desligada (a ECU
-// cala-se) como o adaptador USB-CAN solto ou o candump em baixo.
+// nunca um valor velho como se fosse atual (auditoria K-07).
 //   - Rotações: null, nunca 0; quem lê trata null como "motor não está a trabalhar", mas a AI não pode
 //     ler isto como "à vela" (ver arlequin-ia/treino.py). O estado do motor fica "stopped".
 //   - Consumo medido (PGN 65266): deixa de ser "medido" e passa a "estimado" pela curva, como sem
-//     medição nenhuma.
+//     medição nenhuma. Sem as rotações a estimativa é 0 com o motor calado e null (desconhecida) sem
+//     ligação ou sem a EEC1.
 //   - Horas do motor (PGN 65253): não passam a null nem se republicam; o valor não muda com o motor
 //     parado e a hora dele na árvore envelhece (assim o contador da energia não as substitui).
-//   - Alarmes do mapa do MDI (PGN 65417): limpam (o MDI deixou de os dizer). O sobreaquecimento
-//     calculado aqui não limpa só por faltar a temperatura (fica até haver uma leitura normal).
+//   - Alarmes do mapa do MDI (PGN 65417): limpam quando a 65417 deixa de chegar (o MDI deixou de os dizer)
+//     a receber outras tramas ou com o MDI calado; sem ligação ficam (não se sabe).
+//   - O sobreaquecimento calculado aqui não limpa só por faltar a temperatura: fica até haver uma leitura
+//     normal ou o MDI calado (ignição desligada).
+// O estado da ligação (contrato C11; como se distingue a ignição desligada de uma leitura perdida está
+// em lib/ligacao.js): propulsion.main.ligacao = 'a-receber' | 'calado' | 'sem-ligacao', publicado a cada
+// segundo (nos primeiros 5 s sem tramas ainda não se sabe e não se publica).
+//   - 'calado' (a ignição desligada): os valores a null, o consumo estimado 0, o estado "stopped" e os
+//     alarmes que vêm dos dados do motor (sobreaquecimento, alternador, mapa do MDI) voltam a normal;
+//   - 'sem-ligacao' (a interface em baixo ou o candump a falhar): os valores a null, o consumo estimado e
+//     o estado a null, os alarmes ativos ficam como estão, e o aviso notifications.propulsion.main.semLigacao
+//     (warn, apito curto, só para o ecrã: o porto não o manda para o Telegram), que limpa com uma trama ou
+//     com 30 s seguidos de 'calado' (a interface a ir e vir não o faz apitar outra vez). O estado do plugin
+//     passa a erro com o motivo (o de cada segundo já não apaga o erro do candump).
 const VELHO = 5000
 const REV = 'propulsion.main.revolutions'
 const CONSUMO = 'propulsion.main.fuel.rate'
 const HORAS = 'propulsion.main.runTime'
+const LIGACAO = 'propulsion.main.ligacao'
 const MAPA = 'pgn:65417'
+const CALADO_LIMPA = 30 * 1000 // o aviso semLigacao limpa com tanto tempo seguido de 'calado'
+const RELIGAR = 5000 // o candump volta a lançar-se de tanto em tanto
 
-module.exports = function (app) {
+// deps (só para os testes): spawn (o do child_process) e lerInterface (o de lib/ligacao.js).
+module.exports = function (app, { spawn: lancar = spawn, lerInterface: interfaceDe = (nome) => lerInterface(nome) } = {}) {
   const plugin = {
     id: 'signalk-arlequin-j1939',
     name: 'Arlequin · motor J1939',
@@ -71,6 +88,16 @@ module.exports = function (app) {
   let estado, desc, ativosMapa, rpmAtual, ficheiroDesc, vistasTotal
   let detetor, curva, ficheiroCurva, ultimaGravacao
   let mudancas = [] // últimas 50 mudanças das PGN proprietárias (o ficheiro guarda todas)
+  // o estado da ligação (C11, lib/ligacao.js)
+  let ultimaTrama = -Infinity // a hora da última trama (qualquer PGN)
+  let ouvirDesde = 0 // desde quando o leitor está à escuta (o candump de agora, ou o simulador)
+  let candumpVivo = false
+  let motivoCandump = null // o último erro do candump (o que disse no stderr, não arrancou, saiu)
+  let ligacao = null // 'a-receber' | 'calado' | 'sem-ligacao' | null (ainda não se sabe)
+  let motivoLigacao = null
+  let avisoLigacao = false // o aviso semLigacao está publicado
+  let caladoDesde = null // desde quando está 'calado' seguido, com o aviso publicado
+  let aCorrer = false // entre o start() e o stop()
 
   const fresco = (p, agora) => agora - (vistoEm[p] ?? -Infinity) <= VELHO
 
@@ -79,6 +106,7 @@ module.exports = function (app) {
     if (!t) return
     vistasTotal++
     const agora = Date.now()
+    ultimaTrama = agora
     for (const v of descodificar(t.pgn, t.dados)) {
       valores[v.path] = v.value
       vistoEm[v.path] = agora
@@ -108,9 +136,35 @@ module.exports = function (app) {
     })
   }
 
-  // A 1 Hz: publica os valores, o estado, o consumo estimado e os alarmes calculados.
+  // O aviso semLigacao (C11): acende ao ficar sem ligação; limpa com uma trama ou com CALADO_LIMPA
+  // seguido de 'calado' (a interface a ir e vir, ou o candump a ser relançado, não o faz apitar outra vez).
+  function avisarLigacao (agora) {
+    if (ligacao === 'sem-ligacao') {
+      caladoDesde = null
+      if (avisoLigacao) return
+      avisoLigacao = true
+      publicarNotificacoes([{ id: 'semLigacao', state: 'warn', method: ['visual', 'sound'], apito: 'curto', message: `Sem leitura do motor (J1939): ${motivoLigacao}` }])
+      return
+    }
+    if (!avisoLigacao) return
+    caladoDesde = ligacao === 'calado' ? (caladoDesde ?? agora) : null
+    if (ligacao === 'a-receber' || (ligacao === 'calado' && agora - caladoDesde >= CALADO_LIMPA)) {
+      avisoLigacao = false
+      caladoDesde = null
+      publicarNotificacoes([{ id: 'semLigacao', state: 'normal', method: [], message: 'Normal' }])
+    }
+  }
+
+  // A 1 Hz: o estado da ligação, os valores, o estado, o consumo estimado e os alarmes calculados.
   function publicar () {
     const agora = Date.now()
+    const l = avaliarLigacao({
+      agora, ultimaTrama, simulador: o.fonte === 'simulador', ouvirDesde, candumpVivo,
+      lerInterface: () => interfaceDe(o.interface), anterior: ligacao, motivoCandump, nome: o.interface
+    })
+    ligacao = l.ligacao
+    motivoLigacao = l.motivo
+    if (candumpVivo && (ligacao === 'a-receber' || ligacao === 'calado')) motivoCandump = null // o candump confirmou-se
     // os caminhos velhos (sem trama com valor há mais de 5 s): ver o cabeçalho (auditoria K-07)
     for (const p of Object.keys(valores)) {
       if (fresco(p, agora)) continue
@@ -118,26 +172,29 @@ module.exports = function (app) {
       else if (p !== HORAS) valores[p] = null
     }
     if (!fresco(REV, agora)) { valores[REV] = null; rpmAtual = 0 } // também desde o arranque: null, nunca 0
-    if (Object.keys(ativosMapa).length && !fresco(MAPA, agora)) {
+    // os do mapa do MDI limpam quando a 65417 deixa de chegar; sem ligação (ou sem saber) ficam
+    if (Object.keys(ativosMapa).length && !fresco(MAPA, agora) && (ligacao === 'a-receber' || ligacao === 'calado')) {
       publicarNotificacoes(Object.keys(ativosMapa).map(id => ({ id, state: 'normal', method: [], message: 'Normal' })))
       ativosMapa = {}
     }
     const rpm = (valores[REV] ?? 0) * 60
-    const r = avaliarMotor(estado, { rpm, temp: valores['propulsion.main.temperature'], volt: valores['propulsion.main.alternatorVoltage'] }, agora)
+    const r = avaliarMotor(estado, { rpm, temp: valores['propulsion.main.temperature'], volt: valores['propulsion.main.alternatorVoltage'], ligacao }, agora)
     estado = r.estado
     const vals = Object.entries(valores)
       .filter(([p]) => p !== HORAS || fresco(p, agora))
       .map(([p, value]) => ({ path: p, value }))
-    // Consumo: o real (PGN 65266) se o MDI o mandar; senão, a estimativa pelas rotações.
-    // A origem vai em propulsion.main.fuel.rateOrigem ('medido' | 'estimado'): a AI só
-    // aprende o consumo com o medido (a estimativa é a própria curva da Volvo × fator).
+    // Consumo: o real (PGN 65266) se o MDI o mandar; senão, a estimativa pelas rotações (sem elas: 0 com
+    // o motor calado, null sem saber). A origem vai em propulsion.main.fuel.rateOrigem ('medido' |
+    // 'estimado'): a AI só aprende o consumo com o medido (a estimativa é a própria curva da Volvo × fator).
     if (CONSUMO in valores) {
       vals.push({ path: 'propulsion.main.fuel.rateOrigem', value: 'medido' })
     } else if (o.estimarConsumo) {
-      vals.push({ path: CONSUMO, value: m3s(litrosHora(rpm, o.fatorConsumo)) })
+      const lhEstimado = typeof valores[REV] === 'number' ? litrosHora(rpm, o.fatorConsumo) : ligacao === 'calado' ? 0 : null
+      vals.push({ path: CONSUMO, value: lhEstimado === null ? null : m3s(lhEstimado) })
       vals.push({ path: 'propulsion.main.fuel.rateOrigem', value: 'estimado' })
     }
-    vals.push({ path: 'propulsion.main.state', value: estado.ligado ? 'started' : 'stopped' })
+    vals.push({ path: 'propulsion.main.state', value: ligacao === 'sem-ligacao' ? null : estado.ligado ? 'started' : 'stopped' })
+    if (ligacao !== null) vals.push({ path: LIGACAO, value: ligacao })
 
     // Curva aprendida: em regime estável, velocidade (na água, se houver) e consumo por faixa.
     const lh = CONSUMO in valores
@@ -155,7 +212,14 @@ module.exports = function (app) {
     }
     app.handleMessage(plugin.id, { updates: [{ values: vals }] })
     publicarNotificacoes(r.notificacoes)
-    app.setPluginStatus(`${o.fonte} · ${vistasTotal} tramas · ${estado.ligado ? Math.round(rpm) + ' rpm' : 'parado'} · ${Object.keys(desc.vistas).length} PGN`)
+    avisarLigacao(agora)
+    const pgns = `${Object.keys(desc.vistas).length} PGN`
+    if (ligacao === 'sem-ligacao') app.setPluginError(`Sem leitura do motor (J1939): ${motivoLigacao}`)
+    else if (ligacao === 'calado') {
+      const ha = Number.isFinite(ultimaTrama) ? `nenhuma trama há ${Math.round((agora - ultimaTrama) / 1000)} s` : 'nenhuma trama desde o arranque'
+      app.setPluginStatus(`${o.fonte} · calado (ignição desligada): ${ha} · ${vistasTotal} tramas · ${pgns}`)
+    } else if (ligacao === null) app.setPluginStatus(`${o.fonte} · à escuta${o.fonte === 'simulador' ? '' : ` em ${o.interface}`}…`)
+    else app.setPluginStatus(`${o.fonte} · ${vistasTotal} tramas · ${estado.ligado ? Math.round(rpm) + ' rpm' : 'parado'} · ${pgns}`)
   }
 
   // Velocidade na água se for recente; senão a velocidade no fundo.
@@ -167,20 +231,41 @@ module.exports = function (app) {
     return null
   }
 
+  // O candump: vivo desde que se lança até sair ('close') ou não arrancar ('error'; o Node dá os dois a
+  // um ENOENT: só o primeiro conta). Religa de 5 em 5 s. O que vem de um candump antigo não conta.
   function arrancarCandump () {
-    proc = spawn('candump', ['-L', o.interface])
+    religar = null
+    if (!aCorrer) return
+    let p
+    try { p = lancar('candump', ['-L', o.interface]) } catch (e) { acabou(null, `candump não arrancou (${e.message}). Instalar can-utils e configurar o ${o.interface}.`); return }
+    proc = p
+    candumpVivo = true
+    ouvirDesde = Date.now()
     let resto = ''
-    proc.stdout.on('data', (b) => {
+    let erro = null // o que este candump disse no stderr
+    p.stdout.on('data', (b) => {
+      if (p !== proc) return
       const linhas = (resto + b.toString()).split('\n')
       resto = linhas.pop()
       linhas.forEach(aoReceber)
     })
-    proc.stderr.on('data', (b) => app.setPluginError(`candump: ${b.toString().trim()}`))
-    proc.on('error', (e) => app.setPluginError(`candump não arrancou (${e.message}). Instalar can-utils e configurar o ${o.interface}.`))
-    proc.on('close', () => {
-      proc = null
-      religar = setTimeout(arrancarCandump, 5000) // religa de 5 em 5 s
+    p.stderr.on('data', (b) => {
+      erro = `candump: ${b.toString().trim()}`
+      if (p !== proc) return
+      motivoCandump = erro
+      app.setPluginError(erro)
     })
+    p.on('error', (e) => acabou(p, `candump não arrancou (${e.message}). Instalar can-utils e configurar o ${o.interface}.`))
+    p.on('close', (codigo) => acabou(p, erro || `o candump saiu (código ${codigo})`))
+  }
+
+  function acabou (p, motivo) {
+    if (p !== proc) return // um candump antigo (já substituído, ou depois do stop)
+    proc = null
+    candumpVivo = false
+    motivoCandump = motivo
+    app.setPluginError(motivo)
+    if (aCorrer && !religar) religar = setTimeout(arrancarCandump, RELIGAR)
   }
 
   plugin.start = function (props) {
@@ -192,9 +277,18 @@ module.exports = function (app) {
     ativosMapa = {}
     rpmAtual = 0
     vistasTotal = 0
+    ultimaTrama = -Infinity
+    ouvirDesde = Date.now()
+    candumpVivo = false
+    motivoCandump = null
+    ligacao = null
+    motivoLigacao = null
+    avisoLigacao = false
+    caladoDesde = null
+    aCorrer = true
     // Um alarme não pode ficar preso na árvore (auditoria I-21): os deste plugin que ficaram ativos de
     // antes passam a normal (a regra volta a dar o alarme se ainda for verdade); no stop(), os ativos.
-    const ids = ['overTemperature', 'alternadorNaoCarrega', ...(o.mapaAlarmes || []).map(m => m.id)]
+    const ids = ['overTemperature', 'alternadorNaoCarrega', 'semLigacao', ...(o.mapaAlarmes || []).map(m => m.id)]
     publicarNotificacoes([...new Set(ids)]
       .filter(id => { const s = app.getSelfPath?.(`notifications.propulsion.main.${id}`)?.value?.state; return s && s !== 'normal' })
       .map(id => ({ id, state: 'normal', method: [], message: 'Normal' })))
@@ -216,16 +310,22 @@ module.exports = function (app) {
   }
 
   plugin.stop = function () {
+    aCorrer = false
     if (temporizador) clearInterval(temporizador)
+    temporizador = null
     if (religar) clearTimeout(religar)
+    religar = null
     if (ouvinte) app.removeListener('arlequin-j1939', ouvinte)
     ouvinte = null
-    if (proc) { proc.removeAllListeners('close'); proc.kill() }
-    proc = null
-    const ativos = [...Object.keys(estado?.ativos || {}), ...Object.keys(ativosMapa || {})]
+    const p = proc
+    proc = null // o 'close' dele já não conta (acabou)
+    candumpVivo = false
+    if (p) p.kill()
+    const ativos = [...Object.keys(estado?.ativos || {}), ...Object.keys(ativosMapa || {}), ...(avisoLigacao ? ['semLigacao'] : [])]
     publicarNotificacoes([...new Set(ativos)].map(id => ({ id, state: 'normal', method: [], message: 'Normal' })))
     if (estado) estado = { ...estado, ativos: {} }
     ativosMapa = {}
+    avisoLigacao = false
   }
 
   // Diagnóstico: PGN vistas e mudanças da 65417 (JSON e página simples).

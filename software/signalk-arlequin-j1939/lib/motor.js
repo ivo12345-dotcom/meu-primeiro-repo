@@ -1,6 +1,6 @@
 'use strict'
 // Estado do motor (ligado/parado, com histerese) e alarmes calculados a partir
-// dos valores, até se conhecer o mapa dos alarmes próprios do MDI.
+// dos valores, até se conhecer o mapa dos alarmes próprios do MDI, e do estado da ligação (C11).
 // Limites aprovados pelo Ivo (29/09): 95 °C e 13,0 V.
 
 const K = 273.15
@@ -23,10 +23,21 @@ function novoEstadoMotor () {
   return { ligado: false, ligadoDesde: null, ativos: {} }
 }
 
-// l: { rpm (rpm), temp (K), volt (V) } — qualquer um pode faltar (null).
+// l: { rpm (rpm), temp (K), volt (V), ligacao } — qualquer um pode faltar (null).
+// ligacao (contrato C11, o estado da ligação que o plugin calcula: lib/ligacao.js):
+//   'calado' (a ignição desligada): o motor está parado e os alarmes calculados voltam a normal (o
+//     sobreaquecimento já não apita em contínuo com o motor desligado);
+//   'sem-ligacao', ou null (ainda não se sabe): nada muda — um alarme ativo não se dá por resolvido nem se
+//     acende um novo (não há leitura);
+//   'a-receber', ou sem o campo: as regras de sempre.
 function avaliarMotor (e, l, agora, lim = LIMITES) {
+  if (l.ligacao === 'sem-ligacao' || l.ligacao === null) return { estado: e, estadoMudou: null, notificacoes: [] }
   let { ligado, ligadoDesde } = e
   let estadoMudou = null
+  if (l.ligacao === 'calado') {
+    const notificacoes = Object.keys(e.ativos).map(id => ({ id, state: 'normal', method: [], message: 'Normal' }))
+    return { estado: { ligado: false, ligadoDesde: null, ativos: {} }, estadoMudou: ligado ? 'stopped' : null, notificacoes }
+  }
   if (typeof l.rpm === 'number') {
     if (!ligado && l.rpm > lim.rpmLiga) { ligado = true; ligadoDesde = agora; estadoMudou = 'started' }
     else if (ligado && l.rpm < lim.rpmPara) { ligado = false; ligadoDesde = null; estadoMudou = 'stopped' }
