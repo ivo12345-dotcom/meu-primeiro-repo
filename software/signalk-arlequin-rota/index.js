@@ -423,23 +423,36 @@ module.exports = function (app, deps = {}) {
     gravarPlanoAtivo()
   }
   // A próxima mensagem da fila, se for a hora dela (uma de cada vez).
+  // Auditoria K-02: um atraso automático ("Ainda a navegar, tudo bem", sem o "Estou bem" do Ivo) só sai
+  // com o plano "a navegar" e com GPS — é o caso para que existe a hora de alarme (o barco à deriva, a
+  // antena perdida, a rede a voltar). Em pausa, à espera de sair ou com o plano fechado sai da fila; sem
+  // GPS fica retido (nem sai nem prende as outras) até o GPS voltar; com GPS volta a decidir-se com os
+  // valores de agora (re-revisão M-2): sai da fila se deixou de valer ou se o barco parou entretanto
+  // (revisão final C1). O parcial (revisão final I3, só para quem falhou) vai igual ao que os outros
+  // receberam — a mesma ref, o mesmo texto —, mas também só com o barco a avançar.
   function enviarFila (agora) {
     if (!planoAtivo?.contactos) return
-    let m0 = ct.proxima(planoAtivo.contactos, agora)
+    if (planoAtivo.estado !== pa.ESTADOS.NAVEGAR && planoAtivo.contactos.fila.some(m => m.estado === 'fila' && ct.atrasoAutomatico(m))) {
+      planoAtivo = { ...planoAtivo, contactos: ct.tirarSe(planoAtivo.contactos, ct.atrasoAutomatico) }
+      gravarPlanoAtivo()
+    }
+    const comLeitura = ultimo?.estado === pa.ESTADOS.NAVEGAR && !ultimo.semGps
+    let m0 = ct.proxima(planoAtivo.contactos, agora, { saltar: (m) => ct.atrasoAutomatico(m) && !comLeitura })
     if (!m0) return
-    // o atraso faz-se com os valores de agora (re-revisão M-2): com o último acompanhamento a navegar,
-    // sai da fila se deixou de valer, senão leva a chegada e o alarme mais recentes
-    // (o parcial, revisão final I3, vai igual ao que os outros receberam: a mesma ref, o mesmo texto)
-    if (m0.tipo === 'atraso' && !m0.anterior && !m0.parcial && ultimo?.estado === pa.ESTADOS.NAVEGAR && !ultimo.semGps) {
-      const d = atrasoAgora(ultimo, agora)
-      // deixou de valer, ou o barco parou entretanto (revisão final C1: só o que o "Estou bem" libertou passa)
-      if (!d || (!m0.confirmado && retencao(ultimo, d, agora))) {
+    if (ct.atrasoAutomatico(m0)) {
+      // o parcial é um atraso que os outros já receberam: vale enquanto o barco estiver atrasado (como o
+      // 1.º atraso, 30 min sobre a "mais tarde"), não pela regra do 1× por hora; e conta com a hora de
+      // alarme que os outros já receberam (o teto foi visto quando saiu)
+      const d = atrasoAgora(ultimo, agora, m0.parcial ? null : undefined)
+      if (!d || retencao(ultimo, m0.parcial ? { alarme: m0.alarme } : d, agora)) {
         planoAtivo = { ...planoAtivo, contactos: ct.tirar(planoAtivo.contactos, m0.id) }
         gravarPlanoAtivo()
         return enviarFila(agora)
       }
-      planoAtivo = { ...planoAtivo, contactos: ct.atualizarAtraso(planoAtivo.contactos, m0.id, { chegada: d.chegada, alarme: d.alarme }) }
-      m0 = planoAtivo.contactos.fila.find(x => x.id === m0.id)
+      if (!m0.parcial) {
+        planoAtivo = { ...planoAtivo, contactos: ct.atualizarAtraso(planoAtivo.contactos, m0.id, { chegada: d.chegada, alarme: d.alarme }) }
+        m0 = planoAtivo.contactos.fila.find(x => x.id === m0.id)
+      }
     }
     const pedido = crypto.randomUUID()
     // o atraso diz "em vez de" o último alarme entregue em terra (o texto faz-se à hora de sair)
@@ -522,8 +535,9 @@ module.exports = function (app, deps = {}) {
   // com um atraso ainda na fila, esse passa a ter a chegada mais recente (sem perder a vez da tentativa);
   // com um "a enviar", espera a resposta.
   // O atraso que vale agora (decidido contra o último entregue), com o resultado do acompanhamento.
-  function atrasoAgora (res, agora) {
-    return ct.decidirAtraso(planoAtivo.atrasoEnviado || null, {
+  // enviado: o último atraso entregue (o padrão); null para saber só se o barco está atrasado
+  function atrasoAgora (res, agora, enviado = planoAtivo.atrasoEnviado || null) {
+    return ct.decidirAtraso(enviado, {
       chegadaAgora: Date.parse(res.chegadaAgora), p90: Date.parse(planoAtivo.alternativa.chegada?.p90), alarmePlano: Date.parse(planoAtivo.envio?.alarme), agora
     })
   }
