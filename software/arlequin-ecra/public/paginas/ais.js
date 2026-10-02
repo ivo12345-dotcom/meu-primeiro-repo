@@ -27,7 +27,7 @@ export default {
 <div class="acoes" style="margin-top:.4rem;">${calar ? `<button class="acao stop" data-acao="${calar}" ${dadosCalar(n)}>${calar === 'reconhecer' ? 'Reconhecer alarme' : 'Silenciar alarme'}</button>` : ''}<button class="acao" data-acao="fechar">Fechar</button></div></div>`
       : ''
     return `<div class="col">
-<div class="tile" style="flex:1;overflow:auto;"><table class="grande"><tr><th>Nome</th><th>Tipo</th><th>Dist.</th><th>Marc.</th><th>SOG/COG</th><th>CPA</th><th>TCPA</th><th>Estado</th></tr>${linhas || '<tr><td colspan="8" class="lab">Sem alvos AIS</td></tr>'}</table></div>
+<div class="tile rolar" data-rolar="ais-alvos" style="flex:1;"><table class="grande"><tr><th>Nome</th><th>Tipo</th><th>Dist.</th><th>Marc.</th><th>SOG/COG</th><th>CPA</th><th>TCPA</th><th>Estado</th></tr>${linhas || '<tr><td colspan="8" class="lab">Sem alvos AIS</td></tr>'}</table></div>
 ${detalhe}
 <div class="g3">${tile('Alarme CPA', `&lt; ${num(LIMITES_AIS.cpa / 1852, 1)} MN`, '', 'vv')}${tile('Alarme TCPA', `&lt; ${LIMITES_AIS.tcpa / 60} min`, '', 'vv')}${tile('Alvos à vista', `${ctx.alvos.length} · ${ctx.alvos.filter(x => x.classe === 'perigo').length} em perigo`, '', 'vv')}</div>
 </div>`

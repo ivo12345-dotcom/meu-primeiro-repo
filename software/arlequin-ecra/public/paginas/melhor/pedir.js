@@ -209,7 +209,7 @@ export default {
     const voltarLeme = botaoVoltarLeme(ctx)
     return `<div class="col" style="flex:1.4;">
 ${erro}
-<div class="tile rolar" style="flex:1;"><div class="lab">Para onde?</div>${linhas ? `<table class="grande">${linhas}</table>` : vazio}</div>
+<div class="tile rolar" data-rolar="pedir-destinos" style="flex:1;"><div class="lab">Para onde?</div>${linhas ? `<table class="grande">${linhas}</table>` : vazio}</div>
 ${acrescentarHtml(e)}
 </div>
 <div class="col" style="flex:1;">

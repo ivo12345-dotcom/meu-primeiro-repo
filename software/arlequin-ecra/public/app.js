@@ -8,7 +8,7 @@ import { registarPressao, tendencia, lerBarometro } from './lib/barometro.js'
 import { novaViagem, acumular, lerViagem } from './lib/viagem.js'
 import { passoCiclo, desenharSeguro, escolherPagina, CAIXA_ERRO_DESENHO } from './lib/ciclo.js'
 import { alarmeDaBarra, deveTocar, paginaDoAlarme, bipDeLigacao, chipAlarme, calar, calado } from './lib/alarmes.js'
-import { podeRedesenhar, aoEnter, aoEscrever } from './lib/interacao.js'
+import { podeRedesenhar, aoEnter, aoEscrever, guardarRolagem, reporRolagem, PAUSA_ROLAR_MS } from './lib/interacao.js'
 import { NIVEIS, PADRAO as BRILHO_PADRAO, nivelValido, mudarNivel } from './lib/brilho.js'
 import { criarAudio, retomar, comSom, chipSemSom } from './lib/som.js'
 import { falhaJanela, falhaCalar } from './lib/erros.js'
@@ -49,6 +49,9 @@ const app = {
   estavaLigado: null,
   sons: [], // últimos sons tocados (diagnóstico: window.arlequin.app.sons)
   premidoEm: null, // quando um dedo tocou no ecrã (do pointerdown ao pointerup; null: nenhum)
+  roladoEm: null, // o último scroll de uma lista (revisão F3, Important 5); rolarDesde: o 1.º desta série
+  rolarDesde: null,
+  repostos: new WeakMap(), // lista → scrollTop que o render lhe repôs (esse scroll não é um dedo)
   falhaJanela: null, // a falha do último pedido das janelas/modo noite do OpenCPN (auditoria K-11), na barra
   falhaCalar: null, // { texto, ate }: a falha do último silenciar/reconhecer (auditoria I-08), na barra uns segundos
   erros: [] // registo dos últimos erros (diagnóstico: window.arlequin.app.erros); no ecrã só a frase em pt-PT
@@ -157,8 +160,13 @@ function render (forcar = false) {
   document.getElementById('barra').innerHTML = ctx ? desenharSeguro(() => barra(ctx), BARRA_ERRO, (e) => registarErro('barra', e)) : BARRA_ERRO
   const el = document.getElementById('pagina')
   const aEscrever = el.contains(document.activeElement) && document.activeElement.tagName === 'INPUT'
-  if (podeRedesenhar({ forcar, aEscrever, premidoHaMs: app.premidoEm == null ? null : Date.now() - app.premidoEm })) {
+  const agora = Date.now()
+  if (podeRedesenhar({ forcar, aEscrever, premidoHaMs: app.premidoEm == null ? null : agora - app.premidoEm, roladoHaMs: app.roladoEm == null ? null : agora - app.roladoEm, aRolarHaMs: app.rolarDesde == null ? null : agora - app.rolarDesde })) {
+    // as listas que rolam ficam onde estavam (revisão F3, Important 5): o scrollTop de cada data-rolar passa
+    // para a lista nova com a mesma chave
+    const rolagem = guardarRolagem(el)
     el.innerHTML = ctx ? desenharSeguro(() => PAGINAS[app.pagina].render(ctx), CAIXA_ERRO_DESENHO, (e) => registarErro(`página ${app.pagina}`, e)) : CAIXA_ERRO_DESENHO
+    try { for (const [lista, v] of reporRolagem(el, rolagem)) app.repostos.set(lista, v) } catch (e) { registarErro('rolagem', e) }
   }
   try {
     document.querySelectorAll('#botoes [data-pag]').forEach(b => {
@@ -210,6 +218,15 @@ document.addEventListener('pointerdown', () => {
   retomar(app.audio)
 }, { capture: true })
 for (const fim of ['pointerup', 'pointercancel']) document.addEventListener(fim, () => { app.premidoEm = null }, { capture: true })
+// Um scroll de qualquer lista (o scroll não sobe na árvore: só se apanha em captura) pausa o desenho como um dedo
+// (revisão F3, Important 5); o que o próprio render causa ao repor o scrollTop não conta.
+document.addEventListener('scroll', (ev) => {
+  const reposto = app.repostos.get(ev.target)
+  if (reposto !== undefined && Math.abs((ev.target.scrollTop ?? 0) - reposto) < 1) return
+  const t = Date.now()
+  if (app.roladoEm == null || t - app.roladoEm >= PAUSA_ROLAR_MS) app.rolarDesde = t
+  app.roladoEm = t
+}, { capture: true, passive: true })
 
 document.addEventListener('click', async (ev) => {
   const pag = ev.target.closest('[data-pag]')
@@ -222,18 +239,18 @@ document.addEventListener('click', async (ev) => {
     guardar('arlequin.noite', app.noite)
     aplicarNoite()
     janela({ noite: app.noite })
-    return render()
+    return render(true)
   }
   // o brilho de noite (decisão do Ivo de 01/10): − e +, 5 níveis, guardado no ecrã
   if (acao === 'brilho-menos' || acao === 'brilho-mais') {
     app.brilho = mudarNivel(app.brilho, acao === 'brilho-mais' ? 1 : -1)
     guardar('arlequin.brilho', app.brilho)
     aplicarNoite()
-    return render()
+    return render(true)
   }
   if (acao === 'ligar-som') {
     retomar(app.audio)
-    return render()
+    return render(true)
   }
   // calar o alarme (lib/alarmes.js, acaoCalar e calar): silenciar onde o servidor deixa; a emergência reconhece-se
   // (auditoria I-08); pelo id do servidor ou, sem ele, pelo caminho (revisão F3, Important 4); a recusa fica à
@@ -250,11 +267,12 @@ document.addEventListener('click', async (ev) => {
       app.falhaCalar = { texto: falhaCalar(err, acao), ate: Date.now() + FALHA_CALAR_MS }
       registarErro(acao, err)
     }
-    return render()
+    return render(true)
   }
   if (acao === 'ir-alarme') return irPara(paginaDoAlarme(a.dataset.caminho))
+  // a ação da página e o desenho forçado: um scroll recente não atrasa a resposta ao toque (revisão F3, Important 5)
   try { await PAGINAS[app.pagina].acao?.(acao, a.dataset, contexto()) } catch (e) { registarErro(`ação ${acao}`, e) }
-  render()
+  render(true)
 })
 
 document.addEventListener('keydown', (ev) => {

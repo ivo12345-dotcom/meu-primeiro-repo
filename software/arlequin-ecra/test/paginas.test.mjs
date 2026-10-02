@@ -609,6 +609,67 @@ test('revisão F3, Important 3: no Motor os alarmes vêm por gravidade (emergên
   assert.match(calmo, /Alarmes do motor, da energia e dos depósitos<\/div><div class="ok">sem alarmes<\/div>/)
 })
 
+// ---------- revisão F3, Important 5: cada lista que rola tem a sua chave (o desenho de 1 Hz repõe-lhe o scrollTop) ----------
+test('revisão F3, Important 5: em todas as páginas e estados, cada parte que rola (classe rolar ou overflow na linha) tem uma chave data-rolar, única na página — as precauções, os pontos de desistência, os destinos, os alvos AIS, o Diário, o Motor', async () => {
+  const { gunzipSync } = await import('node:zlib')
+  const DESTINOS = require('../../signalk-arlequin-rota/dados/destinos.json')
+  const st = storeSimulado(1)
+  const c = (estado, extra = {}) => ({ ...contexto(st, estado), pedir: () => new Promise(() => {}), ...extra })
+  const plano = { estado: 'a navegar', idCalculo: 'c', indice: 0, ativadoEm: 'x', destino: { id: 'peniche', nome: 'Peniche' }, proximo: null, recursos: {}, barometro: {}, avisos: [], envio: null, filaContactos: [] }
+  const casos = { 'pedir-destinos': [], 'resultado-esq': [], 'resultado-dir': [], 'mapa-dir': [], 'ais-alvos': [], 'diario-entradas': [], 'motor-esq': [], 'motor-dir': [], 'motor-calib-pontos': [] }
+  const estados = [
+    ['carta', carta.render(c({}))], ['instr', instr.render(c({}))], ['ais', ais.render(c({ sel: '263000001' }))],
+    ['motor', motor.render(c({}))], ['motor calibração', motor.render(c({ calibAberta: true, calib: { ativa: true, total: 5, pontos: [{ litros: 0, razao: 0.1 }], pendente: null } }))],
+    ['viagem', viagem.render(c({}))], ['diário', diario.render(c({ entradas: [{ datetime: new Date().toISOString(), text: 'x', category: 'navigation' }], em: Date.now(), iaEm: Date.now(), ia: { modelos: {} } }))],
+    ['velas', velas.render(c({ passo: 1 }))], ['pedir', melhor.render(c({ destinos: DESTINOS, destinosEm: Date.now(), novo: true }))],
+    ['leme', melhor.render(c({ planoAtivo: plano, planoAtivoEm: Date.now() }))]
+  ]
+  for (const f of ['fuga', 'direta', 'canal']) {
+    const resultado = JSON.parse(gunzipSync(readFileSync(new URL(`./fixtures/resultado-${f}.json.gz`, import.meta.url))))
+    estados.push([`resultado ${f}`, melhor.render(c({ vista: 'resultado', resultado, idCalculo: 'c', selecionada: 0, novo: true }))])
+    estados.push([`mapa ${f}`, melhor.render(c({ vista: 'mapa', resultado, idCalculo: 'c', selecionada: 0, novo: true }))])
+  }
+  let partes = 0
+  for (const [nome, html] of estados) {
+    const chaves = []
+    for (const m of html.matchAll(/<(\w+)((?:\s+[\w-]+(?:="[^"]*")?)*)\s*>/g)) {
+      const attrs = m[2]
+      const classe = /\bclass="([^"]*)"/.exec(attrs)?.[1] || ''
+      const estilo = /\bstyle="([^"]*)"/.exec(attrs)?.[1] || ''
+      if (!/\brolar\b/.test(classe) && !/overflow\s*:\s*(auto|scroll)/.test(estilo)) continue
+      partes++
+      const chave = /\bdata-rolar="([^"]+)"/.exec(attrs)?.[1]
+      assert.ok(chave, `${nome}: uma parte que rola sem data-rolar: ${m[0]}`)
+      assert.ok(!chaves.includes(chave), `${nome}: a chave ${chave} repetida`)
+      chaves.push(chave)
+      if (casos[chave]) casos[chave].push(nome)
+    }
+  }
+  assert.ok(partes >= 17, `${partes} partes que rolam vistas (AIS 1, Motor 3, Diário 1, Pedir 1, Resultado 2 × 3, Mapa 1 × 3)`)
+  for (const [chave, onde] of Object.entries(casos)) assert.ok(onde.length, `a chave ${chave} aparece`)
+})
+
+test('revisão F3, Important 5: o app.js guarda o scrollTop antes de refazer a página e repõe-no a seguir; um scroll (em captura) pausa o desenho; depois de um toque num botão o desenho é forçado', () => {
+  const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8').replace(/\r/g, '')
+  const inicio = app.indexOf('function render (')
+  const fim = app.indexOf('\n}\n', inicio)
+  assert.ok(inicio >= 0 && fim > inicio && fim < app.indexOf('function aplicarNoite'), 'a função render do app.js')
+  const render = app.slice(inicio, fim)
+  const guardar = render.indexOf('guardarRolagem(el)')
+  const html = render.indexOf('el.innerHTML =')
+  const repor = render.indexOf('reporRolagem(el,')
+  assert.ok(guardar > 0 && html > guardar && repor > html, 'guardar → innerHTML → repor')
+  assert.match(render, /roladoHaMs:/)
+  assert.match(render, /aRolarHaMs:/)
+  // o scroll de qualquer lista (não sobe: em captura); o que a própria reposição causa não conta
+  assert.match(app, /addEventListener\('scroll', [\s\S]*?\{ capture: true, passive: true \}\)/)
+  assert.match(app, /app\.repostos\.get\(ev\.target\)/)
+  // depois de uma ação (botão da página, calar), o desenho é forçado (um scroll recente não o atrasa)
+  const clique = app.slice(app.indexOf("document.addEventListener('click'"), app.indexOf("document.addEventListener('keydown'"))
+  assert.match(clique, /registarErro\(`ação \$\{acao\}`, e\) \}\n  render\(true\)/)
+  assert.match(clique, /registarErro\(acao, err\)\n    \}\n    return render\(true\)/)
+})
+
 // ---------- auditoria I-29 (decisão do Ivo n.º 23): água sem sensor ----------
 test('auditoria I-29: um depósito sem nível (o plugin publica null sem sensor, até ao 1.º "Enchi" ou nível posto à mão) diz "sem sensor" — nunca "0 L" a vermelho nem "cheio"', () => {
   const st = storeSimulado(1)
