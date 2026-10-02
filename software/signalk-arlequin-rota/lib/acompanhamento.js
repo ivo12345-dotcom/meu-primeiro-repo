@@ -5,8 +5,8 @@
 // Milhas feitas: a projeção da posição sobre a rota do plano (o ponto mais perto, lib/costa.js
 // projetar), com a janela de passagem da 3a (lib/rotas.js: projetar entre `de` e `ate`): de 0,5 MN
 // atrás da última posição até ao que o barco pode ter andado desde então (15 nós, no mínimo 2 MN).
-// Assim, numa rota que volta atrás, a posição não salta para a perna de volta. Sem posição anterior
-// (o plugin acabou de arrancar), a rota toda.
+// Assim, numa rota que volta atrás, a posição não salta para a perna de volta. Sem posição anterior,
+// a navegar, a janela começa na partida à hora da saída (revisão final M1); sem saída, a rota toda.
 // O rasto provável do plano (de 10 em 10 min) projeta-se da mesma maneira: a tabela { s, t } diz a
 // hora a que o plano passava em cada milha (s nunca desce).
 // Atraso = agora − a hora a que o rasto provável passava nas mesmas milhas (positivo = atrasado), em
@@ -32,6 +32,7 @@ const { litrosHora } = require('./base')
 const { criarEnergia } = require('./energia')
 const { nasceresPores } = require('./sol')
 const { noitePeloSol } = require('./passagem')
+const { PADRAO: AVISOS_3A } = require('./avisos')
 
 const MIN = 60000
 const H = 3600000
@@ -44,6 +45,11 @@ const VIRAGEM_GRAUS = 45 // o rumo da rota muda mais do que isto num ponto
 const ROTACAO_GRAUS = 45 // o vento previsto roda mais do que isto…
 const ROTACAO_MS = H // …em 1 h
 const ROTACAO_INICIO_GRAUS = 5 // o início da rotação: o último ponto ainda a ≤ 5° da direção de antes
+// revisão final I4 (a 3a já fazia assim, lib/avisos.js): só com vento previsto de 6 nós ou mais nas duas
+// pontas, no mínimo 3 h entre lembretes, e nenhum a ±1 h de uma "Passagem da frente" (essa já diz "roda para")
+const VENTO_MIN_ROTACAO = AVISOS_3A.ventoMinRotacao
+const ROTACAO_ESPACO_MS = 3 * H
+const ROTACAO_FRENTE_MS = H
 const VIS_LEMBRETE_M = 5000 // chuva e visibilidade: < 5 km (o desenho)
 const iso = (t) => new Date(t).toISOString()
 
@@ -131,9 +137,12 @@ const comVisibilidade = (plano) => (plano.alternativa?.rasto || []).some(p => Nu
 
 // [{ id, t, tipo, texto }] a partir do plano ativo:
 //   viragem: nos pontos da rota onde o rumo muda mais de 45° (fora do porto), "Virar/cambar no <nome>"
-//     (sem nome, WP<i>), à hora a que o plano passa lá (de sítio: desliza com o atraso);
+//     (sem nome, WP<i>), à hora a que o plano passa lá (de sítio: desliza com o atraso); num troço a motor
+//     (o rasto a motor àquela hora), "Mudar de rumo no <nome>" (revisão final M7);
 //   vento: onde o twd previsto do rasto roda mais de 45° em 1 h, "Rotação do vento de X° para Y°", à hora
-//     em que começa a rodar (X) e até onde para de se afastar (Y) (hora fixa);
+//     em que começa a rodar (X) e até onde para de se afastar (Y) (hora fixa); só com o tws previsto de 6
+//     nós ou mais nas duas pontas (sem tws no rasto, um plano antigo, nada), no mínimo 3 h entre eles e
+//     nenhum a ±1 h de uma "Passagem da frente" (revisão final I4);
 //   tempo: com a visibilidade prevista no rasto, "Chuva e visibilidade X km: radar ligado" no 1.º ponto de
 //     cada troço com menos de 5 km (sem ela no rasto, fica o evento da 3a, com menos de 3 km).
 function lembretesDoPlano (plano, rota = prepararRota(plano)) {
@@ -142,25 +151,36 @@ function lembretesDoPlano (plano, rota = prepararRota(plano)) {
   // os pontos distintos (sem os repetidos), com o índice na rota
   const idx = []
   pts.forEach((p, i) => { if (Number.isFinite(p?.lat) && Number.isFinite(p?.lon) && !(idx.length && c.distanciaMn(pts[idx.at(-1)], p) < 1e-6)) idx.push(i) })
+  const rasto = (plano.alternativa?.rasto || []).map(p => ({ ...p, t: Date.parse(p.t) })).filter(p => Number.isFinite(p.t))
+  // a motor à hora t: o ponto do rasto dessa hora (o último que já passou)
+  const aMotor = (t) => !!(rasto.filter(p => p.t <= t).at(-1) ?? rasto[0])?.motor
   for (let k = 1; k < idx.length - 1; k++) {
     const [a, b, d] = [pts[idx[k - 1]], pts[idx[k]], pts[idx[k + 1]]]
     if (b.perna === 'porto' || d.perna === 'porto') continue
     if (difAngulo(c.vetor(a, b).rumo, c.vetor(b, d).rumo) <= VIRAGEM_GRAUS) continue
     const t = horaNoPlano(rota.tabela, rota.linha.s[idx[k]])
     const nome = b.nome || `WP${idx[k]}`
-    if (Number.isFinite(t)) out.push({ id: `v${idx[k]}`, t: iso(t), tipo: 'viragem', texto: `Virar/cambar ${FEMININOS.test(nome) ? 'na' : 'no'} ${nome}` })
+    if (Number.isFinite(t)) out.push({ id: `v${idx[k]}`, t: iso(t), tipo: 'viragem', texto: `${aMotor(t) ? 'Mudar de rumo' : 'Virar/cambar'} ${FEMININOS.test(nome) ? 'na' : 'no'} ${nome}` })
   }
-  const rasto = (plano.alternativa?.rasto || []).map(p => ({ ...p, t: Date.parse(p.t) })).filter(p => Number.isFinite(p.t))
-  const r = rasto.filter(p => Number.isFinite(p.twd))
+  const r = rasto.filter(p => Number.isFinite(p.twd) && Number.isFinite(p.tws))
+  const frentes = (plano.alternativa?.eventos || []).filter(e => e.tipo === 'tempo' && /^passagem da frente/i.test(String(e.texto || ''))).map(e => Date.parse(e.t)).filter(Number.isFinite)
+  const forte = (p) => p.tws >= VENTO_MIN_ROTACAO
+  let ultimaRotacao = -Infinity
   for (let j = 0; j < r.length; j++) {
+    if (!forte(r[j])) continue
     let k = -1
-    for (let q = j + 1; q < r.length && r[q].t - r[j].t <= ROTACAO_MS; q++) if (difAngulo(r[j].twd, r[q].twd) > ROTACAO_GRAUS) { k = q; break }
+    for (let q = j + 1; q < r.length && r[q].t - r[j].t <= ROTACAO_MS; q++) if (forte(r[q]) && difAngulo(r[j].twd, r[q].twd) > ROTACAO_GRAUS) { k = q; break }
     if (k < 0) continue
     let a = j
     while (a + 1 < k && difAngulo(r[j].twd, r[a + 1].twd) <= ROTACAO_INICIO_GRAUS) a++
     let b = k
     while (b + 1 < r.length && difAngulo(r[a].twd, r[b + 1].twd) > difAngulo(r[a].twd, r[b].twd)) b++
-    out.push({ id: `r${a}`, t: iso(r[a].t), tipo: 'vento', texto: `Rotação do vento de ${grau(r[a].twd)}° para ${grau(r[b].twd)}°` })
+    const longe = r[a].t - ultimaRotacao >= ROTACAO_ESPACO_MS
+    const semFrente = !frentes.some(tf => Math.abs(tf - r[a].t) <= ROTACAO_FRENTE_MS)
+    if (longe && semFrente) {
+      out.push({ id: `r${a}`, t: iso(r[a].t), tipo: 'vento', texto: `Rotação do vento de ${grau(r[a].twd)}° para ${grau(r[b].twd)}°` })
+      ultimaRotacao = r[a].t
+    }
     j = b
   }
   let antes = null
@@ -242,7 +262,11 @@ function acompanhar (estado0, entrada) {
   let milhas = estado.anterior ? estado.anterior.s : null
   let distRota = null
   if (navegar && posicao) {
-    const q = projetar(rota, posicao, estado.anterior, agora, entrada.opcoes)
+    // sem posição anterior (acabou de sair, ou um reinício sem o seguimento), a projeção começa na partida
+    // à hora da saída: numa ida e volta a 1.ª não se prende à perna de volta (revisão final M1)
+    const saida = Date.parse(plano.saida)
+    const desde = estado.anterior ?? (Number.isFinite(saida) && saida <= agora ? { s: 0, t: saida } : null)
+    const q = projetar(rota, posicao, desde, agora, entrada.opcoes)
     milhas = q.s
     distRota = q.dist
     estado.anterior = { s: q.s, t: agora }
@@ -282,4 +306,4 @@ function acompanhar (estado0, entrada) {
   }
 }
 
-module.exports = { PADRAO, SITIO, prepararRota, lembretesDoPlano, projetar, horaNoPlano, atrasoMin, juntarAmostra, media, textoCurto, deslizarEventos, proximoEvento, chegadaDeNoite, recursos, desvioVento, novoEstado, acompanhar }
+module.exports = { PADRAO, SITIO, VENTO_MIN_ROTACAO, prepararRota, lembretesDoPlano, projetar, horaNoPlano, atrasoMin, juntarAmostra, media, textoCurto, deslizarEventos, proximoEvento, chegadaDeNoite, recursos, desvioVento, novoEstado, acompanhar }

@@ -491,6 +491,8 @@ test('Tarefa 8.5: o rasto provável leva a direção do vento previsto (twd, gra
   for (const a of r.alternativas) {
     for (const p of a.rasto) {
       assert.ok(Number.isInteger(p.twd) && p.twd >= 0 && p.twd < 360, JSON.stringify(p))
+      // revisão final I4: o vento previsto em nós (a rotação do vento só com 6 nós ou mais)
+      assert.ok(Number.isFinite(p.tws) && p.tws >= 0 && Math.round(p.tws * 10) === p.tws * 10, JSON.stringify(p))
       if (temVis) assert.ok(Number.isFinite(p.vis) && p.vis >= 0, JSON.stringify(p))
     }
   }

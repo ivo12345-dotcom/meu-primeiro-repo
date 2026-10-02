@@ -124,7 +124,13 @@ test('veredicto "Volta ou abriga-te em X": só no mar, continuar não é recomen
   assert.equal(agora.veredicto.porque[0], 'Agora: rajadas até 33 nós no pior caso (limite 30 sozinho).')
   // re-revisão M-1: no mar, o "Sair agora mesmo assim" (sairAgora) fica com o abrigo E com a frase das precauções
   assert.match(agora.veredicto.porque[1], /^Até Cascais são 8,2 MN: /)
-  assert.equal(agora.veredicto.porque[2], 'Se saíres mesmo assim, revê as precauções e os pontos de desistência.')
+  // revisão final M2: no mar o Ivo já saiu — "Se continuares mesmo assim"
+  assert.equal(agora.veredicto.porque[2], 'Se continuares mesmo assim, revê as precauções e os pontos de desistência.')
+  // no mar sem abrigo recomendado ("Não recomendado"), a mesma frase; no porto, "Se saíres"
+  const semAbrigo = d.decidir({ candidatos: [continuar], agora: AGORA, tripulacao: 'so', sairAgora: true, emMar: true, abrigo: null })
+  assert.equal(semAbrigo.veredicto.tipo, 'nao-recomendado')
+  assert.equal(semAbrigo.veredicto.porque.at(-1), 'Se continuares mesmo assim, revê as precauções e os pontos de desistência.')
+  assert.equal(d.decidir({ candidatos: [continuar], agora: AGORA, tripulacao: 'so', sairAgora: true, emMar: false }).veredicto.porque.at(-1), 'Se saíres mesmo assim, revê as precauções e os pontos de desistência.')
   assert.equal(r.veredicto.porque.length, 2, 'sem sairAgora, sem a frase')
   assert.equal(d.decidir({ candidatos: [cand({ custo: 30 })], agora: AGORA, tripulacao: 'so', sairAgora: true, emMar: true, abrigo }).veredicto.tipo, 'segue')
 })

@@ -347,12 +347,17 @@ test('re-revisão I-1 (Ivo): em pausa, o progresso também é o afastamento real
   assert.equal(passo(4, aNorte(PARTIDA, 0.15)).mudou, 'pausado')
   for (let m = 5; m <= 15; m++) passo(m, aNorte(PARTIDA, 0.15))
   assert.equal(p.estado, 'pausado')
-  // foi a 0,25 MN da partida e voltou: já houve progresso real; 5 min parado perto do cais → chegou
+  // foi a 0,25 MN da partida e voltou: já houve progresso real, mas o cais fica a menos de 0,5 MN da partida
+  // e o barco nunca saiu 0,5 MN do cais (revisão final M1): ainda não chega
   passo(16, aNorte(PARTIDA, 0.25))
   assert.ok(p.afastamentoMaxMn >= 0.25 - 1e-9)
-  for (let m = 17; m <= 20; m++) passo(m, aNorte(PARTIDA, 0.15))
+  for (let m = 17; m <= 22; m++) passo(m, aNorte(PARTIDA, 0.15))
+  assert.equal(p.estado, 'pausado')
+  // foi a 0,15 MN para sul da partida (0,55 MN do cais) e voltou: chega
+  passo(23, c.deslocar(PARTIDA, 180, 0.15))
+  for (let m = 24; m <= 28; m++) passo(m, aNorte(PARTIDA, 0.15))
   assert.equal(p.estado, 'pausado', '4 min')
-  assert.equal(passo(21, aNorte(PARTIDA, 0.15)).mudou, 'chegou')
+  assert.equal(passo(29, aNorte(PARTIDA, 0.15)).mudou, 'chegou')
   // a navegar (na rota), o afastamento não substitui as milhas: só em pausa
   p = { ...p, estado: 'a navegar', pausadoDe: null, chegou: null, fechadoEm: null, afastamentoMaxMn: 5 }; mem = pa.novaMemoria()
   for (let m = 30; m <= 40; m++) passo(m, aNorte(PARTIDA, 0.15), HREF)
@@ -413,4 +418,37 @@ test('decisão 1 (Ivo): os planos substituídos vão para planos-fechados.json, 
   fs.writeFileSync(path.join(dir, pa.FECHADOS), '{')
   pa.arquivar(dir, novo(), AGORA)
   assert.equal(pa.lerFechados(dir).length, 1)
+})
+
+test('revisão final M1 (sonda E): ida e volta (o cais em cima da partida) — em pausa e numa rota com menos de 1 MN, a chegada pede ter saído 0,5 MN do cais (afastamentoCaisMaxMn) e voltado', () => {
+  const base = novo()
+  const cais = c.deslocar(PARTIDA, 90, 0.015)
+  const volta = [{ lat: PARTIDA.lat, lon: PARTIDA.lon }, aNorte(PARTIDA, 3.9), { lat: cais.lat, lon: cais.lon }]
+  const plano0 = { ...base, estado: 'a navegar', saida: new Date(AGORA).toISOString(), navegarDesde: new Date(AGORA).toISOString(), alternativa: { ...base.alternativa, pontosRota: volta }, destino: { ...base.destino, aproximacao: [[cais.lat, cais.lon]], cais }, partida: { ...base.partida, lat: PARTIDA.lat, lon: PARTIDA.lon } }
+  let p = plano0
+  let mem = pa.novaMemoria()
+  const passo = (min, posicao, href = HREF, milhas = 0.2) => { const r = pa.avaliar(p, { ...ler(posicao, 0, href), milhas }, mem, AGORA + min * MIN); p = r.plano; mem = r.mem; return r }
+  // saiu pelo SOG e andou a 0,4 MN da marina; a rota limpa (pausa); parado 10 min no cais: não chegou
+  passo(1, aNorte(PARTIDA, 0.4))
+  assert.ok(Math.abs(p.afastamentoCaisMaxMn - c.distanciaMn(aNorte(PARTIDA, 0.4), cais)) < 1e-9)
+  for (let m = 2; m <= 4; m++) passo(m, aNorte(PARTIDA, 0.4), null)
+  assert.equal(p.estado, 'pausado')
+  for (let m = 5; m <= 15; m++) passo(m, cais, null)
+  assert.equal(p.estado, 'pausado', 'nunca saiu do círculo da chegada (0,5 MN)')
+  // foi a 0,6 MN e voltou: chegou
+  passo(16, aNorte(PARTIDA, 0.6), null)
+  for (let m = 17; m <= 21; m++) passo(m, cais, null)
+  assert.equal(p.estado, 'pausado', '4 min')
+  assert.equal(passo(22, cais, null).mudou, 'chegou')
+  // a rota com menos de 1 MN (o cais a 0,4 MN, a partida dentro do círculo): 5 min a navegar não chegam
+  const curta = [{ lat: PARTIDA.lat, lon: PARTIDA.lon }, aNorte(PARTIDA, 0.4)]
+  const c2 = aNorte(PARTIDA, 0.4)
+  p = { ...plano0, alternativa: { ...plano0.alternativa, pontosRota: curta }, destino: { ...plano0.destino, cais: c2, aproximacao: [[c2.lat, c2.lon]] } }; mem = pa.novaMemoria()
+  for (let m = 1; m <= 15; m++) passo(m, c2, HREF, 0.1)
+  assert.equal(p.estado, 'a navegar')
+  // o afastamento conta desde a partida (o barco estava lá ao sair): com a partida a 0,6 MN do cais, chega
+  const c3 = aNorte(PARTIDA, 0.6)
+  p = { ...plano0, alternativa: { ...plano0.alternativa, pontosRota: [curta[0], c3] }, destino: { ...plano0.destino, cais: c3, aproximacao: [[c3.lat, c3.lon]] } }; mem = pa.novaMemoria()
+  for (let m = 1; m <= 9; m++) passo(m, c3, HREF, 0.1)
+  assert.equal(passo(10, c3, HREF, 0.1).mudou, 'chegou')
 })

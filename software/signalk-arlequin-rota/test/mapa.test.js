@@ -188,14 +188,14 @@ test('Algés → Peniche (29/09): o resultado traz o mapa — janela com tudo, �
   for (const z of m.zonas) { assert.equal(typeof z.nome, 'string'); assert.ok(z.pontos.length >= 3) }
 })
 
-test('cada alternativa traz o rasto provável de 10 em 10 min: { lat, lon, t, motor, noite } e o tempo previsto (twd, vis: Tarefa 8.5), da partida à chegada', async () => {
+test('cada alternativa traz o rasto provável de 10 em 10 min: { lat, lon, t, motor, noite } e o tempo previsto (twd, vis: Tarefa 8.5; tws: revisão final I4), da partida à chegada', async () => {
   const r = await correr('ap', entrada('alges', 'peniche'))
   for (const a of r.alternativas) {
     const ra = a.rasto
     assert.ok(ra.length > 20)
     for (const p of ra) {
       assert.deepEqual(Object.keys(p).slice(0, 5), ['lat', 'lon', 't', 'motor', 'noite'])
-      assert.ok(Object.keys(p).slice(5).every(k => k === 'twd' || k === 'vis'), JSON.stringify(p))
+      assert.ok(Object.keys(p).slice(5).every(k => k === 'twd' || k === 'tws' || k === 'vis'), JSON.stringify(p))
       assert.ok(Number.isFinite(p.lat) && Number.isFinite(p.lon))
       assert.equal(typeof p.motor, 'boolean')
       assert.equal(typeof p.noite, 'boolean')

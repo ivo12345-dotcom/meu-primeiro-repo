@@ -135,6 +135,8 @@ const juntar = (motivos, n = 2) => motivos.slice(0, n).join(' e ')
 // abrigo (só no mar): { destino, candidato } — o abrigo mais perto, avaliado para partir agora.
 // → { top: [candidato], veredicto: { tipo, texto, porque[] } }
 const MESMO_ASSIM = 'Se saíres mesmo assim, revê as precauções e os pontos de desistência.'
+// no mar (o Recalcular a navegar) o Ivo já saiu (revisão final M2)
+const MESMO_ASSIM_MAR = 'Se continuares mesmo assim, revê as precauções e os pontos de desistência.'
 function decidir ({ candidatos, agora, tripulacao, sairAgora = false, emMar = false, abrigo = null, fuso = 'Europe/Lisbon', excluidasAgora = [] }) {
   // todas por ordem (sem repetidas); a melhor recomendada sai desta mesma lista e é sempre a 1.ª das 3
   const ordem = melhores([...candidatos], { tripulacao, sairAgora, n: Infinity })
@@ -162,7 +164,7 @@ function decidir ({ candidatos, agora, tripulacao, sairAgora = false, emMar = fa
       porque: [porqueAgora(), `Até ${abrigo.destino.nome} são ${virgula(a.milhas)} MN: ${frase(a, agora, fuso)}.`]
     }
     // "Sair agora mesmo assim" no mar (re-revisão M-1): fica o abrigo e a frase das precauções
-    if (sairAgora) veredicto.porque.push(MESMO_ASSIM)
+    if (sairAgora) veredicto.porque.push(MESMO_ASSIM_MAR)
   } else if (melhorRec) {
     const quandoTxt = quando(melhorRec.partida, agora, fuso)
     const porque = []
@@ -176,7 +178,7 @@ function decidir ({ candidatos, agora, tripulacao, sairAgora = false, emMar = fa
     const porque = []
     if (melhor) porque.push(`${sairAgora ? 'A melhor para sair agora' : 'Nenhuma partida nas próximas 48 h passa nos limites; a melhor'} (${nomeRota(melhor)}, ${melhor.partida === agora ? 'agora' : quando(melhor.partida, agora, fuso)}): ${juntar(melhor.motivos)}.`)
     else porque.push(porqueAgora())
-    if (sairAgora && melhor) porque.push(MESMO_ASSIM)
+    if (sairAgora && melhor) porque.push(emMar ? MESMO_ASSIM_MAR : MESMO_ASSIM)
     else if (melhor && melhor.partida !== agora) porque.push(porqueAgora())
     veredicto = { tipo: 'nao-recomendado', texto: sozinho ? 'Não recomendado sozinho' : 'Não recomendado', porque: porque.slice(0, 2) }
   }
