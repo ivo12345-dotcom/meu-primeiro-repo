@@ -17,6 +17,10 @@ const DUAS_HORAS = 2 * 3600 * 1000
 const SENSOR_VELHO = 10 * 1000
 const SONDA_VELHA = 60 * 1000
 const SONDA_PERDIDA = 5 * 60 * 1000 // sem a sonda há tanto tempo: aviso sondaPerdida, só no ecrã
+const FOLGA_CHEIO = 5 // L: "Abasteci" até 5 L acima da capacidade conta como cheio; mais, não cabia (M-68)
+
+// A razão sonda/alimentação no estado do plugin: com vírgula, e "—" sem ela (nunca "undefined", M-67).
+const textoRazao = (r) => (typeof r === 'number' ? r.toFixed(3).replace('.', ',') : '—')
 
 module.exports = function (app) {
   const plugin = {
@@ -157,8 +161,8 @@ module.exports = function (app) {
     const roll = app.getSelfPath?.('navigation.attitude')?.value?.roll
     const adornado = typeof roll === 'number' && Math.abs(roll) >= 5 * Math.PI / 180
     app.setPluginStatus(o.tabela?.length >= 2
-      ? `${estado.litros === null ? 'a medir…' : Math.round(estado.litros) + ' L'}${adornado ? ` · adornado ${Math.round(Math.abs(roll) * 180 / Math.PI)}°: a sonda não conta` : ''} · razão ${estado.razao?.toFixed(3)} · ${o.tabela.length} pontos de calibração`
-      : `Falta calibrar (${o.tabela?.length || 0} pontos) · razão ${estado.razao?.toFixed(3)}`)
+      ? `${estado.litros === null ? 'a medir…' : Math.round(estado.litros) + ' L'}${adornado ? ` · adornado ${Math.round(Math.abs(roll) * 180 / Math.PI)}°: a sonda não conta` : ''} · razão ${textoRazao(estado.razao)} · ${o.tabela.length} pontos de calibração`
+      : `Falta calibrar (${o.tabela?.length || 0} pontos) · razão ${textoRazao(estado.razao)}`)
   }
 
   function guardarTabela (tabela) {
@@ -276,6 +280,9 @@ module.exports = function (app) {
       const recente = ultimoAbastecimento && Date.now() - ultimoAbastecimento.t < DUAS_HORAS
       const antes = recente ? ultimoAbastecimento.antes : estado.litros
       if (antes === null) return res.status(409).json({ ok: false, erro: 'sem nível anterior: usa "Calibrar" com os litros que tens' })
+      // mais do que cabia (com 5 L de folga): os litros ou o nível estimado estão errados — não se grava
+      // um ponto "cheio" em silêncio (auditoria M-68)
+      if (antes + litros > o.capacidadeL + FOLGA_CHEIO) return res.status(422).json({ ok: false, erro: `não cabia: ${Math.round(antes)} L + ${Math.round(litros)} L passam dos ${o.capacidadeL} L do depósito; confirma os litros ou calibra` })
       const depois = Math.min(o.capacidadeL, antes + litros)
       const r = acrescentarPonto(o.tabela, { razao: estado.razaoMediana, litros: depois })
       if (r.erro) return res.status(422).json({ ok: false, erro: r.erro })
