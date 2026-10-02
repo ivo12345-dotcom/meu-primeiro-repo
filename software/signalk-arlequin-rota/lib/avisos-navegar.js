@@ -143,11 +143,15 @@ function recalcula (est, entrada, agora) {
   return aviso('warn', `Recalcula a rota: ${partes.join(' · ')}`, { chave: est.motivos.join(' ') })
 }
 
+// entrada.limites: { gasoleoL, bateriaPct } os mínimos à chegada da configuração do plugin (auditoria M-13;
+// sem eles, os LIMITES, iguais aos do lib/seguranca.js)
 function recursosAviso (entrada) {
   const r = entrada.recursos || {}
+  const gasoleoL = Number.isFinite(entrada.limites?.gasoleoL) ? entrada.limites.gasoleoL : LIMITES.gasoleoL
+  const bateriaPct = Number.isFinite(entrada.limites?.bateriaPct) ? entrada.limites.bateriaPct : LIMITES.bateriaPct
   const partes = []
-  if (Number.isFinite(r.gasoleoChegadaL) && r.gasoleoChegadaL < LIMITES.gasoleoL) partes.push(['gasoleo', `gasóleo à chegada ~${abaixo(r.gasoleoChegadaL)} L`])
-  if (Number.isFinite(r.bateriaChegadaPct) && r.bateriaChegadaPct < LIMITES.bateriaPct) partes.push(['bateria', `bateria à chegada ~${abaixo(r.bateriaChegadaPct)} %`])
+  if (Number.isFinite(r.gasoleoChegadaL) && r.gasoleoChegadaL < gasoleoL) partes.push(['gasoleo', `gasóleo à chegada ~${abaixo(r.gasoleoChegadaL)} L`])
+  if (Number.isFinite(r.bateriaChegadaPct) && r.bateriaChegadaPct < bateriaPct) partes.push(['bateria', `bateria à chegada ~${abaixo(r.bateriaChegadaPct)} %`])
   if (!partes.length) return normal()
   return aviso('warn', `Recursos: ${partes.map(p => p[1]).join(' · ')}`, { chave: partes.map(p => p[0]).join(' ') })
 }

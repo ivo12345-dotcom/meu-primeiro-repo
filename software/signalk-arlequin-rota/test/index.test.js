@@ -711,3 +711,26 @@ test('auditoria I-13 (decisão n.º 4, contrato C5): o esquema dá o banco de se
     pl.p.stop()
   } finally { calculo.calcular = original }
 })
+
+test('auditoria M-13 (parte index.js): os limites de segurança do desenho 3a ("configuráveis") estão no esquema, com os valores do lib/seguranca.js, e chegam ao cálculo (só os números)', async () => {
+  const seguranca = require('../lib/seguranca')
+  const calculo = require('../lib/calculo')
+  const original = calculo.calcular
+  const opcoes = []
+  calculo.calcular = async (entrada, deps) => { opcoes.push(deps.opcoes); return { veredicto: { tipo: 'segue', texto: 'Segue', porque: [] }, destino: { id: 'peniche', nome: 'Peniche' }, alternativas: [] } }
+  try {
+    const app = appFalso()
+    const pl = plugin(app)
+    const esquema = pl.p.schema.properties.seguranca.properties
+    assert.deepEqual(Object.keys(esquema), [...seguranca.LIMITES])
+    for (const k of seguranca.LIMITES) {
+      assert.equal(esquema[k].type, 'number')
+      assert.equal(esquema[k].default, seguranca.PADRAO[k], k)
+      assert.ok(esquema[k].title.length > 5)
+    }
+    pl.p.start({ pasta: path.join(app.dir, 'dados'), seguranca: { ventoMaxAcompanhado: 25, ondasMax: 'muito' } })
+    await esperarResultado(pl.r, (await chamar(pl.r.post['/calcular'], { body: { destino: 'peniche', tripulacao: 'acompanhado' } })).id)
+    assert.deepEqual(opcoes.at(-1).seguranca, { ventoMaxAcompanhado: 25 })
+    pl.p.stop()
+  } finally { calculo.calcular = original }
+})
