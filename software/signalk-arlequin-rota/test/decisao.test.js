@@ -162,6 +162,18 @@ test('K-06 (decisão do Ivo n.º 1): "Sair agora" com uma exclusão levantada (g
   assert.equal(s.top[0].id, boa.id)
 })
 
+test('M-19: "Volta ou abriga-te na Nazaré" e "Até à Nazaré são …" (as preposições com os nomes femininos)', () => {
+  const continuar = cand({ custo: 30, naoRecomendada: true, motivos: ['rajadas até 33 nós no pior caso (limite 30 sozinho)'] })
+  const abrigo = { destino: { nome: 'Nazaré' }, candidato: { ...cand({ custo: 5, chegada: AGORA + 2 * H }), milhas: 8.2 } }
+  const r = d.decidir({ candidatos: [continuar], agora: AGORA, tripulacao: 'so', emMar: true, abrigo })
+  assert.equal(r.veredicto.texto, 'Volta ou abriga-te na Nazaré')
+  assert.match(r.veredicto.porque[1], /^Até à Nazaré são 8,2 MN: /)
+  // sem artigo, como sempre
+  const p = d.decidir({ candidatos: [continuar], agora: AGORA, tripulacao: 'so', emMar: true, abrigo: { ...abrigo, destino: { nome: 'Peniche' } } })
+  assert.equal(p.veredicto.texto, 'Volta ou abriga-te em Peniche')
+  assert.match(p.veredicto.porque[1], /^Até Peniche são 8,2 MN: /)
+})
+
 test('veredicto "Volta ou abriga-te em X": só no mar, continuar não é recomendado e o abrigo é', () => {
   const continuar = cand({ custo: 30, naoRecomendada: true, motivos: ['rajadas até 33 nós no pior caso (limite 30 sozinho)'] })
   const tarde = cand({ partida: AGORA + 6 * H, custo: 35 })

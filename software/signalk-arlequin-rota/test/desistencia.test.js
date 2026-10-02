@@ -48,6 +48,27 @@ test('M-08: a hora de cada sítio é a da passagem mais perto PARA A FRENTE da d
   assert.deepEqual(D.horasNosSitios(sitios, []).map(x => x.t), [null, null, null])
 })
 
+test('M-19: o resumo diz "voltas à Nazaré" e "voltar à Nazaré" (as preposições com os nomes femininos)', async () => {
+  const alt = rotas.gerarRota(costa, { partida: dest('nazare'), destino: dest('peniche'), afastamento: 5 })
+  assert.equal(alt.excluida, false, alt.motivo)
+  const t0 = Date.UTC(2026, 8, 30, 8)
+  const linhaTempo = []
+  let t = t0
+  for (let i = 1; i < alt.pontos.length; i++) {
+    const a = alt.pontos[i - 1]; const b = alt.pontos[i]
+    const n = Math.max(1, Math.round(c.distanciaMn(a, b) / 5 * 60))
+    for (let k = 0; k < n; k++) { linhaTempo.push({ t, lat: a.lat + (b.lat - a.lat) * k / n, lon: a.lon + (b.lon - a.lon) * k / n }); t += 60000 }
+  }
+  const eta = (pontos, tt) => { let mn = 0; for (let i = 1; i < pontos.length; i++) mn += c.distanciaMn(pontos[i - 1], pontos[i]); return tt + mn / 4 * H }
+  // vento de sul: voltar para norte é a favor
+  const sul = await D.pontosDesistencia({ costa, rota: alt, linhaTempo, partida: dest('nazare'), destino: dest('peniche'), eta, twd: () => 180 })
+  assert.match(sul.resumo, /^até às \d\d:\d\d ainda voltas à Nazaré com vento a favor/)
+  // vento de nordeste: voltar é sempre contra o vento
+  const norte = await D.pontosDesistencia({ costa, rota: alt, linhaTempo, partida: dest('nazare'), destino: dest('peniche'), eta, twd: () => 45 })
+  assert.match(norte.resumo, /^voltar à Nazaré é sempre contra o vento/)
+  for (const x of [sul, norte]) assert.doesNotMatch(x.resumo, /(voltas|voltar|para) a Nazaré/)
+})
+
 test('Algés → Peniche a 5 MN: marcos, o Cabo Raso, o abrigo mais perto, voltar e o resumo', async () => {
   const alt = rotas.gerarRota(costa, { partida: dest('alges'), destino: dest('peniche'), afastamento: 5 })
   const t0 = Date.UTC(2026, 8, 30, 5, 30)

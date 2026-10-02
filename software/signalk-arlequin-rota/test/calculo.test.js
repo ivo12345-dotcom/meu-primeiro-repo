@@ -151,6 +151,8 @@ test('falhas: sem GPS, sem previsão, destino desconhecido, já no destino, sem 
   assert.ok(registo[0][1] instanceof TypeError)
   assert.equal((await calcular(entrada({ destino: 'atlantida' }), deps())).erro, 'destino desconhecido: atlantida')
   assert.equal((await calcular(entrada({ destino: 'alges' }), deps())).erro, 'Já estás em Algés (CNA).')
+  // M-19: "na Nazaré" (era "em Nazaré")
+  assert.equal((await calcular(entrada({ instrumentos: { posicao: de('nazare'), socPct: 90, gasoleoL: 124 }, destino: 'nazare' }), deps())).erro, 'Já estás na Nazaré.')
   assert.equal((await calcular(entrada(), deps({ polar: null }))).erro, 'sem polar')
   const r = await calcular(entrada(), deps({ costa: { ...costa, linha: () => { throw new Error('costa estragada') } } }))
   assert.equal(r.erro, 'Erro interno no cálculo da rota: o pormenor ficou no registo do SignalK.')

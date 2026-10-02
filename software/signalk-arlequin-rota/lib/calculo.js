@@ -388,9 +388,10 @@ async function abrigoMaisPerto (ctx, { pos, partidaGeo, candidatos, distancia, l
 function semPassagens (estat, { fim, agora, o, nome }) {
   const quando = decisao.quando(fim, agora, o.fuso)
   const maxH = String(o.passagem.maxHoras ?? passagem.PADRAO.maxHoras).replace('.', ',')
-  if (!estat.naoChega) return `A previsão acaba ${quando}: não cobre nenhuma passagem até ${nome}.`
-  if (!estat.foraDaPrevisao) return `Nenhuma das ${estat.naoChega} passagens simuladas chega a ${nome} dentro de ${maxH} h.`
-  return `Nenhuma passagem até ${nome}: ${estat.foraDaPrevisao} acabam depois do fim da previsão (${quando}) e ${estat.naoChega} não chegam dentro de ${maxH} h.`
+  // "até à Nazaré", "chega à Nazaré" (auditoria M-19)
+  if (!estat.naoChega) return `A previsão acaba ${quando}: não cobre nenhuma passagem ${c.sitio.ate(nome)}.`
+  if (!estat.foraDaPrevisao) return `Nenhuma das ${estat.naoChega} passagens simuladas chega ${c.sitio.a(nome)} dentro de ${maxH} h.`
+  return `Nenhuma passagem ${c.sitio.ate(nome)}: ${estat.foraDaPrevisao} acabam depois do fim da previsão (${quando}) e ${estat.naoChega} não chegam dentro de ${maxH} h.`
 }
 
 // Uma exceção é um erro de programação (com a mensagem do JavaScript, em inglês: "Cannot read
@@ -433,7 +434,7 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   if (rd.aviso) avisosGerais.push(rd.aviso)
   const porto = rotas.portoDePartida(costa, pos)
   const emMar = !porto
-  if (porto && destino.id && porto.id === destino.id) return { erro: `Já estás em ${destino.nome}.` }
+  if (porto && destino.id && porto.id === destino.id) return { erro: `Já estás ${c.sitio.em(destino.nome)}.` }
   if (!porto && costa.emTerra(pos)) return { erro: 'A posição do GPS fica em terra e não é nenhum porto da lista: confirma o GPS.' }
   const partidaGeo = porto || { lat: pos.lat, lon: pos.lon, nome: 'Posição atual' }
 

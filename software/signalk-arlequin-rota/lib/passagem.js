@@ -34,6 +34,7 @@
 
 const { VISIBILIDADE_RADAR_M, CHUVA_RADAR_MM_H } = require('./avisos')
 const { HORAS_PREVISAO } = require('./previsao')
+const { sitio } = require('./costa')
 
 const GRAU = Math.PI / 180
 const MIN = 60000
@@ -153,7 +154,8 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
   let noiteAntes = null
   let visBaixa = false // num episódio de visibilidade abaixo dos 5 km (um evento por episódio)
   let frenteAnunciada = false
-  ev(o.textoPartida ?? `Partida de ${ROTA[0].nome ?? 'a posição atual'} (${hm(t)})`, 'partida')
+  // "Partida da posição atual", "Chegada à Nazaré" (auditoria M-19; era "Partida de a posição atual")
+  ev(o.textoPartida ?? `Partida ${sitio.de(ROTA[0].nome ?? 'Posição atual')} (${hm(t)})`, 'partida')
 
   while (wp < ROTA.length && t < partida + o.maxHoras * H) {
     const w = tempo(pos.lat, pos.lon, t)
@@ -251,7 +253,7 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
     t += MIN
   }
   const chegou = wp >= ROTA.length
-  ev(chegou ? `Chegada a ${o.nomeChegada ?? ROTA[ROTA.length - 1].nome ?? 'destino'} (${hm(t)})` : `Não chegou dentro de ${String(Math.round(o.maxHoras * 10) / 10).replace('.', ',')} h`, 'chegada')
+  ev(chegou ? `Chegada ${sitio.a(o.nomeChegada ?? ROTA[ROTA.length - 1].nome ?? 'destino')} (${hm(t)})` : `Não chegou dentro de ${String(Math.round(o.maxHoras * 10) / 10).replace('.', ',')} h`, 'chegada')
   const duracaoH = (t - partida) / H
   const ultimo = pontos[pontos.length - 1]
   const resumo = {

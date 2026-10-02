@@ -282,6 +282,18 @@ test('M-02: a passagem da frente sem previsão de ondas diz "Fica o mar (sem pre
   assert.ok(!r.eventos.some(e => /0,0 m/.test(e.texto)))
 })
 
+test('M-19: "Partida da posição atual", "Chegada à Nazaré", "Chegada ao destino" (as preposições com os nomes)', () => {
+  const r = simularPassagem(base({ rota: [{ lat: 39, lon: -9.5 }, { nome: 'Nazaré', lat: 39 + 10 / 60, lon: -9.5 }] }))
+  assert.equal(r.eventos[0].texto, 'Partida da posição atual (13:00)') // era "Partida de a posição atual"
+  assert.match(r.eventos.at(-1).texto, /^Chegada à Nazaré \(\d\d:\d\d\)$/)
+  const semNome = simularPassagem(base({ rota: [{ nome: 'Posição atual', lat: 39, lon: -9.5 }, { lat: 39 + 10 / 60, lon: -9.5 }] }))
+  assert.equal(semNome.eventos[0].texto, 'Partida da posição atual (13:00)')
+  assert.match(semNome.eventos.at(-1).texto, /^Chegada ao destino \(\d\d:\d\d\)$/)
+  // com nomeChegada (o do plano), e os sem artigo como sempre
+  assert.match(simularPassagem(base({ opcoes: { nomeChegada: 'Figueira da Foz' } })).eventos.at(-1).texto, /^Chegada à Figueira da Foz /)
+  assert.equal(simularPassagem(base()).eventos[0].texto, 'Partida de A (13:00)')
+})
+
 test('passagem da frente, energia, costa e "não chegou"', () => {
   let n = 0
   const frente = simularPassagem(base({ tempo: () => (n++ < 30 ? ventoFixo(15, 270)() : ventoFixo(6, 330, { ondas: 2.2 })()) }))

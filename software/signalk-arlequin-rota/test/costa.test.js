@@ -208,3 +208,33 @@ test('dados reais: a grelha poupa trabalho (distância à terra e troços medem 
   // o "em terra" percorre só a faixa de latitude do ponto
   assert.ok(Math.max(...g.faixas.map(f => f.length)) < g.m / 5)
 })
+
+test('M-19: o artigo e as preposições com os nomes dos sítios ("à Nazaré", "na Figueira da Foz", "ao Cabo Raso", "em Peniche")', () => {
+  const casos = [
+    // [nome, artigo, a, em, de, para, até, junto, com]
+    ['Nazaré', 'a', 'à Nazaré', 'na Nazaré', 'da Nazaré', 'para a Nazaré', 'até à Nazaré', 'junto à Nazaré', 'a Nazaré'],
+    ['Figueira da Foz', 'a', 'à Figueira da Foz', 'na Figueira da Foz', 'da Figueira da Foz', 'para a Figueira da Foz', 'até à Figueira da Foz', 'junto à Figueira da Foz', 'a Figueira da Foz'],
+    ['Ponta de Sagres', 'a', 'à Ponta de Sagres', 'na Ponta de Sagres', 'da Ponta de Sagres', 'para a Ponta de Sagres', 'até à Ponta de Sagres', 'junto à Ponta de Sagres', 'a Ponta de Sagres'],
+    ['Berlengas', 'as', 'às Berlengas', 'nas Berlengas', 'das Berlengas', 'para as Berlengas', 'até às Berlengas', 'junto às Berlengas', 'as Berlengas'],
+    ['Farilhões', 'os', 'aos Farilhões', 'nos Farilhões', 'dos Farilhões', 'para os Farilhões', 'até aos Farilhões', 'junto aos Farilhões', 'os Farilhões'],
+    ['Cabo Raso', 'o', 'ao Cabo Raso', 'no Cabo Raso', 'do Cabo Raso', 'para o Cabo Raso', 'até ao Cabo Raso', 'junto ao Cabo Raso', 'o Cabo Raso'],
+    ['Porto', 'o', 'ao Porto', 'no Porto', 'do Porto', 'para o Porto', 'até ao Porto', 'junto ao Porto', 'o Porto'],
+    ['Peniche', '', 'a Peniche', 'em Peniche', 'de Peniche', 'para Peniche', 'até Peniche', 'junto a Peniche', 'Peniche'],
+    ['Algés (CNA)', '', 'a Algés (CNA)', 'em Algés (CNA)', 'de Algés (CNA)', 'para Algés (CNA)', 'até Algés (CNA)', 'junto a Algés (CNA)', 'Algés (CNA)'],
+    // as terras sem artigo que começam como as com artigo
+    ['Portimão', '', 'a Portimão', 'em Portimão', 'de Portimão', 'para Portimão', 'até Portimão', 'junto a Portimão', 'Portimão'],
+    ['Porto Covo', '', 'a Porto Covo', 'em Porto Covo', 'de Porto Covo', 'para Porto Covo', 'até Porto Covo', 'junto a Porto Covo', 'Porto Covo'],
+    // as palavras comuns (o barco no mar, o destino sem nome) vão com minúscula a meio da frase
+    ['Posição atual', 'a', 'à posição atual', 'na posição atual', 'da posição atual', 'para a posição atual', 'até à posição atual', 'junto à posição atual', 'a posição atual'],
+    ['destino', 'o', 'ao destino', 'no destino', 'do destino', 'para o destino', 'até ao destino', 'junto ao destino', 'o destino']
+  ]
+  for (const [nome, art, ...frases] of casos) {
+    assert.equal(c.artigo(nome), art, nome)
+    assert.deepEqual(['a', 'em', 'de', 'para', 'ate', 'junto', 'com'].map(p => c.sitio[p](nome)), frases, nome)
+    assert.equal(c.preposicao('em', nome), frases[1])
+  }
+  assert.throws(() => c.preposicao('sobre', 'Nazaré'), /preposição desconhecida/)
+  // nos 15 destinos só a Nazaré e a Figueira da Foz levam artigo
+  const real = c.carregarCosta()
+  assert.deepEqual(real.destinos.filter(d => c.artigo(d.nome)).map(d => d.id).sort(), ['figueira', 'nazare'])
+})

@@ -302,7 +302,7 @@ function avaliar ({ alternativa, pessimista, provavel, otimista, destino, tripul
     for (const [v, texto, solo] of limites) if (v > solo) nr.push(texto(solo, 'sozinho'))
     if (out.horasLemeEq > o.lemeMaxH) nr.push(`${virgulaAcima(out.horasLemeEq)} h equivalentes ao leme (limite ${o.lemeMaxH} h sozinho)`)
     // desconhecido nunca é seguro (M-03): sem o campo `conhecido` (destinos.json editado à mão) não conta como conhecido
-    if (out.chegadaNoite && destino && destino.conhecido !== true) nr.push(`chegada de noite a ${destino.nome}, um porto que não conheces`)
+    if (out.chegadaNoite && destino && destino.conhecido !== true) nr.push(`chegada de noite ${c.sitio.a(destino.nome)}, um porto que não conheces`)
     if (nr.length) { out.naoRecomendada = true; out.motivos.push(...nr) }
   }
   return out

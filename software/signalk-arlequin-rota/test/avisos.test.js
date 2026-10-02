@@ -41,7 +41,8 @@ test('avisos: rizar, pôr do sol, chuva/visibilidade (radar), rotação do vento
   assert.equal(a.filter(x => x.tipo === 'chuva').length, 1)
   assert.match(por('rotacao').texto, /^O vento roda de 270° para 000° \(90° em 1 h\)/)
   assert.equal(por('virar').texto, '2 viragens entre as 19:20 e as 19:21')
-  assert.match(por('chegada-noite').texto, /^Chegada de noite a Figueira da Foz, um porto que não conheces/)
+  // M-19: "à Figueira da Foz" (era "a Figueira da Foz")
+  assert.match(por('chegada-noite').texto, /^Chegada de noite à Figueira da Foz, um porto que não conheces/)
   assert.equal(por('gasoleo').hora, '00:20')
   assert.equal(a.filter(x => x.tipo === 'comer').length, 3) // às 3, 6 e 9 h
   // por ordem de hora

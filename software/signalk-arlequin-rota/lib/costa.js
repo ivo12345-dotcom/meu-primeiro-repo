@@ -1,7 +1,8 @@
 'use strict'
 // A costa: terra (OSM), linhas a 3/5/8 MN, zonas a evitar e destinos (dados/).
 // Ponto em terra, distância à terra, troços que cortam terra ou zonas, e as
-// linhas de costa (projetar, andar ao longo, juntar-se, seguir).
+// linhas de costa (projetar, andar ao longo, juntar-se, seguir). E os nomes dos sítios com o artigo
+// e as preposições (sitio.a/em/de/…: "à Nazaré", "em Peniche"), para os textos (auditoria M-19).
 //
 // Posições em { lat, lon } (graus). Distâncias em milhas náuticas (MN).
 // Os cruzamentos e o "ponto dentro" fazem-se em graus lon/lat: uma projeção
@@ -377,6 +378,54 @@ function criarCosta ({ terra, linhas = {}, zonas = [], destinos = [] }, { celula
   return { grelha, aneis, zonas: zonasP, destinos, linhas: linhasP, linha, emTerra, distanciaTerra, cruzaTerra, zonaCruzada, verificarTroco, verificarAproximacao }
 }
 
+// ---------- os nomes dos sítios: o artigo e as preposições (auditoria M-19) ----------
+// "à Nazaré", "na Figueira da Foz", "ao Cabo Raso", "em Peniche". Os portos e sítios com artigo: os
+// femininos (a Nazaré, a Figueira da Foz, a Ericeira, a Berlenga, a Ponta de Sagres, a Linha de 5 MN,
+// as praias, baías, barras…), os masculinos (o Porto, o Cabo Raso, o Largo de…, o Canal da Berlenga,
+// o Bugio, um WP…) e os plurais (as Berlengas, os Farilhões); as terras sem artigo são a omissão
+// (Peniche, Cascais, Algés, Leixões, Sines, Lagos…; e Portimão ou Porto Covo, que começam como o Porto).
+// Uma só lista para o plugin todo (os contactos, o acompanhamento e o plano usam-na também), para
+// nunca sair "Cheguei bem a Nazaré" nem "abriga-te em Nazaré". As palavras comuns que servem de nome (a
+// posição do barco no mar, o destino sem nome) vão com minúscula a meio da frase: "da posição atual".
+// (O fim da palavra com \p{L}: o \b do JavaScript só conhece as letras ASCII e falha depois de "Nazaré".)
+const SEM_ARTIGO = /^(Porto Covo|Porto de Mós)(?![\p{L}\p{N}])/iu
+const ARTIGOS = Object.freeze([
+  ['as', /^(Berlengas|Estelas|Caldas)(?![\p{L}\p{N}])/iu],
+  ['os', /^(Farilhões|Açores)(?![\p{L}\p{N}])/iu],
+  ['a', /^(Nazaré|Figueira|Ericeira|Berlenga|Póvoa|Costa|Fonte|Arrábida|Linha|Ponta|Barra|Ilha|Baía|Praia|Foz|Enseada|Boia|Bóia|Marina|Doca|Ria|Posição|Desistência)(?![\p{L}\p{N}])/iu],
+  ['o', /^(Porto|Cabo|Largo|Canal|Cais|Ilhéu|Bugio|Farol|Molhe|Portinho|Cachopo|Banco|Rio|Pontal|Algarve|Tejo|Sado|Mondego|Destino|Fim|Fundeadouro|WP\d*)(?![\p{L}\p{N}])/iu]
+])
+const COMUNS = /^(Posição atual|Destino|Desistência|Fim da rota ativa)$/
+const CONTRACOES = Object.freeze({
+  a: { '': 'a', a: 'à', o: 'ao', as: 'às', os: 'aos' },
+  em: { '': 'em', a: 'na', o: 'no', as: 'nas', os: 'nos' },
+  de: { '': 'de', a: 'da', o: 'do', as: 'das', os: 'dos' },
+  por: { '': 'por', a: 'pela', o: 'pelo', as: 'pelas', os: 'pelos' },
+  para: { '': 'para', a: 'para a', o: 'para o', as: 'para as', os: 'para os' },
+  ate: { '': 'até', a: 'até à', o: 'até ao', as: 'até às', os: 'até aos' },
+  junto: { '': 'junto a', a: 'junto à', o: 'junto ao', as: 'junto às', os: 'junto aos' },
+  com: { '': '', a: 'a', o: 'o', as: 'as', os: 'os' } // só o artigo: "entre Peniche e a Nazaré"
+})
+// O nome como vai a meio da frase (as palavras comuns com minúscula).
+const noTexto = (nome) => { const n = String(nome ?? '').trim(); return COMUNS.test(n) ? n.charAt(0).toLowerCase() + n.slice(1) : n }
+// O artigo do nome: 'a' | 'o' | 'as' | 'os' | '' (sem artigo).
+function artigo (nome) {
+  const n = noTexto(nome)
+  if (!n || SEM_ARTIGO.test(n)) return ''
+  for (const [a, re] of ARTIGOS) if (re.test(n)) return a
+  return ''
+}
+// A preposição (a, em, de, por, para, ate, junto, com) com o nome: preposicao('em', 'Nazaré') → "na Nazaré".
+function preposicao (prep, nome) {
+  const t = CONTRACOES[prep]
+  if (!t) throw new Error(`preposição desconhecida: ${prep}`)
+  const n = noTexto(nome)
+  const p = t[artigo(n)]
+  return p ? `${p} ${n}` : n
+}
+// sitio.a('Nazaré') → "à Nazaré", sitio.em('Peniche') → "em Peniche", sitio.de('Posição atual') → "da posição atual"…
+const sitio = Object.freeze(Object.fromEntries(Object.keys(CONTRACOES).map(k => [k, (nome) => preposicao(k, nome)])))
+
 function lerGz (f) { return JSON.parse(zlib.gunzipSync(fs.readFileSync(f))) }
 
 // Lê os ficheiros de dados/ (ou de outra pasta) e monta a costa.
@@ -407,5 +456,8 @@ module.exports = {
   juntar,
   seguirLinha,
   criarCosta,
-  carregarCosta
+  carregarCosta,
+  artigo,
+  preposicao,
+  sitio
 }
