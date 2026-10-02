@@ -7,6 +7,7 @@ const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 const criar = require('..')
+const { criarTelegram } = require('../lib/telegram')
 const { criarTelegramFalso } = require('../../dev/telegram-falso')
 
 const H = 3600000
@@ -52,4 +53,18 @@ test('auditoria M-53: o lembrete de armar que não sai regista-se com um só pre
     assert.deepEqual(app.erros.map(e => e.replace(/\(.*\)$/, '(…)')), ['Telegram sendMessage: sem ligação (…)'])
     assert.ok(app.erros.every(e => !e.includes(SEGREDO)))
   } finally { p.stop(); await tgf.fechar() }
+})
+
+test('o token nunca aparece nos erros do cliente do Telegram (servidor mal escrito, inexistente, recusado; uma mensagem de erro com o URL)', async () => {
+  const erroDe = (p) => p.then(() => null, e => e)
+  for (const base of ['htp//api.telegram.org', 'http://[::1', 'ftp://x', 'http://nao-existe.invalid', 'http://127.0.0.1:9']) {
+    const e = await erroDe(criarTelegram({ token: SEGREDO, base, limiteMs: 3000 }).sendMessage('111', 'x'))
+    assert.ok(e, base)
+    assert.ok(!e.message.includes(SEGREDO) && !String(e.descricao ?? '').includes(SEGREDO), `${base}: ${e.message}`)
+  }
+  // um fetch que põe o URL inteiro na mensagem do erro
+  const comUrl = criarTelegram({ token: SEGREDO, base: 'http://x', fetchFn: async (url) => { throw new TypeError(`falhou ${url}`) } })
+  const e = await erroDe(comUrl.getUpdates(0, 1))
+  assert.ok(!e.message.includes(SEGREDO), e.message)
+  assert.match(e.message, /^Telegram getUpdates: sem ligação/)
 })
