@@ -61,12 +61,51 @@ test('o alarme mais grave vai para a barra', () => {
 })
 
 test('toca só com sound e sem silenciar/reconhecer', () => {
-  assert.equal(deveTocar(n('a', 'alarm')), 'continuo')
+  // contrato C1: sem o campo apito, só a emergência dá o contínuo (o alarm passou de contínuo a curto)
+  assert.equal(deveTocar(n('a', 'alarm')), 'curto')
+  assert.equal(deveTocar(n('a', 'emergency')), 'continuo')
   assert.equal(deveTocar(n('a', 'warn')), 'curto')
   assert.equal(deveTocar(n('a', 'warn', { method: ['visual'] })), null)
   assert.equal(deveTocar(n('a', 'alarm', { status: { silenced: true } })), null)
   assert.equal(deveTocar(n('a', 'alarm', { status: { acknowledged: true } })), null)
   assert.equal(deveTocar(n('a', 'normal')), null)
+})
+
+// Como as notificações chegam ao ecrã: o valor do plugin mais o id e o status que o servidor junta
+// (signalk-server api/notifications/alarm.js), e a hora da delta.
+const doServidor = (caminho, valor) => ({ caminho, id: '0b6f3c2e-1d2a-4c55-9d1e-6a1f2b3c4d5e', status: { silenced: false, acknowledged: false, canSilence: true, canAcknowledge: true, canClear: false }, timestamp: '2026-10-02T13:00:00.000Z', ...valor })
+const SOM = ['visual', 'sound']
+
+test('contrato C1 (decisão do Ivo n.º 2): o apito contínuo só para o perigo imediato — colisão AIS, fumo, água no porão, fuga de gasóleo e motor a sobreaquecer; o resto com som é curto', () => {
+  for (const [caminho, state, message] of [
+    ['notifications.arlequin.ais.263000001', 'alarm', 'NORDIC STAR em rota de colisão · CPA 0,1 MN'],
+    ['notifications.arlequin.porto.fumo', 'emergency', 'FUMO a bordo!'],
+    ['notifications.arlequin.porto.aguaPorao', 'alarm', 'Água no porão!'],
+    ['notifications.tanks.fuel.0.fuga', 'alarm', 'Possível fuga de gasóleo: −6,0 L com o motor parado'],
+    ['notifications.propulsion.main.overTemperature', 'alarm', 'Motor a 97 °C — sobreaquecimento']
+  ]) assert.equal(deveTocar(doServidor(caminho, { state, method: SOM, message, apito: 'continuo' })), 'continuo', caminho)
+  for (const [caminho, state, message] of [
+    ['notifications.arlequin.caixanegra.disco', 'alarm', 'Disco a 95 %: o bruto parou'],
+    ['notifications.arlequin.energia.motorFraca', 'alarm', 'Bateria do motor fraca: 11,9 V'],
+    ['notifications.arlequin.energia.servicoCritico', 'alarm', 'Bateria de serviço a 39 %'],
+    ['notifications.rota.previsao', 'alarm', 'Previsão com 14 h: confia nos instrumentos e no barómetro'],
+    ['notifications.rota.alarmeTerra', 'alert', 'Os contactos em terra ligam ao MRCC às 14:59: avisa-os ou Terminar']
+  ]) assert.equal(deveTocar(doServidor(caminho, { state, method: SOM, message, apito: 'curto' })), 'curto', caminho)
+  // sem o campo apito (um plugin de antes do contrato, ou de terceiros): contínuo só a emergência
+  assert.equal(deveTocar(doServidor('notifications.arlequin.porto.fumo', { state: 'emergency', method: SOM, message: 'FUMO a bordo!' })), 'continuo')
+  assert.equal(deveTocar(doServidor('notifications.arlequin.porto.fumo', { state: 'emergency', method: SOM, message: 'FUMO a bordo!', apito: null })), 'continuo')
+  assert.equal(deveTocar(doServidor('notifications.arlequin.ais.263000001', { state: 'alarm', method: SOM, message: 'x' })), 'curto')
+  assert.equal(deveTocar(doServidor('notifications.rota.lembrete.e3', { state: 'alert', method: SOM, message: 'Às 22:50: rizar' })), 'curto')
+  assert.equal(deveTocar(doServidor('notifications.arlequin.energia.ligarMotor', { state: 'warn', method: SOM, message: 'x' })), 'curto')
+  // só o 'continuo' dá o contínuo: outro valor qualquer, com som, é curto (mesmo numa emergência)
+  assert.equal(deveTocar(doServidor('x', { state: 'emergency', method: SOM, apito: 'outro' })), 'curto')
+  // silenciado, reconhecido, sem som ou normal: nada, também com o contínuo
+  const ativo = { state: 'alarm', method: SOM, message: 'x', apito: 'continuo' }
+  assert.equal(deveTocar(doServidor('a', { ...ativo, method: ['visual'], status: { silenced: true, acknowledged: false } })), null)
+  assert.equal(deveTocar(doServidor('a', { ...ativo, state: 'emergency', method: ['visual'], status: { silenced: false, acknowledged: true } })), null)
+  assert.equal(deveTocar(doServidor('a', { ...ativo, status: { silenced: true, acknowledged: false } })), null)
+  assert.equal(deveTocar(doServidor('a', { ...ativo, method: ['visual'] })), null)
+  assert.equal(deveTocar(doServidor('a', { ...ativo, state: 'normal' })), null)
 })
 
 test('cada alarme leva à sua página', () => {

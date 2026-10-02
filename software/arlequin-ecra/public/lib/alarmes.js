@@ -16,14 +16,19 @@ export function maisGrave (lista) {
   return melhor
 }
 
-// 'continuo' | 'curto' | null. Um aviso com apito: 'curto' (a previsão velha da rota, desenho 3b-2,
-// que é alarm) dá só o apito curto: o contínuo fica para o perigo imediato (AIS).
+// 'continuo' | 'curto' | null (contrato C1, decisão do Ivo n.º 2 de 02/10). O apito contínuo quer dizer
+// "levanta-te já": só o perigo imediato, que os plugins marcam com apito: 'continuo' no valor da notificação
+// (colisão AIS, fumo, água no porão, fuga de gasóleo, motor a sobreaquecer). Sem o campo apito (um plugin
+// de antes do contrato, ou de terceiros) só a emergência dá o contínuo. Tudo o resto com som — o disco a
+// 95 %, a bateria do motor fraca, o serviço crítico, os avisos da rota (apito: 'curto'), um alarm sem o
+// campo — dá o apito curto. Silenciado, reconhecido ou sem som: nada.
 export function deveTocar (n) {
   if (!n || nivel(n) === 0) return null
   if (!Array.isArray(n.method) || !n.method.includes('sound')) return null
   if (n.status && (n.status.silenced || n.status.acknowledged)) return null
-  if (n.apito === 'curto') return 'curto'
-  return nivel(n) >= GRAVIDADE.alarm ? 'continuo' : 'curto'
+  if (n.apito === 'continuo') return 'continuo'
+  if (n.apito == null && n.state === 'emergency') return 'continuo'
+  return 'curto'
 }
 
 export function paginaDoAlarme (caminho) {
