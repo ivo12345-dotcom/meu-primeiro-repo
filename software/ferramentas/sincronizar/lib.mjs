@@ -15,14 +15,21 @@
 // As confirmações vão em listas de até `bytesPorLista` (150 MB) do Pi: o Pi
 // confere uma lista inteira de uma vez, e uma lista de semanas de bruto (GB)
 // parava o SignalK nesse minuto. Um ficheiro maior do que isso vai sozinho.
+// Só se copia do Pi para o portátil (e as confirmações para a entrada/ do Pi): o que
+// só existe no portátil (os modelos pNNNN treinados lá e o registo-portatil.json,
+// decisão n.º 26) nunca se apaga nem se sobrescreve, e nunca vai para o Pi sozinho
+// (só por cópia confirmada, à mão).
 
 import { createHash } from 'node:crypto'
 import { existsSync, statSync, readFileSync, mkdirSync, mkdtempSync, renameSync, rmSync } from 'node:fs'
 import path from 'node:path'
+import { gunzipSync } from 'node:zlib'
 
 export const sha256 = (f) => createHash('sha256').update(readFileSync(f)).digest('hex')
 // Só uma hora do bruto com o nome certo (um .danificado-* copia-se mas nunca se confirma).
 const horaDoBruto = (f) => f.match(/^bruto\/(\d{4}-\d{2}-\d{2}T\d{2})\.ndjson\.gz$/)?.[1]
+// O ficheiro que diz qual é a versão em uso de cada modelo no barco.
+const ATUAL = /^modelos\/[^/]+\/atual$/
 
 export async function sincronizar ({ transporte, destino, agora = Date.now(), bytesPorLista = 150e6 }) {
   mkdirSync(destino, { recursive: true })
@@ -37,12 +44,20 @@ export async function sincronizar ({ transporte, destino, agora = Date.now(), by
 
   const aCopiar = []
   const conflitos = []
+  const aConferir = []
   for (const r of remotos) {
     if (!existsSync(local(r.ficheiro))) { aCopiar.push(r); continue }
     const tam = statSync(local(r.ficheiro)).size
-    if (tam === r.bytes) continue
+    if (tam === r.bytes) { if (ATUAL.test(r.ficheiro)) aConferir.push(r); continue }
     if (protegido(r.ficheiro) && r.bytes < tam) conflitos.push(r)
     else aCopiar.push(r)
+  }
+  // O `atual` de cada modelo ("vNNNN") muda de conteúdo sem mudar de tamanho: com o mesmo tamanho
+  // confere-se pelo sha256 (são 5 bytes). Senão o portátil ficava a julgar que o barco usa uma
+  // versão que já não usa, e o treino do portátil comparava-se com o modelo errado (decisão n.º 26).
+  if (aConferir.length) {
+    const h = await transporte.hashes(aConferir.map(r => r.ficheiro))
+    for (const r of aConferir) if (h[r.ficheiro] !== sha256(local(r.ficheiro))) aCopiar.push(r)
   }
   if (aCopiar.length) await transporte.copiar(aCopiar.map(r => r.ficheiro), destino)
   const guardados = await guardarConflitos(transporte, destino, local, conflitos)
@@ -154,4 +169,32 @@ async function guardarConflitos (transporte, destino, local, conflitos) {
   } finally {
     rmSync(tmp, { recursive: true, force: true })
   }
+}
+
+// Pôr no barco um modelo treinado no portátil: os pNNNN só vão para o Pi por cópia confirmada
+// (decisão n.º 26). `modelo` é "<nome>/<pNNNN>" (ex.: velocidade/p0001), o ficheiro
+// <destino>/modelos/<nome>/<pNNNN>.json.gz; `confirmar(resumo)` mostra o resumo e devolve true só
+// com o sim do Ivo. O transporte copia-o para o Pi e aponta lá o `atual` para ele (no ecrã fica o
+// "Voltar atrás" para a última versão do barco). Nunca uma vNNNN (essas são do barco) nem pela pen.
+// Não acrescenta ao registo.json do barco: o ficheiro do modelo diz quando e com que erro se treinou.
+const MODELOS = ['velocidade', 'ventoForca', 'ventoDirecao', 'consumo']
+const virgula = (x) => String(x).replace('.', ',')
+const quando = (iso) => Number.isFinite(Date.parse(iso)) ? new Date(iso).toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon' }) : '?'
+
+export async function porNoBarco ({ transporte, destino, modelo, confirmar }) {
+  const m = /^([A-Za-z]+)\/(p\d{4})$/.exec(modelo ?? '')
+  if (!m || !MODELOS.includes(m[1])) throw new Error(`indica um modelo do portátil assim: velocidade/p0001 (${MODELOS.join(', ')}; só pNNNN)`)
+  const [, nome, versao] = m
+  if (!transporte.podeConfirmar || typeof transporte.porModelo !== 'function') throw new Error('só pelo ssh (Tailscale): pela pen não se põe nada no barco')
+  const f = path.join(destino, 'modelos', nome, `${versao}.json.gz`)
+  let bytes
+  try { bytes = readFileSync(f) } catch (e) { throw new Error(`não há ${nome}/${versao} no portátil (${f}: ${e.code})`) }
+  let dados
+  try { dados = JSON.parse(gunzipSync(bytes).toString('utf8')) } catch (e) { throw new Error(`${nome}/${versao} ilegível: ${e.message}`) }
+  if (dados?.modelo !== nome || dados?.versao !== versao || !dados?.quantis) throw new Error(`${f} não é o modelo ${nome} ${versao} completo`)
+  const emUso = dados.maeAtual != null ? `o modelo em uso no barco: ${virgula(dados.maeAtual)}; ` : ''
+  const resumo = `${nome} ${versao}, treinado no portátil a ${quando(dados.criado)} com ${virgula(dados.horas)} h de dados: erro ${virgula(dados.mae)} (${emUso}a origem: ${virgula(dados.maeBase)})`
+  if (!(await confirmar(resumo))) return { feito: false, resumo }
+  await transporte.porModelo(nome, versao, bytes)
+  return { feito: true, resumo }
 }
