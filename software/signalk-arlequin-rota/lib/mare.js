@@ -3,10 +3,15 @@
 // sea_level_height_msl da Open-Meteo (máximos locais, com uma parábola pelos 3
 // valores à volta de cada máximo). A corrente na barra é o modelo do simular.mjs
 // (APROXIMADO): até 1,8 nó, vazante para 250° e enchente para 70°, estofo 45 min depois
-// da preia-mar. SÓ NA BARRA E NO ESTUÁRIO DO TEJO: a caixa 38,60–38,72 N, 9,42–9,00 W
-// (a barra a leste de 9°25' W, os Cachopos e o Bugio, o rio até Lisboa). Fora dela (o resto
-// da costa, de Caminha a VRSA) é 0: ao largo vale a corrente da Open-Meteo. O simular.mjs
-// (Algés → Peniche, só a leste de 9°25' W, sem limite de latitude) passa a sua caixa.
+// da preia-mar. SÓ NA BARRA E NO ESTUÁRIO DO TEJO: a caixa 38,60–38,72 N, 9,40–9,00 W
+// (a barra a leste de 9°24' W, os Cachopos e o Bugio, o rio até Lisboa). O limite oeste fica a
+// leste da marina de Cascais (9°25' W; decisão do Ivo n.º 8, auditoria M-12: a corrente fictícia é
+// a da barra, não a da baía de Cascais; até 02/10 era 9,42 W e apanhava a entrada da marina por
+// 0,003°). Fora dela (o resto da costa, de Caminha a VRSA) é 0: ao largo vale a corrente da
+// Open-Meteo. O simular.mjs (Algés → Peniche, o resultado de referência de 29/09) usa esta caixa
+// desde 01/10 (até aí, tudo a leste de 9°25' W, sem limite de latitude; a referência foi regravada,
+// chegada 05:00 → 05:01) e, desde 02/10, passa à mão o limite oeste com que foi gravada
+// (lonMin −9,42), para não mudar (auditoria D-01).
 
 const MIN = 60000
 const H = 3600000
@@ -34,7 +39,7 @@ function preiaMares (t, nivel, { separacaoH = 6 } = {}) {
   return out
 }
 
-const PADRAO = Object.freeze({ latMin: 38.60, latMax: 38.72, lonMin: -9.42, lonMax: -9.00, vMax: 1.8, dirVazante: 250, dirEnchente: 70, estofoMin: 45, periodoH: 12.42 })
+const PADRAO = Object.freeze({ latMin: 38.60, latMax: 38.72, lonMin: -9.40, lonMax: -9.00, vMax: 1.8, dirVazante: 250, dirEnchente: 70, estofoMin: 45, periodoH: 12.42 })
 
 // correnteMare(lat, lon, t) → { v (nós), dir (graus, para onde vai) }.
 // Entre dois estofos seguidos o ciclo dura o que vai de um ao outro; antes do

@@ -51,7 +51,7 @@ test('preia-mares: um pico exactamente no extremo da série (primeira/última ho
   assert.ok(pms[0].t > t[2] && pms[0].t < t[4])
 })
 
-test('corrente na barra: estofo 45 min depois da preia-mar, vazante para 250°, enchente para 70°, só a leste de 9°25\'W', () => {
+test('corrente na barra: estofo 45 min depois da preia-mar, vazante para 250°, enchente para 70°, só a leste de 9°24\'W', () => {
   const pm = Date.UTC(2026, 8, 29, 15, 37)
   const mare = m.criarMareTejo([{ t: pm }])
   const estofo = pm + 45 * MIN
@@ -87,15 +87,19 @@ test('a corrente da barra só vale na barra e no estuário do Tejo (C1): no rest
   const mare = m.criarMareTejo([{ t: pm }])
   const forte = pm + 45 * MIN + T / 4 // a vazante no máximo (1,8 nó na barra)
   // a barra (Cachopos, Bugio, Barra Norte) e o estuário até Lisboa: a corrente
-  for (const [lat, lon] of [[38.67, -9.3], [38.66, -9.35], [38.65, -9.41], [38.69, -9.2], [38.70, -9.1]]) {
+  for (const [lat, lon] of [[38.67, -9.3], [38.66, -9.35], [38.65, -9.39], [38.69, -9.2], [38.70, -9.1]]) {
     assert.ok(Math.abs(mare(lat, lon, forte).v - 1.8) < 1e-9, `${lat} ${lon}`)
   }
+  // M-12 (decisão do Ivo n.º 8): a entrada da marina de Cascais fica de fora (o limite oeste passa para
+  // leste dela): os pontos da aproximação de Cascais, do largo ao cais
+  const cascais = require('../dados/destinos.json').find(d => d.id === 'cascais')
+  for (const [lat, lon] of cascais.aproximacao) assert.deepEqual(mare(lat, lon, forte), { v: 0, dir: 0 }, `Cascais ${lat} ${lon}`)
   // fora da caixa: Viana, Leixões, Figueira, Nazaré, Peniche, Sesimbra, Setúbal, Sines, Lagos, Vilamoura, VRSA
   for (const [lat, lon] of [[41.68, -8.84], [41.18, -8.70], [40.14, -8.87], [39.59, -9.08], [39.35, -9.38], [38.44, -9.10], [38.52, -8.89], [37.95, -8.87], [37.10, -8.67], [37.07, -8.12], [37.17, -7.41]]) {
     assert.deepEqual(mare(lat, lon, forte), { v: 0, dir: 0 }, `${lat} ${lon}`)
   }
   // os limites da caixa (PADRAO) e configuráveis
-  assert.deepEqual({ latMin: m.PADRAO.latMin, latMax: m.PADRAO.latMax, lonMin: m.PADRAO.lonMin, lonMax: m.PADRAO.lonMax }, { latMin: 38.60, latMax: 38.72, lonMin: -9.42, lonMax: -9.00 })
+  assert.deepEqual({ latMin: m.PADRAO.latMin, latMax: m.PADRAO.latMax, lonMin: m.PADRAO.lonMin, lonMax: m.PADRAO.lonMax }, { latMin: 38.60, latMax: 38.72, lonMin: -9.40, lonMax: -9.00 })
   assert.deepEqual(mare(38.75, -9.3, forte), { v: 0, dir: 0 }) // a norte da caixa
   assert.deepEqual(mare(38.58, -9.3, forte), { v: 0, dir: 0 }) // a sul
   assert.deepEqual(mare(38.67, -8.95, forte), { v: 0, dir: 0 }) // a leste
