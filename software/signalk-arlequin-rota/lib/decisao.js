@@ -37,6 +37,7 @@
 //                   com "sair agora" (o Recalcular a navegar, decisão do Ivo de 01/10).
 
 const { PADRAO: SEGURANCA } = require('./seguranca')
+const { sitio } = require('./costa')
 
 const H = 3600000
 const MEIA_HORA = 1800000
@@ -52,6 +53,7 @@ const DESCONHECIDO = Object.freeze({ rajada: SEGURANCA.rajadaMax, ondas: SEGURAN
 const norm = (a) => ((a % 360) + 360) % 360
 const dif = (a, b) => { let d = norm(a - b); if (d > 180) d -= 360; return d }
 const virgula = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toFixed(d).replace('.', ',')
+const maiuscula = (s) => s.charAt(0).toUpperCase() + s.slice(1)
 
 function horasContraVento (pontos, o = CONTRA) {
   let n = 0
@@ -202,8 +204,9 @@ function decidir ({ candidatos, agora, tripulacao, sairAgora = false, emMar = fa
     const a = abrigo.candidato
     veredicto = {
       tipo: 'volta',
-      texto: `Volta ou abriga-te em ${abrigo.destino.nome}`,
-      porque: [porqueAgora(), `Até ${abrigo.destino.nome} são ${virgula(a.milhas)} MN: ${frase(a, agora, fuso)}.`]
+      // "na Nazaré", "Até à Nazaré" (auditoria M-19: as preposições com os nomes, lib/costa.js sitio)
+      texto: `Volta ou abriga-te ${sitio.em(abrigo.destino.nome)}`,
+      porque: [porqueAgora(), `${maiuscula(sitio.ate(abrigo.destino.nome))} são ${virgula(a.milhas)} MN: ${frase(a, agora, fuso)}.`]
     }
     // "Sair agora mesmo assim" no mar (re-revisão M-1): fica o abrigo e a frase das precauções
     if (sairAgora) veredicto.porque.push(MESMO_ASSIM_MAR)

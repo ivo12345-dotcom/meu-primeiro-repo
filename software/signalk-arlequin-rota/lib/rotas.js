@@ -145,7 +145,7 @@ function pontosSaida (porto) {
   for (let i = ap.length - 1; i >= 0; i--) {
     const p = { ...ap[i], perna: i === ap.length - 1 ? null : pernaDe(i + 1, entrada), costaLivre: true }
     if (i === ap.length - 1) p.nome = `${porto.nome} (partida)`
-    if (i === 0) p.nome = `Largo de ${porto.nome}`
+    if (i === 0) p.nome = `Largo ${c.sitio.de(porto.nome)}` // "Largo da Nazaré" (M-19)
     const antes = out.at(-1)
     if (antes && antes.lat === p.lat && antes.lon === p.lon) continue
     out.push(p)
@@ -160,7 +160,7 @@ function pontosEntrada (destino) {
   const out = []
   ap.forEach((q, i) => {
     const p = { ...q, perna: i === 0 ? 'ligacao' : pernaDe(i, entrada), costaLivre: true }
-    if (i === 0 && ap.length > 1) p.nome = `Largo de ${destino.nome}`
+    if (i === 0 && ap.length > 1) p.nome = `Largo ${c.sitio.de(destino.nome)}`
     if (i === ap.length - 1) p.nome = destino.nome
     // um ponto repetido (o destino avulso da rota ativa) junta-se ao anterior, com o nome dele
     const antes = out.at(-1)
@@ -203,7 +203,7 @@ function pontosAproximacaoDesde ({ destino, ap, i, t, q, entrada }, sentido) {
   const perto = (a, b) => c.distanciaMn(a, b) < 0.01
   if (sentido === 'fora') {
     if (!perto(q, ap[i - 1])) out.push({ ...q, perna: pernaDe(i, entrada) })
-    for (let k = i - 1; k >= 0; k--) out.push({ ...ap[k], perna: pernaDe(k + 1, entrada), ...(k === 0 ? { nome: `Largo de ${destino.nome}` } : {}) })
+    for (let k = i - 1; k >= 0; k--) out.push({ ...ap[k], perna: pernaDe(k + 1, entrada), ...(k === 0 ? { nome: `Largo ${c.sitio.de(destino.nome)}` } : {}) })
   } else {
     if (!perto(q, ap[i])) out.push({ ...q, perna: pernaDe(i, entrada) })
     for (let k = i; k < ap.length; k++) out.push({ ...ap[k], perna: pernaDe(k, entrada), ...(k === ap.length - 1 ? { nome: destino.nome } : {}) })
@@ -696,15 +696,15 @@ function gerar (costa, { partida, destino, afastamento, twd, horaPartida, opcoes
   const excluir = (motivo) => [{ ...alt, excluida: true, motivo }]
   // nada escapa daqui (motivoDoErro): nunca pode derrubar o servidor
   try {
-    const nomeA = partida.nome || 'a posição atual'
-    const nomeB = destino.nome
+    const nomeA = c.sitio.com(partida.nome || 'Posição atual') // "a posição atual", "a Nazaré", "Peniche" (M-19)
+    const nomeB = c.sitio.com(destino.nome)
     if (destino.porConfirmar) alt.avisos.push(AVISO_ROTA_ATIVA)
 
     // 1. saída
     let inicio
     if (partida.aproximacao) {
       const prob = costa.verificarAproximacao(partida)
-      if (prob.length) return excluir(`a saída de ${partida.nome} ${descreverProblema(prob[0])}`)
+      if (prob.length) return excluir(`a saída ${c.sitio.de(partida.nome)} ${descreverProblema(prob[0])}`)
       inicio = pontosSaida(partida)
     } else {
       if (costa.emTerra(partida)) return excluir('a posição atual fica em terra')
@@ -718,7 +718,7 @@ function gerar (costa, { partida, destino, afastamento, twd, horaPartida, opcoes
         const pontos = [pos, ...pontosAproximacaoDesde(na, 'dentro')]
         alt.afastamento = null
         alt.direto = true
-        alt.avisos.push(`já na aproximação de ${destino.nome}: segue-a até ao cais`)
+        alt.avisos.push(`já na aproximação ${c.sitio.de(destino.nome)}: segue-a até ao cais`)
         for (const p of pontos) p.costaLivre = true
         return [{ ...alt, pontos, milhas: milhasDe(pontos), costaMinMn: null, sentido: null, linha: { de: null, ate: null } }]
       }
@@ -727,7 +727,7 @@ function gerar (costa, { partida, destino, afastamento, twd, horaPartida, opcoes
     // 4. entrada (verifica-se já)
     if (!destino.porConfirmar) {
       const prob = costa.verificarAproximacao(destino)
-      if (prob.length) return excluir(`a entrada de ${destino.nome} ${descreverProblema(prob[0])}`)
+      if (prob.length) return excluir(`a entrada ${c.sitio.de(destino.nome)} ${descreverProblema(prob[0])}`)
     }
     const entrada = pontosEntrada(destino)
 

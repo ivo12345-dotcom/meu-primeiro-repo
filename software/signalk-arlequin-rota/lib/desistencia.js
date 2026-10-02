@@ -220,7 +220,8 @@ const melhorFuga = (a, b) => !b || (!!a.avisoVermelho - !!b.avisoVermelho || a.m
 
 // Onde fica um ponto, para o resumo: "junto ao Cabo Raso às 07:30", "às 08:31 (10 MN feitas)".
 function ondeFica (x) {
-  if (x.tipo === 'cabo') return x.nome ? `junto ${/^(Ponta|Nazaré)/.test(x.nome) ? 'à' : 'ao'} ${x.nome} às ${x.hora}` : `num cabo às ${x.hora}`
+  // "junto ao Cabo Raso", "junto à Ponta de Sagres" (lib/costa.js sitio, auditoria M-19)
+  if (x.tipo === 'cabo') return x.nome ? `${c.sitio.junto(x.nome)} às ${x.hora}` : `num cabo às ${x.hora}`
   return `às ${x.hora} (${String(Math.round(x.milhas * 10) / 10).replace('.', ',')} MN feitas)`
 }
 
@@ -242,12 +243,12 @@ function resumir (itens, alvo) {
   if (bons.length) {
     const ult = bons.at(-1)
     const b = buracos(itens.slice(0, itens.indexOf(ult)))
-    return `até às ${ult.x.hora} ainda voltas a ${alvo} com vento ${ult.r.vento}${b.length ? `, exceto ${b.map(k => `${k.onde}, onde ${k.porque}`).join('; e ')}` : ''}`
+    return `até às ${ult.x.hora} ainda voltas ${c.sitio.a(alvo)} com vento ${ult.r.vento}${b.length ? `, exceto ${b.map(k => `${k.onde}, onde ${k.porque}`).join('; e ')}` : ''}`
   }
-  if (doAlvo.length) return `voltar a ${alvo} é sempre contra o vento${atencao(itens)}`
-  if (itens.some(({ r }) => r && r.nome === alvo)) return `para ${alvo} só há fuga junto à costa, em último recurso${atencao(itens.filter(({ r }) => !r))}`
+  if (doAlvo.length) return `voltar ${c.sitio.a(alvo)} é sempre contra o vento${atencao(itens)}`
+  if (itens.some(({ r }) => r && r.nome === alvo)) return `${c.sitio.para(alvo)} só há fuga junto à costa, em último recurso${atencao(itens.filter(({ r }) => !r))}`
   const primeiro = itens.find(({ r }) => !r)
-  return `${SEM_FUGA} para ${alvo}: ${primeiro.sem.replace(`${SEM_FUGA}: `, '')}`
+  return `${SEM_FUGA} ${c.sitio.para(alvo)}: ${primeiro.sem.replace(`${SEM_FUGA}: `, '')}`
 }
 
 // costa; rota: a alternativa (lib/rotas.js: { pontos, afastamento, linha: { de, ate } });

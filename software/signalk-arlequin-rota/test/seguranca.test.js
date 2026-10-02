@@ -175,7 +175,8 @@ test('chegada de noite a um porto desconhecido (em qualquer um dos 3 cenários)'
   const desconhecido = { nome: 'Figueira da Foz', conhecido: false }
   const r = s.avaliar(base({ destino: desconhecido, pessimista: noite(passagem()) }))
   assert.equal(r.naoRecomendada, true)
-  assert.deepEqual(r.motivos, ['chegada de noite a Figueira da Foz, um porto que não conheces'])
+  // M-19: "à Figueira da Foz" (era "a Figueira da Foz")
+  assert.deepEqual(r.motivos, ['chegada de noite à Figueira da Foz, um porto que não conheces'])
   assert.equal(r.chegadaNoite, true)
   assert.equal(s.avaliar(base({ destino: desconhecido, provavel: noite(passagem()) })).naoRecomendada, true)
   assert.equal(s.avaliar(base({ destino: desconhecido, otimista: noite(passagem()) })).naoRecomendada, true)
@@ -456,7 +457,7 @@ test('I1: as regras avaliam-se nos rastos dos 3 cenários — só o otimista (ma
   const noite = passagem(); noite.pontos.at(-1).noite = true
   const n = s.avaliar(base({ destino: { nome: 'Figueira da Foz', conhecido: false }, otimista: noite }))
   assert.equal(n.chegadaNoite, true)
-  assert.deepEqual(n.motivos, ['chegada de noite a Figueira da Foz, um porto que não conheces'])
+  assert.deepEqual(n.motivos, ['chegada de noite à Figueira da Foz, um porto que não conheces']) // M-19 (era "a Figueira da Foz")
   // previsão sem dados de ondas só no rasto do otimista: excluída
   const sd = passagem(); sd.pontos[50].semDados = ['ondas']
   const x = s.avaliar(base({ otimista: sd, tripulacao: 'acompanhado' }))

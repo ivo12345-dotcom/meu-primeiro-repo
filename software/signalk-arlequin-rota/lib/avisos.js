@@ -23,6 +23,8 @@ const VISIBILIDADE_RADAR_M = 5000
 // A chuva que conta para o radar e para o "Chuva e visibilidade" do evento (mm/h)
 const CHUVA_RADAR_MM_H = 0.5
 
+const { sitio } = require('./costa')
+
 const PADRAO = Object.freeze({
   fuso: 'Europe/Lisbon',
   antecedenciaMin: 30,
@@ -118,7 +120,8 @@ function avisosDaPassagem ({ passagem, destino = null, tripulacao = 'so', opcoes
   const ult = pontos.at(-1)
   if (ult && ult.noite && passagem.resumo?.chegou) {
     const nome = destino?.nome || 'destino'
-    add(ult.t + MIN, 'chegada-noite', `Chegada de noite a ${nome}${destino && destino.conhecido !== true ? ', um porto que não conheces' : ''}: entrada devagar, luzes e radar, confirma as luzes da barra`)
+    // "à Nazaré", "ao destino" (auditoria M-19)
+    add(ult.t + MIN, 'chegada-noite', `Chegada de noite ${sitio.a(nome)}${destino && destino.conhecido !== true ? ', um porto que não conheces' : ''}: entrada devagar, luzes e radar, confirma as luzes da barra`)
   }
 
   // gasóleo e bateria a caminho da reserva

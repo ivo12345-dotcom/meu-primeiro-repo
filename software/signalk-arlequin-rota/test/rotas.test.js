@@ -730,3 +730,15 @@ test('ventoDoMar: a mesma regra do vento de terra numa alternativa já traçada 
   assert.equal(r.ventoDoMar(real, dir, { twd: 0 }), null)
   assert.match(r.ventoDoMar(real, dir, { twd: 180 }), /^vento do mar em parte da rota: a rota direta passa a \d+,\d MN de uma costa a sotavento$/)
 })
+
+test('M-19: o largo do destino e os motivos com o artigo dos nomes femininos ("Largo da Nazaré", "a entrada da Nazaré")', () => {
+  const alt = r.gerarRota(real, { partida: D('peniche'), destino: D('nazare'), afastamento: 5 })
+  assert.equal(alt.excluida, false, alt.motivo)
+  assert.ok(alt.pontos.some(p => p.nome === 'Largo da Nazaré'), JSON.stringify(alt.pontos.map(p => p.nome).filter(Boolean)))
+  assert.ok(!alt.pontos.some(p => p.nome === 'Largo de Nazaré'))
+  assert.ok(alt.pontos.some(p => p.nome === 'Largo de Peniche'))
+  // a saída e a entrada estragadas: o motivo com o artigo
+  const estragada = { ...D('nazare'), entrada: 99 }
+  assert.match(r.gerarRota(real, { partida: D('peniche'), destino: estragada, afastamento: 5 }).motivo, /^a entrada da Nazaré /)
+  assert.match(r.gerarRota(real, { partida: estragada, destino: D('peniche'), afastamento: 5 }).motivo, /^a saída da Nazaré /)
+})
