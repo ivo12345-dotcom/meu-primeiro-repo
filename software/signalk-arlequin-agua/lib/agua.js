@@ -4,13 +4,15 @@
 // pedalada vale X litros (calibrado com uma jarra de 1 L). Nível = o que tinha
 // ao encher − o gasto desde então. A bomba de água do mar não conta.
 // Lógica pura, um tanque de cada vez. Aviso de água a acabar: ≤ 20% (limpa 25%).
+// O nível só se sabe depois de um "Enchi" ou de um nível posto à mão (nivelConhecido; auditoria I-29,
+// decisão n.º 23 do Ivo): antes disso não há nível, nunca "cheio" por omissão.
 
 const DIA = 24 * 3600 * 1000
 const GUARDAR = 7 * DIA
 
 function novoTanque () {
   // desde: início da observação (primeira contagem ou último "encher"), para o ritmo
-  return { litrosAoEncher: null, gastoL: 0, ultimaContagem: null, historico: [], calibracao: null, desde: null }
+  return { litrosAoEncher: null, gastoL: 0, ultimaContagem: null, historico: [], calibracao: null, desde: null, nivelConhecido: false }
 }
 
 // Contador acumulado de pedaladas vindo do sensor. Se descer, o sensor
@@ -30,15 +32,17 @@ function contagem (t, contador, agora, cfg) {
 
 // "Enchi": fica na capacidade. Sem cfg, fica "cheio" pela capacidade de quem ler.
 function encher (t, agora) {
-  return { ...t, litrosAoEncher: null, gastoL: 0, desde: agora }
+  return { ...t, litrosAoEncher: null, gastoL: 0, desde: agora, nivelConhecido: true }
 }
 
 function definirNivel (t, litros, agora) {
-  return { ...t, litrosAoEncher: litros, gastoL: 0, desde: agora }
+  return { ...t, litrosAoEncher: litros, gastoL: 0, desde: agora, nivelConhecido: true }
 }
 
 // litrosAoEncher null = cheio (capacidade). Nunca abaixo de 0 nem acima da capacidade.
+// Sem nunca "Enchi" nem nível à mão: { litros: null, fracao: null }.
 function nivel (t, cfg) {
+  if (!t.nivelConhecido) return { litros: null, fracao: null }
   const base = t.litrosAoEncher ?? cfg.capacidadeL
   const litros = Math.max(0, Math.min(cfg.capacidadeL, base - t.gastoL))
   return { litros, fracao: litros / cfg.capacidadeL }
@@ -60,7 +64,7 @@ function ritmoDiario (t, agora, cfg) {
   const gasto = t.historico.filter(h => h.t > inicio).reduce((a, h) => a + h.litros, 0)
   const litrosDia = gasto / (janela / DIA)
   const { litros } = nivel(t, cfg)
-  return { litrosDia, dias: litrosDia > 0 ? litros / litrosDia : null }
+  return { litrosDia, dias: litros !== null && litrosDia > 0 ? litros / litrosDia : null }
 }
 
 function iniciarCalibracao (t) {

@@ -31,6 +31,18 @@ test('definir o nível à mão (meio cheio, por exemplo)', () => {
   assert.equal(nivel(t, CFG).litros, 30)
 })
 
+// Auditoria I-29 (decisão n.º 23): sem nunca carregar em "Enchi" nem pôr o nível à mão, o nível não se
+// sabe — nunca "cheio" por omissão.
+test('I-29: um depósito novo (nunca "Enchi" nem nível à mão) não tem nível; "Enchi" e o nível à mão dão-no', () => {
+  let t = novoTanque()
+  t = contagem(t, 10, 1000, CFG)
+  t = contagem(t, 30, 2000, CFG)
+  assert.deepEqual(nivel(t, CFG), { litros: null, fracao: null })
+  assert.equal(ritmoDiario(contagem(t, 40, 13 * H, CFG), 13 * H, CFG).dias, null)
+  assert.equal(nivel(encher(t, 3000), CFG).litros, 80)
+  assert.equal(nivel(definirNivel(t, 25, 3000), CFG).litros, 25)
+})
+
 test('alarme de água a acabar: ≤ 20%, limpa acima de 25%', () => {
   let a = avaliarAlarme(false, 0.19)
   assert.deepEqual(a, { ativo: true, mudou: true })
