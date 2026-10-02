@@ -23,6 +23,9 @@
 // O estado do encaminhador dos alarmes fica em encaminhador.json (escrita atómica): um reinício do plugin
 // não repete os avisos ativos nem o "✓ Resolvido"; depois de um reinício do servidor (a árvore das
 // notificações vem vazia), um aviso ainda ativo volta a seguir uma vez (lib/mensagens.js).
+// As mensagens dos alarmes vão para o Telegram por uma fila, gravada no mesmo encaminhador.json
+// (auditoria K-09, decisão n.º 17): uma que o Telegram não aceitou fica lá e tenta-se outra vez, com
+// recuo até 1 min, até ser entregue a pelo menos um chat autorizado; chega com "(atrasado N min)".
 // O plano com o texto entregue conta como entregue mesmo que o GPX falhe (o GPX vai para as falhas, "GPX: …").
 // O plano vai a todos os destinatários em paralelo e cada chamada ao Telegram tem um limite de 10 s,
 // para a resposta chegar bem antes dos 30 s que o plugin da rota espera; as falhas vão em pt-PT
@@ -34,6 +37,7 @@ const path = require('node:path')
 const { exec } = require('node:child_process')
 const { novoEstado, passo, distancia } = require('./lib/regras')
 const { novoEncaminhador, encaminhar, listarNotificacoes, alarmesAtivos } = require('./lib/mensagens')
+const { porNaFila, textoAEnviar, recuoMs, filaValida } = require('./lib/fila')
 const { resumo } = require('./lib/resumo')
 const { criarTelegram, erroEmPortugues } = require('./lib/telegram')
 
@@ -67,10 +71,18 @@ const AJUDA = `Comandos do Arlequin:
 /amarrar — grava aqui o ponto de amarração
 /largar — apaga o ponto de amarração`
 
-// deps (testes): agora() o relógio do anti-spam; maxCodigos; limiteTelegramMs o limite de cada chamada
+// O erro de uma chamada ao Telegram para o registo: os do cliente já começam por "Telegram <método>:".
+const registoTelegram = (e) => { const m = String(e?.message ?? e); return /^Telegram\b/.test(m) ? m : `Telegram: ${m}` }
+
+// deps (testes): agora() o relógio (anti-spam, regras, encaminhador e fila); maxCodigos; limiteTelegramMs
+// o limite de cada chamada; tickMs, encaminharMs os ciclos (1 s e 2 s); pausaFilaMs entre duas
+// mensagens da fila (1 s: o Telegram não quer mais do que uma por segundo no mesmo chat)
 module.exports = function (app, deps = {}) {
   const agora = deps.agora || (() => Date.now())
   const maxCodigos = deps.maxCodigos ?? MAX_CODIGOS
+  const tickMs = deps.tickMs ?? 1000
+  const encaminharMs = deps.encaminharMs ?? 2000
+  const pausaFilaMs = deps.pausaFilaMs ?? 1000
   const plugin = {
     id: 'signalk-arlequin-porto',
     name: 'Arlequin · porto',
@@ -286,7 +298,7 @@ module.exports = function (app, deps = {}) {
       gaiuta: bool(c.gaiuta),
       movimento: bool(c.movimento),
       armado: persist.armado
-    }, Date.now())
+    }, agora())
     estado = r.estado
     if (JSON.stringify(estado.amarracao.ponto) !== JSON.stringify(persist.ponto)) {
       persist.ponto = estado.amarracao.ponto
@@ -301,7 +313,9 @@ module.exports = function (app, deps = {}) {
       if (a.tipo === 'foto') enviarFoto('📷 Alarme de intrusão')
       if (a.tipo === 'lembrete') enviarTodos(`🔓 ${a.texto}`)
     }
-    app.setPluginStatus(`${persist.armado ? '🔒 armado' : 'desarmado'} · ${estado.amarracao.ponto ? 'amarrado' : 'sem ponto'} · Telegram ${tg ? 'ligado' : 'sem token'}`)
+    const porEntregar = enc.porEnviar.length
+    const fila = porEntregar ? ` · ${porEntregar} por entregar${falhasFila ? ` (${falhasFila} ${falhasFila === 1 ? 'tentativa falhada' : 'tentativas falhadas'})` : ''}` : ''
+    app.setPluginStatus(`${persist.armado ? '🔒 armado' : 'desarmado'} · ${estado.amarracao.ponto ? 'amarrado' : 'sem ponto'} · Telegram ${tg ? 'ligado' : 'sem token'}${fila}`)
   }
 
   // O estado do encaminhador em disco (Tarefa 8.3): depois de um reinício do plugin, um aviso ainda ativo
@@ -315,6 +329,7 @@ module.exports = function (app, deps = {}) {
       if (!x || typeof x !== 'object' || Array.isArray(x)) throw new Error('não é um encaminhador')
       const base = novoEncaminhador()
       for (const k of Object.keys(base)) if (x[k] && typeof x[k] === 'object' && !Array.isArray(x[k])) base[k] = x[k]
+      base.porEnviar = filaValida(x.porEnviar)
       return base
     } catch (e) {
       if (e.code !== 'ENOENT') app.error(`encaminhador.json ilegível (começa vazio): ${e.message}`)
@@ -326,11 +341,61 @@ module.exports = function (app, deps = {}) {
   }
   function encaminharAlarmes () {
     const lista = listarNotificacoes(app.getSelfPath?.('notifications'))
-    const r = encaminhar(enc, lista, Date.now(), { amarrado: !!estado.amarracao.ponto })
-    const mudou = JSON.stringify(r.enc) !== JSON.stringify(enc)
-    enc = r.enc
+    const r = encaminhar(enc, lista, agora(), { amarrado: !!estado.amarracao.ponto })
+    let novo = r.enc
+    // as mensagens novas entram na fila (gravada antes de enviar); sem token ou sem chats autorizados
+    // não há a quem as entregar e não se guardam (como antes)
+    if (r.mensagens.length && tg && chatsAutorizados().length) {
+      const f = porNaFila(novo.porEnviar, r.mensagens, agora())
+      novo = { ...novo, porEnviar: f.fila }
+      for (const x of f.perdidas) app.error(`fila do Telegram cheia: já não vou entregar "${x.texto}"`)
+    }
+    const mudou = JSON.stringify(novo) !== JSON.stringify(enc)
+    enc = novo
     if (mudou) gravarEncaminhador()
-    for (const m of r.mensagens) enviarTodos(m)
+    enviarFila().catch(e => app.error(`fila do Telegram: ${e.message}`))
+  }
+
+  // A fila dos alarmes (auditoria K-09): a cabeça vai a todos os chats autorizados ao mesmo tempo e
+  // sai da fila quando pelo menos um a aceitou; se nenhum aceitou, espera o recuo (2 s … 1 min, ou o
+  // retry_after do Telegram) e tenta outra vez; as seguintes esperam por ela (a ordem conta: o
+  // "Resolvido" nunca chega antes do alarme). Nunca vai aos contactos do plano.
+  let falhasFila = 0 // tentativas falhadas seguidas da cabeça da fila
+  let proximaTentativa = 0 // agora() a partir do qual se tenta outra vez
+  let envioFila = null // o envio da fila em curso (um de cada vez)
+  let ultimoErroFila = null // o registo não repete o mesmo erro a cada recuo
+  async function enviarFila () {
+    if (envioFila || !tg || !enc.porEnviar.length || agora() < proximaTentativa) return
+    const chats = chatsAutorizados()
+    if (!chats.length) return
+    const este = {}
+    envioFila = este
+    const cliente = tg
+    try {
+      while (cliente === tg && enc.porEnviar.length) {
+        const item = enc.porEnviar[0]
+        const texto = textoAEnviar(item, agora())
+        const erros = await Promise.all(chats.map(id => cliente.sendMessage(id, texto).then(() => null, e => e)))
+        if (cliente !== tg) return // stop() a meio: a fila fica gravada e o arranque seguinte trata dela
+        const falhados = erros.filter(Boolean)
+        if (falhados.length) {
+          const msg = registoTelegram(falhados[0])
+          if (msg !== ultimoErroFila) { ultimoErroFila = msg; app.error(msg) }
+        } else ultimoErroFila = null
+        if (falhados.length === chats.length) {
+          falhasFila++
+          proximaTentativa = agora() + recuoMs(falhasFila, Math.max(0, ...falhados.map(e => e?.esperarS ?? 0)))
+          return
+        }
+        falhasFila = 0
+        proximaTentativa = 0
+        enc = { ...enc, porEnviar: enc.porEnviar.filter(x => x !== item) }
+        gravarEncaminhador()
+        if (enc.porEnviar.length && pausaFilaMs > 0) await new Promise(resolve => setTimeout(resolve, pausaFilaMs))
+      }
+    } finally {
+      if (envioFila === este) envioFila = null
+    }
   }
 
   plugin.start = function (props) {
@@ -344,10 +409,14 @@ module.exports = function (app, deps = {}) {
     estado.amarracao.ponto = persist.ponto
     ficheiroEnc = path.join(dir, 'encaminhador.json')
     enc = lerEncaminhador()
+    falhasFila = 0
+    proximaTentativa = 0
+    envioFila = null
+    ultimoErroFila = null
     offset = 0
     aCorrer = true
     tg = o.telegramToken ? criarTelegram({ token: o.telegramToken, base: o.telegramBase, ...(deps.limiteTelegramMs ? { limiteMs: deps.limiteTelegramMs } : {}) }) : null
-    temporizadores = [setInterval(tick, 1000), setInterval(encaminharAlarmes, 2000)]
+    temporizadores = [setInterval(tick, tickMs), setInterval(encaminharAlarmes, encaminharMs)]
     if (o.batimentoUrl) {
       const bater = () => fetch(o.batimentoUrl).catch(e => app.error(`batimento: ${e.message}`))
       bater()
