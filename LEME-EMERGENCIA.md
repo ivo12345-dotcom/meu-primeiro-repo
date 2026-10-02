@@ -38,7 +38,7 @@ cada tipo de avaria:
 | Camada | Avaria | Resposta | Custo |
 |---|---|---|---|
 | **A** | Roda, cabos ou setor partem, mas a lâmina está boa | **Cana de inox JÁ EXISTENTE** na cabeça da madre | €0 |
-| **B** | Lâmina partida ou arrancada, ou madre torta | **Leme de painel**: madre e lâmina próprias, montadas no espelho | €400–600 |
+| **B** | Lâmina partida ou arrancada, ou madre torta | **Leme de painel**: madre e lâmina próprias, montadas no espelho | €400–690 (sem o piloto de cana, §3.5) |
 | **C** | Nada do resto funciona | **Governo com drogue** e velas equilibradas | €0–150 |
 
 As orcas costumam causar as avarias B e A, por esta ordem. O skeg protege a
@@ -112,7 +112,7 @@ para ré.**
   interessar o interior da caixa atual e passa a interessar **o espaço no
   poço à volta da madre**:
   - distância do centro da madre à antepara de ré, ao espelho ou ao balcão de popa;
-  - largura livre para cada bordo, contando com bancos e paióis;
+  - largura livre para cada bordo, a contar com bancos e paióis;
   - altura da cabeça da madre acima do pavimento do poço;
   - posição da coluna da roda, que define até onde o assento pode ir para vante.
 

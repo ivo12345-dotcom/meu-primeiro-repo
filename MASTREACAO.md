@@ -10,7 +10,7 @@ cruzeiro com mais recursos de mau tempo do que a média de um 34 pés:
 - **Estai de proa** com enrolador de genoa
 - **Estai de popa** (aparenta dividir-se em duas pernas para os cantos do
   painel — por confirmar)
-- **Brandais altos e baixos** — contar ao nível dos cadastes para número
+- **Brandais altos e baixos** — contar ao nível dos putens (as chapas dos brandais) para número
   exato por bordo
 - **Babystay** — cabo **com manga de proteção**, do mastro ao teto de
   cabina
@@ -48,7 +48,7 @@ da charneira. **É a peça mais crítica do conjunto**: mais carregada, com
 carga cíclica, e a única cuja falha é súbita e total (um esticador gasto
 avisa; um gancho corroído abre de repente).
 
-Limpar com Scotch-Brite e ver o metal nu. Picadas superficiais com metal são
+Limpar com Scotch-Brite e ver o metal nu. Se as picadas forem superficiais, com metal são
 por baixo → pasta de decapagem e passivação. **Picadas fundas, ou folga no
 perno ou no queixo → substituir** (€40–90). Peça barata, crítica, e ele
 navega sozinho — não hesitar.
@@ -138,7 +138,7 @@ ponto**. Corrosão local, com causa identificada e removível.
 
 **Não é preciso baixar o mastro.** Cai por terra o argumento de fazer o
 cordame de manobra ao mesmo tempo — volta ao plano faseado com o mastro em
-pé, usando mensageiros (ver `CABOS.md`).
+pé, com mensageiros (ver `CABOS.md`).
 
 ### Prioridade (revista, e de volta ao plano original)
 
