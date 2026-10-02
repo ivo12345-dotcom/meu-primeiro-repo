@@ -305,6 +305,9 @@ O 1K no convés e o 2K no costado estão certos como escolhas, mas ficam
 **Fundo e quilha primeiro.** Depois o piloto (segurança, navega a solo).
 Costado e convés no inverno seguinte, com o barco já a navegar no meio.
 
+(Nota de 02/10: o plano do piloto mudou depois disto — a impressão 3D saiu do plano a 10/09 e o
+piloto está por decidir; hoje não há piloto. Ver `PILOTO-AUTOMATICO.md`.)
+
 Razão: o conjunto todo é mais do que um inverno para uma pessoa, e o risco
 real é o barco ficar em terra duas épocas seguidas.
 
@@ -319,7 +322,7 @@ real é o barco ficar em terra duas épocas seguidas.
 7. Água
 
 O piloto automático corre em paralelo — trabalho de bancada para dias de
-chuva.
+chuva. (O plano do piloto mudou depois disto: ver a nota em "Prioridade acordada".)
 
 
 ---

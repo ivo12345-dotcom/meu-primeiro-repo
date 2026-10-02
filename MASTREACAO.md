@@ -145,7 +145,7 @@ pé, usando mensageiros (ver `CABOS.md`).
 | | |
 |---|---|
 | 1 | Fundo, osmose e quilha — sem isto não vai à água |
-| 2 | Piloto automático — segurança, navega a solo |
+| 2 | Piloto automático — segurança, navega a solo. **Hoje não há piloto** (o ST4000+ não governa) e o plano está por decidir: as opções estão no `PILOTO-AUTOMATICO.md` |
 | 3 | Mastreação: tubos, esticadores afetados, gancho pelicano |
 | 4 | Cordame de manobra — faseado, mastro em pé |
 | 5 | Convés e costado — inverno seguinte |

@@ -193,7 +193,8 @@ Só se o plano foi enviado e há contactos entregues. As mensagens seguem só pa
 
 ## Fora de âmbito
 
-- O piloto automático (EV-100): o rumo da rota ativa para o piloto, quando vier.
+- O piloto automático (EV-100): o rumo da rota ativa para o piloto, quando vier. (Nota de 02/10:
+  o piloto está por decidir e hoje não há nenhum; as opções estão no `PILOTO-AUTOMATICO.md`.)
 - Meshtastic (depois do sistema validado).
 - O estado das barras automático (fica como precaução manual).
 

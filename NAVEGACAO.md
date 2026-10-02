@@ -8,7 +8,7 @@ aparelho ficam por fechar até haver fotos (ver §8).
 
 Toda a eletrónica de bordo num **só ecrã tátil na roda de leme**, com os dados
 **sobrepostos a uma carta náutica** (tipo Navionics): AIS, vento,
-profundidade, radar e rota enviada ao piloto.
+profundidade, radar e rota enviada ao piloto (quando houver piloto: hoje não há, ver §1).
 
 A eletrónica que existe a bordo: **anemómetro, plotter, radar, VHF, AIS,
 Navtex** e o piloto **ST4000+** (SeaTalk1). Das marcas e modelos ainda não se
@@ -54,6 +54,7 @@ os dois valores.
 | Ecrã (fase 1, testes) | **Waveshare 7" HDMI LCD (C)** (€56,90) | Barato, HDMI + USB como o definitivo. Serve para provar o sistema |
 | Ecrã (fase 2, definitivo) | **SailProof STS10, 10"** (€499) | Só se a fase 1 correr bem. 1500 nits, IP65, toque com água e luvas |
 | Suporte | **Impresso em ASA**, com pala e tampa | O PETG degrada-se ao sol. O ASA foi feito para o exterior |
+| Piloto automático | **Por decidir** (Ivo, 02/10). **Hoje não há piloto**: o ST4000+ não governa (falta a unidade de roda) e só dá a proa | As opções estão lado a lado no `PILOTO-AUTOMATICO.md` (§3). A única reserva de governo é a cana de emergência (§6) |
 
 ### Porque é que a Navionics não é o ecrã principal
 
@@ -124,8 +125,9 @@ passa a ter a **proa**. Custo zero.
   motor do piloto.
 - A fluxgate tem de ficar **longe de ferro e de cabos com corrente** (o motor,
   as colunas de som, o próprio ecrã novo). Confirmar onde está montada.
-- Quando o EV-100 chegar, o sensor dele (EV-1) passa a ser a bússola
-  principal, e o ST4000+ fica como reserva.
+- Se o piloto que vier trouxer bússola própria (por exemplo o sensor EV-1 de um Raymarine
+  EV-100 ou EV-200), essa passa a ser a principal, e o ST4000+ fica como reserva. O piloto está
+  por decidir (`PILOTO-AUTOMATICO.md`).
 
 Fontes: [MacArthur HAT, documentação](https://macarthur-hat-documentation.readthedocs.io/),
 [loja OpenMarine](https://shop.openmarine.net/home/23-macarthur-hat.html),
@@ -144,7 +146,7 @@ Fontes: [MacArthur HAT, documentação](https://macarthur-hat-documentation.read
 | Navtex | **NASA Target Navtex Pro** | **Nenhuma saída de dados** confirmada | **Fica autónomo** |
 | Sonda | **NASA Clipper Depth** | Versões com NMEA dão **DBT/DPT** (profundidade) | Profundidade → 3.ª entrada 0183 (ver abaixo) |
 | Bússola repetidora | **Autohelm ST50 Compass** (SeaTalk1) | **SeaTalk1** (mesmo barramento do ST4000+) | Segunda fonte de proa, entra na SeaTalk1 IN |
-| Piloto | Raytheon ST4000+ | SeaTalk1 (+ entrada NMEA a confirmar) | Proa; recebe a rota |
+| Piloto | Raytheon ST4000+ (painel, bússola e motor; falta a unidade de roda) | SeaTalk1 (e uma entrada NMEA 0183, confirmada no §2c) | **Só a proa: não governa** (§2c) |
 
 **O que muda:**
 - **O AIS é um transponder B330 com NMEA 2000 e Wi-Fi.** Entra na MacArthur
@@ -165,7 +167,7 @@ Fontes: [MacArthur HAT, documentação](https://macarthur-hat-documentation.read
 
 | Porta | Liga a |
 |---|---|
-| **NMEA 2000** | **em-trak B330** (AIS + GPS); depois o EV-100, o GPSMAP 421 e o Axiom |
+| **NMEA 2000** | **em-trak B330** (AIS + GPS); depois um piloto NMEA 2000 (se for esse o escolhido), o GPSMAP 421 e o Axiom |
 | 0183 IN 1 | NASA Clipper Wind (MWV), 4 800 baud |
 | 0183 IN 2 | NASA Clipper Log (VHW/VLW), 4 800 baud |
 | **USB–0183 (novo)** | NASA Clipper Depth (DBT/DPT), 4 800 baud |
@@ -184,7 +186,7 @@ se este aceitar 4 800 baud (confirmar no manual).
   (micro-C), 2 T, **2 terminadores de 120 Ω** e **alimentação da rede a 12 V**
   (a porta N2K da MacArthur não alimenta o barramento; o B330 precisa dele
   alimentado). Um kit inicial N2K resolve tudo, e é a mesma rede que depois
-  recebe o EV-100 e o Axiom.
+  recebe um piloto NMEA 2000 (se for esse o escolhido) e o Axiom.
 
 **Dados do motor: DECIDIDO pô-los na rede (28/09).** O YDEG-04 põe no NMEA 2000,
 a partir do EVC: rotações, temperatura da água, pressão do óleo, horas,
@@ -526,10 +528,14 @@ Bem feita, dura; é a opção do Ivo.
 ### Ordem das compras (decidida 28/09)
 
 1. **Agora:** Pi 5 8 GB + MacArthur + ecrã de testes (esta lista).
-2. **Depois:** piloto **Raymarine EV-100 Wheel** (ver `PILOTO-AUTOMATICO.md`).
+2. **Depois:** o piloto automático — **por decidir** (Ivo, 02/10). Esta lista de 28/09 punha aqui
+   o Raymarine EV-100 Wheel; as opções estão agora lado a lado no `PILOTO-AUTOMATICO.md`.
 3. **Mais tarde:** plotter **Axiom** (fase 3, abaixo).
 
-### Fase 2b: o EV-100 na rede do Pi
+### Fase 2b: o EV-100 na rede do Pi (só se o piloto for um Raymarine EV)
+
+**Por decidir:** esta fase só vale se o piloto escolhido for um Raymarine EV (o EV-100 Wheel ou o
+EV-200: opções B e C do `PILOTO-AUTOMATICO.md`). Hoje não há piloto.
 
 O EV-100 fala **SeaTalkNG = NMEA 2000**. Liga-se à porta N2K da MacArthur com
 um cabo adaptador SeaTalkNG ↔ DeviceNet. Ganha-se:
@@ -567,14 +573,20 @@ do SailProof STS10 (€499):
 - Não mostra o OpenCPN nem o diário (não tem entrada de vídeo): esses ficam no
   ecrã 2 (LAFVIN, mesa de navegação) e no telemóvel.
 - Radar: só Navico (Broadband/Halo). O JRC continua no ecrã dele.
-- EV-100: seguir rota pela NMEA 2000 deve funcionar; a confirmar.
+- Com um EV-100 (se for esse o piloto, por decidir): seguir rota pela NMEA 2000 deve funcionar; a
+  confirmar.
 - **A fazer:** suporte na roda (o suporte e a pala em ASA desenham-se para a
   HDS em vez do SailProof); alimentação 12 V com fusível; derivação N2K;
   identificar o **modelo do transdutor** e escolher a montagem num veleiro
   (de popa não serve bem com o barco adornado e o espelho invertido; em
   princípio, dentro do casco ou por passa-casco).
 
-### Função "Recolher velas" (pedido do Ivo, 28/09; só com o EV-100)
+### Função "Recolher velas" (pedido do Ivo, 28/09; a versão automática só com um piloto)
+
+**Hoje, sem piloto,** a página **Velas** do ecrã guia a manobra à mão, passo a passo: liga o motor,
+aproa ao vento com o rumo indicado, recolhe as velas e termina; cada passo fica no diário. O que
+está abaixo é a versão automática de 28/09, que só serve com um piloto que aceite rumo do Pi (por
+decidir: `PILOTO-AUTOMATICO.md`).
 
 Um botão no ecrã (Pi, e mais tarde a HDS) que põe o barco **aproado ao vento
 com o motor a dar seguimento**, para o Ivo recolher as velas a solo.
@@ -685,7 +697,8 @@ e as ligações são os mesmos nas duas fases; só se troca o ecrã. Na fase 1:
 - **Não é estanque nem se lê ao sol.** Testar à sombra, na cabine ou debaixo
   da capota, e protegê-lo dos salpicos (saco estanque ou caixa impressa).
 - Serve para validar tudo o resto: leitura de cada aparelho, proa do ST4000+,
-  AIS, vento, a rota para o piloto, o Wi-Fi para a Navionics e o consumo real.
+  AIS, vento, a rota para o piloto (quando houver piloto), o Wi-Fi para a Navionics e o consumo
+  real.
 - Passa-se à **fase 2 (SailProof STS10, €499,17)** só quando o sistema estiver
   estável. O ecrã de 7" fica depois como segundo ecrã na mesa de cartas.
 - O **suporte e a pala impressos** desenham-se para o ecrã definitivo. Para a
@@ -768,8 +781,11 @@ confirmar na etiqueta). Banco 1 = motor; bancos 2+3 = **serviço 440 Ah**.
 | Luzes interiores, telemóvel, etc. | 5 Ah | — |
 | **Subtotal** | **~89 Ah** | **~27 Ah** |
 | Frigorífico a compressor (confirmado 28/09; 120 L de origem) | +30–40 Ah (verão pode passar dos 40) | desligado quando o barco fica sozinho |
-| Piloto EV-100 (futuro, 2–4 A) | +50–100 Ah | — |
+| Piloto elétrico, se vier (ex.: EV-100, 2–4 A; por decidir) | +50–100 Ah | — |
 | **Total** | **~120 Ah (sem piloto) · ~185 Ah (com EV-100)** | **~27 Ah** |
+
+"Com EV-100", aqui e no §5c, quer dizer com um piloto elétrico de 2–4 A. Hoje não há piloto e o
+plano está por decidir (`PILOTO-AUTOMATICO.md`).
 
 **O que isto quer dizer:**
 - **No porto:** 220 Ah úteis ÷ 27 Ah/dia ≈ **8 dias** sem carregar.
@@ -898,7 +914,7 @@ Com tudo num ecrã só, esse ecrã passa a ser um ponto único de falha.
 | Viagem | Rota em track, XTE, VMG ao WP + **resumo da viagem** (distância, tempo, médias, vela/motor, polar, gasóleo, vento, pressão, abatimento, corrente, GPX) |
 | Diário | signalk-logbook: hora a hora, motor, **velas**, **rota**, **alarmes (e se foram por Mesh)**, entradas de um toque, cópia Wi-Fi |
 | Melhor rota | GRIB + polar + Weather Routing: isócronas, rota ótima vs direta, limites a solo, **ativar no piloto** |
-| Rec. velas | Verificações, bordo e desvio, aproar ao vento com o EV-100, terminar, registo no diário |
+| Velas (era "Rec. velas") | O estado da grande e da genoa (a AI precisa dele) e o Recolher velas **sem piloto**, passo a passo: liga o motor, aproa ao vento com o rumo indicado, recolhe, terminado; tudo no diário. (Em 28/09 aproava com o EV-100: piloto por decidir) |
 | Noite | As cores do dia muito escurecidas, com − e + para o brilho (ver abaixo) |
 
 **Modo noite (decisão do Ivo de 01/10; substitui o modo noite a vermelho de 29/09):** o Ivo não
@@ -914,9 +930,10 @@ escuro e do mais claro em `docs/capturas-3b2/noite-brilho-1.png` e `noite-brilho
 Barra de cima sempre visível: nome, hora, GPS, **Meshtastic**, **4G**,
 pressão, **estado do piloto**, **alarme AIS**.
 
-**Dependências:** piloto em track, melhor rota no piloto e Recolher velas
-precisam do **EV-100**; o abatimento precisa do **sensor de inclinação**; a
-polar começa **estimada** e aprende-se a navegar.
+**Dependências:** seguir a rota em track, mandar a melhor rota ao piloto e um Recolher velas
+automático precisam de um **piloto automático**, que **não há** (por decidir:
+`PILOTO-AUTOMATICO.md`); hoje o Recolher velas faz-se à mão, guiado pela página Velas. O
+abatimento precisa do **sensor de inclinação**; a polar começa **estimada** e aprende-se a navegar.
 
 ## 7b. Disposição do ecrã escolhida (28/09)
 

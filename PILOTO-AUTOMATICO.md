@@ -3,6 +3,12 @@
 Notas de trabalho. Continuação de uma conversa anterior — lê este ficheiro
 todo antes de responder para recuperares o contexto.
 
+> **Estado a 02/10/2026: hoje não há piloto automático.** O ST4000+ que está a bordo **não
+> governa** (falta a unidade de roda, §4) e só dá a proa (bússola fluxgate). A única reserva de
+> governo é a **cana de emergência** (`LEME-EMERGENCIA.md`, Camada A). **O plano do piloto está por
+> decidir** (decisão do Ivo de 02/10): as opções estão lado a lado no §3, e só aqui; os outros
+> documentos remetem para esta página.
+
 ## 1. O barco
 
 Os dados do barco (projeto, comprimento, deslocamento) estão no quadro "Dados do barco" do
@@ -20,7 +26,8 @@ Os dados do barco (projeto, comprimento, deslocamento) estão no quadro "Dados d
 ## 2. Estado do piloto existente
 
 **MODELO CONFIRMADO POR FOTO (2026-09-10): Raytheon ST4000+, série
-Autohelm.** Wheel pilot de cinta.
+Autohelm.** Piloto de roda (*wheel pilot*): uma unidade fechada entre a consola e a roda, com uma
+correia interna, e não uma cinta à volta da roda (ver o §4).
 
 É a versão boa da família: tem **SeaTalk** e aceita entrada de GPS, o que
 lhe dá **modo track** (segue rota, não só rumo de bússola). Bastante mais
@@ -29,28 +36,24 @@ capaz que o ST4000 simples.
 Procurar peças com o nome exato: **"Autohelm ST4000+ wheel drive"**.
 
 **O que existe:**
-- A unidade motora (motor + caixa + embraiagem) — solta dentro do
-  porta-copos, perto da roda, um pouco acima do eixo.
-- Alegadamente o resto do sistema está operacional (afirmação do vendedor,
-  **não verificada** — um painel que acende não prova que o motor governa).
+- O **motor** da unidade de roda (com a engrenagem de latão, que é o pinhão da correia: §4) —
+  solto dentro do porta-copos, perto da roda, um pouco acima do eixo.
+- O **painel** e a **bússola fluxgate**, que funcionam (testados a 10/09), e a cablagem SeaTalk.
 
-**O que falta:**
-- O **aro dentado** que aperta aos raios da roda de leme.
-- Os **grampos** de fixação do aro aos raios.
-- Possivelmente o suporte/pino de fixação na consola.
+**O que falta** (§4): praticamente a unidade de roda toda — a chapa traseira, os roletes, o
+*drive ring* (aro de acionamento) com o dentado interior, o manípulo da embraiagem, os grampos dos
+raios e a tampa.
 
-**Procurar em 2ª mão ANTES de imprimir.** eBay UK, "Autohelm ST4000+ wheel
-drive". Se aparecer por €100–150, é mais rápido e mais garantido do que
-imprimir.
+**Procurar em 2.ª mão** (a impressão 3D saiu do plano a 10/09, §4): eBay UK, "Autohelm ST4000+
+wheel drive". Os preços e as perguntas ao vendedor estão no §4.
 
-**A correia PODE já existir.** Foi encontrada a bordo uma correia dentada
+**A correia interna PODE já existir.** Foi encontrada a bordo uma correia dentada
 âmbar, de dentes trapezoidais finos (poliuretano com cabos de aço, o tipo
-certo). **Teste decisivo:** encostar à polia do motor — se engrenar
+certo). **Teste decisivo:** encostar ao pinhão do motor — se engrenar
 certinho, sem folga e sem forçar, é a correia.
 
 Se engrenar, medir: **passo** (medir 10 dentes e dividir por 10, não um
-só), **comprimento total**, **largura**, **número total de dentes**. Com o
-passo e o comprimento fecha-se a geometria do aro — deixa de se estimar.
+só), **comprimento total**, **largura**, **número total de dentes**.
 
 Se estiver rachada na base dos dentes ou com cabos à vista, não faz mal:
 com o passo identificado, compra-se nova por €10–20 num fornecedor de
@@ -62,55 +65,68 @@ transmissões.
 +1/-1 e +10/-10, ambos os lados. O sistema está vivo.
 
 Isto muda a economia: um ST4000+ com painel e motor a funcionar vale uns
-€300–400 em 2ª mão. Investir €100–150 no aro, ou uma tarde a imprimir,
-passa a ser claramente rentável.
+€300–400 em 2.ª mão. Comprar a unidade de roda que falta (£100–250 em 2.ª mão, §4) pode valer a
+pena: é a opção A do §3.
 
-### Dois testes que faltam
+### Os outros dois testes
 
-**A embraiagem.** Passar de `standby` para `auto` e ouvir — deve dar um
-**clique** claro. Em `standby` o eixo de saída roda livre à mão; em `auto`
-tem de resistir. Se não engatar, o motor roda mas não transmite, e a peça a
-substituir é outra.
+**A bússola fluxgate: feita a 10/09, lê bem** (o `NAVEGACAO.md` usa-a como fonte de proa, §2). O
+teste era: em `auto` o visor mostra um rumo; **rodar a bússola devagar com as mãos** e o número
+tem de acompanhar. Parado ou errático seria bússola morta.
 
-**A bússola fluxgate.** Em `auto` o visor mostra um rumo. **Rodar a bússola
-devagar com as mãos** — o número tem de acompanhar. Parado ou errático =
-bússola morta, e o piloto nunca governa por melhor que esteja a mecânica.
+**A embraiagem: só com a unidade de roda.** Segundo o §4, a embraiagem é o manípulo que aperta a
+correia interna contra o pinhão, e faz parte da mecânica que falta. O teste previsto (passar de
+`standby` para `auto` e ver se a saída passa a resistir) só se faz com a unidade completa.
 
 ### Nota histórica sobre o painel
 
 Nas fotos está com o visor **muito riscado** e com dano nos bordos da
 etiqueta — mas **funciona**. Painéis ST4000+ falham por entrada de água e
-membrana rachada, e não há novos, só 2ª mão. Vale a pena tratá-lo com
+membrana rachada, e não há novos, só 2.ª mão. Vale a pena tratá-lo com
 cuidado e protegê-lo da água.
 
-**2. A engrenagem de latão da saída do motor.** Está com **corrosão verde e
-massa ressequida**. Limpar com pincel e desengordurante, ver se os dentes
-estão inteiros e sem desgaste, e meter massa náutica nova. É a saída de
-força — se estiver comida, o resto não interessa.
+### A engrenagem de latão (o pinhão da correia, §4)
 
-**Nota de segurança:** o sistema de cinta é externo ao leme. Se falhar,
-perde-se o piloto mas não o governo do barco. Falha benigna — daí ser
-aceitável experimentar peças impressas aqui.
+Está com **corrosão verde e massa ressequida**. Limpar com pincel e desengordurante, ver se os
+dentes estão inteiros e sem desgaste, e meter massa náutica nova. É a saída de força — se estiver
+comida, o resto não interessa.
 
-## 3. Plano decidido
+**Nota de segurança** (escrita a 07/09, quando se julgava que era um sistema de cinta à volta da
+roda): a ideia era que um piloto de roda fica por fora do governo — se falhar, perde-se o piloto
+mas não o governo do barco. Com a unidade fechada do §4, a roda aparafusa-se ao aro de
+acionamento: quando houver unidade, **confirmar que, com a embraiagem solta, a roda roda livre**.
 
-Ordem acordada com o proprietário:
+## 3. Piloto automático: por decidir (as opções lado a lado)
 
-| Quando | O quê | Custo |
-|---|---|---|
-| Já | Reparar o Autohelm (aro impresso + correia comprada) | €60–250 |
-| Antes da 1ª saída a solo | AIS MOB pessoal | €250–350 |
-| Inverno, barco em seco | Raymarine EV-200 Sail pack + atuador Type 1 | ~€3.450 s/IVA |
-| Quando der | Comando remoto sem fios | €250–350 |
-| Para o ano ou mais tarde | Piloto de vento (Hydrovane / Windpilot / Aries usado) | €1.500–4.500 |
+**Decisão do Ivo (02/10): o plano do piloto está por decidir.** Havia três planos em três
+documentos — o `NAVEGACAO.md` comprava um EV-100 Wheel (28/09), esta página tinha um "plano
+decidido" com o EV-200 (07/09) e o `LEME-EMERGENCIA.md` previa um EV-100 Tiller na cana de
+emergência (27/09). Ficam todos aqui; os outros documentos remetem para esta lista. Até haver
+piloto, **governa-se à mão**: a melhor rota já conta as horas ao leme sem piloto (a regra das 8 h,
+no `NAVEGACAO.md`).
 
-**Elétrico primeiro, piloto de vento depois** — confirmado pelo proprietário.
+| Opção | O que é | Custo | De onde vem | Notas |
+|---|---|---|---|---|
+| **A. Completar o ST4000+** | Comprar a unidade de roda completa em 2.ª mão; o motor que está a bordo fica de sobressalente (§4) | £100–250 (eBay UK) | Esta página, 10/09 | Aproveita o que já funciona (painel, bússola, cablagem SeaTalk). **Marginal para ~6 t**: um remendo para o verão, a motor e em navegação calma, não para travessias a solo (nota no fim do §4) |
+| **B. Raymarine EV-100 Wheel** | Piloto de roda novo, com a bússola EV-1 e o comando p70s, em SeaTalkNG (NMEA 2000) | a cotar | `NAVEGACAO.md`, "Ordem das compras" de 28/09 | Liga à rede NMEA 2000 do Pi (`NAVEGACAO.md`, "Fase 2b"): rotas do OpenCPN e o Recolher velas automático. No mesmo dia ficou "não vem para já" (`NAVEGACAO.md` §2c) |
+| **C. Raymarine EV-200 Sail + atuador Type 1** | Piloto abaixo do convés: o pack EV-200 Sail (p70s + EV-1 + ACU-200 + cablagem) e um atuador linear Type 1 de 12 V na mecha do leme | ~€3 450 s/IVA: pack €2 050,38 s/IVA (SVB) + atuador ~€1 400–1 700 s/IVA (a confirmar por cotação) | Esta página, "plano decidido" de 07/09 (no inverno, com o barco em seco) | O piloto para travessias a solo. Type 1 até 11 000 kg: margem de ~1,8× com ~6 t. Notas da compra abaixo |
+| **D. Piloto de cana na cana de emergência** (ex.: Raymarine EV-100 Tiller) | Um piloto de cana que governa a cana de inox (Camada A) ou a do leme de painel (Camada B) | €250–700, usado a novo (`LEME-EMERGENCIA.md` §3.5) | `LEME-EMERGENCIA.md`, 27/09 | Reserva de emergência, não para uso diário: o EV-100 Tiller (84 kgf) vai até 6 000 kg e o barco tem ~6 t; só com pano reduzido e o barco equilibrado |
+| **E. NKE Gyropilot 3** | O computador de piloto de topo, com modos polar, roll e rajada | ~€2 535 s/IVA só o computador; €6 000–9 000 o sistema completo | Esta página, 07/09 | A referência em navegação a solo, "se algum dia o orçamento permitir". A parte mecânica abaixo do convés é a mesma da C |
+| **F. Piloto de vento** (Hydrovane, Windpilot, Aries usado) | Governo pelo vento, sem energia; o Hydrovane tem leme próprio e serve também de leme de emergência (`LEME-EMERGENCIA.md` §3.6) | €1 500–4 500 | Esta página, 07/09 ("para o ano ou mais tarde") | Não funciona a motor nem com vento fraco: completa um piloto elétrico, não o substitui (§6) |
 
-### Notas sobre a compra do EV-200
+**Fora do piloto, da mesma lista de 07/09:** o **AIS MOB pessoal**, antes da 1.ª saída a solo
+(€250–350), e o **comando remoto sem fios** (€250–350), que só serve com um piloto.
+
+**Como estava antes:** a 07/09, a ordem acordada com o proprietário era reparar já o Autohelm
+(aro impresso + correia comprada, €60–250), o EV-200 com o Type 1 no inverno e o piloto de vento
+para o ano — "elétrico primeiro, piloto de vento depois". A reparação com o aro impresso caiu a
+10/09 (§4) e a 02/10 o Ivo deixou o plano por decidir.
+
+### Notas sobre a compra do EV-200 (opção C)
 
 - O pack EV-200 Sail (p70s + EV-1 + ACU-200 + cablagem) **NÃO inclui o
-  atuador**. Preço verificado: €2.050,38 s/IVA no SVB.
-- Atuador **Type 1** linear 12 V: ~€1.400–1.700 s/IVA (a confirmar por
+  atuador**. Preço verificado: €2 050,38 s/IVA no SVB.
+- Atuador **Type 1** linear 12 V: ~€1 400–1 700 s/IVA (a confirmar por
   cotação — é o número menos firme).
 - **Não sobredimensionar para Type 2:** o Type 1 está especificado até
   11 000 kg e o barco tem ~6 t (6 046 kg no sailboatdata, ver §1): margem de ~1,8×. (Esta nota
@@ -119,7 +135,7 @@ Ordem acordada com o proprietário:
   atuador) é agnóstica à marca. Fazer bem uma vez; se um dia se quiser
   saltar para NKE, troca-se só o cérebro.
 - Alternativa de topo, se algum dia o orçamento permitir: **NKE Gyropilot
-  3** (~€2.535 s/IVA só o computador, €6.000–9.000 sistema completo) — é a
+  3** (~€2 535 s/IVA só o computador, €6 000–9 000 sistema completo) — é a
   referência em navegação a solo, com modos polar, roll e rajada.
 
 ## 4. ⚠️ CORREÇÃO IMPORTANTE: como o ST4000 Wheel Drive funciona
@@ -132,7 +148,7 @@ está ERRADA. Confirmado pelo manual de serviço Raymarine.
 
 - **Chapa de suporte traseira** fixa à consola, com **roletes**
 - **Drive ring** (aro de acionamento) que **roda sobre esses roletes**
-- **Correia dentada INTERNA** ligando o **pinhão do motor** ao aro — a
+- **Correia dentada INTERNA** que liga o **pinhão do motor** ao aro — a
   correia não passa pela roda de leme
 - **Manípulo da embraiagem aperta a correia contra o pinhão** para agarrar
 - **A roda de leme aparafusa-se ao aro**, através de grampos nos raios
@@ -157,7 +173,7 @@ resultado incerto. **Não é o fim de semana tranquilo descrito antes.**
 Toda a estratégia de impressão anterior (ASA, PA-CF, segmentação, arco de
 teste, medidas da polia e da roda) fica **obsoleta** e foi removida.
 
-## SOLUÇÃO: comprar wheel drive completo em 2ª mão
+## Opção A: comprar a unidade de roda (*wheel drive*) completa em 2.ª mão
 
 Procurar no eBay UK: **"Autohelm ST4000 wheel drive"** ou **"Raymarine
 ST4000 wheel drive unit"**. Aparecem com regularidade, **£100–250**. Muita
@@ -176,10 +192,10 @@ fluxgate a ler, cablagem SeaTalk. Falta só a mecânica. O motor atual fica de
 
 ## Nota de honestidade que se mantém
 
-Mesmo completo, continua a ser um piloto **marginal para 5 toneladas**. Por
+Mesmo completo, continua a ser um piloto **marginal para ~6 toneladas** (§1). Por
 €200 é um excelente remendo que dá o verão e liberta as mãos a motor e em
-navegação calma. **Não é o piloto para travessias a solo** — esse continua a
-ser o EV-200 abaixo do convés, quando o orçamento respirar.
+navegação calma. **Não é o piloto para travessias a solo** — para isso ficam as opções abaixo do
+convés (C, E) ou de vento (F) do §3.
 
 ## 5. MEDIDAS AINDA ÚTEIS
 
@@ -190,7 +206,7 @@ Já não são para desenhar peças (ver secção 4), mas continuam a servir:
    para comprar correia nova se a existente estiver rachada.
 3. **Diâmetro da roda de leme** e **número de raios** — para confirmar
    compatibilidade do drive ring que se comprar.
-4. **Fotos do paiol da popa** (para o projeto do EV-200):
+4. **Fotos do paiol da popa** (para um piloto abaixo do convés, opções C e E do §3):
    - Setor/quadrante do leme visto de cima, com a mecha visível.
    - Espaço lateral para um atuador de ~60 cm, e o que lá está
      (mangueiras, cablagem, depósito).
@@ -201,8 +217,9 @@ Já não são para desenhar peças (ver secção 4), mas continuam a servir:
 ## 6. Considerações a solo (não esquecer)
 
 - **Orçamento elétrico:** um atuador abaixo do convés puxa 2–5 A de média.
-  Numa travessia de 24 h são 50–100 Ah só de piloto. Painel solar de
-  100–200 W deixa de ser luxo.
+  Numa travessia de 24 h são 50–100 Ah só de piloto. O solar decidido, 2 × 305 W
+  (`NAVEGACAO.md` §5c), já conta com isto: com um piloto elétrico, no verão fica perto do
+  equilíbrio; fora do verão falta energia e é preciso o motor.
 - **Comando remoto sem fios** é dos acessórios com melhor retorno para quem
   navega sozinho — corrige rumo a partir da proa.
 - **Segurança:** com o piloto ligado, se cair à água o barco continua sem
@@ -214,18 +231,18 @@ Já não são para desenhar peças (ver secção 4), mas continuam a servir:
 
 ## 7. Próximo passo
 
-Assim que chegarem as medidas do ponto 5: desenhar o aro e os grampos
-(paramétricos, para se poder afinar a folga do dente), gerar STL, e definir
-os parâmetros de fatiamento para ASA e PA-CF na K2 Plus.
+O Ivo decide o piloto (§3). Para isso servem as medidas e as fotos do §5 e, para a opção A, as
+perguntas ao vendedor do §4. (O plano de 07/09 — desenhar o aro e os grampos, gerar o STL e
+imprimir em ASA e PA-CF na K2 Plus — saiu a 10/09, com a impressão 3D.)
 
-### Envio para a impressora
+### Envio para a impressora (ficou do plano de impressão)
 
 **O envio de gcode para a K2 já está montado no PC do proprietário e
 funciona.** Numa sessão local (com shell na máquina dele) o fluxo completo
 é possível: desenhar -> gerar STL -> fatiar -> enviar para a impressora.
-Ao abrir no PC, procurar o método já em uso — upload para a API do
+Ao abrir no PC, procurar o método já em uso — envio pela API do
 Moonraker, Creality Print, ou pasta vigiada pela impressora — e usar esse,
 em vez de assumir que não há acesso.
 
 A limitação existe apenas em sessões remotas (Claude Code na web), que
-nao alcançam a rede local. Não confundir as duas situações.
+não alcançam a rede local. Não confundir as duas situações.

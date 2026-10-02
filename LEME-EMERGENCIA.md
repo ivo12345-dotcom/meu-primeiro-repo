@@ -27,7 +27,8 @@ construção 1976–1982, só André Mauric no projeto, 8,70 m na flutuação e 
 Há duas consequências:
 - O barco nasceu com cana, por isso **é muito provável que a cabeça da madre
   ainda tenha espiga ou quadrado para uma cana**. Isso torna a Camada A quase grátis.
-- Com 6 t, e não 4,5–5 t, convém rever a margem do ST4000+ de roda.
+- Com 6 t, e não 4,5–5 t, convém rever a margem de um piloto de roda (o ST4000+ completo ou um
+  EV-100 Wheel: opções A e B do `PILOTO-AUTOMATICO.md`, por decidir).
 
 ## 1. O que pode avariar e a resposta a cada caso
 
@@ -70,9 +71,13 @@ encaixa no topo da madre**. Não é preciso fabricar nada, só verificar:
 
 ### Um só piloto de cana para duas avarias
 
-O piloto de cana previsto para a Camada B **pode também governar a cana da
-Camada A**. Se o ST4000+ de roda avariar, ou se partir a transmissão da roda,
-o piloto de cana liga-se à cana de inox e o barco continua a governar-se sozinho.
+**Hoje não há piloto nenhum a bordo**: o ST4000+ não governa (falta a unidade de roda) e o plano
+do piloto está por decidir (`PILOTO-AUTOMATICO.md`, §3; o piloto de cana é a opção D). A única
+reserva de governo é esta cana de inox, à mão.
+
+Um piloto de cana para a Camada B **pode também governar a cana da Camada A**. Se a roda ou a
+transmissão da roda avariarem, o piloto de cana liga-se à cana de inox e o barco continua a
+governar-se sozinho.
 
 **Localização (27/09):** a cabeça da madre está **no sítio original**, onde
 ligava a cana de origem. Por cima construíram uma **elevação com tampa que
@@ -94,8 +99,8 @@ para ré.**
   antepara pelo meio.
 - **Conceito: um ponto de fixação do piloto junto ao topo do painel, comum
   às Camadas A e B.**
-  - O mesmo piloto EV-100 governa a cana de inox (leme principal, virada para
-    ré, braço de 0,5 m) ou a cana do leme de painel (Camada B), cuja
+  - O mesmo piloto de cana (ex.: EV-100 Tiller) governa a cana de inox (leme principal, virada
+    para ré, braço de 0,5 m) ou a cana do leme de painel (Camada B), cuja
     chumaceira de cima fica no mesmo topo do painel.
   - Fica um só suporte para fabricar e um só procedimento para treinar.
   - A geometria fecha-se com três medidas:
@@ -133,7 +138,8 @@ de cerca de 25 cm.
   qualquer piloto de cana.
 - **Virada para ré, com o pino do piloto a 0,45–0,50 m da madre, funciona.**
   É o compromisso entre força e ângulo de leme.
-- **Piloto:** Raymarine **EV-100 Tiller** (84 kgf, para barcos até 6 000 kg).
+- **Piloto, se for esta a opção** (por decidir: `PILOTO-AUTOMATICO.md`, opção D): Raymarine
+  **EV-100 Tiller** (84 kgf, para barcos até 6 000 kg).
   O ST2000+ não serve: só vai até 4 500 kg. Mesmo o EV-100 fica **no limite
   do deslocamento** (6 046 kg). Serve como recurso de emergência, a navegar
   com pano reduzido e o barco equilibrado, não para uso diário.
@@ -141,8 +147,8 @@ de cerca de 25 cm.
   lado vira o barco ao contrário. Montar o piloto no bordo oposto ou inverter
   o sentido na configuração, e **confirmar no primeiro ensaio**.
 - **A roda também roda:** se os cabos estiverem inteiros, o piloto também
-  arrasta a roda e o setor, o que acrescenta atrito. Se a cana servir de
-  reserva ao ST4000+, desligar os cabos.
+  arrasta a roda e o setor, o que acrescenta atrito. Se o piloto de cana
+  governar pela cana com os cabos da roda inteiros, desligar os cabos.
 - **Porcas de orelhas no assento:** pôr anilha de nylon, ou uma porca
   autoblocante de orelhas, e um cabo de segurança no assento. Com a vibração,
   as porcas de orelhas desapertam sozinhas.
@@ -160,9 +166,9 @@ de cerca de 25 cm.
 - A **lâmina** fica colada e aparafusada na parte de baixo da madre. Madre e
   lâmina formam uma só peça de cerca de 13 kg, que se enfia de cima para baixo
   a partir do convés.
-- No topo leva uma **cana** com pino para um **piloto de cana**. Assim o
-  barco governa-se sozinho com o leme de emergência. O ST4000+ de roda deixa
-  de servir quando se perde o leme principal.
+- No topo leva uma **cana** com pino para um **piloto de cana** (por decidir:
+  `PILOTO-AUTOMATICO.md`, opção D). Com ele, o barco governa-se sozinho com o leme de
+  emergência. Um piloto de roda deixaria de servir quando se perde o leme principal.
 - Com o espelho invertido, o pé do painel, junto à água, fica **mais para ré**
   do que o topo. Para a madre ficar vertical:
   - A chumaceira de baixo fica **curta e junto ao painel**. É a que leva mais
