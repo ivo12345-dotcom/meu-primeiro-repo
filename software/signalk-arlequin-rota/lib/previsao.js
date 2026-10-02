@@ -291,8 +291,10 @@ function guardarArquivo (pasta, previsao) {
 
 // Sem rede: para cada ponto preciso, a previsão guardada mais recente a ≤ raioMn que cubra
 // [desde, ate]. Serve também os ficheiros do plugin da AI (um ponto, AAAA-MM-DDTHH-MM.json.gz).
+// soComOndas: só as guardadas com ondas (auditoria M-11: com o pedido do mar falhado, a previsão de
+// agora, só com o vento, também se arquiva; para juntarMarDoArquivo serve a mais recente COM ondas).
 // → { previsao, obtida, idadeH, aviso: null | 'aviso' | 'grande', texto } ou { erro }.
-function lerArquivo (pasta, { pontos, desde, ate, agora = Date.now(), raioMn = 15, maxIdadeH = 48 }) {
+function lerArquivo (pasta, { pontos, desde, ate, agora = Date.now(), raioMn = 15, maxIdadeH = 48, soComOndas = false }) {
   let nomes = []
   try { nomes = fs.readdirSync(pasta).filter(n => /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}.*\.json(\.gz)?$/.test(n)) } catch { nomes = [] }
   const obtidaDoNome = (n) => Date.parse(`${n.slice(0, 13)}:${n.slice(14, 16)}:00Z`)
@@ -320,6 +322,7 @@ function lerArquivo (pasta, { pontos, desde, ate, agora = Date.now(), raioMn = 1
       if (achou && x.obtida < achou.obtida) break
       const r = ler(x.n)
       if (!r || !Array.isArray(r.horas) || !r.horas.length) continue
+      if (soComOndas && !(Array.isArray(r.ondas) && r.ondas.some(Number.isFinite))) continue
       const d = c.distanciaMn(p, r)
       if (d > raioMn) continue
       const t0 = Date.parse(r.horas[0]); const t1 = Date.parse(r.horas.at(-1))
