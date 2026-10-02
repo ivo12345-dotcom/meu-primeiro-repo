@@ -9,6 +9,7 @@ import { novaViagem, acumular } from './lib/viagem.js'
 import { maisGrave, deveTocar, paginaDoAlarme, bipDeLigacao, chipAlarme } from './lib/alarmes.js'
 import { podeRedesenhar, aoEnter, aoEscrever } from './lib/interacao.js'
 import { NIVEIS, PADRAO as BRILHO_PADRAO, nivelValido, mudarNivel } from './lib/brilho.js'
+import { criarAudio, retomar, comSom, chipSemSom } from './lib/som.js'
 import carta from './paginas/carta.js'
 import instr from './paginas/instr.js'
 import ais from './paginas/ais.js'
@@ -37,7 +38,9 @@ const app = {
   baro: guardado('arlequin.baro', criarBarometro()),
   viagem: guardado('arlequin.viagem', null) || novaViagem(Date.now()),
   estados: {}, // estado de cada página (seleções, passos…)
-  audio: null,
+  // o som nasce já no arranque (auditoria K-03): no Pi o kiosk arranca com o autoplay; sem ele, o browser
+  // deixa-o suspenso até ao 1.º toque e o ciclo tenta retomá-lo de segundo a segundo
+  audio: criarAudio(),
   bipados: new Set(),
   estavaLigado: null,
   sons: [], // últimos sons tocados (diagnóstico: window.arlequin.app.sons)
@@ -85,13 +88,12 @@ function contexto () {
 
 // ---------- barra de cima (lib/barra.js) ----------
 function barra (ctx) {
-  const som = app.audio ? '' : '<span class="chip off aviso-som" title="O browser só deixa tocar depois de um toque">🔇 toque para ligar o som</span>'
   return barraHtml({
     agora: Date.now(),
     gps: ctx.idade('navigation.position') < 10000,
     pressao: ctx.v('environment.outside.pressure'),
     tendencia: ctx.baro,
-    somHtml: som,
+    somHtml: chipSemSom(app.audio),
     alarmeHtml: chipAlarme(maisGrave(ctx.notificacoes)),
     piloto: ctx.v('steering.autopilot.state'),
     ligado: store.ligado
@@ -100,8 +102,10 @@ function barra (ctx) {
 
 // ---------- som ----------
 function bip (duracao = 0.25, freq = 880, motivo = '') {
-  app.sons = [...app.sons.slice(-9), { t: new Date().toISOString(), motivo, tocou: !!app.audio }]
-  if (!app.audio) return
+  const tocou = comSom(app.audio)
+  app.sons = [...app.sons.slice(-9), { t: new Date().toISOString(), motivo, tocou }]
+  // suspenso, os osciladores ficavam em fila e tocavam todos juntos ao retomar
+  if (!tocou) return
   const o = app.audio.createOscillator()
   const g = app.audio.createGain()
   o.frequency.value = freq
@@ -166,9 +170,8 @@ function irPara (pag) {
 // ---------- eventos ----------
 document.addEventListener('pointerdown', () => {
   app.premidoEm = Date.now()
-  if (!app.audio) {
-    try { app.audio = new AudioContext() } catch { /* sem som */ }
-  }
+  if (!app.audio) app.audio = criarAudio()
+  retomar(app.audio)
 }, { capture: true })
 for (const fim of ['pointerup', 'pointercancel']) document.addEventListener(fim, () => { app.premidoEm = null }, { capture: true })
 
@@ -190,6 +193,10 @@ document.addEventListener('click', async (ev) => {
     app.brilho = mudarNivel(app.brilho, acao === 'brilho-mais' ? 1 : -1)
     guardar('arlequin.brilho', app.brilho)
     aplicarNoite()
+    return render()
+  }
+  if (acao === 'ligar-som') {
+    retomar(app.audio)
     return render()
   }
   if (acao === 'silenciar') {
@@ -215,6 +222,7 @@ document.addEventListener('input', (ev) => {
 // ---------- ciclo ----------
 let segundos = 0
 function ciclo () {
+  retomar(app.audio)
   const ctx = render()
   tocar(ctx)
   const p = ctx.v('environment.outside.pressure')
