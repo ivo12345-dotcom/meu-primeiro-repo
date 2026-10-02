@@ -15,6 +15,26 @@ test('a barra: nome, GPS, barómetro com a seta, piloto e, sem ligação, "SEM L
   assert.match(barraHtml({ ...base, ligado: false, gps: false, pressao: undefined, tendencia: null, piloto: undefined }), /class="chip off">GPS[\s\S]*— hPa[\s\S]*Piloto: manual[\s\S]*SEM LIGAÇÃO AO SIGNALK/)
 })
 
+test('auditoria K-11: a falha das janelas/modo noite do OpenCPN fica à vista na barra (antes calava-se), numa frase curta em pt-PT', async () => {
+  const { falhaJanela } = await import('../public/lib/erros.js')
+  const erro = (status, message = String(status)) => Object.assign(new Error(message), status ? { status } : {})
+  assert.equal(falhaJanela(erro(401), { noite: true }), 'OpenCPN: sem permissão (entra no SignalK)')
+  assert.equal(falhaJanela(erro(undefined, 'sem ligação ao SignalK'), { layout: 'carta' }), 'OpenCPN: sem ligação ao plugin do ecrã')
+  assert.equal(falhaJanela(erro(500, 'o comando do modo noite do OpenCPN falhou (…)'), { noite: true }), 'OpenCPN: o modo noite não mudou')
+  assert.equal(falhaJanela(erro(500), { noite: false }), 'OpenCPN: o modo noite não mudou')
+  assert.equal(falhaJanela(erro(404), { layout: 'inteiro' }), 'OpenCPN: as janelas não mudaram')
+  const html = barraHtml({ ...base, falhas: ['OpenCPN: o modo noite não mudou', '<b>'] })
+  assert.match(html, /<span class="chip falha">⚠ OpenCPN: o modo noite não mudou<\/span>/)
+  assert.match(html, /<span class="chip falha">⚠ &lt;b&gt;<\/span>/)
+  assert.doesNotMatch(barraHtml(base), /chip falha/)
+  // o app.js guarda a falha e já não a engole
+  const { readFileSync } = await import('node:fs')
+  const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8')
+  const janela = app.slice(app.indexOf('function janela'), app.indexOf('\n}\n', app.indexOf('function janela')))
+  assert.doesNotMatch(janela, /\.catch\(\(\) => \{\}\)/)
+  assert.match(janela, /falhaJanela\(/)
+})
+
 test('auditoria K-04: o estado do piloto vem do SignalK e passa pelo esc', () => {
   const html = barraHtml({ ...base, piloto: '<!--<i id=x>' })
   assert.ok(!html.includes('<!--'))

@@ -44,6 +44,8 @@ html, body { margin: 0; height: 100%; background: var(--fundo); color: var(--tex
 .chip.bom { color: var(--ok); }
 .chip.alarme { background: var(--perigo-fundo); color: #fff; font-weight: bold; cursor: pointer; margin-left: auto; }
 .chip.aviso { background: var(--aviso-fundo); color: #fff; font-weight: bold; cursor: pointer; margin-left: auto; }
+/* Uma falha do ecrã (ex.: o modo noite do OpenCPN não mudou): âmbar, sem empurrar o alarme. */
+.chip.falha { background: var(--aviso-fundo); color: #fff; }
 .chip.piloto { margin-left: auto; }
 .chip.alarme + .chip.piloto, .chip.aviso + .chip.piloto { margin-left: 0; }
 .x { margin-left: .4rem; padding: 0 .4rem; border-radius: .2rem; background: rgba(0,0,0,.35); }
@@ -119,7 +121,7 @@ input[type=text] { font: inherit; font-size: 1.1rem; padding: .5rem; flex: 1; ba
 .passo .n { flex: 0 0 2rem; height: 2rem; border-radius: 1rem; background: var(--botao); display: flex; align-items: center; justify-content: center; font-weight: bold; }
 .passo.feito .n { background: #0f6e56; } .passo.atual { background: var(--tile); }
 /* De noite nada pode ser branco: a letra dos alarmes fica no cinzento claro das faixas. */
-body.noite .chip.alarme, body.noite .chip.aviso, body.noite .chip.sem-som { color: var(--faixa-texto); }
+body.noite .chip.alarme, body.noite .chip.aviso, body.noite .chip.sem-som, body.noite .chip.falha { color: var(--faixa-texto); }
 /* De noite o fundo do alarme e o do aviso quase não se distinguem pela luminância (1,01:1): o contorno. */
 body.noite .chip.alarme { outline: 2px solid var(--perigo); outline-offset: -2px; }
 body.noite button, body.noite .btn { color: var(--texto); }

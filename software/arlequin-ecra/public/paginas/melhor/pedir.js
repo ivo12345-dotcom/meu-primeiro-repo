@@ -6,11 +6,12 @@
 
 import { esc, num } from '../../lib/rota-texto.js'
 import { proximoWp } from '../comum.js'
+import { SEM_AUTORIZACAO } from '../../lib/erros.js'
 
 export const URL_ROTA = '/plugins/signalk-arlequin-rota'
 export const PLUGIN_DESLIGADO = 'o plugin da rota não responde'
 export const CALCULO_PERDIDO = 'este cálculo já não existe no plugin (reiniciado?): calcula outra vez'
-export const SEM_AUTORIZACAO = 'o SignalK recusou o pedido (sem sessão iniciada neste ecrã?): entra no SignalK e tenta outra vez'
+export { SEM_AUTORIZACAO } // o mesmo em todas as páginas (lib/erros.js)
 export const CANCELADO = 'Deixei de seguir o cálculo: o plugin da rota continua a calcular até ao fim (um novo Calcular segue esse).'
 const GPS_VELHO_MS = 10000
 

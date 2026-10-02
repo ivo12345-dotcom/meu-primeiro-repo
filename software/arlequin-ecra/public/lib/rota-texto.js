@@ -35,6 +35,12 @@ function dia (t, agora) {
   return `${a.semana} ${a.dia}/${a.mes}`
 }
 
+// O dia de Lisboa de uma hora: "2026-10-02"; "—" sem hora.
+export function dataLisboa (t) {
+  t = ms(t)
+  return ok(t) ? partes(t).data : SEM
+}
+
 // "21:05" (hoje), "amanhã 06:30", "sex 02/10 23:10"; "—" sem hora.
 export function horaLisboa (t, agora = Date.now()) {
   t = ms(t)
