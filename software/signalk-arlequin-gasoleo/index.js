@@ -5,11 +5,18 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
-const { novoEstado, passo } = require('./lib/nivel')
+const { novoEstado, descontar, passo } = require('./lib/nivel')
 const { acrescentarPonto, monotona } = require('./lib/tabela')
 const calibracao = require('./lib/calibracao')
 
 const DUAS_HORAS = 2 * 3600 * 1000
+// Valores da árvore só contam com a hora recente (auditoria I-12, E-M15): as rotações e o consumo do
+// J1939 com menos de 10 s (com o plugin do motor parado ficavam lá as últimas rotações, o gasóleo
+// continuava a descontar e a janela da fuga nunca recomeçava); as tensões da sonda com menos de 60 s
+// (com a app I2C parada ficavam lá as últimas e o nível ficava preso nelas).
+const SENSOR_VELHO = 10 * 1000
+const SONDA_VELHA = 60 * 1000
+const SONDA_PERDIDA = 5 * 60 * 1000 // sem a sonda há tanto tempo: aviso sondaPerdida, só no ecrã
 
 module.exports = function (app) {
   const plugin = {
@@ -43,11 +50,40 @@ module.exports = function (app) {
   let calib = null // sessão de calibração completa (depósito vazio, +5 L de cada vez)
   let ficheiroAbast, ficheiroNivel
   let ultimaGravacao = 0
+  let semSondaDesde = null // desde quando faltam (ou estão velhas) as tensões da sonda
+  let avisoSonda = false // o aviso sondaPerdida está publicado
 
-  const numero = (p) => { const x = app.getSelfPath?.(p)?.value; return typeof x === 'number' ? x : null }
+  // Um número da árvore com a hora há menos de maxIdade ms; sem hora não se sabe a idade: não conta.
+  const fresco = (p, maxIdade) => {
+    const v = app.getSelfPath?.(p)
+    return typeof v?.value === 'number' && Date.now() - Date.parse(v.timestamp) <= maxIdade ? v.value : null
+  }
 
   function publicar (values) {
     app.handleMessage(plugin.id, { updates: [{ values }] })
+  }
+
+  // Guarda o nível de minuto a minuto: num arranque com o barco adornado (ou sem a sonda), parte daqui.
+  function guardarNivel () {
+    if (estado.litros === null || Date.now() - ultimaGravacao <= 60000) return
+    ultimaGravacao = Date.now()
+    fs.writeFile(ficheiroNivel, JSON.stringify({ litros: estado.litros, t: new Date().toISOString() }), () => {})
+  }
+
+  function publicarNivel () {
+    if (estado.litros === null) return
+    publicar([
+      { path: 'tanks.fuel.0.currentVolume', value: estado.litros / 1000 },
+      { path: 'tanks.fuel.0.currentLevel', value: Math.min(1, estado.litros / o.capacidadeL) },
+      { path: 'tanks.fuel.0.capacity', value: o.capacidadeL / 1000 }
+    ])
+  }
+
+  function avisarSonda (perdida) {
+    if (perdida === avisoSonda) return
+    avisoSonda = perdida
+    const texto = `Sonda do gasóleo sem leitura há mais de 5 min (ADS1115, app I2C do OpenPlotter): ${estado.litros !== null ? `os ${Math.round(estado.litros)} L vêm só do consumo do motor` : 'nível desconhecido'}`
+    publicar([{ path: 'notifications.tanks.fuel.0.sondaPerdida', value: perdida ? { state: 'warn', method: ['visual'], message: texto } : { state: 'normal', method: [], message: 'Normal' } }])
   }
 
   async function diario (texto) {
@@ -61,12 +97,26 @@ module.exports = function (app) {
   }
 
   function tick () {
-    const sonda = numero(o.caminhoSonda)
-    const alimentacao = numero(o.caminhoAlimentacao)
+    const agora = Date.now()
+    const sonda = fresco(o.caminhoSonda, SONDA_VELHA)
+    const alimentacao = fresco(o.caminhoAlimentacao, SONDA_VELHA)
+    const rpm = fresco('propulsion.main.revolutions', SENSOR_VELHO)
+    const motor = { t: agora, fuelRate: fresco('propulsion.main.fuel.rate', SENSOR_VELHO), motorLigado: typeof rpm === 'number' && rpm > 5 }
     if (sonda === null || alimentacao === null) {
-      app.setPluginStatus('À espera das tensões do ADS1115 (app I2C do OpenPlotter)')
+      // Sem a sonda (auditoria I-12): os litros continuam a descer com o consumo do motor e continuam
+      // a ser publicados; aos 5 min, o aviso sondaPerdida (só no ecrã).
+      if (semSondaDesde === null) semSondaDesde = agora
+      if (!calib) {
+        estado = descontar(estado, motor)
+        guardarNivel()
+        publicarNivel()
+      }
+      if (agora - semSondaDesde >= SONDA_PERDIDA) avisarSonda(true)
+      app.setPluginStatus(`À espera das tensões do ADS1115 (app I2C do OpenPlotter)${estado.litros !== null ? ` · ${Math.round(estado.litros)} L pelo consumo do motor` : ''}`)
       return
     }
+    semSondaDesde = null
+    avisarSonda(false)
     // Calibração em curso: só se juntam leituras (barco direito); nada de alarmes nem abastecimentos.
     if (calib) {
       const roll = app.getSelfPath?.('navigation.attitude')?.value?.roll
@@ -76,29 +126,15 @@ module.exports = function (app) {
       app.setPluginStatus(`Calibração: ${calib.total} L no depósito · ${calib.pontos.length} pontos${calib.pendente ? ' · a estabilizar…' : ''}`)
       return
     }
-    const rpm = numero('propulsion.main.revolutions')
     const r = passo(estado, {
-      t: Date.now(),
+      ...motor,
       sonda,
       alimentacao,
-      roll: app.getSelfPath?.('navigation.attitude')?.value?.roll ?? null,
-      fuelRate: numero('propulsion.main.fuel.rate'),
-      motorLigado: typeof rpm === 'number' && rpm > 5
+      roll: app.getSelfPath?.('navigation.attitude')?.value?.roll ?? null
     }, o.tabela)
     estado = r.estado
-    // Guarda o nível de minuto a minuto: num arranque com o barco adornado, parte daqui.
-    if (estado.litros !== null && Date.now() - ultimaGravacao > 60000) {
-      ultimaGravacao = Date.now()
-      fs.writeFile(ficheiroNivel, JSON.stringify({ litros: estado.litros, t: new Date().toISOString() }), () => {})
-    }
-    if (estado.litros !== null) {
-      const cap = o.capacidadeL / 1000
-      publicar([
-        { path: 'tanks.fuel.0.currentVolume', value: estado.litros / 1000 },
-        { path: 'tanks.fuel.0.currentLevel', value: Math.min(1, estado.litros / o.capacidadeL) },
-        { path: 'tanks.fuel.0.capacity', value: cap }
-      ])
-    }
+    guardarNivel()
+    publicarNivel()
     if (r.notificacoes.length) {
       publicar(r.notificacoes.map(n => ({ path: `notifications.tanks.fuel.0.${n.id}`, value: { state: n.state, method: n.method, message: n.message, ...(n.apito ? { apito: n.apito } : {}) } })))
     }
@@ -127,6 +163,8 @@ module.exports = function (app) {
     o = { caminhoSonda: 'tanks.fuel.0.senderVoltage', caminhoAlimentacao: 'tanks.fuel.0.supplyVoltage', capacidadeL: 200, tabela: [], logbook: false, token: '', ...props }
     estado = novoEstado()
     ultimoAbastecimento = null
+    semSondaDesde = null
+    avisoSonda = false
     const dir = app.getDataDirPath()
     fs.mkdirSync(dir, { recursive: true })
     ficheiroAbast = path.join(dir, 'abastecimentos.jsonl')

@@ -127,6 +127,19 @@ test('fuga: gastar a motor não conta', () => {
   assert.deepEqual(r.notif.filter(n => n.id === 'fuga'), [])
 })
 
+// Auditoria I-12: sem a sonda só o consumo do motor desconta; ao voltar a sonda, o que se gastou a motor
+// não pode parecer uma fuga (a janela da fuga recomeça com o motor, como com a sonda).
+test('I-12: sem a sonda, o consumo desconta e a saída a motor não acaba em falsa fuga', () => {
+  const { descontar } = require('../lib/nivel')
+  const antes = correr(10 * MIN, () => amostra(150))
+  let e = antes.e
+  for (let s = 0; s < 3 * 3600; s++) e = descontar(e, { t: 10 * MIN + s * S, fuelRate: 2 / 3600 / 1000, motorLigado: true })
+  assert.ok(Math.abs(e.litros - 144) < 0.1, `litros ${e.litros}`)
+  const depois = correr(30 * MIN, () => amostra(144), e, 10 * MIN + 3 * H)
+  assert.deepEqual(depois.notif.filter(n => n.id === 'fuga'), [])
+  assert.ok(Math.abs(depois.e.litros - 144) < 0.5)
+})
+
 test('limites aprovados', () => {
   assert.equal(LIMITES.reserva, 40)
   assert.equal(LIMITES.fugaLitros, 5)
