@@ -83,8 +83,10 @@ module.exports = function (app) {
     try {
       const headers = { 'Content-Type': 'application/json' }
       if (o.token) headers.Authorization = `Bearer ${o.token}`
-      await fetch(o.logbookUrl, { method: 'POST', headers, body: JSON.stringify({ text: texto, category: 'maintenance', origin: 'auto' }) })
-    } catch (e) { app.error(`logbook: ${e.message}`) }
+      const r = await fetch(o.logbookUrl, { method: 'POST', headers, body: JSON.stringify({ text: texto, category: 'maintenance', origin: 'auto' }) })
+      // com a segurança ligada, sem token de admin, o logbook dá 401/403: fica no registo (auditoria M-63)
+      if (!r.ok) app.error(`logbook respondeu ${r.status}`)
+    } catch (e) { app.error(`logbook inacessível: ${e.message}`) }
   }
 
   function tick () {
@@ -207,8 +209,11 @@ module.exports = function (app) {
     })
     escrever.post('/calibrar-bomba/terminar', (req, res) => {
       const cfg = tanque(req, res); if (!cfg) return
+      // a jarra: mais de 0 e até 20 L; litros ilegíveis gravavam NaN e 0 gravava 0 L por pedalada (M-62)
+      const litros = numero(req.body?.litros ?? 1)
+      if (!(litros > 0 && litros <= 20)) return res.status(400).json({ ok: false, erro: 'litros da jarra entre 0 e 20 (ex.: 1)' })
       let r
-      try { r = agua.terminarCalibracao(estados[cfg.id] || agua.novoTanque(), numero(req.body?.litros ?? 1)) } catch (e) { return res.status(409).json({ ok: false, erro: e.message }) }
+      try { r = agua.terminarCalibracao(estados[cfg.id] || agua.novoTanque(), litros) } catch (e) { return res.status(409).json({ ok: false, erro: e.message }) }
       estados[cfg.id] = { ...estados[cfg.id], calibracao: null }
       o = { ...o, tanques: o.tanques.map(t => t.id === cfg.id ? { ...t, litrosPorPedalada: Math.round(r.litrosPorPedalada * 1000) / 1000 } : t) }
       app.savePluginOptions?.(o, (e) => { if (e) app.error(`não guardei a calibração: ${e.message || e}`) })
