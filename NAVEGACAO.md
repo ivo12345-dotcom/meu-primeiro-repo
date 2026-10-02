@@ -921,7 +921,9 @@ Com tudo num ecrã só, esse ecrã passa a ser um ponto único de falha.
 
 **Maqueta interativa completa:** [`maquete-arlequin.html`](maquete-arlequin.html)
 (abrir no browser; 9 botões a funcionar). **Polar estimada:**
-[`polar-arlequin-estimada.csv`](polar-arlequin-estimada.csv).
+[`polar-arlequin-estimada.csv`](polar-arlequin-estimada.csv) é uma cópia de 28/09, com os mesmos
+números: o código (o ecrã, a AI e a rota) lê a `software/arlequin-ecra/public/polar-arlequin.csv`,
+e é essa que conta. Trocar a da raiz não muda nada.
 
 | Botão | Função |
 |---|---|
@@ -1052,7 +1054,8 @@ para proa: cabine de popa com cama de casal a **estibordo**, por baixo do poço;
 ao centro; sala com beliches dos dois lados (os **depósitos de água** estão
 debaixo deles); WC; cabine de proa; poço da âncora. Dados de origem: água
 **180 L**, gasóleo **90 L** e motor Yanmar 2QM. Hoje o barco tem **200 L de
-gasóleo** e um **Volvo D1-20B**, por isso foi alterado.
+gasóleo** e um **Volvo D1-20B**, por isso foi alterado. O plugin da água assume **2 × 80 L** por
+omissão ("capacidades a confirmar no barco"): fica por medir cada depósito (§8b, ponto 11).
 
 O Ivo descansa **na cabine junto à mesa de navegação**. Daí vê o poço pelas
 janelas, um bocado do mastro e os manómetros do motor. O sistema tem de
@@ -1238,15 +1241,42 @@ telemóvel. Notas já discutidas:
 O código está em `software/` (que pasta é o quê e como se testa no portátil: `software/README.md`).
 Aqui fica o que cada parte faz no barco e o que é preciso no Pi.
 
+### Caminhos próprios do Arlequin (fora da norma SignalK)
+
+Quase tudo usa os caminhos normalizados do SignalK. Estes não existem na norma: foram criados para
+o Arlequin.
+
+| Caminho | Valor | Quem publica | Quem lê |
+|---|---|---|---|
+| `sails.grande.rizos` | 0 inteira, 1 ou 2 rizos, −1 arriada | caixa negra (botões da página Velas) | ecrã (Velas), caixa negra (tabela da AI) |
+| `sails.genoa.percentagem` | percentagem, 0–100 (a norma usaria uma razão 0–1) | caixa negra (página Velas) | ecrã (Velas), caixa negra (tabela da AI) |
+| `sensors.porao.agua`, `sensors.porao.bomba`, `sensors.fumo`, `sensors.gasoleo.liquido`, `sensors.gaiuta.aberta`, `sensors.movimento` | 0/1 (ou falso/verdadeiro) | os sensores do barco parado: um ESP32 (SensESP) ou o GPIO do Pi | plugin porto (caminhos configuráveis) |
+| `tanks.fuel.0.senderVoltage`, `tanks.fuel.0.supplyVoltage` | V (a sonda e a alimentação do medidor) | a app I2C do OpenPlotter (ADS1115, A0 e A1) | plugin do gasóleo (caminhos configuráveis) |
+| `tanks.freshWater.N.pedaladas` | contador acumulado das pedaladas da bomba de pé | o contador dos sensores reed dos pedais: um ESP32 (SensESP) ou o GPIO do Pi | plugin da água (caminho configurável) |
+| `propulsion.main.fuel.rateOrigem` | `medido` (PGN 65266 do MDI) ou `estimado` (curva da Volvo) | plugin J1939 | caixa negra (coluna `consumoMedido`) |
+
+As notificações também têm nomes próprios (`notifications.arlequin.*`, `notifications.rota.*`), o
+que a norma permite.
+
 ### Caixa negra e Tailscale (dados para o Claude analisar)
 
 **O que grava** (plugin `signalk-arlequin-caixanegra`), em `~/arlequin-dados` no Pi, desde o primeiro dia:
 - `bruto/`: todas as mensagens, 1 ficheiro por hora;
 - `tabela/`: 1 linha a cada 10 s, para a AI;
 - `saidas/`: resumo de cada saída;
-- `previsoes/`: escrito pelo plugin da rota.
+- `previsoes/`: escrito por dois plugins — o da AI guarda a previsão para a posição do barco (de
+  hora a hora a navegar, de 3 em 3 h parado) e o da rota guarda um ficheiro por ponto da rota,
+  sempre que descarrega a previsão para um cálculo.
 
-**Regras do disco:** aos 80% apaga do `bruto/` só o que o portátil já confirmou. Aos 95% sem nada confirmado pára o bruto, e a tabela continua. Nunca apaga nada que não esteja no portátil.
+**Regras do disco:**
+- **Aos 80 %**, apaga do `bruto/` só o que o portátil já confirmou, o mais antigo primeiro, até
+  ficar abaixo dos 75 % (a folga evita que o aviso vá e venha). Se, mesmo assim, o disco ficar nos
+  80 % ou mais (falta copiar e confirmar no portátil), avisa no ecrã: "copia os dados para o
+  portátil".
+- **Aos 95 %**, se o disco continuar aí depois de apagar tudo o que já foi confirmado, pára o
+  `bruto/` (a tabela continua) e dá o alarme, que vai também para o Telegram. O bruto volta a
+  gravar quando o disco desce abaixo dos 90 %.
+- Nunca apaga nada que não esteja no portátil.
 
 **Tailscale: feito pelo Ivo, uma vez** (o Claude não trata contas nem palavras-passe):
 1. Criar a conta em tailscale.com (entrar com Google ou Microsoft).
@@ -1335,10 +1365,13 @@ em "A navegar", mais abaixo.
   carta:
   - os separadores de tráfego (geometria oficial da DGRM);
   - os Cachopos (barra do Tejo), desenhados à mão a partir da carta do IH n.º 26303;
-  - o Largo de Carcavelos, que fica dentro dos 10 m do Cachopo do Norte: ver o canal da Barra
-    Norte;
+  - a entrada de Algés e de Oeiras pela Barra Norte: do largo de Cascais ao eixo do canal
+    (enfiamento Santa Marta–Guia, 104,7°) ao largo da Parede (o antigo ponto "Largo de
+    Carcavelos", dentro dos 10 m do Cachopo do Norte, já saiu do `destinos.json` a 30/09);
   - as aproximações e entradas de todos os portos;
-  - quais destinos são abrigo e quais são conhecidos;
+  - quais destinos são abrigo (no `destinos.json`, todos menos a Figueira da Foz e Olhão, por
+    confirmar). **Portos conhecidos** (decisão do Ivo de 02/10): só **Peniche, Cascais e Algés**; uma
+    chegada de noite a qualquer outro dá "Não recomendado sozinho";
   - o **Canal da Berlenga** (`dados/canais.json`): eixo desenhado à mão entre o Cabo Carvoeiro e
     a Berlenga a partir do OSM, com os fundos, as correntes e as Estelas/Farilhões por
     confirmar.
@@ -1413,7 +1446,7 @@ estado, de dia e de noite, em `docs/capturas-3b1/`.
   **avisos vermelhos** (sempre visíveis), a linha do tempo, as **precauções** (caixas para marcar;
   não bloqueiam nada e ficam guardadas no ecrã para esse cálculo) e os pontos de desistência
   (calculados para a 1.ª alternativa).
-- **Mapa:** o mini-mapa das 3 alternativas (azul à vela, cinzento a motor, mais escuro de noite;
+- **Mapa:** o mini-mapa das 3 alternativas (azul à vela, cinzento tracejado a motor, mais escuro de noite;
   triângulos nos avisos; bolinhas nos pontos de desistência, verdes com uma fuga limpa e
   vermelhas sem nenhuma; tracejado vermelho nas zonas a evitar). Toca num cartão para destacar
   outra alternativa.
