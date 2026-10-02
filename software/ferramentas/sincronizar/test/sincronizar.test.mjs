@@ -209,7 +209,8 @@ test('um bruto já confirmado que no Pi ficou mais pequeno: a cópia do portáti
   assert.deepEqual(readdirSync(destino).filter(n => n.startsWith('.')), [], 'sem pastas temporárias esquecidas')
 })
 
-test('um bruto de hora fechada que o portátil já tem maior (ainda não confirmado): não se sobrescreve nem se confirma', async () => {
+test('um bruto de hora fechada que o portátil já tem maior (ainda não confirmado): não se sobrescreve; o do Pi guarda-se ao lado e confirma-se pelo hash dessa cópia', async () => {
+  // (até à auditoria M-57 não se confirmava: o bruto recomeçado no Pi nunca se podia apagar)
   const origem = pi()
   const destino = mkdtempSync(path.join(os.tmpdir(), 'arlequin-pc-'))
   mkdirSync(path.join(destino, 'bruto'), { recursive: true })
@@ -218,7 +219,9 @@ test('um bruto de hora fechada que o portátil já tem maior (ainda não confirm
   assert.equal(readFileSync(path.join(destino, 'bruto', '2026-09-29T10.ndjson.gz'), 'utf8'), 'dez e mais')
   assert.equal(readFileSync(path.join(destino, 'bruto', '2026-09-29T10.ndjson.gz.1'), 'utf8'), 'dez')
   assert.equal(r.conflitos.length, 1)
-  assert.equal(r.confirmados, 0)
+  assert.equal(r.confirmados, 1)
+  const [nome] = readdirSync(path.join(origem, 'entrada'))
+  assert.deepEqual(JSON.parse(readFileSync(path.join(origem, 'entrada', nome), 'utf8')), [{ ficheiro: 'bruto/2026-09-29T10.ndjson.gz', sha256: sha256(path.join(destino, 'bruto', '2026-09-29T10.ndjson.gz.1')) }])
   assert.deepEqual(r.diferentes, [])
 })
 
@@ -297,4 +300,64 @@ test('tabela do dia mais pequena no Pi (ex.: isolada como .danificado e recomeç
   const r2 = await sincronizar({ transporte: comoPi(origem), destino, agora: AGORA + 120000 })
   assert.deepEqual(r2.conflitos, [])
   assert.equal(readFileSync(path.join(destino, T), 'utf8'), 'tabela boa do dia e mais')
+})
+
+test('os .tmp (escritas a meio no Pi: modelos, previsões, saídas) não entram na lista nem se copiam (auditoria M-57)', async () => {
+  const origem = pi()
+  for (const d of ['modelos/velocidade', 'previsoes']) mkdirSync(path.join(origem, ...d.split('/')), { recursive: true })
+  writeFileSync(path.join(origem, 'modelos', 'velocidade', 'v0002.json.gz.tmp'), 'meio')
+  writeFileSync(path.join(origem, 'previsoes', '2026-09-29T14-05.json.gz.tmp'), 'meio')
+  writeFileSync(path.join(origem, 'saidas', '2026-09-29T10-00.json.tmp'), 'meio')
+  writeFileSync(path.join(origem, 'saidas', '2026-09-29T10-00.json'), '{}')
+  const destino = mkdtempSync(path.join(os.tmpdir(), 'arlequin-pc-'))
+  const lista = (await comoPi(origem).listar()).map(r => r.ficheiro)
+  assert.deepEqual(lista.filter(f => f.endsWith('.tmp')), [])
+  const r = await sincronizar({ transporte: comoPi(origem), destino, agora: AGORA })
+  assert.equal(r.remotos, 4) // T10, T14, a tabela e a saída
+  assert.equal(existsSync(path.join(destino, 'modelos', 'velocidade', 'v0002.json.gz.tmp')), false)
+  assert.equal(existsSync(path.join(destino, 'saidas', '2026-09-29T10-00.json')), true)
+})
+
+test('ssh: o find deixa de fora os .tmp (o Pi muda-lhes o nome entre o find e o tar, e o tar falhava a cópia toda; auditoria M-57)', async () => {
+  const chamadas = []
+  const exec = async (cmd, args) => { chamadas.push(args[1]); return '' }
+  await transporteSsh('pi@arlequin', { exec }).listar()
+  assert.match(chamadas[0], /find bruto tabela saidas previsoes modelos -type f -not -name '\*\.tmp' -printf /)
+})
+
+test('o Pi recomeçou uma hora do bruto depois de um corte (mais pequena do que a cópia do portátil): guarda-se ao lado e confirma-se pelo hash dessa cópia, para o Pi a poder libertar (auditoria M-57)', async () => {
+  const origem = pi()
+  const destino = mkdtempSync(path.join(os.tmpdir(), 'arlequin-pc-'))
+  const T14 = path.join('bruto', '2026-09-29T14.ndjson.gz')
+  await sincronizar({ transporte: comoPi(origem), destino, agora: AGORA }) // às 14:30 copia a T14 ainda aberta
+  confirmados.processarEntrada(origem)
+  // às 14:40 um corte; o Pi volta, isola a T14 (danificada) e recomeça-a, mais pequena
+  writeFileSync(path.join(origem, T14 + '.danificado-2026-09-29T14-45-00Z'), 'catorze!!')
+  writeFileSync(path.join(origem, T14), 'xyz')
+  const r = await sincronizar({ transporte: comoPi(origem), destino, agora: AGORA + 3600000 }) // às 15:30, já fechada
+  assert.equal(readFileSync(path.join(destino, T14), 'utf8'), 'catorze', 'a cópia do portátil não se estraga')
+  assert.equal(readFileSync(path.join(destino, T14 + '.1'), 'utf8'), 'xyz')
+  assert.equal(readFileSync(path.join(destino, T14 + '.danificado-2026-09-29T14-45-00Z'), 'utf8'), 'catorze!!')
+  assert.deepEqual(r.diferentes, [])
+  assert.equal(r.confirmados, 1)
+  const [nome] = readdirSync(path.join(origem, 'entrada'))
+  assert.deepEqual(JSON.parse(readFileSync(path.join(origem, 'entrada', nome), 'utf8')), [{ ficheiro: 'bruto/2026-09-29T14.ndjson.gz', sha256: sha256(path.join(destino, T14 + '.1')) }])
+  assert.deepEqual(confirmados.processarEntrada(origem).aceites, ['bruto/2026-09-29T14.ndjson.gz'], 'o Pi confere o hash e aceita')
+  const r2 = await sincronizar({ transporte: comoPi(origem), destino, agora: AGORA + 3660000 })
+  assert.equal(r2.confirmados, 0, 'já confirmado com este hash: não se manda outra vez')
+  assert.deepEqual(r2.conflitos, [])
+})
+
+test('a cópia guardada ao lado já não bate certo com o ficheiro do Pi: não se confirma e avisa (auditoria M-57)', async () => {
+  const origem = pi()
+  const destino = mkdtempSync(path.join(os.tmpdir(), 'arlequin-pc-'))
+  const T14 = path.join('bruto', '2026-09-29T14.ndjson.gz')
+  mkdirSync(path.join(destino, 'bruto'), { recursive: true })
+  writeFileSync(path.join(destino, T14), 'catorze')
+  writeFileSync(path.join(destino, T14 + '.1'), 'xyw') // do mesmo tamanho, mas estragada
+  writeFileSync(path.join(origem, T14), 'xyz')
+  const r = await sincronizar({ transporte: comoPi(origem), destino, agora: AGORA + 3600000 })
+  assert.deepEqual(r.diferentes, ['bruto/2026-09-29T14.ndjson.gz'])
+  const listas = readdirSync(path.join(origem, 'entrada')).flatMap(n => JSON.parse(readFileSync(path.join(origem, 'entrada', n), 'utf8')))
+  assert.ok(!listas.some(c => c.ficheiro === 'bruto/2026-09-29T14.ndjson.gz'), JSON.stringify(listas))
 })

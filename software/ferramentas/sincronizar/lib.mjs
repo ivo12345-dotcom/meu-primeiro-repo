@@ -54,7 +54,19 @@ export async function sincronizar ({ transporte, destino, agora = Date.now(), by
   const candidatos = !transporte.podeConfirmar ? [] : remotos
     .map(r => r.ficheiro)
     .filter(f => fechado(f) && !emConflito.has(f) && existsSync(local(f)) && (!confirmadosPi[f] || recopiados.has(f)))
-  const remotosHash = candidatos.length ? await transporte.hashes(candidatos) : {}
+  // Uma hora fechada do bruto em conflito (o Pi recomeçou-a depois de um corte de energia e ficou
+  // mais pequena do que a cópia do portátil): a do Pi está guardada ao lado (<nome>.N). Se essa
+  // cópia tem o sha256 do ficheiro do Pi, confirma-se com ele: o portátil tem-na inteira e o Pi
+  // pode libertá-la quando o disco encher (senão ficava lá para sempre). Já confirmada com o
+  // mesmo hash, não se repete.
+  const guardadosAConfirmar = !transporte.podeConfirmar ? [] : conflitos
+    .filter(r => fechado(r.ficheiro))
+    .map(r => ({ ficheiro: r.ficheiro, copia: copiaGuardada(local, r) }))
+    .filter(x => x.copia)
+    .map(x => ({ ficheiro: x.ficheiro, sha256: sha256(x.copia) }))
+    .filter(x => confirmadosPi[x.ficheiro] !== x.sha256)
+  const pedirHash = [...candidatos, ...guardadosAConfirmar.map(x => x.ficheiro)]
+  const remotosHash = pedirHash.length ? await transporte.hashes(pedirHash) : {}
   // Única verificação: só se confirma quando o sha256 local bate certo com o do Pi.
   const verificar = (ficheiros) => {
     const ok = []
@@ -78,6 +90,10 @@ export async function sincronizar ({ transporte, destino, agora = Date.now(), by
     const segunda = verificar(diferentes)
     confirmar.push(...segunda.ok)
     diferentes = segunda.mal
+  }
+  for (const x of guardadosAConfirmar) {
+    if (remotosHash[x.ficheiro] === x.sha256) confirmar.push(x)
+    else diferentes.push(x.ficheiro) // a cópia guardada não é a do Pi: nunca se confirma
   }
   const bytesDe = (f) => remotos.find(r => r.ficheiro === f)?.bytes ?? 0
   const ts = new Date(agora).toISOString().replace(/[:.]/g, '-')
@@ -111,17 +127,20 @@ function partir (itens, bytes, limite) {
   return grupos
 }
 
+// A cópia de um ficheiro do Pi já guardada ao lado da do portátil (<nome>.N com o tamanho
+// do do Pi), ou null.
+function copiaGuardada (local, r) {
+  for (let n = 1; existsSync(`${local(r.ficheiro)}.${n}`); n++) {
+    if (statSync(`${local(r.ficheiro)}.${n}`).size === r.bytes) return `${local(r.ficheiro)}.${n}`
+  }
+  return null
+}
+
 // Guarda o ficheiro do Pi ao lado da cópia do portátil (<nome>.N, o primeiro N
 // livre), copiando-o primeiro para uma pasta temporária. Se já houver um <nome>.N
 // com o mesmo tamanho, já foi guardado numa vez anterior: não se repete.
 async function guardarConflitos (transporte, destino, local, conflitos) {
-  const jaGuardado = (r) => {
-    for (let n = 1; existsSync(`${local(r.ficheiro)}.${n}`); n++) {
-      if (statSync(`${local(r.ficheiro)}.${n}`).size === r.bytes) return true
-    }
-    return false
-  }
-  const novos = conflitos.filter(r => !jaGuardado(r))
+  const novos = conflitos.filter(r => !copiaGuardada(local, r))
   if (!novos.length) return []
   const tmp = mkdtempSync(path.join(destino, '.conflitos-'))
   try {

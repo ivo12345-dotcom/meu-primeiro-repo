@@ -10,6 +10,10 @@ import { readdirSync, statSync, mkdirSync, copyFileSync, writeFileSync, renameSy
 import path from 'node:path'
 
 const PASTAS = ['bruto', 'tabela', 'saidas', 'previsoes', 'modelos']
+// Os .tmp são escritas a meio no Pi (modelos, previsões, saídas: escreve-se o .tmp e muda-se o
+// nome no fim). Ficam de fora da lista: o Pi pode mudar-lhes o nome entre a lista e a cópia, e
+// então o tar falhava a sincronização toda.
+const temporario = (nome) => nome.endsWith('.tmp')
 
 // O confirmados.json do Pi: sem ficheiro, ou estragado, é como não haver nada
 // confirmado (volta-se a mandar e o Pi confere outra vez; não se perde nada).
@@ -31,7 +35,7 @@ export function transporteLocal (origem, { podeConfirmar = false } = {}) {
         for (const e of entradas) {
           const r = `${rel}/${e.name}`
           if (e.isDirectory()) andar(r)
-          else lista.push({ ficheiro: r, bytes: statSync(path.join(origem, r)).size })
+          else if (!temporario(e.name)) lista.push({ ficheiro: r, bytes: statSync(path.join(origem, r)).size })
         }
       }
       for (const p of PASTAS) andar(p)
@@ -95,7 +99,7 @@ export function transporteSsh (host, { pasta = 'arlequin-dados', exec = executar
       return lerMapa(await exec('ssh', [host, `cat ${dir}/confirmados.json 2>/dev/null || echo {}`]))
     },
     async listar () {
-      const t = await exec('ssh', [host, `cd ${dir} || exit 1; find ${PASTAS.join(' ')} -type f -printf '%p\\t%s\\n' 2>/dev/null; true`])
+      const t = await exec('ssh', [host, `cd ${dir} || exit 1; find ${PASTAS.join(' ')} -type f -not -name '*.tmp' -printf '%p\\t%s\\n' 2>/dev/null; true`])
       return t.split('\n').filter(Boolean).map(l => { const [ficheiro, bytes] = l.split('\t'); return { ficheiro, bytes: Number(bytes) } })
     },
     async copiar (ficheiros, destino) {
