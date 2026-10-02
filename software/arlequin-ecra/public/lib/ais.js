@@ -1,6 +1,28 @@
-// AIS no ecrã: o tipo do navio em pt-PT (auditoria I-32). O SignalK manda design.aisShipType = { id, name }
-// com o nome em inglês ("Cargo ship", "Pleasure"…): o ecrã traduz pelo código da norma AIS (ITU-R M.1371),
-// nunca mostra o nome do servidor.
+// AIS no ecrã: os alvos por ordem de perigo e o tipo do navio em pt-PT.
+//   alvosAis: o CPA/TCPA de cada alvo (lib/cpa.js, o mesmo cálculo do plugin signalk-arlequin-ais) e a classe;
+//     enquanto o alarme do plugin estiver ativo é "perigo" (auditoria M-50: o plugin só o limpa acima de
+//     0,6 MN, e o ecrã chamava "atenção" a um alvo com o alarme a tocar).
+//   tipoAis: o SignalK manda design.aisShipType = { id, name } com o nome em inglês ("Cargo ship",
+//     "Pleasure"…): o ecrã traduz pelo código da norma AIS (ITU-R M.1371), nunca mostra o nome do servidor
+//     (auditoria I-32).
+
+import { cpa, classificar } from './cpa.js'
+
+export const AIS_VELHO = 10 * 60 * 1000 // um alvo sem posição há mais de 10 min sai da lista
+const ORDEM = { perigo: 0, atencao: 1, seguro: 2, afasta: 3, desconhecido: 4 }
+const comAlarme = (notificacoes, mmsi) => notificacoes.some(n => n?.caminho === `notifications.arlequin.ais.${mmsi}` && (n.state === 'alarm' || n.state === 'emergency'))
+
+// { vessels (os alvos do store), eu { position, cog, sog }, notificacoes, agora } → [{ ...alvo, r, classe }]
+export function alvosAis ({ vessels = [], eu = {}, notificacoes = [], agora = Date.now() } = {}) {
+  const lista = []
+  for (const a of vessels) {
+    if (!a?.position || !(agora - a.em <= AIS_VELHO)) continue
+    const r = cpa(eu, a)
+    const classe = comAlarme(notificacoes, a.mmsi) ? 'perigo' : classificar(r)
+    lista.push({ ...a, r, classe })
+  }
+  return lista.sort((x, y) => (ORDEM[x.classe] - ORDEM[y.classe]) || ((x.r?.distancia ?? 1e9) - (y.r?.distancia ?? 1e9)))
+}
 
 const TIPOS = [
   [20, 29, 'Asa de efeito solo'],
