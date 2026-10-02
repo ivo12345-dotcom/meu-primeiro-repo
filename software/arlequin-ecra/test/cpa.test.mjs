@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { cpa, classificar, LIMITES_AIS } from '../public/lib/cpa.js'
+import { cpa, classificar, LIMITES_AIS, LIMITES_PORTO } from '../public/lib/cpa.js'
 
 const NO = 1852 / 3600 // m/s
 const rad = (g) => g * Math.PI / 180
@@ -126,4 +126,54 @@ test('classificação com os limites 0,5 MN / 20 min', () => {
   assert.equal(classificar({ cpa: 3000, tcpa: 700 }), 'seguro')
   assert.equal(classificar({ cpa: 400, tcpa: -60 }), 'afasta')
   assert.equal(classificar(null), 'desconhecido')
+})
+
+// Decisão do Ivo de 02/10 ("AIS dentro de um porto", contrato C12): em porto (a menos de 0,5 MN de um porto
+// conhecido e com o nosso barco abaixo de 4 nós) um alvo parado no nosso caminho fica 'atencao' (amarelo,
+// sem som); um alvo a andar dá 'perigo' como sempre; fora do porto o parado no caminho dá 'perigo' (K-01).
+// O plugin AIS e o ecrã usam esta mesma função.
+test('C12: em porto, um alvo parado no nosso caminho é "atencao"; fora do porto (ou sem a opção) é "perigo"', () => {
+  const eu = { position: PENICHE, cog: 0, sog: 3 * NO }
+  const amarrado = { position: desloca(PENICHE, 0.1, 0), sog: 0 } // à proa, parado
+  const r = cpa(eu, amarrado)
+  assert.equal(r.alvoParado, true)
+  assert.equal(classificar(r, LIMITES_AIS, { emPorto: true }), 'atencao')
+  assert.equal(classificar(r, LIMITES_AIS, { emPorto: false }), 'perigo')
+  assert.equal(classificar(r), 'perigo')
+})
+
+test('C12: em porto, um alvo em movimento no nosso caminho dá sempre "perigo"', () => {
+  const eu = { position: PENICHE, cog: 0, sog: 3 * NO }
+  const ferry = { position: desloca(PENICHE, 0.2, 60), cog: rad(270), sog: 5 * NO } // atravessa à nossa frente
+  const r = cpa(eu, ferry)
+  assert.equal(r.alvoParado, false)
+  assert.equal(classificar(r, LIMITES_AIS, { emPorto: false }), 'perigo')
+  assert.equal(classificar(r, LIMITES_AIS, { emPorto: true }), 'perigo')
+})
+
+test('C12: em porto, um alvo sem velocidade conhecida não dá "perigo" pela regra da distância ("atencao"); fora do porto dá', () => {
+  const eu = { position: PENICHE, cog: 0, sog: 3 * NO }
+  const r = cpa(eu, { position: desloca(PENICHE, 0.2, 0) })
+  assert.equal(r.alvoParado, undefined)
+  assert.equal(classificar(r, LIMITES_AIS, { aproxima: true, emPorto: true }), 'atencao')
+  assert.equal(classificar(r, LIMITES_AIS, { aproxima: true, emPorto: false }), 'perigo')
+  // um alvo que se mexe com o NOSSO rumo desconhecido: a regra da distância vale também em porto
+  const rEu = cpa({ position: PENICHE }, { position: desloca(PENICHE, 0.2, 0), cog: rad(180), sog: 5 * NO })
+  assert.equal(rEu.semVelocidade, 'eu')
+  assert.equal(rEu.alvoParado, false)
+  assert.equal(classificar(rEu, LIMITES_AIS, { aproxima: true, emPorto: true }), 'perigo')
+})
+
+test('C12: os limites do "em porto" (0,5 MN e 4 nós) estão no cálculo partilhado', () => {
+  assert.equal(LIMITES_PORTO.distancia, 0.5 * 1852)
+  assert.ok(Math.abs(LIMITES_PORTO.sog - 4 * NO) < 1e-12, `sog ${LIMITES_PORTO.sog}`)
+})
+
+test('C12: o resultado diz se cada barco está parado (euParado, alvoParado); sem velocidade conhecida, undefined', () => {
+  const r = cpa({ position: PENICHE, sog: 0 }, { position: desloca(PENICHE, 1, 0), cog: 0, sog: 6 * NO })
+  assert.equal(r.euParado, true)
+  assert.equal(r.alvoParado, false)
+  const s = cpa({ position: PENICHE, sog: 6 * NO }, { position: desloca(PENICHE, 1, 0) })
+  assert.equal(s.euParado, undefined)
+  assert.equal(s.alvoParado, undefined)
 })
