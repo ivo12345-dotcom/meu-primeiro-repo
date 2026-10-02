@@ -18,7 +18,11 @@ Segundo a Wikipedia e o sailboatdata:
 | Deslocamento / lastro | **6 046 kg** / 2 900 kg em ferro fundido |
 | Leme | **Suspenso de patilhão (skeg)** |
 | Popa | **Espelho invertido** (o painel inclina-se para vante) |
-| Governo de origem | **Cana**. A roda de leme foi montada depois |
+| Governo de origem | **Cana**. A roda de leme foi montada depois (e tem travão: Ivo, 29/09) |
+
+**O quadro de referência passou a ser o "Dados do barco" do `NAVEGACAO.md` (§0b).** Junta este
+com a ficha técnica do Melody guardada em `Documents\Veleiro\brochura`, que dá algumas diferenças:
+construção 1976–1982, só André Mauric no projeto, 8,70 m na flutuação e 6000 kg de deslocamento.
 
 Há duas consequências:
 - O barco nasceu com cana, por isso **é muito provável que a cabeça da madre
