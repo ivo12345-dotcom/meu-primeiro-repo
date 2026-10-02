@@ -148,9 +148,11 @@ test('erros do Telegram em pt-PT: bloqueado → "bloqueou o bot"; sem resposta �
     tgf.pendurar('444')
     const erroDe = (p) => p.then(() => null, e => e)
     assert.equal(erroEmPortugues(await erroDe(tg.sendMessage('333', 'x'))), 'bloqueou o bot')
-    const t0 = Date.now()
-    assert.equal(erroEmPortugues(await erroDe(tg.sendMessage('444', 'x'))), 'sem ligação ao Telegram')
-    assert.ok(Date.now() - t0 < 2000, 'o limite de tempo corta a chamada pendurada')
+    // a chamada pendurada é cortada pelo limite de tempo (o motivo diz-o; sem o limite, nunca acabava):
+    // sem medir o relógio de parede (auditoria M-17)
+    const pendurada = await erroDe(tg.sendMessage('444', 'x'))
+    assert.equal(erroEmPortugues(pendurada), 'sem ligação ao Telegram')
+    assert.equal(pendurada.message, 'Telegram sendMessage: sem ligação (sem resposta em 0 s)')
     assert.equal(erroEmPortugues(await erroDe(tg.sendDocument('444', Buffer.from('x'), 'a.gpx'))), 'sem ligação ao Telegram')
     // outro erro descrito pelo Telegram (o cliente guarda o código e a descrição): em pt-PT, nunca a
     // descrição em inglês (auditoria I-32)
@@ -234,18 +236,17 @@ test('o .gpx reconhece-se sem olhar a maiúsculas (ROTA.GPX → application/gpx+
 test('plano: falhas com o motivo em pt-PT; o GPX vai como application/gpx+xml; os destinatários em paralelo, cada chamada com limite (o envio todo fica muito abaixo dos 30 s da rota)', async () => {
   const tgf = await criarTelegramFalso()
   const app = appFalso()
-  const p = criar(app, { limiteTelegramMs: 400 })
+  const p = criar(app, { limiteTelegramMs: 1500 })
   p.start({ telegramToken: 'TESTE', chatIds: ['111'], contactosPlano: [{ nome: 'Tio', chatId: '333' }, { nome: 'A', chatId: '501' }, { nome: 'B', chatId: '502' }, { nome: 'C', chatId: '503' }, { nome: 'D', chatId: '504' }], telegramBase: tgf.url, pollTimeout: 1 })
   try {
     tgf.bloquear('333')
     for (const c of ['501', '502', '503', '504']) tgf.pendurar(c)
     const resposta = respostaDe(app, 'p3')
-    const t0 = Date.now()
     app.emit('arlequin:plano', { ...PLANO, pedido: 'p3' })
     const r = await resposta
-    const dt = Date.now() - t0
-    // 4 pendurados × 400 ms em série seriam ≥ 1,6 s; em paralelo, ~0,4 s
-    assert.ok(dt < 1300, `${dt} ms`)
+    // em paralelo: os 4 envios pendurados estiveram à espera ao mesmo tempo (em série, um de cada vez:
+    // 4 × o limite); conta-se no Telegram falso, sem medir o relógio de parede (auditoria M-17)
+    assert.equal(tgf.maxPendurados(), 4)
     assert.deepEqual(r, {
       pedido: 'p3',
       entregues: ['chat 111'],
@@ -308,9 +309,9 @@ test('um desconhecido que bloqueia o bot não atrasa os comandos do Ivo: a falha
     tgf.bloquear('999')
     tgf.escrever(999, '/start')
     tgf.escrever(111, '/estado')
-    const t0 = Date.now()
-    assert.ok(await ate(() => tgf.enviados.some(m => m.chatId === '111'), 4000), 'o /estado do Ivo não teve resposta a tempo')
-    assert.ok(Date.now() - t0 < 4000)
+    assert.ok(await ate(() => tgf.enviados.some(m => m.chatId === '111')), 'o /estado do Ivo não teve resposta')
+    // a falha ficou dentro do código ao desconhecido: o ciclo não foi parar ao erro com a pausa de
+    // 10 s (que deixava o seu próprio registo). Sem medir o relógio de parede (auditoria M-17).
     assert.deepEqual(app.erros, ['Telegram (código para 999): bloqueou o bot'])
   } finally {
     p.stop()

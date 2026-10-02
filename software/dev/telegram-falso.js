@@ -11,7 +11,7 @@
 //   GET  /_enviados                       → o que o barco enviou (sendDocument: nomeFicheiro e conteudo)
 // Nos testes: cortados (os envios que perderam a ligação), esperasAbertas() / maxEsperas() /
 // reporMaxEsperas() (quantos getUpdates estão à espera ao mesmo tempo: o Telegram verdadeiro dá 409
-// Conflict com dois).
+// Conflict com dois), maxPendurados() (quantos envios pendurados ao mesmo tempo: em paralelo ou não).
 
 const http = require('node:http')
 
@@ -25,6 +25,8 @@ function criarTelegramFalso ({ porta = 0 } = {}) {
   const bloqueados = new Set()
   const pendurados = new Set()
   const pendentes = [] // as respostas que nunca chegam (só se fecham no fim)
+  const penduradosAbertos = new Set() // dessas, as que o barco ainda não cortou
+  let maxPendurados = 0
   let cortado = false
 
   const responder = (res, codigo, obj) => { if (res.destroyed || res.writableEnded) return; res.writeHead(codigo, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)) }
@@ -89,7 +91,13 @@ function criarTelegramFalso ({ porta = 0 } = {}) {
       // um chat bloqueado recusa, como o Telegram quando a pessoa bloqueou o bot
       // um chat pendurado nunca responde (como uma ligação que fica a meio)
       const recusar = (chat) => {
-        if (pendurados.has(String(chat))) { pendentes.push(res); return true }
+        if (pendurados.has(String(chat))) {
+          pendentes.push(res)
+          penduradosAbertos.add(res)
+          maxPendurados = Math.max(maxPendurados, penduradosAbertos.size)
+          res.on('close', () => penduradosAbertos.delete(res))
+          return true
+        }
         if (!bloqueados.has(String(chat))) return false
         responder(res, 403, { ok: false, error_code: 403, description: 'Forbidden: bot was blocked by the user' })
         return true
@@ -145,6 +153,7 @@ function criarTelegramFalso ({ porta = 0 } = {}) {
         religar: () => { cortado = false },
         esperasAbertas: () => espera.length,
         maxEsperas: () => maxEspera,
+        maxPendurados: () => maxPendurados, // quantos envios pendurados estiveram à espera ao mesmo tempo
         reporMaxEsperas: () => { maxEspera = espera.length },
         fechar: () => new Promise(r => {
           espera.splice(0).forEach(({ res }) => responder(res, 200, { ok: true, result: [] }))
