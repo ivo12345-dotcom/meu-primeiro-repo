@@ -111,7 +111,7 @@ const pa = require('./lib/plano-ativo')
 const ac = require('./lib/acompanhamento')
 const av = require('./lib/avisos-navegar')
 const ct = require('./lib/contactos')
-const { criarCorrecaoVento } = require('./lib/cenarios')
+const cenarios = require('./lib/cenarios')
 const energiaPlano = require('./lib/energia')
 const seguranca = require('./lib/seguranca')
 const { slug } = require('./lib/slug')
@@ -432,7 +432,9 @@ module.exports = function (app, deps = {}) {
       posicao: pos && Number.isFinite(pos.latitude) && Number.isFinite(pos.longitude) ? { lat: pos.latitude, lon: pos.longitude } : null,
       socPct: Number.isFinite(soc) ? soc * 100 : null,
       gasoleoL,
-      tendPressao3h: null // sem histórico do barómetro aqui: o modelo do vento recebe null
+      // a tendência do barómetro em 3 h (hPa, pressão agora − há 3 h), das amostras de minuto a minuto que o
+      // plugin guarda, como no treino do modelo do vento (auditoria I-16; sem 3 h de amostras, null)
+      tendPressao3h: cenarios.tendenciaPressao3h(pressoes, agora)
     }
   }
 
@@ -808,7 +810,8 @@ module.exports = function (app, deps = {}) {
     const medido = numeroFresco('environment.wind.speedTrue', agora)
     let previsto = null
     if (tempo && leitura.posicao) {
-      const k = criarCorrecaoVento({ tempoBruto: tempo, modelos: modelosVento, obtida: Date.parse(pv.obtida) })(leitura.posicao.lat, leitura.posicao.lon, agora)
+      // com a tendência do barómetro, como no treino (auditoria I-16)
+      const k = cenarios.criarCorrecaoVento({ tempoBruto: tempo, modelos: modelosVento, obtida: Date.parse(pv.obtida), tendPressao3h: cenarios.tendenciaPressao3h(pressoes, agora) })(leitura.posicao.lat, leitura.posicao.lon, agora)
       previsto = Number.isFinite(k.w.tws) ? k.w.tws * k.razao.p50 : null
     }
     ventos = medido != null && leitura.posicao ? ac.juntarAmostra(ventos, { t: agora, medido: medido * NOS, previsto }, agora) : ventos.filter(x => x.t >= agora - 10 * MIN)
