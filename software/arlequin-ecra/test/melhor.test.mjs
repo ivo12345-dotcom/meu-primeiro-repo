@@ -213,7 +213,8 @@ test('Resultado: os números do cartão (partida, chegada com a margem, milhas, 
   assert.equal(a.milhas, 63.58)
   assert.match(html, /63,6 MN/)
   assert.match(html, /vela [\d,]+ h · motor [\d,]+ h · noite [\d,]+ h · leme [\d,]+ h/)
-  assert.match(html, /vento [\d,]+ · rajada [\d,]+ nós · ondas [\d,]+ m/)
+  // auditoria M-38: os máximos do provável e, quando diferem, os do pessimista (os do veredicto e dos limites)
+  assert.match(html, /vento [\d,]+ \(pior [\d,]+\) · rajada [\d,]+ \(pior [\d,]+\) nós · ondas [\d,]+ m/)
   assert.match(html, /gasóleo [\d,]+ L \(pior [\d,]+ L\)/)
   assert.match(html, /bateria mín\. [\d,]+%/)
   // os avisos da rota que não são vermelhos ficam no cartão (ex.: o salto curto da rota direta)
@@ -631,6 +632,28 @@ test('revisão final I1: no Resultado, os contactos em terra têm o plano de out
   await seguir(c2)
   assert.equal(c2.estado.vista, 'resultado')
   assert.equal(c2.estado.envioEmTerra?.idCalculo, 'calc-1')
+})
+
+test('auditoria M-38: o cartão diz "rajada 31 (pior 34) nós", como o veredicto ("rajadas até 34 nós no pior caso"); iguais, só um número', () => {
+  const html = semEspacos(melhor.render(contexto({ estado: comResultado(FUGA) })))
+  assert.ok(FUGA.veredicto.porque[0].includes('rajadas até 34 nós no pior caso'))
+  assert.match(html, /vento 17 \(pior 18\) · rajada 31 \(pior 34\) nós · ondas 2,7 m/)
+  const sem = { ...FUGA, alternativas: FUGA.alternativas.map(a => ({ ...a, maximosPessimista: { ...a.maximos } })) }
+  assert.match(semEspacos(melhor.render(contexto({ estado: comResultado(sem) }))), /vento 17 · rajada 31 nós · ondas 2,7 m/)
+  const antigo = { ...FUGA, alternativas: FUGA.alternativas.map(({ maximosPessimista: _, ...a }) => a) }
+  const h = semEspacos(melhor.render(contexto({ estado: comResultado(antigo) })))
+  assert.match(h, /vento 17 · rajada 31 nós · ondas 2,7 m/)
+  limpo(h, 'sem pessimista')
+})
+
+test('auditoria M-47: as dicas do mini-mapa (avisos e desistência) dizem "amanhã" e o dia, como o resto da página', async () => {
+  const { desenharMapa } = await import('../public/lib/mapa.js')
+  const mapa = { janela: { latMin: 38, latMax: 39.5, lonMin: -10, lonMax: -9 }, terra: [], zonas: [] }
+  const amanha = '2026-09-30T08:30:00.000Z' // 09:30 de amanhã em Lisboa
+  const alternativas = [{ rota: [[38.5, -9.5], [38.6, -9.4]], rasto: [{ t: amanha, lat: 38.55, lon: -9.45 }], avisos: [{ t: amanha, hora: '09:30', texto: 'Rizar' }] }]
+  const svg = desenharMapa({ mapa, alternativas, selecionada: 0, desistencia: [{ t: amanha, hora: '09:30', lat: 38.6, lon: -9.4, abrigo: { nome: 'Peniche' } }], agora: AGORA })
+  assert.match(svg, /<title>amanhã 09:30 Rizar<\/title>/)
+  assert.match(svg, /<title>amanhã 09:30 Peniche<\/title>/)
 })
 
 test('revisão final M2: depois de um "Sair agora mesmo assim" (ou do Recalcular no mar, sairAgora), o botão desaparece (repetia o mesmo cálculo)', () => {
