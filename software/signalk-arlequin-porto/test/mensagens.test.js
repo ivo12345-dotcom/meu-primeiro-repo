@@ -82,6 +82,70 @@ test('amarrado: alarmes AIS não seguem; o resto segue', () => {
   assert.deepEqual(r.mensagens, ['🚨 Serviço a 49%'])
 })
 
+test('auditoria F4b (revisão, Menor 10): um alarme AIS que chegou com o barco amarrado segue quando o barco deixa de estar amarrado, se ainda estiver ativo (como o K-08); o "Resolvido" de um AIS já enviado segue mesmo amarrado', () => {
+  const A = 'notifications.arlequin.ais.263000001'
+  let e = novoEncaminhador()
+  const envios = []
+  for (const [m, state, amarrado] of [[0, 'alarm', true], [1, 'alarm', true], [2, 'alarm', false], [3, 'alarm', false]]) {
+    const r = encaminhar(e, [n(A, state, 'AIS: perigo de colisão')], m * MIN, { amarrado })
+    e = r.enc
+    envios.push(...r.mensagens.map(t => `${m} min: ${t}`))
+  }
+  assert.deepEqual(envios, ['2 min: 🚨 AIS: perigo de colisão'])
+  // amarrado outra vez e o alvo afasta-se: o "Resolvido" segue (senão ficava-se a julgar que continua)
+  assert.deepEqual(encaminhar(e, [n(A, 'normal', 'Normal')], 4 * MIN, { amarrado: true }).mensagens, ['✓ Resolvido: AIS: perigo de colisão'])
+  // um que nasce e morre com o barco amarrado nunca segue
+  e = novoEncaminhador()
+  for (const [m, state] of [[0, 'alarm'], [1, 'normal']]) e = encaminhar(e, [n(A, state, 'AIS')], m * MIN, { amarrado: true }).enc
+  assert.deepEqual(encaminhar(e, [n(A, 'normal', 'Normal')], 2 * MIN).mensagens, [])
+})
+
+// ---------- nota do SignalK 2.33 (Adenda 2): ao parar um plugin, o servidor apaga da árvore os valores
+// dele (removeSource) e o plugin volta a publicar os ativos quando arranca ----------
+const SERV = 'notifications.arlequin.energia.servicoCritico'
+
+test('nota do SignalK 2.33 (revisão, Menor 9): um alarme cujo caminho desaparece da árvore e volta ainda ativo (o plugin que o publica reiniciou) não se repete; o "Resolvido" sai quando ficar normal', () => {
+  let e = encaminhar(novoEncaminhador(), [n(SERV, 'alarm', 'Serviço a 49%')], 0).enc
+  const envios = []
+  for (const [m, lista] of [[2, []], [2.5, [n(SERV, 'alarm', 'Serviço a 49%')]], [20, [n(SERV, 'alarm', 'Serviço a 49%')]], [21, []], [21.2, [n(SERV, 'alarm', 'Serviço a 49%')]], [30, [n(SERV, 'normal', 'Normal')]]]) {
+    const r = encaminhar(e, lista, m * MIN)
+    e = r.enc
+    envios.push(...r.mensagens.map(t => `${m} min: ${t}`))
+  }
+  assert.deepEqual(envios, ['30 min: ✓ Resolvido: Serviço a 49%'])
+})
+
+test('nota do SignalK 2.33 (revisão, Menor 9): um alarme que limpou durante o reinício do plugin (o caminho não volta) recebe o "✓ Resolvido" ao fim de 2 min sem ele; e um que volta normal, logo', () => {
+  let e = encaminhar(novoEncaminhador(), [n(SERV, 'alarm', 'Serviço a 49%')], 0).enc
+  const envios = []
+  for (const m of [5, 6, 6.9, 7, 8]) {
+    const r = encaminhar(e, [], m * MIN)
+    e = r.enc
+    envios.push(...r.mensagens.map(t => `${m} min: ${t}`))
+  }
+  assert.deepEqual(envios, ['7 min: ✓ Resolvido: Serviço a 49%'])
+  // depois disso, o alarme que volta dentro dos 10 min do anterior espera por eles (K-08)
+  assert.deepEqual(encaminhar(e, [n(SERV, 'alarm', 'Serviço a 49%')], 9 * MIN).mensagens, [])
+  // volta normal: o "Resolvido" sai logo
+  e = encaminhar(novoEncaminhador(), [n(SERV, 'alarm', 'Serviço a 49%')], 0).enc
+  e = encaminhar(e, [], MIN).enc
+  assert.deepEqual(encaminhar(e, [n(SERV, 'normal', 'Normal')], 1.1 * MIN).mensagens, ['✓ Resolvido: Serviço a 49%'])
+})
+
+test('nota do SignalK 2.33: com o caminho desaparecido, uma escalada (warn → alarm) quando volta respeita os 10 min; um acerto do relógio para trás não prende o "Resolvido"', () => {
+  let e = encaminhar(novoEncaminhador(), [n(SERV, 'warn', 'Serviço a 52%')], 0).enc
+  e = encaminhar(e, [], MIN).enc
+  let r = encaminhar(e, [n(SERV, 'alarm', 'Serviço a 49%')], 1.5 * MIN)
+  assert.deepEqual(r.mensagens, [], 'dentro dos 10 min do aviso')
+  r = encaminhar(r.enc, [n(SERV, 'alarm', 'Serviço a 49%')], 10 * MIN)
+  assert.deepEqual(r.mensagens, ['🚨 Serviço a 49%'])
+  // o relógio volta 1 h para trás com o caminho desaparecido: a contagem dos 2 min recomeça (não fica à espera 1 h)
+  e = encaminhar(r.enc, [], 11 * MIN).enc
+  e = encaminhar(e, [], -49 * MIN).enc
+  assert.deepEqual(encaminhar(e, [], -48 * MIN).mensagens, [])
+  assert.deepEqual(encaminhar(e, [], -47 * MIN).mensagens, ['✓ Resolvido: Serviço a 49%'])
+})
+
 test('emergência tem ícone próprio', () => {
   const r = encaminhar(novoEncaminhador(), [n('notifications.arlequin.porto.fumo', 'emergency', 'FUMO a bordo!')], 0)
   assert.deepEqual(r.mensagens, ['🔥 FUMO a bordo!'])

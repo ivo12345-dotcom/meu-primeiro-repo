@@ -15,7 +15,11 @@ function appFalso () {
   app.getDataDirPath = () => app.dir
   const pôr = (p, value) => { const ks = p.split('.'); let n = app.arvore; for (const k of ks) n = (n[k] = n[k] || {}); n.value = value }
   app.pôr = pôr
-  app.getSelfPath = (p) => p.split('.').reduce((n, k) => n?.[k], app.arvore)
+  // como o removeSource do SignalK 2.33 (pruneSourceFromFullSignalK): o nó fica, sem o valor
+  app.apagar = (p) => { const n = p.split('.').reduce((x, k) => x?.[k], app.arvore); if (n) delete n.value }
+  // ciclos: quantas vezes o encaminhador leu as notificações
+  app.ciclos = 0
+  app.getSelfPath = (p) => { if (p === 'notifications') app.ciclos++; return p.split('.').reduce((n, k) => n?.[k], app.arvore) }
   app.handleMessage = (id, d) => { for (const u of d.updates) for (const v of u.values) pôr(v.path, v.value) }
   // ticks: quantas vezes o ciclo de 1 s do plugin correu (escreve o estado em cada uma)
   app.setPluginStatus = (s) => { app.estado = s; app.ticks++ }
@@ -218,6 +222,62 @@ test('decisão do dono (Adenda 2, apito): a bomba de porão (a trabalhar há mai
     p.stop()
     p.start(config)
     for (const [c, v] of Object.entries(esperados)) assert.deepEqual(app.getSelfPath(c).value, v, `${c} reposto`)
+  } finally { p.stop(); await tgf.fechar() }
+})
+
+// ---------- nota do SignalK 2.33: o reinício de OUTRO plugin (sonda 4 da revisão da F4) ----------
+// stopPlugin() → plugin.stop() (publica "normal") → deltaCache.removeSource(): os valores desse plugin
+// saem da árvore; o plugin volta a publicar os seus alarmes ativos quando arranca (ou não, se limparam).
+
+const mais = async (app, n = 3) => { const alvo = app.ciclos + n; return ate(() => app.ciclos >= alvo) }
+
+test('nota do SignalK 2.33 (revisão, Menor 9): o reinício de outro plugin (o caminho sai da árvore e volta ainda ativo) não repete o alarme no Telegram, nem 20 min depois', async () => {
+  const tgf = await criarTelegramFalso()
+  const app = appFalso()
+  let agora = Date.parse('2026-10-02T10:00:00Z')
+  const p = criar(app, { agora: () => agora, ...RAPIDO })
+  const C = 'notifications.arlequin.energia.servicoCritico'
+  const ALARME = { state: 'alarm', method: ['visual', 'sound'], message: 'Serviço a 49%', apito: 'curto' }
+  p.start({ telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 })
+  try {
+    app.pôr(C, ALARME)
+    assert.ok(await ate(() => textos(tgf).length === 1))
+    agora += 2 * 60000
+    // o Ivo grava a configuração do plugin da energia: "normal", apagado, e só depois o arranque
+    app.pôr(C, { state: 'normal', method: [], message: 'Normal' })
+    app.apagar(C)
+    assert.ok(await mais(app))
+    app.pôr(C, ALARME)
+    assert.ok(await mais(app))
+    agora += 20 * 60000
+    assert.ok(await mais(app))
+    assert.deepEqual(textos(tgf), ['🚨 Serviço a 49%'])
+    // e quando limpa de verdade, um só "Resolvido"
+    app.pôr(C, { state: 'normal', method: [], message: 'Normal' })
+    assert.ok(await ate(() => textos(tgf).length === 2))
+    assert.deepEqual(textos(tgf), ['🚨 Serviço a 49%', '✓ Resolvido: Serviço a 49%'])
+  } finally { p.stop(); await tgf.fechar() }
+})
+
+test('nota do SignalK 2.33 (revisão, Menor 9): um alarme que limpou durante o reinício do outro plugin (o caminho não volta) recebe o "✓ Resolvido" ao fim de 2 min', async () => {
+  const tgf = await criarTelegramFalso()
+  const app = appFalso()
+  let agora = Date.parse('2026-10-02T10:00:00Z')
+  const p = criar(app, { agora: () => agora, ...RAPIDO })
+  const C = 'notifications.arlequin.energia.servicoCritico'
+  p.start({ telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 })
+  try {
+    app.pôr(C, { state: 'alarm', method: ['visual', 'sound'], message: 'Serviço a 49%', apito: 'curto' })
+    assert.ok(await ate(() => textos(tgf).length === 1))
+    agora += 2 * 60000
+    app.apagar(C)
+    assert.ok(await mais(app))
+    agora += 60000
+    assert.ok(await mais(app))
+    assert.deepEqual(textos(tgf), ['🚨 Serviço a 49%'], 'ainda dentro dos 2 min')
+    agora += 60000
+    assert.ok(await ate(() => textos(tgf).length === 2), JSON.stringify(textos(tgf)))
+    assert.deepEqual(textos(tgf), ['🚨 Serviço a 49%', '✓ Resolvido: Serviço a 49%'])
   } finally { p.stop(); await tgf.fechar() }
 })
 

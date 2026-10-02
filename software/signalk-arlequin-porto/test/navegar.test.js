@@ -249,24 +249,23 @@ test('Tarefa 8.3: o estado do encaminhador sobrevive a um reinício (encaminhado
   } finally { p.stop(); await tgf.fechar() }
 })
 
-test('revisão final C2: o alarme gravado no encaminhador.json que não está na árvore (o servidor reiniciou: a árvore vem vazia) passa a normal sem mensagem; quando volta, segue outra vez (mesmo dentro dos 10 min)', () => {
+test('revisão final C2, com a nota do SignalK 2.33 (auditoria F4b): o alarme gravado no encaminhador.json que não está na árvore (o servidor reiniciou: a árvore vem vazia) não dá mensagem logo; se volta ainda ativo não se repete, e o que não volta em 2 min recebe o "✓ Resolvido"', () => {
   const agua = 'notifications.arlequin.porto.aguaPorao'
   let r = encaminhar(novoEncaminhador(), [n(agua, 'alarm', 'Água no porão!'), n('notifications.rota.recursos', 'warn', 'Recursos: gasóleo à chegada ~34 L')], 0)
   assert.deepEqual(r.mensagens, ['🚨 Água no porão!', '⚠️ Recursos: gasóleo à chegada ~34 L'])
   // o que fica no encaminhador.json (ida e volta pelo JSON) e o servidor arranca com a árvore vazia
   let e = JSON.parse(JSON.stringify(r.enc))
   r = encaminhar(e, [], 2 * MIN)
-  assert.deepEqual(r.mensagens, [], 'desapareceu, não se resolveu: sem "✓ Resolvido"')
-  assert.equal(r.enc.estados[agua], 'normal')
-  assert.equal(r.enc.pendente[agua], undefined)
-  e = r.enc
-  // o alarme volta a ser publicado (ainda há água): segue outra vez, mesmo a 3 min do 1.º
+  assert.deepEqual(r.mensagens, [], 'desapareceu: ainda não se sabe se se resolveu')
+  e = JSON.parse(JSON.stringify(r.enc))
+  // o alarme volta a ser publicado (ainda há água): não se repete
   r = encaminhar(e, [n(agua, 'alarm', 'Água no porão!')], 3 * MIN)
-  assert.deepEqual(r.mensagens, ['🚨 Água no porão!'])
+  assert.deepEqual(r.mensagens, [])
   e = r.enc
-  // e o "Resolvido" sai uma vez quando a água acaba
+  // a água acaba: um "Resolvido"; o aviso dos recursos não voltou em 2 min: o seu "Resolvido" também
   r = encaminhar(e, [n(agua, 'normal', '')], 4 * MIN)
-  assert.deepEqual(r.mensagens, ['✓ Resolvido: Água no porão!'])
+  assert.deepEqual(r.mensagens, ['✓ Resolvido: Água no porão!', '✓ Resolvido: Recursos: gasóleo à chegada ~34 L'])
+  assert.deepEqual(encaminhar(r.enc, [n(agua, 'normal', '')], 5 * MIN).mensagens, [])
 })
 
 test('revisão final I2: o lembrete da hora de alarme em terra (notifications.rota.alarmeTerra) fica só no ecrã', () => {
