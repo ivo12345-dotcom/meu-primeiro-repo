@@ -392,8 +392,13 @@ module.exports = function (app, deps = {}) {
         const item = enc.porEnviar[0]
         const texto = textoAEnviar(item, agora())
         const erros = await Promise.all(chats.map(id => cliente.sendMessage(id, texto).then(() => null, e => e)))
-        if (cliente !== tg) return // stop() a meio: a fila fica gravada e o arranque seguinte trata dela
         const falhados = erros.filter(Boolean)
+        if (cliente !== tg) {
+          // stop() (e start()) a meio: a fila fica gravada e o arranque trata dela; se esta chegou, sai
+          // já da fila (o arranque pode tê-la lido do disco: tira-se pelo texto e pela hora)
+          if (falhados.length < chats.length) tirarDaFila(item)
+          return
+        }
         if (falhados.length) {
           const msg = registoTelegram(falhados[0])
           if (msg !== ultimoErroFila) { ultimoErroFila = msg; app.error(msg) }
@@ -405,13 +410,19 @@ module.exports = function (app, deps = {}) {
         }
         falhasFila = 0
         proximaTentativa = 0
-        enc = { ...enc, porEnviar: enc.porEnviar.filter(x => x !== item) }
-        gravarEncaminhador()
+        tirarDaFila(item)
         if (enc.porEnviar.length && pausaFilaMs > 0) await new Promise(resolve => setTimeout(resolve, pausaFilaMs))
       }
     } finally {
       if (envioFila === este) envioFila = null
     }
+  }
+  // tira da fila a mensagem entregue (a primeira igual: o mesmo objeto, ou o mesmo texto e hora) e grava
+  function tirarDaFila (item) {
+    const i = enc.porEnviar.findIndex(x => x === item || (x.texto === item.texto && x.desde === item.desde))
+    if (i < 0) return
+    enc = { ...enc, porEnviar: [...enc.porEnviar.slice(0, i), ...enc.porEnviar.slice(i + 1)] }
+    gravarEncaminhador()
   }
 
   plugin.start = function (props) {

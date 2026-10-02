@@ -222,8 +222,11 @@ test('Tarefa 8.3: o estado do encaminhador sobrevive a um reinício (encaminhado
   app.arvore.notifications = { rota: { recursos: { value: { state: 'warn', message: 'Recursos: gasóleo à chegada ~34 L' } } } }
   let p = criar(app)
   p.start(props)
+  // entregue: o Telegram aceitou e a fila do encaminhador.json já não a tem (auditoria K-09; um
+  // reinício com o envio ainda a meio pode repeti-la — mais vale repetido do que perdido)
+  const naFila = () => { try { return JSON.parse(fs.readFileSync(path.join(app.dir, 'encaminhador.json'), 'utf8')).porEnviar.length } catch { return -1 } }
   try {
-    assert.ok(await ate(() => tgf.enviados.some(m => m.chatId === '111')))
+    assert.ok(await ate(() => tgf.enviados.some(m => m.chatId === '111') && naFila() === 0))
     p.stop()
     assert.ok(fs.existsSync(path.join(app.dir, 'encaminhador.json')))
     assert.deepEqual(fs.readdirSync(app.dir).filter(f => f.endsWith('.tmp')), [], 'sem .tmp a sobrar')

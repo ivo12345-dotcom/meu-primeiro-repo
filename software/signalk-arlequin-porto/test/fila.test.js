@@ -179,6 +179,34 @@ test('auditoria K-09: a fila sobrevive a um reinício do plugin (está no encami
   } finally { p.stop(); await tgf.fechar() }
 })
 
+test('auditoria K-09: um stop() e start() (gravar a configuração) com um envio a meio que chega: não se repete', async () => {
+  const tgf = await criarTelegramFalso()
+  const app = appFalso()
+  const original = globalThis.fetch
+  // o Telegram aceita o envio, mas a resposta só chega ao barco quando o teste a soltar
+  let soltar
+  const preso = new Promise(resolve => { soltar = resolve })
+  globalThis.fetch = async (url, o) => {
+    const r = await original(url, o)
+    if (String(url).endsWith('/sendMessage')) await preso
+    return r
+  }
+  const p = criar(app)
+  const props = { telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 }
+  p.start(props)
+  try {
+    app.pôr('sensors.porao.agua', 1)
+    assert.ok(await ate(() => textos(tgf).length === 1))
+    // o SignalK para e arranca o mesmo plugin; o arranque lê a fila do disco (ainda com a mensagem)
+    p.stop()
+    p.start(props)
+    soltar()
+    assert.ok(await ate(() => naFila(app).length === 0))
+    await esperar(2600) // mais do que um ciclo do encaminhador (2 s)
+    assert.deepEqual(textos(tgf), ['🚨 Água no porão!'])
+  } finally { globalThis.fetch = original; p.stop(); await tgf.fechar() }
+})
+
 test('auditoria K-09: entregue a pelo menos um chat autorizado sai da fila (um chat que bloqueou o bot não a prende); nunca vai aos contactos do plano', async () => {
   const tgf = await criarTelegramFalso()
   const app = appFalso()
