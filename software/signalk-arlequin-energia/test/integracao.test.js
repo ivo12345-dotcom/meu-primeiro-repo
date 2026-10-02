@@ -118,6 +118,34 @@ test('I-21: ao arrancar, as notificações deste plugin presas na árvore passam
   assert.deepEqual(app.notificacoes.map(n => `${n.id}:${n.state}`), ['servicoCritico:normal'])
 })
 
+// Auditoria M-59 (E-M1): o victron-ble demora a encontrar o SmartShunt; "há mais de 5 min" saía aos 10 s
+// de cada arranque (e ia ao Telegram).
+test('M-59: sem SoC desde o arranque, o sensor perdido só aparece 5 min depois de arrancar', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: Date.parse('2026-10-02T10:00:00Z') })
+  const app = appFalso()
+  const plugin = criarPlugin(app)
+  plugin.start({})
+  t.mock.timers.tick(10 * 1000)
+  assert.deepEqual(app.notificacoes, [])
+  for (let s = 10; s < 290; s += 10) t.mock.timers.tick(10 * 1000)
+  assert.deepEqual(app.notificacoes, [], 'aos 4 min 50 s ainda não')
+  for (let s = 290; s < 320; s += 10) t.mock.timers.tick(10 * 1000)
+  plugin.stop()
+  assert.deepEqual(app.notificacoes.map(n => `${n.id}:${n.state}`).slice(0, 1), ['sensorPerdido:warn'])
+  assert.ok(app.notificacoes[0].t - Date.parse('2026-10-02T10:00:00Z') > 5 * 60 * 1000)
+})
+
+test('M-59: o SoC que chega depois do SOG não dá um "sensor perdido" falso pelo meio', () => {
+  const app = appFalso()
+  const plugin = criarPlugin(app)
+  plugin.start({})
+  const t0 = Date.now()
+  app.receber({ updates: [{ timestamp: new Date(t0).toISOString(), values: [{ path: 'navigation.speedOverGround', value: 0 }] }] })
+  app.receber({ updates: [{ timestamp: new Date(t0 + 20000).toISOString(), values: [{ path: 'electrical.batteries.servico.capacity.stateOfCharge', value: 0.9 }] }] })
+  plugin.stop()
+  assert.deepEqual(app.notificacoes, [])
+})
+
 test('verão a navegar sem piloto: o sol chega, nenhum alarme', () => {
   const { app } = correrCenario('verao-navegar', '2026-07-10T08:00:00')
   assert.deepEqual(app.notificacoes, [])

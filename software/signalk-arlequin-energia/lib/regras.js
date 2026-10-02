@@ -85,8 +85,12 @@ function atualizarMotor (motor, rpm, agora, lim, ativos = {}, soc = null) {
 // Para cada alarme: true = deve ficar ativo, false = deve limpar,
 // null = não se pode julgar agora (mantém como está).
 function condicoes (ativos, l, motor, agora, lim) {
-  const socFresco = typeof l.soc === 'number' && agora - l.socEm <= lim.dadosVelhos
-  const c = { sensorPerdido: !socFresco }
+  // socEm: a hora do último SoC (um número) ou, antes de chegar o primeiro, a do arranque do plugin —
+  // o victron-ble demora a encontrar o SmartShunt e o "há mais de 5 min" não pode sair aos 10 s
+  // (auditoria M-59).
+  const recente = agora - l.socEm <= lim.dadosVelhos
+  const socFresco = typeof l.soc === 'number' && recente
+  const c = { sensorPerdido: !recente }
 
   if (socFresco) {
     c.ligarMotor = ativos.ligarMotor

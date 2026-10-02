@@ -111,7 +111,7 @@ module.exports = function (app) {
       if (!Number.isNaN(ts)) desvio = ts - Date.now()
       for (const { path: p, value } of u.values ?? []) {
         const b = `electrical.batteries.${opcoes.servico}.`
-        if (p === b + 'capacity.stateOfCharge') { leitura.soc = value; leitura.socEm = ts }
+        if (p === b + 'capacity.stateOfCharge') { leitura.soc = value; if (typeof value === 'number') leitura.socEm = ts }
         else if (p === b + 'current') leitura.corrente = value
         else if (p === `electrical.batteries.${opcoes.motor}.voltage`) leitura.vMotor = value
         else if (p === `propulsion.${opcoes.propulsao}.revolutions`) { leitura.rpm = value; leitura.rpmEm = ts }
@@ -125,8 +125,9 @@ module.exports = function (app) {
   plugin.start = function (props) {
     opcoes = { servico: 'servico', motor: 'motor', propulsao: 'main', logbook: false, token: '', ...props }
     estado = novoEstado()
-    leitura = { soc: null, socEm: 0, corrente: 0, vMotor: null, rpm: null, rpmEm: 0, sog: 0, modo: 'day' }
     desvio = 0
+    // socEm começa na hora do arranque: o sensor perdido conta 5 min a partir daqui (auditoria M-59)
+    leitura = { soc: null, socEm: agora(), corrente: 0, vMotor: null, rpm: null, rpmEm: 0, sog: 0, modo: 'day' }
     runTimePublicado = false
     inicioDados = null
     normal(IDS.filter(id => { const s = app.getSelfPath?.(PREFIXO + id)?.value?.state; return s && s !== 'normal' }))
