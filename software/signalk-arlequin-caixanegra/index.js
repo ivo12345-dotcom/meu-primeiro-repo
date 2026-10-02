@@ -76,8 +76,9 @@ module.exports = function (app) {
   }
 
   const publicar = (values) => app.handleMessage(plugin.id, { updates: [{ values }] })
-  const notificar = (id, state, message, method = ['visual']) =>
-    publicar([{ path: `notifications.arlequin.caixanegra.${id}`, value: { state, method: state === 'normal' ? [] : method, message } }])
+  // `extra` vai no valor da notificação (ex.: { apito: 'curto' }, o contrato C1 com o ecrã).
+  const notificar = (id, state, message, method = ['visual'], extra = {}) =>
+    publicar([{ path: `notifications.arlequin.caixanegra.${id}`, value: { state, method: state === 'normal' ? [] : method, message, ...extra } }])
   const publicarVelas = () =>
     publicar([{ path: 'sails.grande.rizos', value: velas.grandeRizos }, { path: 'sails.genoa.percentagem', value: velas.genoaPct }])
 
@@ -211,7 +212,9 @@ module.exports = function (app) {
       if (!bruto.parado) bruto.parar()
       if (avisoDisco !== 'alarm') {
         avisoDisco = 'alarm'
-        notificar('disco', 'alarm', `Disco a ${pct}%: parei de gravar o bruto (a tabela continua). Liga o portátil para copiar os dados.`, ['visual', 'sound'])
+        // Apito curto (decisão n.º 2, contrato C1): o contínuo fica para o perigo imediato
+        // (colisão, fumo, água no porão, gasóleo, motor); um disco cheio não é "levanta-te já".
+        notificar('disco', 'alarm', `Disco a ${pct}%: parei de gravar o bruto (a tabela continua). Liga o portátil para copiar os dados.`, ['visual', 'sound'], { apito: 'curto' })
       }
       return
     }
