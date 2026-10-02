@@ -50,6 +50,9 @@ function marcar (ctx, id, valor) {
 
 // ---------- pedaços ----------
 const h = (n, d = 1) => `${num(n, d)} h`
+// o máximo do provável e, se arredondado for diferente, o do pessimista (auditoria M-38: o veredicto e os
+// limites são os do pessimista; "rajada 31 (pior 34) nós")
+const comPior = (provavel, pior, d = 0) => (num(pior, d) !== '—' && num(pior, d) !== num(provavel, d) ? `${num(provavel, d)} (pior ${num(pior, d)})` : num(provavel, d))
 
 function cartao (ctx, alt, i, sel) {
   const ag = agora(ctx)
@@ -58,14 +61,14 @@ function cartao (ctx, alt, i, sel) {
   const motivos = alt.motivos?.length ? `<div class="lab perigo">${alt.motivos.map(esc).join('; ')}</div>` : ''
   // os avisos da rota que não vão para os vermelhos (a previsão e o canal vão): o salto curto, a rota ativa…
   const avisosRota = (alt.avisosRota || []).filter(a => !/previs/i.test(a) && !(alt.canal && /por confirmar/.test(a))).map(a => `<div class="lab atencao">${esc(a)}</div>`).join('')
-  const H = alt.horas || {}; const M = alt.maximos || {}; const G = alt.gasoleoL || {}
+  const H = alt.horas || {}; const M = alt.maximos || {}; const P = alt.maximosPessimista || {}; const G = alt.gasoleoL || {}
   return `<div class="tile cartao${sel ? ' sel' : ''}${i === 0 ? ' primeira' : ''}" data-acao="rota-escolher" data-i="${i}">
 <div class="linha"><span class="lab">${i + 1}.ª · ${etiqueta}</span><span class="lab">${num(alt.milhas, 1)} MN</span></div>
 <div class="nome-alt">${esc(nomeAlternativa(alt))}</div>
 <div class="v">${horaLisboa(alt.partida, ag)} → ${horaLisboa(alt.chegada?.p50, ag)}</div>
 <div class="lab">chegada (cedo–tarde): ${margem(alt.chegada, ag)}${alt.chegadaNoite ? ' · <span class="atencao">de noite</span>' : ''}</div>
 <div>vela ${h(H.vela)} · motor ${h(H.motor)} · noite ${h(H.noite)} · leme ${h(H.leme)}</div>
-<div>vento ${num(M.vento, 0)} · rajada ${num(M.rajada, 0)} nós · ondas ${num(M.ondas, 1)} m</div>
+<div>vento ${comPior(M.vento, P.vento)} · rajada ${comPior(M.rajada, P.rajada)} nós · ondas ${comPior(M.ondas, P.ondas, 1)} m</div>
 <div>gasóleo ${num(G.p50, 0)} L (pior ${num(G.p90, 0)} L) · bateria mín. ${num(alt.bateriaMin, 0)}%</div>
 ${motivos}${avisosRota}</div>`
 }

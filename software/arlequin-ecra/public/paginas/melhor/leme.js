@@ -2,7 +2,8 @@
 // vento os dois bordos ótimos da polar e quando virar. "Novo cálculo" volta ao estado Pedir.
 // (Era a página melhor.js antes da 3b-1.) A navegar (3b-2), o plano ativo por cima do rumo
 // (melhor/navegar.js: a faixa, Recalcular, Terminar, a caixa da rota mudada); com o plano ativo o Leme
-// fica limpo (Tarefa 8.2): sem o "Novo cálculo" nem o texto do OpenCPN, só o Recalcular. Pausado sem
+// fica limpo (Tarefa 8.2): sem o "Novo cálculo", só o Recalcular. (A frase "a rota ótima calcula-se no
+// OpenCPN" saiu, auditoria M-40: a página calcula a rota.) Pausado sem
 // rota ativa: "a rota do plano já não está ativa" (não a espera pelo rumo).
 
 import { angulosOtimos } from '../../lib/polar.js'
@@ -25,7 +26,7 @@ export default {
     const plano = navegar.render(ctx)
     // os avisos da rota ativos (auditoria I-24), num mosaico à parte: o rumo nunca sai do ecrã
     const avisos = navegar.avisosRota(ctx)
-    // com o plano ativo (Tarefa 8.2), só o Recalcular da faixa: sem o "Novo cálculo" nem o texto do OpenCPN
+    // com o plano ativo (Tarefa 8.2), só o Recalcular da faixa: sem o "Novo cálculo"
     const comPlano = !!navegar.planoAberto(ctx)
     if (!wp.ativo) {
       // acabou de se ativar, ou o SignalK ainda não mandou o rumo ao próximo ponto; em pausa sem rota
@@ -75,8 +76,7 @@ ${avisos}<div class="tile"><div class="lab">${esc(wp.nome)}</div><div class="vv"
 <div class="tile"><div class="lab">XTE ${ok(wp.xte) ? `${distancia(Math.abs(wp.xte), 2)} MN ${wp.xte > 0 ? 'EB' : 'BB'}` : '—'}</div>${barraXte(wp.xte)}</div>
 <div class="tile"><div class="lab">VMG ao WP</div><div class="vv">${velocidade(wp.vmg)} nós</div></div>
 <div class="tile"><div class="lab">Vento real</div><div class="vv">${velocidade(tws)} nós de ${rumo(twd)}</div></div>
-${comPlano ? '' : `<div class="tile lab">A rota ótima (isócronas, GRIB) calcula-se no OpenCPN. Com o EV-100, este rumo passa a ir para o piloto.</div>
-<div class="tile" style="flex:0 0 auto;">${NOVO}</div>`}
+${comPlano ? '' : `<div class="tile" style="flex:0 0 auto;">${NOVO}</div>`}
 </div>`
   }
 }

@@ -115,7 +115,10 @@ function linhasFaixa (ctx, p) {
   else {
     const partes = []
     const hora = Date.parse(p.proximo?.hora)
-    if (p.proximo?.texto && ok(hora)) partes.push(`próximo: ${esc(p.proximo.texto)} ${quandoAs(hora, t)} (daqui a ${contagem((hora - t) / 60000)})`)
+    // um evento que já passou: "há X min" (auditoria M-39: dizia "daqui a 0 min"); no minuto certo, "agora"
+    const falta = Math.round((hora - t) / 60000)
+    const quando = falta > 0 ? `daqui a ${contagem(falta)}` : falta < 0 ? `há ${contagem(-falta)}` : 'agora'
+    if (p.proximo?.texto && ok(hora)) partes.push(`próximo: ${esc(p.proximo.texto)} ${quandoAs(hora, t)} (${quando})`)
     const a = atrasoTexto(p.atrasoMin)
     if (a) partes.push(a)
     if (partes.length) linhas.push(partes.join(' · '))

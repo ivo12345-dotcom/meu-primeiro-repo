@@ -87,6 +87,9 @@ function noRasto (rasto, t) {
   return melhor
 }
 
+// a hora de uma dica: com o dia ("amanhã 09:30"), como o resto da página (auditoria M-47); sem t, a do plugin
+const dica = (x, agora) => (Number.isFinite(Date.parse(x?.t)) ? horaLisboa(x.t, agora) : x?.hora || '')
+
 const marca = (classe, [x, y], cor, r) => `<rect class="marca ${classe}" x="${f1(x - r)}" y="${f1(y - r)}" width="${f1(2 * r)}" height="${f1(2 * r)}" fill="${cor}" stroke="var(--fundo)" stroke-width="2"/>`
 const rotulo = ([x, y], texto, largura, cor = 'var(--texto)', { classe = '', tamanho = 22 } = {}) => {
   const esquerda = x > largura * 0.7
@@ -126,7 +129,7 @@ export function desenharMapa ({ mapa, alternativas = [], selecionada = 0, noite 
     const p = noRasto(a.rasto, av.t)
     if (!p) continue
     const [x, y] = pr.xy(p.lat, p.lon)
-    partes.push(`<path class="aviso" d="M${f1(x)} ${f1(y - 13)}L${f1(x + 11)} ${f1(y + 7)}L${f1(x - 11)} ${f1(y + 7)}Z" fill="var(--amarelo)" stroke="var(--fundo)" stroke-width="2"><title>${esc(av.hora || horaLisboa(av.t, agora))} ${esc(av.texto)}</title></path>`)
+    partes.push(`<path class="aviso" d="M${f1(x)} ${f1(y - 13)}L${f1(x + 11)} ${f1(y + 7)}L${f1(x - 11)} ${f1(y + 7)}Z" fill="var(--amarelo)" stroke="var(--fundo)" stroke-width="2"><title>${esc(dica(av, agora))} ${esc(av.texto)}</title></path>`)
   }
   // pontos de desistência (calculados para a 1.ª alternativa): bolinha e o abrigo (o nome só
   // quando muda, para não o repetir em cada ponto)
@@ -137,7 +140,7 @@ export function desenharMapa ({ mapa, alternativas = [], selecionada = 0, noite 
     const nome = p.abrigo?.nome || p.voltar?.nome || ''
     // verde só com uma fuga limpa (abrigo ou volta sem aviso vermelho)
     const vermelho = ![p.abrigo, p.voltar].some(f => f && !f.avisoVermelho)
-    partes.push(`<circle class="desistencia" cx="${f1(xy[0])}" cy="${f1(xy[1])}" r="8" fill="${vermelho ? 'var(--perigo)' : 'var(--ok)'}" stroke="var(--fundo)" stroke-width="2"><title>${esc(p.hora || '')} ${esc(nome)}</title></circle>`)
+    partes.push(`<circle class="desistencia" cx="${f1(xy[0])}" cy="${f1(xy[1])}" r="8" fill="${vermelho ? 'var(--perigo)' : 'var(--ok)'}" stroke="var(--fundo)" stroke-width="2"><title>${esc(dica(p, agora))} ${esc(nome)}</title></circle>`)
     // "↩ Peniche": a fuga, mais pequena e na cor de aviso (não se confunde com os portos da rota)
     if (nome && nome !== anterior) partes.push(rotulo(xy, `↩ ${nome}`, largura, 'var(--amarelo)', { classe: 'fuga', tamanho: 18 }))
     anterior = nome

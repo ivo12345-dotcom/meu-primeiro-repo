@@ -389,11 +389,20 @@ test('Tarefa 8.2: com o plano ativo, o Leme fica limpo: sem "A rota ótima (isó
   assert.match(html, /data-acao="rota-recalcular"/)
 })
 
-test('Tarefa 8.2: rota ativa sem plano (ativada à mão no OpenCPN): fica o "Novo cálculo" (e o texto do OpenCPN)', async () => {
+test('Tarefa 8.2: rota ativa sem plano (ativada à mão no OpenCPN): fica o "Novo cálculo"; auditoria M-40: sem a frase velha "A rota ótima… calcula-se no OpenCPN" (a página calcula a rota)', async () => {
   const html = melhor.render(await leme(undefined))
   assert.match(html, /Rumo a seguir/)
   assert.match(html, /data-acao="rota-novo"[^>]*>Novo cálculo</)
   assert.doesNotMatch(html, /rota-recalcular/)
+  assert.doesNotMatch(texto(html), /A rota ótima|isócronas|GRIB|EV-100/)
+})
+
+test('auditoria M-39: um próximo evento que já passou diz "há X min", nunca "daqui a 0 min"', async () => {
+  const t = texto(melhor.render(await leme({ ...PLANO, proximo: { texto: 'rizar', hora: iso(AGORA - 15 * MIN) } })))
+  assert.match(t, /próximo: rizar às 15:17 \(há 15 min\)/)
+  assert.doesNotMatch(t, /daqui a 0 min/)
+  // no minuto certo, "daqui a 0 min" não; "agora"
+  assert.match(texto(melhor.render(await leme({ ...PLANO, proximo: { texto: 'rizar', hora: iso(AGORA + 20e3) } }))), /próximo: rizar às 15:32 \(agora\)/)
 })
 
 test('Tarefa 8.2: pausado sem rota ativa: o texto por baixo do título diz "a rota do plano já não está ativa", não a espera pelo rumo; sem "Novo cálculo"', async () => {
