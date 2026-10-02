@@ -3,6 +3,7 @@
 import { velocidade, distancia, duracao, num, rumo, anguloBordo, graus, nos } from '../lib/formato.js'
 import { barra } from '../lib/desenho.js'
 import { esc } from '../lib/rota-texto.js'
+import { leituraCpa, SO_DISTANCIA } from '../lib/ais.js'
 
 const ok = (v) => typeof v === 'number' && Number.isFinite(v)
 
@@ -77,9 +78,16 @@ export function motorResumo (ctx) {
   }
 }
 
+// Um alvo na Carta: o nome e o CPA · TCPA (lib/ais.js leituraCpa); sem o rumo de um dos barcos, a distância e o
+// porquê (revisão F3, Minor 7: dava "— MN · —").
 export function linhaAlvo (a) {
   const cls = a.classe === 'perigo' ? 'perigo' : a.classe === 'atencao' ? 'atencao' : ''
-  const cpaTxt = a.r && a.r.tcpa >= 0 ? `${distancia(a.r.cpa)} MN · ${duracao(a.r.tcpa)}` : a.r && a.r.tcpa < 0 ? 'afasta-se' : '—'
+  const l = leituraCpa(a.r)
+  const cpaTxt = l.tipo === 'cpa' ? `${distancia(l.cpa)} MN · ${duracao(l.tcpa)}`
+    : l.tipo === 'paralelo' ? `${distancia(l.cpa)} MN · —`
+      : l.tipo === 'afasta' ? 'afasta-se'
+        : l.tipo === 'distancia' ? `${distancia(a.r.distancia)} MN · ${SO_DISTANCIA}`
+          : '—'
   return `<div class="linha ${cls}"><span>${esc(a.name || a.mmsi)}</span><span>${cpaTxt}</span></div>`
 }
 
