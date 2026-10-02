@@ -12,6 +12,9 @@ const LIMITE_MS = 10000
 function criarTelegram ({ token, base = 'https://api.telegram.org', fetchFn = globalThis.fetch, limiteMs = LIMITE_MS }) {
   const url = (metodo) => `${base}/bot${token}/${metodo}`
   const cancelado = (metodo) => Object.assign(new Error(`Telegram ${metodo}: cancelado`), { cancelado: true })
+  // o token nunca entra num erro (vai para o registo e para o ecrã), mesmo que um texto de fora o traga
+  // (uma mensagem do fetch com o URL inteiro)
+  const semToken = (texto) => (token ? String(texto).split(String(token)).join('<token>') : String(texto))
 
   async function pedir (metodo, opcoes, ms = limiteMs, sinal = null) {
     const signal = sinal ? AbortSignal.any([AbortSignal.timeout(ms), sinal]) : AbortSignal.timeout(ms)
@@ -21,7 +24,7 @@ function criarTelegram ({ token, base = 'https://api.telegram.org', fetchFn = gl
     } catch (e) {
       if (sinal?.aborted) throw cancelado(metodo)
       const porque = e?.name === 'TimeoutError' ? `sem resposta em ${Math.round(ms / 1000)} s` : e?.cause?.code || e?.message
-      throw Object.assign(new Error(`Telegram ${metodo}: sem ligação (${porque})`), { semLigacao: true })
+      throw Object.assign(new Error(`Telegram ${metodo}: sem ligação (${semToken(porque)})`), { semLigacao: true })
     }
     let j
     try { j = await r.json() } catch (e) {
@@ -30,7 +33,7 @@ function criarTelegram ({ token, base = 'https://api.telegram.org', fetchFn = gl
       throw Object.assign(new Error(`Telegram ${metodo}: resposta inválida (HTTP ${r.status})`), { codigo: r.status, descricao: `resposta inválida (HTTP ${r.status})` })
     }
     if (!j.ok) {
-      const descricao = j.description || `HTTP ${r.status}`
+      const descricao = semToken(j.description || `HTTP ${r.status}`)
       const esperarS = Number.isFinite(j.parameters?.retry_after) ? j.parameters.retry_after : null
       throw Object.assign(new Error(`Telegram ${metodo}: ${descricao}`), { codigo: j.error_code ?? r.status, descricao, esperarS })
     }
