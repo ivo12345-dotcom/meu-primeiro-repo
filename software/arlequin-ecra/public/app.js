@@ -7,7 +7,7 @@ import { lerPolar } from './lib/polar.js'
 import { registarPressao, tendencia, lerBarometro } from './lib/barometro.js'
 import { novaViagem, acumular, lerViagem } from './lib/viagem.js'
 import { passoCiclo, desenharSeguro, escolherPagina, CAIXA_ERRO_DESENHO } from './lib/ciclo.js'
-import { maisGrave, deveTocar, paginaDoAlarme, bipDeLigacao, chipAlarme } from './lib/alarmes.js'
+import { alarmeDaBarra, deveTocar, paginaDoAlarme, bipDeLigacao, chipAlarme, calar } from './lib/alarmes.js'
 import { podeRedesenhar, aoEnter, aoEscrever } from './lib/interacao.js'
 import { NIVEIS, PADRAO as BRILHO_PADRAO, nivelValido, mudarNivel } from './lib/brilho.js'
 import { criarAudio, retomar, comSom, chipSemSom } from './lib/som.js'
@@ -104,11 +104,19 @@ function barra (ctx) {
     pressao: ctx.v('environment.outside.pressure'),
     tendencia: ctx.baro,
     somHtml: chipSemSom(app.audio),
-    alarmeHtml: chipAlarme(maisGrave(ctx.notificacoes)),
+    // o que está a apitar agora, com o botão dele (revisão F3, Important 4: antes, o mais grave, mesmo já calado)
+    alarmeHtml: chipAlarme(alarmeDaBarra(ctx.notificacoes)),
+    calarFalha: app.falhaCalar && app.falhaCalar.ate > Date.now() ? app.falhaCalar.texto : null,
     piloto: ctx.v('steering.autopilot.state'),
     ligado: store.ligado,
-    falhas: [app.falhaJanela, app.falhaCalar && app.falhaCalar.ate > Date.now() ? app.falhaCalar.texto : null]
+    falhas: [app.falhaJanela]
   })
+}
+
+// A notificação de um botão de calar (pelo id do servidor ou pelo caminho); já sem ela no store, a do botão.
+function notificacaoDe (dados) {
+  for (const n of store.notificacoes.values()) if ((dados.id && n.id === dados.id) || (!dados.id && dados.caminho && n.caminho === dados.caminho)) return n
+  return { id: dados.id, caminho: dados.caminho }
 }
 
 // ---------- som ----------
@@ -227,12 +235,13 @@ document.addEventListener('click', async (ev) => {
     retomar(app.audio)
     return render()
   }
-  // calar o alarme (lib/alarmes.js, acaoCalar): silenciar onde o servidor deixa; a emergência reconhece-se
-  // (auditoria I-08); a falha fica à vista na barra
+  // calar o alarme (lib/alarmes.js, acaoCalar e calar): silenciar onde o servidor deixa; a emergência reconhece-se
+  // (auditoria I-08); pelo id do servidor ou, sem ele, pelo caminho (revisão F3, Important 4); a recusa fica à
+  // vista na barra, em pt-PT
   if (acao === 'silenciar' || acao === 'reconhecer') {
     ev.stopPropagation()
     try {
-      await pedir(`/signalk/v2/api/notifications/${encodeURIComponent(a.dataset.id)}${acao === 'reconhecer' ? '/acknowledge' : '/silence'}`, { method: 'POST' })
+      await calar(notificacaoDe(a.dataset), acao, pedir)
       app.falhaCalar = null
     } catch (err) {
       app.falhaCalar = { texto: falhaCalar(err, acao), ate: Date.now() + FALHA_CALAR_MS }

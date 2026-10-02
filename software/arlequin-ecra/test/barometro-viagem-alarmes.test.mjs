@@ -143,7 +143,8 @@ test('auditoria I-08: "silenciar" só onde o servidor deixa; a emergência (que 
   assert.equal(acaoCalar(doServidor('a', { state: 'alarm', method: SOM, status: { silenced: false, acknowledged: false, canSilence: false, canAcknowledge: true } })), 'reconhecer')
   assert.equal(acaoCalar(doServidor('a', { state: 'alarm', method: SOM, status: { silenced: false, acknowledged: false, canSilence: false, canAcknowledge: false } })), null)
   assert.equal(acaoCalar(doServidor('a', { state: 'alarm', method: ['visual'], status: { silenced: true, acknowledged: false } })), null, 'já calado')
-  assert.equal(acaoCalar({ caminho: 'x', state: 'alarm', method: SOM }), null, 'sem id (o servidor não o conhece): nada')
+  // (revisão F3, Important 4: sem o id do servidor também se cala, pelo caminho; antes não havia botão)
+  assert.equal(acaoCalar({ caminho: 'notifications.x', state: 'alarm', method: SOM }), 'silenciar', 'sem id: pelo caminho')
   const html = chipAlarme(doServidor('notifications.arlequin.ais.1', { state: 'alarm', method: SOM, message: 'NORDIC STAR', apito: 'continuo' }))
   assert.match(html, /^<span class="chip alarme" data-acao="ir-alarme"[^>]*>⚠ NORDIC STAR<\/span><button class="silenciar" data-acao="silenciar" data-id="0b6f3c2e-[^"]+">silenciar<\/button>$/)
   const fumo = chipAlarme(doServidor('notifications.arlequin.porto.fumo', { state: 'emergency', method: SOM, message: 'FUMO a bordo!', apito: 'continuo' }))
@@ -157,14 +158,120 @@ test('auditoria I-08: a falha do silenciar/reconhecer fica à vista na barra, cu
   assert.equal(falhaCalar(erro(400, 'um alarme de emergência não se silencia: só se reconhece'), 'silenciar'), 'não silenciou: um alarme de emergência não se silencia: só se reconhece')
   assert.equal(falhaCalar(erro(401), 'silenciar'), 'não silenciou: sem permissão (entra no SignalK)')
   assert.equal(falhaCalar(erro(undefined, 'sem ligação ao SignalK'), 'reconhecer'), 'não reconheceu: sem ligação ao SignalK')
-  assert.equal(falhaCalar(erro(400), 'reconhecer'), 'não reconheceu (HTTP 400)')
+  // (revisão F3, Important 4: sem a explicação do servidor diz quem recusou, não só o código)
+  assert.equal(falhaCalar(erro(400), 'reconhecer'), 'não reconheceu: o SignalK recusou (HTTP 400)')
   const { readFileSync } = await import('node:fs')
   const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8')
   const calar = app.slice(app.indexOf("if (acao === 'silenciar' || acao === 'reconhecer')"), app.indexOf("if (acao === 'ir-alarme')"))
-  assert.match(calar, /\/acknowledge/)
-  assert.match(calar, /\/silence/)
+  assert.ok(calar.length > 50, 'o bloco do calar no app.js')
+  // os pedidos (/silence, /acknowledge e, sem id, o caminho) estão no calar() do lib/alarmes.js (testado com as URLs)
+  assert.match(calar, /calar\(/)
+  assert.match(readFileSync(new URL('../public/lib/alarmes.js', import.meta.url), 'utf8'), /'acknowledge' : 'silence'/)
   assert.doesNotMatch(calar, /\.catch\(\(\) => \{\}\)/)
   assert.match(calar, /falhaCalar\(/)
+})
+
+// ---------- revisão F3, Important 4: a barra mostra o que está a apitar agora, e cada um cala-se no ecrã ----------
+const UUID = (n) => `0b6f3c2e-1d2a-4c55-9d1e-6a1f2b3c4d${String(n).padStart(2, '0')}`
+const st = (x) => ({ silenced: false, acknowledged: false, canSilence: true, canAcknowledge: true, ...x })
+const fumoReconhecido = { caminho: 'notifications.arlequin.porto.fumo', id: UUID(1), state: 'emergency', method: ['visual'], message: 'FUMO a bordo!', apito: 'continuo', status: st({ acknowledged: true }) }
+const porao = { caminho: 'notifications.arlequin.porto.aguaPorao', id: UUID(2), state: 'alarm', method: SOM, message: 'Água no porão!', apito: 'continuo', status: st() }
+const aisApita = { caminho: 'notifications.arlequin.ais.263000001', id: UUID(3), state: 'alarm', method: SOM, message: 'NORDIC STAR em rota de colisão · CPA 0,1 MN', apito: 'continuo', status: st() }
+const aisSilenciado = { ...aisApita, id: UUID(4), caminho: 'notifications.arlequin.ais.263000002', method: ['visual'], status: st({ silenced: true }) }
+const disco = { caminho: 'notifications.arlequin.caixanegra.disco', id: UUID(5), state: 'alarm', method: SOM, message: 'Disco a 95 %', apito: 'curto', status: st() }
+const lembrete = { caminho: 'notifications.rota.lembrete.e3', id: UUID(6), state: 'alert', method: SOM, message: 'Às 15:57: rizar', apito: 'curto', status: st() }
+
+test('revisão F3, Important 4: a barra mostra o alarme que apita agora, com o botão dele — primeiro o contínuo por calar, depois o curto por calar, só depois os já calados (reconhecidos ou silenciados); entre iguais, o mais grave', async () => {
+  const { alarmeDaBarra } = await import('../public/lib/alarmes.js')
+  // as listas do calar.mjs da revisão: o fumo já reconhecido não pode esconder o que apita
+  assert.equal(alarmeDaBarra([fumoReconhecido, porao]), porao)
+  assert.equal(alarmeDaBarra([fumoReconhecido, aisApita]), aisApita)
+  assert.equal(alarmeDaBarra([aisSilenciado, porao]), porao)
+  // o contínuo antes do curto (mesmo menos grave), o curto antes do calado
+  assert.equal(alarmeDaBarra([lembrete, disco, fumoReconhecido]), disco)
+  assert.equal(alarmeDaBarra([disco, { ...aisApita, state: 'warn' }]).caminho, aisApita.caminho)
+  assert.equal(alarmeDaBarra([fumoReconhecido, lembrete]), lembrete)
+  // dentro de cada grupo, o mais grave; entre iguais, o primeiro
+  const fumo = { ...fumoReconhecido, method: SOM, status: st() }
+  assert.equal(alarmeDaBarra([aisApita, fumo, porao]), fumo)
+  assert.equal(alarmeDaBarra([aisApita, porao]), aisApita)
+  assert.equal(alarmeDaBarra([aisSilenciado, fumoReconhecido]), fumoReconhecido)
+  // nada ativo: nada
+  assert.equal(alarmeDaBarra([{ ...porao, state: 'normal' }]), null)
+  assert.equal(alarmeDaBarra([]), null)
+  // o chip e o botão são os do que apita
+  assert.match(chipAlarme(alarmeDaBarra([fumoReconhecido, porao])), /⚠ Água no porão!<\/span><button class="silenciar" data-acao="silenciar" data-id="[^"]+02">silenciar<\/button>/)
+})
+
+test('revisão F3, Important 4: todos os que apitam calam-se no ecrã, um a seguir ao outro — também um do porto sem o id do servidor (pelo caminho)', async () => {
+  const { alarmeDaBarra } = await import('../public/lib/alarmes.js')
+  // como o SignalK os deixa depois de calados (alarm.js: silenciado tira o sound; a emergência reconhecida fica só visual)
+  const calado = (n, acao) => (acao === 'reconhecer' ? { ...n, method: ['visual'], status: { ...(n.status || {}), acknowledged: true } } : { ...n, method: (n.method || []).filter(m => m !== 'sound'), status: { ...(n.status || {}), silenced: true } })
+  const poraoSemId = { caminho: 'notifications.arlequin.porto.aguaPorao', state: 'alarm', method: SOM, message: 'Água no porão!', apito: 'continuo' }
+  let lista = [fumoReconhecido, { ...fumoReconhecido, caminho: 'notifications.arlequin.porto.fumo2', id: UUID(7), method: SOM, status: st() }, poraoSemId, aisApita, disco, lembrete]
+  const calados = []
+  for (let voltas = 0; lista.some(n => deveTocar(n)); voltas++) {
+    assert.ok(voltas < 10, 'não acaba')
+    const n = alarmeDaBarra(lista)
+    assert.ok(deveTocar(n), `a barra mostra um que apita (${n.message})`)
+    const acao = acaoCalar(n)
+    assert.ok(acao, `${n.message}: tem botão`)
+    calados.push(`${n.message} (${acao})`)
+    lista = lista.map(x => (x === n ? calado(x, acao) : x))
+  }
+  assert.deepEqual(calados, ['FUMO a bordo! (reconhecer)', 'Água no porão! (silenciar)', 'NORDIC STAR em rota de colisão · CPA 0,1 MN (silenciar)', 'Disco a 95 % (silenciar)', 'Às 15:57: rizar (silenciar)'])
+  // sem o id do servidor o botão leva o caminho (o app.js cala pelo caminho)
+  assert.match(chipAlarme(poraoSemId), /<button class="silenciar" data-acao="silenciar" data-caminho="notifications\.arlequin\.porto\.aguaPorao">silenciar<\/button>/)
+  // uma emergência sem id: reconhecer (fica à vista); já calada: nada
+  assert.equal(acaoCalar({ ...poraoSemId, state: 'emergency' }), 'reconhecer')
+  assert.equal(acaoCalar({ ...poraoSemId, method: ['visual'] }), null)
+  // o servidor que não deixa calar nenhum dos dois (canSilence e canAcknowledge falsos): diz porquê, sem botão
+  const proibido = { ...porao, status: st({ canSilence: false, canAcknowledge: false }) }
+  assert.equal(acaoCalar(proibido), null)
+  assert.match(chipAlarme(proibido), /<span class="chip falha calar">não se cala no ecrã: o SignalK não deixa<\/span>/)
+  assert.doesNotMatch(chipAlarme(proibido), /<button/)
+})
+
+test('revisão F3, Important 4: calar pelo id (API v2 do SignalK: /silence ou /acknowledge) ou, sem id (ou com o SignalK sem a gestão das notificações, 501), pelo caminho (PUT …/method = só visual); as recusas em pt-PT', async () => {
+  const { calar } = await import('../public/lib/alarmes.js')
+  const { falhaCalar } = await import('../public/lib/erros.js')
+  const pedidos = []
+  const pedirOk = async (url, o = {}) => { pedidos.push([o.method || 'GET', url, o.body]); return { state: 'COMPLETED', statusCode: 200 } }
+  await calar(porao, 'silenciar', pedirOk)
+  await calar(fumoReconhecido, 'reconhecer', pedirOk)
+  await calar({ caminho: 'notifications.arlequin.porto.aguaPorao', state: 'alarm', method: SOM }, 'silenciar', pedirOk)
+  await calar({ caminho: 'notifications.arlequin.ais.263000001', id: 'nao-e-um-uuid', state: 'alarm', method: SOM }, 'silenciar', pedirOk)
+  assert.deepEqual(pedidos, [
+    ['POST', `/signalk/v2/api/notifications/${UUID(2)}/silence`, undefined],
+    ['POST', `/signalk/v2/api/notifications/${UUID(1)}/acknowledge`, undefined],
+    ['PUT', '/signalk/v1/api/vessels/self/notifications/arlequin/porto/aguaPorao/method', { value: ['visual'] }],
+    ['PUT', '/signalk/v1/api/vessels/self/notifications/arlequin/ais/263000001/method', { value: ['visual'] }]
+  ])
+  // o SignalK sem a gestão das notificações (settings.notifications.manageNotifications = false): 501 → pelo caminho
+  const tentativas = []
+  const semGestao = async (url, o = {}) => { tentativas.push(o.method); if (url.includes('/v2/')) throw Object.assign(new Error('o SignalK não está a gerir os alarmes (as notificações estão desligadas nas definições)'), { status: 501 }); return {} }
+  await calar(porao, 'silenciar', semGestao)
+  assert.deepEqual(tentativas, ['POST', 'PUT'])
+  // outra recusa não tenta pelo caminho (ex.: a emergência que não se silencia)
+  const recusa = async () => { throw Object.assign(new Error('um alarme de emergência não se silencia: só se reconhece'), { status: 400 }) }
+  await assert.rejects(calar(porao, 'silenciar', recusa), /emergência não se silencia/)
+  // as recusas do servidor chegam em pt-PT (pela mensagem, como o pedir do signalk.js as traduz, ou pelo código)
+  const { doServidor } = await import('../public/lib/erros.js')
+  assert.equal(doServidor('Alarm not found!'), 'o SignalK já não tem este alarme')
+  assert.equal(doServidor('Invalid Data supplied.'), 'o id do alarme não é válido')
+  assert.equal(doServidor('Core notification management is disabled on this server.'), 'o SignalK não está a gerir os alarmes (as notificações estão desligadas nas definições)')
+  const erro = (status, message = String(status)) => Object.assign(new Error(message), status ? { status } : {})
+  assert.equal(falhaCalar(erro(404), 'silenciar'), 'não silenciou: o SignalK já não tem este alarme')
+  assert.equal(falhaCalar(erro(405), 'silenciar'), 'não silenciou: o SignalK não deixa calar este alarme')
+  assert.equal(falhaCalar(erro(501), 'reconhecer'), 'não reconheceu: o SignalK não está a gerir os alarmes (as notificações estão desligadas nas definições)')
+  assert.equal(falhaCalar(erro(502), 'silenciar'), 'não silenciou: o SignalK recusou (HTTP 502)')
+  // o app.js usa estas funções (a barra e o botão)
+  const { readFileSync } = await import('node:fs')
+  const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8').replace(/\r/g, '')
+  assert.match(app, /alarmeHtml:\s*chipAlarme\(alarmeDaBarra\(ctx\.notificacoes\)\)/)
+  const bloco = app.slice(app.indexOf("if (acao === 'silenciar' || acao === 'reconhecer')"), app.indexOf("if (acao === 'ir-alarme')"))
+  assert.match(bloco, /calar\(/)
+  assert.match(bloco, /falhaCalar\(/)
 })
 
 test('cada alarme leva à sua página', () => {

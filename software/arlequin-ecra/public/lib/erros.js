@@ -12,7 +12,12 @@ const DO_SERVIDOR = {
   'Alarm cannot be silenced!': 'este alarme não se pode silenciar',
   'Alarm already silenced or acknowledged!': 'o alarme já estava silenciado',
   'Alarm cannot be acknowledged!': 'este alarme não se pode reconhecer',
-  'Alarm already acknowledged!': 'o alarme já estava reconhecido'
+  'Alarm already acknowledged!': 'o alarme já estava reconhecido',
+  // o id que o ecrã tem já não está no servidor (reiniciou?), ou não é um id do servidor
+  'Alarm not found!': 'o SignalK já não tem este alarme',
+  'Invalid Data supplied.': 'o id do alarme não é válido',
+  // settings.notifications.manageNotifications: false (o ecrã cala então pelo caminho)
+  'Core notification management is disabled on this server.': 'o SignalK não está a gerir os alarmes (as notificações estão desligadas nas definições)'
 }
 export const doServidor = (m) => (typeof m === 'string' ? DO_SERVIDOR[m.trim()] ?? null : null)
 
@@ -41,12 +46,19 @@ export function falhaJanela (err, corpo = {}) {
   return typeof corpo?.noite === 'boolean' ? 'OpenCPN: o modo noite não mudou' : 'OpenCPN: as janelas não mudaram'
 }
 
-// A falha do silenciar/reconhecer de um alarme, para a barra (curta).
+// A falha do silenciar/reconhecer de um alarme, para a barra (curta, em pt-PT; revisão F3, Important 4: também as
+// recusas do caminho v1 — o PUT …/method responde só com o código).
+const CALAR_CODIGO = {
+  404: 'o SignalK já não tem este alarme',
+  405: 'o SignalK não deixa calar este alarme',
+  501: DO_SERVIDOR['Core notification management is disabled on this server.']
+}
 export function falhaCalar (err, acao = 'silenciar') {
   const s = err?.status
   const o = acao === 'reconhecer' ? 'não reconheceu' : 'não silenciou'
   if (s === 401 || s === 403) return `${o}: sem permissão (entra no SignalK)`
   if (!s) return `${o}: ${SEM_LIGACAO}`
   if (explicado(err.message)) return `${o}: ${err.message.trim()}`
-  return `${o} (HTTP ${s})`
+  if (CALAR_CODIGO[s]) return `${o}: ${CALAR_CODIGO[s]}`
+  return `${o}: o SignalK recusou (HTTP ${s})`
 }
