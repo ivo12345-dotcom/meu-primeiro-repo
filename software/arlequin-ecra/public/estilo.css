@@ -114,6 +114,8 @@ body.noite .carta-demo { background: var(--tile); color: var(--texto-2); }
 .grelha > .tile { display: flex; flex-direction: column; justify-content: center; }
 .estica .vv { font-size: 2.6rem; }
 table.grande { font-size: 1.45rem; } table.grande td { padding: .55rem .5rem; } table.grande th { font-size: 1rem; }
+/* o porquê de um alvo sem CPA ("sem rumo: só distância", AIS): legível, mas por baixo dos números */
+table.grande td.lab { font-size: 1rem; }
 
 /* Tabelas (AIS, diário) */
 table { width: 100%; border-collapse: collapse; font-size: 1rem; }

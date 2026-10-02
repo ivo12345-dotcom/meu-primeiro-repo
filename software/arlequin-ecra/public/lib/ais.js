@@ -24,6 +24,28 @@ export function alvosAis ({ vessels = [], eu = {}, notificacoes = [], agora = Da
   return lista.sort((x, y) => (ORDEM[x.classe] - ORDEM[y.classe]) || ((x.r?.distancia ?? 1e9) - (y.r?.distancia ?? 1e9)))
 }
 
+// O que mostrar do CPA/TCPA de um alvo, a partir das formas que o cpa() devolve (revisão F3, Minor 7; o cpa.js é da
+// F6): nunca depende de null >= 0 (que é true: um alvo só com a distância saía como "— MN · —" ou, com outra forma,
+// como "afasta-se").
+//   'cpa'       { cpa, tcpa }   CPA e TCPA (a aproximar-se)
+//   'paralelo'  { cpa }         a velocidade relativa nula (lado a lado ou os dois parados): o CPA é a distância, sem TCPA
+//   'afasta'                    TCPA negativo
+//   'distancia' { semVelocidade } sem o rumo de um deles ('alvo', 'eu' ou 'ambos'): só a distância
+//   'nada'                      sem posição, ou uma forma que não se conhece
+export const SO_DISTANCIA = 'sem rumo: só distância'
+export const SEM_O_NOSSO_RUMO = 'Sem o nosso rumo (COG/SOG do GPS): só a distância de cada alvo, sem CPA nem TCPA'
+const finito = (x) => typeof x === 'number' && Number.isFinite(x)
+export function leituraCpa (r) {
+  if (!r || !finito(r.distancia)) return { tipo: 'nada' }
+  if (r.semVelocidade) return { tipo: 'distancia', semVelocidade: r.semVelocidade }
+  if (!finito(r.cpa) || typeof r.tcpa !== 'number' || Number.isNaN(r.tcpa)) return { tipo: 'nada' }
+  if (r.tcpa < 0) return { tipo: 'afasta' }
+  if (r.tcpa === Infinity) return { tipo: 'paralelo', cpa: r.cpa }
+  return { tipo: 'cpa', cpa: r.cpa, tcpa: r.tcpa }
+}
+// Sem o nosso rumo (o semVelocidade 'eu' ou 'ambos' do cpa()): a AIS di-lo numa linha.
+export const semONossoRumo = (alvos) => (alvos || []).some(a => a?.r?.semVelocidade === 'eu' || a?.r?.semVelocidade === 'ambos')
+
 const TIPOS = [
   [20, 29, 'Asa de efeito solo'],
   [30, 30, 'Pesca'], [31, 32, 'Reboque'], [33, 33, 'Dragagem ou trabalhos submarinos'], [34, 34, 'Mergulho'],

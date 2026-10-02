@@ -822,6 +822,68 @@ test('auditoria M-50: um alvo com o alarme do plugin AIS ativo é "perigo" no ec
   assert.match(readFileSync(new URL('../public/app.js', import.meta.url), 'utf8'), /alvos:\s*alvosAis\(\{/)
 })
 
+// ---------- revisão F3, Minor 7: os alvos só com a distância (as formas que o cpa.js da F6 devolve) ----------
+test('revisão F3 (Minor 7): um alvo sem rumo mostra a distância e o porquê ("sem rumo: só distância"), nunca "— MN · —"; sem o nosso rumo a AIS di-lo numa linha; o lado a lado e o que se afasta continuam; nada depende de null >= 0', async () => {
+  const { alvosAis, leituraCpa } = await import('../public/lib/ais.js')
+  const { cpa } = await import('../public/lib/cpa.js')
+  const { linhaAlvo } = await import('../public/paginas/comum.js')
+  const NO = 1852 / 3600
+  const P = { latitude: 39.36, longitude: -9.40 }
+  const desloc = (mn, g) => ({ latitude: P.latitude + mn / 60 * Math.cos(g * Math.PI / 180), longitude: P.longitude + mn / 60 * Math.sin(g * Math.PI / 180) / Math.cos(P.latitude * Math.PI / 180) })
+  const agora = Date.now()
+  const eu = { position: P, cog: 0, sog: 5 * NO }
+  const vessels = [
+    { mmsi: '1', name: 'SEM COG A 6 NOS', position: desloc(0.4, 10), sog: 6 * NO, em: agora },
+    { mmsi: '2', name: 'SEM SOG NEM COG', position: desloc(0.3, 350), em: agora },
+    { mmsi: '3', name: 'LADO A LADO', position: desloc(0.3, 90), sog: 5 * NO, cog: 0, em: agora },
+    { mmsi: '4', name: 'A AFASTAR', position: desloc(1, 180), sog: 8 * NO, cog: Math.PI, em: agora },
+    { mmsi: '5', name: 'NORMAL', position: desloc(1, 0), sog: 10 * NO, cog: Math.PI, em: agora }
+  ]
+  // as formas verdadeiras do cpa()
+  const r = Object.fromEntries(vessels.map(v => [v.name, cpa(eu, v)]))
+  assert.equal(r['SEM COG A 6 NOS'].semVelocidade, 'alvo')
+  assert.equal(r['SEM COG A 6 NOS'].cpa, null)
+  assert.equal(r['LADO A LADO'].tcpa, Infinity)
+  assert.ok(r['A AFASTAR'].tcpa < 0)
+  assert.ok(r.NORMAL.tcpa > 0)
+  assert.deepEqual(leituraCpa(r['SEM COG A 6 NOS']).tipo, 'distancia')
+  assert.deepEqual(leituraCpa(r['LADO A LADO']).tipo, 'paralelo')
+  assert.deepEqual(leituraCpa(r['A AFASTAR']).tipo, 'afasta')
+  assert.deepEqual(leituraCpa(r.NORMAL).tipo, 'cpa')
+  assert.deepEqual(leituraCpa(null).tipo, 'nada')
+  // nada de null >= 0: um tcpa undefined (outra forma qualquer) não é "a aproximar" nem "afasta-se"
+  assert.deepEqual(leituraCpa({ cpa: undefined, tcpa: undefined, distancia: 900 }).tipo, 'nada')
+  assert.deepEqual(leituraCpa({ cpa: null, tcpa: null, distancia: 900 }).tipo, 'nada')
+
+  const notificacoes = [{ caminho: 'notifications.arlequin.ais.1', state: 'alarm', method: ['visual', 'sound'], message: 'x', apito: 'continuo' }]
+  const comCog = alvosAis({ vessels, eu, notificacoes, agora })
+  const linha = (nome, alvos = comCog) => linhaAlvo(alvos.find(a => a.name === nome)).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+  // Carta
+  assert.equal(linha('SEM COG A 6 NOS'), 'SEM COG A 6 NOS 0,4 MN · sem rumo: só distância')
+  assert.equal(linha('SEM SOG NEM COG'), 'SEM SOG NEM COG 0,3 MN · sem rumo: só distância')
+  assert.equal(linha('LADO A LADO'), 'LADO A LADO 0,3 MN · —')
+  assert.equal(linha('A AFASTAR'), 'A AFASTAR afasta-se')
+  assert.match(linha('NORMAL'), /^NORMAL 0,0 MN · 4 min$/)
+  // a AIS: na tabela e no detalhe; sem "— MN" nem NaN
+  const html = ais.render({ alvos: comCog, estado: { sel: '1' }, notificacoes: [] })
+  assert.doesNotMatch(html, /— MN|NaN|undefined|null/)
+  // cada linha da tabela como "|célula|célula|…|" (as quebras de linha do desenho não contam)
+  const linhas = Object.fromEntries([...html.matchAll(/<tr data-mmsi="(\d)"[^>]*>([\s\S]*?)<\/tr>/g)].map(m => [m[1], m[2].replace(/\n/g, '').replace(/<[^>]+>/g, '|').replace(/\|+/g, '|')]))
+  assert.match(linhas['1'], /\|0,4 MN\|[^|]*\|[^|]*\|sem rumo: só distância\|PERIGO\|/, 'o alvo sem rumo, perigo pelo alarme do plugin: a distância e o porquê')
+  assert.match(linhas['3'], /\|0,3 MN\|—\|/, 'lado a lado: o CPA é a distância, sem TCPA')
+  assert.match(html, /CPA · TCPA<\/div><div class="v">sem rumo: só distância</)
+  assert.doesNotMatch(html, /sem o nosso rumo/i, 'com o nosso COG não há a linha')
+  // sem o nosso COG (a 5 nós): todos só com a distância, e a página explica numa linha
+  const semCog = alvosAis({ vessels, eu: { ...eu, cog: undefined }, notificacoes, agora })
+  assert.ok(semCog.every(a => a.r.semVelocidade === 'eu' || a.r.semVelocidade === 'ambos'))
+  assert.equal(linha('NORMAL', semCog), 'NORMAL 1,0 MN · sem rumo: só distância')
+  const h2 = ais.render({ alvos: semCog, estado: {}, notificacoes: [] })
+  assert.equal((h2.match(/Sem o nosso rumo \(COG\/SOG do GPS\): só a distância de cada alvo, sem CPA nem TCPA/g) || []).length, 1, 'uma linha só')
+  assert.doesNotMatch(h2, /— MN|NaN|undefined|null/)
+  // e nenhuma página decide pelo sinal do TCPA (null >= 0 é true: um tcpa em falta passava por "a aproximar-se")
+  for (const f of ['../public/paginas/ais.js', '../public/paginas/comum.js', '../public/paginas/carta.js']) assert.doesNotMatch(readFileSync(new URL(f, import.meta.url), 'utf8'), /tcpa\s*>=\s*0/, f)
+})
+
 // ---------- auditoria M-49: o nome do próximo ponto ----------
 test('auditoria M-49: o próximo ponto sem nome diz qual é na rota ativa ("ponto 3 de 57"), não só "WP"; com nome, o nome', async () => {
   const { proximoWp } = await import('../public/paginas/comum.js')
