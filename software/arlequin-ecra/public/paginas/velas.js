@@ -4,7 +4,7 @@
 // terminar. Tudo no diário.
 
 import { correcaoLeme, rumoAproar } from '../lib/rumo.js'
-import { rumo, velocidade, ok, esc, proa as proaDe, marcaMag } from './comum.js'
+import { rumo, velocidade, esc, proa as proaDe, marcaMag, motorLigado } from './comum.js'
 import { motivo } from '../lib/erros.js'
 
 const PASSOS = ['Liga o motor', 'Aproa ao vento', 'Recolhe as velas', 'Terminado']
@@ -25,8 +25,8 @@ export default {
   render (ctx) {
     const e = ctx.estado
     const passo = e.passo ?? -1
-    const rpm = ctx.v('propulsion.main.revolutions')
-    const motor = ok(rpm) && rpm > 5
+    const estadoMotor = motorLigado(ctx.v('propulsion.main.revolutions')) // null: sem leitura (auditoria I-23)
+    const motor = estadoMotor === true
     const twd = ctx.v('environment.wind.directionTrue')
     const pr = proaDe(ctx)
     const proa = pr?.valor ?? null
@@ -38,7 +38,7 @@ export default {
 
     const lista = PASSOS.map((t, i) => `<div class="passo ${i < p ? 'feito' : ''} ${i === p ? 'atual' : ''}"><span class="n">${i < p ? '✓' : i + 1}</span><span>${t}${i === 0 && p === 0 ? ' — à espera das rotações' : ''}</span></div>`).join('')
     const guia = p === 0
-      ? `<div class="tile centro" style="flex:1;"><div class="vvv">Liga o motor</div><div style="font-size:1.3rem;margin-top:.6rem;">${motor ? '<span class="ok">Motor ligado ✓</span>' : 'à espera das rotações do motor…'}</div></div>`
+      ? `<div class="tile centro" style="flex:1;"><div class="vvv">Liga o motor</div><div style="font-size:1.3rem;margin-top:.6rem;">${motor ? '<span class="ok">Motor ligado ✓</span>' : estadoMotor === null ? '<span class="lab">sem leitura do motor: confirma-o no painel do motor</span>' : 'à espera das rotações do motor…'}</div></div>`
       : p === 1
       ? `<div class="tile centro" style="flex:1;"><div class="lab" style="font-size:1.2rem;">Aproa ao vento: rumo</div><div class="vvv" style="font-size:6rem;">${rumo(alvo)}</div>
 <div class="vvv" style="font-size:4.4rem;margin-top:.4rem;">${!c ? '—' : aproado ? '<span class="ok">✓ aproado</span>' : c.lado === 'BB' ? `◀ ${c.graus}° BB` : `${c.graus}° EB ▶`}</div>

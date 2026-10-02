@@ -11,6 +11,7 @@ export function novaViagem (t0) {
     distancia: 0, // m
     tempoVela: 0, // s
     tempoMotor: 0, // s
+    tempoSemLeitura: 0, // s a andar sem leitura do motor (não conta nem para a vela nem para o motor)
     gasoleoL: 0,
     ventoMax: 0, // m/s
     pressaoInicial: null, // Pa
@@ -20,16 +21,19 @@ export function novaViagem (t0) {
 
 const ok = (v) => typeof v === 'number' && Number.isFinite(v)
 
-// l: { t (ms), sog (m/s), motor (bool), fuelRate (m³/s), ventoReal (m/s), pressao (Pa) }
+// l: { t (ms), sog (m/s), motor (true | false | null: sem leitura, auditoria I-23), fuelRate (m³/s),
+//      ventoReal (m/s), pressao (Pa) }
 export function acumular (v, l) {
   const n = { ...v, ultimo: l.t }
   if (v.ultimo !== null) {
     const dt = (l.t - v.ultimo) / 1000
     if (dt > 0 && dt <= MAX_DT) {
       if (ok(l.sog)) n.distancia += l.sog * dt
-      if (l.motor) n.tempoMotor += dt
-      else if (ok(l.sog) && l.sog > MIN_A_ANDAR) n.tempoVela += dt
-      if (l.motor && ok(l.fuelRate)) n.gasoleoL += l.fuelRate * dt * 1000
+      const aAndar = ok(l.sog) && l.sog > MIN_A_ANDAR
+      if (l.motor === true) n.tempoMotor += dt
+      else if (l.motor === false && aAndar) n.tempoVela += dt
+      else if (l.motor == null && aAndar) n.tempoSemLeitura += dt
+      if (l.motor === true && ok(l.fuelRate)) n.gasoleoL += l.fuelRate * dt * 1000
     }
   }
   if (ok(l.ventoReal)) n.ventoMax = Math.max(n.ventoMax, l.ventoReal)
