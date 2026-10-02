@@ -548,13 +548,17 @@ test('decisão 6 (Ivo): no mar, o Recalcular com "sair agora" (só a partida ime
 test('Tarefa 8.5: o rasto provável leva a direção do vento previsto (twd, graus) e a visibilidade (vis, m) quando a previsão a tem (para os lembretes de rotação do vento e de chuva a navegar)', async () => {
   const r = await correr('so', entrada(), deps())
   const temVis = P29.pontos.some(p => (p.visibilidade || []).some(Number.isFinite))
+  const temChuva = P29.pontos.some(p => (p.chuva || []).some(Number.isFinite))
   for (const a of r.alternativas) {
     for (const p of a.rasto) {
       assert.ok(Number.isInteger(p.twd) && p.twd >= 0 && p.twd < 360, JSON.stringify(p))
       // revisão final I4: o vento previsto em nós (a rotação do vento só com 6 nós ou mais)
       assert.ok(Number.isFinite(p.tws) && p.tws >= 0 && Math.round(p.tws * 10) === p.tws * 10, JSON.stringify(p))
       if (temVis) assert.ok(Number.isFinite(p.vis) && p.vis >= 0, JSON.stringify(p))
+      // I-17: a chuva prevista (mm/h, à décima), para o lembrete a navegar dizer "Chuva e" só a chover
+      if (temChuva) assert.ok(Number.isFinite(p.chuva) && p.chuva >= 0 && Math.round(p.chuva * 10) === p.chuva * 10, JSON.stringify(p))
     }
   }
   assert.ok(temVis, 'a previsão de 29/09 tem a visibilidade')
+  assert.ok(temChuva, 'a previsão de 29/09 tem a chuva')
 })

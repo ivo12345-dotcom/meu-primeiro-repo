@@ -6,7 +6,8 @@
 // Mantém-se do simular.mjs: popa até 155° com cambadelas num corredor de ±0,7 MN
 // à volta da perna, bordos contra o vento (< 45°), rizos pelos limiares da
 // simulação, motor abaixo de 7 nós de vento ou de 3 nós à vela, chuva e
-// visibilidade, passagem da frente, noite pelo nascer e pôr do sol.
+// visibilidade, passagem da frente, noite pelo nascer e pôr do sol. A visibilidade é a
+// de lib/avisos.js (< 5 km, VISIBILIDADE_RADAR_M), com um evento por episódio (auditoria I-17).
 //
 // rota: [{ lat, lon, nome?, perna?, costaLivre? }] (lib/rotas.js). `perna` é o troço
 // que chega ao ponto: 'porto' vai sempre a motor (a stwMotorRio); 'aproximacao' vai
@@ -30,6 +31,8 @@
 //   noite(t) → bool
 //   energia: { inicio(t) → estado, passo(estado, { t, dtMs, motor, noite, sog, w }) → { estado, soc, eventos? } }
 //   distanciaCosta({ lat, lon }) → MN (opcional)
+
+const { VISIBILIDADE_RADAR_M, CHUVA_RADAR_MM_H } = require('./avisos')
 
 const GRAU = Math.PI / 180
 const MIN = 60000
@@ -147,7 +150,7 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
   let cambadelas = 0
   let horasLeme = 0
   let noiteAntes = null
-  let visAnunciada = false
+  let visBaixa = false // num episódio de visibilidade abaixo dos 5 km (um evento por episódio)
   let frenteAnunciada = false
   ev(o.textoPartida ?? `Partida de ${ROTA[0].nome ?? 'a posição atual'} (${hm(t)})`, 'partida')
 
@@ -227,7 +230,12 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
     if (noiteAntes === null) { if (eNoite) ev(`Partida de noite (${hm(t)}): ecrã em modo noite, luzes de navegação`, 'noite') } else if (eNoite && !noiteAntes) ev(`Pôr do sol (${hm(t)}): ecrã em modo noite, luzes de navegação`, 'noite')
     else if (!eNoite && noiteAntes) ev(`Nascer do sol (${hm(t)}): ecrã em modo dia`, 'noite')
     noiteAntes = eNoite
-    if (!visAnunciada && w.visibilidade != null && w.visibilidade < 3000) { visAnunciada = true; ev(`Chuva e visibilidade ${virgula(w.visibilidade / 1000)} km: radar ligado`, 'tempo') }
+    // visibilidade abaixo dos 5 km (a constante de lib/avisos.js, decisão do Ivo n.º 10): um evento
+    // por episódio (a visibilidade sem previsão acaba o episódio, como nos avisos), "Chuva e
+    // visibilidade" só com chuva que conte para o radar, senão "Visibilidade"
+    const visAgora = Number.isFinite(w.visibilidade) && w.visibilidade < VISIBILIDADE_RADAR_M
+    if (visAgora && !visBaixa) ev(`${Number.isFinite(w.chuva) && w.chuva >= CHUVA_RADAR_MM_H ? 'Chuva e visibilidade' : 'Visibilidade'} ${virgula(w.visibilidade / 1000)} km: radar ligado`, 'tempo')
+    visBaixa = visAgora
     if (!frenteAnunciada && !semVento && pontos.length && pontos[pontos.length - 1].tws > 12 && w.tws < 8) { frenteAnunciada = true; ev(`Passagem da frente: o vento cai de ${Math.round(pontos[pontos.length - 1].tws)} para ${Math.round(w.tws)} nós e roda para ${rumo3(w.twd)}°. Fica o mar (${virgula(w.ondas ?? 0)} m)`, 'tempo') }
     const costa = distanciaCosta ? distanciaCosta(pos) : null
     // semDados/aproximado da previsão (lib/previsao.js), só quando os há: a segurança trata o
