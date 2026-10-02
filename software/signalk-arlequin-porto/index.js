@@ -38,7 +38,7 @@ const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 const { exec } = require('node:child_process')
-const { ALARMES, APITO, novoEstado, passo, distancia } = require('./lib/regras')
+const { ALARMES, APITO, ACAO, novoEstado, passo, distancia } = require('./lib/regras')
 const { novoEncaminhador, encaminhar, listarNotificacoes, alarmesAtivos } = require('./lib/mensagens')
 const { porNaFila, proximo, textoAEnviar, recuoMs, filaValida, excerto, avisoDeRecusa, MAX_FILA, MAX_RECUSAS } = require('./lib/fila')
 const { EXTRAS, lerDestinosDaRota, lugaresDaConfiguracao, lugarPerto } = require('./lib/lugares')
@@ -237,13 +237,17 @@ module.exports = function (app, deps = {}) {
       persist.ponto = pos; guardar()
       return tg.sendMessage(chatId, '⚓ Ponto de amarração gravado aqui (alarme a 30 m)')
     }
-    if (c === '/largar') {
-      // e a contagem dos 30 min parado recomeça: com o barco ainda parado, o ponto não volta logo
-      estado = { ...estado, amarracao: { ...estado.amarracao, ponto: null, paradoDesde: null, largouDesde: null } }
-      persist.ponto = null; guardar()
-      return tg.sendMessage(chatId, '⚓ Ponto de amarração apagado')
-    }
+    if (c === '/largar') { largar(); return tg.sendMessage(chatId, '⚓ Ponto de amarração apagado') }
     return tg.sendMessage(chatId, AJUDA)
+  }
+
+  // Largar: o /largar do Telegram e o "Larguei" do ecrã (POST /largar, contrato C10). Apaga o ponto de
+  // amarração (o "saiu do lugar" limpa no ciclo seguinte, com o "✓ Resolvido") e a contagem dos 30 min
+  // parado recomeça: com o barco ainda parado, o ponto não volta logo.
+  function largar () {
+    estado = { ...estado, amarracao: { ...estado.amarracao, ponto: null, paradoDesde: null } }
+    persist.ponto = null
+    guardar()
   }
 
   // os contactos do plano válidos: [{ nome, chatId }]
@@ -358,12 +362,12 @@ module.exports = function (app, deps = {}) {
     }
   }
 
-  // notificacoes: [{ id, state, method, message, apito? }] → notifications.arlequin.porto.<id> (o apito do
-  // ecrã vai no valor: contrato C1)
+  // notificacoes: [{ id, state, method, message, apito?, acao? }] → notifications.arlequin.porto.<id> (o
+  // apito do ecrã vai no valor, contrato C1; e a ação que o ecrã oferece, contrato C10)
   function publicar (notificacoes) {
     if (!notificacoes.length) return
     app.handleMessage(plugin.id, {
-      updates: [{ values: notificacoes.map(n => ({ path: `notifications.arlequin.porto.${n.id}`, value: { state: n.state, method: n.method, message: n.message, ...(n.apito ? { apito: n.apito } : {}) } })) }]
+      updates: [{ values: notificacoes.map(n => ({ path: `notifications.arlequin.porto.${n.id}`, value: { state: n.state, method: n.method, message: n.message, ...(n.apito ? { apito: n.apito } : {}), ...(n.acao ? { acao: n.acao } : {}) } })) }]
     })
   }
 
@@ -386,16 +390,25 @@ module.exports = function (app, deps = {}) {
   }
   const comoNotificacao = (ativos, normal = false) => Object.entries(ativos).map(([id, a]) => normal
     ? { id, state: 'normal', method: [], message: 'Normal' }
-    : { id, state: a.state, method: ['visual', 'sound'], message: a.message, apito: APITO[id] })
+    : { id, state: a.state, method: ['visual', 'sound'], message: a.message, apito: APITO[id], ...(ACAO[id] ? { acao: ACAO[id] } : {}) })
+
+  // O motor a trabalhar: as rotações (Hz) acima de 5 (300 rpm), lidas agora. Com a ligação ao J1939
+  // 'calado' (ignição desligada) ou 'sem-ligacao' (contrato C11) as rotações que ficaram na árvore não
+  // contam: sem leitura do motor é como sem motor (o "saiu do lugar" não se apaga sozinho). Sem o campo
+  // (um J1939 antigo), contam as rotações.
+  function motorLigado () {
+    const ligacao = val('propulsion.main.ligacao')
+    const rpm = val('propulsion.main.revolutions')
+    return (ligacao == null || ligacao === 'a-receber') && typeof rpm === 'number' && rpm > 5
+  }
 
   function tick () {
     const c = { ...CAMINHOS, ...(o.caminhos || {}) }
-    const rpm = val('propulsion.main.revolutions')
     const pos = val('navigation.position')
     const r = passo(estado, {
       posicao: pos,
       sog: val('navigation.speedOverGround'),
-      motorLigado: typeof rpm === 'number' && rpm > 5,
+      motorLigado: motorLigado(),
       juntoAPorto: lugarPerto(pos, lugares) !== null,
       agua: bool(c.agua),
       bomba: bool(c.bomba),
@@ -446,7 +459,10 @@ module.exports = function (app, deps = {}) {
   }
   function encaminharAlarmes () {
     const lista = listarNotificacoes(app.getSelfPath?.('notifications'))
-    const r = encaminhar(enc, lista, agora(), { amarrado: !!estado.amarracao.ponto })
+    // amarrado (os alarmes AIS não seguem): com o ponto e o barco no lugar. Com o "saiu do lugar" ativo
+    // o barco já não está amarrado, mesmo com o ponto à espera do "Larguei" (Adenda 2: sem motor o ponto
+    // fica até lá; antes, a sair à vela, o AIS ficava calado a viagem toda)
+    const r = encaminhar(enc, lista, agora(), { amarrado: !!estado.amarracao.ponto && !estado.ativos.deriva })
     let novo = r.enc
     // as mensagens novas entram na fila (gravada antes de enviar); sem token ou sem chats autorizados
     // não há a quem as entregar e não se guardam (como antes)
@@ -594,6 +610,21 @@ module.exports = function (app, deps = {}) {
     app.on?.('arlequin:plano', aoPlano)
     const g = ++geracao
     if (tg) ouvirTelegram(g)
+  }
+
+  // A REST do plugin (contratos C2 e C10). Com a segurança ligada, o SignalK 2.33 só deixa um utilizador
+  // admin chamar as rotas registadas com router.post simples (tokensecurity.js,
+  // pluginAuthenticationMiddleware); com o router.access(nível) (interfaces/plugins.js, asPluginRouter)
+  // as escritas pedem um utilizador "read/write" (a conta do ecrã, decisão n.º 20). Sem o router.access
+  // (versões antigas): a simples.
+  plugin.registerWithRouter = function (router) {
+    const escrever = typeof router.access === 'function' ? router.access('readwrite') : router
+    // POST /plugins/signalk-arlequin-porto/largar — o "Larguei" do ecrã: o mesmo que o /largar do Telegram
+    escrever.post('/largar', (req, res) => {
+      if (!aCorrer) return res.status(503).json({ ok: false, erro: 'o plugin porto não está ligado' })
+      largar()
+      res.json({ ok: true })
+    })
   }
 
   plugin.stop = function () {

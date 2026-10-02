@@ -1,7 +1,7 @@
 'use strict'
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { novoEstado, passo, distancia, LIMITES, ALARMES, APITO } = require('../lib/regras')
+const { novoEstado, passo, distancia, LIMITES, ALARMES, APITO, ACAO } = require('../lib/regras')
 
 const S = 1000
 const MIN = 60 * S
@@ -72,38 +72,67 @@ test('auditoria I-20: junto a um porto conhecido grava com 30 min parado; sem sa
   assert.equal(correr(minutos(0, 60, { juntoAPorto: undefined })).e.amarracao.ponto, null)
 })
 
-test('auditoria I-20: largar à vela (motor parado, alarme desarmado): a mais de 60 m e a mais de 2 nós durante 1 min apaga o ponto e a deriva limpa', () => {
-  const e0 = amarrado()
-  const r = correr(aAndar(31 * MIN, 3, 180), e0)
-  assert.equal(r.e.amarracao.ponto, null)
-  assert.deepEqual(ids(r.notif.filter(n => n.id === 'deriva')), ['deriva:alarm', 'deriva:normal'])
-  // apagou-se só depois de 1 min seguido a mais de 60 m (a 3 nós passa os 60 m aos ~39 s)
-  const limpou = r.notif.find(n => n.id === 'deriva' && n.state === 'normal').t - 31 * MIN
-  assert.ok(limpou >= 99 * S && limpou <= 100 * S, `${limpou / S} s`)
+// ---------- Adenda 2 do dono (02/10), "Largar": a motor e a andar o ponto apaga-se sozinho; sem motor (ou
+// sem leitura do motor) o "saiu do lugar" nunca se apaga sozinho, só com "Larguei" (ecrã) ou /largar
+// (Telegram: lib/regras.js não os vê, é o plugin que apaga o ponto); armado, nunca sozinho, nem a motor ----------
+const deriva = (r) => r.notif.filter(n => n.id === 'deriva').map(n => `${(n.t - 31 * MIN) / S} s: ${n.state}`)
+
+test('Adenda 2 (Largar): sair sem leitura das rotações (à vela, ou com o CAN solto): o "saiu do lugar" sai aos 30 m (a 3 nós aos 20 s, a 5 nós aos 12 s) e fica — nunca um "Resolvido" automático pela velocidade', () => {
+  const vela = correr(aAndar(31 * MIN, 3, 600), amarrado())
+  assert.deepEqual(deriva(vela), ['20 s: alarm'])
+  assert.ok(vela.e.amarracao.ponto, 'o ponto fica até ao "Larguei"')
+  const canSolto = correr(aAndar(31 * MIN, 5, 600, { motorLigado: false }), amarrado())
+  assert.deepEqual(deriva(canSolto), ['12 s: alarm'])
+  assert.ok(canSolto.e.amarracao.ponto)
 })
 
-test('auditoria I-20: sair a motor com as rotações em falta (CAN solto, motorLigado falso) também apaga o ponto (sonda p3, caso 2)', () => {
-  const r = correr(aAndar(31 * MIN, 5, 120, { motorLigado: false }), amarrado())
-  assert.equal(r.e.amarracao.ponto, null)
-  assert.equal(r.notif.filter(n => n.id === 'deriva').at(-1).state, 'normal')
+test('Adenda 2 (Largar): a âncora a garrar depressa com o Ivo a bordo (desarmado, sem motor, 3 nós durante 10 min): o alarme fica, sem "Resolvido"', () => {
+  const r = correr(aAndar(31 * MIN, 3, 600, { armado: false, motorLigado: false }), amarrado())
+  assert.deepEqual(deriva(r), ['20 s: alarm'])
+  assert.equal(r.e.ativos.deriva.state, 'alarm')
+  assert.match(r.e.ativos.deriva.message, /^O barco saiu do lugar: está a 31 m do ponto de amarração$/)
 })
 
-test('auditoria I-20: não é largar — a deriva lenta (< 2 nós), menos de 1 min a andar, ou a andar com o alarme armado (ninguém a bordo: deriva ou roubo)', () => {
-  const lento = correr(aAndar(31 * MIN, 1.5, 300), amarrado())
-  assert.ok(lento.e.amarracao.ponto, 'a 1,5 nó o ponto fica')
-  assert.equal(lento.notif.filter(n => n.id === 'deriva').at(-1).state, 'alarm')
-  // 70 s a 3 nós (só ~31 s a mais de 60 m) e para outra vez
-  const curto = correr([...aAndar(31 * MIN, 3, 70), ...minutos(33, 40, { posicao: aNorte(3 * NO * 70), sog: 0 })], amarrado())
-  assert.ok(curto.e.amarracao.ponto, 'menos de 1 min a mais de 60 m: o ponto fica')
-  const armado = correr(aAndar(31 * MIN, 3, 300, { armado: true }), amarrado())
-  assert.ok(armado.e.amarracao.ponto, 'armado: o ponto fica')
-  assert.equal(armado.notif.filter(n => n.id === 'deriva').at(-1).state, 'alarm')
-})
-
-test('auditoria I-20: a motor e a andar continua a apagar o ponto logo (como antes)', () => {
+test('Adenda 2 (Largar): a motor e a andar, desarmado: o ponto apaga-se logo, sem alarme', () => {
   const r = correr([[31 * MIN + S, { posicao: aNorte(5), sog: 1.5 * NO, motorLigado: true }]], amarrado())
   assert.equal(r.e.amarracao.ponto, null)
   assert.deepEqual(r.notif.filter(n => n.id === 'deriva'), [])
+  // e a sair da marina a motor (4 nós, 10 min): nunca um alarme
+  const saida = correr(aAndar(31 * MIN, 4, 600, { motorLigado: true }), amarrado())
+  assert.equal(saida.e.amarracao.ponto, null)
+  assert.deepEqual(deriva(saida), [])
+})
+
+test('Adenda 2 (Largar): a motor e a andar com o alarme de intrusão ARMADO (ninguém a bordo: roubo): o ponto fica e o alarme sai aos 30 m', () => {
+  const r = correr(aAndar(31 * MIN, 4, 600, { motorLigado: true, armado: true }), amarrado())
+  assert.ok(r.e.amarracao.ponto, 'armado: o ponto nunca se apaga sozinho')
+  // a 4 nós (2,06 m/s) passa os 30 m aos 15 s
+  assert.deepEqual(deriva(r), ['15 s: alarm'])
+  // e armado sem motor também
+  const vela = correr(aAndar(31 * MIN, 3, 600, { armado: true }), amarrado())
+  assert.ok(vela.e.amarracao.ponto)
+  assert.deepEqual(deriva(vela), ['20 s: alarm'])
+})
+
+test('Adenda 2 / contrato C10: o alarme "saiu do lugar" leva acao: "largar" (o botão "Larguei" do ecrã); o normal não', () => {
+  const r = correr([...aAndar(31 * MIN, 3, 30), [31 * MIN + 40 * S, { posicao: PENICHE }]], amarrado())
+  const ns = r.notif.filter(n => n.id === 'deriva')
+  assert.deepEqual(ns.map(n => n.state), ['alarm', 'normal'])
+  assert.equal(ns[0].acao, 'largar')
+  assert.equal(ns[0].apito, 'curto')
+  assert.equal(ns[1].acao, undefined)
+  // só a deriva tem uma ação
+  const outros = correr([[0, { agua: true, fumo: true, liquidoGasoleo: true, armado: true, movimento: true }]])
+  assert.ok(outros.notif.every(n => n.acao === undefined), JSON.stringify(outros.notif))
+  assert.deepEqual(ACAO, { deriva: 'largar' })
+})
+
+test('Adenda 2 (Largar): sem o ponto (o "Larguei"), o alarme "saiu do lugar" limpa mesmo sem posição do GPS', () => {
+  const e = correr(aAndar(31 * MIN, 3, 30), amarrado()).e
+  assert.equal(e.ativos.deriva.state, 'alarm')
+  const largado = { ...e, amarracao: { ...e.amarracao, ponto: null } }
+  const r = passo(largado, { posicao: undefined, sog: undefined }, 32 * MIN)
+  assert.deepEqual(r.notificacoes.map(n => `${n.id}:${n.state}`), ['deriva:normal'])
 })
 
 test('porão: sensor de água dá alarme logo', () => {
