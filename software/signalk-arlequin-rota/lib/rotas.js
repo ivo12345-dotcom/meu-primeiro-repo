@@ -287,7 +287,7 @@ function ventoDoMarNaRota (costa, linha, pontos, { twd, horaPartida }, o) {
   for (let i = 0; i < pontos.length; i++) {
     const p = pontos[i]
     if (i > 0 && p.perna === 'ligacao' && !ligacaoDoCanal(pontos, i)) {
-      // a ligação que chega a p, de passoMax em passoMax (as pontas na linha, com `s`, vêem-se abaixo)
+      // a ligação que chega a p, de passoMax em passoMax (as pontas na linha, com `s`, veem-se abaixo)
       const a = pontos[i - 1]
       const L = c.distanciaMn(a, p)
       const n = Math.max(1, Math.ceil(L / o.passoMax))

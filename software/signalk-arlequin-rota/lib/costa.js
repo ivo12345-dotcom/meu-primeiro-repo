@@ -145,7 +145,7 @@ function emTerraGrelha (g, p) {
   return dentro
 }
 
-// Visita cada aresta das células [ix1..ix2]×[iy1..iy2] uma só vez; fn(e) true pára.
+// Visita cada aresta das células [ix1..ix2]×[iy1..iy2] uma só vez; fn(e) true para.
 function visitar (g, ix1, ix2, iy1, iy2, fn) {
   if (++g.volta === 0xffffffff) { g.marca.fill(0); g.volta = 1 }
   const v = g.volta
