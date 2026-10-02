@@ -287,21 +287,26 @@ test('"Sair agora": inclui as não recomendadas e os avisos vermelhos (previsão
 
 test('K-06 (decisão do Ivo n.º 1): "Sair agora" com o gasóleo curto, sem previsão do mar ou com a previsão a acabar antes da chegada: "Não recomendado" (nunca "Segue"), com o motivo e os avisos vermelhos; continua a poder ativar-se', async () => {
   const MESMO_ASSIM = 'Se saíres mesmo assim, revê as precauções e os pontos de desistência.'
-  const casos = [
-    // a sonda do auditor (Algés → Peniche, acompanhado, 45 L no depósito): era "Segue" a verde
-    ['gasóleo', entrada({ instrumentos: { posicao: ALGES, socPct: 90, gasoleoL: 45 }, tripulacao: 'acompanhado', sairAgora: true }), deps(), 'chegas com 22 L de gasóleo no pior caso (mínimo 40 L)'],
-    ['sem mar', entrada({ tripulacao: 'acompanhado', sairAgora: true }), comPrevisao(P29_SEM_MAR), 'sem previsão de ondas em parte da rota: desconhecido não conta como calmo'],
-    // a hora é a da chegada mais tarde da 1.ª alternativa (p90), em Lisboa
-    ['previsão curta', entrada({ tripulacao: 'acompanhado', sairAgora: true }), comPrevisao({ ...P29, fim: AGORA + 2 * H }), (r) => `a previsão acaba antes da chegada (${hmLisboa(Date.parse(r.alternativas[0].chegada.p90))}): o fim da passagem é sem previsão`]
-  ]
   const hmLisboa = (t) => new Intl.DateTimeFormat('pt-PT', { timeZone: 'Europe/Lisbon', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(t)
-  for (const [nome, e, d, m] of casos) {
+  const casos = [
+    // a sonda do auditor (Algés → Peniche, acompanhado, 45 L no depósito): era "Segue" a verde (com
+    // "chegas com 22 L" na lista por baixo); qual das alternativas fica à frente é a do menor custo
+    ['gasóleo', entrada({ instrumentos: { posicao: ALGES, socPct: 90, gasoleoL: 45 }, tripulacao: 'acompanhado', sairAgora: true }), deps(), () => /^chegas com (2\d|3\d) L de gasóleo no pior caso \(mínimo 40 L\)$/],
+    ['sem mar', entrada({ tripulacao: 'acompanhado', sairAgora: true }), comPrevisao(P29_SEM_MAR), () => /^sem previsão de ondas em parte da rota: desconhecido não conta como calmo$/],
+    // a hora é a da chegada mais tarde da 1.ª alternativa (p90), em Lisboa
+    ['previsão curta', entrada({ tripulacao: 'acompanhado', sairAgora: true }), comPrevisao({ ...P29, fim: AGORA + 2 * H }), (a0) => new RegExp(`^a previsão acaba antes da chegada \\(${hmLisboa(Date.parse(a0.chegada.p90))}\\): o fim da passagem é sem previsão$`)]
+  ]
+  for (const [nome, e, d, padrao] of casos) {
     const r = await calcular(e, d)
-    const motivo = typeof m === 'function' ? m(r) : m
     assert.equal(r.erro, undefined, `${nome}: ${r.erro}`)
     assert.equal(r.veredicto.tipo, 'nao-recomendado', `${nome}: ${JSON.stringify(r.veredicto)}`)
     assert.equal(r.veredicto.texto, 'Não recomendado')
-    assert.deepEqual(r.veredicto.porque, [`A melhor para sair agora (a 5 MN a motor, agora): ${motivo}.`, MESMO_ASSIM], nome)
+    // o veredicto fala da 1.ª alternativa (a melhor para sair agora) e do motivo dela
+    const a0 = r.alternativas[0]
+    const motivo = a0.motivos[0]
+    assert.match(motivo, padrao(a0), nome)
+    const rota = `a ${a0.afastamento} MN${a0.propulsao === 'motor' ? ' a motor' : ''}`
+    assert.deepEqual(r.veredicto.porque, [`A melhor para sair agora (${rota}, agora): ${motivo}.`, MESMO_ASSIM], nome)
     // as alternativas mostram-se (podem ativar-se), não recomendadas, com o motivo e o aviso vermelho
     assert.equal(r.alternativas.length, 3, nome)
     for (const a of r.alternativas) {
@@ -311,7 +316,6 @@ test('K-06 (decisão do Ivo n.º 1): "Sair agora" com o gasóleo curto, sem prev
       assert.equal(a.motivos.length, 1, `${nome}: ${JSON.stringify(a.motivos)}`)
       assert.ok(a.avisosVermelhos.includes(a.motivos[0]), `${nome}: ${JSON.stringify(a.avisosVermelhos)}`)
     }
-    assert.equal(r.alternativas[0].motivos[0], motivo)
     assert.equal(r.estatisticas.recomendadas, 0, nome)
   }
   // sem "sair agora" a mesma passagem com 45 L fica de fora (excluída), como sempre

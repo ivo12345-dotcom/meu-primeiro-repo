@@ -161,16 +161,22 @@ function linAngulo (a, b, f) {
 // IMPORTANTE para quem consome isto (Tarefa 9, regras de segurança): `semDados` a conter
 // 'ondas', 'rajada' ou 'tws' é "desconhecido", nunca "calmo" — falhar para o lado seguro
 // (excluir a alternativa ou avisar), nunca tratar como se não houvesse onda/vento nenhum.
+// O ponto seguinte só serve até LIMITE_APROXIMADO_MN (auditoria M-09): mais longe, o campo fica
+// sem dados (o mar de dezenas de MN dali não é o deste ponto). A ordem dos pontos guarda-se por
+// célula de 0,01° e mede-se do centro da célula: assim não depende de qual consulta chegou primeiro
+// (antes era a da 1.ª consulta da célula, e uma consulta a mais noutro sítio mudava os resultados).
+const LIMITE_APROXIMADO_MN = 15
 function criarTempo (previsao) {
   const pts = previsao.pontos
   const cache = new Map()
-  // os índices dos pontos pedidos, do mais perto de (lat,lon) para o mais longe
+  // os pontos pedidos ({ j, mn }), do mais perto do centro da célula de (lat, lon) para o mais longe
   const ordemPerto = (lat, lon) => {
-    const k = `${Math.round(lat * 100)}|${Math.round(lon * 100)}`
+    const la = Math.round(lat * 100); const lo = Math.round(lon * 100)
+    const k = `${la}|${lo}`
     let ord = cache.get(k)
     if (ord === undefined) {
-      const p = { lat, lon }
-      ord = pts.map((_, j) => j).sort((a, b) => c.distanciaMn(p, pts[a]) - c.distanciaMn(p, pts[b]))
+      const centro = { lat: la / 100, lon: lo / 100 }
+      ord = pts.map((p, j) => ({ j, mn: c.distanciaMn(centro, p) })).sort((a, b) => a.mn - b.mn || a.j - b.j)
       cache.set(k, ord)
     }
     return ord
@@ -194,7 +200,8 @@ function criarTempo (previsao) {
     for (const campo of DO_TEMPO) {
       let valor = null
       for (let k = 0; k < ord.length; k++) {
-        valor = valorNoPonto(pts[ord[k]], campo, t)
+        if (k > 0 && ord[k].mn > LIMITE_APROXIMADO_MN) break
+        valor = valorNoPonto(pts[ord[k].j], campo, t)
         if (valor != null) { if (k > 0) aproximado.push(campo); break }
       }
       out[campo] = valor
