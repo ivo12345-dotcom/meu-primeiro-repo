@@ -3,7 +3,7 @@
 
 import { SEM_AUTORIZACAO, SEM_LIGACAO, doServidor } from './lib/erros.js'
 
-const CAMINHOS_AIS =['navigation.position', 'navigation.courseOverGroundTrue', 'navigation.speedOverGround', 'name', 'mmsi', 'design.aisShipType']
+const CAMINHOS_AIS = ['navigation.position', 'navigation.courseOverGroundTrue', 'navigation.speedOverGround', 'name', 'mmsi', 'design.aisShipType']
 
 export function criarStore () {
   return {
@@ -40,7 +40,8 @@ export function aplicarDelta (store, delta) {
       else if (path === 'navigation.position') { v.position = value; v.em = Date.parse(ts) || Date.now() }
       else if (path === 'navigation.courseOverGroundTrue') v.cog = value
       else if (path === 'navigation.speedOverGround') v.sog = value
-      else if (path === 'design.aisShipType') v.tipo = value?.name
+      // o código e o nome do servidor (em inglês): o ecrã traduz pelo código (lib/ais.js, auditoria I-32)
+      else if (path === 'design.aisShipType') v.tipo = value && typeof value === 'object' ? { id: value.id, name: value.name } : null
       store.vessels.set(ctx, v)
     }
   }

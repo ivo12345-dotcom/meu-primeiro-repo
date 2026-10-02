@@ -232,7 +232,9 @@ test('Diário: cartão da AI mostra os modelos em uso e manda treinar e voltar a
   assert.match(html, /1 de 2 modelos melhoraram/)
   const iaComErro = { ...ia, modelos: { ...ia.modelos, consumo: { versao: 'v0002', versoes: ['v0001', 'v0002'], erro: 'ficheiro estragado' } } }
   const htmlComErro = diario.render(contexto(store, { ia: iaComErro, iaEm: Date.now() }))
-  assert.match(htmlComErro, /v0002 · não consegui ler o modelo: ficheiro estragado/)
+  // auditoria I-32: frase fixa em pt-PT; o erro técnico do plugin não se mostra
+  assert.match(htmlComErro, /v0002 · não consegui ler o modelo</)
+  assert.doesNotMatch(htmlComErro, /ficheiro estragado/)
   assert.doesNotMatch(htmlComErro, /NaN/)
   assert.doesNotMatch(htmlComErro, /data-modelo="consumo"/)
   const pedidos = []
@@ -262,8 +264,11 @@ test('Diário: o cartão da AI mostra o estado do arquivo da previsão', () => {
   const okEm = Date.parse('2026-09-30T08:05:00Z')
   const html = (previsao) => diario.render(contexto(store, { ia: { modelos: {}, previsao }, iaEm: Date.now() }))
   assert.match(html({ okEm, tentativaEm: null, erro: null }), /previsão: última 09:05/)
-  assert.match(html({ okEm, tentativaEm: okEm, erro: 'fetch failed' }), /previsão: sem rede \(fetch failed\) · última 09:05/)
-  assert.match(html({ okEm: null, tentativaEm: okEm, erro: '<b>' }), /previsão: sem rede \(&lt;b&gt;\)/)
+  // auditoria I-32: frase fixa em pt-PT; o erro técnico ("fetch failed") fica no plugin
+  assert.match(html({ okEm, tentativaEm: okEm, erro: 'fetch failed' }), /previsão: falhou ao atualizar · última 09:05/)
+  assert.doesNotMatch(html({ okEm, tentativaEm: okEm, erro: 'fetch failed' }), /fetch failed/)
+  assert.match(html({ okEm: null, tentativaEm: okEm, erro: '<b>' }), /previsão: falhou ao atualizar</)
+  assert.doesNotMatch(html({ okEm: null, tentativaEm: okEm, erro: '<b>' }), /<b>|&lt;b&gt;/)
   assert.match(html({ okEm: null, tentativaEm: null, erro: null }), /previsão: ainda nenhuma/)
 })
 
@@ -595,6 +600,55 @@ test('auditoria I-31: a Viagem, as cargas do Motor e o Diário dão a hora de Li
   const d = diario.render(contexto(store, { entradas: [{ datetime: new Date(T).toISOString(), text: 'Largámos', category: 'navigation' }], em: Date.now(), ia: { modelos: {}, ultimoTreino: { em: new Date(T).toISOString(), resultados: [] } }, iaEm: Date.now() }))
   assert.match(d, /<td style="width:4\.5rem;">00:30<\/td><td>Largámos/)
   assert.match(d, /último treino 00:30/)
+})
+
+// ---------- auditoria I-32: nada de inglês nem de mensagens técnicas no ecrã ----------
+test('auditoria I-32: o tipo do navio AIS vem em pt-PT, pelo código (o SignalK manda o nome em inglês: "Cargo ship", "Pleasure"…)', async () => {
+  const { tipoAis } = await import('../public/lib/ais.js')
+  for (const [id, nome, pt] of [[30, 'Fishing', 'Pesca'], [31, 'Towing', 'Reboque'], [36, 'Sailing', 'Veleiro'], [37, 'Pleasure', 'Recreio'], [52, 'Tug', 'Rebocador'], [51, 'SAR', 'Busca e salvamento'], [55, 'Law enforcement', 'Autoridade'], [60, 'Passenger ship', 'Passageiros'], [70, 'Cargo ship', 'Carga'], [79, 'Cargo ship (no additional information)', 'Carga'], [71, 'Cargo ship carrying dangerous goods', 'Carga · carga perigosa'], [80, 'Tanker', 'Navio-tanque'], [84, 'Tanker hazard cat D', 'Navio-tanque · carga perigosa'], [40, 'High speed craft', 'Alta velocidade'], [90, 'Other', 'Outro'], [25, 'Wing In Ground', 'Asa de efeito solo']]) assert.equal(tipoAis({ id, name: nome }), pt, `${id} ${nome}`)
+  // sem código conhecido, nunca o inglês: "—"
+  for (const x of [{ id: 0, name: 'Not available' }, { name: 'Cargo' }, null, undefined, { id: 15 }, 'Cargo']) assert.equal(tipoAis(x), '—', JSON.stringify(x))
+  // o store guarda o código (signalk.js) e a página AIS mostra-o traduzido
+  const st = criarStore()
+  st.selfContext = 'vessels.urn:mrn:signalk:uuid:eu'
+  aplicarDelta(st, { context: 'vessels.urn:mrn:imo:mmsi:263000009', updates: [{ timestamp: new Date().toISOString(), values: [{ path: 'design.aisShipType', value: { id: 37, name: 'Pleasure' } }, { path: 'navigation.position', value: { latitude: 39.4, longitude: -9.4 } }] }] })
+  assert.deepEqual(st.vessels.get('vessels.urn:mrn:imo:mmsi:263000009').tipo, { id: 37, name: 'Pleasure' })
+  const ctx = { ...contexto(st, { sel: '263000009' }), alvos: [{ ...st.vessels.get('vessels.urn:mrn:imo:mmsi:263000009'), r: null, classe: 'desconhecido' }] }
+  const html = ais.render(ctx)
+  assert.match(html, /<td>Recreio<\/td>/)
+  assert.match(html, /MMSI 263000009 · Recreio/)
+  assert.doesNotMatch(html, /Pleasure/)
+})
+
+test('auditoria I-32: o Diário mostra as categorias e as entradas automáticas do signalk-logbook em pt-PT', async () => {
+  const { textoDaEntrada } = await import('../public/paginas/diario.js')
+  for (const [en, pt] of [
+    ['Motor stopped, sailing', 'Motor desligado, à vela'], ['Motor stopped, sailing with Genoa (1st reef)', 'Motor desligado, à vela com Genoa (1st reef)'],
+    ['Sailing', 'À vela'], ['Motoring', 'A motor'], ['Anchored', 'Fundeado'], ['Stopped', 'Parado'], ['Sails down, motoring', 'Velas em baixo, a motor'], ['Anchor up, motoring', 'Âncora a bordo, a motor'],
+    ['Autopilot activated', 'Piloto ligado'], ['Autopilot deactivated', 'Piloto desligado'], ['Heading changed to 245°', 'Proa mudou para 245°'], ['Tack (Heading 045°)', 'Virámos por davante (proa 045°)'], ['Gybe (Heading 210°)', 'Cambámos (proa 210°)'],
+    ['Started main engine', 'Motor main ligado'], ['Stopped main engine', 'Motor main desligado'], ['Ivo on watch', 'Ivo de quarto'],
+    ['Alarm: Água no porão! (arlequin.porto.aguaPorao)', 'Alarme: Água no porão!'], ['Warn notification: navigation.anchor', 'Aviso: navigation.anchor'],
+    ['Cleared after 5 min: Água no porão! — peaked alarm, 3 transitions', 'Resolvido ao fim de 5 min: Água no porão! (chegou a alarme), 3 mudanças'], ['Cleared after 45 s: Fumo', 'Resolvido ao fim de 45 s: Fumo']
+  ]) assert.equal(textoDaEntrada({ text: en, origin: 'auto' }), pt, en)
+  // a entrada de hora a hora vem sem texto; as manuais ficam tal e qual
+  assert.equal(textoDaEntrada({ text: '', origin: 'auto' }), 'Registo de hora a hora')
+  assert.equal(textoDaEntrada({ text: 'Sailing', origin: 'manual' }), 'Sailing')
+  const html = diario.render(contexto(store, { entradas: [{ datetime: '2026-07-14T23:30:00.000Z', text: 'Motoring', category: 'engine', origin: 'auto' }, { datetime: '2026-07-14T23:40:00.000Z', text: 'Rizei', category: 'navigation', origin: 'manual' }, { datetime: '2026-07-14T23:50:00.000Z', text: 'x', category: 'maintenance' }, { datetime: '2026-07-14T23:55:00.000Z', text: 'y', category: 'radio' }], em: Date.now(), iaEm: Date.now(), ia: { modelos: {} } }))
+  assert.match(html, /<td>A motor<\/td><td class="lab">motor<\/td>/)
+  assert.match(html, /<td>Rizei<\/td><td class="lab">navegação<\/td>/)
+  assert.match(html, /manutenção/)
+  assert.match(html, /rádio/)
+  // no texto que se vê (os data-cat dos botões ficam com os nomes do logbook)
+  assert.doesNotMatch(html.replace(/<[^>]+>/g, ' '), /navigation|engine|maintenance|radio/)
+})
+
+test('auditoria I-32: o cartão da AI dá frases fixas em pt-PT (o erro técnico do plugin — "fetch failed", "unexpected end of file"… — fica no plugin)', () => {
+  const ia = { modelos: { velocidade: { versao: 'v0002', versoes: ['v0001', 'v0002'], erro: 'unexpected end of file' } }, ultimoTreino: { em: '2026-09-29T20:00:00Z', erro: 'Command failed: python -m arlequin_ia treinar' }, previsao: { okEm: Date.parse('2026-09-30T08:05:00Z'), erro: 'fetch failed' } }
+  const html = diario.render(contexto(store, { ia, iaEm: Date.now() }))
+  assert.match(html, /v0002 · não consegui ler o modelo</)
+  assert.match(html, /último treino falhou às 21:00 \(o motivo está no estado do plugin da AI\)/)
+  assert.match(html, /previsão: falhou ao atualizar · última 09:05/)
+  assert.doesNotMatch(html, /unexpected end of file|Command failed|fetch failed/)
 })
 
 test('Diário: cartão da AI mostra mensagem genérica para erro sem status', async () => {
