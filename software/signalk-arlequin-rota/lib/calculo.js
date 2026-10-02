@@ -400,6 +400,8 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   const tempoBruto = prev.criarTempo(previsao)
   const temMar = previsao.pontos.some(p => p.ondas?.some(x => x != null))
   if (!temMar) avisosGerais.push('Sem previsão do mar (ondas e corrente): as ondas ficam desconhecidas, e desconhecido não conta como calmo')
+  // M-11: o pedido do mar falhou e as ondas vieram da previsão guardada mais recente (previsao.juntarMarDoArquivo)
+  else if (previsao.marDoArquivo && Number.isFinite(Date.parse(previsao.marDoArquivo))) avisosGerais.push(`Ondas da previsão guardada há ${Math.max(0, Math.round((agora - Date.parse(previsao.marDoArquivo)) / H))} h (o pedido do mar falhou)`)
 
   // maré na barra do Tejo (sem dados do mar: corrente 0, com aviso)
   const nivel = prev.nivelDoMar(previsao)
