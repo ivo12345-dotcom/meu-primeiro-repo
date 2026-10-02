@@ -261,18 +261,24 @@ test('I-12: sem a sonda, os litros pelo consumo também acendem a reserva (≤ 4
   assert.deepEqual(reserva, ['warn'])
 })
 
-test('I-12 (E-M15): sem a sonda, rotações e consumo velhos (o J1939 parou) não descontam litros', (t) => {
+// F6b (revisão F6, Menor 10): o nível guardado continua sem descontar, mas já não se publica como novo
+// (antes saía de segundo a segundo como se alguém o medisse) — ver os testes do Menor 10 mais abaixo.
+test('I-12 (E-M15): sem a sonda, rotações e consumo velhos (o J1939 parou) não descontam litros', async (t) => {
   t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
   const app = appFalso()
   fs.writeFileSync(path.join(app.dir, 'nivel.json'), JSON.stringify({ litros: 118, t: '2026-09-29T08:00:00Z' }))
   const p = criar(app)
   p.start({ tabela: [{ razao: 0.1, litros: 0 }, { razao: 0.7, litros: 200 }] })
+  const r = rotasDe(p)
   const velho = new Date(Date.now() - 60 * 1000).toISOString()
   Object.assign(app.self, { 'propulsion.main.revolutions': 30, 'propulsion.main.fuel.rate': 2 / 3600 / 1000 })
   Object.assign(app.ts, { 'propulsion.main.revolutions': velho, 'propulsion.main.fuel.rate': velho })
   avancar(t, 30 * 60)
+  const e = await chamar(r.get['/estado'])
   p.stop()
-  assert.equal(app.valores['tanks.fuel.0.currentVolume'] * 1000, 118) // sem sonda desde o arranque: o nível guardado, sem descontar
+  assert.equal(e.litros, 118) // sem sonda desde o arranque: o nível guardado, sem descontar
+  assert.equal(app.valores['tanks.fuel.0.currentVolume'], undefined) // … e sem o publicar como novo
+  assert.match(app.estado, /sem leitura do motor: o nível \(118 L\) não se atualiza/)
 })
 
 // Auditoria I-21: um alarme ativo quando o plugin para (reinício pelo Admin UI) ficava na árvore para
@@ -420,4 +426,138 @@ test('importar a folha do multímetro', async (t) => {
   assert.equal(res.ok, true)
   assert.equal(res.tabela.length, 5)
   assert.equal(app.opcoesGuardadas.capacidadeL, 200)
+})
+
+// ---- F6b, revisão F6, Importante 4 e Menor 10: a sonda perdida ----
+// A app I2C morre: as tensões ficam na árvore com a hora em que morreu (como no SignalK).
+const matarSonda = (app) => {
+  const morreu = new Date().toISOString()
+  app.ts['tanks.fuel.0.supplyVoltage'] = morreu
+  app.ts['tanks.fuel.0.senderVoltage'] = morreu
+}
+const com120 = (app) => {
+  app.self['tanks.fuel.0.supplyVoltage'] = 12.6
+  app.self['tanks.fuel.0.senderVoltage'] = 0.25 * 12.6
+}
+
+test('revisão F6 (Importante 4): com a sonda perdida a razão velha deixa de existir — o /estado não a mostra', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({})
+  const r = rotasDe(p)
+  com120(app)
+  avancar(t, 200)
+  const antes = await chamar(r.get['/estado'])
+  assert.equal(antes.razaoMediana, 0.25)
+  matarSonda(app)
+  avancar(t, 10 * 60)
+  const depois = await chamar(r.get['/estado'])
+  p.stop()
+  assert.deepEqual([depois.razao, depois.razaoMediana, depois.mediana], [null, null, null])
+})
+
+test('revisão F6 (Importante 4): "Calibrar 200 L" com a tabela vazia e a sonda perdida é recusado em pt-PT e nada se grava', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({})
+  const r = rotasDe(p)
+  com120(app)
+  avancar(t, 200)
+  matarSonda(app)
+  avancar(t, 30 * 60)
+  const c = await chamar(r.post['/calibrar'], { litros: '200' })
+  p.stop()
+  assert.equal(c.status, 503, JSON.stringify(c))
+  assert.equal(c.ok, false)
+  assert.match(c.erro, /^sem leitura da sonda do gasóleo \(ADS1115, app I2C do OpenPlotter\)/)
+  assert.equal(app.opcoesGuardadas, null, 'gravava [{ razao: 0.25, litros: 200 }]')
+})
+
+test('revisão F6 (Importante 4): com a tabela cheia e a sonda perdida, "Calibrar" e "Abasteci" dizem porquê (não "A sonda já mudou?")', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ tabela: [{ razao: 0.1, litros: 0 }, { razao: 0.4, litros: 100 }, { razao: 0.7, litros: 200 }] })
+  const r = rotasDe(p)
+  com120(app)
+  avancar(t, 200)
+  matarSonda(app)
+  avancar(t, 2 * 60)
+  const c = await chamar(r.post['/calibrar'], { litros: '150' })
+  const a = await chamar(r.post['/abastecimento'], { litros: '50' })
+  p.stop()
+  for (const x of [c, a]) {
+    assert.equal(x.status, 503, JSON.stringify(x))
+    assert.match(x.erro, /^sem leitura da sonda do gasóleo/)
+  }
+  assert.equal(app.opcoesGuardadas, null)
+})
+
+test('revisão F6 (Importante 4): quando a sonda volta, calibrar espera pelas leituras novas (a janela velha não conta)', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({})
+  const r = rotasDe(p)
+  com120(app)
+  avancar(t, 200)
+  matarSonda(app)
+  avancar(t, 70) // perdida há pouco mais de 1 min: a janela de 3 min ainda tinha as leituras de antes
+  delete app.ts['tanks.fuel.0.supplyVoltage']
+  delete app.ts['tanks.fuel.0.senderVoltage']
+  app.self['tanks.fuel.0.senderVoltage'] = 0.40 * 12.6 // voltou com outra leitura (meteram gasóleo)
+  avancar(t, 31)
+  const cedo = await chamar(r.post['/calibrar'], { litros: '100' })
+  assert.equal(cedo.status, 409, JSON.stringify(cedo))
+  avancar(t, 90)
+  const depois = await chamar(r.post['/calibrar'], { litros: '100' })
+  p.stop()
+  assert.equal(depois.ok, true, JSON.stringify(depois))
+  assert.deepEqual(app.opcoesGuardadas.tabela, [{ razao: 0.4, litros: 100 }])
+})
+
+test('revisão F6 (Menor 10): sem a sonda e sem leitura do motor o nível não se publica como novo, e o aviso diz porquê', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ tabela: [{ razao: 0.1, litros: 0 }, { razao: 0.7, litros: 200 }] })
+  app.self['tanks.fuel.0.supplyVoltage'] = 12.6
+  app.self['tanks.fuel.0.senderVoltage'] = (0.1 + 0.6 * 60 / 200) * 12.6 // 60 L
+  avancar(t, 200)
+  matarSonda(app) // e o J1939 também calado: nem rotações nem o estado da ligação
+  avancar(t, 61)
+  const vezes = []
+  const handle = app.handleMessage
+  app.handleMessage = (id, d) => { for (const u of d.updates) for (const v of u.values) if (v.path === 'tanks.fuel.0.currentVolume') vezes.push(v.value); handle(id, d) }
+  avancar(t, 2 * 3600)
+  p.stop()
+  assert.deepEqual(vezes, [], `republicado ${vezes.length} vezes`)
+  const aviso = app.notificacoes.filter(n => n.path === 'notifications.tanks.fuel.0.sondaPerdida' && n.state === 'warn')
+  assert.equal(aviso.length, 1)
+  assert.match(aviso[0].message, /sem leitura do motor: o nível \(60 L\) não se atualiza/)
+  assert.match(app.estado, /sem leitura do motor: o nível \(60 L\) não se atualiza/)
+})
+
+test('revisão F6 (Menor 10): sem a sonda mas com o motor sabido desligado (J1939 "calado") o nível continua a publicar-se', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ tabela: [{ razao: 0.1, litros: 0 }, { razao: 0.7, litros: 200 }] })
+  app.self['tanks.fuel.0.supplyVoltage'] = 12.6
+  app.self['tanks.fuel.0.senderVoltage'] = (0.1 + 0.6 * 60 / 200) * 12.6 // 60 L
+  avancar(t, 200)
+  matarSonda(app)
+  Object.assign(app.self, { 'propulsion.main.revolutions': null, 'propulsion.main.ligacao': 'calado' }) // a ignição desligada
+  avancar(t, 61)
+  const vezes = []
+  const handle = app.handleMessage
+  app.handleMessage = (id, d) => { for (const u of d.updates) for (const v of u.values) if (v.path === 'tanks.fuel.0.currentVolume') vezes.push(v.value); handle(id, d) }
+  avancar(t, 10 * 60)
+  p.stop()
+  assert.ok(vezes.length >= 590, `publicado ${vezes.length} vezes`)
+  assert.ok(vezes.every(v => Math.abs(v * 1000 - 60) < 0.5))
+  const aviso = app.notificacoes.filter(n => n.path === 'notifications.tanks.fuel.0.sondaPerdida' && n.state === 'warn')
+  assert.match(aviso[0].message, /os 60 L vêm só do consumo do motor/)
 })
