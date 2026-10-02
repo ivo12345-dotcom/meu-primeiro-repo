@@ -113,6 +113,7 @@ const av = require('./lib/avisos-navegar')
 const ct = require('./lib/contactos')
 const { criarCorrecaoVento } = require('./lib/cenarios')
 const energiaPlano = require('./lib/energia')
+const seguranca = require('./lib/seguranca')
 const { slug } = require('./lib/slug')
 const modelosJs = require('signalk-arlequin-ia/lib/modelos')
 
@@ -145,6 +146,22 @@ function corrigirAproximacao (d) {
   const valida = Array.isArray(ap) && ap.length >= 2 && Number.isInteger(d.entrada) && d.entrada >= 1 && d.entrada <= ap.length - 1
   return valida ? d : { ...d, ...aproximacaoAvulsa(d.largo[0], d.largo[1]) }
 }
+
+// Os limites de segurança que se podem mudar na configuração (auditoria M-13: o desenho 3a diz
+// "configuráveis"; lib/seguranca.js LIMITES), com o título do Admin UI. Os valores são os do lib/seguranca.js.
+const TITULOS_LIMITES = Object.freeze({
+  ventoMedioMax: 'Vento médio máximo, só eu (nós)',
+  rajadaMax: 'Rajada máxima, só eu (nós)',
+  ondasMax: 'Ondas máximas, só eu (m)',
+  ventoMaxAcompanhado: 'Vento médio máximo, acompanhado (nós)',
+  rajadaMaxAcompanhado: 'Rajada máxima, acompanhado (nós)',
+  ondasMaxAcompanhado: 'Ondas máximas, acompanhado (m)',
+  gasoleoMinL: 'Gasóleo mínimo à chegada, no pior caso (L)',
+  bateriaMinPct: 'Bateria mínima à chegada, no pior caso (%)',
+  lemeMaxH: 'Horas seguidas ao leme, só eu (máximo)'
+})
+// os limites postos na configuração: só as chaves de LIMITES e só números (o resto fica no padrão)
+const limitesPostos = (x) => Object.fromEntries(seguranca.LIMITES.filter(k => Number.isFinite(x?.[k])).map(k => [k, x[k]]))
 
 // Os valores por defeito de um objeto do schema ({ chave: default }).
 const padroes = (esquema) => Object.fromEntries(Object.entries(esquema.properties).map(([k, x]) => [k, x.default]))
@@ -200,6 +217,12 @@ module.exports = function (app, deps = {}) {
           fatorSolar: { type: 'number', title: 'Perdas do solar: fator 0–1 (regulador, sombras, painéis deitados)', default: energiaPlano.PADRAO.fatorSolar },
           alternadorA: { type: 'number', title: 'Alternador com o motor ligado (A)', default: 45 }
         }
+      },
+      // os limites de segurança do desenho 3a (auditoria M-13): o cálculo e os avisos dos recursos a navegar
+      seguranca: {
+        type: 'object',
+        title: 'Limites de segurança (os do desenho; mudar só com razão)',
+        properties: Object.fromEntries(seguranca.LIMITES.map(k => [k, { type: 'number', title: TITULOS_LIMITES[k] || k, default: seguranca.PADRAO[k] }]))
       },
       porta: { type: 'number', title: 'Porta do SignalK (só se a API interna faltar)', default: 3000 },
       modoTeste: { type: 'boolean', title: 'Só testes (dev): liga as duas opções seguintes; no barco, SEMPRE desligado', default: false },
@@ -794,7 +817,9 @@ module.exports = function (app, deps = {}) {
     const navegar = planoAtivo.estado === 'a navegar'
     const x = av.avaliar(estAvisos, {
       navegar, tripulacao: planoAtivo.tripulacao, saida: Date.parse(planoAtivo.saida), destino: planoAtivo.destino?.nome, semGps: !leitura.posicao,
-      atrasoMin: res.atrasoMin, vento, previsaoIdadeH: pv ? pv.idadeH : null, barometro: pressoes, recursos: res.recursos, eventos: res.eventos, chegadaNoite: res.chegadaNoite
+      atrasoMin: res.atrasoMin, vento, previsaoIdadeH: pv ? pv.idadeH : null, barometro: pressoes, recursos: res.recursos, eventos: res.eventos, chegadaNoite: res.chegadaNoite,
+      // os mínimos à chegada da configuração (auditoria M-13), os mesmos do cálculo
+      limites: { gasoleoL: o.seguranca.gasoleoMinL ?? seguranca.PADRAO.gasoleoMinL, bateriaPct: o.seguranca.bateriaMinPct ?? seguranca.PADRAO.bateriaMinPct }
     }, agora)
     estAvisos = x.estado
     const avisos = { ...x.avisos, ...avisoTerra(agora) }
@@ -934,7 +959,7 @@ module.exports = function (app, deps = {}) {
         costa, polar, modelos, versoes, obterPrevisao: obterPrevisaoCom(oo, pastaDados),
         opcoes: {
           afastamentoMinimo: oo.afastamentoMinimo, rpmCruzeiro: oo.rpmCruzeiro, energia: oo.energia,
-          socDesconhecido: oo.socDesconhecido, gasoleoDesconhecidoL: oo.gasoleoDesconhecidoL
+          socDesconhecido: oo.socDesconhecido, gasoleoDesconhecidoL: oo.gasoleoDesconhecidoL, seguranca: oo.seguranca
         },
         progresso: (f, texto) => { t.progresso = Math.round(f * 100) / 100; t.texto = texto },
         // o registo dos erros de programação da geometria (lib/rotas.js: log(msg, erro))
@@ -1003,6 +1028,7 @@ module.exports = function (app, deps = {}) {
     // 200 Ah que eram o valor por omissão escritos — contam como não postos (fica o banco de 440 Ah, decisão
     // do Ivo n.º 4), e o registo di-lo
     o.energia = eObjeto(props?.energia) ? { ...props.energia } : {}
+    o.seguranca = limitesPostos(props?.seguranca)
     if (o.energia.capacidadeAh === CAPACIDADE_AH_ANTIGA) {
       delete o.energia.capacidadeAh
       app.error(`energia.capacidadeAh = ${CAPACIDADE_AH_ANTIGA} na configuração (o valor por omissão antigo) não conta: o banco de serviço tem ${energiaPlano.PADRAO.capacidadeAh} Ah (decisão n.º 4); grava a configuração do plugin para o tirar`)

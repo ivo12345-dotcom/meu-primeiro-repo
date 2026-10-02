@@ -259,3 +259,26 @@ test('M9: o barómetro fica em memória; no disco só com um plano aberto e no m
   s.p.stop()
   assert.equal(gravadas(), 14, 'o stop grava o que falta')
 })
+
+test('auditoria M-13: a navegar, o aviso dos recursos usa o gasóleo e a bateria mínimos à chegada da configuração (os mesmos do cálculo)', async () => {
+  const s = await preparar()
+  s.p.stop()
+  s.p.start({ pasta: path.join(s.app.dir, 'dados'), seguranca: { gasoleoMinL: 130 } })
+  s.por(s.alt.rasto[2])
+  await s.ciclo(20 * MIN)
+  await s.ciclo(0)
+  assert.equal(s.p.planoAtivo().estado, 'a navegar')
+  await s.ciclo()
+  // 124 L no depósito: à chegada fica abaixo dos 130 L configurados
+  assert.equal(s.app.self['notifications.rota.recursos'].state, 'warn')
+  assert.match(s.app.self['notifications.rota.recursos'].message, /^Recursos: gasóleo à chegada ~\d+ L$/)
+  s.p.stop()
+  // com o padrão (40 L): nada
+  const t = await preparar()
+  t.por(t.alt.rasto[2])
+  await t.ciclo(20 * MIN)
+  await t.ciclo(0)
+  await t.ciclo()
+  assert.equal(t.app.self['notifications.rota.recursos']?.state ?? 'normal', 'normal')
+  t.p.stop()
+})
