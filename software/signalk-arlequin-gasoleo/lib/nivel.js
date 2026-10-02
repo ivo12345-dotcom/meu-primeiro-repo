@@ -123,10 +123,12 @@ function passo (e0, l, tabela, lim = LIMITES) {
     }
   }
 
-  // 4. Alarmes.
+  // 4. Alarmes. O apito (decisão n.º 2 do Ivo, contrato C1 da auditoria): a fuga é perigo imediato
+  // (contínuo); um alarme de outro tipo seria curto; os avisos não precisam do campo.
   const mudar = (id, deve, estado, mensagem) => {
     if (deve === null || deve === !!e.ativos[id]) return
-    if (deve) { e.ativos[id] = true; notificacoes.push({ id, state: estado, method: ['visual', 'sound'], message: mensagem }) }
+    const apito = estado === 'alarm' ? { apito: id === 'fuga' ? 'continuo' : 'curto' } : {}
+    if (deve) { e.ativos[id] = true; notificacoes.push({ id, state: estado, method: ['visual', 'sound'], message: mensagem, ...apito }) }
     else { delete e.ativos[id]; notificacoes.push({ id, state: 'normal', method: [], message: 'Normal' }) }
   }
   if (e.litros !== null) {

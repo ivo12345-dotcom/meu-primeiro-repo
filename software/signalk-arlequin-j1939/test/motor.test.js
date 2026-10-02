@@ -53,6 +53,28 @@ test('sobreaquecimento: alarme a 95 °C, limpa abaixo de 92 °C', () => {
   assert.match(t[0].message, /95 °C/)
 })
 
+// Auditoria I-07 (decisão n.º 2, contrato C1): o motor a sobreaquecer é perigo imediato → apito
+// contínuo; os outros alarmes do MDI levam apito curto; os avisos não precisam do campo.
+test('C1: o sobreaquecimento leva apito contínuo; o aviso do alternador não leva o campo', () => {
+  const { todas } = correr([
+    [T0, { rpm: 2000, temp: 96 + K, volt: 12.4 }], [T0 + 2 * MIN, { rpm: 2000, temp: 96 + K, volt: 12.4 }]
+  ])
+  assert.equal(todas.find(n => n.id === 'overTemperature').apito, 'continuo')
+  assert.equal(todas.find(n => n.id === 'alternadorNaoCarrega').apito, undefined)
+})
+
+test('C1: os alarmes do mapa do MDI levam apito curto; um sobreaquecimento do mapa, contínuo; os avisos, nada', () => {
+  const mapa = [
+    { byte: 0, bit: 0, id: 'lowOilPressure', mensagem: 'Pressão de óleo baixa' },
+    { byte: 0, bit: 1, id: 'lowSystemVoltage', mensagem: 'Carga da bateria', estado: 'warn' },
+    { byte: 0, bit: 2, id: 'overTemperature', mensagem: 'Temperatura do motor (MDI)' }
+  ]
+  const r = alarmesDoMapa(mapa, Uint8Array.from([0x07, 0, 0, 0, 0, 0, 0, 0]), {})
+  assert.deepEqual(r.notificacoes.map(n => [n.id, n.state, n.apito]), [
+    ['lowOilPressure', 'alarm', 'curto'], ['lowSystemVoltage', 'warn', undefined], ['overTemperature', 'alarm', 'continuo']
+  ])
+})
+
 test('alternador não carrega: só com o motor ligado há 2 min e < 13,0 V', () => {
   const { todas } = correr([
     [T0, { rpm: 2000, volt: 12.4 }],

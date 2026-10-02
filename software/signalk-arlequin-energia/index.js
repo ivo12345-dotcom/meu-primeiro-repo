@@ -76,7 +76,7 @@ module.exports = function (app) {
     if (r.notificacoes.length) {
       publicar(r.notificacoes.map(n => ({
         path: PREFIXO + n.id,
-        value: { state: n.state, method: n.method, message: n.message }
+        value: { state: n.state, method: n.method, message: n.message, ...(n.apito ? { apito: n.apito } : {}) }
       })))
       for (const n of r.notificacoes) app.debug(`${n.id} ${n.state}: ${n.message}`)
     }

@@ -225,6 +225,9 @@ test('sobreaquecimento vira notificação; o mapa do MDI também', (t) => {
   const caminhos = app.notificacoes.map(n => `${n.path}:${n.state}`)
   assert.ok(caminhos.includes('notifications.propulsion.main.overTemperature:alarm'), caminhos.join(' '))
   assert.ok(caminhos.includes('notifications.propulsion.main.lowOilPressure:alarm'), caminhos.join(' '))
+  // contrato C1: o apito vai no valor publicado
+  const apito = Object.fromEntries(app.notificacoes.map(n => [n.path.split('.').pop(), n.apito]))
+  assert.deepEqual(apito, { overTemperature: 'continuo', lowOilPressure: 'curto' })
 })
 
 test('diagnóstico: PGN vistas e mudanças da 65417 gravadas', async (t) => {

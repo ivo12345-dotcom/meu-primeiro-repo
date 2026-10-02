@@ -102,7 +102,7 @@ module.exports = function (app) {
   function publicarNotificacoes (ns) {
     if (!ns.length) return
     app.handleMessage(plugin.id, {
-      updates: [{ values: ns.map(n => ({ path: `notifications.propulsion.main.${n.id}`, value: { state: n.state, method: n.method, message: n.message } })) }]
+      updates: [{ values: ns.map(n => ({ path: `notifications.propulsion.main.${n.id}`, value: { state: n.state, method: n.method, message: n.message, ...(n.apito ? { apito: n.apito } : {}) } })) }]
     })
   }
 

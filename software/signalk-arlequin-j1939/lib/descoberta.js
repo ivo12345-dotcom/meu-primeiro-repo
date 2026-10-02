@@ -5,6 +5,8 @@
 // motor parado acendem os alarmes de óleo e de carga: vê-se que bits são.
 // Depois o mapa (byte, bit → alarme) vai para a configuração do plugin.
 
+const { apitoDe } = require('./motor')
+
 const proprietaria = (pgn) => pgn >= 0xFF00 && pgn <= 0xFFFF
 
 const hexBytes = (d) => [...d].map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')
@@ -44,7 +46,8 @@ function alarmesDoMapa (mapa, dados, ativos) {
     const ligado = ((dados[m.byte] ?? 0) >> m.bit) & 1
     if (ligado && !novos[m.id]) {
       novos[m.id] = true
-      notificacoes.push({ id: m.id, state: m.estado || 'alarm', method: ['visual', 'sound'], message: m.mensagem })
+      // o apito (contrato C1): curto, ou contínuo se o MDI disser sobreaquecimento (id overTemperature)
+      notificacoes.push({ id: m.id, state: m.estado || 'alarm', method: ['visual', 'sound'], message: m.mensagem, ...apitoDe(m.id, m.estado || 'alarm') })
     } else if (!ligado && novos[m.id]) {
       delete novos[m.id]
       notificacoes.push({ id: m.id, state: 'normal', method: [], message: 'Normal' })

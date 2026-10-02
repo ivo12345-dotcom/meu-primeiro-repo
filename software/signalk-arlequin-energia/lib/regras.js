@@ -115,11 +115,14 @@ function avaliar (estado, leitura, agora, lim = LIMITES) {
   const notificacoes = []
   const cond = condicoes(ativos, leitura, motor, agora, lim)
 
+  // Os alarmes daqui (serviço crítico, bateria do motor fraca) levam apito curto: o contínuo é só
+  // para o perigo imediato (decisão n.º 2 do Ivo, contrato C1 da auditoria). Os avisos não precisam.
   const emitir = (id) => notificacoes.push({
     id,
     state: GRAVIDADE[id],
     method: metodo(id, leitura, navegar.estado),
-    message: MENSAGENS[id](leitura)
+    message: MENSAGENS[id](leitura),
+    ...(GRAVIDADE[id] === 'alarm' ? { apito: 'curto' } : {})
   })
 
   for (const [id, deve] of Object.entries(cond)) {

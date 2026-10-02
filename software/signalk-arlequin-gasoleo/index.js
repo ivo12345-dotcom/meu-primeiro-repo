@@ -100,7 +100,7 @@ module.exports = function (app) {
       ])
     }
     if (r.notificacoes.length) {
-      publicar(r.notificacoes.map(n => ({ path: `notifications.tanks.fuel.0.${n.id}`, value: { state: n.state, method: n.method, message: n.message } })))
+      publicar(r.notificacoes.map(n => ({ path: `notifications.tanks.fuel.0.${n.id}`, value: { state: n.state, method: n.method, message: n.message, ...(n.apito ? { apito: n.apito } : {}) } })))
     }
     if (r.abastecimento) {
       const a = r.abastecimento

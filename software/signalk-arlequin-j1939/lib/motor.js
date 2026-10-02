@@ -15,6 +15,10 @@ const LIMITES = Object.freeze({
 
 const num1 = (v) => v.toFixed(1).replace('.', ',')
 
+// O apito de cada alarme (decisão n.º 2 do Ivo, contrato C1 da auditoria): o motor a sobreaquecer é
+// perigo imediato (contínuo); os outros alarmes, curto. Os avisos não precisam do campo.
+const apitoDe = (id, estado) => (estado === 'alarm' || estado === 'emergency' ? { apito: id === 'overTemperature' ? 'continuo' : 'curto' } : {})
+
 function novoEstadoMotor () {
   return { ligado: false, ligadoDesde: null, ativos: {} }
 }
@@ -32,7 +36,7 @@ function avaliarMotor (e, l, agora, lim = LIMITES) {
   const notificacoes = []
   const mudar = (id, deve, estado, mensagem) => {
     if (deve === null || deve === !!ativos[id]) return
-    if (deve) { ativos[id] = true; notificacoes.push({ id, state: estado, method: ['visual', 'sound'], message: mensagem }) }
+    if (deve) { ativos[id] = true; notificacoes.push({ id, state: estado, method: ['visual', 'sound'], message: mensagem, ...apitoDe(id, estado) }) }
     else { delete ativos[id]; notificacoes.push({ id, state: 'normal', method: [], message: 'Normal' }) }
   }
 
@@ -52,4 +56,4 @@ function avaliarMotor (e, l, agora, lim = LIMITES) {
   return { estado: { ligado, ligadoDesde, ativos }, estadoMudou, notificacoes }
 }
 
-module.exports = { LIMITES, novoEstadoMotor, avaliarMotor }
+module.exports = { LIMITES, novoEstadoMotor, avaliarMotor, apitoDe }

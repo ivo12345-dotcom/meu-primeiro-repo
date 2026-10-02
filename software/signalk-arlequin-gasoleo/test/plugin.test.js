@@ -212,6 +212,22 @@ test('calibração completa pelo ecrã: vazio, +5 L até cheio, tabela e capacid
   assert.equal(app.opcoesGuardadas.tabela.length, 43)
 })
 
+test('C1: a fuga de gasóleo é publicada com apito contínuo', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ tabela: [{ razao: 0.1, litros: 0 }, { razao: 0.7, litros: 200 }] })
+  app.self['tanks.fuel.0.supplyVoltage'] = 12.6
+  app.self['tanks.fuel.0.senderVoltage'] = (0.1 + 0.6 * 150 / 200) * 12.6 // 150 L
+  avancar(t, 240)
+  app.self['tanks.fuel.0.senderVoltage'] = (0.1 + 0.6 * 140 / 200) * 12.6 // 140 L, motor parado
+  avancar(t, 240)
+  p.stop()
+  const fuga = app.notificacoes.find(n => n.path === 'notifications.tanks.fuel.0.fuga')
+  assert.equal(fuga?.state, 'alarm', JSON.stringify(app.notificacoes))
+  assert.equal(fuga.apito, 'continuo')
+})
+
 test('importar a folha do multímetro', async (t) => {
   const app = appFalso()
   const p = criar(app)
