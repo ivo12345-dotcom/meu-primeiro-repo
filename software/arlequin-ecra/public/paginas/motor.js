@@ -87,7 +87,7 @@ function painelCalib (c, msg, erro, confirmarCancelar = false) {
 <div class="lab">${num((c.pontos || []).length, 0)} pontos gravados · razão agora ${nf(c.razaoAtual, 4)}</div>
 ${c.boiaParada ? `<div class="atencao">A boia não mexeu entre ${nf(c.boiaParada.de)} e ${nf(c.boiaParada.ate)} L: aí o medidor não vê diferença.</div>` : ''}
 <div class="acoes" style="margin:.6rem 0;"><button class="acao go" data-acao="calib-mais" data-l="5" ${pronto ? '' : 'disabled style="opacity:.5"'}>+5 L</button><button class="acao go" data-acao="calib-mais" data-l="10" ${pronto ? '' : 'disabled style="opacity:.5"'}>+10 L</button><button class="acao" data-acao="calib-desfazer">Desfazer</button></div>
-<div style="max-height:9rem;overflow:auto;">${ultimos}</div>
+<div class="rolar" data-rolar="motor-calib-pontos" style="max-height:9rem;">${ultimos}</div>
 ${msg ? `<div class="perigo">${esc(msg)}</div>` : ''}
 ${confirmarCancelar ? pergunta('Cancelar a calibração? Fica a tabela antiga.', 'calib-cancelar-sim', 'Sim, cancelar', 'calib-cancelar-nao')
   : '<div class="acoes" style="margin-top:.6rem;"><button class="acao go" data-acao="calib-terminar" data-cheio="1">Terminar: está cheio</button><button class="acao" data-acao="calib-terminar" data-cheio="">Terminar (não está cheio)</button><button class="acao stop" data-acao="calib-cancelar">Cancelar</button></div>'}`

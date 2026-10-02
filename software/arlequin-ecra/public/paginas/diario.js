@@ -126,7 +126,7 @@ export default {
       ? `<div class="perigo">${esc(e.erro)}</div>`
       : '<div class="lab">Ainda não há entradas hoje.</div>'
     return `<div class="col" style="flex:1.4;">
-<div class="tile" style="flex:1;overflow:auto;"><div class="lab">Diário de hoje · ${hoje(ctx)}</div>${lista ? `<table class="grande">${lista}</table>` : vazio}</div>
+<div class="tile rolar" data-rolar="diario-entradas" style="flex:1;"><div class="lab">Diário de hoje · ${hoje(ctx)}</div>${lista ? `<table class="grande">${lista}</table>` : vazio}</div>
 <div class="tile" style="display:flex;gap:.4rem;"><input type="text" id="nota" data-campo="nota" value="${esc(e.nota || '')}" placeholder="Escreve uma nota e carrega em Gravar"><button class="acao go" data-acao="nota">Gravar</button></div>
 ${e.msg ? `<div class="tile ${e.msgErro ? 'perigo' : 'ok'}">${esc(e.msg)}</div>` : ''}
 ${cartaoIa(e.ia)}
