@@ -129,7 +129,9 @@ function emCalma (p, opcoes = {}) {
   return p.ondas <= o.calmaOndasLongas && Number.isFinite(p.periodo) && p.periodo >= o.calmaPeriodo
 }
 
-// Horas equivalentes ao leme numa linha do tempo de 1 min: o motor em calma conta metade.
+// Horas equivalentes ao leme numa linha do tempo de 1 min: o motor em calma conta metade, porque a
+// roda tem travão (confirmado pelo Ivo a 29/09, decisão n.º 12 da auditoria): em calma, a motor, o barco
+// segue o rumo com a roda travada. Sem travão contaria por inteiro.
 function horasLemeEquivalentes (pontos, opcoes = {}) {
   const o = { ...PADRAO, ...opcoes }
   let min = 0
