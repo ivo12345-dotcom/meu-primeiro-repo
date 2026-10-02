@@ -355,6 +355,46 @@ test('I-30: uma calibração completa com um ponto incoerente (a razão desce) �
   assert.equal(app.opcoesGuardadas, null)
 })
 
+// Auditoria M-67 (E-M10): com a alimentação ≤ 1 V o estado dizia "razão undefined".
+test('M-67: o estado do plugin nunca diz "undefined": sem razão "—", com razão a vírgula decimal', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({})
+  app.self['tanks.fuel.0.supplyVoltage'] = 0.5 // medidor sem alimentação
+  app.self['tanks.fuel.0.senderVoltage'] = 0.2
+  avancar(t, 2)
+  assert.equal(app.estado, 'Falta calibrar (0 pontos) · razão —')
+  app.self['tanks.fuel.0.supplyVoltage'] = 12.5
+  app.self['tanks.fuel.0.senderVoltage'] = 0.25 * 12.5
+  avancar(t, 2)
+  p.stop()
+  assert.equal(app.estado, 'Falta calibrar (0 pontos) · razão 0,250')
+})
+
+// Auditoria M-68 (E-M12): "Abasteci" com mais do que cabia gravava o ponto com 200 L em silêncio.
+test('M-68: "Abasteci" que não cabia (mais de 5 L acima da capacidade) dá 422 e a tabela fica igual; até +5 L conta como cheio', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ tabela: [{ razao: 0.1, litros: 0 }, { razao: 0.4, litros: 100 }] }) // calibrado só até aos 100 L
+  const r = rotasDe(p)
+  app.self['tanks.fuel.0.supplyVoltage'] = 12.6
+  app.self['tanks.fuel.0.senderVoltage'] = 0.4 * 12.6 // 100 L
+  avancar(t, 200)
+  app.self['tanks.fuel.0.senderVoltage'] = 0.72 * 12.6 // atestou: a boia no topo
+  avancar(t, 200)
+  // diz que meteu 150 L: com 100 antes não cabiam num depósito de 200 (os litros, ou o nível, estavam errados)
+  const a = await chamar(r.post['/abastecimento'], { litros: '150' })
+  assert.equal(a.status, 422)
+  assert.match(a.erro, /não cabia/)
+  assert.equal(app.opcoesGuardadas, null)
+  const b = await chamar(r.post['/abastecimento'], { litros: '103' }) // 100 + 103 = 203: dentro da folga, fica cheio
+  p.stop()
+  assert.equal(b.status, 200, b.erro)
+  assert.equal(b.depois, 200)
+})
+
 test('importar a folha do multímetro', async (t) => {
   const app = appFalso()
   const p = criar(app)
