@@ -392,6 +392,43 @@ test('M-05: em "Sair agora" sem previsão de rajadas nem de ondas, o custo conta
   }
 })
 
+test('M-13: os limites de segurança mudam-se nas opções (opcoes.seguranca, os de lib/seguranca.js LIMITES) e chegam à segurança, aos avisos e ao custo', async () => {
+  const acomp = entrada({ tripulacao: 'acompanhado', sairAgora: true })
+  // acompanhado com o vento máximo a 10 nós: todas "não recomendadas", com o limite dito
+  const v = await calcular(acomp, deps({ opcoes: { seguranca: { ventoMaxAcompanhado: 10 } } }))
+  assert.equal(v.erro, undefined, v.erro)
+  assert.ok(v.alternativas.length > 0)
+  for (const a of v.alternativas) {
+    assert.equal(a.naoRecomendada, true, a.id)
+    assert.ok(a.motivos.some(m => /^vento médio até \d+ nós no pior caso \(limite 10 acompanhado\)$/.test(m)), JSON.stringify(a.motivos))
+  }
+  // o gasóleo mínimo à chegada a 120 L (124 L no depósito): em "Sair agora" a exclusão levanta-se, com
+  // o mínimo dito, e o aviso da reserva da linha do tempo fala dos mesmos 120 L
+  const g = await calcular(acomp, deps({ opcoes: { seguranca: { gasoleoMinL: 120 } } }))
+  assert.equal(g.erro, undefined, g.erro)
+  for (const a of g.alternativas) {
+    assert.equal(a.excluidaSemSairAgora, true, a.id)
+    assert.ok(a.motivos.some(m => /^chegas com \d+ L de gasóleo no pior caso \(mínimo 120 L\)$/.test(m)), JSON.stringify(a.motivos))
+  }
+  assert.ok(g.alternativas[0].avisos.some(x => x.tipo === 'gasoleo' && x.texto === 'O gasóleo passa a reserva (120 L) antes do destino: poupa o motor'), JSON.stringify(g.alternativas[0].avisos.map(x => x.texto)))
+  // a rajada e as ondas sem previsão contam no custo como os limites a solo configurados (M-05)
+  const semNada = mudar(P29, p => { p.rajada = p.rajada.map(() => null); p.ondas = p.ondas.map(() => null) })
+  const k = await calcular(acomp, comPrevisao(semNada, { opcoes: { seguranca: { rajadaMax: 26, ondasMax: 2.5 } } }))
+  assert.equal(k.erro, undefined, k.erro)
+  for (const a of k.alternativas) {
+    assert.equal(a.custo.partes.rajada, 3, a.id) // 0,5 × (26 − 20)
+    assert.equal(a.custo.partes.ondas, 1, a.id) // 2 × (2,5 − 2)
+  }
+  // o que não é um número, e o que não é um limite (a calma, os 3 MN), fica no valor por omissão
+  const base = await calcular(acomp, deps())
+  const lixo = await calcular(acomp, deps({ opcoes: { seguranca: { ventoMaxAcompanhado: 'x', gasoleoMinL: null, calmaVento: 99, afastamentoVentoTerra: 0 } } }))
+  assert.deepEqual(lixo.veredicto, base.veredicto)
+  assert.deepEqual(lixo.alternativas.map(a => [a.id, a.motivos, a.custo.total]), base.alternativas.map(a => [a.id, a.motivos, a.custo.total]))
+  // a lista dos que se podem mudar (o esquema do plugin, F2, sai daqui)
+  const { LIMITES } = require('../lib/seguranca')
+  assert.deepEqual(LIMITES, ['ventoMedioMax', 'rajadaMax', 'ondasMax', 'ventoMaxAcompanhado', 'rajadaMaxAcompanhado', 'ondasMaxAcompanhado', 'gasoleoMinL', 'bateriaMinPct', 'lemeMaxH'])
+})
+
 test('o cálculo nunca lança: previsão estragada, sem rota ativa, posição null, entrada e dependências em falta', async () => {
   const casos = [
     [entrada(), deps({ obterPrevisao: async () => ({ previsao: { pontos: null } }) })],

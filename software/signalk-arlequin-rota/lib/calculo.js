@@ -60,8 +60,21 @@ const PADRAO = Object.freeze({
   socDesconhecido: 0.8, // sem SoC nos instrumentos
   gasoleoDesconhecidoL: 100, // sem nível do depósito
   passagem: {}, // lib/passagem.js PADRAO (stwMotor, …)
+  // os limites de segurança que o plugin pode mudar (auditoria M-13): só as chaves de lib/seguranca.js
+  // LIMITES (ventoMedioMax, rajadaMax, ondasMax, ventoMaxAcompanhado, rajadaMaxAcompanhado,
+  // ondasMaxAcompanhado, gasoleoMinL, bateriaMinPct, lemeMaxH) e só números; o resto fica no PADRAO
+  // de lib/seguranca.js. Valem para a segurança, para os avisos da reserva e para o desconhecido no custo.
+  seguranca: {},
   fuso: 'Europe/Lisbon'
 })
+
+// Os limites de segurança a usar: os de opcoes.seguranca que são limites e números, sobre o PADRAO de
+// lib/seguranca.js, mais o afastamento mínimo (a sua opção). → { afastamentoMinimo, ventoMedioMax, … }
+function limitesSeguranca (o) {
+  const out = { ...seguranca.PADRAO, afastamentoMinimo: o.afastamentoMinimo }
+  for (const k of seguranca.LIMITES) if (Number.isFinite(o.seguranca?.[k])) out[k] = o.seguranca[k]
+  return out
+}
 
 const iso = (t) => new Date(t).toISOString()
 const r2 = (x) => (Number.isFinite(x) ? Math.round(x * 100) / 100 : null)
@@ -190,7 +203,7 @@ function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
   // melhor para este momento, mesmo contra as recomendações) fica, com aviso vermelho
   const passaDaPrevisao = Date.parse(chegadas.p90) > ctx.previsao.fim
   if (passaDaPrevisao && !ctx.sairAgora) return { foraDaPrevisao: true }
-  const seg = seguranca.avaliar({ alternativa: alt, pessimista: pe, provavel: pr, otimista: ot, destino: ctx.destino, tripulacao: ctx.tripulacao, sairAgora: ctx.sairAgora, gasoleoInicial: ctx.gasoleoInicial, costaMinMn, opcoes: { afastamentoMinimo: ctx.o.afastamentoMinimo } })
+  const seg = seguranca.avaliar({ alternativa: alt, pessimista: pe, provavel: pr, otimista: ot, destino: ctx.destino, tripulacao: ctx.tripulacao, sairAgora: ctx.sairAgora, gasoleoInicial: ctx.gasoleoInicial, costaMinMn, opcoes: ctx.limites })
   // exclusão dura (também em "sair agora"), como no rotas.js
   const ventoMar = ventoDoMarNosRastos(ctx, alt, sims)
   if (ventoMar) { seg.excluida = true; seg.motivos = [ventoMar, ...seg.motivos] }
@@ -214,7 +227,8 @@ function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
   // a previsão incompleta no rasto provável pesa no custo (M-05): a rajada e as ondas desconhecidas
   // contam como os limites a solo (só pesa em "Sair agora": fora dele, a alternativa fica excluída)
   const semDados = [...seguranca.previsaoIncompleta([pr]).semDados]
-  const custo = decisao.custo({ resumo: pr.resumo, esperaH, tripulacao: ctx.tripulacao, lemeEq: lemeEqProvavel, contraVentoH, semDados })
+  const desconhecido = { rajada: ctx.limites.rajadaMax, ondas: ctx.limites.ondasMax }
+  const custo = decisao.custo({ resumo: pr.resumo, esperaH, tripulacao: ctx.tripulacao, lemeEq: lemeEqProvavel, contraVentoH, semDados, desconhecido })
   const socMinPe = pe.resumo.socMin
   return {
     id: idAlternativa(partida, alt, prop),
@@ -325,7 +339,8 @@ function montarAlternativa (ctx, cand, pr, desistenciaResumo, primeira = true) {
     rasto: rastoProvavel(pr, cand.geometria.pontos),
     pontosRota: cand.geometria.pontos.map(p => ({ lat: Math.round(p.lat * 1e5) / 1e5, lon: Math.round(p.lon * 1e5) / 1e5, nome: p.nome ?? null, perna: p.perna ?? null })),
     eventos: eventosComHora(pr.eventos, ctx.o.fuso),
-    avisos: avisos.avisosDaPassagem({ passagem: pr, destino: ctx.destino, tripulacao: ctx.tripulacao, opcoes: { fuso: ctx.o.fuso } }),
+    // a reserva dos avisos é o mínimo à chegada da segurança (M-13: o mesmo número, também configurado)
+    avisos: avisos.avisosDaPassagem({ passagem: pr, destino: ctx.destino, tripulacao: ctx.tripulacao, opcoes: { fuso: ctx.o.fuso, reservaGasoleoL: ctx.limites.gasoleoMinL, reservaBateriaPct: ctx.limites.bateriaMinPct } }),
     precaucoes: avisos.precaucoes({ passagem: pr, tripulacao: ctx.tripulacao, sairAgora: ctx.sairAgora, desistenciaResumo: primeira ? desistenciaResumo : null, desistenciaDaPrimeira: !primeira })
   }
   return alt
@@ -471,7 +486,7 @@ async function calcularSemRede (entrada = {}, deps = {}) {
 
   // o vento previsto (a direção P50 corrigida, a mesma nos três cenários) para a regra do vento de terra
   const twd = (lat, lon, t) => cenarios.provavel.tempo(lat, lon, t).twd
-  const ctx = { o, agora, costa, destino, tripulacao, sairAgora, previsao, cenarios, correnteExtra, noite, soc, socAssumido, gasoleoInicial, gasoleoAssumido, twd }
+  const ctx = { o, limites: limitesSeguranca(o), agora, costa, destino, tripulacao, sairAgora, previsao, cenarios, correnteExtra, noite, soc, socAssumido, gasoleoInicial, gasoleoAssumido, twd }
   const log = typeof deps.log === 'function' ? deps.log : undefined
 
   // ---------- as alternativas ----------

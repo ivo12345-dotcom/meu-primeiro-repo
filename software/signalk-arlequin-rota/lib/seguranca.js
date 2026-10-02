@@ -74,6 +74,13 @@ const PADRAO = Object.freeze({
   calmaPeriodo: 9 // s (período mínimo da ondulação comprida)
 })
 
+// Os limites que o plugin pode mudar (auditoria M-13: o desenho 3a diz "configuráveis"; o
+// lib/calculo.js recebe-os em opcoes.seguranca e o esquema do plugin, rota/index.js, mostra-os): os
+// de vento, rajadas e ondas, a solo e acompanhado, o gasóleo e a bateria à chegada e as horas ao
+// leme. A calma, as distâncias à costa e os 3 MN do vento de terra não: mexem com a geometria e com
+// a regra do motor em calma (o afastamento mínimo tem a sua opção, afastamentoMinimo).
+const LIMITES = Object.freeze(['ventoMedioMax', 'rajadaMax', 'ondasMax', 'ventoMaxAcompanhado', 'rajadaMaxAcompanhado', 'ondasMaxAcompanhado', 'gasoleoMinL', 'bateriaMinPct', 'lemeMaxH'])
+
 const virgula = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toFixed(d).replace('.', ',')
 const inteiro = (x) => String(Math.round(x))
 // Para baixo, para o que fica abaixo de um mínimo (39,6 L nunca diz "40 L"); a folga de 1e-9 só
@@ -301,4 +308,4 @@ function avaliar ({ alternativa, pessimista, provavel, otimista, destino, tripul
   return out
 }
 
-module.exports = { PADRAO, CAMPOS_CRITICOS, emCalma, horasLemeEquivalentes, distanciaRotaCosta, minimoCosta, trocosCanal, ondasNoCanal, previsaoIncompleta, avaliar }
+module.exports = { PADRAO, LIMITES, CAMPOS_CRITICOS, emCalma, horasLemeEquivalentes, distanciaRotaCosta, minimoCosta, trocosCanal, ondasNoCanal, previsaoIncompleta, avaliar }
