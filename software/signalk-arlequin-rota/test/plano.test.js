@@ -273,3 +273,13 @@ test('propulsaoTexto (o OpenCPN, o ecrã e o plano dizem o mesmo): só motor; ve
   assert.equal(plano.propulsaoTexto({ propulsao: 'vela', semVela: true }), 'a motor (sem vento para vela)')
   assert.equal(plano.propulsaoTexto({ propulsao: 'vela', horas: { vela: 0.04 } }), 'a motor (sem vento para vela)')
 })
+
+test('auditoria I-03 (decisão n.º 13): calculoAntigo — a hora de alarme já passada ou a partida há mais de 1 h dão o motivo (o envio e o Ativar recusam com 422); dentro da hora, null', () => {
+  const partida = Date.parse('2026-09-30T08:30:00Z')
+  const alt = { partida: new Date(partida).toISOString(), chegada: { p50: '2026-09-30T14:00:00Z', p90: '2026-09-30T15:00:00Z' } }
+  assert.equal(plano.calculoAntigo(alt, partida + 59 * 60000), null)
+  assert.equal(plano.calculoAntigo(alt, partida + 61 * 60000, { antesDe: 'ativar' }), 'este cálculo é antigo: a partida já foi (09:30) — calcula outra vez antes de ativar')
+  assert.equal(plano.calculoAntigo(alt, Date.parse('2026-09-30T17:00:00Z')), 'este cálculo é antigo: a hora de alarme já passou (18:00) — calcula outra vez antes de enviar o plano')
+  // sem a chegada mais tarde não há hora de alarme: só conta a partida
+  assert.equal(plano.calculoAntigo({ partida: alt.partida, chegada: {} }, partida + 30 * 60000), null)
+})

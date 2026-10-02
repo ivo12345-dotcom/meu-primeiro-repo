@@ -292,11 +292,15 @@ module.exports = function (app, deps = {}) {
     try { pa.gravar(dirPlugin, planoAtivo); afastGravado = planoAtivo?.afastamentoMaxMn ?? null } catch (e) { app.error(`não gravei o plano ativo: ${e.message}`) }
   }
   // O envio de uma alternativa (o mais recente com contactos em terra): { contactos, alarme, pedido, enviadoEm } ou null.
+  // Um envio já fechado (o "cheguei bem"/"terminada" desse plano entregue) nunca se reaproveita, nem um cuja
+  // hora de alarme já passou (decisão do Ivo n.º 13, auditoria I-03): numa 2.ª viagem com o mesmo cálculo a
+  // Mãe recebia "Ainda a navegar, tudo bem" de uma viagem de que não recebeu plano.
   function envioDe (id, indice, alt) {
-    const enviados = [...planos].filter(([, x]) => x.id === id && x.indice === indice && x.estado === 'enviado' && x.contactos.length)
+    const alarme = plano.horaAlarme(alt)
+    if (alarme != null && alarme <= relogio()) return null
+    const enviados = [...planos].filter(([, x]) => x.id === id && x.indice === indice && x.estado === 'enviado' && x.contactos.length && !x.fechado)
     const ultimo = enviados.at(-1)
     if (!ultimo) return null
-    const alarme = plano.horaAlarme(alt)
     return { contactos: [...ultimo[1].contactos], chats: [...(ultimo[1].chats || [])], alarme: alarme == null ? null : new Date(alarme).toISOString(), pedido: ultimo[0], enviadoEm: ultimo[1].enviadoEm }
   }
 
@@ -516,6 +520,8 @@ module.exports = function (app, deps = {}) {
       const u = lerUltimoEnvio()
       const de = msg.idCalculo != null ? { idCalculo: msg.idCalculo, indice: msg.indice } : msg.anterior ? null : planoAtivo
       if (u && !u.fechado && de && u.idCalculo === de.idCalculo && u.indice === de.indice) gravarUltimoEnvio({ ...u, fechado: true })
+      // e os envios desse plano pelo Telegram já não se reaproveitam (decisão n.º 13, auditoria I-03)
+      if (de) for (const x of planos.values()) if (x.id === de.idCalculo && x.indice === de.indice && x.estado === 'enviado') x.fechado = true
     }
     gravarPlanoAtivo()
     enviarFila(agora)
@@ -1085,6 +1091,11 @@ module.exports = function (app, deps = {}) {
       const alt = lista[indice]
       if (!alt) return res.status(404).json({ ok: false, erro: 'alternativa desconhecida' })
       const id = b.id
+      // um cálculo antigo não se ativa (decisão do Ivo n.º 13, auditoria I-03), como o envio do plano; a
+      // alternativa do plano aberto ativada outra vez é o mesmo plano (a rota apagada no OpenCPN) e continua
+      const continuaAberto = pa.aberto(planoAtivo) && planoAtivo.idCalculo === id && planoAtivo.indice === indice
+      const velho = continuaAberto ? null : plano.calculoAntigo(alt, relogio(), { antesDe: 'ativar' })
+      if (velho) return res.status(422).json({ ok: false, erro: velho })
       // Recalcular → Ativar (desenho 3b-2): com um plano aberto já enviado a contactos em terra, o plano
       // novo segue para os mesmos contactos ("Este plano substitui o anterior"). Monta-se antes de
       // ativar: um cálculo antigo (422) não ativa nada e o plano antigo fica.
