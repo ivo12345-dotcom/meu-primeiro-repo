@@ -910,3 +910,38 @@ test('auditoria K-02: o parcial de um atraso (o Pai bloqueou o bot) não sai com
   assert.deepEqual(g.filaContactos.filter(m => m.tipo === 'atraso'), [])
   s.p.stop()
 })
+
+test('auditoria K-13 (sonda S6): o "cheguei bem" da viagem 1 falha sempre para a Mãe (saiu dos contactos do porto) — não prende a viagem 2: os atrasos e o "cheguei bem" da viagem 2 chegam ao Pai', async () => {
+  const s = await preparar()
+  await sair(s)
+  // a Mãe sai da configuração do porto: tudo para ela falha (o Ivo recebe)
+  const config = { 222: null, 333: 'Pai' }
+  s.porto.resposta = (e) => {
+    if (!e.tipo) return { pedido: e.pedido, entregues: ['chat 111', 'Pai'], contactos: ['Pai'], chats: ['333'], falhas: [] }
+    const ok = (e.chats || []).filter(c => config[c]); const mal = (e.chats || []).filter(c => !config[c])
+    return { pedido: e.pedido, entregues: [...(e.tentativa ? [] : ['chat 111']), ...ok.map(c => config[c])], contactos: ok.map(c => config[c]), chats: ok, falhas: mal.map(() => ({ nome: 'Mãe', erro: 'já não está nos "Contactos do plano" do plugin porto' })) }
+  }
+  await chegar(s)
+  assert.equal(s.p.planoAtivo().estado, 'chegado')
+  for (let m = 0; m < 20; m++) await s.ciclo()
+  assert.ok(s.p.planoAtivo().contactos.fila.some(m => m.tipo === 'chegada' && m.tentativas >= 3), 'a Mãe nunca o recebe')
+  // a viagem 2 (outro dia): um cálculo novo, o plano enviado (só o Pai o recebe) e ativado
+  s.acertar(s.agora() + 12 * H)
+  s.por(s.alt.pontosRota.at(-1), 0)
+  const { id, resultado } = await calcular(s.r, { destino: 'cascais', tripulacao: 'so' })
+  await chamar(s.r.post['/plano-telegram'], { body: { id, alternativa: 0 } })
+  assert.equal((await chamar(s.r.post['/ativar'], { body: { id, alternativa: 0 } })).code, 200)
+  assert.deepEqual(s.p.planoAtivo().envio.contactos, ['Pai'])
+  const s2 = { ...s, alt: resultado.alternativas[0], t0: Date.parse(resultado.alternativas[0].partida) }
+  s.acertar(Math.max(s.agora(), s2.t0))
+  s.por(s2.alt.rasto[2]); await s.ciclo(20 * MIN); await s.ciclo(0)
+  assert.equal(s.p.planoAtivo().estado, 'a navegar')
+  const anda = devagar(s2, 0.3)
+  for (let m = 0; m < 300 && !atrasosDe(s).some(e => e.chats.includes('333')); m++) await anda()
+  assert.ok(atrasosDe(s).some(e => e.chats.includes('333')), 'o atraso da viagem 2 chegou ao Pai')
+  await chegar(s2)
+  assert.equal(s.p.planoAtivo().estado, 'chegado')
+  for (let m = 0; m < 5; m++) await s.ciclo()
+  assert.ok(s.recebidos.some(e => e.tipo === 'chegada' && e.chats.includes('333')), 'o "cheguei bem" da viagem 2 chegou ao Pai')
+  s.p.stop()
+})
