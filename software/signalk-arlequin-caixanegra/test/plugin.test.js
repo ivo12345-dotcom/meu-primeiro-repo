@@ -384,6 +384,29 @@ test('depois de um corte de energia: um .gz com o último bloco cortado fica de 
   assert.ok(fs.existsSync(bom))
 })
 
+test('com a segurança do SignalK (2.33: router.access), os GET registam-se "readonly" e o POST "readwrite"; nada fica só para admin (auditoria K-11)', () => {
+  const registos = []
+  const direto = []
+  const router = {
+    get: (k) => direto.push(`GET ${k}`),
+    post: (k) => direto.push(`POST ${k}`),
+    access: (nivel) => ({
+      get: (k, h) => { registos.push({ m: 'GET', k, nivel, h: typeof h }) },
+      post: (k, h) => { registos.push({ m: 'POST', k, nivel, h: typeof h }) }
+    })
+  }
+  criar(appFalso()).registerWithRouter(router)
+  assert.deepEqual(direto, [], 'nenhuma rota sem nível (ficava só para admin: o ecrã entra com "read/write")')
+  const nivel = Object.fromEntries(registos.map(x => [`${x.m} ${x.k}`, x.nivel]))
+  assert.deepEqual(nivel, {
+    'GET /estado': 'readonly',
+    'GET /ficheiros': 'readonly',
+    'GET /velas': 'readonly',
+    'POST /velas': 'readwrite'
+  })
+  assert.ok(registos.every(x => x.h === 'function'))
+})
+
 test('relógio do Pi: com a hora do GPS a mais de 60 s avisa uma vez (só no ecrã); abaixo dos 30 s limpa', (t) => {
   t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
   usoFalso = 50
