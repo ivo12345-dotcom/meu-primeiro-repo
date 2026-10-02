@@ -71,7 +71,46 @@ test('o próprio barco (selfId) nunca é alvo; lê o COG e o SOG dos alvos da á
   app.vessels[app.selfId] = { mmsi: '263999999', navigation: { position: { value: EU, timestamp: ts } } }
   app.alvo('263000001', 'NORDIC STAR', norte(2), { cog: Math.PI, sog: 7 * NO })
   t.mock.timers.tick(2000)
-  p.stop()
   assert.match(app.estado, /^1 alvos AIS · 1 em perigo/)
   assert.deepEqual(app.publicado.map(x => `${x.path}:${x.state}`), ['notifications.arlequin.ais.263000001:alarm'])
+  p.stop()
+})
+
+// Auditoria I-21: um alarme ativo quando o plugin para (reinício pelo Admin UI) ficava na árvore para
+// sempre, com o apito contínuo; um que ficou preso de antes nunca saía; e um stop() antes de o cálculo
+// carregar deixava um temporizador órfão.
+test('I-21: ao parar, os alarmes ativos passam a normal', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: T0 })
+  const app = appFalso()
+  app.self['navigation.speedOverGround'] = 5 * NO
+  const p = criar(app)
+  p.start({})
+  await p.pronto
+  app.alvo('263000001', 'NORDIC STAR', norte(2), { cog: Math.PI, sog: 7 * NO })
+  t.mock.timers.tick(2000)
+  p.stop()
+  assert.deepEqual(app.publicado.map(x => `${x.path}:${x.state}`), ['notifications.arlequin.ais.263000001:alarm', 'notifications.arlequin.ais.263000001:normal'])
+})
+
+test('I-21: ao arrancar, os alarmes AIS presos na árvore passam a normal', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: T0 })
+  const app = appFalso()
+  const arvore = { 263000007: { value: { state: 'alarm', method: ['visual', 'sound'], message: 'X em rota de colisão' } }, 263000008: { value: { state: 'normal', method: [], message: 'Normal' } } }
+  app.getSelfPath = (p) => (p === 'notifications.arlequin.ais' ? arvore : p in app.self ? { value: app.self[p] } : undefined)
+  const p = criar(app)
+  p.start({})
+  await p.pronto
+  p.stop()
+  assert.deepEqual(app.publicado.map(x => `${x.path}:${x.state}`), ['notifications.arlequin.ais.263000007:normal'])
+})
+
+test('I-21: um stop() antes de o cálculo carregar não deixa o vigia a correr', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: T0 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({})
+  p.stop()
+  await p.pronto
+  t.mock.timers.tick(10000)
+  assert.equal(app.estado, '')
 })

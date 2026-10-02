@@ -100,6 +100,24 @@ test('bateria do motor fraca (motor parado há horas): alarme na 1.ª leitura ba
   assert.equal(Math.round((fraca[0].t - inicioQueda) / 60000), 1)
 })
 
+// Auditoria I-21: um alarme ativo quando o plugin para (reinício pelo Admin UI) ficava na árvore para
+// sempre, com o apito; e um que ficou preso de antes nunca saía.
+test('I-21: ao parar, os alarmes ativos passam a normal', () => {
+  const { app } = correrCenario('descarga-critica') // acaba abaixo de 50 %, com o crítico ativo
+  const critico = app.notificacoes.filter(n => n.id === 'servicoCritico').map(n => n.state)
+  assert.deepEqual(critico, ['alarm', 'normal'])
+})
+
+test('I-21: ao arrancar, as notificações deste plugin presas na árvore passam a normal (a regra volta a dar o alarme se ainda for verdade)', () => {
+  const app = appFalso()
+  const presas = { 'notifications.arlequin.energia.servicoCritico': 'alarm', 'notifications.arlequin.energia.ligarMotor': 'normal' }
+  app.getSelfPath = (p) => (p in presas ? { value: { state: presas[p], method: [], message: 'x' }, timestamp: new Date().toISOString() } : undefined)
+  const plugin = criarPlugin(app)
+  plugin.start({})
+  plugin.stop()
+  assert.deepEqual(app.notificacoes.map(n => `${n.id}:${n.state}`), ['servicoCritico:normal'])
+})
+
 test('verão a navegar sem piloto: o sol chega, nenhum alarme', () => {
   const { app } = correrCenario('verao-navegar', '2026-07-10T08:00:00')
   assert.deepEqual(app.notificacoes, [])

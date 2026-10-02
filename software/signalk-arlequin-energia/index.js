@@ -3,7 +3,7 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
-const { novoEstado, avaliar, LIMITES } = require('./lib/regras')
+const { novoEstado, avaliar, LIMITES, IDS } = require('./lib/regras')
 const { novaSessao, passoSessao } = require('./lib/sessao')
 const { registar, textoSessao } = require('./lib/diario')
 
@@ -41,6 +41,12 @@ module.exports = function (app) {
 
   function publicar (values) {
     app.handleMessage(plugin.id, { updates: [{ timestamp: new Date(agora()).toISOString(), values }] })
+  }
+
+  // Um alarme não pode ficar preso na árvore (auditoria I-21): no stop() os ativos passam a normal; no
+  // start() também os que ficaram de antes (a regra volta a dar o alarme se ainda for verdade).
+  function normal (ids) {
+    if (ids.length) publicar(ids.map(id => ({ path: PREFIXO + id, value: { state: 'normal', method: [], message: 'Normal' } })))
   }
 
   function guardarRunTime () {
@@ -123,6 +129,7 @@ module.exports = function (app) {
     desvio = 0
     runTimePublicado = false
     inicioDados = null
+    normal(IDS.filter(id => { const s = app.getSelfPath?.(PREFIXO + id)?.value?.state; return s && s !== 'normal' }))
 
     const dir = app.getDataDirPath()
     fs.mkdirSync(dir, { recursive: true })
@@ -177,6 +184,8 @@ module.exports = function (app) {
     if (temporizador) clearInterval(temporizador)
     temporizador = null
     if (sessao) guardarRunTime()
+    if (estado) normal(Object.keys(estado.ativos))
+    estado = null
   }
 
   return plugin

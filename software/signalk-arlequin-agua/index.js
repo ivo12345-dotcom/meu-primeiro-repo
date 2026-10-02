@@ -109,13 +109,22 @@ module.exports = function (app) {
     try { estados = JSON.parse(fs.readFileSync(ficheiro, 'utf8')) } catch { estados = {} }
     alarmes = {}
     ultimaGravacao = 0
+    // Um aviso não pode ficar preso na árvore (auditoria I-21): os deste plugin que ficaram ativos de
+    // antes passam a normal (a regra volta a avisar se ainda for verdade); no stop(), os ativos.
+    normal(o.tanques.map(t => t.id).filter(id => { const s = app.getSelfPath?.(`notifications.tanks.freshWater.${id}.baixo`)?.value?.state; return s && s !== 'normal' }))
     temporizador = setInterval(tick, 1000)
+  }
+
+  function normal (ids) {
+    if (ids.length) app.handleMessage(plugin.id, { updates: [{ values: ids.map(id => ({ path: `notifications.tanks.freshWater.${id}.baixo`, value: { state: 'normal', method: [], message: 'Normal' } })) }] })
   }
 
   plugin.stop = function () {
     if (temporizador) clearInterval(temporizador)
     temporizador = null
     if (ficheiro) guardar()
+    normal(Object.keys(alarmes).filter(id => alarmes[id]))
+    alarmes = {}
   }
 
   plugin.registerWithRouter = function (router) {

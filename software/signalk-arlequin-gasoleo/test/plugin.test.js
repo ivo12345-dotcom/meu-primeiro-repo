@@ -261,6 +261,48 @@ test('I-12 (E-M15): sem a sonda, rotações e consumo velhos (o J1939 parou) nã
   assert.equal(app.valores['tanks.fuel.0.currentVolume'] * 1000, 118) // sem sonda desde o arranque: o nível guardado, sem descontar
 })
 
+// Auditoria I-21: um alarme ativo quando o plugin para (reinício pelo Admin UI) ficava na árvore para
+// sempre; e um que ficou preso de antes nunca saía.
+test('I-21: ao parar, os alarmes ativos passam a normal', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ tabela: [{ razao: 0.1, litros: 0 }, { razao: 0.7, litros: 200 }] })
+  app.self['tanks.fuel.0.supplyVoltage'] = 12.6
+  app.self['tanks.fuel.0.senderVoltage'] = (0.1 + 0.6 * 30 / 200) * 12.6 // 30 L: reserva
+  avancar(t, 200)
+  p.stop()
+  assert.deepEqual(app.notificacoes.filter(n => n.path === 'notifications.tanks.fuel.0.reserva').map(n => n.state), ['warn', 'normal'])
+})
+
+test('I-21: uma tabela nova (folha importada) não deixa presos os alarmes do nível antigo', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ tabela: [{ razao: 0.1, litros: 0 }, { razao: 0.7, litros: 200 }] })
+  const r = rotasDe(p)
+  app.self['tanks.fuel.0.supplyVoltage'] = 12.6
+  app.self['tanks.fuel.0.senderVoltage'] = 0.19 * 12.6 // 30 L nesta tabela: reserva
+  avancar(t, 200)
+  assert.ok(app.notificacoes.some(n => n.path.endsWith('reserva') && n.state === 'warn'))
+  // a folha do multímetro diz que a razão 0,19 são ~83 L (entre 0,12 = 60 L e 0,30 = 120 L)
+  const linhas = [[0, 0.10], [60, 0.12], [120, 0.30], [200, 0.70]].map(([litros, razao]) => ({ litros, sonda: razao * 12.6, alimentacao: 12.6 }))
+  const imp = await chamar(r.post['/calibracao/importar'], { linhas })
+  assert.equal(imp.ok, true, imp.erro)
+  p.stop()
+  assert.deepEqual(app.notificacoes.filter(n => n.path.endsWith('reserva')).map(n => n.state).slice(0, 2), ['warn', 'normal'])
+})
+
+test('I-21: ao arrancar, as notificações deste plugin presas na árvore passam a normal', () => {
+  const app = appFalso()
+  app.self['notifications.tanks.fuel.0.fuga'] = { state: 'alarm', method: ['visual', 'sound'], message: 'Possível fuga' }
+  app.self['notifications.tanks.fuel.0.reserva'] = { state: 'normal', method: [], message: 'Normal' }
+  const p = criar(app)
+  p.start({})
+  p.stop()
+  assert.deepEqual(app.notificacoes.map(n => `${n.path}:${n.state}`), ['notifications.tanks.fuel.0.fuga:normal'])
+})
+
 test('C1: a fuga de gasóleo é publicada com apito contínuo', (t) => {
   t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
   const app = appFalso()

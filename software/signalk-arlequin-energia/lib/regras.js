@@ -143,4 +143,4 @@ function avaliar (estado, leitura, agora, lim = LIMITES) {
   return { estado: { ativos, navegar, motor }, notificacoes }
 }
 
-module.exports = { LIMITES, novoEstado, avaliar, metodo }
+module.exports = { LIMITES, novoEstado, avaliar, metodo, IDS: Object.keys(GRAVIDADE) }

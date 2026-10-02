@@ -190,6 +190,12 @@ module.exports = function (app) {
     ativosMapa = {}
     rpmAtual = 0
     vistasTotal = 0
+    // Um alarme não pode ficar preso na árvore (auditoria I-21): os deste plugin que ficaram ativos de
+    // antes passam a normal (a regra volta a dar o alarme se ainda for verdade); no stop(), os ativos.
+    const ids = ['overTemperature', 'alternadorNaoCarrega', ...(o.mapaAlarmes || []).map(m => m.id)]
+    publicarNotificacoes([...new Set(ids)]
+      .filter(id => { const s = app.getSelfPath?.(`notifications.propulsion.main.${id}`)?.value?.state; return s && s !== 'normal' })
+      .map(id => ({ id, state: 'normal', method: [], message: 'Normal' })))
     const dir = app.getDataDirPath()
     fs.mkdirSync(dir, { recursive: true })
     ficheiroDesc = path.join(dir, 'descoberta-65417.jsonl')
@@ -214,6 +220,10 @@ module.exports = function (app) {
     ouvinte = null
     if (proc) { proc.removeAllListeners('close'); proc.kill() }
     proc = null
+    const ativos = [...Object.keys(estado?.ativos || {}), ...Object.keys(ativosMapa || {})]
+    publicarNotificacoes([...new Set(ativos)].map(id => ({ id, state: 'normal', method: [], message: 'Normal' })))
+    if (estado) estado = { ...estado, ativos: {} }
+    ativosMapa = {}
   }
 
   // Diagnóstico: PGN vistas e mudanças da 65417 (JSON e página simples).
