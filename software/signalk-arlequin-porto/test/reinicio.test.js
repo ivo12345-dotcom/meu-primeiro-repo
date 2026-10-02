@@ -350,14 +350,43 @@ test('auditoria M-52: um corte a meio da escrita do porto.json não o estraga (e
   } finally { if (desfazer) desfazer(); p.stop(); await tgf.fechar() }
 })
 
-test('auditoria M-52: um porto.json ilegível não desarma em silêncio: o registo e o Telegram do Ivo dizem que ficou desarmado e sem ponto', async () => {
+const naFila = (app) => { try { return JSON.parse(fs.readFileSync(path.join(app.dir, 'encaminhador.json'), 'utf8')).porEnviar.length } catch { return -1 } }
+// depois de uns ciclos do encaminhador, com a fila vazia: o que havia para enviar já foi
+const assente = async (app) => { const alvo = app.ciclos + 3; return ate(() => app.ciclos >= alvo && naFila(app) === 0) }
+const AVISO_PORTO = '⚠️ Perdi o estado do porto (porto.json ilegível): o alarme de intrusão ficou desarmado e o ponto de amarração apagado. Arma-o outra vez com /armar.'
+
+test('auditoria M-52 e F4b (revisão, Menores 4 e 14): um porto.json ilegível não desarma em silêncio: o registo e o Telegram do Ivo dizem-no, uma vez só (o ficheiro volta a gravar-se: os arranques seguintes não repetem o aviso)', async () => {
   const { tgf, app, p, config } = await arrancar()
-  fs.writeFileSync(path.join(app.dir, 'porto.json'), '{"armado": tr')
+  const ficheiro = path.join(app.dir, 'porto.json')
+  fs.writeFileSync(ficheiro, '{"armado": tr')
   p.start(config)
   try {
-    assert.ok(app.erros.some(e => /porto\.json ilegível/.test(e)), JSON.stringify(app.erros))
+    const doPorto = () => app.erros.filter(e => /porto\.json/.test(e))
+    assert.equal(doPorto().length, 1, JSON.stringify(app.erros))
+    assert.match(doPorto()[0], /^porto\.json ilegível \(.+\): o alarme de intrusão ficou desarmado e o ponto de amarração apagado; gravei um novo$/)
     assert.ok(await ate(() => textos(tgf).length === 1))
-    assert.deepEqual(textos(tgf), ['⚠️ Perdi o estado do porto (porto.json ilegível): o alarme de intrusão ficou desarmado e sem ponto de amarração. Arma outra vez com /armar.'])
+    assert.deepEqual(textos(tgf), [AVISO_PORTO])
     assert.match(app.estado, /^desarmado · sem ponto/)
+    assert.deepEqual(JSON.parse(fs.readFileSync(ficheiro, 'utf8')), { armado: false, ponto: null, ativos: {} })
+    // gravar a configuração duas vezes: sem novos avisos
+    for (let i = 0; i < 2; i++) { p.stop(); p.start(config); assert.ok(await assente(app)) }
+    assert.equal(doPorto().length, 1, JSON.stringify(app.erros))
+    assert.deepEqual(textos(tgf), [AVISO_PORTO])
+  } finally { p.stop(); await tgf.fechar() }
+})
+
+test('auditoria F4b (revisão, Menor 12): um encaminhador.json ilegível diz-se ao Ivo, como o porto.json (uma vez só: volta a gravar-se)', async () => {
+  const { tgf, app, p, config } = await arrancar()
+  fs.writeFileSync(path.join(app.dir, 'encaminhador.json'), '{estragado')
+  p.start(config)
+  try {
+    const doEnc = () => app.erros.filter(e => /encaminhador\.json/.test(e))
+    assert.equal(doEnc().length, 1, JSON.stringify(app.erros))
+    assert.match(doEnc()[0], /^encaminhador\.json ilegível \(.+\): perdi as mensagens por entregar; gravei um novo$/)
+    assert.ok(await ate(() => textos(tgf).length === 1))
+    assert.deepEqual(textos(tgf), ['⚠️ Perdi a lista dos alarmes do Telegram (encaminhador.json ilegível): as mensagens por entregar perderam-se e os alarmes ainda ativos vão chegar outra vez.'])
+    for (let i = 0; i < 2; i++) { p.stop(); p.start(config); assert.ok(await assente(app)) }
+    assert.equal(doEnc().length, 1, JSON.stringify(app.erros))
+    assert.equal(textos(tgf).length, 1)
   } finally { p.stop(); await tgf.fechar() }
 })
