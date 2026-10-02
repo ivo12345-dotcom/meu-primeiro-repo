@@ -193,7 +193,15 @@ module.exports = function (app, deps = {}) {
 
   plugin.registerWithRouter = function (router) {
     const desligada = (res) => res.status(503).json({ ok: false, erro: 'a AI não está ligada' })
-    router.get('/ia', (req, res) => {
+    // Com a segurança ligada, o SignalK 2.33 só deixa um utilizador admin chamar as rotas registadas
+    // com router.get/post simples (tokensecurity.js, pluginAuthenticationMiddleware). Com o
+    // router.access(nível) (interfaces/plugins.js, asPluginRouter), as leituras pedem uma sessão
+    // (readonly) e as escritas um utilizador "read/write" (o do ecrã: "Treinar agora" e "Voltar atrás").
+    // Sem o router.access (versões antigas): as simples. O mesmo padrão do plugin da rota.
+    const comNivel = typeof router.access === 'function'
+    const ler = comNivel ? router.access('readonly') : router
+    const escrever = comNivel ? router.access('readwrite') : router
+    ler.get('/ia', (req, res) => {
       if (!base) return desligada(res)
       res.json({
         emTreino: !!emTreino,
@@ -202,13 +210,13 @@ module.exports = function (app, deps = {}) {
         modelos: Object.fromEntries(mod.NOMES.map(n => [n, resumoModelo(n)]))
       })
     })
-    router.post('/treinar', (req, res) => {
+    escrever.post('/treinar', (req, res) => {
       if (!base) return desligada(res)
       if (semPacote) return res.status(409).json({ ok: false, erro: semPacote })
       if (!treinar('pedido no ecrã')) return res.status(409).json({ ok: false, erro: 'já está a treinar' })
       res.status(202).json({ ok: true })
     })
-    router.post('/voltar', (req, res) => {
+    escrever.post('/voltar', (req, res) => {
       if (!base) return desligada(res)
       // O Python escreve o atual e o registo.json no fim do treino: não mexer ao mesmo tempo.
       if (emTreino) return res.status(409).json({ ok: false, erro: 'está a treinar; tenta depois' })

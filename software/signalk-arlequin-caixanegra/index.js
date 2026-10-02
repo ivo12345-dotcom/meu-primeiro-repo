@@ -287,7 +287,15 @@ module.exports = function (app) {
   }
 
   plugin.registerWithRouter = function (router) {
-    router.get('/estado', (req, res) => {
+    // Com a segurança ligada, o SignalK 2.33 só deixa um utilizador admin chamar as rotas registadas
+    // com router.get/post simples (tokensecurity.js, pluginAuthenticationMiddleware). Com o
+    // router.access(nível) (interfaces/plugins.js, asPluginRouter), as leituras pedem uma sessão
+    // (readonly) e as escritas um utilizador "read/write" (o do ecrã: a página Velas grava aqui).
+    // Sem o router.access (versões antigas): as simples. O mesmo padrão do plugin da rota.
+    const comNivel = typeof router.access === 'function'
+    const ler = comNivel ? router.access('readonly') : router
+    const escrever = comNivel ? router.access('readwrite') : router
+    ler.get('/estado', (req, res) => {
       res.json({
         pasta: base,
         disco: infoDisco,
@@ -300,7 +308,7 @@ module.exports = function (app) {
           : null
       })
     })
-    router.get('/ficheiros', (req, res) => {
+    ler.get('/ficheiros', (req, res) => {
       const desde = req.query?.desde ? Date.parse(req.query.desde) : 0
       const lista = []
       for (const d of ['bruto', 'tabela', 'saidas', 'previsoes']) {
@@ -311,8 +319,8 @@ module.exports = function (app) {
       }
       res.json({ ficheiros: lista })
     })
-    router.get('/velas', (req, res) => res.json({ grandeRizos: velas.grandeRizos, genoaPct: velas.genoaPct }))
-    router.post('/velas', (req, res) => {
+    ler.get('/velas', (req, res) => res.json({ grandeRizos: velas.grandeRizos, genoaPct: velas.genoaPct }))
+    escrever.post('/velas', (req, res) => {
       const pedido = {}
       if (req.body?.grandeRizos !== undefined) pedido.grandeRizos = Number(req.body.grandeRizos)
       if (req.body?.genoaPct !== undefined) pedido.genoaPct = Number(req.body.genoaPct)

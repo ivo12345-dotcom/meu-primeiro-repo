@@ -179,6 +179,28 @@ test('sem o pacote arlequin-ia na pastaIa: estado claro, "Treinar agora" dá 409
   }
 })
 
+test('com a segurança do SignalK (2.33: router.access), o GET regista-se "readonly" e os POST "readwrite"; nada fica só para admin (auditoria K-11)', () => {
+  const registos = []
+  const direto = []
+  const router = {
+    get: (k) => direto.push(`GET ${k}`),
+    post: (k) => direto.push(`POST ${k}`),
+    access: (nivel) => ({
+      get: (k, h) => { registos.push({ m: 'GET', k, nivel, h: typeof h }) },
+      post: (k, h) => { registos.push({ m: 'POST', k, nivel, h: typeof h }) }
+    })
+  }
+  criar(appFalso(), { comando: UMA_LINHA, nice: false }).registerWithRouter(router)
+  assert.deepEqual(direto, [], 'nenhuma rota sem nível (ficava só para admin: o ecrã entra com "read/write")')
+  const nivel = Object.fromEntries(registos.map(x => [`${x.m} ${x.k}`, x.nivel]))
+  assert.deepEqual(nivel, {
+    'GET /ia': 'readonly',
+    'POST /treinar': 'readwrite',
+    'POST /voltar': 'readwrite'
+  })
+  assert.ok(registos.every(x => x.h === 'function'))
+})
+
 test('antes de ligar, as três rotas respondem 503 e o processo não cai', async () => {
   const app = appFalso()
   const p = criar(app, { comando: UMA_LINHA, nice: false })
