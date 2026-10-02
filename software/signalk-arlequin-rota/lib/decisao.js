@@ -78,11 +78,22 @@ function partidas (agora, { sairAgora = false, horas = 48, passoH = 3, fim = Inf
   return out
 }
 
-// "às 18:30", "amanhã às 08:00", "dia 2 às 08:00" (hora de Lisboa).
+// O dia (ano, mês, dia) de t no calendário do fuso.
+function diaNoFuso (t, fuso) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: fuso, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(t).map(x => [x.type, x.value]))
+  return { a: Number(p.year), m: Number(p.month), d: Number(p.day) }
+}
+const chaveDia = ({ a, m, d }) => `${a}-${m}-${d}`
+
+// "às 18:30", "amanhã às 08:00", "dia 2 às 08:00" (hora de Lisboa). "Amanhã" é o dia seguinte no
+// calendário de Lisboa (auditoria I-18), não o dia de agora + 24 h: nos dias de 23 h e de 25 h (a
+// mudança de hora) o +24 h caía no dia errado.
 function quando (t, agora, fuso = 'Europe/Lisbon') {
-  const dia = new Intl.DateTimeFormat('pt-PT', { timeZone: fuso, year: 'numeric', month: '2-digit', day: '2-digit' })
   const hm = new Intl.DateTimeFormat('pt-PT', { timeZone: fuso, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(t)
-  const d0 = dia.format(agora); const d1 = dia.format(t); const amanha = dia.format(agora + 24 * H)
+  const hoje = diaNoFuso(agora, fuso)
+  const seguinte = new Date(Date.UTC(hoje.a, hoje.m - 1, hoje.d + 1))
+  const d0 = chaveDia(hoje); const d1 = chaveDia(diaNoFuso(t, fuso))
+  const amanha = chaveDia({ a: seguinte.getUTCFullYear(), m: seguinte.getUTCMonth() + 1, d: seguinte.getUTCDate() })
   if (d1 === d0) return `às ${hm}`
   if (d1 === amanha) return `amanhã às ${hm}`
   const n = new Intl.DateTimeFormat('pt-PT', { timeZone: fuso, day: 'numeric' }).format(t)
