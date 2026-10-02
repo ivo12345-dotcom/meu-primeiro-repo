@@ -18,9 +18,11 @@
 //   com a queda em 3 h ≤ 2 hPa.
 // notifications.rota.alarmeTerra    alert (apito: 'curto')  60 min antes da hora de alarme que os contactos
 //   em terra têm, com o plano aberto (à espera de sair, a navegar ou em pausa; passada a hora fica): "Os
-//   contactos em terra ligam ao MRCC às HH:MM: avisa-os ou Terminar" (revisão final I2). Só no ecrã: o
-//   porto não o manda ao Telegram (a lista dos avisos para o Telegram é decisão do Ivo). alarmeTerra({
-//   aberto, alarme (ms) }, agora).
+//   contactos em terra ligam ao MRCC às HH:MM: avisa-os ou Terminar" (revisão final I2); com o plano
+//   fechado e o "cheguei bem"/"viagem terminada" ainda por entregar (auditoria K-12): "O «cheguei bem»
+//   ainda não chegou a terra: os contactos ligam ao MRCC às HH:MM — liga-lhes". Só no ecrã: o porto não o
+//   manda ao Telegram (a lista dos avisos para o Telegram é decisão do Ivo). alarmeTerra({ aberto, alarme
+//   (ms), fecho: null | 'chegada' | 'terminado' }, agora).
 //
 // avaliar(estado, entrada, agora) → { estado, avisos: { caminho: { state, method, message, apito?, chave? } } }
 //   entrada: { navegar, tripulacao, saida (ms), destino (nome), semGps, atrasoMin, vento: { medido,
@@ -188,9 +190,15 @@ function avaliar (estado0, entrada, agora) {
 }
 
 // ---------- a hora de alarme em terra (revisão final I2) ----------
-function alarmeTerra ({ aberto, alarme }, agora) {
-  if (!aberto || !Number.isFinite(alarme) || agora < alarme - LIMITES.alarmeTerraMin * MIN) return normal()
-  return aviso('alert', `Os contactos em terra ligam ao MRCC ${asHoras(alarme, agora)}: avisa-os ou Terminar`, { apito: 'curto', chave: new Date(alarme).toISOString() })
+// fecho (auditoria K-12): com o plano já fechado, o "cheguei bem" ('chegada') ou a "viagem terminada"
+// ('terminado') deste envio ainda por entregar a terra (sem rede na marina, o porto desligado): o aviso
+// fica, também depois da hora de alarme, até a mensagem chegar.
+const FECHO_TEXTO = Object.freeze({ chegada: 'O «cheguei bem»', terminado: 'A «viagem terminada»' })
+function alarmeTerra ({ aberto, alarme, fecho = null }, agora) {
+  if (!(aberto || fecho) || !Number.isFinite(alarme) || agora < alarme - LIMITES.alarmeTerraMin * MIN) return normal()
+  const chave = new Date(alarme).toISOString()
+  if (fecho) return aviso('alert', `${FECHO_TEXTO[fecho] ?? 'A mensagem de fecho'} ainda não chegou a terra: os contactos ligam ao MRCC ${asHoras(alarme, agora)} — liga-lhes`, { apito: 'curto', chave: `${chave} ${fecho}` })
+  return aviso('alert', `Os contactos em terra ligam ao MRCC ${asHoras(alarme, agora)}: avisa-os ou Terminar`, { apito: 'curto', chave })
 }
 
 // ---------- publicar ----------

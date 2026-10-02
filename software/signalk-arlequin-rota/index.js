@@ -237,6 +237,7 @@ module.exports = function (app, deps = {}) {
   let estAcomp = ac.novoEstado()
   let estAvisos = av.novoEstado()
   let publicados = {} // caminho → { state, chave } do que está publicado em notifications.rota.*
+  let avisosPublicados = {} // os últimos avisos publicados (caminho → { state, message, … }), para o GET
   let pressoes = [] // [{ t, hPa }] de minuto a minuto (em memória; barometro.json com um plano aberto)
   let baroGravadoEm = null // a última gravação do barometro.json
   let baroPorGravar = false
@@ -589,9 +590,24 @@ module.exports = function (app, deps = {}) {
     if (!Number.isFinite(hora) || agora - hora > LEITURA_VELHA_MS) return null
     return x.value
   }
-  // O aviso da hora de alarme em terra (revisão final I2): com o plano aberto e enviado a contactos em terra.
-  const avisoTerra = (agora) => ({ [av.CAMINHO_ALARME_TERRA]: av.alarmeTerra({ aberto: pa.aberto(planoAtivo) && !!planoAtivo.envio?.contactos?.length, alarme: alarmeEmTerra() }, agora) })
+  // O "cheguei bem"/"viagem terminada" deste plano ainda por entregar a terra (auditoria K-12): { tipo,
+  // contactos (a quem falta), tentativas, erro } ou null.
+  function fechoPorEntregar (p = planoAtivo) {
+    const pendentes = (p?.contactos?.fila || []).filter(m => (m.tipo === 'chegada' || m.tipo === 'terminado') && !m.anterior)
+    if (!pendentes.length) return null
+    const contactos = [...new Set(pendentes.flatMap(m => m.contactos || []))]
+    return { tipo: pendentes[0].tipo, contactos, tentativas: Math.max(...pendentes.map(m => m.tentativas || 0)), erro: pendentes.find(m => m.erro)?.erro ?? null }
+  }
+  // O aviso da hora de alarme em terra (revisão final I2): com o plano aberto e enviado a contactos em
+  // terra; e com o plano fechado enquanto o "cheguei bem"/"terminada" não chega a terra (auditoria K-12).
+  function avisoTerra (agora) {
+    const p = planoAtivo
+    const comEnvio = !!p?.envio?.contactos?.length
+    const fecho = comEnvio && !pa.aberto(p) ? fechoPorEntregar(p) : null
+    return { [av.CAMINHO_ALARME_TERRA]: av.alarmeTerra({ aberto: comEnvio && pa.aberto(p), alarme: alarmeEmTerra(), fecho: fecho?.tipo ?? null }, agora) }
+  }
   function publicarAvisos (avisos) {
+    avisosPublicados = avisos
     const r = av.publicar(publicados, avisos)
     publicados = r.publicados
     if (r.deltas.length) app.handleMessage(plugin.id, { updates: [{ values: r.deltas }] })
@@ -628,7 +644,8 @@ module.exports = function (app, deps = {}) {
     if (comPressao && pressoes.at(-1)?.t !== agora) { pressoes = av.juntarPressao(pressoes, { t: agora, hPa: hPa / 100 }, agora); baroPorGravar = true }
     // no disco só com um plano aberto, no máximo de 10 em 10 min
     if (baroPorGravar && pa.aberto(planoAtivo) && (baroGravadoEm == null || agora - baroGravadoEm >= BARO_GRAVAR_MS || agora < baroGravadoEm)) gravarPressoes(agora)
-    if (!pa.aberto(planoAtivo)) { ultimo = null; retido = null; publicarAvisos({}); if (planoAtivo) enviarFila(agora); return }
+    // sem plano aberto: a fila (o "cheguei bem" por entregar) e, com ele por entregar, o aviso de terra
+    if (!pa.aberto(planoAtivo)) { ultimo = null; retido = null; if (planoAtivo) enviarFila(agora); publicarAvisos(avisoTerra(agora)); return }
     const sog = numeroFresco('navigation.speedOverGround', agora)
     // as milhas feitas na rota (a chegada pede progresso): a última posição na rota
     const milhas = estAcomp.anterior?.s ?? planoAtivo.seguimento?.s ?? null
@@ -647,9 +664,10 @@ module.exports = function (app, deps = {}) {
       ultimo = null
       retido = null
       estAvisos = av.novoEstado()
-      // em pausa só fica o da hora de alarme em terra (revisão final I2)
-      publicarAvisos(pa.aberto(planoAtivo) ? avisoTerra(agora) : {})
+      // em pausa só fica o da hora de alarme em terra (revisão final I2); fechado, só enquanto o "cheguei
+      // bem" não chega a terra (auditoria K-12: a fila primeiro, para publicar o que ficou)
       enviarFila(agora)
+      publicarAvisos(avisoTerra(agora))
       return
     }
     const ins = instrumentos()
@@ -704,7 +722,8 @@ module.exports = function (app, deps = {}) {
     const u = ultimo
     const rec = u?.recursos || {}
     const r0 = (x) => (Number.isFinite(x) ? Math.round(x) : null)
-    const ativos = Object.entries(u?.avisos || {}).filter(([, a]) => a.state !== 'normal').map(([caminho, a]) => ({ caminho, state: a.state, message: a.message }))
+    // os avisos ativos publicados (também em pausa e com o plano fechado: o da hora de alarme em terra)
+    const ativos = Object.entries(avisosPublicados || {}).filter(([, a]) => a.state !== 'normal').map(([caminho, a]) => ({ caminho, state: a.state, message: a.message }))
     const recursosAviso = ativos.find(a => a.caminho === `${av.PREFIXO}.recursos`)
     const c = p.contactos || ct.novaFila()
     const sug = p.estado === pa.ESTADOS.PAUSADO ? memPlano.sugestao : null
@@ -744,6 +763,9 @@ module.exports = function (app, deps = {}) {
       envio: p.envio ? { contactos: p.envio.contactos, alarme: Number.isFinite(p.atrasoEnviado?.alarme) ? new Date(p.atrasoEnviado.alarme).toISOString() : p.envio.alarme, alarmePlano: p.envio.alarmePendente ?? p.envio.alarme } : null,
       // o atraso que não seguiu para terra (revisão final C1): o ecrã pede o "Estou bem"
       atrasoRetido: retido && p.estado === pa.ESTADOS.NAVEGAR && Number.isFinite(alarmeEmTerra(p)) ? { motivo: retido.motivo, alarme: new Date(alarmeEmTerra(p)).toISOString() } : null,
+      // o "cheguei bem"/"terminada" deste plano ainda por entregar (auditoria K-12): o ecrã diz "ainda não
+      // chegou a terra: liga-lhes"
+      fechoPorEntregar: fechoPorEntregar(p),
       chegadaOutro: sug ? { id: sug.id, nome: sug.nome } : null,
       // contactos: a quem vai; parcial: só para os que falharam (revisão final I3)
       filaContactos: c.fila.map(m => ({ tipo: m.tipo, criada: m.criada, tentativas: m.tentativas, proxima: m.proxima, estado: m.estado, erro: m.erro, contactos: [...(m.contactos || [])], parcial: !!m.parcial })),
@@ -899,6 +921,7 @@ module.exports = function (app, deps = {}) {
     baroPorGravar = false
     portos = costaBase.destinos.filter(d => d.id && Array.isArray(d.aproximacao) && d.aproximacao.length).map(d => ({ id: d.id, nome: d.nome, cais: c.P(d.aproximacao.at(-1)) }))
     try { publicados = av.publicadosDaArvore(app.getSelfPath?.(av.PREFIXO)) } catch { publicados = {} }
+    avisosPublicados = {}
     try { modelosVento = modelosAi().modelos } catch { modelosVento = {} }
     if (cicloTimer) pararCiclo(cicloTimer)
     // cicloSegundos só com modoTeste (no mínimo 1 s); no barco, 60 s
@@ -1135,9 +1158,10 @@ module.exports = function (app, deps = {}) {
       const contactos = porMensagem('terminado', ct.textoTerminado({ posicao, agora }), agora)
       estAvisos = av.novoEstado()
       ultimo = null
-      publicarAvisos({})
       gravarPlanoAtivo()
       enviarFila(agora)
+      // os avisos a normal; o de terra fica enquanto a "terminada" não chegar (auditoria K-12)
+      publicarAvisos(avisoTerra(agora))
       res.json({ ok: true, estado: planoAtivo.estado, contactos })
     })
 
@@ -1190,9 +1214,9 @@ module.exports = function (app, deps = {}) {
       const contactos = porMensagem('chegada', ct.textoChegada({ destino: sug.nome, chegou: sug.desde, agora }), agora)
       estAvisos = av.novoEstado()
       ultimo = null
-      publicarAvisos({})
       gravarPlanoAtivo()
       enviarFila(agora)
+      publicarAvisos(avisoTerra(agora))
       res.json({ ok: true, estado: planoAtivo.estado, contactos })
     })
 
