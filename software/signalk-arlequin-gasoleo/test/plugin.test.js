@@ -7,11 +7,12 @@ const path = require('node:path')
 const criar = require('..')
 const { acrescentarPonto } = require('../lib/tabela')
 
+// Como o SignalK, cada valor vem com a hora (timestamp): a de agora, ou a posta em app.ts (um sensor calado).
 function appFalso () {
-  const app = { self: {}, valores: {}, notificacoes: [], estado: '', opcoesGuardadas: null }
+  const app = { self: {}, ts: {}, valores: {}, notificacoes: [], estado: '', opcoesGuardadas: null }
   app.dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arlequin-gasoleo-'))
   app.getDataDirPath = () => app.dir
-  app.getSelfPath = (p) => (p in app.self ? { value: app.self[p] } : undefined)
+  app.getSelfPath = (p) => (p in app.self ? { value: app.self[p], timestamp: app.ts[p] ?? new Date().toISOString() } : undefined)
   app.handleMessage = (id, d) => {
     for (const u of d.updates) for (const v of u.values) {
       if (v.path.startsWith('notifications.')) app.notificacoes.push({ path: v.path, ...v.value })
@@ -210,6 +211,54 @@ test('calibração completa pelo ecrã: vazio, +5 L até cheio, tabela e capacid
   assert.equal(fim.capacidadeL, 210)
   assert.equal(app.opcoesGuardadas.capacidadeL, 210)
   assert.equal(app.opcoesGuardadas.tabela.length, 43)
+})
+
+// Auditoria I-12: com a sonda perdida o plugin calava-se e o último nível ficava na árvore (a rota usava-o
+// e o "gasóleo desconhecido" nunca disparava).
+test('I-12: sonda perdida (as tensões deixam de atualizar): os litros continuam pelo consumo do J1939; aos 5 min, aviso sondaPerdida só no ecrã; limpa quando a sonda volta', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ tabela: [{ razao: 0.1, litros: 0 }, { razao: 0.7, litros: 200 }] })
+  app.self['tanks.fuel.0.supplyVoltage'] = 12.6
+  app.self['tanks.fuel.0.senderVoltage'] = (0.1 + 0.6 * 120 / 200) * 12.6 // 120 L
+  avancar(t, 200)
+  assert.ok(Math.abs(app.valores['tanks.fuel.0.currentVolume'] * 1000 - 120) < 0.5)
+  // a app I2C morre: as tensões ficam na árvore, com a hora velha; o motor a trabalhar a 2 L/h
+  const morreu = new Date().toISOString()
+  app.ts['tanks.fuel.0.supplyVoltage'] = morreu
+  app.ts['tanks.fuel.0.senderVoltage'] = morreu
+  app.self['propulsion.main.revolutions'] = 30
+  app.self['propulsion.main.fuel.rate'] = 2 / 3600 / 1000
+  avancar(t, 4 * 60)
+  assert.deepEqual(app.notificacoes.filter(n => n.path.endsWith('sondaPerdida')), [])
+  avancar(t, 3 * 60)
+  const volume = app.valores['tanks.fuel.0.currentVolume'] * 1000
+  assert.ok(volume < 120 - 0.15 && volume > 120 - 0.3, `litros ${volume}`) // ~6 min a 2 L/h depois de a sonda ficar velha
+  const aviso = app.notificacoes.filter(n => n.path === 'notifications.tanks.fuel.0.sondaPerdida')
+  assert.deepEqual(aviso.map(n => n.state), ['warn'])
+  assert.deepEqual(aviso[0].method, ['visual'])
+  assert.match(aviso[0].message, /^Sonda do gasóleo sem leitura há mais de 5 min/)
+  // a sonda volta
+  delete app.ts['tanks.fuel.0.supplyVoltage']
+  delete app.ts['tanks.fuel.0.senderVoltage']
+  avancar(t, 5)
+  p.stop()
+  assert.deepEqual(app.notificacoes.filter(n => n.path.endsWith('sondaPerdida')).map(n => n.state), ['warn', 'normal'])
+})
+
+test('I-12 (E-M15): sem a sonda, rotações e consumo velhos (o J1939 parou) não descontam litros', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  fs.writeFileSync(path.join(app.dir, 'nivel.json'), JSON.stringify({ litros: 118, t: '2026-09-29T08:00:00Z' }))
+  const p = criar(app)
+  p.start({ tabela: [{ razao: 0.1, litros: 0 }, { razao: 0.7, litros: 200 }] })
+  const velho = new Date(Date.now() - 60 * 1000).toISOString()
+  Object.assign(app.self, { 'propulsion.main.revolutions': 30, 'propulsion.main.fuel.rate': 2 / 3600 / 1000 })
+  Object.assign(app.ts, { 'propulsion.main.revolutions': velho, 'propulsion.main.fuel.rate': velho })
+  avancar(t, 30 * 60)
+  p.stop()
+  assert.equal(app.valores['tanks.fuel.0.currentVolume'] * 1000, 118) // sem sonda desde o arranque: o nível guardado, sem descontar
 })
 
 test('C1: a fuga de gasóleo é publicada com apito contínuo', (t) => {

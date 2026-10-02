@@ -52,13 +52,12 @@ function novoEstado () {
   }
 }
 
-// l: { t, sonda (V), alimentacao (V), roll (rad) | null, fuelRate (m³/s) | null, motorLigado }
-function passo (e0, l, tabela, lim = LIMITES) {
-  const e = { ...e0, ativos: { ...e0.ativos } }
-  const notificacoes = []
-  let abastecimento = null
-
-  // 1. Consumo desde a última amostra (e o esperado da saída a motor).
+// O consumo do motor desde a última amostra e as mudanças do motor (ligou/parou). É o 1.º passo de
+// cada amostra e, sem a sonda (ADS1115 calado, auditoria I-12), o único: os litros continuam a
+// descer com o consumo do J1939 e a saída a motor continua a contar o esperado.
+// l: { t, fuelRate (m³/s) | null, motorLigado }
+function descontar (e0, l) {
+  const e = { ...e0 }
   if (e.ultimoT !== null && typeof l.fuelRate === 'number' && l.motorLigado) {
     const gasto = l.fuelRate * 1000 * (l.t - e.ultimoT) / 1000
     if (e.litros !== null) e.litros = Math.max(0, e.litros - gasto)
@@ -72,6 +71,15 @@ function passo (e0, l, tabela, lim = LIMITES) {
     if (l.motorLigado) e.sessao = e.ultimaParado !== null ? { antes: e.ultimaParado, esperado: 0 } : null
   }
   e.motorAntes = l.motorLigado
+  return e
+}
+
+// l: { t, sonda (V), alimentacao (V), roll (rad) | null, fuelRate (m³/s) | null, motorLigado }
+function passo (e0, l, tabela, lim = LIMITES) {
+  // 1. Consumo desde a última amostra (e o esperado da saída a motor); o motor a mudar.
+  const e = { ...descontar(e0, l), ativos: { ...e0.ativos } }
+  const notificacoes = []
+  let abastecimento = null
 
   // 2. Amostra: razão → litros, só com o barco direito.
   const razao = l.alimentacao > 1 ? l.sonda / l.alimentacao : null
@@ -147,4 +155,4 @@ function passo (e0, l, tabela, lim = LIMITES) {
   return { estado: e, notificacoes, abastecimento }
 }
 
-module.exports = { LIMITES, litrosDaRazao, mediana, novoEstado, passo }
+module.exports = { LIMITES, litrosDaRazao, mediana, novoEstado, descontar, passo }
