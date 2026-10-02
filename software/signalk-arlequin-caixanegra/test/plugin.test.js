@@ -588,3 +588,69 @@ test('o estado do plugin dá a hora de Lisboa, seja qual for o fuso do Pi (decis
   p.stop()
   assert.match(app.estado, /última linha 15:01:00/, app.estado)
 })
+
+// Uma mensagem do GPS numa posição, com a velocidade em nós.
+function enviarEm (app, lat, lon, nos) {
+  app.signalk.emit('unfilteredDelta', { context: EU, updates: [{ $source: 'nmea0183.GP', timestamp: new Date().toISOString(), values: [
+    { path: 'navigation.position', value: { latitude: lat, longitude: lon } },
+    { path: 'navigation.speedOverGround', value: nos * NO }
+  ] }] })
+}
+const ficarEm = (t, app, segundos, lat, lon, nos) => { for (let i = 0; i < segundos; i++) { enviarEm(app, lat, lon, nos); t.mock.timers.tick(1000) } }
+const PENICHE = [39.3522, -9.376]
+const FIGUEIRA = [40.1468, -8.8625] // o cais da Figueira da Foz em rota/dados/destinos.json
+
+test('uma viagem Peniche → Figueira da Foz fecha a saída ao chegar (a Figueira é destino da rota; a caixa negra só conhecia 7 portos: auditoria I-33)', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 50
+  const app = appFalso()
+  const p = criar(app)
+  const base = path.join(app.dir, 'dados')
+  p.start({ pasta: base })
+  ficarEm(t, app, 30, ...PENICHE, 0) // no porto
+  ficarEm(t, app, 60, PENICHE[0] - 0.05, PENICHE[1] - 0.05, 5) // saiu: a 3 MN de Peniche
+  ficarEm(t, app, 700, ...FIGUEIRA, 0) // chegou e ficou parado mais de 10 min
+  p.stop()
+  const saidas = fs.readdirSync(path.join(base, 'saidas'))
+  assert.equal(saidas.length, 1, 'a saída fechou e ficou gravada (é o que dispara o treino da AI)')
+  const s = JSON.parse(fs.readFileSync(path.join(base, 'saidas', saidas[0]), 'utf8'))
+  assert.equal(s.de, 'Peniche')
+  assert.equal(s.para, 'Figueira da Foz')
+})
+
+test('o /estado diz os portos que a caixa negra conhece; uma configuração antiga com a lista dos 7 portos junta-se aos da rota sem repetidos (auditoria I-33)', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  const ANTIGOS = [
+    { nome: 'Peniche', lat: 39.3530, lon: -9.3770 }, { nome: 'Algés (CNA)', lat: 38.6955, lon: -9.2330 },
+    { nome: 'Oeiras', lat: 38.6780, lon: -9.3160 }, { nome: 'Cascais', lat: 38.6925, lon: -9.4175 },
+    { nome: 'Ericeira', lat: 38.9630, lon: -9.4180 }, { nome: 'Nazaré', lat: 39.5845, lon: -9.0735 },
+    { nome: 'Sesimbra', lat: 38.4410, lon: -9.1060 }
+  ]
+  for (const portos of [undefined, ANTIGOS]) {
+    const app = appFalso()
+    const p = criar(app)
+    p.start({ pasta: path.join(app.dir, 'dados'), ...(portos ? { portos } : {}) })
+    const est = await chamar(rotas(p).get['/estado'], {})
+    p.stop()
+    assert.equal(est.portos.length, 16, JSON.stringify(est.portos))
+    assert.ok(est.portos.includes('Figueira da Foz') && est.portos.includes('Ericeira'))
+    assert.equal(new Set(est.portos).size, 16)
+  }
+})
+
+test('sem o ficheiro dos destinos da rota: diz porquê (erro e estado do plugin) e continua com os portos extra (auditoria I-33)', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: INICIO })
+  usoFalso = 50
+  const app = appFalso()
+  const mensagens = []
+  app.error = (m) => mensagens.push(m)
+  const p = criar(app)
+  p.start({ pasta: path.join(app.dir, 'dados'), destinos: path.join(app.dir, 'nao-existe.json') })
+  correr(t, app, 60, 'nmea0183.GP')
+  const est = await chamar(rotas(p).get['/estado'], {})
+  p.stop()
+  assert.deepEqual(est.portos, ['Ericeira'])
+  assert.ok(est.erros > 0)
+  assert.ok(mensagens.some(m => /destinos da rota/.test(m) && /nao-existe\.json/.test(m)), mensagens.join(' | '))
+  assert.match(app.estado, /^SEM OS PORTOS DA ROTA · /)
+})
