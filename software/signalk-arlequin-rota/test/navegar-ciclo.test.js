@@ -282,3 +282,25 @@ test('auditoria M-13: a navegar, o aviso dos recursos usa o gasóleo e a bateria
   assert.equal(t.app.self['notifications.rota.recursos']?.state ?? 'normal', 'normal')
   t.p.stop()
 })
+
+test('auditoria I-16: a navegar, a correção do vento da AI recebe a tendência do barómetro em 3 h (antes ia sempre null)', async () => {
+  const cenarios = require('../lib/cenarios')
+  const original = cenarios.criarCorrecaoVento
+  const vistas = []
+  cenarios.criarCorrecaoVento = (a) => { vistas.push(a.tendPressao3h); return original(a) }
+  try {
+    const s = await preparar()
+    s.por(s.alt.rasto[2])
+    await s.ciclo(20 * MIN)
+    await s.ciclo(0)
+    assert.equal(s.p.planoAtivo().estado, 'a navegar')
+    for (let m = 1; m <= 185; m++) {
+      s.app.self['environment.outside.pressure'] = 101500 - 2 * m
+      s.por(s.alt.rasto[Math.min(2 + Math.floor(m / 10), s.alt.rasto.length - 1)])
+      await s.ciclo()
+    }
+    assert.equal(vistas[0], null, 'sem 3 h de amostras')
+    assert.ok(Math.abs(vistas.at(-1) - (-3.6)) < 1e-6, `${vistas.at(-1)}`)
+    s.p.stop()
+  } finally { cenarios.criarCorrecaoVento = original }
+})

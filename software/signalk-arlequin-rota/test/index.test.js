@@ -734,3 +734,23 @@ test('auditoria M-13 (parte index.js): os limites de segurança do desenho 3a ("
     pl.p.stop()
   } finally { calculo.calcular = original }
 })
+
+test('auditoria I-16 (parte index.js): a tendência do barómetro em 3 h (as amostras de minuto a minuto que o plugin guarda) chega ao cálculo; sem 3 h de amostras, null', async () => {
+  const calculo = require('../lib/calculo')
+  const original = calculo.calcular
+  const vistos = []
+  calculo.calcular = async (entrada) => { vistos.push(entrada.instrumentos); return { veredicto: { tipo: 'segue', texto: 'Segue', porque: [] }, destino: { id: 'peniche', nome: 'Peniche' }, alternativas: [] } }
+  try {
+    const app = appFalso()
+    const pl = plugin(app, { agendarCiclo: () => 1, pararCiclo: () => {} })
+    pl.p.start({ pasta: path.join(app.dir, 'dados') })
+    const instrumentos = async () => { await esperarResultado(pl.r, (await chamar(pl.r.post['/calcular'], { body: { destino: 'peniche', tripulacao: 'so' } })).id); return vistos.at(-1) }
+    // a pressão a cair 2 Pa por minuto (0,02 hPa), de minuto a minuto
+    for (let m = 0; m <= 60; m++) { app.self['environment.outside.pressure'] = 101500 - 2 * m; pl.avancar(60000); await pl.p.cicloNavegar() }
+    assert.equal((await instrumentos()).tendPressao3h, null, 'só 1 h de amostras')
+    for (let m = 61; m <= 185; m++) { app.self['environment.outside.pressure'] = 101500 - 2 * m; pl.avancar(60000); await pl.p.cicloNavegar() }
+    const t = (await instrumentos()).tendPressao3h
+    assert.ok(Math.abs(t - (-3.6)) < 1e-6, `${t}`)
+    pl.p.stop()
+  } finally { calculo.calcular = original }
+})
