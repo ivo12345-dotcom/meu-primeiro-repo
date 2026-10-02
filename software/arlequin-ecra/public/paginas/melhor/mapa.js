@@ -4,6 +4,7 @@
 
 import { desenharMapa } from '../../lib/mapa.js'
 import { esc, num, horaLisboa, nomeAlternativa } from '../../lib/rota-texto.js'
+import { botaoVoltarLeme } from './pedir.js'
 
 export function render (ctx) {
   const e = ctx.estado
@@ -20,6 +21,6 @@ export function render (ctx) {
 ${cartoes}
 <div class="tile lab">Azul: à vela · cinzento tracejado: a motor · mais escuro: de noite · ▲ avisos · ● pontos de desistência (da 1.ª) · tracejado vermelho: zonas a evitar</div>
 ${e.msg ? `<div class="tile ${e.msgErro ? 'caixa-erro' : ''}">${esc(e.msg)}</div>` : ''}
-<div class="acoes"><button class="acao go" data-acao="rota-voltar">Voltar ao resultado</button><button class="acao" data-acao="rota-ativar">Ativar esta rota</button></div>
+<div class="acoes"><button class="acao go" data-acao="rota-voltar">Voltar ao resultado</button><button class="acao" data-acao="rota-ativar">Ativar esta rota</button>${botaoVoltarLeme(ctx)}</div>
 </div>`
 }

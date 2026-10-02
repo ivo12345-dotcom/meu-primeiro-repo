@@ -27,16 +27,15 @@
 
 import { esc, horaLisboa, quandoAs } from '../../lib/rota-texto.js'
 import { URL_ROTA, calcular, motivoAcao } from './pedir.js'
+import { aberto, planoAberto, pausado } from './aberto.js'
 
 const LER_MS = 10000
-const ABERTOS = new Set(['a espera de sair', 'a navegar', 'pausado'])
 const CONFIRMAR = "Terminar o plano? Os contactos em terra recebem 'viagem terminada, estou bem'"
 const SEM_LIGACAO = 'sem ligação ao plugin da rota: os dados podem estar velhos'
 const agora = (ctx) => (Number.isFinite(ctx.agora) ? ctx.agora : Date.now())
 const ok = (x) => typeof x === 'number' && Number.isFinite(x)
 // o plano a que a pergunta do Terminar e as mensagens se referem
 const chave = (p) => (p ? `${p.idCalculo ?? ''}|${p.indice ?? ''}|${p.ativadoEm ?? ''}` : null)
-const aberto = (p) => (ABERTOS.has(p?.estado) ? p : null)
 // Os avisos da rota ativos (auditoria I-24: com vários ao mesmo tempo só se via um, no chip da barra): o campo
 // avisos do GET /plano-ativo, os mais graves primeiro; o dos recursos já tem a sua linha na faixa.
 const GRAVIDADE = { alert: 1, warn: 2, alarm: 3, emergency: 4 }
@@ -86,8 +85,7 @@ export function buscarPlanoAtivo (ctx, forcar = false) {
   return leitura
 }
 
-export const planoAberto = (ctx) => aberto(ctx.estado.planoAtivo)
-export const pausado = (ctx) => planoAberto(ctx)?.estado === 'pausado'
+export { planoAberto, pausado }
 
 // "25 min", "1 h 35 min", "2 h"
 function contagem (min) {

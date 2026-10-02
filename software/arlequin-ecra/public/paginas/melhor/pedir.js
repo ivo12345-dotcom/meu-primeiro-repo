@@ -7,6 +7,7 @@
 import { esc, num } from '../../lib/rota-texto.js'
 import { proximoWp } from '../comum.js'
 import { SEM_AUTORIZACAO } from '../../lib/erros.js'
+import { planoAberto } from './aberto.js'
 
 export const URL_ROTA = '/plugins/signalk-arlequin-rota'
 export const PLUGIN_DESLIGADO = 'o plugin da rota não responde'
@@ -34,6 +35,10 @@ export function rotaAtiva (ctx) {
   if (!wp.ativo && !ar?.href) return null
   return { nome: ar?.name || 'Rota ativa no OpenCPN', detalhe: wp.ativo ? `próximo ponto: ${wp.nome}` : 'rota ativa no OpenCPN' }
 }
+
+// "Voltar ao leme" (auditoria I-25): no Pedir, no A calcular, no Resultado e no Mapa, sempre que há um plano
+// aberto ou uma rota ativa — ao leme e sozinho, voltar ao rumo é um toque (sem ativar nada).
+export const botaoVoltarLeme = (ctx) => (rotaAtiva(ctx) || planoAberto(ctx) ? '<button class="acao" data-acao="rota-voltar-leme">Voltar ao leme</button>' : '')
 
 // O erro de um pedido ao plugin da rota em pt-PT, nunca o código HTTP cru: o motivo do plugin quando
 // o há ({ erro } na resposta); sem resposta, "não responde"; sem explicação, o que o código quer dizer.
@@ -200,8 +205,8 @@ export default {
     const semGps = pos ? '' : '<div class="tile caixa-erro">sem GPS: não dá para calcular</div>'
     const escolhido = lista.find(d => d.id === e.escolhido && !d.aqui)
     const podeCalcular = pos && escolhido
-    // "Novo cálculo" com uma rota ativa: o caminho de volta ao rumo
-    const voltarLeme = rotaAtiva(ctx) ? '<button class="acao" data-acao="rota-voltar-leme">Voltar ao leme</button>' : ''
+    // "Novo cálculo" com uma rota ativa ou um plano aberto: o caminho de volta ao rumo
+    const voltarLeme = botaoVoltarLeme(ctx)
     return `<div class="col" style="flex:1.4;">
 ${erro}
 <div class="tile rolar" style="flex:1;"><div class="lab">Para onde?</div>${linhas ? `<table class="grande">${linhas}</table>` : vazio}</div>

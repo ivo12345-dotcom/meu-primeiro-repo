@@ -12,7 +12,7 @@
 
 import { esc, num, horaLisboa, margem, nomeAlternativa, corVeredicto, avisosVermelhos, avisosGerais, linhaPrevisao } from '../../lib/rota-texto.js'
 import { barra } from '../../lib/desenho.js'
-import { URL_ROTA, calcular, motivoAcao, CANCELADO } from './pedir.js'
+import { URL_ROTA, calcular, motivoAcao, CANCELADO, botaoVoltarLeme } from './pedir.js'
 
 const CHAVE_MARCAS = 'arlequin.precaucoes'
 const MAX_CALCULOS_MARCAS = 10
@@ -164,7 +164,7 @@ export function renderACalcular (ctx) {
 <div class="v">${Math.round(f * 100)}%</div>
 <div style="font-size:1.2rem;margin-top:.4rem;">${esc(c.texto || 'a começar')}</div>
 <div class="lab" style="margin-top:.8rem;">Demora uns segundos: o plugin simula as partidas das próximas 48 h.</div>
-<div class="acoes" style="margin-top:.8rem;"><button class="acao" data-acao="rota-cancelar">Cancelar</button></div>
+<div class="acoes" style="margin-top:.8rem;"><button class="acao" data-acao="rota-cancelar">Cancelar</button>${botaoVoltarLeme(ctx)}</div>
 <div class="lab">O Cancelar só deixa de seguir: o plugin continua a calcular até ao fim.</div>
 </div>`
 }
@@ -185,7 +185,7 @@ export function botoes (ctx) {
 <button class="acao" data-acao="rota-mapa"${semMapa ? ' disabled title="Este resultado vem sem o mapa"' : ''}>Mapa</button>
 <button class="acao" data-acao="rota-plano"${aEnviar ? ' disabled' : ''}>Enviar plano</button>
 <button class="acao go" data-acao="rota-ativar">Ativar esta rota</button>
-${ctx.estado.ultimoPedido?.sairAgora === true ? '' : '<button class="acao stop" data-acao="rota-sair-agora">Sair agora mesmo assim</button>\n'}<button class="acao" data-acao="rota-novo">Novo cálculo</button>
+${ctx.estado.ultimoPedido?.sairAgora === true ? '' : '<button class="acao stop" data-acao="rota-sair-agora">Sair agora mesmo assim</button>\n'}<button class="acao" data-acao="rota-novo">Novo cálculo</button>${botaoVoltarLeme(ctx)}
 </div>${semMapa ? '<div class="lab">Este resultado vem sem o mapa (de uma versão antiga do plugin da rota): faz um novo cálculo para o ver.</div>' : ''}`
 }
 
