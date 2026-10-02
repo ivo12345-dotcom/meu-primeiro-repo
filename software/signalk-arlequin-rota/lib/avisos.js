@@ -6,7 +6,8 @@
 //   rizar / largar rizo                      (eventos 'vela')
 //   chuva ou visibilidade < 5 km → radar     (linha do tempo, um aviso por episódio)
 //   pôr do sol → luzes, arnês, comer         (eventos 'noite')
-//   frente / rotação do vento > 45° em 1 h   (eventos 'tempo' e linha do tempo, com vento ≥ 6 nós)
+//   frente / rotação do vento > 45° em 1 h   (eventos 'tempo' e linha do tempo, com vento ≥ 6 nós;
+//                                             nenhuma rotação a ±1 h de uma frente)
 //   cambar / virar                           (linha do tempo: a proa à vela muda > 40° num minuto;
 //                                             as manobras a menos de 2 h umas das outras juntam-se)
 //   chegada de noite                         (o último ponto)
@@ -28,8 +29,14 @@ const PADRAO = Object.freeze({
   visibilidadeRadar: VISIBILIDADE_RADAR_M, // m
   chuvaRadar: CHUVA_RADAR_MM_H, // mm/h
   rotacaoVento: 45, // graus em 1 h
+  frenteRotacaoH: 1, // nenhuma rotação a ±1 h de uma passagem da frente (M-07)
   ventoMinRotacao: 6, // nós
-  viragemGraus: 40, // as cambadelas do motor da passagem mudam 50° (popa a 180 ± 25), as viragens 90°
+  // viragem/cambadela a bordo: a proa à vela muda > 40° num minuto da linha do tempo simulada (as
+  // cambadelas do motor da passagem mudam 50°, popa a 180 ± 25, e as viragens 90°: 40 apanha as duas
+  // com margem). É de propósito diferente dos 45° dos lembretes a navegar (lib/acompanhamento.js,
+  // VIRAGEM_GRAUS): esses medem o rumo da ROTA num ponto (a geometria, sem os bordos), não a proa do
+  // barco a cada minuto (decisão do Ivo n.º 11, auditoria M-18)
+  viragemGraus: 40,
   juntarManobrasH: 2,
   reservaGasoleoL: 40,
   reservaBateriaPct: 50,
@@ -73,13 +80,15 @@ function avisosDaPassagem ({ passagem, destino = null, tripulacao = 'so', opcoes
     emChuva = ruim
   }
 
-  // rotação do vento > 45° numa hora (fora das frentes já anunciadas, a mais de 3 h umas das outras)
+  // rotação do vento > 45° numa hora (fora das frentes já anunciadas, a mais de 3 h umas das outras):
+  // nenhuma a ±1 h de uma "Passagem da frente", que já diz "roda para" (M-07; como os lembretes a navegar)
+  const frentes = eventos.filter(e => e.tipo === 'tempo' && String(e.texto || '').startsWith('Passagem da frente')).map(e => e.t)
   let ultimaRotacao = -Infinity
   for (let i = 60; i < pontos.length; i++) {
     const a = pontos[i - 60]; const b = pontos[i]
     if (a.twd == null || b.twd == null || a.tws < o.ventoMinRotacao || b.tws < o.ventoMinRotacao) continue
     const r = dif(b.twd, a.twd)
-    if (Math.abs(r) > o.rotacaoVento && b.t - ultimaRotacao > 3 * H) {
+    if (Math.abs(r) > o.rotacaoVento && b.t - ultimaRotacao > 3 * H && !frentes.some(tf => Math.abs(tf - a.t) <= o.frenteRotacaoH * H)) {
       ultimaRotacao = b.t
       add(a.t, 'rotacao', `O vento roda de ${rumo3(a.twd)}° para ${rumo3(b.twd)}° (${Math.round(Math.abs(r))}° em 1 h): prepara a manobra, prende a retranca`)
     }
@@ -146,8 +155,11 @@ function precaucoes ({ passagem, tripulacao = 'so', sairAgora = false, desistenc
   // "antes da barra": até ao barco chegar à linha de costa (o primeiro ponto 'Linha de …'), ou a 1.ª hora
   let iBarra = pontos.findIndex(p => typeof p.wp === 'string' && p.wp.startsWith('Linha de'))
   if (iBarra < 0) iBarra = Math.min(pontos.length, 60)
-  const rajadaSaida = pontos.slice(0, iBarra + 1).reduce((m, p) => Math.max(m, p.rajada ?? 0), 0)
+  const antesDaBarra = pontos.slice(0, iBarra + 1)
+  const rajadaSaida = antesDaBarra.reduce((m, p) => (Number.isFinite(p.rajada) ? Math.max(m, p.rajada) : m), 0)
   if (rajadaSaida > o.rajadaBarra) out.push({ id: 'rizo-saida', texto: 'Rizo feito à saída', sempre: false, porque: `rajadas de ${Math.round(rajadaSaida)} nós antes da barra` })
+  // a rajada sem previsão antes da barra é desconhecida, nunca calma (M-06): a precaução fica
+  else if (antesDaBarra.some(p => !Number.isFinite(p.rajada))) out.push({ id: 'rizo-saida', texto: 'Rizo feito à saída', sempre: false, porque: 'sem previsão de rajadas antes da barra' })
   const frente = eventos.some(e => e.tipo === 'tempo' && e.texto.startsWith('Passagem da frente'))
   let cai = false
   for (let i = 60; i < pontos.length && !cai; i++) if (pontos[i - 60].tws > 12 && pontos[i].tws < 0.6 * pontos[i - 60].tws) cai = true
