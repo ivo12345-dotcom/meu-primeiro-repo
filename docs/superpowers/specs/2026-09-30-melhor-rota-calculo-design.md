@@ -4,6 +4,13 @@ Data: 30/09/2026 · Barco: Arlequin (Jeanneau Melody 34) · Aprovado por secçõ
 
 Continua o desenho geral `docs/superpowers/specs/2026-09-29-melhor-rota-ia-design.md` (Partes 3 e 4). Esse desenho mantém-se, exceto no que este documento muda.
 
+> **Nota sobre as correções (02/10):** depois de aprovado, parte deste texto foi corrigida no
+> próprio sítio — a regra da calma na secção "Segurança" (30/09) e, na revisão final de 01/10, os
+> 3 cenários, os limites do "acompanhado", o pior caso nunca abaixo da previsão, a caixa da maré do
+> Tejo e os destinos acrescentados pelo Ivo. O resto está nas "Notas de implementação (30/09)", no
+> fim: onde o texto e as notas diferem, valem as notas. O ecrã, os avisos durante a viagem e o
+> acompanhamento ficaram nos desenhos 3b-1 e 3b-2 (01/10).
+
 A Parte 3 foi dividida em duas:
 - **3a, o cálculo** (este documento);
 - **3b, o ecrã e os avisos**: a página "Melhor rota" nova, o mapa, os avisos durante a viagem, o acompanhamento de 30 em 30 min, as precauções e o plano por Telegram. Terá desenho e plano próprios, e só começa depois de a 3a estar validada.
@@ -33,6 +40,7 @@ Um plugin SignalK, `signalk-arlequin-rota`, que, dado um destino e a tripulaçã
 
 1. **Modelos de planeamento** em `software/arlequin-ia/arlequin_ia/treino.py`:
    - **velocidade**: variáveis `prevTws` (vento previsto em bruto, em nós), `twaAbs`, `prevRajada`, `prevOndas`, `prevPeriodo`, `ondasAnguloRel`, `grandeRizos`, `genoaPct`. Saem `tws` medido, `rajada` medida, `adornoAbs`, `balAdorno` e `balCaimento`.
+     - **Nota de 02/10:** no código, o ângulo é o **`twaPrevAbs`** = |direção do vento prevista em bruto − proa| (no treino, a proa medida; no planeamento, o rumo planeado), e **não** o `twaAbs` (o |TWA| medido), que continua a ser calculado mas não entra no modelo. Mudou a 30/09 no commit `7b428cc` (`arlequin_ia/treino.py`, `signalk-arlequin-ia/lib/modelos.js`, `lib/passagem.js`), para o modelo ter a mesma informação no treino e no planeamento.
      - Para aprender com a velocidade real contra o vento previsto, o treino usa o `prevTws` da linha, que é a **previsão em bruto**, sem a correção da AI.
      - Linhas sem previsão não entram no treino. Assim a AI aprende "com esta previsão, andaste X".
      - No planeamento, este modelo recebe também a **previsão em bruto**. A correção do vento (`ventoForca`/`ventoDirecao`) serve para a polar, as regras de segurança, a decisão do motor e o que se mostra ao Ivo, mas **não entra no modelo da velocidade**, para não ser contada duas vezes.
@@ -62,7 +70,7 @@ Um plugin SignalK, `signalk-arlequin-rota`, que, dado um destino e a tripulaçã
                                                   signalk-arlequin-ia/lib/modelos.js  (previsões da AI, limites de sanidade)
 ```
 
-- **`software/ferramentas/passagem/simular.mjs`** passa a usar `lib/passagem.js`. Os resultados da passagem de 29/09 têm de se manter, com teste.
+- **`software/ferramentas/passagem/simular.mjs`** passa a usar `lib/passagem.js`. Os resultados da passagem de 29/09 têm de se manter, com teste. (Mantiveram-se até 01/10; nesse dia o `simular.mjs` passou a usar a caixa da maré do Tejo do plugin e o resultado de referência foi regravado de propósito: ver "Maré na barra do Tejo".)
 - O plugin da rota declara `"signalk-arlequin-ia": "file:../signalk-arlequin-ia"` no `package.json`.
 
 ## Dados pré-calculados (`software/signalk-arlequin-rota/dados/`)
@@ -114,7 +122,7 @@ Para cada afastamento d ∈ {3, 5, 8} MN:
 ## Maré na barra do Tejo (`lib/mare.js`)
 
 - **Preia-mares de Cascais:** os máximos locais da série `sea_level_height_msl` no ponto de Cascais (38,69 N; 9,42 W), com uma interpolação parabólica à volta do máximo horário.
-- **Corrente na barra** (só na barra e no estuário do Tejo: a caixa 38,60–38,72 N, 9,42–9,00 W — a leste de 9°25' W, os Cachopos, o Bugio e o rio até Lisboa; no resto da costa é 0): o modelo do `simular.mjs`, com a preia-mar calculada em vez da hora fixa. Corrente máxima de 1,8 nó, vazante para 250°, enchente para 70°, estofo 45 min depois da preia-mar. (Até à revisão final, só se limitava a longitude: a corrente fictícia aplicava-se de Viana ao Algarve. O `simular.mjs` de 29/09 guarda a sua caixa de sempre, a leste de 9°25' W sem limite de latitude, para o resultado de referência não mudar.)
+- **Corrente na barra** (só na barra e no estuário do Tejo: a caixa 38,60–38,72 N, 9,42–9,00 W — a leste de 9°25' W, os Cachopos, o Bugio e o rio até Lisboa; no resto da costa é 0): o modelo do `simular.mjs`, com a preia-mar calculada em vez da hora fixa. Corrente máxima de 1,8 nó, vazante para 250°, enchente para 70°, estofo 45 min depois da preia-mar. (Até à revisão final, só se limitava a longitude: a corrente fictícia aplicava-se de Viana ao Algarve. ~~O `simular.mjs` de 29/09 guarda a sua caixa de sempre, a leste de 9°25' W sem limite de latitude, para o resultado de referência não mudar.~~ Desde 01/10 (commit `cded545`) o `simular.mjs` usa a mesma caixa do plugin — a antiga punha a corrente da barra à chegada a Peniche — e o resultado de referência de 29/09 foi regravado: chegada às 05:01 UTC em vez das 05:00, 61,33 MN.)
 - **Ao largo:** a corrente da Open-Meteo.
 
 ## Simulação (`lib/passagem.js`)
@@ -123,7 +131,7 @@ Para cada afastamento d ∈ {3, 5, 8} MN:
 - **Velocidade à vela:** `modelos.preverVelocidade(modelo, x, stwPolar)`.
   - O `x` leva as variáveis de planeamento da secção "Ajustes à Parte 2", com o vento previsto em bruto.
   - `stwPolar` é a polar no vento **corrigido** (P50, ou o do cenário).
-  - Os rizos e a genoa decidem-se pelos limiares da simulação atual (rizo com rajadas > 20 nós, 2 rizos com rajadas > 26).
+  - Os rizos e a genoa decidem-se pelos limiares da simulação atual (rizo com rajadas > 20 nós, 2 rizos com rajadas ~~> 26~~ **> 27**: ver as Notas de implementação).
 - **Motor:**
   - **Quando entra:** com o vento corrigido abaixo de 7 nós, quando a velocidade à vela prevista fica abaixo de 3 nós, ou nas aproximações de saída e entrada.
   - **Regime:** `rpmCruzeiro` configurável, **2100** por omissão (a simulação de 29/09 usava 2000; o teste de reprodução passa 2000).
@@ -161,7 +169,7 @@ Para cada afastamento d ∈ {3, 5, 8} MN:
 - **Partidas:** agora, +3 h, +6 h, e a melhor janela de 3 em 3 h até +48 h.
   - Cada partida é combinada com os afastamentos e a propulsão (vela com motor abaixo de 7 nós, ou só motor).
   - Passagens que acabem depois do fim da previsão ficam de fora.
-- **3 melhores** por custo, entre as não excluídas.
+- **3 melhores** ~~por custo~~, entre as não excluídas: as recomendadas primeiro e, dentro de cada grupo, por custo (em "Sair agora", só por custo; ver as Notas de implementação).
 - **Veredicto:** Segue / Espera até às HH:MM / Não recomendado sozinho (com "acompanhado": Não recomendado) / Volta ou abriga-te em X, com 1–2 frases de porquê.
   - "Volta ou abriga-te em X" só aparece se o pedido vier já no mar (a mais de 0,5 MN de um porto).
 - **"Sair agora mesmo assim":** só com partida imediata, inclui as "não recomendadas" e junta os pontos de desistência.
@@ -300,12 +308,12 @@ nos commits do ramo `prototipo-3a`.
   contrário** (`twsPolar`): no pessimista, a velocidade à vela vem da polar no vento **P10**.
   Sem isto, mais vento no pessimista dava mais velocidade na polar, e o pessimista andava mais
   depressa do que devia.
-- 2 rizos entram com rajadas **> 27** nós (não > 26, como ainda diz a secção "Simulação" acima);
+- 2 rizos entram com rajadas **> 27** nós (não > 26, como dizia a secção "Simulação" acima);
   1 rizo com rajadas > 20 nós (`lib/passagem.js`, `PADRAO.rizo2`).
 - Regra da calma (`emCalma`, 30/09, decisão do Ivo): motor com vento < 10 nós **e** (ondas < 2 m,
   **ou** ondas ≤ 3 m com período ≥ 9 s — ondulação comprida, que a roda com travão aguenta).
   Desconhecido nunca é calma (sem vento ou sem ondas previstos, ou ondas entre 2 e 3 m sem
-  período conhecido). Corrigida também na secção "Segurança" acima (ver nota no topo do
+  período conhecido). Corrigida também na secção "Segurança" acima (ver a nota no topo do
   documento).
 - "Horas contra o vento" (usadas no custo) = minutos com vento ≥ 7 nós a ≤ 50° da proa,
   somados em horas (`lib/decisao.js`, `horasContraVento`; interpretação nossa — o desenho
