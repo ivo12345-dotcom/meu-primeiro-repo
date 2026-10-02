@@ -164,6 +164,9 @@ body.noite .plano-pausado .acao.stop { background: #000; color: var(--texto); ou
 
 /* Melhor rota (3b-1): faixa do veredicto, cartões, avisos, precauções e o mini-mapa. */
 .rolar { overflow: auto; }
+/* A faixa fixa por baixo da parte que rola (Resultado e Mapa): a resposta da última ação e os botões estão
+   sempre à vista a 1024×600 (revisão F3, Important 2). */
+.fixos { flex: 0 0 auto; display: flex; flex-direction: column; gap: .3rem; }
 .faixa { border-radius: .4rem; padding: .45rem .7rem; color: var(--faixa-texto); font-size: 1.1rem; }
 .faixa .vv { font-size: 2rem; }
 .faixa.verde { background: var(--segue); } .faixa.amarelo { background: var(--espera); }

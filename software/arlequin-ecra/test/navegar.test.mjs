@@ -476,6 +476,35 @@ test('auditoria I-25: depois de Recalcular no mar, o A calcular, o Resultado e o
   assert.equal(ctx.pedidos.filter(p => p.url.endsWith('/ativar')).length, 0, 'não ativou nada')
 })
 
+test('revisão F3, Important 2: no Resultado e no Mapa de um Recalcular no mar os botões (Ativar esta rota, Voltar ao leme, Mapa, Enviar plano, Sair agora) ficam numa faixa fixa, fora da parte que rola; o conteúdo comprido rola por cima deles', async () => {
+  const { ancestrais, dentroDeRolar } = await import('./ajuda-html.mjs')
+  const fixture = (n) => JSON.parse(gunzipSync(readFileSync(new URL(`./fixtures/resultado-${n}.json.gz`, import.meta.url))))
+  for (const nome of ['fuga', 'direta', 'canal']) {
+    const resultado = fixture(nome)
+    for (const noite of [false, true]) {
+      const ctx = await leme(PLANO, { noite })
+      Object.assign(ctx.estado, { vista: 'resultado', resultado, idCalculo: 'calc-2', selecionada: 0, novo: true, ultimoPedido: { destino: 'peniche', tripulacao: 'so', sairAgora: false } })
+      const html = melhor.render(ctx)
+      limpo(html, `resultado ${nome}`)
+      for (const acao of ['rota-ativar', 'rota-voltar-leme', 'rota-mapa', 'rota-plano', 'rota-sair-agora', 'rota-novo']) {
+        const cadeia = ancestrais(html, `data-acao="${acao}"`)
+        assert.ok(cadeia, `${nome}: o botão ${acao}`)
+        assert.ok(!dentroDeRolar(cadeia), `${nome}: ${acao} fora da parte que rola (${cadeia.map(a => a.classe).join(' > ')})`)
+      }
+      // a faixa e os cartões rolam na parte de cima da coluna da esquerda
+      for (const pedaco of ['class="faixa ', 'data-acao="rota-escolher"']) assert.ok(ancestrais(html, pedaco).some(a => a.rolar === 'resultado-esq'), `${nome}: ${pedaco} na parte que rola`)
+      // os avisos vermelhos no cimo da coluna da direita (com os botões fixos, por baixo dos cartões deixavam de se ver)
+      assert.ok(ancestrais(html, 'Avisos vermelhos').some(a => a.rolar === 'resultado-dir'), `${nome}: os avisos vermelhos na coluna da direita`)
+      assert.ok(html.indexOf('Avisos vermelhos') < html.indexOf('Linha do tempo'), `${nome}: os avisos vermelhos antes da linha do tempo`)
+      // o Mapa: o Voltar ao resultado, o Ativar e o Voltar ao leme fixos; os cartões rolam
+      ctx.estado.vista = 'mapa'
+      const mapa = melhor.render(ctx)
+      for (const acao of ['rota-voltar', 'rota-ativar', 'rota-voltar-leme']) assert.ok(!dentroDeRolar(ancestrais(mapa, `data-acao="${acao}"`)), `mapa ${nome}: ${acao} fixo`)
+      assert.ok(dentroDeRolar(ancestrais(mapa, 'data-acao="rota-escolher"')), `mapa ${nome}: os cartões rolam`)
+    }
+  }
+})
+
 test('auditoria I-25: sair da página e voltar com o plano aberto repõe o Leme (também do Resultado e do Mapa); sem plano nem rota ativa não há "Voltar ao leme"', async () => {
   const ctx = await leme(PLANO, { respostas: { [`POST ${ROTA}/calcular`]: { id: 'calc-2' }, [`GET ${ROTA}/resultado/calc-2`]: { estado: 'pronto', resultado: DIRETA } } })
   await melhor.acao('rota-recalcular', {}, ctx)
