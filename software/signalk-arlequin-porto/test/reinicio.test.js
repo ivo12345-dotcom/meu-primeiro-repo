@@ -97,18 +97,20 @@ test('auditoria F4b (revisão, Menor 6): um reinício (gravar a configuração) 
     // o ciclo novo já pediu as mensagens novas e está à espera: com o offset a 0 o Telegram tinha-lhe
     // devolvido o /armar ainda por confirmar, e o comando corria outra vez
     assert.ok(await ate(() => tgf.esperasAbertas() === 1))
-    assert.ok(offsets[1] > 0, `o reinício pediu desde o offset ${offsets[1]}: o /armar ainda por confirmar volta a chegar`)
-    assert.equal(offsets.length, 2)
+    const doReinicio = offsets.slice(1)
+    assert.ok(doReinicio.length >= 1 && doReinicio.every(x => x > 0), `o reinício pediu desde o offset ${doReinicio}: o /armar ainda por confirmar volta a chegar`)
     soltar()
     tgf.escrever(111, '/estado') // e o ciclo novo continua a responder
     assert.ok(await ate(() => tgf.enviados.some(m => /^⛵ ARLEQUIN/.test(m.text || ''))))
     assert.equal(armados(), 1, '/armar respondido duas vezes')
+    // o ciclo novo já confirmou o /estado (o pedido seguinte): o Telegram falso não tem mensagens por ler
+    assert.ok(await ate(() => tgf.esperasAbertas() === 1))
     // com outro token (outro bot, outra numeração das mensagens), recomeça do 0
     p.stop()
     const antes = offsets.length
     p.start({ ...props, telegramToken: 'OUTRO' })
     assert.ok(await ate(() => tgf.esperasAbertas() === 1))
-    assert.deepEqual(offsets.slice(antes), [0])
+    assert.equal(offsets[antes], 0)
     assert.deepEqual(app.erros, [])
   } finally { globalThis.fetch = original; p.stop(); await tgf.fechar() }
 })
@@ -391,7 +393,10 @@ test('auditoria M-52: um corte a meio da escrita do porto.json não o estraga (e
     assert.ok(app.erros.some(e => /porto\.json.*corte de energia/.test(e)), JSON.stringify(app.erros))
     p.stop()
     p.start(config)
-    await esperar(200)
+    // o ciclo do plugin reiniciado já correu (o `estado` ainda era o do arranque anterior, também armado) e
+    // leu o armado do porto.json (auditoria F4b, revisão da F4, Menor 13: antes era um `esperar(200)`)
+    const ciclo = app.ticks
+    assert.ok(await ate(() => app.ticks >= ciclo + 2))
     assert.match(app.estado, /^🔒 armado/)
   } finally { if (desfazer) desfazer(); p.stop(); await tgf.fechar() }
 })

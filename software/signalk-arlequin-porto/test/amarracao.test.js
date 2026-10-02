@@ -26,6 +26,13 @@ function appFalso () {
 }
 const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 async function ate (cond, ms = 8000) { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (cond()) return true; await esperar(20) } return false }
+// Espera que o ciclo do plugin corra mais n vezes (escreve o estado em cada uma): o que se vê, não o tempo
+// (auditoria F4b, revisão da F4, Menor 13: um `esperar(200)` antes de o relógio injetado saltar falhava
+// com a máquina carregada, quando o ciclo ainda não tinha visto o barco com a hora de antes do salto).
+async function ciclos (app, n = 2) {
+  const alvo = app.ticks + n
+  assert.ok(await ate(() => app.ticks >= alvo), `o ciclo do plugin não correu ${n} vezes`)
+}
 
 const MARINA_PENICHE = { latitude: 39.3522, longitude: -9.3760 }
 const MAR = { latitude: 39.20, longitude: -9.60 } // ao largo, entre Peniche e a Ericeira
@@ -41,13 +48,13 @@ test('auditoria I-20: o plugin grava o ponto sozinho na marina de Peniche, nunca
   try {
     app.pôr('navigation.position', MARINA_PENICHE)
     app.pôr('navigation.speedOverGround', 0)
-    await esperar(200) // o plugin vê-o parado
+    await ciclos(app) // o plugin vê-o parado, com a hora de antes do salto
     agora += 31 * MIN
     assert.ok(await ate(() => / · amarrado · /.test(app.estado)), app.estado)
     // o /largar com o barco ainda parado na marina: o ponto não volta logo (só com mais 30 min parado)
     tgf.escrever(111, '/largar')
     assert.ok(await ate(() => textos().includes('⚓ Ponto de amarração apagado')))
-    await esperar(300)
+    await ciclos(app, 3)
     assert.match(app.estado, / · sem ponto · /)
     agora += 31 * MIN
     assert.ok(await ate(() => / · amarrado · /.test(app.estado)), app.estado)
@@ -55,9 +62,9 @@ test('auditoria I-20: o plugin grava o ponto sozinho na marina de Peniche, nunca
     assert.ok(await ate(() => textos().filter(t => t === '⚓ Ponto de amarração apagado').length === 2))
     // no mar, 1 h parado: nunca grava sozinho
     app.pôr('navigation.position', MAR)
-    await esperar(200)
+    await ciclos(app)
     agora += 60 * MIN
-    await esperar(400)
+    await ciclos(app, 3) // o plugin viu a hora depois do salto
     assert.match(app.estado, / · sem ponto · /)
     // à mão grava em qualquer sítio
     tgf.escrever(111, '/amarrar')
@@ -193,7 +200,7 @@ test('auditoria I-20: um fundeadouro posto na configuração (lugares) conta com
   try {
     app.pôr('navigation.position', { latitude: BOIA.latitude + 300 / 111320, longitude: BOIA.longitude })
     app.pôr('navigation.speedOverGround', 0)
-    await esperar(200)
+    await ciclos(app)
     agora += 31 * MIN
     assert.ok(await ate(() => / · amarrado · /.test(app.estado)), app.estado)
   } finally { p.stop() }
