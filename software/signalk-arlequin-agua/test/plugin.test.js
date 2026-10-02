@@ -79,6 +79,29 @@ test('encher, pedalar, aviso a 20%, e o nível sobrevive a um reinício', async 
   assert.ok(Math.abs(app2.valores['tanks.freshWater.0.currentVolume'] * 1000 - 13.5) < 1e-9)
 })
 
+// Auditoria I-21: um aviso ativo quando o plugin para (reinício pelo Admin UI) ficava na árvore para
+// sempre; e um que ficou preso de antes nunca saía.
+test('I-21: ao parar, os avisos ativos passam a normal; ao arrancar, os presos na árvore também', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({})
+  const r = rotas(p)
+  await chamar(r.post['/encher'], { id: 0 })
+  app.self['tanks.freshWater.0.pedaladas'] = 0
+  segundos(t, 2)
+  app.self['tanks.freshWater.0.pedaladas'] = 200 // 70 L de 80: 10 L
+  segundos(t, 2)
+  p.stop()
+  assert.deepEqual(app.notificacoes.filter(n => n.path === 'notifications.tanks.freshWater.0.baixo').map(n => n.state), ['warn', 'normal'])
+  const app2 = appFalso()
+  app2.self['notifications.tanks.freshWater.1.baixo'] = { state: 'warn', method: ['visual', 'sound'], message: 'Água a acabar' }
+  const p2 = criar(app2)
+  p2.start({})
+  p2.stop()
+  assert.deepEqual(app2.notificacoes.map(n => `${n.path}:${n.state}`), ['notifications.tanks.freshWater.1.baixo:normal'])
+})
+
 test('calibrar a bomba com uma jarra de 1 L grava os litros por pedalada', async (t) => {
   t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
   const app = appFalso()

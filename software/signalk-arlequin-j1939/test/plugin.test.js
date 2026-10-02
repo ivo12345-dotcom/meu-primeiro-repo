@@ -207,10 +207,37 @@ test('K-07: os alarmes do mapa do MDI (65417) limpam quando a PGN deixa de chega
   enviar(app, 65417, '0100000000000000')
   t.mock.timers.tick(1000)
   for (let s = 0; s < 7; s++) t.mock.timers.tick(1000) // ignição desligada: o MDI cala-se
-  p.stop()
   const seq = (id) => app.notificacoes.filter(n => n.path === `notifications.propulsion.main.${id}`).map(n => n.state)
   assert.deepEqual(seq('lowOilPressure'), ['alarm', 'normal'])
   assert.deepEqual(seq('overTemperature'), ['alarm'])
+  p.stop()
+})
+
+// Auditoria I-21: um alarme ativo quando o plugin para (reinício pelo Admin UI) ficava na árvore para
+// sempre, com o apito; e um que ficou preso de antes nunca saía.
+test('I-21: ao parar, os alarmes ativos (calculados e do mapa do MDI) passam a normal', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ fonte: 'simulador', mapaAlarmes: [{ byte: 0, bit: 0, id: 'lowOilPressure', mensagem: 'Pressão de óleo baixa' }] })
+  enviar(app, 65262, '87FFFFFFFFFFFFFF') // 95 °C
+  enviar(app, 65417, '0100000000000000')
+  t.mock.timers.tick(1000)
+  p.stop()
+  const ultimo = Object.fromEntries(app.notificacoes.map(n => [n.path.split('.').pop(), n.state]))
+  assert.deepEqual(ultimo, { overTemperature: 'normal', lowOilPressure: 'normal' })
+})
+
+test('I-21: ao arrancar, as notificações deste plugin presas na árvore passam a normal', () => {
+  const app = appFalso()
+  const presas = { 'notifications.propulsion.main.overTemperature': 'alarm', 'notifications.propulsion.main.lowOilPressure': 'alarm', 'notifications.propulsion.main.alternadorNaoCarrega': 'normal' }
+  app.getSelfPath = (p) => (p in presas ? { value: { state: presas[p], method: [], message: 'x' } } : undefined)
+  const p = criar(app)
+  p.start({ fonte: 'simulador', mapaAlarmes: [{ byte: 0, bit: 0, id: 'lowOilPressure', mensagem: 'Pressão de óleo baixa' }] })
+  p.stop()
+  assert.deepEqual(app.notificacoes.map(n => `${n.path}:${n.state}`).sort(), [
+    'notifications.propulsion.main.lowOilPressure:normal', 'notifications.propulsion.main.overTemperature:normal'
+  ])
 })
 
 test('sobreaquecimento vira notificação; o mapa do MDI também', (t) => {
@@ -225,8 +252,8 @@ test('sobreaquecimento vira notificação; o mapa do MDI também', (t) => {
   const caminhos = app.notificacoes.map(n => `${n.path}:${n.state}`)
   assert.ok(caminhos.includes('notifications.propulsion.main.overTemperature:alarm'), caminhos.join(' '))
   assert.ok(caminhos.includes('notifications.propulsion.main.lowOilPressure:alarm'), caminhos.join(' '))
-  // contrato C1: o apito vai no valor publicado
-  const apito = Object.fromEntries(app.notificacoes.map(n => [n.path.split('.').pop(), n.apito]))
+  // contrato C1: o apito vai no valor publicado (dos alarmes; o "normal" do fim não o leva)
+  const apito = Object.fromEntries(app.notificacoes.filter(n => n.state === 'alarm').map(n => [n.path.split('.').pop(), n.apito]))
   assert.deepEqual(apito, { overTemperature: 'continuo', lowOilPressure: 'curto' })
 })
 

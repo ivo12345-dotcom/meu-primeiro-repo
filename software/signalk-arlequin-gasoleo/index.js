@@ -79,6 +79,13 @@ module.exports = function (app) {
     ])
   }
 
+  // Um alarme não pode ficar preso na árvore (auditoria I-21): no stop() os ativos passam a normal; no
+  // start() também os que ficaram de antes (a regra volta a dar o alarme se ainda for verdade).
+  const IDS = ['reserva', 'fuga', 'consumoAnormal', 'sondaPerdida']
+  function normal (ids) {
+    if (ids.length) publicar(ids.map(id => ({ path: `notifications.tanks.fuel.0.${id}`, value: { state: 'normal', method: [], message: 'Normal' } })))
+  }
+
   function avisarSonda (perdida) {
     if (perdida === avisoSonda) return
     avisoSonda = perdida
@@ -165,6 +172,7 @@ module.exports = function (app) {
     ultimoAbastecimento = null
     semSondaDesde = null
     avisoSonda = false
+    normal(IDS.filter(id => { const s = app.getSelfPath?.(`notifications.tanks.fuel.0.${id}`)?.value?.state; return s && s !== 'normal' }))
     const dir = app.getDataDirPath()
     fs.mkdirSync(dir, { recursive: true })
     ficheiroAbast = path.join(dir, 'abastecimentos.jsonl')
@@ -180,6 +188,9 @@ module.exports = function (app) {
   plugin.stop = function () {
     if (temporizador) clearInterval(temporizador)
     temporizador = null
+    normal([...Object.keys(estado.ativos), ...(avisoSonda ? ['sondaPerdida'] : [])])
+    estado = { ...estado, ativos: {} }
+    avisoSonda = false
   }
 
   plugin.registerWithRouter = function (router) {
@@ -199,6 +210,7 @@ module.exports = function (app) {
     const aplicarTabela = (tabela, capacidadeL) => {
       o = { ...o, tabela, ...(capacidadeL ? { capacidadeL } : {}) }
       app.savePluginOptions?.(o, (e) => { if (e) app.error(`não guardei a tabela: ${e.message || e}`) })
+      normal(Object.keys(estado.ativos)) // os alarmes do nível antigo não ficam presos (I-21): voltam a ser julgados
       estado = novoEstado() // o nível volta a sair da tabela nova
       try { fs.unlinkSync(ficheiroNivel) } catch { }
     }
