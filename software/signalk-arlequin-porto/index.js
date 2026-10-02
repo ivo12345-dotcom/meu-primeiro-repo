@@ -71,7 +71,10 @@ function escreverAtomico (ficheiro, texto) {
   }
 }
 const FORA_DA_LISTA = 'já não está nos "Contactos do plano" do plugin porto'
-const AVISO_PORTO_ILEGIVEL = '⚠️ Perdi o estado do porto (porto.json ilegível): o alarme de intrusão ficou desarmado e sem ponto de amarração. Arma outra vez com /armar.'
+// os avisos ao Ivo de um ficheiro de estado ilegível (o ficheiro volta a gravar-se logo: o aviso não se
+// repete em cada arranque; auditoria F4b, revisão da F4, Menores 4, 12 e 14)
+const AVISO_PORTO_ILEGIVEL = '⚠️ Perdi o estado do porto (porto.json ilegível): o alarme de intrusão ficou desarmado e o ponto de amarração apagado. Arma-o outra vez com /armar.'
+const AVISO_ENCAMINHADOR_ILEGIVEL = '⚠️ Perdi a lista dos alarmes do Telegram (encaminhador.json ilegível): as mensagens por entregar perderam-se e os alarmes ainda ativos vão chegar outra vez.'
 const MAX_CODIGOS = 500 // os desconhecidos de que se guarda a hora do código (os mais antigos saem)
 const textoCodigo = (chatId) => `Para receberes os planos do ARLEQUIN, dá este código ao Ivo: ${chatId}`
 
@@ -445,6 +448,7 @@ module.exports = function (app, deps = {}) {
   // que desapareceu passa a normal e um alarme que volte segue (revisão final C2). Escrita atómica (o
   // .tmp, o fsync e o rename).
   let ficheiroEnc
+  // → { enc, erro } (erro: o ficheiro existe mas não se lê; sem ficheiro, começa vazio em silêncio)
   function lerEncaminhador () {
     try {
       const x = JSON.parse(fs.readFileSync(ficheiroEnc, 'utf8'))
@@ -452,10 +456,9 @@ module.exports = function (app, deps = {}) {
       const base = novoEncaminhador()
       for (const k of Object.keys(base)) if (x[k] && typeof x[k] === 'object' && !Array.isArray(x[k])) base[k] = x[k]
       base.porEnviar = filaValida(x.porEnviar)
-      return base
+      return { enc: base, erro: null }
     } catch (e) {
-      if (e.code !== 'ENOENT') app.error(`encaminhador.json ilegível (começa vazio): ${e.message}`)
-      return novoEncaminhador()
+      return { enc: novoEncaminhador(), erro: e.code === 'ENOENT' ? null : e.message }
     }
   }
   function gravarEncaminhador () {
@@ -582,14 +585,24 @@ module.exports = function (app, deps = {}) {
     ficheiro = path.join(dir, 'porto.json')
     const lido = lerPorto()
     persist = lido.persist
-    if (lido.erro) app.error(`porto.json ilegível (começa desarmado e sem ponto de amarração): ${lido.erro}`)
     estado = novoEstado()
     estado.amarracao.ponto = persist.ponto
     estado.ativos = ativosNoArranque()
     persist.ativos = { ...estado.ativos }
+    // um porto.json ilegível grava-se logo de novo (o tick só grava quando algo muda: sem isto, o aviso
+    // repetia-se em cada arranque)
+    if (lido.erro) {
+      app.error(`porto.json ilegível (${lido.erro}): o alarme de intrusão ficou desarmado e o ponto de amarração apagado; gravei um novo`)
+      guardar()
+    }
     publicar(comoNotificacao(estado.ativos))
     ficheiroEnc = path.join(dir, 'encaminhador.json')
-    enc = lerEncaminhador()
+    const lidoEnc = lerEncaminhador()
+    enc = lidoEnc.enc
+    if (lidoEnc.erro) {
+      app.error(`encaminhador.json ilegível (${lidoEnc.erro}): perdi as mensagens por entregar; gravei um novo`)
+      gravarEncaminhador()
+    }
     falhasFila = 0
     recusadasFila = 0
     proximaTentativa = 0
@@ -598,10 +611,11 @@ module.exports = function (app, deps = {}) {
     offset = 0
     aCorrer = true
     tg = o.telegramToken ? criarTelegram({ token: o.telegramToken, base: o.telegramBase, ...(deps.limiteTelegramMs ? { limiteMs: deps.limiteTelegramMs } : {}) }) : null
-    // o Ivo sabe que o alarme ficou desarmado (pela fila: depois de um corte de energia o router do 4G
-    // arranca depois do Pi)
-    if (lido.erro && tg && chatsAutorizados().length) {
-      enc = { ...enc, porEnviar: naFila(enc.porEnviar, [AVISO_PORTO_ILEGIVEL]) }
+    // o Ivo sabe que o alarme ficou desarmado, ou que os alarmes ativos vão chegar outra vez (pela fila:
+    // depois de um corte de energia o router do 4G arranca depois do Pi)
+    const avisos = [...(lido.erro ? [AVISO_PORTO_ILEGIVEL] : []), ...(lidoEnc.erro ? [AVISO_ENCAMINHADOR_ILEGIVEL] : [])]
+    if (avisos.length && tg && chatsAutorizados().length) {
+      enc = { ...enc, porEnviar: naFila(enc.porEnviar, avisos) }
       gravarEncaminhador()
     }
     temporizadores = [setInterval(tick, tickMs), setInterval(encaminharAlarmes, encaminharMs)]
