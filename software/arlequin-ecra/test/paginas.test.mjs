@@ -701,6 +701,22 @@ test('auditoria M-43: a nota do Diário fica no estado (um desenho não a apaga)
   assert.match(diario.render(ctx), /value="&quot;&lt;b&gt;"/)
 })
 
+// ---------- auditoria M-45 e M-48 ----------
+test('auditoria M-45: a página diz que é pt-PT (lang="pt-PT")', () => {
+  assert.match(readFileSync(new URL('../public/index.html', import.meta.url), 'utf8'), /<html lang="pt-PT">/)
+})
+
+test('auditoria M-48: o cartão da AI mostra os 4 modelos (também a direção do vento, com o "Voltar atrás")', async () => {
+  const ia = { modelos: { velocidade: { versao: null, versoes: [] }, ventoForca: { versao: null, versoes: [] }, ventoDirecao: { versao: 'v0002', versoes: ['v0001', 'v0002'], podeVoltar: true, horas: 7, frases: ['o vento real roda 8° para a direita do previsto'] }, consumo: { versao: null, versoes: [] } } }
+  const html = diario.render(contexto(store, { ia, iaEm: Date.now() }))
+  assert.match(html, /Direção do vento<\/td><td>v0002 · 7 h · o vento real roda 8°/)
+  assert.match(html, /data-acao="ia-voltar" data-modelo="ventoDirecao"/)
+  assert.equal((html.match(/<tr><td>/g) || []).length, 4, 'os 4 modelos')
+  const ctx = { ...contexto(store, { ia, iaEm: Date.now() }), pedir: async () => ({ ok: true, versao: 'v0001' }) }
+  await diario.acao('ia-voltar', { modelo: 'ventoDirecao' }, ctx)
+  assert.equal(ctx.estado.msg, 'Direção do vento voltou à v0001')
+})
+
 test('Diário: cartão da AI mostra mensagem genérica para erro sem status', async () => {
   const estado = {}
   const ctx = {
