@@ -68,6 +68,20 @@ test('10: só corre num SignalK de dev: a rota com modoTeste e horaSimulada, e o
   assert.deepEqual(verificarDev({ rota: ROTA_DEV, porto: { enabled: false, configuration: { telegramBase: 'https://api.telegram.org', contactosPlano: [{ nome: 'Mãe', chatId: '1' }] } } }), [])
 })
 
+// Auditoria I-35 (contrato C9): o que a viagem injeta (posição, hora, SoC, gasóleo falsos) tem de ficar
+// "simulado" na caixa negra (o simulado nunca treina a AI).
+test('I-35: os deltas da viagem levam a marca de fonte do simulador e a caixa negra marca-os simulados', () => {
+  const { deltaViagem } = require('../viagem-acelerada')
+  const est = require('../../signalk-arlequin-caixanegra/lib/estado')
+  const d = deltaViagem(T0, [{ path: 'navigation.position', value: { latitude: 38.69, longitude: -9.23 } }])
+  assert.equal(d.context, 'vessels.self')
+  assert.equal(d.updates[0].$source, 'arlequin-simulador.viagem-acelerada')
+  assert.equal(d.updates[0].timestamp, iso(T0))
+  const e = est.novoEstado()
+  est.aplicar(e, d, 'vessels.urn:mrn:signalk:uuid:arlequin', 1000)
+  assert.equal(est.simuladoRecente(e, 1000), true)
+})
+
 test('10: limpar (Ctrl-C ou erro a meio): termina o plano, desativa a rota e repõe a hora (o navigation.datetime de agora)', async () => {
   const pedidos = []
   const enviados = []
