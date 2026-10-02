@@ -3,7 +3,7 @@
 
 import { mostradorVento } from '../lib/desenho.js'
 import { percentagem } from '../lib/polar.js'
-import { tile, ventoTexto, tileGasoleo, motorResumo, linhaAlvo, proximoWp, velocidade, distancia, duracao, num, rumo, anguloBordo, ok, esc } from './comum.js'
+import { tile, ventoTexto, tileGasoleo, motorResumo, linhaAlvo, proximoWp, proa, marcaMag, velocidade, distancia, duracao, num, rumo, anguloBordo, ok, esc } from './comum.js'
 
 export default {
   render (ctx) {
@@ -13,6 +13,7 @@ export default {
     const m = motorResumo(ctx)
     const wp = proximoWp(ctx)
     const alvos = ctx.alvos.slice(0, 2)
+    const pr = proa(ctx)
     const xteTxt = ok(wp.xte) ? `XTE ${distancia(Math.abs(wp.xte), 2)} MN ${wp.xte > 0 ? 'EB' : 'BB'}` : ''
     const painel = `<div class="col estica">
 <div class="tile" style="flex-direction:row;align-items:center;justify-content:flex-start;gap:.8rem;">
@@ -20,7 +21,7 @@ export default {
   <div style="flex:1;"><div class="lab">Vento aparente</div><div class="vv">${w.aparente}</div><div class="azul">${w.real}</div></div>
 </div>
 <div class="g3">
-  ${tile('Proa', rumo(ctx.v('navigation.headingTrue')))}
+  ${tile(`Proa${marcaMag(pr)}`, rumo(pr?.valor))}
   ${tile('COG · SOG', `${rumo(ctx.v('navigation.courseOverGroundTrue'))} · ${velocidade(ctx.v('navigation.speedOverGround'))}`)}
   ${tile('Fundo', `${num(ctx.v('environment.depth.belowTransducer'), 0)} m`)}
   ${tile('Vel. água', `${velocidade(stw)} nós`)}

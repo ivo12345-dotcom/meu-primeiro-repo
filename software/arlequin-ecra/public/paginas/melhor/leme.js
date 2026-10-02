@@ -8,7 +8,7 @@
 import { angulosOtimos } from '../../lib/polar.js'
 import { correcaoLeme, bordejo } from '../../lib/rumo.js'
 import { barraXte } from '../../lib/desenho.js'
-import { proximoWp, velocidade, distancia, duracao, rumo, num, graus, ok } from '../comum.js'
+import { proximoWp, proa as proaDe, marcaMag, velocidade, distancia, duracao, rumo, num, graus, ok } from '../comum.js'
 import { esc } from '../../lib/rota-texto.js'
 import * as navegar from './navegar.js'
 
@@ -17,7 +17,9 @@ const NOVO = '<button class="acao" data-acao="rota-novo">Novo cálculo</button>'
 export default {
   render (ctx) {
     const wp = proximoWp(ctx)
-    const proa = ctx.v('navigation.headingTrue')
+    // a proa verdadeira, ou a magnética + a declinação (auditoria I-11)
+    const pr = proaDe(ctx)
+    const proa = pr?.valor ?? null
     const twd = ctx.v('environment.wind.directionTrue')
     const tws = ctx.v('environment.wind.speedTrue')
     const plano = navegar.render(ctx)
@@ -62,7 +64,7 @@ ${plano}
   <div class="lab" style="font-size:1.2rem;">Rumo a seguir</div>
   <div class="vvv" style="font-size:6rem;">${rumo(alvo)}</div>
   <div class="vvv" style="font-size:4.6rem;margin-top:.4rem;">${grande}</div>
-  <div style="font-size:1.3rem;margin-top:.5rem;">proa atual ${rumo(proa)}</div>
+  <div style="font-size:1.3rem;margin-top:.5rem;">proa atual ${rumo(proa)}${marcaMag(pr)}</div>
 </div>
 ${bordos}
 </div>

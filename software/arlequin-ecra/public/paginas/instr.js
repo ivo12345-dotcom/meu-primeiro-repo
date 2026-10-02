@@ -3,7 +3,7 @@
 
 import { mostradorVento, polarSvg } from '../lib/desenho.js'
 import { percentagem, velocidadeAlvo } from '../lib/polar.js'
-import { ventoTexto, velocidade, num, rumo, anguloBordo, graus, nos, ok } from './comum.js'
+import { ventoTexto, proa, marcaMag, velocidade, num, rumo, anguloBordo, graus, nos, ok } from './comum.js'
 import { hpa, celsius } from '../lib/formato.js'
 
 export default {
@@ -22,6 +22,7 @@ export default {
     const tend = !t ? 'a medir (1 h)' : `${t.sentido === 'sobe' ? '▲' : t.sentido === 'desce' ? '▼' : '▬'} ${num(Math.abs(t.hpa3h), 1)} hPa/3 h`
     const tIn = ctx.v('environment.inside.temperature')
     const hIn = ctx.v('environment.inside.relativeHumidity')
+    const pr = proa(ctx)
     return `<div class="tile centro" style="flex:1.15;">
   <div style="width:min(30rem,90%);aspect-ratio:1;">${mostradorVento(ctx.v('environment.wind.angleApparent'), twa)}</div>
   <div class="vv">${w.aparente}</div><div class="lab">aparente</div>
@@ -35,7 +36,7 @@ export default {
 </div>
 <div class="col estica" style="flex:1;">
   <div class="tile"><div class="lab">Desempenho</div><div class="vvv amarelo">${ok(perc) ? num(perc * 100, 0) + ' %' : '—'}</div><div class="lab">da polar · alvo ${velocidade(alvo)} nós</div></div>
-  <div class="tile"><div class="lab">Proa · fundo</div><div class="vv">${rumo(ctx.v('navigation.headingTrue'))} · ${num(ctx.v('environment.depth.belowTransducer'), 0)} m</div>
+  <div class="tile"><div class="lab">Proa${marcaMag(pr)} · fundo</div><div class="vv">${rumo(pr?.valor)} · ${num(ctx.v('environment.depth.belowTransducer'), 0)} m</div>
     <div class="lab">adorno ${ok(roll) ? anguloBordo(roll) : '—'} · abatimento ${anguloBordo(ctx.v('navigation.leewayAngle'))}</div></div>
   <div class="tile"><div class="lab">Barómetro · corrente</div><div class="vv" style="font-size:1.6rem;">${p ? num(hpa(p), 0) : '—'} hPa</div><div>${tend}</div>
     <div class="azul">corrente ${ok(cur?.drift) ? velocidade(cur.drift) + ' nós → ' + rumo(cur.setTrue) : '—'}</div>

@@ -4,7 +4,7 @@
 // terminar. Tudo no diário.
 
 import { correcaoLeme, rumoAproar } from '../lib/rumo.js'
-import { rumo, velocidade, ok, esc } from './comum.js'
+import { rumo, velocidade, ok, esc, proa as proaDe, marcaMag } from './comum.js'
 import { motivo } from '../lib/erros.js'
 
 const PASSOS = ['Liga o motor', 'Aproa ao vento', 'Recolhe as velas', 'Terminado']
@@ -28,7 +28,8 @@ export default {
     const rpm = ctx.v('propulsion.main.revolutions')
     const motor = ok(rpm) && rpm > 5
     const twd = ctx.v('environment.wind.directionTrue')
-    const proa = ctx.v('navigation.headingTrue')
+    const pr = proaDe(ctx)
+    const proa = pr?.valor ?? null
     const alvo = rumoAproar(twd)
     const c = correcaoLeme(alvo, proa)
     const aproado = c && c.graus <= 10
@@ -41,7 +42,7 @@ export default {
       : p === 1
       ? `<div class="tile centro" style="flex:1;"><div class="lab" style="font-size:1.2rem;">Aproa ao vento: rumo</div><div class="vvv" style="font-size:6rem;">${rumo(alvo)}</div>
 <div class="vvv" style="font-size:4.4rem;margin-top:.4rem;">${!c ? '—' : aproado ? '<span class="ok">✓ aproado</span>' : c.lado === 'BB' ? `◀ ${c.graus}° BB` : `${c.graus}° EB ▶`}</div>
-<div style="font-size:1.2rem;margin-top:.4rem;">proa ${rumo(proa)} · vento real ${velocidade(ctx.v('environment.wind.speedTrue'))} nós</div></div>`
+<div style="font-size:1.2rem;margin-top:.4rem;">proa ${rumo(proa)}${marcaMag(pr)} · vento real ${velocidade(ctx.v('environment.wind.speedTrue'))} nós</div></div>`
       : p === 2
         ? '<div class="tile centro" style="flex:1;"><div class="vv">Mantém aproado e recolhe as velas.</div><div style="font-size:1.2rem;margin-top:.5rem;">Quando acabares, carrega em "Velas recolhidas".</div></div>'
         : p === 3
@@ -65,7 +66,7 @@ ${!motor ? '' : '<div class="ok" style="margin-top:.4rem;">Motor já está ligad
       try { await ctx.logbook(t, 'navigation'); e.msg = `Diário: ${t}`; e.msgErro = false } catch (err) { e.msg = `Diário não gravou: ${motivo(err, 'o diário')}`; e.msgErro = true }
     }
     if (nome === 'comecar') { e.passo = 0; await registar('Início de recolher velas') }
-    if (nome === 'aproado') { e.passo = 2; await registar(`Aproado ao vento (${rumo(ctx.v('navigation.headingTrue'))})`) }
+    if (nome === 'aproado') { const pr = proaDe(ctx); e.passo = 2; await registar(`Aproado ao vento (${rumo(pr?.valor)}${marcaMag(pr)})`) }
     if (nome === 'recolhidas') { e.passo = 3; await registar('Velas recolhidas') }
     if (nome === 'cancelar') { e.passo = -1; await registar('Recolher velas cancelado') }
   }

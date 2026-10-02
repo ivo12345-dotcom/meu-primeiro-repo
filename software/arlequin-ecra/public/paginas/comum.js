@@ -66,6 +66,20 @@ export function linhaAlvo (a) {
   return `<div class="linha ${cls}"><span>${esc(a.name || a.mmsi)}</span><span>${cpaTxt}</span></div>`
 }
 
+// A proa verdadeira (auditoria I-11): navigation.headingTrue; sem ela, a magnética + a declinação
+// (navigation.magneticVariation, a leste positiva: verdadeira = magnética + declinação), porque as bússolas
+// do barco são magnéticas. Sem nenhuma, ou sem a declinação, null ("—"). → { valor (rad), magnetica } | null
+export function proa (ctx) {
+  const v = ctx.v('navigation.headingTrue')
+  if (ok(v)) return { valor: v, magnetica: false }
+  const m = ctx.v('navigation.headingMagnetic')
+  const d = ctx.v('navigation.magneticVariation')
+  if (ok(m) && ok(d)) return { valor: (((m + d) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI), magnetica: true }
+  return null
+}
+// " (mag.)" quando a proa vem da bússola magnética (a declinação pode estar errada uns graus)
+export const marcaMag = (p) => (p?.magnetica ? ' (mag.)' : '')
+
 export function proximoWp (ctx) {
   const dist = ctx.v('navigation.course.calcValues.distance') ?? ctx.v('navigation.courseRhumbline.nextPoint.distance')
   const rumoWp = ctx.v('navigation.course.calcValues.bearingTrue') ?? ctx.v('navigation.courseRhumbline.nextPoint.bearingTrue')
