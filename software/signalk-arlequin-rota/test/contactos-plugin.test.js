@@ -9,7 +9,8 @@ const path = require('node:path')
 const pa = require('../lib/plano-ativo')
 const prev = require('../lib/previsao')
 const { appFalso, plugin, chamar, calcular, fetchFalso, caisDe, costa, H, posNoRasto } = require('./ajuda')
-const { horaLisboa, asHoras } = require('../lib/plano')
+const plano_ = require('../lib/plano')
+const { horaLisboa, asHoras } = plano_
 
 const MIN = 60000
 const NO = 1852 / 3600
@@ -1021,5 +1022,41 @@ test('auditoria I-01 (sonda S3b, decisão n.º 14): entrega parcial — os atras
   await s.ciclo(0)
   assert.equal(s.app.self[ALARME_TERRA].state, 'alert')
   assert.equal(s.app.self[ALARME_TERRA].message, `Os contactos em terra ligam ao MRCC ${asHoras(pai, s.agora())}: avisa-os ou Terminar`)
+  s.p.stop()
+})
+
+// ---------- auditoria I-02 (decisão n.º 15): o plano enviado e nunca ativado ----------
+test('auditoria I-02 (sonda S9, decisão n.º 15): o plano entregue à Mãe e nunca ativado — 60 min antes da hora de alarme o aviso de terra "ativa-o ou avisa-os"; o GET /plano-ativo dá 404 com envioEmTerra; passada a hora de alarme, apaga-se', async () => {
+  const s = await enviarSem()
+  const alarme = plano_.horaAlarme(s.resultado.alternativas[0])
+  let g = await chamar(s.r.get['/plano-ativo'])
+  assert.equal(g.code, 404)
+  assert.deepEqual(g.envioEmTerra, { idCalculo: s.id, indice: 0, contactos: ['Mãe'], alarme: new Date(alarme).toISOString() })
+  s.acertar(alarme - 62 * MIN)
+  s.avancar(MIN); await s.p.cicloNavegar()
+  assert.equal(s.app.self[ALARME_TERRA]?.state ?? 'normal', 'normal', '61 min antes ainda não')
+  s.avancar(2 * MIN); await s.p.cicloNavegar()
+  assert.equal(s.app.self[ALARME_TERRA].state, 'alert')
+  assert.equal(s.app.self[ALARME_TERRA].apito, 'curto')
+  assert.equal(s.app.self[ALARME_TERRA].message, `Os contactos em terra têm um plano com alarme ${asHoras(alarme, s.agora())} e não há plano ativo: ativa-o ou avisa-os`)
+  // passada a hora de alarme, terra já não espera: o aviso apaga-se
+  s.acertar(alarme + MIN); await s.p.cicloNavegar()
+  assert.equal(s.app.self[ALARME_TERRA].state, 'normal')
+  assert.equal((await chamar(s.r.get['/plano-ativo'])).envioEmTerra, null)
+  s.p.stop()
+})
+
+test('auditoria I-02: com um plano ativo aberto que não é o que terra tem (o Ivo mandou outro plano pelo Telegram e não o ativou), o aviso conta pela hora de alarme mais cedo das duas e diz que é o plano de outra alternativa', async () => {
+  const s = await preparar({ enviar: false })
+  // ativado sem enviar; depois o Ivo manda o plano da 2.ª alternativa e não a ativa
+  await chamar(s.r.post['/plano-telegram'], { body: { id: s.id, alternativa: 1 } })
+  const alarme = plano_.horaAlarme(s.resultado.alternativas[1])
+  const g = await chamar(s.r.get['/plano-ativo'])
+  assert.equal(g.code, 200)
+  assert.equal(g.envio, null)
+  assert.deepEqual(g.envioEmTerra, { idCalculo: s.id, indice: 1, contactos: ['Mãe'], alarme: new Date(alarme).toISOString() })
+  s.acertar(alarme - 30 * MIN); await s.ciclo(0)
+  assert.equal(s.app.self[ALARME_TERRA].state, 'alert')
+  assert.equal(s.app.self[ALARME_TERRA].message, `Os contactos em terra têm o plano de outra alternativa, com alarme ${asHoras(alarme, s.agora())}: avisa-os`)
   s.p.stop()
 })

@@ -193,12 +193,19 @@ function avaliar (estado0, entrada, agora) {
 // fecho (auditoria K-12): com o plano já fechado, o "cheguei bem" ('chegada') ou a "viagem terminada"
 // ('terminado') deste envio ainda por entregar a terra (sem rede na marina, o porto desligado): o aviso
 // fica, também depois da hora de alarme, até a mensagem chegar.
+// semPlano (decisão do Ivo n.º 15, auditoria I-02): os contactos em terra têm um plano entregue (o último,
+// ultimo-envio.json) que não é o do plano ativo — 'nenhum' (não há plano ativo: o Ivo segue só o OpenCPN) ou
+// 'outro' (o plano ativo é outro); passada a hora de alarme desse plano terra já não espera e apaga-se.
 const FECHO_TEXTO = Object.freeze({ chegada: 'O «cheguei bem»', terminado: 'A «viagem terminada»' })
-function alarmeTerra ({ aberto, alarme, fecho = null }, agora) {
-  if (!(aberto || fecho) || !Number.isFinite(alarme) || agora < alarme - LIMITES.alarmeTerraMin * MIN) return normal()
+function alarmeTerra ({ aberto, alarme, fecho = null, semPlano = null }, agora) {
+  if (!(aberto || fecho || semPlano) || !Number.isFinite(alarme) || agora < alarme - LIMITES.alarmeTerraMin * MIN) return normal()
+  if (semPlano && agora >= alarme) return normal()
   const chave = new Date(alarme).toISOString()
-  if (fecho) return aviso('alert', `${FECHO_TEXTO[fecho] ?? 'A mensagem de fecho'} ainda não chegou a terra: os contactos ligam ao MRCC ${asHoras(alarme, agora)} — liga-lhes`, { apito: 'curto', chave: `${chave} ${fecho}` })
-  return aviso('alert', `Os contactos em terra ligam ao MRCC ${asHoras(alarme, agora)}: avisa-os ou Terminar`, { apito: 'curto', chave })
+  const quando = asHoras(alarme, agora)
+  if (fecho) return aviso('alert', `${FECHO_TEXTO[fecho] ?? 'A mensagem de fecho'} ainda não chegou a terra: os contactos ligam ao MRCC ${quando} — liga-lhes`, { apito: 'curto', chave: `${chave} ${fecho}` })
+  if (semPlano === 'outro') return aviso('alert', `Os contactos em terra têm o plano de outra alternativa, com alarme ${quando}: avisa-os`, { apito: 'curto', chave: `${chave} outro` })
+  if (semPlano) return aviso('alert', `Os contactos em terra têm um plano com alarme ${quando} e não há plano ativo: ativa-o ou avisa-os`, { apito: 'curto', chave: `${chave} sem-plano` })
+  return aviso('alert', `Os contactos em terra ligam ao MRCC ${quando}: avisa-os ou Terminar`, { apito: 'curto', chave })
 }
 
 // ---------- publicar ----------
