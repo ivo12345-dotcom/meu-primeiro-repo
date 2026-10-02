@@ -30,6 +30,46 @@ test('a oscilar: alarmes do mesmo caminho no máximo de 10 em 10 min; cada um te
   assert.deepEqual(envios.filter(([, t]) => t.startsWith('✓')).map(([m]) => m), [1, 11])
 })
 
+test('auditoria K-08: o alarme que volta dentro dos 10 min não se perde: segue aos 10 min se ainda estiver ativo (sonda p5)', () => {
+  const C = 'notifications.arlequin.porto.aguaPorao'
+  let e = novoEncaminhador()
+  const envios = []
+  // água aos 0 min, a bomba esvazia ao 1 min, a água volta aos 2 min e fica 2 h
+  for (let m = 0; m <= 120; m++) {
+    const r = encaminhar(e, [m === 1 ? n(C, 'normal', 'Normal') : n(C, 'alarm', 'Água no porão!')], m * MIN)
+    e = r.enc
+    envios.push(...r.mensagens.map(t => `${m} min: ${t}`))
+  }
+  assert.deepEqual(envios, ['0 min: 🚨 Água no porão!', '1 min: ✓ Resolvido: Água no porão!', '10 min: 🚨 Água no porão!'])
+  // e o "Resolvido" desse 2.º alarme sai quando a água acaba
+  assert.deepEqual(encaminhar(e, [n(C, 'normal', 'Normal')], 121 * MIN).mensagens, ['✓ Resolvido: Água no porão!'])
+})
+
+test('auditoria K-08: um alarme travado pelos 10 min que limpa antes de seguir não dá "Resolvido" (nunca foi enviado)', () => {
+  const C = 'notifications.arlequin.porto.aguaPorao'
+  let e = novoEncaminhador()
+  const envios = []
+  for (const [m, state] of [[0, 'alarm'], [1, 'normal'], [3, 'alarm'], [5, 'normal'], [30, 'normal']]) {
+    const r = encaminhar(e, [n(C, state, state === 'alarm' ? 'Água no porão!' : 'Normal')], m * MIN)
+    e = r.enc
+    envios.push(...r.mensagens.map(t => `${m} min: ${t}`))
+  }
+  assert.deepEqual(envios, ['0 min: 🚨 Água no porão!', '1 min: ✓ Resolvido: Água no porão!'])
+})
+
+test('auditoria K-08: uma escalada warn → alarm dentro dos 10 min não se perde: segue aos 10 min', () => {
+  const C = 'notifications.arlequin.energia.servico'
+  let e = novoEncaminhador()
+  const envios = []
+  for (let m = 0; m <= 30; m++) {
+    const r = encaminhar(e, [m < 3 ? n(C, 'warn', 'Serviço a 52%') : n(C, 'alarm', 'Serviço a 49%')], m * MIN)
+    e = r.enc
+    envios.push(...r.mensagens.map(t => `${m} min: ${t}`))
+  }
+  assert.deepEqual(envios, ['0 min: ⚠️ Serviço a 52%', '10 min: 🚨 Serviço a 49%'])
+  assert.deepEqual(encaminhar(e, [n(C, 'normal', 'Normal')], 31 * MIN).mensagens, ['✓ Resolvido: Serviço a 49%'])
+})
+
 test('alarme resolvido logo a seguir: o "resolvido" segue mesmo dentro dos 10 min', () => {
   let e = novoEncaminhador()
   e = encaminhar(e, [n('notifications.arlequin.porto.intrusao', 'alarm', 'Intrusão')], 0).enc

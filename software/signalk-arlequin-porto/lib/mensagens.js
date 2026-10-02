@@ -44,7 +44,10 @@ function encaminhar (enc0, notificacoes, agora, { intervalo = 10 * 60 * 1000, am
     if (agoraEstado === antes) continue
     if (amarrado && casaAlgum(n.caminho, ignorarAmarrado)) continue
     if (agoraEstado !== 'normal') {
-      if (enc.ultimoAlarme[n.caminho] !== undefined && agora - enc.ultimoAlarme[n.caminho] < intervalo) continue
+      // Travado pelos 10 min: o estado novo não se grava (auditoria K-08). Fica o anterior, volta a
+      // avaliar-se em cada ciclo e segue logo que passem os 10 min, se ainda estiver ativo (um porão
+      // que volta a meter água, ou uma escalada warn → alarm, não se perdem).
+      if (enc.ultimoAlarme[n.caminho] !== undefined && agora - enc.ultimoAlarme[n.caminho] < intervalo) { enc.estados[n.caminho] = antes; continue }
       mensagens.push(`${ICONE[agoraEstado]} ${n.message || n.caminho}`)
       enc.mensagem[n.caminho] = n.message
       enc.ultimoAlarme[n.caminho] = agora
