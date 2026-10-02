@@ -269,14 +269,14 @@ function escreverAtomico (f, dados) {
     fs.fsyncSync(fd)
   } finally { fs.closeSync(fd) }
   fs.renameSync(f + '.tmp', f)
-  // fsync do directório-mãe: sem isto, nalguns sistemas de ficheiros um corte de luz
+  // fsync do diretório-mãe: sem isto, nalguns sistemas de ficheiros um corte de luz
   // logo a seguir ao rename pode não persistir a troca de nome (mesmo com o .tmp já
-  // sincronizado). No Windows abrir um directório com fs.openSync costuma falhar
+  // sincronizado). No Windows abrir um diretório com fs.openSync costuma falhar
   // (sem suporte) — ignora-se só esse erro, não se finge que o fsync aconteceu.
   try {
     const dfd = fs.openSync(path.dirname(f), 'r')
     try { fs.fsyncSync(dfd) } finally { fs.closeSync(dfd) }
-  } catch { /* plataforma sem fsync de directório (ex.: Windows) */ }
+  } catch { /* plataforma sem fsync de diretório (ex.: Windows) */ }
 }
 
 // Um ficheiro por ponto: previsoes/AAAA-MM-DDTHH-MM-<lat>_<lon>.json.gz. Devolve os caminhos.
@@ -298,7 +298,7 @@ function lerArquivo (pasta, { pontos, desde, ate, agora = Date.now(), raioMn = 1
   let nomes = []
   try { nomes = fs.readdirSync(pasta).filter(n => /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}.*\.json(\.gz)?$/.test(n)) } catch { nomes = [] }
   const obtidaDoNome = (n) => Date.parse(`${n.slice(0, 13)}:${n.slice(14, 16)}:00Z`)
-  // todos os candidatos (só exclui datas no futuro) e, dentro deles, os que cumprem o tecto
+  // todos os candidatos (só exclui datas no futuro) e, dentro deles, os que cumprem o teto
   // de maxIdadeH: uma previsão mais velha do que isso não cobre de forma fiável uma travessia
   // planeada, mas guarda-se `todos` para se poder dizer *porque* falhou (idade vs. cobertura).
   const todos = nomes.map(n => ({ n, obtida: obtidaDoNome(n) }))
@@ -335,11 +335,11 @@ function lerArquivo (pasta, { pontos, desde, ate, agora = Date.now(), raioMn = 1
   for (const p of pontos) {
     const achou = escolher(cand, p)
     if (!achou) {
-      // nada dentro do tecto de maxIdadeH: se sem esse tecto havia uma previsão que serviria
+      // nada dentro do teto de maxIdadeH: se sem esse teto havia uma previsão que serviria
       // (posição e horas OK), a razão é mesmo a idade — dizer isso, não o genérico
-      const semTecto = escolher(todos, p)
-      if (semTecto) {
-        const h = Math.round((agora - semTecto.obtida) / H)
+      const semTeto = escolher(todos, p)
+      if (semTeto) {
+        const h = Math.round((agora - semTeto.obtida) / H)
         return { erro: `a última previsão guardada tem ${h} h (mais de ${maxIdadeH} h): sem previsão válida` }
       }
       return { erro: 'não há previsão guardada que cubra a rota' }

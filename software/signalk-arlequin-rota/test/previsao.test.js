@@ -298,17 +298,17 @@ test('lerArquivo: só há uma previsão com mais de 48 h → a razão diz a idad
   )
 })
 
-test('escreverAtomico (via guardarArquivo): tenta fsync do directório-mãe depois do rename, ignorando erro', () => {
+test('escreverAtomico (via guardarArquivo): tenta fsync do diretório-mãe depois do rename, ignorando erro', () => {
   const pasta = temp()
   const real = fs.openSync
   let tentouAbrirPasta = false
   fs.openSync = (p, ...resto) => {
-    if (p === pasta) { tentouAbrirPasta = true; const e = new Error('EISDIR: directório, não é possível abrir'); e.code = 'EISDIR'; throw e }
+    if (p === pasta) { tentouAbrirPasta = true; const e = new Error('EISDIR: diretório, não é possível abrir'); e.code = 'EISDIR'; throw e }
     return real(p, ...resto)
   }
   try {
     const fs1 = prev.guardarArquivo(pasta, P29)
-    assert.ok(tentouAbrirPasta, 'devia tentar abrir o directório-mãe para fsync')
+    assert.ok(tentouAbrirPasta, 'devia tentar abrir o diretório-mãe para fsync')
     assert.ok(fs.existsSync(fs1[0]))
     assert.deepEqual(fs.readdirSync(pasta).filter(n => n.endsWith('.tmp')), [])
   } finally { fs.openSync = real }

@@ -1,6 +1,6 @@
 'use strict'
 // O simular.mjs dá o mesmo em qualquer fuso do sistema (a partida sem fuso é hora de Lisboa,
-// as horas da Open-Meteo lêem-se do texto): este teste não fixa o TZ, para o provar no Pi (UTC)
+// as horas da Open-Meteo leem-se do texto): este teste não fixa o TZ, para o provar no Pi (UTC)
 // e no portátil (Europe/Lisbon).
 const test = require('node:test')
 const assert = require('node:assert/strict')
