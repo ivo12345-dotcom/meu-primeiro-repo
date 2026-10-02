@@ -68,6 +68,17 @@ test('10: só corre num SignalK de dev: a rota com modoTeste e horaSimulada, e o
   assert.deepEqual(verificarDev({ rota: ROTA_DEV, porto: { enabled: false, configuration: { telegramBase: 'https://api.telegram.org', contactosPlano: [{ nome: 'Mãe', chatId: '1' }] } } }), [])
 })
 
+// Auditoria M-72 (B-M10): com o ciclo de 60 s e --fator 60 as amostras ficam a 60 min umas das outras e as
+// janelas "seguidos" nunca contam: a viagem precisa do cicloSegundos 1 e tem de o confirmar.
+test('M-72: a viagem acelerada recusa sem o cicloSegundos 1 (o testar-rota não precisa dele)', () => {
+  const { verificarDev: guarda } = require('../guarda-dev')
+  const semCiclo = { configuration: { modoTeste: true, horaSimulada: true } }
+  assert.match(verificarDev({ rota: semCiclo, porto: PORTO_DEV }).join(' | '), /cicloSegundos/)
+  assert.match(verificarDev({ rota: { configuration: { ...semCiclo.configuration, cicloSegundos: 60 } }, porto: PORTO_DEV }).join(' | '), /cicloSegundos/)
+  assert.deepEqual(verificarDev({ rota: ROTA_DEV, porto: PORTO_DEV }), [])
+  assert.deepEqual(guarda({ rota: { configuration: { modoTeste: true } }, porto: PORTO_DEV }, { viagem: false }), [])
+})
+
 // Auditoria I-35 (contrato C9): o que a viagem injeta (posição, hora, SoC, gasóleo falsos) tem de ficar
 // "simulado" na caixa negra (o simulado nunca treina a AI).
 test('I-35: os deltas da viagem levam a marca de fonte do simulador e a caixa negra marca-os simulados', () => {
