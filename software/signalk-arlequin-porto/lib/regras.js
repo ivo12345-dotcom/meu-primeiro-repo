@@ -32,7 +32,8 @@ const ALARMES = Object.freeze(['deriva', 'aguaPorao', 'bombaPorao', 'fumo', 'fug
 // O apito no ecrã (decisão n.º 2 do dono, contrato C1; o campo `apito` no valor da notificação): o
 // contínuo só para o perigo imediato — o fumo, a água no porão (o sensor e a bomba a trabalhar sem
 // parar: "está a entrar água") e a fuga de gasóleo (o líquido debaixo do depósito); o resto com o
-// apito curto. O Telegram não muda com isto.
+// apito curto. A bomba e o líquido no contínuo confirmados pelo dono (Adenda 2, 02/10). O Telegram não
+// muda com isto.
 const APITO = Object.freeze({ fumo: 'continuo', aguaPorao: 'continuo', bombaPorao: 'continuo', fugaGasoleo: 'continuo', intrusao: 'curto', deriva: 'curto' })
 
 // A ação que o ecrã oferece num alarme (contrato C10; o campo `acao` no valor da notificação): no "saiu
