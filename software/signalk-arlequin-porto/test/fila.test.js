@@ -130,6 +130,38 @@ test('fila: "(atrasado N min)" só a partir de 1 min de atraso, em minutos intei
   assert.equal(textoAEnviar(item, 125 * MIN), '🚨 Água no porão! (atrasado 125 min)')
 })
 
+test('auditoria F4b (revisão, Menor 11): o atraso conta pelo relógio monotónico quando a mensagem o tem (um acerto do relógio de parede não lhe mexe); sem ele, pela hora; nunca negativo; acima de 7 dias não se diz o número', () => {
+  const DIA = 24 * 60 * MIN
+  const item = { texto: '🚨 Água no porão!', desde: 0, mono: 1000 }
+  // o relógio de parede saltou 3 dias (o NTP acertou-o) e o tempo andou 90 s
+  assert.equal(textoAEnviar(item, 3 * DIA, 1000 + 90 * S), '🚨 Água no porão! (atrasado 1 min)')
+  assert.equal(textoAEnviar(item, 3 * DIA, 1000 + 59 * S), '🚨 Água no porão!')
+  // o relógio de parede foi uma hora para trás e o tempo andou 5 min
+  assert.equal(textoAEnviar(item, -60 * MIN, 1000 + 5 * MIN), '🚨 Água no porão! (atrasado 5 min)')
+  // sem o relógio monotónico (a mensagem de uma fila sem ele, ou ele em falta): pela hora de parede
+  assert.equal(textoAEnviar({ texto: 'x', desde: 0 }, 125 * MIN, 5), 'x (atrasado 125 min)')
+  assert.equal(textoAEnviar(item, 125 * MIN), '🚨 Água no porão! (atrasado 125 min)')
+  // a hora de parede para trás: não fica negativo
+  assert.equal(textoAEnviar({ texto: 'x', desde: 10 * MIN }, 0), 'x')
+  // o limite: 7 dias ainda diz os minutos, acima não (a hora estava errada ou a fila esquecida)
+  assert.equal(textoAEnviar({ texto: 'x', desde: 0 }, 7 * DIA), 'x (atrasado 10080 min)')
+  assert.equal(textoAEnviar({ texto: 'x', desde: 0 }, 7 * DIA + S), 'x (atrasado mais de 7 dias)')
+  assert.equal(textoAEnviar({ texto: 'x', desde: 0 }, 56 * 365 * DIA), 'x (atrasado mais de 7 dias)')
+  assert.ok(MAX_TEXTO + ' (atrasado mais de 7 dias)'.length <= 4096)
+})
+
+test('auditoria F4b (revisão, Menor 11): as mensagens que entram na fila levam o relógio monotónico (só em memória); as lidas do disco ganham-no pela idade que a hora de parede lhes dá agora', () => {
+  assert.deepEqual(porNaFila([], [ativo(AGUA, 'Água no porão!'), 'aviso'], 1000, { mono: 55 }).fila, [
+    { texto: '🚨 Água no porão!', desde: 1000, caminho: AGUA, estado: 'alarm', mono: 55 },
+    { texto: 'aviso', desde: 1000, caminho: null, sistema: true, mono: 55 }
+  ])
+  // lidas do disco às 10:00 (parede) / 500 (monotónico): a de há 12 min tem 12 min; uma "do futuro" (o relógio foi para trás) tem 0
+  const t = Date.parse('2026-10-02T10:00:00Z')
+  const lida = filaValida([{ texto: '🚨 a', desde: t - 12 * MIN, caminho: AGUA, estado: 'alarm' }, { texto: '🚨 b', desde: t + 5 * MIN, caminho: AGUA, estado: 'alarm' }], { agora: t, mono: 500 })
+  assert.deepEqual(lida.map(x => x.mono), [500 - 12 * MIN, 500])
+  assert.equal(textoAEnviar(lida[0], t + 99 * MIN, 500 + 3 * MIN), '🚨 a (atrasado 15 min)')
+})
+
 test('fila: recuo de 2 s, 4 s, 8 s, 16 s, 32 s e depois 1 min; nunca menos do que o retry_after do Telegram', () => {
   assert.deepEqual([1, 2, 3, 4, 5, 6, 7, 50].map(n => recuoMs(n)), [2000, 4000, 8000, 16000, 32000, 60000, 60000, 60000])
   assert.equal(recuoMs(1, 35), 35000)
@@ -157,15 +189,16 @@ test('fila: do encaminhador.json só se aproveitam os itens com texto e hora (co
   assert.deepEqual(filaValida({}), [])
 })
 
-// ---------- ponta a ponta: o plugin, o Telegram falso e um relógio injetado ----------
+// ---------- ponta a ponta: o plugin, o Telegram falso e relógios injetados ----------
 
 function appFalso (dir) {
-  const app = { arvore: {}, estado: '', erros: [] }
+  const app = { arvore: {}, estado: '', erros: [], ciclos: 0 }
   app.dir = dir || fs.mkdtempSync(path.join(os.tmpdir(), 'arlequin-porto-fila-'))
   app.getDataDirPath = () => app.dir
   const pôr = (p, value) => { const ks = p.split('.'); let n = app.arvore; for (const k of ks) n = (n[k] = n[k] || {}); n.value = value }
   app.pôr = pôr
-  app.getSelfPath = (p) => p.split('.').reduce((n, k) => n?.[k], app.arvore)
+  // ciclos: quantas vezes o encaminhador leu as notificações
+  app.getSelfPath = (p) => { if (p === 'notifications') app.ciclos++; return p.split('.').reduce((n, k) => n?.[k], app.arvore) }
   app.handleMessage = (id, d) => { for (const u of d.updates) for (const v of u.values) pôr(v.path, v.value) }
   app.setPluginStatus = (s) => { app.estado = s }
   app.error = (e) => app.erros.push(e)
@@ -173,6 +206,23 @@ function appFalso (dir) {
 }
 const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 async function ate (cond, ms = 8000) { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (cond()) return true; await esperar(20) } return false }
+// espera que o encaminhador corra mais n vezes: o que se vê, não o tempo (auditoria F4b, Menor 13)
+async function mais (app, n = 3) {
+  const alvo = app.ciclos + n
+  assert.ok(await ate(() => app.ciclos >= alvo), `o encaminhador não correu ${n} vezes`)
+}
+// Os dois relógios à mão (auditoria F4b, revisão da F4, Menor 11): o de parede (agora), que o NTP pode
+// saltar, e o monotónico (monotono), que só anda com o tempo. `passar` é o tempo a andar (os dois);
+// `saltar` é o relógio de parede a ser acertado (só ele).
+function relogio (inicio = Date.parse('2026-10-02T10:00:00Z')) {
+  const r = { parede: inicio, mono: 1000 }
+  return {
+    deps: { agora: () => r.parede, monotono: () => r.mono },
+    passar (ms) { r.parede += ms; r.mono += ms },
+    saltar (ms) { r.parede += ms },
+    get parede () { return r.parede }
+  }
+}
 const naFila = (app) => { try { return JSON.parse(fs.readFileSync(path.join(app.dir, 'encaminhador.json'), 'utf8')).porEnviar || [] } catch { return [] } }
 const textos = (tgf, chat = '111') => tgf.enviados.filter(m => m.chatId === chat).map(m => m.text)
 const RAPIDO = { tickMs: 50, encaminharMs: 50, pausaFilaMs: 0 }
@@ -183,25 +233,25 @@ const falhadas = (app, n) => ate(() => app.estado.includes(`(${n} ${n === 1 ? 't
 test('auditoria K-09: o alarme que o Telegram não aceitou fica na fila (encaminhador.json) e sai quando a rede volta, com "(atrasado N min)" (sonda p2-B)', async () => {
   const tgf = await criarTelegramFalso()
   const app = appFalso()
-  let agora = Date.parse('2026-10-02T10:00:00Z')
-  const p = criar(app, { agora: () => agora, ...RAPIDO })
+  const rel = relogio()
+  const p = criar(app, { ...rel.deps, ...RAPIDO })
   p.start({ telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 })
   try {
     tgf.cortar()
     app.pôr('sensors.porao.agua', 1)
     assert.ok(await ate(() => tgf.cortados.length >= 1), 'tentou enviar')
     assert.ok(await ate(() => naFila(app).length === 1), JSON.stringify(naFila(app)))
-    assert.deepEqual(naFila(app), [{ texto: '🚨 Água no porão!', desde: agora, caminho: AGUA, estado: 'alarm' }])
+    assert.deepEqual(naFila(app), [{ texto: '🚨 Água no porão!', desde: rel.parede, caminho: AGUA, estado: 'alarm' }])
     assert.deepEqual(tgf.enviados, [])
     assert.ok(await falhadas(app, 1), app.estado)
     assert.match(app.estado, / · 1 por entregar \(1 tentativa falhada\)$/)
     // a rede volta 5 min depois
-    agora += 5 * MIN
+    rel.passar(5 * MIN)
     tgf.religar()
     assert.ok(await ate(() => textos(tgf).length === 1))
     assert.deepEqual(textos(tgf), ['🚨 Água no porão! (atrasado 5 min)'])
     assert.ok(await ate(() => naFila(app).length === 0))
-    await esperar(300)
+    await mais(app)
     assert.deepEqual(textos(tgf), ['🚨 Água no porão! (atrasado 5 min)'], 'só uma vez')
     assert.doesNotMatch(app.estado, /por entregar/)
     // o registo diz uma vez porquê (sem o prefixo repetido)
@@ -213,33 +263,33 @@ test('auditoria K-09: o alarme que o Telegram não aceitou fica na fila (encamin
 test('auditoria K-09: sem rede, tenta outra vez com recuo (pelo relógio), não de 2 em 2 s', async () => {
   const tgf = await criarTelegramFalso()
   const app = appFalso()
-  let agora = Date.parse('2026-10-02T10:00:00Z')
-  const p = criar(app, { agora: () => agora, ...RAPIDO })
+  const rel = relogio()
+  const p = criar(app, { ...rel.deps, ...RAPIDO })
   p.start({ telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 })
   const tentativas = () => tgf.cortados.filter(c => c.metodo === 'sendMessage').length
   try {
     tgf.cortar()
     app.pôr('sensors.fumo', 1)
     assert.ok(await falhadas(app, 1))
-    await esperar(400) // muitos ciclos de 50 ms com o relógio parado: não tenta outra vez
+    await mais(app, 6) // muitos ciclos do encaminhador com o relógio parado: não tenta outra vez
     assert.equal(tentativas(), 1)
-    agora += 2 * S
+    rel.passar(2 * S)
     assert.ok(await falhadas(app, 2))
     assert.equal(tentativas(), 2)
-    agora += 3 * S // o 2.º recuo é de 4 s
-    await esperar(400)
+    rel.passar(3 * S) // o 2.º recuo é de 4 s
+    await mais(app, 6)
     assert.equal(tentativas(), 2)
-    agora += 1 * S
+    rel.passar(1 * S)
     assert.ok(await falhadas(app, 3))
     assert.equal(tentativas(), 3)
     // muito tempo sem rede: nunca mais de 1 min entre tentativas
     for (let i = 0; i < 6; i++) {
-      agora += MIN
+      rel.passar(MIN)
       assert.ok(await falhadas(app, 4 + i), `tentativa ${4 + i}: ${app.estado}`)
       assert.equal(tentativas(), 4 + i)
     }
     tgf.religar()
-    agora += MIN
+    rel.passar(MIN)
     assert.ok(await ate(() => textos(tgf).length === 1))
     assert.deepEqual(textos(tgf), ['🔥 FUMO a bordo! (atrasado 7 min)'])
   } finally { p.stop(); await tgf.fechar() }
@@ -248,19 +298,19 @@ test('auditoria K-09: sem rede, tenta outra vez com recuo (pelo relógio), não 
 test('auditoria K-09: pela ordem — o "Resolvido" de um alarme por entregar nunca chega antes dele', async () => {
   const tgf = await criarTelegramFalso()
   const app = appFalso()
-  let agora = Date.parse('2026-10-02T10:00:00Z')
-  const p = criar(app, { agora: () => agora, ...RAPIDO })
+  const rel = relogio()
+  const p = criar(app, { ...rel.deps, ...RAPIDO })
   p.start({ telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 })
   try {
     tgf.cortar()
     app.pôr('sensors.porao.agua', 1)
     assert.ok(await ate(() => naFila(app).length === 1))
     assert.ok(await falhadas(app, 1))
-    agora += 3 * MIN
+    rel.passar(3 * MIN)
     app.pôr('sensors.porao.agua', 0)
     assert.ok(await ate(() => naFila(app).length === 2))
     assert.ok(await falhadas(app, 2), app.estado) // a nova tentativa da cabeça, já com o relógio dos 3 min
-    agora += 2 * MIN
+    rel.passar(2 * MIN)
     tgf.religar()
     assert.ok(await ate(() => textos(tgf).length === 2))
     assert.deepEqual(textos(tgf), ['🚨 Água no porão! (atrasado 5 min)', '✓ Resolvido: Água no porão! (atrasado 2 min)'])
@@ -271,9 +321,9 @@ test('auditoria K-09: pela ordem — o "Resolvido" de um alarme por entregar nun
 test('auditoria K-09: a fila sobrevive a um reinício do plugin (está no encaminhador.json) e sai depois dele', async () => {
   const tgf = await criarTelegramFalso()
   const app = appFalso()
-  let agora = Date.parse('2026-10-02T10:00:00Z')
+  const rel = relogio()
   const props = { telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 }
-  let p = criar(app, { agora: () => agora, ...RAPIDO })
+  let p = criar(app, { ...rel.deps, ...RAPIDO })
   p.start(props)
   try {
     tgf.cortar()
@@ -282,9 +332,9 @@ test('auditoria K-09: a fila sobrevive a um reinício do plugin (está no encami
     assert.ok(await falhadas(app, 1)) // (um envio ainda a caminho podia chegar depois do religar)
     p.stop()
     assert.deepEqual(naFila(app).map(i => i.texto), ['🚨 Líquido debaixo do depósito de gasóleo: possível fuga'])
-    agora += 12 * MIN
+    rel.passar(12 * MIN)
     tgf.religar()
-    p = criar(app, { agora: () => agora, ...RAPIDO })
+    p = criar(app, { ...rel.deps, ...RAPIDO })
     p.start(props)
     assert.ok(await ate(() => textos(tgf).length === 1))
     assert.deepEqual(textos(tgf), ['🚨 Líquido debaixo do depósito de gasóleo: possível fuga (atrasado 12 min)'])
@@ -323,16 +373,16 @@ test('auditoria K-09: um stop() e start() (gravar a configuração) com um envio
 test('auditoria K-09: entregue a pelo menos um chat autorizado sai da fila (um chat que bloqueou o bot não a prende); nunca vai aos contactos do plano', async () => {
   const tgf = await criarTelegramFalso()
   const app = appFalso()
-  let agora = Date.parse('2026-10-02T10:00:00Z')
-  const p = criar(app, { agora: () => agora, ...RAPIDO })
+  const rel = relogio()
+  const p = criar(app, { ...rel.deps, ...RAPIDO })
   p.start({ telegramToken: 'TESTE', chatIds: ['111', '333'], contactosPlano: [{ nome: 'Mãe', chatId: '222' }], telegramBase: tgf.url, pollTimeout: 1 })
   try {
     tgf.bloquear('333')
     app.pôr('sensors.porao.agua', 1)
     assert.ok(await ate(() => textos(tgf).length === 1))
     assert.ok(await ate(() => naFila(app).length === 0))
-    agora += 5 * MIN
-    await esperar(300)
+    rel.passar(5 * MIN)
+    await mais(app)
     assert.deepEqual(textos(tgf), ['🚨 Água no porão!'], 'não se repete')
     assert.deepEqual(textos(tgf, '222'), [], 'os contactos do plano nunca recebem os alarmes')
   } finally { p.stop(); await tgf.fechar() }
@@ -362,13 +412,14 @@ test('auditoria F4b (Importante 1, sonda da revisão): uma notificação com 500
   const app = appFalso()
   // como o Telegram verdadeiro: 400 "message is too long" acima de 4096 caracteres
   const f = comRecusas((chat, texto) => (texto.length > 4096 ? 'Bad Request: message is too long' : null))
-  let agora = Date.parse('2026-10-02T10:00:00Z')
-  const p = criar(app, { agora: () => agora, ...RAPIDO })
+  const rel = relogio()
+  const p = criar(app, { ...rel.deps, ...RAPIDO })
   p.start({ telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 })
   try {
     app.pôr('notifications.outroPlugin.relatorio', { state: 'warn', message: 'x'.repeat(5000) })
     app.pôr('sensors.porao.agua', 1)
-    assert.ok(await ate(() => textos(tgf).includes('🚨 Água no porão!')), `${app.estado} ${JSON.stringify(textos(tgf).map(t => t.slice(0, 40)))}`)
+    // (o alarme sai primeiro e o aviso longo logo a seguir: espera-se pelos dois)
+    assert.ok(await ate(() => textos(tgf).includes('🚨 Água no porão!') && textos(tgf).some(t => t.startsWith('⚠️ xxx'))), `${app.estado} ${JSON.stringify(textos(tgf).map(t => t.slice(0, 40)))}`)
     const longo = textos(tgf).find(t => t.startsWith('⚠️ xxx'))
     assert.ok(longo, 'o aviso longo também chegou (cortado)')
     assert.ok(longo.length <= 4096 && longo.endsWith('…'), String(longo.length))
@@ -383,18 +434,18 @@ test('auditoria F4b (Importante 1): uma mensagem que o Telegram recusa sempre sa
   // uma recusa que o plugin não consegue evitar (o Telegram conta os caracteres de outra maneira, por exemplo)
   const f = comRecusas((chat, texto) => (texto.startsWith('⚠️ mensagem RECUSADA') ? 'Bad Request: message is too long' : null))
   const tentativas = () => f.envios.filter(m => m.text.startsWith('⚠️ mensagem RECUSADA')).length
-  let agora = Date.parse('2026-10-02T10:00:00Z')
-  const p = criar(app, { agora: () => agora, ...RAPIDO })
+  const rel = relogio()
+  const p = criar(app, { ...rel.deps, ...RAPIDO })
   p.start({ telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 })
   try {
     app.pôr('notifications.outroPlugin.relatorio', { state: 'warn', message: 'mensagem RECUSADA pelo Telegram' })
     assert.ok(await falhadas(app, 1), app.estado)
     app.pôr('sensors.porao.agua', 1)
     assert.ok(await ate(() => / · 2 por entregar \(1 tentativa falhada\)$/.test(app.estado)), app.estado)
-    agora += 2 * S // o recuo de 2 s: o alarme passa à frente da recusada, que volta a ser tentada a seguir
+    rel.passar(2 * S) // o recuo de 2 s: o alarme passa à frente da recusada, que volta a ser tentada a seguir
     assert.ok(await ate(() => textos(tgf).includes('🚨 Água no porão!')), `${app.estado} ${JSON.stringify(textos(tgf))}`)
     assert.ok(await ate(() => tentativas() === 2 && / · 1 por entregar \(1 tentativa falhada\)$/.test(app.estado)), app.estado)
-    agora += 2 * S // a 3.ª recusa tira-a da fila e a fila segue (o aviso ao Ivo)
+    rel.passar(2 * S) // a 3.ª recusa tira-a da fila e a fila segue (o aviso ao Ivo)
     assert.ok(await ate(() => textos(tgf).length === 2), JSON.stringify(textos(tgf)))
     assert.deepEqual(textos(tgf), [
       '🚨 Água no porão!',
@@ -412,18 +463,18 @@ test('auditoria F4b (Importante 1): com todos os chats recusados (o "chat not fo
   const tgf = await criarTelegramFalso()
   const app = appFalso()
   const f = comRecusas(() => 'Bad Request: chat not found')
-  let agora = Date.parse('2026-10-02T10:00:00Z')
-  const p = criar(app, { agora: () => agora, ...RAPIDO })
+  const rel = relogio()
+  const p = criar(app, { ...rel.deps, ...RAPIDO })
   p.start({ telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 })
   try {
     app.pôr('sensors.porao.agua', 1)
     assert.ok(await falhadas(app, 1), app.estado)
-    agora += 2 * S
+    rel.passar(2 * S)
     assert.ok(await falhadas(app, 2), app.estado)
-    agora += 4 * S
+    rel.passar(4 * S)
     assert.ok(await ate(() => naFila(app).length === 0), JSON.stringify(naFila(app)))
-    agora += 10 * MIN
-    await esperar(200)
+    rel.passar(10 * MIN)
+    await mais(app)
     assert.equal(f.envios.length, 3, JSON.stringify(f.envios))
     assert.deepEqual(app.erros.filter(e => /desisti/.test(e)), ['fila do Telegram: desisti de "🚨 Água no porão!" ao fim de 3 recusas (Telegram sendMessage: Bad Request: chat not found)'])
   } finally { f.repor(); p.stop(); await tgf.fechar() }
@@ -438,20 +489,20 @@ test('auditoria F4b (Importante 1): um chat que recusa (bloqueou o bot) e outro 
     if (String(url).endsWith('/sendMessage') && semRede && JSON.parse(o.body).chat_id === '333') throw new TypeError('fetch failed')
     return original(url, o)
   }
-  let agora = Date.parse('2026-10-02T10:00:00Z')
-  const p = criar(app, { agora: () => agora, ...RAPIDO })
+  const rel = relogio()
+  const p = criar(app, { ...rel.deps, ...RAPIDO })
   p.start({ telegramToken: 'TESTE', chatIds: ['111', '333'], telegramBase: tgf.url, pollTimeout: 1 })
   try {
     tgf.bloquear('111')
     app.pôr('sensors.porao.agua', 1)
     for (const [n, recuo] of [[1, 2], [2, 4], [3, 8], [4, 16]]) {
       assert.ok(await falhadas(app, n), app.estado)
-      agora += recuo * S
+      rel.passar(recuo * S)
     }
     assert.ok(await falhadas(app, 5), app.estado)
     assert.equal(naFila(app).length, 1, 'continua na fila')
     semRede = false
-    agora += MIN
+    rel.passar(MIN)
     assert.ok(await ate(() => textos(tgf, '333').length === 1))
     assert.deepEqual(textos(tgf, '333'), ['🚨 Água no porão! (atrasado 1 min)'])
   } finally { globalThis.fetch = original; p.stop(); await tgf.fechar() }
@@ -460,8 +511,8 @@ test('auditoria F4b (Importante 1): um chat que recusa (bloqueou o bot) e outro 
 test('auditoria F4b (Importante 1): um FUMO novo não espera atrás das mensagens antigas da fila (avisos e "Resolvido"): é o primeiro a sair quando a rede volta', async () => {
   const tgf = await criarTelegramFalso()
   const app = appFalso()
-  let agora = Date.parse('2026-10-02T10:00:00Z')
-  const p = criar(app, { agora: () => agora, ...RAPIDO })
+  const rel = relogio()
+  const p = criar(app, { ...rel.deps, ...RAPIDO })
   p.start({ telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 })
   try {
     tgf.cortar()
@@ -470,12 +521,12 @@ test('auditoria F4b (Importante 1): um FUMO novo não espera atrás das mensagen
     assert.ok(await ate(() => naFila(app).length === 2))
     app.pôr('notifications.rota.recursos', { state: 'normal', message: '' })
     assert.ok(await ate(() => naFila(app).length === 3))
-    agora += 3 * MIN
+    rel.passar(3 * MIN)
     app.pôr('sensors.fumo', 1)
     // a 2.ª tentativa (ainda sem rede) já foi tratada: só depois se mexe no relógio e na rede (senão um
     // envio a caminho chegava com o relógio antigo)
     assert.ok(await ate(() => / · 4 por entregar \(2 tentativas falhadas\)$/.test(app.estado)), app.estado)
-    agora += 2 * MIN
+    rel.passar(2 * MIN)
     tgf.religar()
     assert.ok(await ate(() => textos(tgf).length === 4), JSON.stringify(textos(tgf)))
     // o FUMO primeiro; depois os avisos pela ordem de entrada e só no fim o "Resolvido"
@@ -491,8 +542,8 @@ test('auditoria F4b (Importante 1): um FUMO novo não espera atrás das mensagen
 test('auditoria F4b (revisão, Menor 13): o limite da fila tem registo (sem rede, a fila cheia deixa sair primeiro os casos já acabados)', async () => {
   const tgf = await criarTelegramFalso()
   const app = appFalso()
-  let agora = Date.parse('2026-10-02T10:00:00Z')
-  const p = criar(app, { agora: () => agora, ...RAPIDO, maxFila: 3 })
+  const rel = relogio()
+  const p = criar(app, { ...rel.deps, ...RAPIDO, maxFila: 3 })
   p.start({ telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 })
   try {
     tgf.cortar()
@@ -512,6 +563,89 @@ test('auditoria F4b (revisão, Menor 13): o limite da fila tem registo (sem rede
   } finally { p.stop(); await tgf.fechar() }
 })
 
+// ---------- auditoria F4b (revisão da F4, Menor 11): o recuo e o "(atrasado N min)" não dependem da hora de parede ----------
+// O Pi sem pilha no RTC arranca com a hora velha e o NTP acerta-a (dias de uma vez) quando o router do 4G
+// liga; um acerto para trás também acontece. O recuo e o atraso contam pelo relógio monotónico.
+
+test('auditoria F4b (revisão, Menor 11): o relógio de parede acertado para trás (NTP) não pára a fila: o recuo conta pelo tempo, não pela hora', async () => {
+  const tgf = await criarTelegramFalso()
+  const app = appFalso()
+  const rel = relogio()
+  const p = criar(app, { ...rel.deps, ...RAPIDO })
+  p.start({ telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 })
+  const tentativas = () => tgf.cortados.filter(c => c.metodo === 'sendMessage').length
+  try {
+    tgf.cortar()
+    app.pôr('sensors.porao.agua', 1)
+    assert.ok(await falhadas(app, 1), app.estado)
+    // o NTP acerta a hora uma hora para trás: ainda dentro do recuo de 2 s, não tenta outra vez
+    rel.saltar(-60 * MIN)
+    await mais(app, 6)
+    assert.equal(tentativas(), 1)
+    // passam os 2 s do recuo (do tempo): tenta; com a hora de parede, esperava mais uma hora
+    rel.passar(2 * S)
+    assert.ok(await falhadas(app, 2), `${app.estado}: a fila ficou parada à espera da hora`)
+    tgf.religar()
+    rel.passar(4 * S)
+    assert.ok(await ate(() => textos(tgf).length === 1), app.estado)
+    assert.deepEqual(textos(tgf), ['🚨 Água no porão!'])
+    assert.ok(await ate(() => naFila(app).length === 0))
+  } finally { p.stop(); await tgf.fechar() }
+})
+
+test('auditoria F4b (revisão, Menor 11): o relógio de parede acertado para a frente (3 dias de uma vez) não faz um alarme de agora chegar "atrasado 4320 min": conta o tempo que esteve na fila', async () => {
+  const tgf = await criarTelegramFalso()
+  const app = appFalso()
+  const rel = relogio()
+  const p = criar(app, { ...rel.deps, ...RAPIDO })
+  p.start({ telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 })
+  try {
+    // (com movimento a bordo: o lembrete de armar, que também conta pela hora, não entra na conta)
+    app.pôr('sensors.movimento', 1)
+    tgf.cortar()
+    app.pôr('sensors.porao.agua', 1)
+    assert.ok(await falhadas(app, 1), app.estado)
+    // 5 min sem rede (a hora velha do Pi), a falhar
+    rel.passar(5 * MIN)
+    assert.ok(await falhadas(app, 2), app.estado)
+    // o 4G liga e o NTP acerta a hora: +3 dias
+    rel.saltar(3 * 24 * 60 * MIN)
+    tgf.religar()
+    rel.passar(MIN)
+    assert.ok(await ate(() => textos(tgf).length === 1), app.estado)
+    assert.deepEqual(textos(tgf), ['🚨 Água no porão! (atrasado 6 min)'])
+    // o relógio monotónico não vai para o disco (só vale neste arranque)
+    assert.ok(naFila(app).every(x => !('mono' in x)), JSON.stringify(naFila(app)))
+  } finally { p.stop(); await tgf.fechar() }
+})
+
+test('auditoria F4b (revisão, Menor 11): as mensagens lidas do disco no arranque contam o atraso pela hora desse momento e daí em diante pelo tempo; acima de 7 dias não se diz o número', async () => {
+  const tgf = await criarTelegramFalso()
+  const app = appFalso()
+  const rel = relogio()
+  const FUMO_ = 'notifications.arlequin.porto.fumo'
+  // a fila que a execução anterior deixou: um alarme de há 12 min e um fumo de há 30 dias (a hora estava errada)
+  fs.writeFileSync(path.join(app.dir, 'encaminhador.json'), JSON.stringify({
+    porEnviar: [
+      { texto: '🚨 Água no porão!', desde: rel.parede - 12 * MIN, caminho: AGUA, estado: 'alarm' },
+      { texto: '🔥 FUMO a bordo!', desde: rel.parede - 30 * 24 * 60 * MIN, caminho: FUMO_, estado: 'emergency' }
+    ]
+  }))
+  const p = criar(app, { ...rel.deps, ...RAPIDO })
+  try {
+    app.pôr('sensors.movimento', 1) // (o lembrete de armar, que também conta pela hora, não entra na conta)
+    tgf.cortar()
+    p.start({ telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 })
+    assert.ok(await falhadas(app, 1), app.estado)
+    // a hora de parede salta 3 dias com a fila à espera: o atraso é o de antes mais o tempo que passou
+    rel.saltar(3 * 24 * 60 * MIN)
+    tgf.religar()
+    rel.passar(2 * S)
+    assert.ok(await ate(() => textos(tgf).length === 2), app.estado)
+    assert.deepEqual(textos(tgf), ['🔥 FUMO a bordo! (atrasado mais de 7 dias)', '🚨 Água no porão! (atrasado 12 min)'])
+  } finally { p.stop(); await tgf.fechar() }
+})
+
 test('auditoria K-09: sem chats autorizados (ou sem token) não se guarda nada na fila', async () => {
   const tgf = await criarTelegramFalso()
   const app = appFalso()
@@ -520,7 +654,7 @@ test('auditoria K-09: sem chats autorizados (ou sem token) não se guarda nada n
   try {
     app.pôr('sensors.porao.agua', 1)
     assert.ok(await ate(() => app.getSelfPath('notifications.arlequin.porto.aguaPorao')?.value?.state === 'alarm'))
-    await esperar(300)
+    await mais(app)
     assert.deepEqual(naFila(app), [])
     assert.deepEqual(tgf.enviados, [])
   } finally { p.stop(); await tgf.fechar() }

@@ -14,11 +14,19 @@
 // cada caminho sai sempre pela sua ordem (o "Resolvido" nunca antes do seu alarme). Acima do limite dos
 // 100 (aparar) nunca sai um alarme deixando o seu "Resolvido" órfão.
 //
-// Cada mensagem: { texto, desde, caminho, estado, recusas? } — caminho: o da notificação (null nos avisos
-// do próprio plugin, que levam sistema: true); estado: o da notificação ('emergency', 'alarm', 'alert',
-// 'warn'; 'normal' no "Resolvido"); recusas: as tentativas recusadas.
+// Cada mensagem: { texto, desde, caminho, estado, recusas?, mono? } — caminho: o da notificação (null nos
+// avisos do próprio plugin, que levam sistema: true); estado: o da notificação ('emergency', 'alarm',
+// 'alert', 'warn'; 'normal' no "Resolvido"); recusas: as tentativas recusadas; desde: a hora de parede a
+// que devia ter saído (grava-se); mono: o mesmo instante no relógio monotónico, só em memória (paraDisco
+// tira-o; as lidas do disco ganham-no em filaValida).
+//
+// O atraso (o "(atrasado N min)") conta pelo relógio monotónico: a hora de parede do Pi salta (arranca com
+// a hora velha, sem pilha no RTC, e o NTP acerta-a quando o router do 4G liga) e um alarme de agora
+// chegava "atrasado 4320 min" (auditoria F4b, revisão da F4, Menor 11).
 
 const MIN = 60000
+const MAX_ATRASO_DIAS = 7 // acima disto a hora estava errada ou a fila esquecida: não se diz o número
+const MAX_ATRASO_MS = MAX_ATRASO_DIAS * 24 * 60 * MIN
 const MAX_FILA = 100 // um limite de segurança do ficheiro (aparar)
 const MAX_TEXTO = 4000 // o Telegram aceita até 4096: sobra espaço para o "(atrasado N min)"
 const MAX_RECUSAS = 3 // tentativas recusadas (em todos os chats) até a mensagem sair da fila
@@ -41,15 +49,19 @@ function cortarTexto (texto) {
   return `${t.slice(0, fim)}…`
 }
 
-// novo: o texto de um aviso do próprio plugin, ou { texto, caminho, estado } (o encaminhador: lib/mensagens.js)
-function itemNovo (novo, agora) {
-  if (typeof novo === 'string') return { texto: cortarTexto(novo), desde: agora, caminho: null, sistema: true }
-  return { texto: cortarTexto(novo.texto), desde: agora, caminho: novo.caminho, estado: novo.estado }
+// novo: o texto de um aviso do próprio plugin, ou { texto, caminho, estado } (o encaminhador: lib/mensagens.js);
+// mono: o relógio monotónico de agora (sem ele, a mensagem conta o atraso pela hora de parede)
+function itemNovo (novo, agora, mono) {
+  const item = typeof novo === 'string'
+    ? { texto: cortarTexto(novo), desde: agora, caminho: null, sistema: true }
+    : { texto: cortarTexto(novo.texto), desde: agora, caminho: novo.caminho, estado: novo.estado }
+  return Number.isFinite(mono) ? { ...item, mono } : item
 }
 
-// fila + mensagens novas (pela ordem), com a hora a que deviam sair → { fila, perdidas: [item] }
-function porNaFila (fila, novos, agora, { max = MAX_FILA } = {}) {
-  return aparar([...fila, ...novos.map(n => itemNovo(n, agora))], max)
+// fila + mensagens novas (pela ordem), com a hora a que deviam sair (e o relógio monotónico de agora, se
+// vier) → { fila, perdidas: [item] }
+function porNaFila (fila, novos, agora, { max = MAX_FILA, mono } = {}) {
+  return aparar([...fila, ...novos.map(n => itemNovo(n, agora, mono))], max)
 }
 
 // Acima de `max`, o que sai primeiro (nunca um alarme cujo "Resolvido" fica na fila):
@@ -115,9 +127,19 @@ function proximo (fila) {
   return melhor ? melhor.i : -1
 }
 
-// O texto a enviar agora: com "(atrasado N min)" a partir de 1 min de atraso.
-function textoAEnviar (item, agora) {
-  const n = Math.floor((agora - item.desde) / MIN)
+// O atraso de uma mensagem, em ms: pelo relógio monotónico quando ela o tem (as que entraram ou foram lidas
+// neste arranque), senão pela hora de parede. Nunca negativo (a hora de parede foi para trás).
+function atrasoMs (item, agora, mono) {
+  const ms = Number.isFinite(item.mono) && Number.isFinite(mono) ? mono - item.mono : agora - item.desde
+  return Math.max(0, ms)
+}
+
+// O texto a enviar agora: com "(atrasado N min)" a partir de 1 min de atraso e "(atrasado mais de 7 dias)"
+// acima de MAX_ATRASO_DIAS (uma hora errada não faz um número absurdo).
+function textoAEnviar (item, agora, mono) {
+  const ms = atrasoMs(item, agora, mono)
+  if (ms > MAX_ATRASO_MS) return `${item.texto} (atrasado mais de ${MAX_ATRASO_DIAS} dias)`
+  const n = Math.floor(ms / MIN)
   return n >= 1 ? `${item.texto} (atrasado ${n} min)` : item.texto
 }
 
@@ -139,10 +161,14 @@ const avisoDeRecusa = (item, porque) => `⚠️ O Telegram recusou ${MAX_RECUSAS
 
 // A fila lida do encaminhador.json: só os itens com texto e hora. A fila gravada pela versão anterior só
 // tem { texto, desde }: o estado vem do ícone e o caminho do texto (o alarme e o seu "Resolvido" juntos).
+// relogio ({ agora, mono }: a hora de parede e o relógio monotónico deste momento): cada item ganha o
+// instante em que devia ter saído no relógio monotónico, pela idade que a hora de parede lhe dá agora
+// (nunca negativa); daí em diante conta pelo tempo.
 const semIcone = (texto) => texto.replace(/^(?:✓ Resolvido: |🔥 |🚨 |⚠️ )/u, '')
 const estadoPeloIcone = (texto) => (texto.startsWith('✓ Resolvido: ') ? 'normal' : texto.startsWith('🔥') ? 'emergency' : texto.startsWith('🚨') ? 'alarm' : 'warn')
-function filaValida (x) {
+function filaValida (x, relogio) {
   if (!Array.isArray(x)) return []
+  const comRelogio = Number.isFinite(relogio?.agora) && Number.isFinite(relogio?.mono)
   return x.filter(i => i && typeof i.texto === 'string' && i.texto && Number.isFinite(i.desde)).map(i => {
     const sistema = i.sistema === true && !i.caminho
     const caminho = typeof i.caminho === 'string' && i.caminho ? i.caminho : sistema ? null : `texto:${semIcone(i.texto)}`
@@ -150,8 +176,12 @@ function filaValida (x) {
     if (sistema) item.sistema = true
     else item.estado = ESTADOS.has(i.estado) ? i.estado : estadoPeloIcone(i.texto)
     if (Number.isInteger(i.recusas) && i.recusas > 0) item.recusas = i.recusas
+    if (comRelogio) item.mono = relogio.mono - Math.max(0, relogio.agora - i.desde)
     return item
   })
 }
 
-module.exports = { porNaFila, aparar, proximo, cortarTexto, textoAEnviar, recuoMs, excerto, avisoDeRecusa, filaValida, prioridade, MAX_FILA, MAX_TEXTO, MAX_RECUSAS, RECUO_MAX_MS }
+// A fila como se grava: sem o relógio monotónico (só vale neste arranque)
+const paraDisco = (fila) => fila.map(({ mono, ...resto }) => resto)
+
+module.exports = { porNaFila, aparar, proximo, cortarTexto, textoAEnviar, recuoMs, excerto, avisoDeRecusa, filaValida, paraDisco, prioridade, MAX_FILA, MAX_TEXTO, MAX_RECUSAS, MAX_ATRASO_DIAS, RECUO_MAX_MS }

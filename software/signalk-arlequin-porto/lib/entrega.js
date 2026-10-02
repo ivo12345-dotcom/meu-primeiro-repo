@@ -10,6 +10,7 @@
 // essa mensagem: com todos os chats recusados, o aviso não tinha a quem chegar); antes, uma assim
 // prendia a fila para sempre (auditoria F4b, revisão da F4, Importante 1). Nunca vai aos contactos do plano.
 
+const { performance } = require('node:perf_hooks')
 const { porNaFila, proximo, textoAEnviar, recuoMs, excerto, avisoDeRecusa, MAX_FILA, MAX_RECUSAS } = require('./fila')
 const { erroEmPortugues, recusaDoTelegram, registoTelegram } = require('./telegram')
 
@@ -18,7 +19,10 @@ const dormir = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 // deps:
 //   app          o registo (app.error)
-//   agora()      o relógio de parede, em ms (a hora das mensagens e o "(atrasado N min)")
+//   agora()      o relógio de parede, em ms (a hora a que as mensagens deviam sair: grava-se)
+//   monotono()   o relógio monotónico, em ms (o recuo entre tentativas e o "(atrasado N min)": a hora de
+//                parede salta quando o NTP a acerta e não pode parar a fila nem inventar atrasos —
+//                auditoria F4b, revisão da F4, Menor 11)
 //   cliente()    o cliente do Telegram do momento (null sem token; muda no stop() e no start())
 //   chats()      os chats autorizados (nunca os contactos do plano)
 //   fila()       a fila gravada (encaminhador.porEnviar)
@@ -27,16 +31,16 @@ const dormir = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 //   pausar(ms)   a espera da pausa (os testes não esperam)
 //   max          o limite da fila (100)
 // → { acrescentar, enviar, repor, resumo }
-function criarEntrega ({ app, agora, cliente, chats, fila, gravar, pausaMs = PAUSA_MS, pausar = dormir, max = MAX_FILA }) {
+function criarEntrega ({ app, agora, monotono = () => performance.now(), cliente, chats, fila, gravar, pausaMs = PAUSA_MS, pausar = dormir, max = MAX_FILA }) {
   let falhas = 0 // tentativas falhadas seguidas
   let recusadas = 0 // mensagens que o Telegram recusou sempre e saíram da fila (desde o arranque)
-  let proxima = 0 // agora() a partir do qual se tenta outra vez
+  let proxima = 0 // monotono() a partir do qual se tenta outra vez
   let emCurso = null // o envio em curso (um de cada vez)
   let ultimoErro = null // o registo não repete o mesmo erro a cada recuo
 
   // a fila + mensagens novas, dentro do limite (o que sair fica no registo)
   function acrescentar (lista, novos) {
-    const f = porNaFila(lista, novos, agora(), { max })
+    const f = porNaFila(lista, novos, agora(), { max, mono: monotono() })
     for (const x of f.perdidas) app.error(`fila do Telegram cheia: já não vou entregar "${x.texto}"`)
     return f.fila
   }
@@ -69,7 +73,7 @@ function criarEntrega ({ app, agora, cliente, chats, fila, gravar, pausaMs = PAU
 
   async function enviar () {
     const c = cliente()
-    if (emCurso || !c || !fila().length || agora() < proxima) return
+    if (emCurso || !c || !fila().length || monotono() < proxima) return
     const ids = chats()
     if (!ids.length) return
     const este = {}
@@ -77,7 +81,7 @@ function criarEntrega ({ app, agora, cliente, chats, fila, gravar, pausaMs = PAU
     try {
       while (cliente() === c && fila().length) {
         const item = fila()[proximo(fila())]
-        const texto = textoAEnviar(item, agora())
+        const texto = textoAEnviar(item, agora(), monotono())
         const erros = await Promise.all(ids.map(id => c.sendMessage(id, texto).then(() => null, e => e)))
         const falhados = erros.filter(Boolean)
         if (cliente() !== c) {
@@ -102,7 +106,7 @@ function criarEntrega ({ app, agora, cliente, chats, fila, gravar, pausaMs = PAU
             trocar(item, { ...item, recusas: n })
           }
           falhas++
-          proxima = agora() + recuoMs(falhas, Math.max(0, ...falhados.map(e => e?.esperarS ?? 0)))
+          proxima = monotono() + recuoMs(falhas, Math.max(0, ...falhados.map(e => e?.esperarS ?? 0)))
           return
         }
         falhas = 0

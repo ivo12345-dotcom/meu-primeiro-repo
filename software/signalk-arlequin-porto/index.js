@@ -39,9 +39,10 @@ const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 const { exec } = require('node:child_process')
+const { performance } = require('node:perf_hooks')
 const { ALARMES, APITO, ACAO, novoEstado, passo, distancia } = require('./lib/regras')
 const { novoEncaminhador, encaminhar, listarNotificacoes, alarmesAtivos, ATIVO } = require('./lib/mensagens')
-const { filaValida } = require('./lib/fila')
+const { filaValida, paraDisco } = require('./lib/fila')
 const { criarEntrega } = require('./lib/entrega')
 const { EXTRAS, lerDestinosDaRota, lugaresDaConfiguracao, lugarPerto } = require('./lib/lugares')
 const { resumo } = require('./lib/resumo')
@@ -88,12 +89,14 @@ const AJUDA = `Comandos do Arlequin:
 /largar — apaga o ponto de amarração
 /ajuda — esta lista`
 
-// deps (testes): agora() o relógio (anti-spam, regras, encaminhador e fila); maxCodigos; limiteTelegramMs
+// deps (testes): agora() o relógio de parede (anti-spam, regras, encaminhador e a hora das mensagens da fila);
+// monotono() o relógio monotónico (o recuo e o atraso da fila: a hora de parede salta); maxCodigos; limiteTelegramMs
 // o limite de cada chamada; tickMs, encaminharMs os ciclos (1 s e 2 s); pausaFilaMs entre duas
 // mensagens da fila (1 s: o Telegram não quer mais do que uma por segundo no mesmo chat) e pausar(ms) a
 // espera dela; maxFila o limite da fila (100); pausaErroMs a pausa do long polling depois de um erro (10 s)
 module.exports = function (app, deps = {}) {
   const agora = deps.agora || (() => Date.now())
+  const monotono = deps.monotono || (() => performance.now())
   const maxCodigos = deps.maxCodigos ?? MAX_CODIGOS
   const tickMs = deps.tickMs ?? 1000
   const encaminharMs = deps.encaminharMs ?? 2000
@@ -451,19 +454,22 @@ module.exports = function (app, deps = {}) {
       if (!x || typeof x !== 'object' || Array.isArray(x)) throw new Error('não é um encaminhador')
       const base = novoEncaminhador()
       for (const k of Object.keys(base)) if (x[k] && typeof x[k] === 'object' && !Array.isArray(x[k])) base[k] = x[k]
-      base.porEnviar = filaValida(x.porEnviar)
+      base.porEnviar = filaValida(x.porEnviar, { agora: agora(), mono: monotono() })
       return { enc: base, erro: null }
     } catch (e) {
       return { enc: novoEncaminhador(), erro: e.code === 'ENOENT' ? null : e.message }
     }
   }
+  // o encaminhador como se grava: a fila sem o relógio monotónico das mensagens (só vale neste arranque)
+  const serializar = (e) => JSON.stringify({ ...e, porEnviar: paraDisco(e.porEnviar) })
   function gravarEncaminhador () {
-    try { escreverAtomico(ficheiroEnc, JSON.stringify(enc)) } catch (e) { app.error(`não gravei o encaminhador: ${e.message}`) }
+    try { escreverAtomico(ficheiroEnc, serializar(enc)) } catch (e) { app.error(`não gravei o encaminhador: ${e.message}`) }
   }
   // A fila dos alarmes por entregar ao Telegram (lib/entrega.js; a fila fica no encaminhador.json)
   const entrega = criarEntrega({
     app,
     agora,
+    monotono,
     cliente: () => tg,
     chats: chatsAutorizados,
     fila: () => enc.porEnviar,
@@ -482,7 +488,7 @@ module.exports = function (app, deps = {}) {
     // as mensagens novas entram na fila (gravada antes de enviar); sem token ou sem chats autorizados
     // não há a quem as entregar e não se guardam (como antes)
     if (r.itens.length && tg && chatsAutorizados().length) novo = { ...novo, porEnviar: entrega.acrescentar(novo.porEnviar, r.itens) }
-    const mudou = JSON.stringify(novo) !== JSON.stringify(enc)
+    const mudou = serializar(novo) !== serializar(enc)
     enc = novo
     if (mudou) gravarEncaminhador()
     entrega.enviar().catch(e => app.error(`fila do Telegram: ${e.message}`))
