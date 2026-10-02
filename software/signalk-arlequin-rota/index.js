@@ -385,11 +385,19 @@ module.exports = function (app, deps = {}) {
   }
 
   // oo: as opções com que se lê (um cálculo a correr fica com as do início, mesmo que o plugin pare)
-  function instrumentos (oo = o) {
+  // Auditoria I-12: o gasóleo e o SoC só contam com leitura fresca (≤ 2 min, como a posição, o vento e a
+  // pressão a navegar) e sem o aviso do próprio plugin de que a leitura não é medida — a sonda do gasóleo
+  // perdida (o plugin continua a publicar os litros descontados pelo consumo) ou o SmartShunt calado (o
+  // valor fica na árvore). Fora disso são desconhecidos (falha segura): o cálculo assume o valor da
+  // configuração com aviso vermelho em cada alternativa, e a navegar fica "recursos: sem leitura". A
+  // capacidade do depósito é da configuração do plugin e não envelhece. (A rota não lê as rotações do motor.)
+  function instrumentos (oo = o, agora = relogio()) {
     const pos = v('navigation.position')
-    const soc = v(`electrical.batteries.${oo.bateria}.capacity.stateOfCharge`)
-    const vol = v(`tanks.fuel.${oo.deposito}.currentVolume`)
-    const nivel = v(`tanks.fuel.${oo.deposito}.currentLevel`)
+    const avisoAtivo = (caminho) => { const st = app.getSelfPath?.(caminho)?.value?.state; return typeof st === 'string' && st !== 'normal' }
+    const soc = avisoAtivo('notifications.arlequin.energia.sensorPerdido') ? null : numeroFresco(`electrical.batteries.${oo.bateria}.capacity.stateOfCharge`, agora)
+    const semSonda = avisoAtivo(`notifications.tanks.fuel.${oo.deposito}.sondaPerdida`)
+    const vol = semSonda ? null : numeroFresco(`tanks.fuel.${oo.deposito}.currentVolume`, agora)
+    const nivel = semSonda ? null : numeroFresco(`tanks.fuel.${oo.deposito}.currentLevel`, agora)
     const cap = v(`tanks.fuel.${oo.deposito}.capacity`)
     const gasoleoL = Number.isFinite(vol) ? vol * 1000 : Number.isFinite(nivel) && Number.isFinite(cap) ? nivel * cap * 1000 : null
     return {
