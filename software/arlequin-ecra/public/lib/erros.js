@@ -40,3 +40,13 @@ export function falhaJanela (err, corpo = {}) {
   if (!s) return 'OpenCPN: sem ligação ao plugin do ecrã'
   return typeof corpo?.noite === 'boolean' ? 'OpenCPN: o modo noite não mudou' : 'OpenCPN: as janelas não mudaram'
 }
+
+// A falha do silenciar/reconhecer de um alarme, para a barra (curta).
+export function falhaCalar (err, acao = 'silenciar') {
+  const s = err?.status
+  const o = acao === 'reconhecer' ? 'não reconheceu' : 'não silenciou'
+  if (s === 401 || s === 403) return `${o}: sem permissão (entra no SignalK)`
+  if (!s) return `${o}: ${SEM_LIGACAO}`
+  if (explicado(err.message)) return `${o}: ${err.message.trim()}`
+  return `${o} (HTTP ${s})`
+}

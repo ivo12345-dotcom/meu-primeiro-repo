@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { criarBarometro, registarPressao, tendencia } from '../public/lib/barometro.js'
 import { novaViagem, acumular } from '../public/lib/viagem.js'
-import { maisGrave, deveTocar, paginaDoAlarme, bipDeLigacao } from '../public/lib/alarmes.js'
+import { maisGrave, deveTocar, paginaDoAlarme, bipDeLigacao, chipAlarme, acaoCalar } from '../public/lib/alarmes.js'
 
 const H = 3600 * 1000
 const NO = 1852 / 3600
@@ -106,6 +106,47 @@ test('contrato C1 (decisão do Ivo n.º 2): o apito contínuo só para o perigo 
   assert.equal(deveTocar(doServidor('a', { ...ativo, status: { silenced: true, acknowledged: false } })), null)
   assert.equal(deveTocar(doServidor('a', { ...ativo, method: ['visual'] })), null)
   assert.equal(deveTocar(doServidor('a', { ...ativo, state: 'normal' })), null)
+})
+
+test('auditoria I-08: entre alarmes da mesma gravidade, a barra mostra primeiro o que ainda apita (um 2.º alarme AIS silencia-se pela barra)', () => {
+  const ais = (mmsi, extra = {}) => doServidor(`notifications.arlequin.ais.${mmsi}`, { state: 'alarm', method: SOM, message: mmsi, apito: 'continuo', ...extra })
+  const silenciado = ais('A', { method: ['visual'], status: { silenced: true, acknowledged: false, canSilence: true, canAcknowledge: true } })
+  assert.equal(maisGrave([silenciado, ais('B')]).message, 'B')
+  assert.equal(maisGrave([ais('A'), ais('B')]).message, 'A', 'com os dois a apitar, o primeiro')
+  // uma gravidade maior continua à frente, mesmo calada
+  const fumo = doServidor('notifications.arlequin.porto.fumo', { state: 'emergency', method: ['visual'], message: 'FUMO a bordo!', apito: 'continuo', status: { silenced: false, acknowledged: true } })
+  assert.equal(maisGrave([ais('B'), fumo]).message, 'FUMO a bordo!')
+})
+
+test('auditoria I-08: "silenciar" só onde o servidor deixa; a emergência (que o SignalK não deixa silenciar) tem "reconhecer"; o botão fica fora do chip, para o dedo', () => {
+  assert.equal(acaoCalar(doServidor('a', { state: 'alarm', method: SOM, apito: 'continuo' })), 'silenciar')
+  assert.equal(acaoCalar(doServidor('a', { state: 'warn', method: SOM })), 'silenciar')
+  assert.equal(acaoCalar(doServidor('a', { state: 'emergency', method: SOM, apito: 'continuo' })), 'reconhecer')
+  assert.equal(acaoCalar(doServidor('a', { state: 'alarm', method: SOM, status: { silenced: false, acknowledged: false, canSilence: false, canAcknowledge: true } })), 'reconhecer')
+  assert.equal(acaoCalar(doServidor('a', { state: 'alarm', method: SOM, status: { silenced: false, acknowledged: false, canSilence: false, canAcknowledge: false } })), null)
+  assert.equal(acaoCalar(doServidor('a', { state: 'alarm', method: ['visual'], status: { silenced: true, acknowledged: false } })), null, 'já calado')
+  assert.equal(acaoCalar({ caminho: 'x', state: 'alarm', method: SOM }), null, 'sem id (o servidor não o conhece): nada')
+  const html = chipAlarme(doServidor('notifications.arlequin.ais.1', { state: 'alarm', method: SOM, message: 'NORDIC STAR', apito: 'continuo' }))
+  assert.match(html, /^<span class="chip alarme" data-acao="ir-alarme"[^>]*>⚠ NORDIC STAR<\/span><button class="silenciar" data-acao="silenciar" data-id="0b6f3c2e-[^"]+">silenciar<\/button>$/)
+  const fumo = chipAlarme(doServidor('notifications.arlequin.porto.fumo', { state: 'emergency', method: SOM, message: 'FUMO a bordo!', apito: 'continuo' }))
+  assert.doesNotMatch(fumo, /data-acao="silenciar"/)
+  assert.match(fumo, /<button class="silenciar" data-acao="reconhecer" data-id="[^"]+">reconhecer<\/button>/)
+})
+
+test('auditoria I-08: a falha do silenciar/reconhecer fica à vista na barra, curta e em pt-PT (antes engolida)', async () => {
+  const { falhaCalar } = await import('../public/lib/erros.js')
+  const erro = (status, message = String(status)) => Object.assign(new Error(message), status ? { status } : {})
+  assert.equal(falhaCalar(erro(400, 'um alarme de emergência não se silencia: só se reconhece'), 'silenciar'), 'não silenciou: um alarme de emergência não se silencia: só se reconhece')
+  assert.equal(falhaCalar(erro(401), 'silenciar'), 'não silenciou: sem permissão (entra no SignalK)')
+  assert.equal(falhaCalar(erro(undefined, 'sem ligação ao SignalK'), 'reconhecer'), 'não reconheceu: sem ligação ao SignalK')
+  assert.equal(falhaCalar(erro(400), 'reconhecer'), 'não reconheceu (HTTP 400)')
+  const { readFileSync } = await import('node:fs')
+  const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8')
+  const calar = app.slice(app.indexOf("if (acao === 'silenciar' || acao === 'reconhecer')"), app.indexOf("if (acao === 'ir-alarme')"))
+  assert.match(calar, /\/acknowledge/)
+  assert.match(calar, /\/silence/)
+  assert.doesNotMatch(calar, /\.catch\(\(\) => \{\}\)/)
+  assert.match(calar, /falhaCalar\(/)
 })
 
 test('cada alarme leva à sua página', () => {

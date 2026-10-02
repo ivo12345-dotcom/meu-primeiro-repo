@@ -1,6 +1,7 @@
 // AIS: todos os alvos por ordem de perigo, detalhe ao tocar e silenciar.
 
 import { LIMITES_AIS } from '../lib/cpa.js'
+import { acaoCalar } from '../lib/alarmes.js'
 import { velocidade, distancia, duracao, rumo, num, tile, esc } from './comum.js'
 
 const ESTADO = { perigo: 'PERIGO', atencao: 'atenção', seguro: 'seguro', afasta: 'afasta-se', desconhecido: '—' }
@@ -17,10 +18,12 @@ export default {
     }).join('')
     const a = ctx.alvos.find(x => x.mmsi === sel)
     const n = a && ctx.notificacoes.find(x => x.caminho === `notifications.arlequin.ais.${a.mmsi}` && x.state !== 'normal')
+    // as mesmas regras do botão da barra (auditoria I-08): silenciar onde o servidor deixa, senão reconhecer
+    const calar = n ? acaoCalar(n) : null
     const detalhe = a
       ? `<div class="tile"><div class="linha"><span class="v">${esc(a.name || a.mmsi)}</span><span class="lab">MMSI ${esc(a.mmsi)} · ${esc(a.tipo || 'tipo desconhecido')}</span></div>
 <div class="g3" style="margin-top:.3rem;">${tile('Distância · marcação', `${a.r ? distancia(a.r.distancia) : '—'} MN · ${a.r ? rumo(a.r.marcacao) : '—'}`)}${tile('CPA · TCPA', a.r && a.classe !== 'afasta' ? `${distancia(a.r.cpa, 2)} MN · ${duracao(a.r.tcpa)}` : 'afasta-se')}${tile('SOG · COG', `${velocidade(a.sog)} nós · ${rumo(a.cog)}`)}</div>
-<div class="acoes" style="margin-top:.4rem;">${n && n.id && !n.status?.silenced ? `<button class="acao stop" data-acao="silenciar" data-id="${esc(n.id)}">Silenciar alarme</button>` : ''}<button class="acao" data-acao="fechar">Fechar</button></div></div>`
+<div class="acoes" style="margin-top:.4rem;">${calar ? `<button class="acao stop" data-acao="${calar}" data-id="${esc(n.id)}">${calar === 'reconhecer' ? 'Reconhecer alarme' : 'Silenciar alarme'}</button>` : ''}<button class="acao" data-acao="fechar">Fechar</button></div></div>`
       : ''
     return `<div class="col">
 <div class="tile" style="flex:1;overflow:auto;"><table class="grande"><tr><th>Nome</th><th>Tipo</th><th>Dist.</th><th>Marc.</th><th>SOG/COG</th><th>CPA</th><th>TCPA</th><th>Estado</th></tr>${linhas || '<tr><td colspan="8" class="lab">Sem alvos AIS</td></tr>'}</table></div>
