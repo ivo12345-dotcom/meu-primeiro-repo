@@ -40,6 +40,22 @@ test('partidas: agora, +3, +6 … +48 h arredondadas à meia hora, antes do fim 
   assert.equal(d.quando(Date.UTC(2026, 9, 1, 7), AGORA), 'dia 1 às 08:00')
 })
 
+test('I-18: "amanhã" é o dia seguinte no calendário de Lisboa, também à volta da mudança de hora (dias de 23 h e de 25 h)', () => {
+  // primavera de 2027: a hora muda no domingo 28/03 (01:00 UTC). Agora: sábado 27/03 às 23:30 de Lisboa
+  const sab = Date.UTC(2027, 2, 27, 23, 30)
+  assert.equal(d.quando(Date.UTC(2027, 2, 29, 7), sab), 'dia 29 às 08:00') // segunda: depois de amanhã (era "amanhã")
+  assert.equal(d.quando(Date.UTC(2027, 2, 28, 9), sab), 'amanhã às 10:00') // domingo: amanhã (era "dia 28")
+  assert.equal(d.quando(Date.UTC(2027, 2, 27, 23, 45), sab), 'às 23:45')
+  // outono de 2026: a hora muda no domingo 25/10 (01:00 UTC). Agora: domingo 25/10 às 00:30 de Lisboa
+  const dom = Date.UTC(2026, 9, 24, 23, 30)
+  assert.equal(d.quando(Date.UTC(2026, 9, 26, 8), dom), 'amanhã às 08:00') // segunda (era "dia 26")
+  assert.equal(d.quando(Date.UTC(2026, 9, 25, 22), dom), 'às 22:00') // ainda domingo
+  assert.equal(d.quando(Date.UTC(2026, 9, 27, 8), dom), 'dia 27 às 08:00')
+  // fim do mês e do ano
+  assert.equal(d.quando(Date.UTC(2027, 0, 1, 9), Date.UTC(2026, 11, 31, 20)), 'amanhã às 09:00')
+  assert.equal(d.quando(Date.UTC(2026, 9, 1, 9), Date.UTC(2026, 8, 30, 20)), 'amanhã às 10:00')
+})
+
 // Candidato inventado.
 let n = 0
 function cand ({ partida = AGORA, custo = 20, excluida = false, naoRecomendada = false, motivos = [], afastamento = 5, propulsao = 'vela', chegada = partida + 12 * H, noite = false } = {}) {
