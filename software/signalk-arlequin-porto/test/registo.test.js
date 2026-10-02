@@ -12,14 +12,15 @@ const { criarTelegramFalso } = require('../../dev/telegram-falso')
 
 const H = 3600000
 function appFalso () {
-  const app = { arvore: {}, estado: '', erros: [] }
+  const app = { arvore: {}, estado: '', erros: [], ticks: 0 }
   app.dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arlequin-porto-registo-'))
   app.getDataDirPath = () => app.dir
   const pôr = (p, value) => { const ks = p.split('.'); let n = app.arvore; for (const k of ks) n = (n[k] = n[k] || {}); n.value = value }
   app.pôr = pôr
   app.getSelfPath = (p) => p.split('.').reduce((n, k) => n?.[k], app.arvore)
   app.handleMessage = (id, d) => { for (const u of d.updates) for (const v of u.values) pôr(v.path, v.value) }
-  app.setPluginStatus = (s) => { app.estado = s }
+  // ticks: quantas vezes o ciclo do plugin correu (escreve o estado em cada uma)
+  app.setPluginStatus = (s) => { app.estado = s; app.ticks++ }
   app.error = (e) => app.erros.push(e)
   return app
 }
@@ -45,7 +46,9 @@ test('auditoria M-53: o lembrete de armar que não sai regista-se com um só pre
   const p = criar(app, { agora: () => agora, tickMs: 50, encaminharMs: 50 })
   p.start({ telegramToken: SEGREDO, chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 })
   try {
-    await esperar(200) // o plugin vê o barco sem movimento
+    // o plugin vê o barco sem movimento, com a hora de antes do salto (se o ciclo ainda não tivesse corrido,
+    // veria já a hora saltada e o lembrete só sairia 12 h depois: auditoria F4b, revisão da F4, Menor 13)
+    assert.ok(await ate(() => app.ticks >= 2))
     tgf.cortar()
     agora += 12 * H + 60000
     assert.ok(await ate(() => tgf.cortados.length >= 1))
