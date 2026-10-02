@@ -2,7 +2,7 @@
 
 import { barraXte } from '../lib/desenho.js'
 import { hpa } from '../lib/formato.js'
-import { tile, proximoWp, velocidade, distancia, duracao, num, rumo, ok } from './comum.js'
+import { tile, proximoWp, velocidade, distancia, duracao, num, rumo, ok, esc } from './comum.js'
 
 const hm = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 
@@ -16,7 +16,7 @@ export default {
     const dp = ok(v.pressaoInicial) && ok(v.pressaoFinal) ? hpa(v.pressaoFinal - v.pressaoInicial) : null
     const inicio = new Date(v.inicio)
     const esquerda = wp.ativo
-      ? `<div class="tile"><div class="lab">Próximo ponto</div><div class="vv">${wp.nome}</div></div>
+      ? `<div class="tile"><div class="lab">Próximo ponto</div><div class="vv">${esc(wp.nome)}</div></div>
 <div class="grelha" style="grid-template-columns:1fr 1fr;flex:2;">
   ${tile('Distância', `${distancia(wp.dist)} MN`, '', 'vv')}
   ${tile('Rumo ao WP', rumo(wp.rumoWp), '', 'vv')}

@@ -1,7 +1,7 @@
 // Ecrã da roda do Arlequin: arranque, barra de cima, botões, som e render 1 Hz.
 
 import { criarStore, ligar, valor, idade, pedir } from './signalk.js'
-import { hora, num, hpa } from './lib/formato.js'
+import { barraHtml } from './lib/barra.js'
 import { cpa, classificar } from './lib/cpa.js'
 import { lerPolar } from './lib/polar.js'
 import { criarBarometro, registarPressao, tendencia } from './lib/barometro.js'
@@ -83,19 +83,19 @@ function contexto () {
   }
 }
 
-// ---------- barra de cima ----------
-function barraHtml (ctx) {
-  const gps = ctx.idade('navigation.position') < 10000
-  const p = ctx.v('environment.outside.pressure')
-  const t = ctx.baro
-  const seta = !t ? '' : t.sentido === 'sobe' ? ' ▲' : t.sentido === 'desce' ? ' ▼' : ' ▬'
-  const piloto = ctx.v('steering.autopilot.state') || 'manual'
-  const alarme = chipAlarme(maisGrave(ctx.notificacoes))
+// ---------- barra de cima (lib/barra.js) ----------
+function barra (ctx) {
   const som = app.audio ? '' : '<span class="chip off aviso-som" title="O browser só deixa tocar depois de um toque">🔇 toque para ligar o som</span>'
-  return `<span class="nome">ARLEQUIN</span><span>${hora(new Date())}</span>
-<span class="chip ${gps ? 'bom' : 'off'}">GPS</span><span class="chip off" title="Meshtastic: depois de validar o sistema">Mesh</span><span class="chip off" title="4G: a instalar">4G</span>
-<span class="chip">${p ? num(hpa(p), 0) : '—'} hPa${seta}</span>${som}${alarme}
-<span class="chip piloto">Piloto: ${piloto}</span>${store.ligado ? '' : '<span class="chip alarme">SEM LIGAÇÃO AO SIGNALK</span>'}`
+  return barraHtml({
+    agora: Date.now(),
+    gps: ctx.idade('navigation.position') < 10000,
+    pressao: ctx.v('environment.outside.pressure'),
+    tendencia: ctx.baro,
+    somHtml: som,
+    alarmeHtml: chipAlarme(maisGrave(ctx.notificacoes)),
+    piloto: ctx.v('steering.autopilot.state'),
+    ligado: store.ligado
+  })
 }
 
 // ---------- som ----------
@@ -125,7 +125,7 @@ function tocar (ctx) {
 // ---------- render ----------
 function render (forcar = false) {
   const ctx = contexto()
-  document.getElementById('barra').innerHTML = barraHtml(ctx)
+  document.getElementById('barra').innerHTML = barra(ctx)
   const el = document.getElementById('pagina')
   const aEscrever = el.contains(document.activeElement) && document.activeElement.tagName === 'INPUT'
   if (podeRedesenhar({ forcar, aEscrever, premidoHaMs: app.premidoEm == null ? null : Date.now() - app.premidoEm })) el.innerHTML = PAGINAS[app.pagina].render(ctx)
