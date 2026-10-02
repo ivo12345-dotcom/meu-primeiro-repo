@@ -81,7 +81,8 @@ const AJUDA = `Comandos do Arlequin:
 /amarrar — grava aqui o ponto de amarração
 /largar — apaga o ponto de amarração`
 
-// O erro de uma chamada ao Telegram para o registo: os do cliente já começam por "Telegram <método>:".
+// O erro de uma chamada ao Telegram para o registo, com um só prefixo (auditoria M-53: era "Telegram:
+// Telegram sendMessage: …"): os do cliente já começam por "Telegram <método>:".
 const registoTelegram = (e) => { const m = String(e?.message ?? e); return /^Telegram\b/.test(m) ? m : `Telegram: ${m}` }
 
 // deps (testes): agora() o relógio (anti-spam, regras, encaminhador e fila); maxCodigos; limiteTelegramMs
@@ -163,10 +164,12 @@ module.exports = function (app, deps = {}) {
   // os chats autorizados: sem espaços, sem vazios, sem repetir (o mesmo para enviar e para autorizar)
   const chatsAutorizados = () => [...new Set((Array.isArray(o.chatIds) ? o.chatIds : []).map(id => String(id ?? '').trim()).filter(Boolean))]
 
+  // (só o lembrete de armar: os alarmes vão pela fila)
   async function enviarTodos (texto) {
-    if (!tg) return
+    const cliente = tg
+    if (!cliente) return
     for (const id of chatsAutorizados()) {
-      try { await tg.sendMessage(id, texto) } catch (e) { app.error(`Telegram: ${e.message}`) }
+      try { await cliente.sendMessage(id, texto) } catch (e) { app.error(registoTelegram(e)) }
     }
   }
 
@@ -343,7 +346,7 @@ module.exports = function (app, deps = {}) {
         }
       } catch (e) {
         if (g !== geracao || e?.cancelado) return
-        app.error(`Telegram: ${e.message}`)
+        app.error(registoTelegram(e))
         await dormir(10000, ctl.signal)
       }
     }
