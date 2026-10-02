@@ -6,7 +6,12 @@
 // seguem em alarme (o aviso dos 80% do disco fica no ecrã: só os 95% contam).
 // A navegar (desenho 3b-2): os lembretes de evento e o "come e bebe" da rota ficam só no ecrã; a
 // previsão velha só segue em alarme (mais de 12 h); recalcula, recursos e barómetro seguem.
+// O lembrete da hora de alarme em terra (notifications.rota.alarmeTerra) também fica só no ecrã: a lista dos
+// avisos para o Telegram é decisão do Ivo.
 // Tudo isto só para os chats autorizados (o do Ivo), nunca para os contactos do plano.
+// Um caminho gravado ativo (encaminhador.json) que já não está na árvore desapareceu (o servidor
+// reiniciou: a árvore das notificações vem vazia), não se resolveu: passa a normal sem mensagem, e um
+// alarme que volte a ser publicado segue outra vez (revisão final C2: mais vale repetido do que perdido).
 
 const ICONE = { warn: '⚠️', alert: '⚠️', alarm: '🚨', emergency: '🔥' }
 const ATIVO = new Set(['warn', 'alert', 'alarm', 'emergency'])
@@ -20,7 +25,7 @@ function novoEncaminhador () {
 // de um alarme que foi enviado segue sempre (senão ficava-se a julgar que continua).
 const SO_ALARME = ['notifications.arlequin.caixanegra.disco', 'notifications.rota.previsao']
 // Lembretes e avisos só para o ecrã: nunca seguem para o Telegram.
-const NUNCA = ['notifications.arlequin.caixanegra.velas', 'notifications.arlequin.caixanegra.relogio', 'notifications.rota.lembrete.', 'notifications.rota.comer']
+const NUNCA = ['notifications.arlequin.caixanegra.velas', 'notifications.arlequin.caixanegra.relogio', 'notifications.rota.lembrete.', 'notifications.rota.comer', 'notifications.rota.alarmeTerra']
 const GRAVE = new Set(['alarm', 'emergency'])
 // Um caminho das listas: exato; só um que acaba em ponto final é um prefixo (notifications.rota.lembrete.)
 const casa = (caminho, p) => (p.endsWith('.') ? caminho.startsWith(p) : caminho === p)
@@ -48,6 +53,14 @@ function encaminhar (enc0, notificacoes, agora, { intervalo = 10 * 60 * 1000, am
       mensagens.push(`✓ Resolvido: ${enc.mensagem[n.caminho] || n.caminho}`)
       delete enc.pendente[n.caminho]
     }
+  }
+  // os que desapareceram da árvore (o servidor reiniciou): normal, sem mensagem nem limite dos 10 min
+  const presentes = new Set(notificacoes.map(n => n.caminho))
+  for (const [caminho, estado] of Object.entries(enc.estados)) {
+    if (estado === 'normal' || presentes.has(caminho)) continue
+    enc.estados[caminho] = 'normal'
+    delete enc.pendente[caminho]
+    delete enc.ultimoAlarme[caminho]
   }
   return { enc, mensagens }
 }

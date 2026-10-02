@@ -245,3 +245,53 @@ test('Tarefa 8.3: o estado do encaminhador sobrevive a um reinício (encaminhado
     assert.deepEqual(app.erros.filter(e => !/encaminhador/.test(e)), [])
   } finally { p.stop(); await tgf.fechar() }
 })
+
+test('revisão final C2: o alarme gravado no encaminhador.json que não está na árvore (o servidor reiniciou: a árvore vem vazia) passa a normal sem mensagem; quando volta, segue outra vez (mesmo dentro dos 10 min)', () => {
+  const agua = 'notifications.arlequin.porto.aguaPorao'
+  let r = encaminhar(novoEncaminhador(), [n(agua, 'alarm', 'Água no porão!'), n('notifications.rota.recursos', 'warn', 'Recursos: gasóleo à chegada ~34 L')], 0)
+  assert.deepEqual(r.mensagens, ['🚨 Água no porão!', '⚠️ Recursos: gasóleo à chegada ~34 L'])
+  // o que fica no encaminhador.json (ida e volta pelo JSON) e o servidor arranca com a árvore vazia
+  let e = JSON.parse(JSON.stringify(r.enc))
+  r = encaminhar(e, [], 2 * MIN)
+  assert.deepEqual(r.mensagens, [], 'desapareceu, não se resolveu: sem "✓ Resolvido"')
+  assert.equal(r.enc.estados[agua], 'normal')
+  assert.equal(r.enc.pendente[agua], undefined)
+  e = r.enc
+  // o alarme volta a ser publicado (ainda há água): segue outra vez, mesmo a 3 min do 1.º
+  r = encaminhar(e, [n(agua, 'alarm', 'Água no porão!')], 3 * MIN)
+  assert.deepEqual(r.mensagens, ['🚨 Água no porão!'])
+  e = r.enc
+  // e o "Resolvido" sai uma vez quando a água acaba
+  r = encaminhar(e, [n(agua, 'normal', '')], 4 * MIN)
+  assert.deepEqual(r.mensagens, ['✓ Resolvido: Água no porão!'])
+})
+
+test('revisão final I2: o lembrete da hora de alarme em terra (notifications.rota.alarmeTerra) fica só no ecrã', () => {
+  assert.ok(NUNCA.includes('notifications.rota.alarmeTerra'))
+  const r = encaminhar(novoEncaminhador(), [n('notifications.rota.alarmeTerra', 'alert', 'Os contactos em terra ligam ao MRCC às 19:41: avisa-os ou Terminar')], 0)
+  assert.deepEqual(r.mensagens, [])
+})
+
+test('revisão final M4: o plano com o texto entregue e o GPX recusado conta como entregue (o GPX vai para as falhas)', async () => {
+  const tgf = await criarTelegramFalso()
+  const app = appFalso()
+  const original = globalThis.fetch
+  // o Telegram recusa os documentos (o GPX) do chat 222
+  globalThis.fetch = async (url, o) => {
+    if (String(url).endsWith('/sendDocument') && o?.body instanceof FormData && o.body.get('chat_id') === '222') return new Response(JSON.stringify({ ok: false, error_code: 400, description: 'Bad Request: file is too big' }), { status: 400 })
+    return original(url, o)
+  }
+  const p = criar(app)
+  p.start({ telegramToken: 'TESTE', chatIds: ['111'], contactosPlano: CONTACTOS, telegramBase: tgf.url, pollTimeout: 1 })
+  try {
+    const r = respostaDe(app, 'g1')
+    app.emit('arlequin:plano', { pedido: 'g1', tipo: 'plano', texto: 'PLANO\nEste plano substitui o anterior.', gpx: '<gpx/>', nomeFicheiro: 'novo.gpx', destinatarios: 'contactos-do-plano', contactos: ['Mãe', 'Tio'], chats: ['222', '333'] })
+    const x = await r
+    assert.deepEqual(x.entregues, ['chat 111', 'Mãe', 'Tio'])
+    assert.deepEqual(x.contactos, ['Mãe', 'Tio'])
+    assert.deepEqual(x.chats, ['222', '333'])
+    assert.equal(x.falhas.length, 1)
+    assert.equal(x.falhas[0].nome, 'Mãe')
+    assert.match(x.falhas[0].erro, /^GPX: /)
+  } finally { globalThis.fetch = original; p.stop(); await tgf.fechar() }
+})

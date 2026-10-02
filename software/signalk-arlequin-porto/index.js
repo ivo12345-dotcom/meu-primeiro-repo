@@ -20,8 +20,10 @@
 // contactos indicados (re-revisão M-5: o Ivo não recebe a mesma mensagem de 2 em 2 min).
 // Os contactosPlano só recebem: as mensagens deles são ignoradas (não comandam). Quem escreve sem
 // estar em nenhuma das listas recebe o código para dar ao Ivo (uma vez por hora) e não fica autorizado.
-// O estado do encaminhador dos alarmes fica em encaminhador.json (escrita atómica): um reinício não
-// repete os avisos ativos nem o "✓ Resolvido".
+// O estado do encaminhador dos alarmes fica em encaminhador.json (escrita atómica): um reinício do plugin
+// não repete os avisos ativos nem o "✓ Resolvido"; depois de um reinício do servidor (a árvore das
+// notificações vem vazia), um aviso ainda ativo volta a seguir uma vez (lib/mensagens.js).
+// O plano com o texto entregue conta como entregue mesmo que o GPX falhe (o GPX vai para as falhas, "GPX: …").
 // O plano vai a todos os destinatários em paralelo e cada chamada ao Telegram tem um limite de 10 s,
 // para a resposta chegar bem antes dos 30 s que o plugin da rota espera; as falhas vão em pt-PT
 // ("bloqueou o bot", "sem ligação ao Telegram", "erro do Telegram: …").
@@ -217,13 +219,19 @@ module.exports = function (app, deps = {}) {
     const resultados = await Promise.all(lista.map(async (d) => {
       try {
         await cliente.sendMessage(d.chatId, String(ev?.texto ?? ''))
-        if (gpx) await cliente.sendDocument(d.chatId, gpx, ev.nomeFicheiro || 'plano.gpx')
-        return { nome: d.nome, chatId: d.chatId, emTerra: d.emTerra }
       } catch (e) { return { nome: d.nome, erro: erroEmPortugues(e) } }
+      // o texto chegou: conta como entregue mesmo que o GPX falhe (revisão final M4: a mensagem não
+      // fica a repetir-se nem prende a fila); o GPX que falhou vai para as falhas
+      let erroGpx = null
+      if (gpx) {
+        try { await cliente.sendDocument(d.chatId, gpx, ev.nomeFicheiro || 'plano.gpx') } catch (e) { erroGpx = `GPX: ${erroEmPortugues(e)}` }
+      }
+      return { nome: d.nome, chatId: d.chatId, emTerra: d.emTerra, erroGpx }
     }))
     const ok = resultados.filter(x => !x.erro)
     const emTerra = ok.filter(x => x.emTerra)
-    responder(ok.map(x => x.nome), [...resultados.filter(x => x.erro), ...faltam], emTerra.map(x => x.nome), emTerra.map(x => x.chatId))
+    const falhasGpx = ok.filter(x => x.erroGpx).map(x => ({ nome: x.nome, erro: x.erroGpx }))
+    responder(ok.map(x => x.nome), [...resultados.filter(x => x.erro), ...falhasGpx, ...faltam], emTerra.map(x => x.nome), emTerra.map(x => x.chatId))
   }
   const aoPlano = (ev) => { enviarPlano(ev).catch(e => app.error(`plano: ${e.message}`)) }
 
@@ -296,8 +304,10 @@ module.exports = function (app, deps = {}) {
     app.setPluginStatus(`${persist.armado ? '🔒 armado' : 'desarmado'} · ${estado.amarracao.ponto ? 'amarrado' : 'sem ponto'} · Telegram ${tg ? 'ligado' : 'sem token'}`)
   }
 
-  // O estado do encaminhador em disco (Tarefa 8.3): depois de um reinício, um aviso ainda ativo não se
-  // repete e o "✓ Resolvido" sai uma só vez. Escrita atómica (o .tmp, o fsync e o rename).
+  // O estado do encaminhador em disco (Tarefa 8.3): depois de um reinício do plugin, um aviso ainda ativo
+  // não se repete e o "✓ Resolvido" sai uma só vez; depois de um reinício do servidor (a árvore vazia), o
+  // que desapareceu passa a normal e um alarme que volte segue (revisão final C2). Escrita atómica (o
+  // .tmp, o fsync e o rename).
   let ficheiroEnc
   function lerEncaminhador () {
     try {
