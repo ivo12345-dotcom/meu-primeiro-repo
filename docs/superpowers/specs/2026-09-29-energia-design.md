@@ -114,3 +114,13 @@ toca nas notificações que tragam `sound` no `method`.
 
 Meshtastic (só após validação), besouro por GPIO (hardware), J1939 do motor
 (sub-projeto próprio), ecrã da roda.
+
+## Notas (02/10): como ficou
+
+- **`desligarMotor` só quando o motor arrancou para carregar:** o aviso "já podes desligar o
+  motor" aos 85 % só aparece se o motor arrancou com o aviso dos 55 % ativo ou com o SoC a 58 % ou
+  menos. Sair da marina a motor com a bateria cheia não é uma carga (29/09: a simulação Algés →
+  Peniche mostrou o aviso ao largar; commit `8d961f4`, `lib/regras.js`).
+- **Horas de motor sem duplicados:** a regra está no desenho do J1939 ("Horas de motor sem
+  duplicados"): o contador deste plugin só se publica se nenhuma outra fonte tiver publicado
+  `propulsion.main.runTime` nos últimos 5 min.

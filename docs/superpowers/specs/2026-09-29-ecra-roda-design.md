@@ -128,3 +128,21 @@ a descer, adorno, abatimento, corrente e gasóleo. Ciclo de 20 min à vela e
 
 Comando do EV-100, Meshtastic, besouro GPIO, centrar a carta no alvo (depende
 do OpenCPN), exportar GPX (o OpenCPN já exporta).
+
+## Alterações depois de 29/09 (nota de 02/10)
+
+O que mudou depois deste desenho; o resto mantém-se.
+
+- **Melhor rota:** deixou de se calcular no OpenCPN (Weather Routing). É o plugin próprio
+  `signalk-arlequin-rota` (desenhos 3a, 3b-1 e 3b-2, de 30/09 e 01/10). A página tem os estados
+  Pedir, A calcular, Resultado, Mapa e Leme; com um plano ativo, o Leme mostra a faixa do
+  acompanhamento.
+- **Noite** (decisão do Ivo de 01/10): sem tema vermelho. As cores do dia muito escurecidas, sobre
+  fundo preto, com − e + ao lado do botão Noite e 5 níveis de brilho (2 por omissão): ver o
+  `NAVEGACAO.md`, §7a.
+- **Rec. velas** passou a chamar-se **Velas**: o estado da grande e da genoa (para a AI) e o
+  Recolher velas sem piloto, passo a passo.
+- **Simulador `navegar-demo`:** o vento real é de 14 nós de **020°** (a rota até à Nazaré fica
+  contra o vento) e a rota tem **4 WP** (Sul Carvoeiro, Carvoeiro, Baleal e Nazaré:
+  `arlequin-simulador/lib/navegacao.js`).
+- **Piloto automático:** continua a não haver; está por decidir (`PILOTO-AUTOMATICO.md`).

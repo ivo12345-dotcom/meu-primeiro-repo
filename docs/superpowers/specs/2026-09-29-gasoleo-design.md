@@ -70,3 +70,18 @@ Testes: razão, tabela (crescente e decrescente), filtro de adorno, mediana,
 fusão, abastecimento, reserva com histerese, fuga (sim e não, dilatação),
 calibração. No SignalK local: nível estável com balanço, reserva, e um
 abastecimento simulado no diário.
+
+## Notas (02/10): como ficou
+
+- **Sem tabela** (menos de 2 pontos de calibração), o plugin não publica nenhum caminho do nível:
+  a razão fica só no `GET /estado` e no estado do plugin ("Falta calibrar"). (O ponto 2 do
+  "Cálculo" dizia que publicava a razão.)
+- **Consumo anormal** (aviso com som, `notifications.tanks.fuel.0.consumoAnormal`): depois de uma
+  saída a motor, já com o motor parado, se o depósito desceu mais do que o consumo esperado
+  (J1939) + o maior de 3 L e 30 % desse consumo: "Gastou X L em vez de ~Y L: possível fuga ou
+  avaria no motor" (`lib/nivel.js`).
+- **Calibração completa** (Ivo, 29/09): com o depósito vazio, o ecrã (Motor → Calibração
+  completa) junta gasóleo de 5 em 5 L (ou de 10 em 10); cada ponto grava-se sozinho pelo menos 30 s depois de
+  deitar e com a leitura estável durante 20 s; onde a boia não mexe, guarda-se só o intervalo.
+  Também se importa a folha do multímetro (`docs/folha-calibracao-gasoleo.html`)
+  (`lib/calibracao.js`, `POST /calibracao/*`).
