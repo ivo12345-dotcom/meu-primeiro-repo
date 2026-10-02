@@ -330,6 +330,32 @@ test('I-16: a tendência do barómetro dos instrumentos vai para o modelo do ven
   assert.equal((await correr('agora', entrada({ sairAgora: true }), deps())).ia.nota, 'AI: a aprender (polar, previsão ±10% e curva da Volvo)')
 })
 
+test('I-19 (decisão do Ivo n.º 5): as passagens longas calculam-se até ao fim da previsão (48 h, não 30 h): Peniche → Sines, → Lagos e Leixões → Peniche', async () => {
+  const { HORAS_PREVISAO } = require('../lib/previsao')
+  const passagem = require('../lib/passagem')
+  assert.equal(HORAS_PREVISAO, 48)
+  assert.equal(passagem.PADRAO.maxHoras, HORAS_PREVISAO)
+  // a sonda do auditor ("Sair agora", acompanhado): todas davam "Nenhuma das N passagens … dentro de 30 h"
+  let maisDe30 = false
+  for (const [de0, para] of [['peniche', 'sines'], ['peniche', 'lagos'], ['leixoes', 'peniche']]) {
+    const r = await calcular(entrada({ instrumentos: { posicao: de(de0), socPct: 90, gasoleoL: 200 }, destino: para, tripulacao: 'acompanhado', sairAgora: true }), deps())
+    assert.equal(r.erro, undefined, `${de0} → ${para}: ${r.erro}`)
+    assert.ok(r.alternativas.length >= 1, `${de0} → ${para}`)
+    if (r.alternativas.some(a => a.horas.total > 30)) maisDe30 = true
+  }
+  assert.ok(maisDe30, 'alguma passagem passa das 30 h')
+  // sem "sair agora" simula-se só até ao fim da previsão: com a previsão a acabar 20 h depois, as
+  // partidas que já não chegam antes dele contam como "fora da previsão", nunca como "não chega"
+  const curta = { ...P29, fim: AGORA + 20 * H }
+  let cands = []
+  const r = await calcular(entrada(), comPrevisao(curta, { aoCandidatos: l => { cands = l } }))
+  assert.equal(r.erro, undefined, r.erro)
+  assert.ok(r.estatisticas.foraDaPrevisao > 0, JSON.stringify(r.estatisticas))
+  assert.equal(r.estatisticas.naoChega, 0, JSON.stringify(r.estatisticas))
+  assert.ok(cands.length > 0)
+  for (const k of cands) assert.ok(Date.parse(k.chegadas.p90) <= curta.fim, k.id)
+})
+
 test('o cálculo nunca lança: previsão estragada, sem rota ativa, posição null, entrada e dependências em falta', async () => {
   const casos = [
     [entrada(), deps({ obterPrevisao: async () => ({ previsao: { pontos: null } }) })],

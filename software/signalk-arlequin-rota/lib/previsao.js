@@ -12,6 +12,9 @@ const c = require('./costa')
 
 const H = 3600000
 const MAX_PONTOS = 60
+// As horas de previsão pedidas (48): também o horizonte das partidas e o limite de uma passagem
+// (lib/calculo.js, lib/passagem.js; auditoria I-19 e M-20: um só número)
+const HORAS_PREVISAO = 48
 const TEMPO_LIMITE_MS = 30000
 const CASCAIS = Object.freeze({ lat: 38.69, lon: -9.42 }) // nível do mar para as preia-mares
 const FORECAST = ['wind_speed_10m', 'wind_direction_10m', 'wind_gusts_10m', 'precipitation', 'visibility', 'shortwave_radiation']
@@ -46,7 +49,7 @@ function pontosPrevisao (linha, { partida, destino, passoMn = 10, cascais = true
 }
 
 // Os URLs, um par (forecast, marine) por cada grupo de até 60 pontos.
-function urls (pontos, { horas = 48 } = {}) {
+function urls (pontos, { horas = HORAS_PREVISAO } = {}) {
   const grupos = []
   for (let i = 0; i < pontos.length; i += MAX_PONTOS) {
     const g = pontos.slice(i, i + MAX_PONTOS)
@@ -117,7 +120,7 @@ async function pedirJson (fetchFn, url) {
 }
 
 // Descarrega a previsão para os pontos. O mar é opcional (sem ele, ondas e corrente a null).
-async function obterPrevisao ({ pontos, agora = Date.now(), fetch: fetchFn = fetch, horas = 48 }) {
+async function obterPrevisao ({ pontos, agora = Date.now(), fetch: fetchFn = fetch, horas = HORAS_PREVISAO }) {
   const partes = []
   for (const g of urls(pontos, { horas })) {
     const forecast = await pedirJson(fetchFn, g.forecast)
@@ -325,4 +328,4 @@ function lerArquivo (pasta, { pontos, desde, ate, agora = Date.now(), raioMn = 1
   }
 }
 
-module.exports = { MAX_PONTOS, CASCAIS, FORECAST, MARINE, pontosPrevisao, urls, interpretar, obterPrevisao, criarTempo, nivelDoMar, nomeArquivo, registoParte2, escreverAtomico, guardarArquivo, lerArquivo }
+module.exports = { MAX_PONTOS, HORAS_PREVISAO, CASCAIS, FORECAST, MARINE, pontosPrevisao, urls, interpretar, obterPrevisao, criarTempo, nivelDoMar, nomeArquivo, registoParte2, escreverAtomico, guardarArquivo, lerArquivo }

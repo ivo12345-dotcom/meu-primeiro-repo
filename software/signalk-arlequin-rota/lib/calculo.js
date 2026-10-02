@@ -52,7 +52,7 @@ const PADRAO = Object.freeze({
   afastamentoMinimo: 5,
   afastamentos: [3, 5, 8],
   rpmCruzeiro: 2100,
-  horasPartidas: 48,
+  horasPartidas: prev.HORAS_PREVISAO, // as partidas até ao fim da previsão (48 h)
   passoPartidasH: 3,
   energia: {}, // lib/energia.js PADRAO (capacidadeAh, consumoDiaA, …)
   socDesconhecido: 0.8, // sem SoC nos instrumentos
@@ -90,10 +90,22 @@ function resolverDestino (costa, destino) {
   return { erro: 'falta o destino' }
 }
 
+// O limite de horas de uma passagem (auditoria I-19, decisão do Ivo n.º 5): até ao fim da previsão
+// (48 h; eram 30 h, ~120 MN a motor, e Peniche → Lagos ou Leixões → Peniche nunca se calculavam). Fora
+// do "Sair agora" simula-se só até ao fim da previsão: a passagem que não chega antes dele fica "fora
+// da previsão" (peloFim), como a que chega depois; em "Sair agora" vai até ao limite e fica, com o
+// aviso vermelho. → { horas, peloFim }
+function limitePassagem (ctx, partida) {
+  const max = ctx.o.passagem.maxHoras ?? passagem.PADRAO.maxHoras
+  if (ctx.sairAgora) return { horas: max, peloFim: false }
+  const ate = (ctx.previsao.fim - partida) / H
+  return ate < max ? { horas: Math.max(0, ate), peloFim: true } : { horas: max, peloFim: false }
+}
+
 // Simula a passagem de uma geometria num cenário (nome). prop: 'vela' | 'motor'.
 function simular (ctx, alt, partida, prop, nome) {
   const k = ctx.cenarios[nome]
-  const opcoes = { ...ctx.o.passagem, rpmCruzeiro: ctx.o.rpmCruzeiro, gasoleoInicial: ctx.gasoleoInicial, fuso: ctx.o.fuso, nomeChegada: ctx.destino.nome }
+  const opcoes = { ...ctx.o.passagem, rpmCruzeiro: ctx.o.rpmCruzeiro, gasoleoInicial: ctx.gasoleoInicial, fuso: ctx.o.fuso, nomeChegada: ctx.destino.nome, maxHoras: limitePassagem(ctx, partida).horas }
   if (prop === 'motor') opcoes.limiarVentoMotor = Infinity // só motor
   return passagem.simularPassagem({
     rota: alt.pontos,
@@ -169,7 +181,8 @@ function ordenarChegadas (sims) {
 function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
   const sims = simular3(ctx, alt, partida, prop)
   const pe = sims.pessimista; const pr = sims.provavel; const ot = sims.otimista
-  if (!pe.resumo.chegou || !pr.resumo.chegou || !ot.resumo.chegou) return { foraDaPrevisao: false, naoChega: true }
+  // não chegou: dentro do limite de horas (naoChega) ou antes do fim da previsão (foraDaPrevisao)
+  if (!pe.resumo.chegou || !pr.resumo.chegou || !ot.resumo.chegou) return limitePassagem(ctx, partida).peloFim ? { foraDaPrevisao: true } : { foraDaPrevisao: false, naoChega: true }
   const chegadas = ordenarChegadas(sims)
   // uma passagem que acaba depois do fim da previsão fica de fora; em "Sair agora" (o Ivo quer a
   // melhor para este momento, mesmo contra as recomendações) fica, com aviso vermelho
