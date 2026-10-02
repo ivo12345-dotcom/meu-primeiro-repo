@@ -48,14 +48,23 @@ export function tileGasoleo (ctx, grande = false) {
   return `<div class="tile"><div class="linha"><span class="lab">Gasóleo</span><span class="${grande ? 'v' : ''}">${g.html}</span></div>${barra(g.nivel, cor)}</div>`
 }
 
+// O motor pelas rotações (Hz) do J1939 (auditoria I-23): true a trabalhar (> 5 Hz = 300 rpm), false
+// desligado, null sem leitura (o J1939 publica null sem tramas há 5 s: tanto a ignição desligada como o
+// sensor perdido com o motor a trabalhar — o ecrã não pode dizer "desligado").
+export const motorLigado = (rpm) => (ok(rpm) ? rpm > 5 : null)
+export const ESTADO_MOTOR = { true: 'a trabalhar', false: 'desligado', null: 'sem leitura do motor' }
+export const CLASSE_MOTOR = { true: 'amarelo', false: 'ok', null: 'lab' }
+
 export function motorResumo (ctx) {
   const rpm = ctx.v('propulsion.main.revolutions')
-  const ligado = ok(rpm) && rpm > 5
+  const m = motorLigado(rpm)
+  const ligado = m === true
   const horas = ctx.v('propulsion.main.runTime')
   const soc = ctx.v('electrical.batteries.servico.capacity.stateOfCharge')
   return {
     ligado,
-    estado: ligado ? `<span class="amarelo">a trabalhar · ${num(rpm * 60, 0)} rpm</span>` : '<span class="ok">desligado</span>',
+    semLeitura: m === null,
+    estado: ligado ? `<span class="amarelo">a trabalhar · ${num(rpm * 60, 0)} rpm</span>` : `<span class="${CLASSE_MOTOR[m]}">${ESTADO_MOTOR[m]}</span>`,
     detalhe: `${ok(horas) ? num(horas / 3600, 0) + ' h' : '— h'} · serviço ${ok(soc) ? num(soc * 100, 0) + '%' : '—'}`
   }
 }

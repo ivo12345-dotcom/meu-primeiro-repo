@@ -36,7 +36,7 @@ ${ctx.estado.confirmarNova ? `<div class="plano-confirmar"><div class="v">Começ
   ${tile('Tempo', duracao(tempo / 1000), '', 'vv')}
   ${tile('Velocidade média', `${velocidade(media)} nós`, '', 'vv')}
   ${tile('Vento máximo', `${velocidade(v.ventoMax, 0)} nós`, '', 'vv')}
-  ${tile('À vela', duracao(v.tempoVela), '', 'vv')}
+  ${tile('À vela', duracao(v.tempoVela), v.tempoSemLeitura >= 60 ? `<div class="lab">+ ${duracao(v.tempoSemLeitura)} sem leitura do motor</div>` : '', 'vv')}
   ${tile('A motor', duracao(v.tempoMotor), '', 'vv')}
   ${tile('Gasóleo gasto', `${num(v.gasoleoL, 1)} L`, '', 'vv')}
   ${tile('Pressão', ok(dp) ? `${dp > 0 ? '+' : ''}${num(dp, 1)} hPa` : '—', '', 'vv')}

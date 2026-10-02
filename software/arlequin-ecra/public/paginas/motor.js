@@ -3,7 +3,7 @@
 
 import { barra } from '../lib/desenho.js'
 import { celsius } from '../lib/formato.js'
-import { tile, tileGasoleo, num, ok, esc } from './comum.js'
+import { tile, tileGasoleo, num, ok, esc, motorLigado, ESTADO_MOTOR, CLASSE_MOTOR } from './comum.js'
 import { litrosPorMilha } from '../lib/consumo-milha.js'
 import { motivo } from '../lib/erros.js'
 
@@ -135,7 +135,8 @@ export default {
     if (ctx.estado.calibAberta) buscarCalib(ctx)
     buscarAgua(ctx, ctx.estado.bombaCalib !== undefined && ctx.estado.bombaCalib !== null ? 1500 : 10000)
     const rpm = ctx.v('propulsion.main.revolutions')
-    const ligado = ok(rpm) && rpm > 5
+    const estadoMotor = motorLigado(rpm) // true | false | null (sem leitura, auditoria I-23)
+    const ligado = estadoMotor === true
     const temp = ctx.v('propulsion.main.temperature')
     const oleo = ctx.v('propulsion.main.oilPressure')
     const alt = ctx.v('propulsion.main.alternatorVoltage')
@@ -165,7 +166,7 @@ export default {
       ? 'Por regime: a aprender (1 min estável em cada faixa de 200 rpm)'
       : 'Por regime: ' + c.faixas.map(f => `${num(f.de, 0)} rpm ${num(f.lmn, 2)}${c.melhor?.de === f.de ? ' ★' : ''}`).join(' · ') + ' L/MN'
     return `<div class="col estica">
-<div class="tile"><div class="linha"><span class="lab">Volvo Penta D1-20B</span><span class="${ligado ? 'amarelo' : 'ok'}">${ligado ? 'a trabalhar' : 'desligado'}</span></div>
+<div class="tile"><div class="linha"><span class="lab">Volvo Penta D1-20B</span><span class="${CLASSE_MOTOR[estadoMotor]}">${ESTADO_MOTOR[estadoMotor]}</span></div>
   <div class="vvv">${ok(rpm) ? num(rpm * 60, 0) : '—'} <span style="font-size:1.4rem;">rpm</span></div></div>
 <div class="g2">
   ${tile('Temperatura', `<span class="${tempC > 95 ? 'perigo' : ''}">${ok(tempC) ? num(tempC, 0) + ' °C' : '—'}</span>`, '', 'vv')}

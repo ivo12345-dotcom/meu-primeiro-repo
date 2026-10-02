@@ -483,6 +483,40 @@ test('auditoria I-11: sem headingTrue, a proa é a magnética + a declinação, 
   assert.deepEqual(gravados, ['Aproado ao vento (098° (mag.))'])
 })
 
+// ---------- auditoria I-23: rotação desconhecida não é "desligado" ----------
+test('auditoria I-23: o motor tem três estados — a trabalhar, desligado e "sem leitura do motor" (cinzento) quando as rotações são desconhecidas', async () => {
+  const { motorLigado, motorResumo } = await import('../public/paginas/comum.js')
+  assert.equal(motorLigado(30), true)
+  assert.equal(motorLigado(0), false)
+  assert.equal(motorLigado(5), false)
+  for (const x of [null, undefined, NaN, 'x']) assert.equal(motorLigado(x), null, String(x))
+  const com = (rpm) => ({ ...contexto(store, {}), v: (p) => (p === 'propulsion.main.revolutions' ? rpm : undefined) })
+  assert.match(motorResumo(com(null)).estado, /<span class="lab">sem leitura do motor<\/span>/)
+  assert.match(motorResumo(com(0)).estado, /<span class="ok">desligado<\/span>/)
+  assert.match(motorResumo(com(30)).estado, /a trabalhar · 1800 rpm/)
+  const m = motor.render(com(null))
+  assert.match(m, /Volvo Penta D1-20B<\/span><span class="lab">sem leitura do motor<\/span>/)
+  assert.doesNotMatch(m, /class="ok">desligado/)
+  assert.match(carta.render(com(null)), /sem leitura do motor/)
+})
+
+test('auditoria I-23: no resumo da viagem, sem leitura do motor não conta nem para a vela nem para o motor (fica à parte, à vista)', async () => {
+  const { novaViagem, acumular } = await import('../public/lib/viagem.js')
+  const NO = 1852 / 3600
+  let v = novaViagem(0)
+  for (let s = 1; s <= 5400; s++) v = acumular(v, { t: s * 1000, sog: 5 * NO, motor: null, fuelRate: 1 / 3600 / 1000 })
+  assert.equal(v.tempoVela, 0)
+  assert.equal(v.tempoMotor, 0)
+  assert.equal(v.gasoleoL, 0)
+  assert.ok(Math.abs(v.tempoSemLeitura - 5399) < 2)
+  assert.ok(v.distancia > 13000, 'a distância conta')
+  const html = viagem.render({ ...contexto(store, {}), viagem: { ...v, ultimo: 5400e3 } })
+  assert.match(html, /À vela<\/div><div class="vv">0 min<\/div><div class="lab">\+ 1 h 30 sem leitura do motor<\/div>/)
+  // o app.js manda os três estados (antes: rpm em falta = 0 = desligado = vela)
+  const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8')
+  assert.match(app, /motor:\s*motorLigado\(v\('propulsion\.main\.revolutions'\)\)/)
+})
+
 test('Diário: cartão da AI mostra mensagem genérica para erro sem status', async () => {
   const estado = {}
   const ctx = {
