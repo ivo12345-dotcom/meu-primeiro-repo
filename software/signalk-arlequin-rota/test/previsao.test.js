@@ -9,6 +9,10 @@ const c = require('../lib/costa')
 const prev = require('../lib/previsao')
 
 const H = 3600000
+// A fixture de 29/09 foi gravada antes da auditoria K-05 (02/10): o vento (forecast) veio da célula
+// "de terra" (`land`, a omissão da Open-Meteo); só as ondas (marine) vieram com cell_selection=sea.
+// Os pedidos de hoje pedem as duas com `sea` (urls(), abaixo). Não se regravou para não mexer nas
+// referências dos outros testes: os números do vento de 29/09 junto à costa são os de `land`.
 const FIX = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(__dirname, 'fixtures', 'previsao-2026-09-29.json.gz'))))
 const PONTOS = FIX.pontos.map(c.P)
 const P29 = prev.interpretar(PONTOS, FIX.forecast, FIX.marine, FIX.obtidaSimulada)
@@ -20,6 +24,10 @@ test('urls: vários pontos num pedido, 48 h, UTC, nós; mais de 60 pontos em doi
   assert.match(g.forecast, /^https:\/\/api\.open-meteo\.com\/v1\/forecast\?latitude=38\.696,38\.61,/)
   assert.match(g.forecast, /hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,visibility,shortwave_radiation/)
   assert.match(g.forecast, /wind_speed_unit=kn&timezone=UTC&forecast_hours=48/)
+  // K-05: o vento também da célula de mar (a de terra, a omissão, subestima o vento junto à costa ~40 %)
+  assert.match(g.forecast, /&cell_selection=sea(&|$)/)
+  assert.equal(new URL(g.forecast).searchParams.get('cell_selection'), 'sea')
+  assert.equal(new URL(g.marine).searchParams.get('cell_selection'), 'sea')
   assert.match(g.marine, /^https:\/\/marine-api\.open-meteo\.com\/v1\/marine\?/)
   assert.match(g.marine, /hourly=wave_height,wave_period,wave_direction,ocean_current_velocity,ocean_current_direction,sea_level_height_msl/)
   assert.match(g.marine, /cell_selection=sea&wind_speed_unit=kn/)
