@@ -129,3 +129,26 @@ test('mapa de bits → alarmes do MDI', () => {
   assert.deepEqual(r2.notificacoes.map(n => [n.id, n.state]), [['lowOilPressure', 'normal']])
   assert.deepEqual(alarmesDoMapa(mapa, hex('0200000000000000'), r2.ativos).notificacoes, [])
 })
+
+// Contrato C11: o plugin diz o estado da ligação. 'calado' (a ignição desligada): o motor está parado e os
+// alarmes calculados voltam a normal. 'sem-ligacao' ou null (ainda não se sabe): nada muda — nem um alarme
+// ativo se dá por resolvido, nem um novo se acende.
+test('C11: com o MDI calado o sobreaquecimento e o alternador voltam a normal; sem ligação (ou sem saber) ficam', () => {
+  let e = novoEstadoMotor()
+  let r = avaliarMotor(e, { rpm: 2000, temp: 96 + K, volt: 12.4, ligacao: 'a-receber' }, T0)
+  r = avaliarMotor(r.estado, { rpm: 2000, temp: 96 + K, volt: 12.4, ligacao: 'a-receber' }, T0 + 2 * MIN)
+  assert.deepEqual(Object.keys(r.estado.ativos).sort(), ['alternadorNaoCarrega', 'overTemperature'])
+  e = r.estado
+  for (const ligacao of ['sem-ligacao', null]) {
+    const x = avaliarMotor(e, { rpm: 0, temp: null, volt: null, ligacao }, T0 + 3 * MIN)
+    assert.deepEqual(x.notificacoes, [], String(ligacao))
+    assert.deepEqual(x.estado, e, String(ligacao))
+  }
+  const c = avaliarMotor(e, { rpm: 0, temp: null, volt: null, ligacao: 'calado' }, T0 + 3 * MIN)
+  assert.deepEqual(c.notificacoes.map(n => [n.id, n.state]).sort(), [['alternadorNaoCarrega', 'normal'], ['overTemperature', 'normal']])
+  assert.deepEqual(c.estado.ativos, {})
+  assert.equal(c.estado.ligado, false)
+  assert.equal(c.estadoMudou, 'stopped')
+  // sem ligação, um sobreaquecimento novo também não se acende (não há leitura)
+  assert.deepEqual(avaliarMotor(novoEstadoMotor(), { rpm: 2000, temp: 99 + K, ligacao: 'sem-ligacao' }, T0).notificacoes, [])
+})
