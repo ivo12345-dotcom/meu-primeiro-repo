@@ -814,3 +814,99 @@ test('revisão final I3: a Mãe recebe o atraso e o Pai não (bloqueou o bot) �
   assert.deepEqual(g.filaContactos, [])
   s.p.stop()
 })
+
+// ---------- auditoria K-02: um atraso na fila nunca sai parado, em pausa ou sem GPS ----------
+// (as sondas S2 da auditoria B) o atraso entra na fila com o porto em baixo (sem rede ao largo); depois o
+// barco fica sem GPS ou a rota é limpa (pausa), e a rede volta
+async function atrasoNaFila (s) {
+  const ouvintes = s.app.listeners('arlequin:plano')
+  s.app.removeAllListeners('arlequin:plano')
+  const fila = () => (s.p.planoAtivo().contactos?.fila || []).filter(m => m.tipo === 'atraso')
+  const anda = devagar(s, 0.4)
+  for (let k = 0; k < 240 && !fila().length; k++) await anda()
+  assert.equal(fila().length, 1, 'o atraso entrou na fila')
+  return { voltaARede: () => { for (const f of ouvintes) s.app.on('arlequin:plano', f) }, fila }
+}
+
+test('auditoria K-02 (sonda S2, sem GPS): um atraso na fila e o GPS perdido com o barco parado — quando a rede volta nada sai para terra; com o GPS de volta e o barco parado o atraso sai da fila; a hora de alarme em terra fica a do plano', async () => {
+  const s = await preparar()
+  await sair(s)
+  const { voltaARede, fila } = await atrasoNaFila(s)
+  // a antena do GPS perdida: a posição fica com a hora de agora (velha daqui a 2 min); o barco parado
+  s.app.horas['navigation.position'] = new Date(s.agora()).toISOString()
+  s.app.self['navigation.speedOverGround'] = 0
+  for (let m = 0; m < 90; m++) await s.ciclo()
+  assert.equal((await chamar(s.r.get['/plano-ativo'])).semGps, true)
+  voltaARede()
+  for (let k = 0; k < 5; k++) await s.ciclo()
+  assert.deepEqual(atrasosDe(s), [], 'sem GPS nada segue para os contactos')
+  // o GPS volta, com o barco parado no mesmo sítio: o atraso já não vale ("só a avançar")
+  delete s.app.horas['navigation.position']
+  for (let k = 0; k < 20; k++) await s.ciclo()
+  assert.deepEqual(atrasosDe(s), [])
+  assert.deepEqual(fila(), [])
+  const g = await chamar(s.r.get['/plano-ativo'])
+  assert.equal(g.envio.alarme, g.envio.alarmePlano, 'a hora de alarme em terra não andou')
+  s.p.stop()
+})
+
+test('auditoria K-02 (sonda S2, em pausa): um atraso na fila e a rota do plano limpa com o barco parado — o atraso sai da fila e nada segue quando a rede volta', async () => {
+  const s = await preparar()
+  await sair(s)
+  const { voltaARede, fila } = await atrasoNaFila(s)
+  const aqui = s.app.self['navigation.position']
+  s.por({ lat: aqui.latitude, lon: aqui.longitude }, 0)
+  s.app.rotaAtiva = null
+  await pausar(s)
+  assert.equal(s.p.planoAtivo().estado, 'pausado')
+  assert.deepEqual(fila(), [], 'em pausa os atrasos não seguem para terra')
+  for (let m = 0; m < 90; m++) await s.ciclo()
+  voltaARede()
+  for (let k = 0; k < 5; k++) await s.ciclo()
+  assert.deepEqual(atrasosDe(s), [])
+  const g = await chamar(s.r.get['/plano-ativo'])
+  assert.equal(g.envio.alarme, g.envio.alarmePlano)
+  s.p.stop()
+})
+
+test('auditoria K-02: o atraso libertado pelo "Estou bem" (confirmado) sai na mesma quando a rede volta, mesmo sem GPS', async () => {
+  const s = await preparar()
+  await sair(s)
+  const aqui = s.app.self['navigation.position']
+  s.por({ lat: aqui.latitude, lon: aqui.longitude }, 0)
+  let g = null
+  for (let m = 0; m < 3 * 60; m++) { await s.ciclo(); g = await chamar(s.r.get['/plano-ativo']); if (g.atrasoRetido) break }
+  assert.equal(g.atrasoRetido?.motivo, 'parado')
+  const ouvintes = s.app.listeners('arlequin:plano')
+  s.app.removeAllListeners('arlequin:plano')
+  assert.equal((await chamar(s.r.post['/plano-ativo/estou-bem'])).code, 200)
+  s.app.horas['navigation.position'] = new Date(s.agora()).toISOString()
+  for (let m = 0; m < 10; m++) await s.ciclo()
+  for (const f of ouvintes) s.app.on('arlequin:plano', f)
+  for (let k = 0; k < 3; k++) await s.ciclo()
+  assert.equal(atrasosDe(s).length, 1, 'o toque do Ivo vale: o atraso confirmado sai')
+  s.p.stop()
+})
+
+test('auditoria K-02: o parcial de um atraso (o Pai bloqueou o bot) não sai com o barco parado — ninguém recebe "tudo bem" de um barco parado; o Pai fica com a hora de alarme dele', async () => {
+  const s = await preparar({ contactos: [['Mãe', '222'], ['Pai', '333']] })
+  await sair(s)
+  const normal = s.porto.resposta
+  s.porto.resposta = (e) => ({ pedido: e.pedido, entregues: [...(e.tentativa ? [] : ['chat 111']), ...(e.chats.includes('222') ? ['Mãe'] : [])], contactos: e.chats.includes('222') ? ['Mãe'] : [], chats: e.chats.filter(c => c === '222'), falhas: e.chats.includes('333') ? [{ nome: 'Pai', erro: 'bloqueou o bot' }] : [] })
+  const anda = devagar(s, 0.4)
+  for (let m = 0; m < 150 && !atrasosDe(s).length; m++) await anda()
+  assert.equal(atrasosDe(s).length, 1)
+  // o barco para (sem governo); o parcial do Pai continua a falhar
+  const aqui = s.app.self['navigation.position']
+  s.por({ lat: aqui.latitude, lon: aqui.longitude }, 0)
+  for (let m = 0; m < 40; m++) await s.ciclo()
+  const doPai = () => atrasosDe(s).filter(e => e.chats.includes('333')).length
+  const antes = doPai()
+  // o Pai desbloqueia o bot: o barco continua parado, nada lhe chega
+  s.porto.resposta = normal
+  for (let m = 0; m < 10; m++) await s.ciclo()
+  assert.equal(doPai(), antes, 'parado: o parcial "tudo bem" não sai')
+  const g = await chamar(s.r.get['/plano-ativo'])
+  assert.deepEqual(g.filaContactos.filter(m => m.tipo === 'atraso'), [])
+  s.p.stop()
+})

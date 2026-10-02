@@ -200,17 +200,25 @@ function atualizarAtraso (c, id, { chegada, alarme, texto }) {
 
 // Tira da fila uma mensagem que ainda não saiu (estado 'fila'): o atraso que deixou de valer.
 const tirar = (c, id) => ({ ...c, fila: c.fila.filter(m => !(m.id === id && m.estado === 'fila')) })
+// Tira da fila as que ainda não saíram e que `f` escolhe (auditoria K-02: os atrasos em pausa).
+const tirarSe = (c, f) => ({ ...c, fila: c.fila.filter(m => !(m.estado === 'fila' && f(m))) })
+// Um atraso automático: o "Ainda a navegar, tudo bem" deste plano que só pode sair com o barco a avançar
+// (auditoria K-02); o do "Estou bem" (confirmado) e os do plano anterior não são.
+const atrasoAutomatico = (m) => m?.tipo === 'atraso' && !m.anterior && !m.confirmado
 
 // A próxima a enviar: a primeira da fila, se já for a hora dela e nenhuma estiver "a enviar". Uma
 // cabeça que já falhou 3 vezes não prende a fila (revisão final M4): um 'plano' deixa passar à frente o
 // "cheguei bem"/"terminada"; um parcial (só os contactos que falharam, I3) deixa passar qualquer uma.
+// saltar(m): as que não podem sair agora (auditoria K-02: um atraso sem GPS fica retido), nem prendem.
 const TENTATIVAS_PRENDE = 3
-function proxima (c, agora) {
+function proxima (c, agora, { saltar = () => false } = {}) {
   if (!c?.fila?.length || c.fila.some(m => m.estado === 'a enviar')) return null
   const pronta = (m) => Date.parse(m.proxima) <= agora
-  const m = c.fila[0]
+  const fila = c.fila.filter(m => !saltar(m))
+  const m = fila[0]
+  if (!m) return null
   if (m.tentativas >= TENTATIVAS_PRENDE && (m.tipo === 'plano' || m.parcial)) {
-    const outra = c.fila.slice(1).find(x => pronta(x) && (m.parcial || FECHO.has(x.tipo)))
+    const outra = fila.slice(1).find(x => pronta(x) && (m.parcial || FECHO.has(x.tipo)))
     if (outra) return outra
   }
   return pronta(m) ? m : null
@@ -278,4 +286,4 @@ function evento (msg, pedido, contactos = msg.contactos || [], chats = msg.chats
   }
 }
 
-module.exports = { SUBSTITUI, REPETIR_MS, ATRASO_ESCORREGA_MS, ATRASO_MARGEM_MS, TETO_MS, PROGRESSO_MN_H, DIST_ROTA_MAX_MN, juntarMarca, progressoNaHora, retencaoAtraso, grausMinutos, textoChegada, textoAtraso, textoTerminado, textoSubstitui, decidirAtraso, novaFila, porNaFila, herdar, atualizarAtraso, tirar, proxima, marcarAEnviar, falhou, resposta, aoArrancar, evento }
+module.exports = { SUBSTITUI, REPETIR_MS, ATRASO_ESCORREGA_MS, ATRASO_MARGEM_MS, TETO_MS, PROGRESSO_MN_H, DIST_ROTA_MAX_MN, juntarMarca, progressoNaHora, retencaoAtraso, grausMinutos, textoChegada, textoAtraso, textoTerminado, textoSubstitui, decidirAtraso, novaFila, porNaFila, herdar, atualizarAtraso, tirar, tirarSe, atrasoAutomatico, proxima, marcarAEnviar, falhou, resposta, aoArrancar, evento }
