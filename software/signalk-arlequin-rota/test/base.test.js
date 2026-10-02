@@ -245,6 +245,22 @@ test('I-16: tendenciaPressao3h (para o index.js passar ao modelo do vento): pres
   for (const l of [[], null, undefined, [{ t: T, hPa: NaN }, { t: T - 3 * H, hPa: 1010 }], [{ t: NaN, hPa: 1 }]]) assert.equal(tendenciaPressao3h(l, T), null)
 })
 
+test('M-10: a memória da correção por célula não guarda o "sem vento" de uma consulta para a seguinte com vento (a chave inclui se havia vento e direção)', () => {
+  const polar = base.carregarPolar()
+  const modelos = { ventoForca: { quantis: { p10: fixa(0.8), p50: fixa(1.2), p90: fixa(1.4) } }, ventoDirecao: { quantis: { p50: fixa(20) } } }
+  const T = Date.UTC(2026, 8, 29, 12)
+  // na mesma célula de 0,1° e nos mesmos 10 min: a sul de 39,05° sem vento previsto, a norte com 10 nós de 000°
+  const tempoBruto = (lat) => (lat < 39.05 ? tempoFixo({ tws: null, rajada: null, twd: null, semDados: ['tws', 'rajada', 'twd'] })() : tempoFixo()())
+  const k = criarCenarios({ tempoBruto, modelos, polar, obtida: T })
+  const sem = k.provavel.tempo(39.01, -9.5, T)
+  assert.equal(sem.tws, null)
+  assert.equal(sem.twd, null)
+  const com = k.provavel.tempo(39.08, -9.5, T + 60000)
+  assert.ok(Math.abs(com.tws - 12) < 1e-9, `${com.tws}`) // a razão do modelo (era a de ±10%, guardada da consulta sem vento)
+  assert.equal(com.twd, 20) // a direção corrigida (era null)
+  assert.equal(com.corrigido, true)
+})
+
 test('I2: o vento que decide no pessimista nunca fica abaixo da previsão em bruto (modelo que aprendeu "a previsão exagera", razão P90 < 1)', () => {
   const polar = base.carregarPolar()
   const modelos = { ventoForca: { quantis: { p10: fixa(0.6), p50: fixa(0.7), p90: fixa(0.8) } } }
