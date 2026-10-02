@@ -45,7 +45,7 @@ Procurar peças com o nome exato: **"Autohelm ST4000+ wheel drive"**.
 raios e a tampa.
 
 **Procurar em 2.ª mão** (a impressão 3D saiu do plano a 10/09, §4): eBay UK, "Autohelm ST4000+
-wheel drive". Os preços e as perguntas ao vendedor estão no §4.
+wheel drive". Os preços e as perguntas ao vendedor estão em "Opção A", a seguir ao §4.
 
 **A correia interna PODE já existir.** Foi encontrada a bordo uma correia dentada
 âmbar, de dentes trapezoidais finos (poliuretano com cabos de aço, o tipo
@@ -65,7 +65,7 @@ transmissões.
 +1/-1 e +10/-10, ambos os lados. O sistema está vivo.
 
 Isto muda a economia: um ST4000+ com painel e motor a funcionar vale uns
-€300–400 em 2.ª mão. Comprar a unidade de roda que falta (£100–250 em 2.ª mão, §4) pode valer a
+€300–400 em 2.ª mão. Comprar a unidade de roda que falta (£100–250 em 2.ª mão, "Opção A") pode valer a
 pena: é a opção A do §3.
 
 ### Os outros dois testes
@@ -107,7 +107,7 @@ no `NAVEGACAO.md`).
 
 | Opção | O que é | Custo | De onde vem | Notas |
 |---|---|---|---|---|
-| **A. Completar o ST4000+** | Comprar a unidade de roda completa em 2.ª mão; o motor que está a bordo fica de sobressalente (§4) | £100–250 (eBay UK) | Esta página, 10/09 | Aproveita o que já funciona (painel, bússola, cablagem SeaTalk). **Marginal para ~6 t**: um remendo para o verão, a motor e em navegação calma, não para travessias a solo (nota no fim do §4) |
+| **A. Completar o ST4000+** | Comprar a unidade de roda completa em 2.ª mão; o motor que está a bordo fica de sobressalente (§4) | £100–250 (eBay UK) | Esta página, 10/09 | Aproveita o que já funciona (painel, bússola, cablagem SeaTalk). **Marginal para ~6 t**: um remendo para o verão, a motor e em navegação calma, não para travessias a solo ("Nota de honestidade", a seguir ao §4) |
 | **B. Raymarine EV-100 Wheel** | Piloto de roda novo, com a bússola EV-1 e o comando p70s, em SeaTalkNG (NMEA 2000) | a cotar | `NAVEGACAO.md`, "Ordem das compras" de 28/09 | Liga à rede NMEA 2000 do Pi (`NAVEGACAO.md`, "Fase 2b"): rotas do OpenCPN e o Recolher velas automático. No mesmo dia ficou "não vem para já" (`NAVEGACAO.md` §2c) |
 | **C. Raymarine EV-200 Sail + atuador Type 1** | Piloto abaixo do convés: o pack EV-200 Sail (p70s + EV-1 + ACU-200 + cablagem) e um atuador linear Type 1 de 12 V na mecha do leme | ~€3 450 s/IVA: pack €2 050,38 s/IVA (SVB) + atuador ~€1 400–1 700 s/IVA (a confirmar por cotação) | Esta página, "plano decidido" de 07/09 (no inverno, com o barco em seco) | O piloto para travessias a solo. Type 1 até 11 000 kg: margem de ~1,8× com ~6 t. Notas da compra abaixo |
 | **D. Piloto de cana na cana de emergência** (ex.: Raymarine EV-100 Tiller) | Um piloto de cana que governa a cana de inox (Camada A) ou a do leme de painel (Camada B) | €250–700, usado a novo (`LEME-EMERGENCIA.md` §3.5) | `LEME-EMERGENCIA.md`, 27/09 | Reserva de emergência, não para uso diário: o EV-100 Tiller (84 kgf) vai até 6 000 kg e o barco tem ~6 t; só com pano reduzido e o barco equilibrado |
@@ -232,7 +232,7 @@ Já não são para desenhar peças (ver secção 4), mas continuam a servir:
 ## 7. Próximo passo
 
 O Ivo decide o piloto (§3). Para isso servem as medidas e as fotos do §5 e, para a opção A, as
-perguntas ao vendedor do §4. (O plano de 07/09 — desenhar o aro e os grampos, gerar o STL e
+perguntas ao vendedor ("Opção A", a seguir ao §4). (O plano de 07/09 — desenhar o aro e os grampos, gerar o STL e
 imprimir em ASA e PA-CF na K2 Plus — saiu a 10/09, com a impressão 3D.)
 
 ### Envio para a impressora (ficou do plano de impressão)
