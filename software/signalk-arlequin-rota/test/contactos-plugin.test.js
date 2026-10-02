@@ -297,12 +297,13 @@ test('sem o plano enviado, ativar outra alternativa não manda nada', async () =
 })
 
 
-test('decisão 1 (Ivo): na 2.ª viagem o atraso chega a terra (o plano novo começa limpo: sem as enviadas nem o atraso do plano antigo) e o plano antigo vai para planos-fechados.json', async () => {
+test('decisão 1 (Ivo) e decisão n.º 13 (auditoria I-03): na 2.ª viagem com o mesmo cálculo o plano novo começa limpo, mas um envio já fechado (o "cheguei bem" entregue) nunca se reaproveita: sem o plano mandado outra vez nada segue para terra', async () => {
   const s = await preparar()
   await sair(s)
   await chegar(s)
   assert.equal(s.p.planoAtivo().estado, 'chegado')
-  // a 2.ª viagem: o mesmo cálculo, já enviado aos contactos, ativado outra vez
+  assert.ok(s.recebidos.some(e => e.tipo === 'chegada'))
+  // a 2.ª viagem: o mesmo cálculo (ainda dentro da hora da partida), ativado outra vez
   const a = await chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 0 } })
   assert.equal(a.code, 200, a.erro)
   const novo = plano(s)
@@ -310,17 +311,58 @@ test('decisão 1 (Ivo): na 2.ª viagem o atraso chega a terra (o plano novo come
   assert.deepEqual(novo.contactos.enviadas, [])
   assert.deepEqual(novo.contactos.fila, [])
   assert.equal(novo.atrasoEnviado ?? null, null)
-  assert.deepEqual(novo.envio.contactos, ['Mãe'])
+  // a Mãe já recebeu o "cheguei bem" desse plano: o envio fechou-se e não volta a contar
+  assert.equal(novo.envio, null)
   const fechados = pa.lerFechados(s.app.getDataDirPath())
   assert.deepEqual(fechados.map(x => x.estado), ['chegado'])
-  // sai e anda devagar: o atraso segue para terra
+  // sai e anda devagar: nada segue para terra (a Mãe não recebeu plano nenhum para esta viagem)
   s.por(s.alt.rasto[2])
   await s.ciclo()
   await s.ciclo(0)
   assert.equal(s.p.planoAtivo().estado, 'a navegar')
   const anda = devagar(s, 0.4)
-  for (let m = 1; m <= 120 && !s.recebidos.some(e => e.tipo === 'atraso'); m++) await anda()
+  for (let m = 1; m <= 120; m++) await anda()
+  assert.deepEqual(s.recebidos.filter(e => e.tipo === 'atraso'), [], 'sem plano mandado, nenhum "tudo bem"')
+  s.p.stop()
+})
+
+test('decisão n.º 13 (auditoria I-03): na 2.ª viagem com o mesmo cálculo, o plano mandado outra vez antes de sair (é desta viagem) fica no plano ativo e o atraso chega a terra', async () => {
+  const s = await preparar()
+  await sair(s)
+  await chegar(s)
+  assert.equal((await chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 0 } })).code, 200)
+  assert.equal(s.p.planoAtivo().envio, null)
+  assert.equal((await chamar(s.r.post['/plano-telegram'], { body: { id: s.id, alternativa: 0 } })).code, 202)
+  assert.deepEqual(s.p.planoAtivo().envio?.contactos, ['Mãe'])
+  s.por(s.alt.rasto[2])
+  await s.ciclo()
+  await s.ciclo(0)
+  assert.equal(s.p.planoAtivo().estado, 'a navegar')
+  const anda = devagar(s, 0.4)
+  for (let m = 1; m <= 150 && !s.recebidos.some(e => e.tipo === 'atraso'); m++) await anda()
   assert.ok(s.recebidos.some(e => e.tipo === 'atraso'), 'o atraso da 2.ª viagem')
+  s.p.stop()
+})
+
+test('decisão n.º 13 (auditoria I-03): Ativar recusa (422) um cálculo antigo — a partida há mais de 1 h ou a hora de alarme já passada — também sem plano enviado; nada se ativa; a mesma alternativa do plano aberto continua (a meio da viagem)', async () => {
+  const s = await preparar({ enviar: false })
+  const k = s.app.ativacoes.length
+  // a partida da 2.ª alternativa foi há 2 h
+  s.acertar(Date.parse(s.resultado.alternativas[1].partida) + 2 * H)
+  const x = await chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 1 } })
+  assert.equal(x.code, 422)
+  assert.match(x.erro, /^este cálculo é antigo: a partida já foi \(.+\) — calcula outra vez antes de ativar$/)
+  assert.equal(s.app.ativacoes.length, k, 'nada se ativou')
+  assert.equal(plano(s).indice, 0, 'o plano aberto fica')
+  // a hora de alarme já passada
+  s.acertar(plano_.horaAlarme(s.resultado.alternativas[2]) + MIN)
+  const z = await chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 2 } })
+  assert.equal(z.code, 422)
+  assert.match(z.erro, /^este cálculo é antigo: /)
+  // a alternativa do plano aberto, ativada outra vez (a rota apagada no OpenCPN): é o mesmo plano, continua
+  const y = await chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 0 } })
+  assert.equal(y.code, 200, y.erro)
+  assert.equal(plano(s).indice, 0)
   s.p.stop()
 })
 

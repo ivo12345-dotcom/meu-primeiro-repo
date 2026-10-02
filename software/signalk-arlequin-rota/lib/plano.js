@@ -132,6 +132,17 @@ function excecoes (desistencia, volta, agora, fuso) {
   return `, exceto ${lista.length > 1 ? `${lista.slice(0, -1).join(', ')} e ${lista.at(-1)}` : lista[0]}`
 }
 
+// Um cálculo antigo (guardado no plugin e no ecrã): a hora de alarme já passada, ou a partida há mais de
+// 1 h. → o motivo (para o 422) ou null. O envio do plano e o Ativar de um plano novo recusam-no (decisão
+// do Ivo n.º 13, auditoria I-03: ativar um cálculo antigo dava logo um atraso enorme e um "recalcula").
+function calculoAntigo (alt, agora, { antesDe = 'enviar o plano', fuso = FUSO } = {}) {
+  const alarme = horaAlarme(alt)
+  const partida = Date.parse(alt?.partida)
+  const motivo = alarme != null && alarme <= agora ? `a hora de alarme já passou (${horaLisboa(alarme, agora, fuso)})`
+    : valido(partida) && partida < agora - TOLERANCIA_PARTIDA ? `a partida já foi (${horaLisboa(partida, agora, fuso)})` : null
+  return motivo ? `este cálculo é antigo: ${motivo} — calcula outra vez antes de ${antesDe}` : null
+}
+
 function montarPlano ({ resultado, indice = 0, barco = {}, telefones = {}, agora = Date.now(), fuso = FUSO }) {
   const r = resultado || {}
   const alt = r.alternativas?.[indice]
@@ -146,9 +157,8 @@ function montarPlano ({ resultado, indice = 0, barco = {}, telefones = {}, agora
   const alarme = horaAlarme(alt)
   // a hora de alarme é o centro do plano: sem ela, não vai
   if (alarme == null) throw Object.assign(new Error(SEM_ALARME), { status: 422 })
-  const antigo = (o) => Object.assign(new Error(`este cálculo é antigo: ${o} — ${CALCULO_ANTIGO}`), { status: 422 })
-  if (alarme <= agora) throw antigo(`a hora de alarme já passou (${hl(alarme)})`)
-  if (valido(partida) && partida < agora - TOLERANCIA_PARTIDA) throw antigo(`a partida já foi (${hl(partida)})`)
+  const antigo = calculoAntigo(alt, agora, { fuso })
+  if (antigo) throw Object.assign(new Error(antigo), { status: 422 })
   const de = origemMar ? `da posição ${origemMar}` : origem ? `de ${origem}` : null
 
   const linhas = [
@@ -198,4 +208,4 @@ function montarPlano ({ resultado, indice = 0, barco = {}, telefones = {}, agora
   return { texto: linhas.join('\n'), gpx, nomeFicheiro }
 }
 
-module.exports = { MRCC, EMERGENCIA_PADRAO, SEM_ALARME, CALCULO_ANTIGO, horaLisboa, asHoras, horaAlarme, rotaTexto, propulsaoTexto, semVela, posicaoTexto, montarPlano }
+module.exports = { MRCC, EMERGENCIA_PADRAO, SEM_ALARME, CALCULO_ANTIGO, calculoAntigo, horaLisboa, asHoras, horaAlarme, rotaTexto, propulsaoTexto, semVela, posicaoTexto, montarPlano }
