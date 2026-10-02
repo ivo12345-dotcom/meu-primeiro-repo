@@ -9,11 +9,12 @@ const H = 60 * MIN
 const PENICHE = { latitude: 39.3530, longitude: -9.3780 }
 const aNorte = (m) => ({ latitude: PENICHE.latitude + m / 111320, longitude: PENICHE.longitude })
 
+// por omissão em Peniche (um porto conhecido: juntoAPorto, calculado pelo plugin com lib/lugares.js)
 function correr (passos, e = novoEstado()) {
   const notif = []
   const acoes = []
   for (const [t, l] of passos) {
-    const r = passo(e, { posicao: PENICHE, sog: 0, motorLigado: false, ...l }, t)
+    const r = passo(e, { posicao: PENICHE, sog: 0, motorLigado: false, juntoAPorto: true, ...l }, t)
     e = r.estado
     notif.push(...r.notificacoes.map(n => ({ ...n, t })))
     acoes.push(...r.acoes.map(a => ({ ...a, t })))
@@ -49,6 +50,60 @@ test('deriva: a andar a motor não grava ponto nem dá alarme', () => {
   const r = correr(minutos(0, 60, (m) => ({ posicao: aNorte(m * 100), sog: 2.5, motorLigado: true })))
   assert.equal(r.e.amarracao.ponto, null)
   assert.deepEqual(r.notif, [])
+})
+
+// ---------- auditoria I-20 (decisão n.º 24 do dono): o ponto de amarração ----------
+const NO = 1852 / 3600
+const amarrado = () => correr(minutos(0, 31, {})).e // o ponto gravado em Peniche
+// de segundo a segundo, a afastar-se para norte a `nos` nós desde o ponto
+const aAndar = (t0, nos, segundos, l = {}) => Array.from({ length: segundos }, (_, s) => [t0 + (s + 1) * S, { posicao: aNorte(nos * NO * (s + 1)), sog: nos * NO, ...l }])
+
+test('auditoria I-20: calmaria no mar (longe de um porto ou fundeadouro conhecido): 30 min parado não grava o ponto e, ao seguir à vela, não há deriva (sonda p3, caso 1)', () => {
+  const r = correr([
+    ...minutos(0, 60, { sog: 0.2 * NO, juntoAPorto: false }),
+    ...aAndar(60 * MIN, 4, 180, { juntoAPorto: false })
+  ])
+  assert.equal(r.e.amarracao.ponto, null)
+  assert.deepEqual(r.notif.filter(n => n.id === 'deriva'), [])
+})
+
+test('auditoria I-20: junto a um porto conhecido grava com 30 min parado; sem saber se está junto a um (juntoAPorto em falta) não grava', () => {
+  assert.ok(amarrado().amarracao.ponto)
+  assert.equal(correr(minutos(0, 60, { juntoAPorto: undefined })).e.amarracao.ponto, null)
+})
+
+test('auditoria I-20: largar à vela (motor parado, alarme desarmado): a mais de 60 m e a mais de 2 nós durante 1 min apaga o ponto e a deriva limpa', () => {
+  const e0 = amarrado()
+  const r = correr(aAndar(31 * MIN, 3, 180), e0)
+  assert.equal(r.e.amarracao.ponto, null)
+  assert.deepEqual(ids(r.notif.filter(n => n.id === 'deriva')), ['deriva:alarm', 'deriva:normal'])
+  // apagou-se só depois de 1 min seguido a mais de 60 m (a 3 nós passa os 60 m aos ~39 s)
+  const limpou = r.notif.find(n => n.id === 'deriva' && n.state === 'normal').t - 31 * MIN
+  assert.ok(limpou >= 99 * S && limpou <= 100 * S, `${limpou / S} s`)
+})
+
+test('auditoria I-20: sair a motor com as rotações em falta (CAN solto, motorLigado falso) também apaga o ponto (sonda p3, caso 2)', () => {
+  const r = correr(aAndar(31 * MIN, 5, 120, { motorLigado: false }), amarrado())
+  assert.equal(r.e.amarracao.ponto, null)
+  assert.equal(r.notif.filter(n => n.id === 'deriva').at(-1).state, 'normal')
+})
+
+test('auditoria I-20: não é largar — a deriva lenta (< 2 nós), menos de 1 min a andar, ou a andar com o alarme armado (ninguém a bordo: deriva ou roubo)', () => {
+  const lento = correr(aAndar(31 * MIN, 1.5, 300), amarrado())
+  assert.ok(lento.e.amarracao.ponto, 'a 1,5 nó o ponto fica')
+  assert.equal(lento.notif.filter(n => n.id === 'deriva').at(-1).state, 'alarm')
+  // 70 s a 3 nós (só ~31 s a mais de 60 m) e para outra vez
+  const curto = correr([...aAndar(31 * MIN, 3, 70), ...minutos(33, 40, { posicao: aNorte(3 * NO * 70), sog: 0 })], amarrado())
+  assert.ok(curto.e.amarracao.ponto, 'menos de 1 min a mais de 60 m: o ponto fica')
+  const armado = correr(aAndar(31 * MIN, 3, 300, { armado: true }), amarrado())
+  assert.ok(armado.e.amarracao.ponto, 'armado: o ponto fica')
+  assert.equal(armado.notif.filter(n => n.id === 'deriva').at(-1).state, 'alarm')
+})
+
+test('auditoria I-20: a motor e a andar continua a apagar o ponto logo (como antes)', () => {
+  const r = correr([[31 * MIN + S, { posicao: aNorte(5), sog: 1.5 * NO, motorLigado: true }]], amarrado())
+  assert.equal(r.e.amarracao.ponto, null)
+  assert.deepEqual(r.notif.filter(n => n.id === 'deriva'), [])
 })
 
 test('porão: sensor de água dá alarme logo', () => {

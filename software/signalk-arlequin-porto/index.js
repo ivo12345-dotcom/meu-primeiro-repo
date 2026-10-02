@@ -38,6 +38,7 @@ const { exec } = require('node:child_process')
 const { ALARMES, APITO, novoEstado, passo, distancia } = require('./lib/regras')
 const { novoEncaminhador, encaminhar, listarNotificacoes, alarmesAtivos } = require('./lib/mensagens')
 const { porNaFila, textoAEnviar, recuoMs, filaValida } = require('./lib/fila')
+const { EXTRAS, lerDestinosDaRota, lugaresDaConfiguracao, lugarPerto } = require('./lib/lugares')
 const { resumo } = require('./lib/resumo')
 const { criarTelegram, erroEmPortugues } = require('./lib/telegram')
 
@@ -105,6 +106,12 @@ module.exports = function (app, deps = {}) {
       pollTimeout: { type: 'number', title: 'Long polling (s)', default: 25 },
       batimentoUrl: { type: 'string', title: 'URL do batimento (healthchecks.io), de 5 em 5 min', default: '' },
       comandoFoto: { type: 'string', title: 'Comando da fotografia ({ficheiro} = JPEG a escrever), ex.: rpicam-still -n -o {ficheiro}', default: '' },
+      lugares: {
+        type: 'array',
+        title: 'Fundeadouros e portos, além dos destinos da rota: o ponto de amarração só se grava sozinho a menos de 1 km de um deles (no mar nunca; o /amarrar grava em qualquer sítio)',
+        default: EXTRAS.map(x => ({ ...x })),
+        items: { type: 'object', properties: { nome: { type: 'string', title: 'Nome' }, latitude: { type: 'number', title: 'Latitude (graus, N +)' }, longitude: { type: 'number', title: 'Longitude (graus, W −)' } } }
+      },
       caminhos: {
         type: 'object',
         title: 'Caminhos dos sensores (0/1)',
@@ -123,6 +130,7 @@ module.exports = function (app, deps = {}) {
   let tg = null
   let offset = 0
   let codigoEnviado = new Map() // chatId desconhecido → quando recebeu o código (anti-spam: 1 por hora; por ordem)
+  let lugares = [] // os portos e fundeadouros conhecidos (lib/lugares.js): só junto a eles o ponto se grava sozinho
 
   const val = (p) => app.getSelfPath?.(p)?.value
   const bool = (p) => { const x = val(p); return x === undefined || x === null ? undefined : !!x }
@@ -185,7 +193,8 @@ module.exports = function (app, deps = {}) {
       return tg.sendMessage(chatId, '⚓ Ponto de amarração gravado aqui (alarme a 30 m)')
     }
     if (c === '/largar') {
-      estado = { ...estado, amarracao: { ...estado.amarracao, ponto: null } }
+      // e a contagem dos 30 min parado recomeça: com o barco ainda parado, o ponto não volta logo
+      estado = { ...estado, amarracao: { ...estado.amarracao, ponto: null, paradoDesde: null, largouDesde: null } }
       persist.ponto = null; guardar()
       return tg.sendMessage(chatId, '⚓ Ponto de amarração apagado')
     }
@@ -334,10 +343,12 @@ module.exports = function (app, deps = {}) {
   function tick () {
     const c = { ...CAMINHOS, ...(o.caminhos || {}) }
     const rpm = val('propulsion.main.revolutions')
+    const pos = val('navigation.position')
     const r = passo(estado, {
-      posicao: val('navigation.position'),
+      posicao: pos,
       sog: val('navigation.speedOverGround'),
       motorLigado: typeof rpm === 'number' && rpm > 5,
+      juntoAPorto: lugarPerto(pos, lugares) !== null,
       agua: bool(c.agua),
       bomba: bool(c.bomba),
       fumo: bool(c.fumo),
@@ -455,8 +466,11 @@ module.exports = function (app, deps = {}) {
   }
 
   plugin.start = function (props) {
-    o = { telegramToken: '', chatIds: [], contactosPlano: [], telegramBase: 'https://api.telegram.org', pollTimeout: 25, batimentoUrl: '', comandoFoto: '', ...props }
+    o = { telegramToken: '', chatIds: [], contactosPlano: [], telegramBase: 'https://api.telegram.org', pollTimeout: 25, batimentoUrl: '', comandoFoto: '', lugares: EXTRAS, ...props }
     codigoEnviado = new Map()
+    const rota = lerDestinosDaRota()
+    if (rota.erro) app.error(`${rota.erro}: o ponto de amarração só se grava sozinho junto aos lugares da configuração`)
+    lugares = [...rota.lugares, ...lugaresDaConfiguracao(o.lugares)]
     const dir = app.getDataDirPath()
     fs.mkdirSync(dir, { recursive: true })
     ficheiro = path.join(dir, 'porto.json')
