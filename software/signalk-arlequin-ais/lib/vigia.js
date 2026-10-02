@@ -6,9 +6,11 @@
 // A velocidade de cada barco (o nosso e cada alvo), por esta ordem (revisão F6, Importantes 1 e 2):
 //   1. a medida: o SOG (abaixo de 0,5 nó = parado, sem precisar do COG) e o COG. Um SOG/COG de um alvo
 //      mais velho do que a posição dele 30 s não conta (o SignalK não publica o "não disponível" do AIS:
-//      fica o último na árvore); o nosso conta 30 s desde a última mudança (Menor 8);
-//   2. a última medida, durante 30 s: o GPS a 0,5–1 nó cala o COG numa RMC sim e noutra não (o SignalK
-//      publica null) e um alvo pode perder o COG a meio; sem isto o alarme ligava e desligava de 2 em 2 s;
+//      fica o último na árvore); o nosso conta 10 s desde a última mudança (o GPS manda-o de segundo a
+//      segundo: 10 s sem um novo é o GPS calado; Menor 8);
+//   2. a última medida, durante esses 30 s (10 s a nossa): o GPS a 0,5–1 nó cala o COG numa RMC sim e
+//      noutra não (o SignalK publica null) e um alvo pode perder o COG a meio; sem isto o alarme ligava e
+//      desligava de 2 em 2 s;
 //   3. a do rasto do próprio barco (as nossas posições do GPS, as do alvo pelo AIS): com 2 posições ou
 //      mais em 30 s ou mais, a mediana das inclinações entre todos os pares (Theil–Sen), que um salto do
 //      GPS em menos de ~1/3 das posições não mexe; daí o CPA/TCPA de sempre;
@@ -25,9 +27,11 @@
 // também o pode dar (Menor 7).
 //
 // Amarrado ou fundeado (decisão n.º 3): o nosso SOG abaixo de 0,5 nó durante 5 min; deixa de estar com
-// 1 min seguido a 0,5 nó ou mais. Rodar à âncora com o GPS da proa a 0,6–0,9 nó mais de 1 min seguido
-// também tira deste estado: o erro fica para o lado do alarme (revisão F6, Menor 6; escrito no
-// NAVEGACAO). Amarrados, os alvos também parados não dão alarme. Um alvo que se mexe dá sempre alarme.
+// 1 min seguido a 0,5 nó ou mais. Rodar à âncora (bornear) com o GPS da proa a 0,6–0,9 nó mais de 1 min
+// seguido também tira deste estado, e um vizinho fundeado perto pode então dar alarme: o erro fica para
+// o lado do alarme, porque exigir também uma deslocação atrasaria o alarme de quem garra (revisão F6,
+// Menor 6: a regra fica assim e o NAVEGACAO tem de a dizer). Amarrados, os alvos também parados não dão
+// alarme. Um alvo que se mexe dá sempre alarme.
 //
 // Em porto (decisão do Ivo de 02/10, contrato C12): a menos de 0,5 MN de um porto conhecido (os destinos
 // da rota e os extras da configuração do plugin) e com o nosso SOG abaixo de 4 nós, um alvo parado (ou
@@ -46,7 +50,8 @@ const PARADO_PADRAO = 0.5 * 1852 / 3600 // m/s (0,5 nó), se o cálculo não tro
 const PORTO_PADRAO = { distancia: 0.5 * 1852, sog: 4 * 1852 / 3600 } // idem para o "em porto"
 const AMARRADO = 5 * 60 * 1000 // tanto tempo abaixo de 0,5 nó = amarrado ou fundeado
 const LARGOU = 60 * 1000 // tanto tempo seguido a andar = largou
-const MANTER = 30 * 1000 // um SOG/COG em falta: vale o último durante tanto tempo
+const MANTER = 30 * 1000 // um SOG/COG de um alvo em falta: vale o último durante tanto tempo
+const MANTER_EU = 10 * 1000 // o nosso (o GPS manda-o de segundo a segundo)
 const RASTO_EU = 60 * 1000 // as nossas posições para estimar a nossa velocidade
 const RASTO_ALVO = 6 * 60 * 1000 // as de cada alvo (um classe B parado manda de 3 em 3 min)
 const RASTO_MAX = 60 // posições guardadas de cada barco (no máximo)
@@ -104,10 +109,10 @@ function novaMemoria () {
 }
 
 // Um SOG ou um COG: { v, em } do lido (um número, com a hora em que foi medido) ou, sem ele, o último
-// que houve se não tiver mais de MANTER; null se não há.
-function lembrar (guardado, valor, em, agora) {
-  if (ok(valor) && !(agora - em > MANTER)) return { v: valor, em }
-  return guardado && agora - guardado.em <= MANTER ? guardado : null
+// que houve se não tiver mais de `manter`; null se não há.
+function lembrar (guardado, valor, em, agora, manter = MANTER) {
+  if (ok(valor) && !(agora - em > manter)) return { v: valor, em }
+  return guardado && agora - guardado.em <= manter ? guardado : null
 }
 
 // Junta uma posição ao rasto (uma por hora de posição) e esquece as mais velhas que a janela.
@@ -219,8 +224,8 @@ function avaliarAlvos (ativos, eu, alvos, agora, calc, memoria = novaMemoria(), 
   const m0 = { ...novaMemoria(), ...memoria }
 
   const euMem = {
-    sog: lembrar(m0.eu.sog, eu.sog, eu.sogEm ?? agora, agora),
-    cog: lembrar(m0.eu.cog, eu.cog, eu.cogEm ?? agora, agora),
+    sog: lembrar(m0.eu.sog, eu.sog, eu.sogEm ?? agora, agora, MANTER_EU),
+    cog: lembrar(m0.eu.cog, eu.cog, eu.cogEm ?? agora, agora, MANTER_EU),
     rasto: juntar(m0.eu.rasto, eu.position, eu.posEm ?? agora, RASTO_EU)
   }
   const movEu = movimento(euMem, parado)
@@ -314,4 +319,4 @@ function avaliarAlvos (ativos, eu, alvos, agora, calc, memoria = novaMemoria(), 
   return { ativos: novos, notificacoes, memoria: m, emPorto }
 }
 
-module.exports = { avaliarAlvos, novaMemoria, VELHO, LIMPA_APOS, MUITO_PERTO, MANTER }
+module.exports = { avaliarAlvos, novaMemoria, VELHO, LIMPA_APOS, MUITO_PERTO, MANTER, MANTER_EU }

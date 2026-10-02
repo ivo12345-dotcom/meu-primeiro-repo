@@ -6,8 +6,9 @@
 //
 // As idades (revisão F6, Menor 8): a nossa posição, o SOG e o COG contam pelo relógio do Pi desde a
 // última vez que mudaram na árvore (nunca pela hora do GPS: um Pi desacertado não pode parar o vigia).
-// Sem a nossa posição há mais de 10 s o vigia não julga nada (os alarmes ativos ficam). O SOG/COG de cada
-// alvo levam a hora deles, comparada com a da posição do alvo (lib/vigia.js).
+// Sem a nossa posição há mais de 10 s o vigia não julga nada (os alarmes ativos ficam); o nosso SOG/COG
+// sem mudar há mais de 10 s não conta (fica a velocidade do rasto). O SOG/COG de cada alvo levam a hora
+// deles, comparada com a da posição do alvo: mais de 30 s mais velhos, não contam (lib/vigia.js).
 //
 // Os portos conhecidos (contrato C12): os destinos da rota (signalk-arlequin-rota/dados/destinos.json,
 // só se lê; o sítio de cada um é o cais, o último ponto da aproximação) e os extras da configuração.
