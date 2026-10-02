@@ -251,7 +251,7 @@ module.exports = function (app) {
 <h1>Motor · J1939 (${esc(d.fonte)})</h1><p>${d.tramas} tramas · ${d.rpm} rpm</p>
 <h2>PGN vistas</h2><table><tr><th>PGN</th><th>Origem</th><th>N</th><th>Últimos bytes</th></tr>${d.vistas.map(v => `<tr><td>${v.pgn}</td><td>${v.origem}</td><td>${v.n}</td><td><code>${esc(v.bytes)}</code></td></tr>`).join('')}</table>
 <h2>Mudanças nas PGN proprietárias (65417 = alarmes do MDI)</h2><p>Teste: ignição ligada com o motor parado acende os alarmes de óleo e de carga. Liga o motor e vê que bits apagam.</p>
-<table><tr><th>Hora</th><th>PGN</th><th>rpm</th><th>Bytes</th><th>Bits que mudaram</th></tr>${d.mudancas.map(m => `<tr><td>${new Date(m.t).toLocaleTimeString('pt-PT')}</td><td>${m.pgn}</td><td>${m.rpm ?? ''}</td><td><code>${esc(m.bytes)}</code></td><td>${esc(m.bitsMudados.join(', '))}</td></tr>`).join('')}</table>`)
+<table><tr><th>Hora</th><th>PGN</th><th>rpm</th><th>Bytes</th><th>Bits que mudaram</th></tr>${d.mudancas.map(m => `<tr><td>${new Date(m.t).toLocaleTimeString('pt-PT', { timeZone: 'Europe/Lisbon' })}</td><td>${m.pgn}</td><td>${m.rpm ?? ''}</td><td><code>${esc(m.bytes)}</code></td><td>${esc(m.bitsMudados.join(', '))}</td></tr>`).join('')}</table>`)
     })
   }
 

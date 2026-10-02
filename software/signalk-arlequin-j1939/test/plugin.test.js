@@ -277,6 +277,25 @@ test('diagnóstico: PGN vistas e mudanças da 65417 gravadas', async (t) => {
   assert.match(html, /byte0\.bit0 1→0/)
 })
 
+// Auditoria I-31 (decisão n.º 22): os textos dos plugins usam sempre a hora de Lisboa, seja qual for o
+// fuso do sistema (o Pi pode estar em UTC).
+test('I-31: a página de diagnóstico mostra a hora de Lisboa, mesmo com o sistema em UTC', (t) => {
+  const tz = process.env.TZ
+  process.env.TZ = 'UTC'
+  t.after(() => { if (tz === undefined) delete process.env.TZ; else process.env.TZ = tz })
+  t.mock.timers.enable({ apis: ['Date'], now: Date.parse('2026-07-01T12:00:05Z') })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({ fonte: 'simulador' })
+  enviar(app, 65417, '0300000000000000')
+  const rotas = {}
+  p.registerWithRouter({ get: (r, h) => { rotas[r] = h } })
+  let html
+  rotas['/pagina']({}, { type: () => ({ send: (h) => { html = h } }) })
+  p.stop()
+  assert.match(html, /<td>13:00:05<\/td><td>65417<\/td>/)
+})
+
 test('curva aprendida: regime estável a andar entra na faixa certa e aparece em /consumo', (t) => {
   t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
   const app = appFalso()
