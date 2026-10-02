@@ -311,7 +311,7 @@ Todos são LightGBM com **regressão por quantis: P10, P50 e P90** (pessimista, 
 - **Integração no SignalK local:**
   - replay da passagem, e a caixa negra grava com `simulado`;
   - um treino com o marcador de teste produz um modelo;
-  - `/calcular` com uma **previsão gravada** (a de 29/09, fixa para os testes serem repetíveis) dá "Espera até amanhã às 08:00" sozinho e mostra "Sair agora" com os pontos de desistência;
+  - `/calcular` com uma **previsão gravada** (a de 29/09, fixa para os testes serem repetíveis) dá "Espera até amanhã às 08:00" sozinho e mostra "Sair agora" com os pontos de desistência; *(nota de 02/10: com a previsão gravada de 29/09, o teste que ficou na rota, `test/calculo.test.js`, espera "Espera até amanhã às 06:30" — ver o 3a, último ponto das Notas de implementação)*
   - o ecrã é verificado no browser em todos os estados, de dia e de noite.
 - **Sincronização:** pastas locais a fazer de "Pi", hashes, e confirmação só depois da verificação.
 
