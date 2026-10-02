@@ -64,12 +64,15 @@ function horasContraVento (pontos, o = CONTRA) {
 }
 
 // resumo: o do cenário provável; lemeEq: horas equivalentes ao leme (provável); contraVentoH;
-// semDados: os campos sem previsão em parte do rasto provável (lib/seguranca.js previsaoIncompleta).
-function custo ({ resumo, esperaH = 0, tripulacao, lemeEq = 0, contraVentoH = 0, semDados = [] }) {
+// semDados: os campos sem previsão em parte do rasto provável (lib/seguranca.js previsaoIncompleta);
+// desconhecido: { rajada, ondas } a contar sem previsão (por omissão os limites a solo; o lib/calculo.js
+// passa os configurados, auditoria M-13).
+function custo ({ resumo, esperaH = 0, tripulacao, lemeEq = 0, contraVentoH = 0, semDados = [], desconhecido = DESCONHECIDO }) {
   const falta = new Set(semDados)
   const conhecido = (x) => (Number.isFinite(x) ? x : -Infinity)
-  const rajada = falta.has('rajada') ? Math.max(conhecido(resumo.rajadaMax), DESCONHECIDO.rajada) : conhecido(resumo.rajadaMax)
-  const ondas = falta.has('ondas') ? Math.max(conhecido(resumo.ondasMax), DESCONHECIDO.ondas) : conhecido(resumo.ondasMax)
+  const d = { ...DESCONHECIDO, ...desconhecido }
+  const rajada = falta.has('rajada') ? Math.max(conhecido(resumo.rajadaMax), d.rajada) : conhecido(resumo.rajadaMax)
+  const ondas = falta.has('ondas') ? Math.max(conhecido(resumo.ondasMax), d.ondas) : conhecido(resumo.ondasMax)
   const partes = {
     horas: resumo.duracaoH,
     espera: PESOS.espera * esperaH,
