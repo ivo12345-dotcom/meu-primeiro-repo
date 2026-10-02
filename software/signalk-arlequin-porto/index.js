@@ -25,7 +25,9 @@
 // notificações vem vazia), um aviso ainda ativo volta a seguir uma vez (lib/mensagens.js).
 // As mensagens dos alarmes vão para o Telegram por uma fila, gravada no mesmo encaminhador.json
 // (auditoria K-09, decisão n.º 17): uma que o Telegram não aceitou fica lá e tenta-se outra vez, com
-// recuo até 1 min, até ser entregue a pelo menos um chat autorizado; chega com "(atrasado N min)".
+// recuo até 1 min, até ser entregue a pelo menos um chat autorizado; chega com "(atrasado N min)". Os
+// alarmes passam à frente dos avisos e dos "Resolvido" (cada caminho pela sua ordem) e uma que o Telegram
+// recusa sempre sai ao fim de 3 tentativas, com registo e um aviso ao Ivo (auditoria F4b).
 // O plano com o texto entregue conta como entregue mesmo que o GPX falhe (o GPX vai para as falhas, "GPX: …").
 // O plano vai a todos os destinatários em paralelo e cada chamada ao Telegram tem um limite de 10 s,
 // para a resposta chegar bem antes dos 30 s que o plugin da rota espera; as falhas vão em pt-PT
@@ -38,10 +40,10 @@ const path = require('node:path')
 const { exec } = require('node:child_process')
 const { ALARMES, APITO, novoEstado, passo, distancia } = require('./lib/regras')
 const { novoEncaminhador, encaminhar, listarNotificacoes, alarmesAtivos } = require('./lib/mensagens')
-const { porNaFila, textoAEnviar, recuoMs, filaValida } = require('./lib/fila')
+const { porNaFila, proximo, textoAEnviar, recuoMs, filaValida, excerto, avisoDeRecusa, MAX_FILA, MAX_RECUSAS } = require('./lib/fila')
 const { EXTRAS, lerDestinosDaRota, lugaresDaConfiguracao, lugarPerto } = require('./lib/lugares')
 const { resumo } = require('./lib/resumo')
-const { criarTelegram, erroEmPortugues, erroConhecido } = require('./lib/telegram')
+const { criarTelegram, erroEmPortugues, erroConhecido, recusaDoTelegram } = require('./lib/telegram')
 
 const CAMINHOS = {
   agua: 'sensors.porao.agua',
@@ -88,13 +90,15 @@ const registoTelegram = (e) => { const m = String(e?.message ?? e); return /^Tel
 
 // deps (testes): agora() o relógio (anti-spam, regras, encaminhador e fila); maxCodigos; limiteTelegramMs
 // o limite de cada chamada; tickMs, encaminharMs os ciclos (1 s e 2 s); pausaFilaMs entre duas
-// mensagens da fila (1 s: o Telegram não quer mais do que uma por segundo no mesmo chat)
+// mensagens da fila (1 s: o Telegram não quer mais do que uma por segundo no mesmo chat); maxFila o
+// limite da fila (100)
 module.exports = function (app, deps = {}) {
   const agora = deps.agora || (() => Date.now())
   const maxCodigos = deps.maxCodigos ?? MAX_CODIGOS
   const tickMs = deps.tickMs ?? 1000
   const encaminharMs = deps.encaminharMs ?? 2000
   const pausaFilaMs = deps.pausaFilaMs ?? 1000
+  const maxFila = deps.maxFila ?? MAX_FILA
   const plugin = {
     id: 'signalk-arlequin-porto',
     name: 'Arlequin · porto',
@@ -415,7 +419,8 @@ module.exports = function (app, deps = {}) {
     }
     const porEntregar = enc.porEnviar.length
     const fila = porEntregar ? ` · ${porEntregar} por entregar${falhasFila ? ` (${falhasFila} ${falhasFila === 1 ? 'tentativa falhada' : 'tentativas falhadas'})` : ''}` : ''
-    app.setPluginStatus(`${persist.armado ? '🔒 armado' : 'desarmado'} · ${estado.amarracao.ponto ? 'amarrado' : 'sem ponto'} · Telegram ${tg ? 'ligado' : 'sem token'}${fila}`)
+    const recusadas = recusadasFila ? ` · ${recusadasFila} ${recusadasFila === 1 ? 'recusada' : 'recusadas'} pelo Telegram` : ''
+    app.setPluginStatus(`${persist.armado ? '🔒 armado' : 'desarmado'} · ${estado.amarracao.ponto ? 'amarrado' : 'sem ponto'} · Telegram ${tg ? 'ligado' : 'sem token'}${fila}${recusadas}`)
   }
 
   // O estado do encaminhador em disco (Tarefa 8.3): depois de um reinício do plugin, um aviso ainda ativo
@@ -445,22 +450,29 @@ module.exports = function (app, deps = {}) {
     let novo = r.enc
     // as mensagens novas entram na fila (gravada antes de enviar); sem token ou sem chats autorizados
     // não há a quem as entregar e não se guardam (como antes)
-    if (r.mensagens.length && tg && chatsAutorizados().length) {
-      const f = porNaFila(novo.porEnviar, r.mensagens, agora())
-      novo = { ...novo, porEnviar: f.fila }
-      for (const x of f.perdidas) app.error(`fila do Telegram cheia: já não vou entregar "${x.texto}"`)
-    }
+    if (r.itens.length && tg && chatsAutorizados().length) novo = { ...novo, porEnviar: naFila(novo.porEnviar, r.itens) }
     const mudou = JSON.stringify(novo) !== JSON.stringify(enc)
     enc = novo
     if (mudou) gravarEncaminhador()
     enviarFila().catch(e => app.error(`fila do Telegram: ${e.message}`))
   }
+  // fila + mensagens novas, dentro do limite (o que sair fica no registo)
+  function naFila (fila, novos) {
+    const f = porNaFila(fila, novos, agora(), { max: maxFila })
+    for (const x of f.perdidas) app.error(`fila do Telegram cheia: já não vou entregar "${x.texto}"`)
+    return f.fila
+  }
 
-  // A fila dos alarmes (auditoria K-09): a cabeça vai a todos os chats autorizados ao mesmo tempo e
-  // sai da fila quando pelo menos um a aceitou; se nenhum aceitou, espera o recuo (2 s … 1 min, ou o
-  // retry_after do Telegram) e tenta outra vez; as seguintes esperam por ela (a ordem conta: o
-  // "Resolvido" nunca chega antes do alarme). Nunca vai aos contactos do plano.
-  let falhasFila = 0 // tentativas falhadas seguidas da cabeça da fila
+  // A fila dos alarmes (auditoria K-09): a mensagem mais urgente (lib/fila.js, proximo: os alarmes à
+  // frente, cada caminho pela sua ordem — o "Resolvido" nunca chega antes do seu alarme) vai a todos os
+  // chats autorizados ao mesmo tempo e sai da fila quando pelo menos um a aceitou; se nenhum aceitou,
+  // espera o recuo (2 s … 1 min, ou o retry_after do Telegram) e tenta outra vez. Uma que o Telegram
+  // recusa em todos os chats sem remédio (recusaDoTelegram) sai ao fim de MAX_RECUSAS tentativas, com
+  // registo e um aviso ao Ivo (se algum chat a recusou por ser essa mensagem: com todos os chats
+  // recusados, o aviso não tinha a quem chegar); antes, uma assim prendia a fila para sempre (auditoria
+  // F4b, revisão da F4, Importante 1). Nunca vai aos contactos do plano.
+  let falhasFila = 0 // tentativas falhadas seguidas da fila
+  let recusadasFila = 0 // mensagens que o Telegram recusou sempre e saíram da fila (desde o arranque)
   let proximaTentativa = 0 // agora() a partir do qual se tenta outra vez
   let envioFila = null // o envio da fila em curso (um de cada vez)
   let ultimoErroFila = null // o registo não repete o mesmo erro a cada recuo
@@ -473,7 +485,7 @@ module.exports = function (app, deps = {}) {
     const cliente = tg
     try {
       while (cliente === tg && enc.porEnviar.length) {
-        const item = enc.porEnviar[0]
+        const item = enc.porEnviar[proximo(enc.porEnviar)]
         const texto = textoAEnviar(item, agora())
         const erros = await Promise.all(chats.map(id => cliente.sendMessage(id, texto).then(() => null, e => e)))
         const falhados = erros.filter(Boolean)
@@ -488,6 +500,16 @@ module.exports = function (app, deps = {}) {
           if (msg !== ultimoErroFila) { ultimoErroFila = msg; app.error(msg) }
         } else ultimoErroFila = null
         if (falhados.length === chats.length) {
+          const recusas = falhados.map(recusaDoTelegram)
+          if (recusas.every(Boolean)) {
+            const n = (item.recusas || 0) + 1
+            if (n >= MAX_RECUSAS) {
+              desistir(item, falhados, recusas.includes('mensagem'))
+              if (enc.porEnviar.length && pausaFilaMs > 0) await new Promise(resolve => setTimeout(resolve, pausaFilaMs))
+              continue
+            }
+            trocarNaFila(item, { ...item, recusas: n })
+          }
           falhasFila++
           proximaTentativa = agora() + recuoMs(falhasFila, Math.max(0, ...falhados.map(e => e?.esperarS ?? 0)))
           return
@@ -501,11 +523,31 @@ module.exports = function (app, deps = {}) {
       if (envioFila === este) envioFila = null
     }
   }
+  // a mensagem que o Telegram recusou MAX_RECUSAS vezes sai da fila: o registo diz qual e porquê; o Ivo
+  // recebe um aviso curto (comAviso: algum chat a recusou por ser essa mensagem; nunca de um aviso destes)
+  function desistir (item, falhados, comAviso) {
+    tirarDaFila(item)
+    falhasFila = 0
+    proximaTentativa = 0
+    recusadasFila++
+    app.error(`fila do Telegram: desisti de "${excerto(item.texto, 80)}" ao fim de ${MAX_RECUSAS} recusas (${falhados[0]?.message ?? falhados[0]})`)
+    const porMensagem = falhados.find(e => recusaDoTelegram(e) === 'mensagem')
+    if (comAviso && !item.sistema) {
+      enc = { ...enc, porEnviar: naFila(enc.porEnviar, [avisoDeRecusa(item, erroEmPortugues(porMensagem))]) }
+      gravarEncaminhador()
+    }
+  }
   // tira da fila a mensagem entregue (a primeira igual: o mesmo objeto, ou o mesmo texto e hora) e grava
   function tirarDaFila (item) {
     const i = enc.porEnviar.findIndex(x => x === item || (x.texto === item.texto && x.desde === item.desde))
     if (i < 0) return
     enc = { ...enc, porEnviar: [...enc.porEnviar.slice(0, i), ...enc.porEnviar.slice(i + 1)] }
+    gravarEncaminhador()
+  }
+  function trocarNaFila (item, novo) {
+    const i = enc.porEnviar.indexOf(item)
+    if (i < 0) return
+    enc = { ...enc, porEnviar: enc.porEnviar.map((x, k) => (k === i ? novo : x)) }
     gravarEncaminhador()
   }
 
@@ -529,6 +571,7 @@ module.exports = function (app, deps = {}) {
     ficheiroEnc = path.join(dir, 'encaminhador.json')
     enc = lerEncaminhador()
     falhasFila = 0
+    recusadasFila = 0
     proximaTentativa = 0
     envioFila = null
     ultimoErroFila = null
@@ -538,7 +581,7 @@ module.exports = function (app, deps = {}) {
     // o Ivo sabe que o alarme ficou desarmado (pela fila: depois de um corte de energia o router do 4G
     // arranca depois do Pi)
     if (lido.erro && tg && chatsAutorizados().length) {
-      enc = { ...enc, porEnviar: porNaFila(enc.porEnviar, [AVISO_PORTO_ILEGIVEL], agora()).fila }
+      enc = { ...enc, porEnviar: naFila(enc.porEnviar, [AVISO_PORTO_ILEGIVEL]) }
       gravarEncaminhador()
     }
     temporizadores = [setInterval(tick, tickMs), setInterval(encaminharAlarmes, encaminharMs)]

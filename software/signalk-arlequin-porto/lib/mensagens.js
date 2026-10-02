@@ -35,9 +35,13 @@ const casaAlgum = (caminho, lista) => lista.some(p => casa(caminho, p))
 // I-32: antes ia só o caminho, em inglês)
 const descricao = (n, state = n.state) => n.message || `${GRAVE.has(state) ? 'Alarme' : 'Aviso'} sem descrição (${String(n.caminho).replace(/^notifications\./, '')})`
 
+// → { enc, mensagens: [texto], itens: [{ texto, caminho, estado }] } (os itens: as mesmas mensagens com o
+// caminho e o estado, para a fila do Telegram as ordenar: lib/fila.js)
 function encaminhar (enc0, notificacoes, agora, { intervalo = 10 * 60 * 1000, amarrado = false, ignorarAmarrado = ['notifications.arlequin.ais.'], nunca = NUNCA, soAlarme = SO_ALARME } = {}) {
   const enc = { estados: { ...enc0.estados }, mensagem: { ...enc0.mensagem }, ultimoAlarme: { ...enc0.ultimoAlarme }, pendente: { ...enc0.pendente }, porEnviar: [...(enc0.porEnviar || [])] }
   const mensagens = []
+  const itens = []
+  const enviar = (texto, caminho, estado) => { mensagens.push(texto); itens.push({ texto, caminho, estado }) }
   for (const n of notificacoes) {
     if (casaAlgum(n.caminho, nunca)) continue // lembretes só para o ecrã
     const antes = enc.estados[n.caminho] || 'normal'
@@ -53,12 +57,12 @@ function encaminhar (enc0, notificacoes, agora, { intervalo = 10 * 60 * 1000, am
       // que volta a meter água, ou uma escalada warn → alarm, não se perdem).
       if (enc.ultimoAlarme[n.caminho] !== undefined && agora - enc.ultimoAlarme[n.caminho] < intervalo) { enc.estados[n.caminho] = antes; continue }
       const texto = descricao(n, agoraEstado)
-      mensagens.push(`${ICONE[agoraEstado]} ${texto}`)
+      enviar(`${ICONE[agoraEstado]} ${texto}`, n.caminho, agoraEstado)
       enc.mensagem[n.caminho] = texto
       enc.ultimoAlarme[n.caminho] = agora
       enc.pendente[n.caminho] = true
     } else if (enc.pendente[n.caminho]) {
-      mensagens.push(`✓ Resolvido: ${enc.mensagem[n.caminho] || descricao({ caminho: n.caminho }, 'alarm')}`)
+      enviar(`✓ Resolvido: ${enc.mensagem[n.caminho] || descricao({ caminho: n.caminho }, 'alarm')}`, n.caminho, 'normal')
       delete enc.pendente[n.caminho]
     }
   }
@@ -70,7 +74,7 @@ function encaminhar (enc0, notificacoes, agora, { intervalo = 10 * 60 * 1000, am
     delete enc.pendente[caminho]
     delete enc.ultimoAlarme[caminho]
   }
-  return { enc, mensagens }
+  return { enc, mensagens, itens }
 }
 
 // Percorre a árvore notifications.* do SignalK e devolve a lista plana.
