@@ -67,6 +67,30 @@ test('auditoria I-22: o stop() corta o long polling pendente, sem erro no regist
   } finally { p.stop(); await tgf.fechar() }
 })
 
+test('auditoria F4b (revisão, Menor 3): a pausa depois de um erro do long polling não deixa um "abort" pendurado no sinal do ciclo por cada erro', async () => {
+  // conta as escutas "abort" de cada AbortSignal
+  const escutas = new Map()
+  const { addEventListener: pôr, removeEventListener: tirar } = EventTarget.prototype
+  EventTarget.prototype.addEventListener = function (tipo, f, o) { if (tipo === 'abort' && this instanceof AbortSignal) escutas.set(this, (escutas.get(this) || 0) + 1); return pôr.call(this, tipo, f, o) }
+  EventTarget.prototype.removeEventListener = function (tipo, f, o) { if (tipo === 'abort' && this instanceof AbortSignal) escutas.set(this, (escutas.get(this) || 0) - 1); return tirar.call(this, tipo, f, o) }
+  // o Telegram responde sempre 502 ao getUpdates (sem rede nenhuma: é imediato)
+  const original = globalThis.fetch
+  globalThis.fetch = async (url, o) => (String(url).endsWith('/getUpdates') ? new Response(JSON.stringify({ ok: false, error_code: 502, description: 'Bad Gateway' }), { status: 502 }) : original(url, o))
+  const app = appFalso()
+  const p = criar(app, { pausaErroMs: 2 })
+  try {
+    p.start({ telegramToken: 'TESTE', chatIds: ['111'], telegramBase: 'http://x', pollTimeout: 1 })
+    assert.ok(await ate(() => app.erros.length >= 30), String(app.erros.length))
+    const max = Math.max(0, ...escutas.values())
+    assert.ok(max <= 2, `${max} escutas "abort" no mesmo sinal ao fim de ${app.erros.length} erros`)
+    assert.match(app.erros[0], /^Telegram getUpdates: Bad Gateway$/)
+  } finally {
+    p.stop()
+    globalThis.fetch = original
+    Object.assign(EventTarget.prototype, { addEventListener: pôr, removeEventListener: tirar })
+  }
+})
+
 // ---------- auditoria I-21: os alarmes do porto atravessam os reinícios ----------
 
 const RAPIDO = { tickMs: 50, encaminharMs: 50, pausaFilaMs: 0 }
