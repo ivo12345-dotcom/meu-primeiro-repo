@@ -72,6 +72,42 @@ test('gasóleo < 40 L ou bateria < 50% à chegada no pessimista: excluída, ou a
   assert.equal(s.avaliar(base({ pessimista: passagem({ resumo: { gasoleoGasto: 60, socFinal: 0.5 } }) })).excluida, false)
 })
 
+test('K-06 (decisão do Ivo n.º 1): em "Sair agora" a exclusão levantada fica "não recomendada", com o motivo e o aviso vermelho; sem ela, como antes', () => {
+  const GAS = 'chegas com 35 L de gasóleo no pior caso (mínimo 40 L)'
+  const BAT = 'chegas com a bateria a 45% no pior caso (mínimo 50%)'
+  for (const tripulacao of ['so', 'acompanhado']) {
+    const agora = s.avaliar(base({ tripulacao, sairAgora: true, pessimista: passagem({ resumo: { gasoleoGasto: 65, socFinal: 0.45 } }) }))
+    assert.equal(agora.excluida, false, tripulacao)
+    assert.equal(agora.excluidaSemSairAgora, true, tripulacao)
+    assert.equal(agora.naoRecomendada, true, tripulacao)
+    assert.deepEqual(agora.motivos, [GAS, BAT], tripulacao)
+    assert.deepEqual(agora.avisosVermelhos, [GAS, BAT], tripulacao)
+    // sem "sair agora": excluída com os mesmos motivos (nada muda)
+    const sem = s.avaliar(base({ tripulacao, pessimista: passagem({ resumo: { gasoleoGasto: 65, socFinal: 0.45 } }) }))
+    assert.equal(sem.excluida, true)
+    assert.equal(sem.excluidaSemSairAgora, false)
+    assert.deepEqual(sem.motivos, [GAS, BAT])
+  }
+  // sem previsão de ondas em parte da rota: o mesmo
+  const p = passagem(); p.pontos[10].semDados = ['ondas']
+  const x = s.avaliar(base({ sairAgora: true, pessimista: p, tripulacao: 'acompanhado' }))
+  assert.equal(x.excluida, false)
+  assert.equal(x.excluidaSemSairAgora, true)
+  assert.equal(x.naoRecomendada, true)
+  assert.deepEqual(x.motivos, ['sem previsão de ondas em parte da rota: desconhecido não conta como calmo'])
+  // o que nunca exclui continua a não bloquear: o gasóleo inicial desconhecido e, acompanhado, os
+  // limites a solo (decisão de 01/10)
+  const g = s.avaliar(base({ sairAgora: true, gasoleoInicial: undefined, tripulacao: 'acompanhado', pessimista: passagem({ resumo: { ventoMax: 23 } }) }))
+  assert.equal(g.excluidaSemSairAgora, false)
+  assert.equal(g.naoRecomendada, false)
+  assert.deepEqual(g.motivos, [])
+  assert.deepEqual(g.avisosVermelhos, ['gasóleo inicial desconhecido: confirma o depósito', 'acima dos limites a solo: vento médio até 23 nós no pior caso (limite 22 sozinho)'])
+  // uma passagem boa em "sair agora": nada levantado
+  const boa = s.avaliar(base({ sairAgora: true }))
+  assert.equal(boa.excluidaSemSairAgora, false)
+  assert.equal(boa.naoRecomendada, false)
+})
+
 test('"não recomendada sozinho": vento, rajadas e ondas acima dos limites; acompanhado não conta', () => {
   const r = s.avaliar(base({ pessimista: passagem({ resumo: { ventoMax: 23, rajadaMax: 31, ondasMax: 3.2 } }) }))
   assert.equal(r.naoRecomendada, true)
@@ -277,10 +313,12 @@ test('previsão sem dados (semDados de lib/previsao.js) de ondas, rajada ou vent
   assert.deepEqual(vento.avisos, ['sem previsão de corrente em parte da rota'])
   // também no cenário provável (a mesma previsão)
   assert.equal(s.avaliar(comPonto({ semDados: ['rajada'] }, 'provavel')).excluida, true)
-  // em "sair agora" não é excluída: passa a aviso vermelho (como o gasóleo e a bateria)
+  // em "sair agora" não é excluída: passa a aviso vermelho (como o gasóleo e a bateria) e fica "não
+  // recomendada" com o motivo (K-06, decisão do Ivo n.º 1: a faixa laranja, nunca "Segue")
   const agora = s.avaliar({ ...comPonto({ semDados: ['ondas', 'tws'] }), sairAgora: true })
   assert.equal(agora.excluida, false)
-  assert.deepEqual(agora.motivos, [])
+  assert.equal(agora.naoRecomendada, true)
+  assert.deepEqual(agora.motivos, ['sem previsão de vento e ondas em parte da rota: desconhecido não conta como calmo'])
   assert.deepEqual(agora.avisosVermelhos, ['sem previsão de vento e ondas em parte da rota: desconhecido não conta como calmo'])
   // outros campos sem dados: não exclui, fica um aviso
   const corrente = s.avaliar(comPonto({ semDados: ['corrente', 'correnteDir'] }))

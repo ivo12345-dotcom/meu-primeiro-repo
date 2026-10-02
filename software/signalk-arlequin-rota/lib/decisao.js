@@ -29,7 +29,9 @@
 //   segue           a melhor recomendada parte agora;
 //   espera          a melhor recomendada parte mais tarde ("Espera até às HH:MM");
 //   nao-recomendado nenhuma alternativa passa (com "so": "Não recomendado sozinho"; com
-//                   "acompanhado": "Não recomendado", acima de 28/35/4 — lib/seguranca.js);
+//                   "acompanhado": "Não recomendado", acima de 28/35/4 — lib/seguranca.js); em "Sair
+//                   agora", também quando a melhor só fica por a exclusão estar levantada
+//                   (gasóleo, bateria, previsão: K-06), com "Se saíres/continuares mesmo assim…";
 //   volta           só pedido no mar (a mais de 0,5 MN de um porto): continuar agora não é
 //                   recomendado e ir para o abrigo mais perto é ("Volta ou abriga-te em X"); também
 //                   com "sair agora" (o Recalcular a navegar, decisão do Ivo de 01/10).
@@ -90,7 +92,10 @@ const hora = (t, fuso = 'Europe/Lisbon') => new Intl.DateTimeFormat('pt-PT', { t
 
 // naoRecomendada já é a da tripulação (lib/seguranca.js): "sozinho" com "so", os limites de
 // acompanhado (28/35/4) com "acompanhado" (decisão do Ivo de 01/10). O argumento fica por compatibilidade.
-const recomendada = (c, _tripulacao) => !c.excluida && !c.naoRecomendada
+// Uma exclusão levantada pelo "Sair agora" (excluidaSemSairAgora: gasóleo, bateria, previsão) nunca é
+// recomendada (auditoria K-06, decisão do Ivo n.º 1): o veredicto fica "Não recomendado…" com "Se
+// saíres/continuares mesmo assim…", e a alternativa continua a mostrar-se e a poder ativar-se.
+const recomendada = (c, _tripulacao) => !c.excluida && !c.naoRecomendada && !c.excluidaSemSairAgora
 
 // Menos de 0,1 h de vela no cenário provável (sem número: não se sabe, conta como com vela).
 const LIMIAR_VELA_H = 0.1

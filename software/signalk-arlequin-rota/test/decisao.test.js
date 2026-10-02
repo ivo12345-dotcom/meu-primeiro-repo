@@ -101,6 +101,30 @@ test('veredicto "Não recomendado sozinho": nenhuma recomendada; com "sair agora
   assert.equal(e.veredicto.porque[0], 'Agora: não há passagem a 5 MN entre A e B.')
 })
 
+test('K-06 (decisão do Ivo n.º 1): "Sair agora" com uma exclusão levantada (gasóleo, bateria, previsão) nunca é "Segue": faixa "Não recomendado…" e "Se saíres/continuares mesmo assim…"', () => {
+  const GAS = 'chegas com 22 L de gasóleo no pior caso (mínimo 40 L)'
+  const levantada = (o = {}) => Object.assign(cand({ custo: 20, ...o }), { excluidaSemSairAgora: true, avisosVermelhos: [GAS] })
+  for (const [tripulacao, texto] of [['so', 'Não recomendado sozinho'], ['acompanhado', 'Não recomendado']]) {
+    const r = d.decidir({ candidatos: [levantada({ naoRecomendada: true, motivos: [GAS] })], agora: AGORA, tripulacao, sairAgora: true })
+    assert.equal(r.veredicto.tipo, 'nao-recomendado', tripulacao)
+    assert.equal(r.veredicto.texto, texto)
+    assert.deepEqual(r.veredicto.porque, [`A melhor para sair agora (a 5 MN, agora): ${GAS}.`, 'Se saíres mesmo assim, revê as precauções e os pontos de desistência.'])
+    assert.equal(r.top.length, 1) // continua a poder ativar-se: é a 1.ª mostrada
+  }
+  // a marca chega para não a recomendar (mesmo sem o naoRecomendada)
+  assert.equal(d.recomendada(levantada()), false)
+  assert.equal(d.decidir({ candidatos: [levantada({ motivos: [GAS] })], agora: AGORA, tripulacao: 'so', sairAgora: true }).veredicto.tipo, 'nao-recomendado')
+  // no mar (o Recalcular), sem abrigo recomendado: "Se continuares mesmo assim"
+  const mar = d.decidir({ candidatos: [levantada({ naoRecomendada: true, motivos: [GAS] })], agora: AGORA, tripulacao: 'so', sairAgora: true, emMar: true })
+  assert.equal(mar.veredicto.tipo, 'nao-recomendado')
+  assert.equal(mar.veredicto.porque.at(-1), 'Se continuares mesmo assim, revê as precauções e os pontos de desistência.')
+  // uma recomendada (sem nada levantado) continua a ganhar: "Segue" é dela
+  const boa = cand({ custo: 30 })
+  const s = d.decidir({ candidatos: [levantada({ naoRecomendada: true, motivos: [GAS] }), boa], agora: AGORA, tripulacao: 'so', sairAgora: true })
+  assert.equal(s.veredicto.tipo, 'segue')
+  assert.equal(s.top[0].id, boa.id)
+})
+
 test('veredicto "Volta ou abriga-te em X": só no mar, continuar não é recomendado e o abrigo é', () => {
   const continuar = cand({ custo: 30, naoRecomendada: true, motivos: ['rajadas até 33 nós no pior caso (limite 30 sozinho)'] })
   const tarde = cand({ partida: AGORA + 6 * H, custo: 35 })

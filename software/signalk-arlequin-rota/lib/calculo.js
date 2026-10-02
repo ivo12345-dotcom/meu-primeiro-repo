@@ -176,7 +176,15 @@ function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
   if (ventoMar) { seg.excluida = true; seg.motivos = [ventoMar, ...seg.motivos] }
   // sem nível do depósito a regra corre com o valor assumido, mas nunca em silêncio: aviso vermelho
   const avisosVermelhos = [...seg.avisosVermelhos]
-  if (passaDaPrevisao) avisosVermelhos.push(`a previsão acaba antes da chegada (${decisao.hora(Date.parse(chegadas.p90), ctx.o.fuso)}): o fim da passagem é sem previsão`)
+  if (passaDaPrevisao) {
+    // a exclusão levantada pelo "Sair agora" (K-06, decisão do Ivo n.º 1): aviso vermelho e "não
+    // recomendada", como as do lib/seguranca.js (gasóleo, bateria, previsão sem dados)
+    const texto = `a previsão acaba antes da chegada (${decisao.hora(Date.parse(chegadas.p90), ctx.o.fuso)}): o fim da passagem é sem previsão`
+    avisosVermelhos.push(texto)
+    seg.excluidaSemSairAgora = true
+    seg.naoRecomendada = true
+    seg.motivos = [...seg.motivos, texto]
+  }
   if (ctx.gasoleoAssumido) avisosVermelhos.push(avisoGasoleoAssumido(ctx.gasoleoInicial))
   // as horas equivalentes ao leme vêm só de lib/seguranca.js (a mesma regra da calma para o custo e para os limites)
   const lemeEqProvavel = seguranca.horasLemeEquivalentes(pr.pontos)
@@ -195,6 +203,8 @@ function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
     milhas: alt.milhas,
     geometria: alt,
     excluida: seg.excluida,
+    // em "Sair agora": seria excluída sem ele (gasóleo, bateria, previsão); fica não recomendada
+    excluidaSemSairAgora: !!seg.excluidaSemSairAgora,
     naoRecomendada: seg.naoRecomendada,
     motivos: seg.motivos,
     avisosVermelhos,
@@ -280,6 +290,7 @@ function montarAlternativa (ctx, cand, pr, desistenciaResumo, primeira = true) {
     bateriaMin: r1(cand.bateriaMinPct),
     chegadaNoite: cand.chegadaNoite,
     excluida: cand.excluida,
+    excluidaSemSairAgora: cand.excluidaSemSairAgora,
     naoRecomendada: cand.naoRecomendada,
     motivos: cand.motivos,
     avisosVermelhos: cand.avisosVermelhos,
