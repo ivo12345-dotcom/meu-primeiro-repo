@@ -393,6 +393,65 @@ test('contrato C3: o Diário lê o dia de Lisboa pelo plugin do ecrã (GET /plug
   assert.deepEqual(enviados, [['/plugins/arlequin-ecra/diario', { method: 'POST', body: { text: 'Rizei', category: 'navigation' } }]])
 })
 
+// ---------- auditoria I-10: confirmações dentro da página (o confirm() do browser parava o ciclo e o apito) ----------
+test('auditoria I-10: nenhuma página nem o app.js usa o confirm()/alert()/prompt() do browser', async () => {
+  const { readdirSync } = await import('node:fs')
+  const pasta = new URL('../public/', import.meta.url)
+  const ficheiros = ['app.js', ...readdirSync(new URL('paginas/', pasta)).filter(f => f.endsWith('.js')).map(f => `paginas/${f}`), ...readdirSync(new URL('paginas/melhor/', pasta)).map(f => `paginas/melhor/${f}`)]
+  for (const f of ficheiros) {
+    const linhas = readFileSync(new URL(f, pasta), 'utf8').split('\n').filter(l => /\b(confirm|alert|prompt)\s*\(/.test(l))
+    assert.deepEqual(linhas, [], f)
+  }
+})
+
+test('auditoria I-10: "Enchi" pergunta na própria página e só grava com o "Sim"', async () => {
+  const st = storeSimulado(1)
+  aplicarDelta(st, { updates: [{ timestamp: new Date().toISOString(), values: [{ path: 'tanks.freshWater.0.name', value: 'Cozinha (BB)' }, { path: 'tanks.freshWater.0.currentVolume', value: 0.04 }, { path: 'tanks.freshWater.0.currentLevel', value: 0.5 }] }] })
+  const pedidos = []
+  const ctx = { ...contexto(st, {}), pedir: async (url, o = {}) => { if (o.method === 'POST') pedidos.push([url, o.body]); return { ok: true, tanques: [] } } }
+  await motor.acao('agua-encher', { id: '0' }, ctx)
+  assert.deepEqual(pedidos, [], 'nada sem confirmar')
+  let html = motor.render(ctx)
+  assert.match(html, /Encheste o depósito Cozinha \(BB\)\?/)
+  assert.match(html, /data-acao="agua-encher-sim"/)
+  await motor.acao('agua-encher-nao', {}, ctx)
+  assert.doesNotMatch(motor.render(ctx), /agua-encher-sim/)
+  await motor.acao('agua-encher', { id: '0' }, ctx)
+  await motor.acao('agua-encher-sim', {}, ctx)
+  assert.deepEqual(pedidos, [['/plugins/signalk-arlequin-agua/encher', { id: 0 }]])
+  html = motor.render(ctx)
+  assert.doesNotMatch(html, /agua-encher-sim/)
+})
+
+test('auditoria I-10: "Cancelar" a calibração do gasóleo pergunta na própria página e só cancela com o "Sim"', async () => {
+  const pedidos = []
+  const estado = { calibAberta: true, calib: { ativa: true, total: 5, pontos: [], pendente: null, razaoAtual: 0.2 } }
+  const ctx = { ...contexto(store, estado), pedir: async (url, o = {}) => { if (o.method === 'POST') pedidos.push(url); return estado.calib } }
+  await motor.acao('calib-cancelar', {}, ctx)
+  assert.deepEqual(pedidos, [])
+  assert.match(motor.render(ctx), /Cancelar a calibração\? Fica a tabela antiga\./)
+  await motor.acao('calib-cancelar-nao', {}, ctx)
+  assert.equal(estado.calibAberta, true)
+  await motor.acao('calib-cancelar', {}, ctx)
+  await motor.acao('calib-cancelar-sim', {}, ctx)
+  assert.deepEqual(pedidos, ['/plugins/signalk-arlequin-gasoleo/calibracao/cancelar'])
+  assert.equal(estado.calibAberta, false)
+})
+
+test('auditoria I-10: "Nova viagem" pergunta na própria página e só apaga o resumo com o "Sim"', async () => {
+  let novas = 0
+  const ctx = { ...contexto(store, {}), novaViagem: () => { novas++ } }
+  await viagem.acao('nova', {}, ctx)
+  assert.equal(novas, 0)
+  assert.match(viagem.render(ctx), /Começar uma viagem nova\? O resumo atual é apagado\./)
+  await viagem.acao('nova-nao', {}, ctx)
+  assert.doesNotMatch(viagem.render(ctx), /nova-sim/)
+  await viagem.acao('nova', {}, ctx)
+  await viagem.acao('nova-sim', {}, ctx)
+  assert.equal(novas, 1)
+  assert.doesNotMatch(viagem.render(ctx), /nova-sim/)
+})
+
 test('Diário: cartão da AI mostra mensagem genérica para erro sem status', async () => {
   const estado = {}
   const ctx = {

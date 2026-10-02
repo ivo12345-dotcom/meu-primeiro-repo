@@ -58,7 +58,11 @@ function buscarCalib (ctx) {
     .finally(() => { ctx.estado.aBuscarCalib = false; ctx.estado.calibEm = Date.now() })
 }
 
-function painelCalib (c, msg, erro) {
+// Uma pergunta dentro da página (auditoria I-10: a caixa de confirmação do browser parava o ciclo e o apito).
+const pergunta = (texto, sim, rotuloSim, nao) => `<div class="tile atencao plano-confirmar"><div class="v">${texto}</div>
+<div class="acoes"><button class="acao go" data-acao="${sim}">${rotuloSim}</button><button class="acao" data-acao="${nao}">Não</button></div></div>`
+
+function painelCalib (c, msg, erro, confirmarCancelar = false) {
   // números do plugin do gasóleo: "—" se não forem números (nunca rebenta nem passa texto cru)
   const nf = (x, d = 0) => num(x, d)
   if (!c) return erro ? `<div class="perigo">${esc(erro)}</div><div class="acoes" style="margin-top:.6rem;"><button class="acao" data-acao="calib-fechar">Fechar</button></div>` : '<div class="lab">A ligar ao plugin do gasóleo…</div>'
@@ -76,7 +80,8 @@ ${c.boiaParada ? `<div class="atencao">A boia não mexeu entre ${nf(c.boiaParada
 <div class="acoes" style="margin:.6rem 0;"><button class="acao go" data-acao="calib-mais" data-l="5" ${pronto ? '' : 'disabled style="opacity:.5"'}>+5 L</button><button class="acao go" data-acao="calib-mais" data-l="10" ${pronto ? '' : 'disabled style="opacity:.5"'}>+10 L</button><button class="acao" data-acao="calib-desfazer">Desfazer</button></div>
 <div style="max-height:9rem;overflow:auto;">${ultimos}</div>
 ${msg ? `<div class="perigo">${esc(msg)}</div>` : ''}
-<div class="acoes" style="margin-top:.6rem;"><button class="acao go" data-acao="calib-terminar" data-cheio="1">Terminar: está cheio</button><button class="acao" data-acao="calib-terminar" data-cheio="">Terminar (não está cheio)</button><button class="acao stop" data-acao="calib-cancelar">Cancelar</button></div>`
+${confirmarCancelar ? pergunta('Cancelar a calibração? Fica a tabela antiga.', 'calib-cancelar-sim', 'Sim, cancelar', 'calib-cancelar-nao')
+  : '<div class="acoes" style="margin-top:.6rem;"><button class="acao go" data-acao="calib-terminar" data-cheio="1">Terminar: está cheio</button><button class="acao" data-acao="calib-terminar" data-cheio="">Terminar (não está cheio)</button><button class="acao stop" data-acao="calib-cancelar">Cancelar</button></div>'}`
 }
 
 // Água doce: ritmo e calibração da bomba (plugin signalk-arlequin-agua).
@@ -103,7 +108,8 @@ function tileAgua (ctx) {
   return `<div class="tile" style="flex:0 0 auto;"><div class="lab">Água doce</div>${erroHtml}${tanques.map(t => `
 <div class="linha" style="margin-top:.25rem;"><span>${esc(t.nome)}</span><span class="v">${num(t.litros * 1000, 0)} L${t.ritmo?.dias ? ` <span class="lab">· ~${num(t.ritmo.dias, 1)} dias</span>` : ''}</span></div>
 ${barra(t.frac, t.frac <= 0.2 ? 'var(--bb)' : 'var(--azul)')}
-<div class="acoes" style="margin-top:.2rem;"><button class="btn" style="padding:.3rem .8rem;" data-acao="agua-encher" data-id="${t.id}">Enchi</button><button class="btn" style="padding:.3rem .8rem;" data-acao="agua-calib" data-id="${t.id}">Calibrar bomba</button></div>`).join('')}</div>`
+${ctx.estado.confirmarEncher === t.id ? pergunta(`Encheste o depósito ${esc(t.nome)}?`, 'agua-encher-sim', 'Sim, enchi', 'agua-encher-nao')
+  : `<div class="acoes" style="margin-top:.2rem;"><button class="btn" style="padding:.3rem .8rem;" data-acao="agua-encher" data-id="${t.id}">Enchi</button><button class="btn" style="padding:.3rem .8rem;" data-acao="agua-calib" data-id="${t.id}">Calibrar bomba</button></div>`}`).join('')}</div>`
 }
 
 function painelBomba (ctx) {
@@ -187,7 +193,7 @@ ${tileAgua(ctx)}
 ${sess === undefined ? '<div class="lab">a carregar…</div>' : sess === null ? `<div class="lab">${esc(ctx.estado.sessoesErro || 'o plugin da energia não responde')}</div>` : sess.length === 0 ? '<div class="lab">ainda nenhuma</div>'
   : sess.map(s => `<div class="linha"><span>${hm(s.inicio)}</span><span>${Math.floor(s.duracaoMin / 60)} h ${String(s.duracaoMin % 60).padStart(2, '0')} · +${num(s.ah, 1)} Ah · ${Math.round(s.socInicial * 100)}→${Math.round(s.socFinal * 100)}%</span></div>`).join('')}
 </div>
-</div>${ctx.estado.teclado ? teclado(ctx.estado.teclado) : ''}${ctx.estado.bombaCalib !== undefined && ctx.estado.bombaCalib !== null ? painelBomba(ctx) : ''}${ctx.estado.calibAberta ? `<div class="teclado"><div class="tile teclado-caixa" style="width:min(44rem,94vw);">${painelCalib(ctx.estado.calib, ctx.estado.msgCalib, ctx.estado.calibErro)}</div></div>` : ''}`
+</div>${ctx.estado.teclado ? teclado(ctx.estado.teclado) : ''}${ctx.estado.bombaCalib !== undefined && ctx.estado.bombaCalib !== null ? painelBomba(ctx) : ''}${ctx.estado.calibAberta ? `<div class="teclado"><div class="tile teclado-caixa" style="width:min(44rem,94vw);">${painelCalib(ctx.estado.calib, ctx.estado.msgCalib, ctx.estado.calibErro, !!ctx.estado.confirmarCancelarCalib)}</div></div>` : ''}`
   },
   async acao (nome, dados, ctx) {
     const e = ctx.estado
@@ -201,16 +207,24 @@ ${sess === undefined ? '<div class="lab">a carregar…</div>' : sess === null ? 
     const aguaPost = async (rota, corpo) => {
       try { await ctx.pedir(`/plugins/signalk-arlequin-agua/${rota}`, { method: 'POST', body: corpo }); e.msgAgua = null; return true } catch (err) { e.msgAgua = motivo(err, 'o plugin da água'); return false } finally { e.aguaEm = 0 }
     }
-    if (nome === 'agua-encher' && confirm('Encheste este depósito de água?')) await aguaPost('encher', { id: Number(dados.id) })
+    if (nome === 'agua-encher') { e.confirmarEncher = Number(dados.id); e.msgAgua = null }
+    if (nome === 'agua-encher-nao') e.confirmarEncher = null
+    if (nome === 'agua-encher-sim') {
+      const id = e.confirmarEncher
+      e.confirmarEncher = null
+      if (Number.isInteger(id)) await aguaPost('encher', { id })
+    }
     if (nome === 'agua-calib') { e.bombaCalib = Number(dados.id); e.msgAgua = null; await aguaPost('calibrar-bomba/iniciar', { id: e.bombaCalib }) }
     if (nome === 'bomba-cancelar') { await aguaPost('calibrar-bomba/cancelar', { id: e.bombaCalib }); e.bombaCalib = null }
     if (nome === 'bomba-terminar' && await aguaPost('calibrar-bomba/terminar', { id: e.bombaCalib, litros: 1 })) e.bombaCalib = null
-    if (nome === 'calib-abrir') { e.calibAberta = true; e.calibEm = 0; e.msgCalib = null }
-    if (nome === 'calib-fechar') e.calibAberta = false
+    if (nome === 'calib-abrir') { e.calibAberta = true; e.calibEm = 0; e.msgCalib = null; e.confirmarCancelarCalib = false }
+    if (nome === 'calib-fechar') { e.calibAberta = false; e.confirmarCancelarCalib = false }
     if (nome === 'calib-iniciar') await calib('/iniciar')
     if (nome === 'calib-mais') await calib('/adicionar', { litros: dados.l })
     if (nome === 'calib-desfazer') await calib('/desfazer')
-    if (nome === 'calib-cancelar' && confirm('Cancelar a calibração? Fica a tabela antiga.')) { await calib('/cancelar'); e.calibAberta = false }
+    if (nome === 'calib-cancelar') e.confirmarCancelarCalib = true
+    if (nome === 'calib-cancelar-nao') e.confirmarCancelarCalib = false
+    if (nome === 'calib-cancelar-sim') { e.confirmarCancelarCalib = false; await calib('/cancelar'); e.calibAberta = false }
     if (nome === 'calib-terminar') {
       await calib('/terminar', { cheio: !!dados.cheio })
       if (!e.msgCalib) { e.calibAberta = false; e.msgGas = 'Calibração guardada'; e.msgGasErro = false; e.gasEm = 0 }
