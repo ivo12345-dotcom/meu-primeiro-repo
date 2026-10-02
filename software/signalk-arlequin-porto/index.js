@@ -79,7 +79,8 @@ const AJUDA = `Comandos do Arlequin:
 /posicao — posição do barco
 /armar · /desarmar — alarme de intrusão
 /amarrar — grava aqui o ponto de amarração
-/largar — apaga o ponto de amarração`
+/largar — apaga o ponto de amarração
+/ajuda — esta lista`
 
 // O erro de uma chamada ao Telegram para o registo, com um só prefixo (auditoria M-53: era "Telegram:
 // Telegram sendMessage: …"): os do cliente já começam por "Telegram <método>:".

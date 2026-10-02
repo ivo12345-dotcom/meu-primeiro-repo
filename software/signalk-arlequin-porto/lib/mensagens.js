@@ -87,10 +87,11 @@ function listarNotificacoes (arvore, prefixo = 'notifications') {
   return lista
 }
 
-// Alarmes ativos para o /estado do Telegram (sem os lembretes só do ecrã).
+// Alarmes ativos para o /estado do Telegram (sem os lembretes só do ecrã): os mesmos estados que o
+// encaminhador conta como ativos, também o alert (auditoria M-54).
 function alarmesAtivos (lista, nunca = NUNCA) {
   return lista
-    .filter(n => ['alarm', 'emergency', 'warn'].includes(n.state) && !casaAlgum(n.caminho, nunca))
+    .filter(n => ATIVO.has(n.state) && !casaAlgum(n.caminho, nunca))
     .map(n => descricao(n))
 }
 
