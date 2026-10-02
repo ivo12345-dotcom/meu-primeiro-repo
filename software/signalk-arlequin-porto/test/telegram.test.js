@@ -88,8 +88,10 @@ test('auditoria I-32: a câmara que falha dá "📷 a câmara falhou" no Telegra
     p2.start({ telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 })
     try {
       tgf.escrever(111, '/foto')
-      assert.ok(await ate(() => tgf.enviados.length === 2))
-      assert.equal(tgf.enviados[1].text, '📷 sem câmara configurada')
+      assert.ok(await ate(() => tgf.enviados.length >= 2), JSON.stringify(tgf.enviados.map(m => m.text)))
+      // (se o 1.º plugin parou antes de confirmar o seu /foto, o 2.º responde-lhe também: com a máquina
+      // carregada eram 3 respostas e a espera por "exatamente 2" nunca acabava; auditoria F4b, Menor 13)
+      assert.ok(tgf.enviados.slice(1).every(m => m.text === '📷 sem câmara configurada'), JSON.stringify(tgf.enviados.map(m => m.text)))
       assert.deepEqual(app2.erros, [])
     } finally { p2.stop() }
   } finally { await tgf.fechar() }
