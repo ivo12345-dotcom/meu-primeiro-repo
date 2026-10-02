@@ -55,6 +55,14 @@ const app = {
 }
 
 // ---------- contexto passado às páginas ----------
+// O pedido comum (signalk.js: o erro já vem em pt-PT); o erro verdadeiro fica no registo (um 404 de uma
+// leitura é normal, ex.: sem plano ativo, e não entra).
+function pedirRegistado (url, o = {}) {
+  return pedir(url, o).catch((err) => {
+    if (!(err?.status === 404 && (o.method || 'GET') === 'GET')) registarErro(url, err)
+    throw err
+  })
+}
 
 function contexto () {
   if (!app.estados[app.pagina]) app.estados[app.pagina] = {}
@@ -79,14 +87,9 @@ function contexto () {
     // armazenamento do ecrã (as marcas das precauções da melhor rota, por cálculo)
     guardado,
     guardar,
-    // o pedido comum (signalk.js: o erro já vem em pt-PT); o erro verdadeiro fica no registo (um 404 de uma
-    // leitura é normal, ex.: sem plano ativo, e não entra)
-    pedir: (url, o = {}) => pedir(url, o).catch((err) => {
-      if (!(err?.status === 404 && (o.method || 'GET') === 'GET')) registarErro(url, err)
-      throw err
-    }),
+    pedir: pedirRegistado,
     // o diário pelo plugin do ecrã (contrato C3)
-    logbook: (text, category = 'navigation') => gravarNoDiario(pedir, text, category),
+    logbook: (text, category = 'navigation') => gravarNoDiario(pedirRegistado, text, category),
     // "Nova viagem" (página Viagem): o resumo recomeça
     novaViagem: () => novaViagemAgora(),
     refrescar: () => render()
