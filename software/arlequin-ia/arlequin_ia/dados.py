@@ -5,6 +5,7 @@ fica de fora, com um aviso no stderr, e o resto lê-se na mesma."""
 import gzip
 import io
 import json
+import re
 import sys
 import zlib
 from pathlib import Path
@@ -74,13 +75,25 @@ def tabela_vazia():
     return pd.DataFrame({'t': pd.Series([], dtype='datetime64[us, UTC]'), **{c: pd.Series(dtype=float) for c in NUMERICAS}})
 
 
+# Os ficheiros de um dia da tabela: AAAA-MM-DD.csv.gz e, desse mesmo dia,
+#  - AAAA-MM-DD.csv.gz.danificado-<hora>: o ficheiro que a caixa negra isolou ao arrancar, depois de um corte de
+#    energia lhe cortar o último bloco (recomeça um novo; os blocos inteiros do isolado aproveitam-se);
+#  - AAAA-MM-DD.csv.gz.N (só no portátil): o do Pi que a sincronização guardou ao lado, por ser mais pequeno do que
+#    a cópia do portátil (o Pi recomeçou o dia).
+# As linhas repetidas entre eles tiram-se pela hora.
+DIA_DA_TABELA = re.compile(r'^(\d{4}-\d{2}-\d{2})\.csv\.gz(?:\.danificado-[^/\\]+|\.\d+)?$')
+
+
 def ler_tabela(base, dias=None):
-    """As linhas de tabela/AAAA-MM-DD.csv.gz (os .danificado-* ficam de fora), ordenadas no tempo.
-    Com `dias` (conjunto de 'AAAA-MM-DD'), só abre os ficheiros desses dias. As colunas que faltem
-    (ficheiros antigos, de antes de a coluna existir) ficam em branco (NaN)."""
-    ficheiros = sorted(Path(base, 'tabela').glob('*.csv.gz'))
-    if dias is not None:
-        ficheiros = [f for f in ficheiros if f.name[:-len('.csv.gz')] in dias]
+    """As linhas de tabela/AAAA-MM-DD.csv.gz (e dos ficheiros do mesmo dia isolados como .danificado-* ou guardados
+    ao lado como .N: ver DIA_DA_TABELA), ordenadas no tempo e sem repetidos. Com `dias` (conjunto de 'AAAA-MM-DD'),
+    só abre os ficheiros desses dias. As colunas que faltem (ficheiros antigos, de antes de a coluna existir) ficam
+    em branco (NaN)."""
+    ficheiros = []
+    for f in sorted(Path(base, 'tabela').glob('*.csv.gz*')):
+        m = DIA_DA_TABELA.match(f.name)
+        if m and (dias is None or m.group(1) in dias):
+            ficheiros.append(f)
     partes = [p for p in (ler_ficheiro_tabela(f) for f in ficheiros) if p is not None]
     if not partes:
         return tabela_vazia()

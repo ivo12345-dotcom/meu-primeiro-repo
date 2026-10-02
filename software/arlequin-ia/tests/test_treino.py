@@ -258,6 +258,17 @@ def test_um_dia_da_tabela_cortado_nao_impede_o_treino(tmp_path, capsys):
     assert f.name in capsys.readouterr().err
 
 
+def test_um_dia_isolado_como_danificado_continua_a_ensinar(tmp_path):
+    # a caixa negra isolou o ficheiro do 1.º dia (corte de energia, o Pi voltou no mesmo dia UTC): a saída desse dia
+    # não se perde para a AI (auditoria I-34)
+    gerar(tmp_path, POLAR)
+    f = sorted((tmp_path / 'tabela').glob('*.csv.gz'))[0]
+    f.rename(f.with_name(f.name + '.danificado-2026-06-01T12-00-00Z'))
+    r = treinar(tmp_path, POLAR, agora=AGORA, modelos=['velocidade'])[0]
+    assert r['versao'] == 'v0001', r
+    assert r['horas'] == pytest.approx(3 * 4.0, abs=0.01), r  # as 3 saídas, como sem o corte
+
+
 def test_uma_previsao_cortada_ou_torta_nao_impede_o_treino(tmp_path, capsys):
     gerar(tmp_path, POLAR)
     ps = sorted((tmp_path / 'previsoes').glob('*.json'))

@@ -18,13 +18,15 @@ def tabela(n, inicio='2026-06-01T10:00:00Z', passo=10, **cols):
     return pd.DataFrame({'t': t, **{k: (v if np.ndim(v) else np.full(n, v)) for k, v in cols.items()}})
 
 
-def test_ler_tabela_junta_os_dias_por_ordem_e_ignora_danificados(tmp_path):
+def test_ler_tabela_junta_os_dias_por_ordem_e_salta_um_danificado_ilegivel(tmp_path, capsys):
+    # (até à auditoria I-34 os .danificado-* nem se abriam; agora lêem-se, e um ilegível salta-se com aviso)
     escrever_tabela(tmp_path, '2026-06-02.csv.gz', ['2026-06-02T00:00:00.000Z,39,-9,5,0,1'])
     escrever_tabela(tmp_path, '2026-06-01.csv.gz', ['2026-06-01T23:59:50.000Z,39,-9,4,0,1', '2026-06-01T23:59:50.000Z,39,-9,4,0,1'])
     (tmp_path / 'tabela' / '2026-06-03.csv.gz.danificado-2026-06-03T00-00-00Z').write_bytes(b'lixo')
     df = ler_tabela(tmp_path)
     assert list(df['stw']) == [4, 5]
     assert str(df['t'].dt.tz) == 'UTC'
+    assert '2026-06-03.csv.gz.danificado-2026-06-03T00-00-00Z' in capsys.readouterr().err
 
 
 def test_ler_saidas_e_previsoes(tmp_path):
@@ -115,6 +117,32 @@ def test_ler_tabela_salta_um_ficheiro_ilegivel_com_aviso(tmp_path, capsys):
     (tmp_path / 'tabela' / '2026-06-01.csv.gz').write_bytes(b'isto nao e gzip')
     assert list(ler_tabela(tmp_path)['stw']) == [5]
     assert '2026-06-01.csv.gz' in capsys.readouterr().err
+
+
+def test_ler_tabela_le_tambem_o_dia_isolado_como_danificado(tmp_path, capsys):
+    # um corte de energia a meio de uma escrita, com o Pi a voltar no mesmo dia UTC: a caixa negra isola o
+    # ficheiro do dia (AAAA-MM-DD.csv.gz.danificado-<hora>) e começa outro; os blocos inteiros contam (auditoria I-34)
+    cab = 't,lat,lon,stw,simulado,estavel\n'
+    cortado = gzip.compress(b'2026-06-01T10:00:20.000Z,39,-9,9,0,1\n')
+    (tmp_path / 'tabela').mkdir()
+    (tmp_path / 'tabela' / '2026-06-01.csv.gz.danificado-2026-06-01T10-30-00Z').write_bytes(
+        membros(cab + '2026-06-01T10:00:00.000Z,39,-9,4,0,1\n', '2026-06-01T10:00:10.000Z,39,-9,7,0,1\n') + cortado[:len(cortado) // 2])
+    escrever_tabela(tmp_path, '2026-06-01.csv.gz', ['2026-06-01T10:30:00.000Z,39,-9,5,0,1'])  # o novo, depois do corte
+    assert list(ler_tabela(tmp_path)['stw']) == [4, 7, 5]
+    assert list(ler_tabela(tmp_path, dias={'2026-06-01'})['stw']) == [4, 7, 5]
+    assert ler_tabela(tmp_path, dias={'2026-06-02'}).empty
+    assert 'danificado' in capsys.readouterr().err  # o bloco cortado avisa, como num dia normal
+
+
+def test_ler_tabela_le_a_copia_do_pi_guardada_ao_lado_pela_sincronizacao(tmp_path):
+    # no portátil: quando o Pi recomeçou o dia (mais pequeno do que a cópia do portátil), a sincronização guarda o
+    # do Pi como AAAA-MM-DD.csv.gz.1; as linhas dos dois contam, sem repetidos (auditoria I-34)
+    escrever_tabela(tmp_path, '2026-06-01.csv.gz', ['2026-06-01T10:00:00.000Z,39,-9,4,0,1', '2026-06-01T10:00:10.000Z,39,-9,7,0,1'])
+    (tmp_path / 'tabela' / '2026-06-01.csv.gz.1').write_bytes(membros(
+        't,lat,lon,stw,simulado,estavel\n2026-06-01T10:00:10.000Z,39,-9,7,0,1\n2026-06-01T10:30:00.000Z,39,-9,5,0,1\n'))
+    (tmp_path / 'tabela' / '2026-06-01.csv.gz.tmp').write_bytes(b'meio escrito')  # nada mais conta
+    (tmp_path / 'tabela' / 'notas.txt').write_text('x')
+    assert list(ler_tabela(tmp_path)['stw']) == [4, 7, 5]
 
 
 def test_ler_tabela_antiga_sem_uma_coluna_da_nan(tmp_path):
