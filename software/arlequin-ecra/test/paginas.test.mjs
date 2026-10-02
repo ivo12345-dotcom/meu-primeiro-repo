@@ -723,6 +723,19 @@ test('auditoria M-50: um alvo com o alarme do plugin AIS ativo é "perigo" no ec
   assert.match(readFileSync(new URL('../public/app.js', import.meta.url), 'utf8'), /alvos:\s*alvosAis\(\{/)
 })
 
+// ---------- auditoria M-49: o nome do próximo ponto ----------
+test('auditoria M-49: o próximo ponto sem nome diz qual é na rota ativa ("ponto 3 de 57"), não só "WP"; com nome, o nome', async () => {
+  const { proximoWp } = await import('../public/paginas/comum.js')
+  const com = (valores) => ({ ...contexto(store, {}), v: (p) => valores[p] })
+  const base = { 'navigation.course.calcValues.distance': 1852 }
+  assert.equal(proximoWp(com({ ...base, 'navigation.course.nextPoint': { name: 'Cabo Raso' } })).nome, 'Cabo Raso')
+  assert.equal(proximoWp(com({ ...base, 'navigation.course.nextPoint': { position: {} }, 'navigation.course.activeRoute': { href: '/resources/routes/r1', name: 'Arlequin → Peniche', pointIndex: 2, pointTotal: 57 } })).nome, 'ponto 3 de 57')
+  assert.equal(proximoWp(com({ ...base, 'navigation.course.nextPoint': { name: '  ' } })).nome, 'WP')
+  assert.equal(proximoWp(com(base)).nome, 'WP')
+  const html = viagem.render(com({ ...base, 'navigation.course.nextPoint': {}, 'navigation.course.activeRoute': { pointIndex: 0, pointTotal: 4 } }))
+  assert.match(html, /Próximo ponto<\/div><div class="vv">ponto 1 de 4</)
+})
+
 // ---------- auditoria M-45 e M-48 ----------
 test('auditoria M-45: a página diz que é pt-PT (lang="pt-PT")', () => {
   assert.match(readFileSync(new URL('../public/index.html', import.meta.url), 'utf8'), /<html lang="pt-PT">/)
