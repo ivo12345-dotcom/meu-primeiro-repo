@@ -6,7 +6,8 @@ const path = require('node:path')
 const zlib = require('node:zlib')
 const { preverArvores } = require('../lib/arvores')
 
-const fixture = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(__dirname, 'fixtures', 'velocidade.json.gz'))))
+const ler = (nome) => JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(__dirname, 'fixtures', `${nome}.json.gz`))))
+const fixture = ler('velocidade')
 
 test('dá exatamente o mesmo que o LightGBM em Python (60 casos, com valores em falta)', () => {
   assert.equal(fixture.casos.length, 60)
@@ -17,6 +18,35 @@ test('dá exatamente o mesmo que o LightGBM em Python (60 casos, com valores em 
     }
   }
 })
+
+// Os outros modelos (python -m arlequin_ia.fixture … --modelo NOME): as variáveis do vento e do
+// consumo, e os seus valores em falta, também dão o mesmo que o LightGBM (auditoria M-58).
+const OUTROS = {
+  ventoDirecao: ['latCel', 'lonCel', 'prevTws', 'prevTwd', 'horaDia', 'idadePrevH', 'tendPressao3h'],
+  consumo: ['rpm', 'prevOndas', 'ondasAnguloRel']
+}
+for (const [nome, variaveis] of Object.entries(OUTROS)) {
+  test(`${nome}: dá exatamente o mesmo que o LightGBM em Python (60 casos, com valores em falta; auditoria M-58)`, () => {
+    const f = ler(nome)
+    assert.equal(f.modelo.modelo, nome)
+    assert.deepEqual(f.modelo.variaveis, variaveis, 'as variáveis do contrato (lib/modelos.js) são as do treino')
+    assert.equal(f.casos.length, 60)
+    assert.ok(f.casos.some(c => Object.values(c.x).includes(null)), 'há casos com valores em falta')
+    const vistas = new Set()
+    for (const q of ['p10', 'p50', 'p90']) {
+      for (const t of f.modelo.quantis[q].tree_info) {
+        const andar = (no) => { if (no.leaf_value === undefined) { vistas.add(f.modelo.quantis[q].feature_names[no.split_feature]); andar(no.left_child); andar(no.right_child) } }
+        andar(t.tree_structure)
+      }
+    }
+    assert.ok(vistas.size >= 2, `as árvores dividem por várias variáveis (${[...vistas]})`)
+    for (const c of f.casos) {
+      for (const q of ['p10', 'p50', 'p90']) {
+        assert.ok(Math.abs(preverArvores(f.modelo.quantis[q], c.x) - c[q]) < 1e-9, `${q}: ${JSON.stringify(c.x)}`)
+      }
+    }
+  })
+}
 
 test('árvore de uma só folha e regras de valores em falta', () => {
   const dump = {
