@@ -376,7 +376,6 @@ EV-100 **não vem para já**. Do piloto **só se lê a proa** (a bússola) pelo
 SeaTalk1. Não se liga nada à entrada NMEA dele. O que está abaixo sobre a rota
 fica para quando houver unidade de roda.
 
-
 | Aparelho | O que diz a documentação | Consequência |
 |---|---|---|
 | **ST4000+** | Tem terminais **NMEA IN** atrás do painel: **vermelho = dados +, azul = dados −**. Aceita dados de navegação (modo **track**) e de vento (modo **vento**) em NMEA 0183 | ✅ **MacArthur 0183 OUT 2 → NMEA IN do ST4000+.** O OpenCPN envia a rota (APB/XTE, a confirmar). Só há uma entrada NMEA |
@@ -1188,8 +1187,6 @@ Garmin é fraco. No Pi, acrescentar à lista um **altifalante ou besouro forte**
   antena da placa do barco no alto e por fora; usar traceroute; registar
   RSSI e SNR.
 
-
-
 **Monitorização com o barco parado** (amarração ou marina): alarmes de fumo,
 de água no porão, de energia e de intrusão com câmaras interiores, a chegar ao
 telemóvel. Notas já discutidas:
@@ -1208,7 +1205,12 @@ telemóvel. Notas já discutidas:
   digitais para porão, fumo e gaiuta e alertas pela app VRM. Não está
   decidido.
 
-## Caixa negra e Tailscale (dados para o Claude analisar)
+## 11. Software a bordo
+
+O código está em `software/` (que pasta é o quê e como se testa no portátil: `software/README.md`).
+Aqui fica o que cada parte faz no barco e o que é preciso no Pi.
+
+### Caixa negra e Tailscale (dados para o Claude analisar)
 
 **O que grava** (plugin `signalk-arlequin-caixanegra`), em `~/arlequin-dados` no Pi, desde o primeiro dia:
 - `bruto/`: todas as mensagens, 1 ficheiro por hora;
@@ -1363,7 +1365,7 @@ em "A navegar", mais abaixo.
 - Perto da costa (alternativa a ≤ 3 MN), o mínimo à terra é o próprio afastamento (3 MN), não os
   5 MN de omissão das outras alternativas.
 
-#### No ecrã e pelo Telegram (3b-1)
+### No ecrã e pelo Telegram (3b-1)
 
 Desenho em `docs/superpowers/specs/2026-10-01-melhor-rota-ecra-3b1-design.md`; capturas de cada
 estado, de dia e de noite, em `docs/capturas-3b1/`.
@@ -1436,7 +1438,7 @@ quem o recebe para ligar ao Ivo e, se ele não atender, ao MRCC Lisboa (+351 214
 - O `@signalk/course-provider` está instalado e ligado no dev (`npm run instalar` instala-o): depois
   de **Ativar**, o Leme mostra o rumo a seguir.
 
-#### A navegar (3b-2)
+### A navegar (3b-2)
 
 Desenho em `docs/superpowers/specs/2026-10-01-melhor-rota-navegar-3b2-design.md`; capturas do Leme
 (faixa com o lembrete de mudar de rumo, recalcula, rota mudada, recursos e barómetro, e o "Estou bem" com a hora de alarme em terra por adiar), de dia e de noite
