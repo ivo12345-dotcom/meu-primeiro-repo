@@ -163,6 +163,44 @@ test('I-29: o contador calado há mais de 10 min: "sem sensor" (sem valor), mesm
   assert.ok(Math.abs(app.valores['tanks.freshWater.0.currentVolume'] * 1000 - 66) < 1e-9)
 })
 
+// Auditoria M-62 (E-M4): litros ilegíveis gravavam NaN nas opções (e daí em diante o nível ficava NaN);
+// 0 gravava 0 L por pedalada.
+test('M-62: calibrar a bomba só aceita 0 < litros ≤ 20; o resto dá 400 e nada se grava', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  const p = criar(app)
+  p.start({})
+  const r = rotas(p)
+  app.self['tanks.freshWater.1.pedaladas'] = 10
+  segundos(t, 2)
+  await chamar(r.post['/calibrar-bomba/iniciar'], { id: 1 })
+  app.self['tanks.freshWater.1.pedaladas'] = 13
+  segundos(t, 1)
+  for (const litros of ['abc', '0', '-1', '25']) {
+    assert.equal((await chamar(r.post['/calibrar-bomba/terminar'], { id: 1, litros })).code, 400, litros)
+  }
+  assert.equal(app.opcoes, null)
+  const fim = await chamar(r.post['/calibrar-bomba/terminar'], { id: 1, litros: '1,5' })
+  p.stop()
+  assert.equal(fim.code, 200)
+  assert.equal(app.opcoes.tanques[1].litrosPorPedalada, 0.5)
+})
+
+// Auditoria M-63 (E-M5): com a segurança ligada o POST ao logbook dá 401/403 e perdia-se em silêncio.
+test('M-63: uma resposta de erro do logbook fica no registo do servidor', async (t) => {
+  const app = appFalso()
+  app.erros = []
+  app.error = (e) => app.erros.push(e)
+  t.mock.method(globalThis, 'fetch', async () => ({ ok: false, status: 401 }))
+  const p = criar(app)
+  p.start({ logbook: true })
+  const r = rotas(p)
+  await chamar(r.post['/encher'], { id: 0 })
+  await new Promise(res => setImmediate(res))
+  p.stop()
+  assert.deepEqual(app.erros, ['logbook respondeu 401'])
+})
+
 test('calibrar a bomba com uma jarra de 1 L grava os litros por pedalada', async (t) => {
   t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_727_600_000_000 })
   const app = appFalso()
