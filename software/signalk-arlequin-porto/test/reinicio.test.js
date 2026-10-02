@@ -67,6 +67,52 @@ test('auditoria I-22: o stop() corta o long polling pendente, sem erro no regist
   } finally { p.stop(); await tgf.fechar() }
 })
 
+test('auditoria F4b (revisão, Menor 6): um reinício (gravar a configuração) enquanto um comando está a ser respondido não o faz correr outra vez (o offset fica entre reinícios com o mesmo token)', async () => {
+  const tgf = await criarTelegramFalso()
+  const app = appFalso()
+  const original = globalThis.fetch
+  // o Telegram recebe o "ARMADO", mas a resposta só chega ao barco quando o teste a soltar
+  let soltar
+  const preso = new Promise(resolve => { soltar = resolve })
+  let segurar = true
+  // o offset de cada getUpdates (a mensagem a partir da qual o barco quer ler)
+  const offsets = []
+  globalThis.fetch = async (url, o) => {
+    if (String(url).endsWith('/getUpdates')) offsets.push(JSON.parse(o.body).offset)
+    const r = await original(url, o)
+    if (segurar && String(url).endsWith('/sendMessage') && /ARMADO/.test(JSON.parse(o.body).text)) { segurar = false; await preso }
+    return r
+  }
+  const p = criar(app)
+  const props = { telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 }
+  const armados = () => tgf.enviados.filter(m => m.text === '🔒 Alarme de intrusão ARMADO').length
+  try {
+    p.start(props)
+    assert.ok(await ate(() => tgf.esperasAbertas() === 1))
+    assert.deepEqual(offsets, [0], 'o 1.º arranque lê desde o princípio')
+    tgf.escrever(111, '/armar')
+    assert.ok(await ate(() => armados() === 1))
+    p.stop()
+    p.start(props)
+    // o ciclo novo já pediu as mensagens novas e está à espera: com o offset a 0 o Telegram tinha-lhe
+    // devolvido o /armar ainda por confirmar, e o comando corria outra vez
+    assert.ok(await ate(() => tgf.esperasAbertas() === 1))
+    assert.ok(offsets[1] > 0, `o reinício pediu desde o offset ${offsets[1]}: o /armar ainda por confirmar volta a chegar`)
+    assert.equal(offsets.length, 2)
+    soltar()
+    tgf.escrever(111, '/estado') // e o ciclo novo continua a responder
+    assert.ok(await ate(() => tgf.enviados.some(m => /^⛵ ARLEQUIN/.test(m.text || ''))))
+    assert.equal(armados(), 1, '/armar respondido duas vezes')
+    // com outro token (outro bot, outra numeração das mensagens), recomeça do 0
+    p.stop()
+    const antes = offsets.length
+    p.start({ ...props, telegramToken: 'OUTRO' })
+    assert.ok(await ate(() => tgf.esperasAbertas() === 1))
+    assert.deepEqual(offsets.slice(antes), [0])
+    assert.deepEqual(app.erros, [])
+  } finally { globalThis.fetch = original; p.stop(); await tgf.fechar() }
+})
+
 test('auditoria F4b (revisão, Menor 3): a pausa depois de um erro do long polling não deixa um "abort" pendurado no sinal do ciclo por cada erro', async () => {
   // conta as escutas "abort" de cada AbortSignal
   const escutas = new Map()

@@ -146,7 +146,11 @@ module.exports = function (app, deps = {}) {
   let temporizadores = []
   let aCorrer = false
   let tg = null
+  // o offset do long polling atravessa os reinícios do plugin com o mesmo bot (auditoria F4b, revisão da
+  // F4, Menor 6): a 0, o Telegram devolvia a mensagem ainda por confirmar e um comando a meio corria
+  // outra vez. Com outro token (outro bot), recomeça do 0.
   let offset = 0
+  let tokenDoOffset = null
   let codigoEnviado = new Map() // chatId desconhecido → quando recebeu o código (anti-spam: 1 por hora; por ordem)
   let lugares = [] // os portos e fundeadouros conhecidos (lib/lugares.js): só junto a eles o ponto se grava sozinho
 
@@ -608,7 +612,7 @@ module.exports = function (app, deps = {}) {
     proximaTentativa = 0
     envioFila = null
     ultimoErroFila = null
-    offset = 0
+    if (o.telegramToken !== tokenDoOffset) { offset = 0; tokenDoOffset = o.telegramToken }
     aCorrer = true
     tg = o.telegramToken ? criarTelegram({ token: o.telegramToken, base: o.telegramBase, ...(deps.limiteTelegramMs ? { limiteMs: deps.limiteTelegramMs } : {}) }) : null
     // o Ivo sabe que o alarme ficou desarmado, ou que os alarmes ativos vão chegar outra vez (pela fila:
