@@ -2,15 +2,23 @@
 // Plugin SignalK que finge o sistema elétrico do Arlequin (SmartShunt, MPPT,
 // motor, GPS, dia/noite). Só para testes: no barco fica DESLIGADO.
 
-const { criarModelo, avancar } = require('./lib/modelo')
+const { criarModelo, avancar, PADRAO } = require('./lib/modelo')
 const { CENARIOS, passoEm } = require('./lib/cenarios')
 const { deltaDaLeitura } = require('./lib/delta')
-const { criarNavegacao, avancarNav } = require('./lib/navegacao')
+const { criarNavegacao, avancarNav, motorLigado } = require('./lib/navegacao')
 const { tramasMotor } = require('./lib/j1939sim')
 const { tensoesSonda, razaoSimulada } = require('./lib/sonda')
 const { pontoMaisPerto, deltaDoPonto } = require('./lib/replay')
 const path = require('node:path')
 const fs = require('node:fs')
+
+// As horas dos textos na hora de Lisboa, seja qual for o fuso do sistema (decisão n.º 22; revisão F6, Menor 12).
+const horaLisboa = (t) => new Date(t).toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon' })
+// O motor por J1939 como o MDI verdadeiro (revisão F6, Importante 3; contrato C11): com a ignição desligada o
+// MDI cala-se — à vela não há tramas. A ignição liga-se IGNICAO_MS antes de arrancar (pré-aquecimento) e
+// desliga-se IGNICAO_MS depois de parar: aí as tramas vão a 0 rpm, com o padrão da 65417 da ignição ligada.
+const IGNICAO_MS = 10 * 1000
+const RPM_CRUZEIRO = PADRAO.rpmMotorHz * 60 // 2100 rpm, as da rota e do modelo de energia (auditoria M-69)
 
 module.exports = function (app) {
   const plugin = {
@@ -66,7 +74,7 @@ module.exports = function (app) {
       const l = r.leitura
       app.handleMessage(plugin.id, deltaDaLeitura(l, o))
       if (minuto % 60 === 0) {
-        app.setPluginStatus(`${o.cenario} · ${new Date(l.t).toLocaleString('pt-PT')} · serviço ${Math.round(l.soc * 100)}%`)
+        app.setPluginStatus(`${o.cenario} · ${horaLisboa(l.t)} · serviço ${Math.round(l.soc * 100)}%`)
       }
     }, o.msPorHora / 60 * PASSO_MIN)
 
@@ -83,14 +91,7 @@ module.exports = function (app) {
       cicloMotorS: (o.cicloMotorMin ?? 5) * 60,
       rpmMotor: m.c.rpmMotorHz * 60 // o consumo da sonda pelas mesmas rotações que o J1939 (M-69)
     }, Date.now())
-    // Duas fontes de rumo no dev (auditoria M-49): com um destino na API de rumo (a rota ativada pelo
-    // plugin da rota) o course-provider calcula navigation.course.*, e o simulador deixa de publicar os
-    // do seu WP do demo; sem destino nenhum publica-os (o ecrã mostra o WP). Vê-se de 5 em 5 s.
-    let destinoExterno = false
-    const verDestino = () => Promise.resolve()
-      .then(() => (typeof app.getCourse === 'function' ? app.getCourse() : null))
-      .then((c) => { destinoExterno = !!(c?.activeRoute?.href || c?.nextPoint?.position) }, () => {})
-    verDestino()
+    const destino = vigiarDestino()
     let segundos = 0
     // O D1-20B do Arlequin tem ~3200–3300 h (Ivo, 29/09): começa mesmo antes do
     // limite dos 2 bytes (3276,75 h) para o demo o atravessar.
@@ -106,7 +107,7 @@ module.exports = function (app) {
       // Com J1939 e com a sonda, os propulsion.main.* e o nível do depósito vêm
       // dos plugins do motor e do gasóleo, não daqui.
       const tirar = (p) => (j1939 && p.startsWith('propulsion.main.')) || (porSonda && p.startsWith('tanks.fuel.0.')) ||
-        (destinoExterno && p.startsWith('navigation.course.'))
+        (destino.externo && p.startsWith('navigation.course.'))
       const semMotor = (d) => !d.context
         ? { ...d, updates: d.updates.map(u => ({ ...u, values: u.values.filter(v => !tirar(v.path)) })) }
         : d
@@ -127,12 +128,14 @@ module.exports = function (app) {
           { path: 'tanks.fuel.0.supplyVoltage', value: t.alimentacao }
         ] }] })
       }
-      if (j1939) {
+      // a ignição ligada: a motor, ou até IGNICAO_MS antes de arrancar e depois de parar (o ciclo é fixo)
+      const ignicao = r.motor || motorLigado({ ...nav, t: nav.t + IGNICAO_MS }) || motorLigado({ ...nav, t: nav.t - IGNICAO_MS })
+      if (j1939 && ignicao) {
         if (r.motor) horasMotorS += 1
         const volt = r.motor ? 14.2 : en.leitura.vMotor
         for (const l of tramasMotor({ t: Date.now(), rpm: en.leitura.rpm * 60, tempK: nav.tempMotor, volt, horasS: horasMotorS })) app.emit('arlequin-j1939', l)
       }
-      if (segundos % 5 === 4) verDestino()
+      if (segundos % 5 === 4) destino.ver()
       if (++segundos % 30 === 0) {
         app.setPluginStatus(`${o.cenario} · ${r.motor ? 'a motor' : 'à vela'} · SOG ${(r.sog * 3600 / 1852).toFixed(1)} nós · serviço ${Math.round(en.leitura.soc * 100)}%`)
       }
@@ -140,8 +143,23 @@ module.exports = function (app) {
     app.setPluginStatus(`A simular "${o.cenario}": ${cenario.descricao}`)
   }
 
+  // Duas fontes de rumo no dev (auditoria M-49): com um destino na API de rumo (a rota ativada pelo
+  // plugin da rota) o course-provider calcula navigation.course.*, e o simulador deixa de publicar os do
+  // seu WP (o do demo ou o da passagem); sem destino nenhum publica-os (o ecrã mostra o WP). Vê-se no
+  // arranque e depois de 5 em 5 s (quem chama faz o ver()).
+  function vigiarDestino () {
+    const d = { externo: false }
+    d.ver = () => Promise.resolve()
+      .then(() => (typeof app.getCourse === 'function' ? app.getCourse() : null))
+      .then((c) => { d.externo = !!(c?.activeRoute?.href || c?.nextPoint?.position) }, () => {})
+    d.ver()
+    return d
+  }
+
   // Passagem simulada (ferramentas/passagem): o sistema "vive" um instante dela. Sem os ficheiros (não
   // estão no git: gera-os o simular.mjs) diz o que falta em vez de rebentar no start (auditoria M-69).
+  // Como no demo: sem navigation.course.* por cima do course-provider (revisão F6, Menor 11) e o motor por
+  // J1939 só com a ignição ligada, às rotações de cruzeiro.
   function comecarPassagem (o) {
     const dir = o.pastaPassagem || path.join(__dirname, '..', 'ferramentas', 'passagem')
     let pontos, ROTA
@@ -153,18 +171,24 @@ module.exports = function (app) {
       return app.setPluginError(`a passagem simulada precisa do passagem.json e do rota.json em ${dir} (gera-os com node software/ferramentas/passagem/simular.mjs): ${e.message}`)
     }
     const p = pontoMaisPerto(pontos, new Date(o.instantePassagem).getTime())
-    let horas = 3276.5 * 3600
+    const horas = 3276.5 * 3600
+    const destino = vigiarDestino()
+    let segundos = 0
     temporizador = setInterval(() => {
-      app.handleMessage(plugin.id, deltaDoPonto(p, ROTA))
+      const d = deltaDoPonto(p, ROTA)
+      if (destino.externo) d.updates = d.updates.map(u => ({ ...u, values: u.values.filter(v => !v.path.startsWith('navigation.course.')) }))
+      app.handleMessage(plugin.id, d)
       const razao = razaoSimulada(p.gasoleo)
       const v = p.motor ? 14.2 : 12.7
       app.handleMessage(plugin.id, { updates: [{ values: [
         { path: 'tanks.fuel.0.senderVoltage', value: razao * v }, { path: 'tanks.fuel.0.supplyVoltage', value: v },
         { path: 'tanks.freshWater.0.pedaladas', value: 0 }, { path: 'tanks.freshWater.1.pedaladas', value: 0 }
       ] }] })
-      for (const l of tramasMotor({ t: Date.now(), rpm: p.motor ? 2000 : 0, tempK: p.motor ? 355 : 300, volt: v, horasS: horas })) app.emit('arlequin-j1939', l)
+      // à vela (o instante está congelado) a ignição fica desligada: o MDI não fala
+      if (p.motor) for (const l of tramasMotor({ t: Date.now(), rpm: RPM_CRUZEIRO, tempK: 355, volt: v, horasS: horas })) app.emit('arlequin-j1939', l)
+      if (++segundos % 5 === 0) destino.ver()
     }, 1000)
-    app.setPluginStatus(`Passagem: ${new Date(p.t).toLocaleString('pt-PT')} · ${p.wp} · ${p.motor ? 'motor' : 'vela'} · vento ${Math.round(p.tws)} nós`)
+    app.setPluginStatus(`Passagem: ${horaLisboa(p.t)} · ${p.wp} · ${p.motor ? 'motor' : 'vela'} · vento ${Math.round(p.tws)} nós`)
   }
 
   plugin.stop = function () {
