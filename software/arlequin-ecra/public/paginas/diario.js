@@ -61,7 +61,8 @@ const MODELOS_IA = [['velocidade', 'Velocidade'], ['ventoForca', 'Vento'], ['con
 const agora = (ctx) => (Number.isFinite(ctx.agora) ? ctx.agora : Date.now())
 // o dia de Lisboa (o plugin do ecrã junta os dois dias UTC do logbook que lhe tocam)
 const hoje = (ctx) => dataLisboa(agora(ctx))
-const virgula = (x) => String(Math.round(x * 10) / 10).replace('.', ',')
+// "12,5"; sem número "—" (auditoria M-42: um modelo sem horas dava "NaN")
+const virgula = (x) => (typeof x === 'number' && Number.isFinite(x) ? String(Math.round(x * 10) / 10).replace('.', ',') : '—')
 // a hora de Lisboa (auditoria I-31)
 const hora = (iso) => hmLisboa(iso)
 
@@ -125,7 +126,7 @@ export default {
       : '<div class="lab">Ainda não há entradas hoje.</div>'
     return `<div class="col" style="flex:1.4;">
 <div class="tile" style="flex:1;overflow:auto;"><div class="lab">Diário de hoje · ${hoje(ctx)}</div>${lista ? `<table class="grande">${lista}</table>` : vazio}</div>
-<div class="tile" style="display:flex;gap:.4rem;"><input type="text" id="nota" data-campo="nota" placeholder="Escreve uma nota e carrega em Gravar"><button class="acao go" data-acao="nota">Gravar</button></div>
+<div class="tile" style="display:flex;gap:.4rem;"><input type="text" id="nota" data-campo="nota" value="${esc(e.nota || '')}" placeholder="Escreve uma nota e carrega em Gravar"><button class="acao go" data-acao="nota">Gravar</button></div>
 ${e.msg ? `<div class="tile ${e.msgErro ? 'perigo' : 'ok'}">${esc(e.msg)}</div>` : ''}
 ${cartaoIa(e.ia)}
 </div>
@@ -135,6 +136,8 @@ ${RAPIDAS.map(([t, c, rotulo]) => `<button class="acao" data-acao="rapida" data-
 </div>`
   },
   async acao (nome, dados, ctx, input) {
+    // o que se escreve na nota fica no estado (auditoria M-43: o desenho seguinte apagava-o)
+    if (nome === 'campo') { if (dados.campo === 'nota') ctx.estado.nota = String(dados.valor ?? ''); return }
     if (nome === 'ia-treinar' || nome === 'ia-voltar') {
       const e = ctx.estado
       try {
@@ -154,10 +157,11 @@ ${RAPIDAS.map(([t, c, rotulo]) => `<button class="acao" data-acao="rapida" data-
     let cat = 'navigation'
     if (nome === 'rapida') { texto = dados.texto; cat = dados.cat }
     if (nome === 'nota' || nome === 'enter') {
-      const el = input || document.getElementById('nota')
-      texto = el?.value.trim()
+      const el = input || globalThis.document?.getElementById?.('nota')
+      texto = String(ctx.estado.nota ?? el?.value ?? '').trim()
+      ctx.estado.nota = ''
       if (el) el.value = ''
-      el?.blur()
+      el?.blur?.()
     }
     if (!texto) return
     try {

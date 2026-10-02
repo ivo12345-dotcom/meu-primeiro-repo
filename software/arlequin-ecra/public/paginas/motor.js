@@ -37,15 +37,22 @@ function buscarGasoleo (ctx) {
     .finally(() => { ctx.estado.aBuscarGas = false; ctx.estado.gasEm = Date.now() })
 }
 
+// Os litros escritos no teclado ("85,5" → 85,5), ou NaN.
+const litrosDe = (valor) => (valor ? Number(String(valor).replace(',', '.')) : NaN)
+// O OK do teclado (auditoria M-41): sem valor nunca grava (antes mandava '' e o gasóleo gravava um ponto de
+// 0 L na tabela); o Abasteci precisa de litros > 0; o Calibrar com 0 L pergunta primeiro.
+const okDoTeclado = (t) => Number.isFinite(litrosDe(t.valor)) && (t.modo !== 'abasteci' || litrosDe(t.valor) > 0)
+
 // Teclado numérico no ecrã (o Pi não tem teclado; dá para usar com luvas).
 function teclado (t) {
+  if (t.confirmarZero) return `<div class="teclado"><div class="tile teclado-caixa">${pergunta('Calibrar com 0 L? Só com o depósito vazio.', 'teclado-zero-sim', 'Sim, está vazio', 'teclado-zero-nao')}</div></div>`
   const titulo = t.modo === 'abasteci' ? 'Quantos litros meteste?' : 'Quantos litros tem o depósito agora?'
   const teclas = ['7', '8', '9', '4', '5', '6', '1', '2', '3', ',', '0', '⌫']
   return `<div class="teclado"><div class="tile teclado-caixa">
 <div class="lab" style="font-size:1.2rem;">${titulo}</div>
 <div class="vvv" style="margin:.4rem 0;">${t.valor || '0'} L</div>
 <div class="teclas">${teclas.map(k => `<button class="acao" data-acao="tecla" data-t="${k}">${k}</button>`).join('')}</div>
-<div class="acoes" style="margin-top:.5rem;"><button class="acao go" data-acao="teclado-ok">OK</button><button class="acao stop" data-acao="teclado-cancelar">Cancelar</button></div>
+<div class="acoes" style="margin-top:.5rem;"><button class="acao go" data-acao="teclado-ok"${okDoTeclado(t) ? '' : ' disabled'}>OK</button><button class="acao stop" data-acao="teclado-cancelar">Cancelar</button></div>
 </div></div>`
 }
 
@@ -134,6 +141,8 @@ ${ctx.estado.msgAgua ? `<div class="perigo">${esc(ctx.estado.msgAgua)}</div>` : 
 
 // o dia e a hora de Lisboa (auditoria I-31)
 const hm = (iso) => diaHoraLisboa(iso)
+// o SoC de uma sessão de carga, para baixo; sem ele "—" (auditoria M-42: dava "0→0%" ou "NaN")
+const pctSoc = (x) => (ok(x) ? String(Math.floor(x * 100 + 1e-9)) : '—')
 
 export default {
   aoEntrar (ctx) { ctx.estado.sessoesEm = 0; ctx.estado.curvaEm = 0; ctx.estado.gasEm = 0; buscarSessoes(ctx); buscarCurva(ctx); buscarGasoleo(ctx) },
@@ -203,7 +212,7 @@ export default {
 ${tileAgua(ctx)}
 <div class="tile" style="flex:1;"><div class="lab">Últimas cargas pelo motor</div>
 ${sess === undefined ? '<div class="lab">a carregar…</div>' : sess === null ? `<div class="lab">${esc(ctx.estado.sessoesErro || 'o plugin da energia não responde')}</div>` : sess.length === 0 ? '<div class="lab">ainda nenhuma</div>'
-  : sess.map(s => `<div class="linha"><span>${hm(s.inicio)}</span><span>${Math.floor(s.duracaoMin / 60)} h ${String(s.duracaoMin % 60).padStart(2, '0')} · +${num(s.ah, 1)} Ah · ${Math.round(s.socInicial * 100)}→${Math.round(s.socFinal * 100)}%</span></div>`).join('')}
+  : sess.map(s => `<div class="linha"><span>${hm(s.inicio)}</span><span>${ok(s.duracaoMin) ? `${Math.floor(s.duracaoMin / 60)} h ${String(Math.round(s.duracaoMin % 60)).padStart(2, '0')}` : '—'} · +${num(s.ah, 1)} Ah · ${pctSoc(s.socInicial)}→${pctSoc(s.socFinal)}%</span></div>`).join('')}
 </div>
 </div>${ctx.estado.teclado ? teclado(ctx.estado.teclado) : ''}${ctx.estado.bombaCalib !== undefined && ctx.estado.bombaCalib !== null ? painelBomba(ctx) : ''}${ctx.estado.calibAberta ? `<div class="teclado"><div class="tile teclado-caixa" style="width:min(44rem,94vw);">${painelCalib(ctx.estado.calib, ctx.estado.msgCalib, ctx.estado.calibErro, !!ctx.estado.confirmarCancelarCalib)}</div></div>` : ''}`
   },
@@ -249,8 +258,11 @@ ${sess === undefined ? '<div class="lab">a carregar…</div>' : sess === null ? 
       else if (dados.t === ',') { if (!v.includes(',')) e.teclado.valor = (v || '0') + ',' }
       else if (v.length < 5) e.teclado.valor = v + dados.t
     }
-    if (nome === 'teclado-ok' && e.teclado) {
+    if (nome === 'teclado-zero-nao' && e.teclado) e.teclado = { ...e.teclado, confirmarZero: false }
+    if ((nome === 'teclado-ok' || nome === 'teclado-zero-sim') && e.teclado) {
       const { modo, valor } = e.teclado
+      if (!okDoTeclado(e.teclado)) return
+      if (modo === 'calibrar' && litrosDe(valor) === 0 && nome !== 'teclado-zero-sim') { e.teclado = { ...e.teclado, confirmarZero: true }; return }
       e.teclado = null
       const rota = modo === 'abasteci' ? 'abastecimento' : 'calibrar'
       try {

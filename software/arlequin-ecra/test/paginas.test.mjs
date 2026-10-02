@@ -651,6 +651,56 @@ test('auditoria I-32: o cartão da AI dá frases fixas em pt-PT (o erro técnico
   assert.doesNotMatch(html, /unexpected end of file|Command failed|fetch failed/)
 })
 
+// ---------- auditoria M-41, M-42, M-43 ----------
+test('auditoria M-41: no teclado do gasóleo, o OK fica desligado sem valor; "Calibrar" com 0 L pede confirmação; "Abasteci" com 0 L não grava', async () => {
+  const pedidos = []
+  const estado = {}
+  const ctx = { ...contexto(store, estado), pedir: async (url, o = {}) => { if (o.method === 'POST') pedidos.push([url, o.body]); return { antes: 40, depois: 40 } } }
+  await motor.acao('abrir-teclado', { modo: 'calibrar' }, ctx)
+  assert.match(motor.render(ctx), /data-acao="teclado-ok" disabled/)
+  await motor.acao('teclado-ok', {}, ctx)
+  assert.deepEqual(pedidos, [], 'vazio: nada')
+  assert.ok(estado.teclado, 'o teclado continua aberto')
+  await motor.acao('tecla', { t: '0' }, ctx)
+  await motor.acao('teclado-ok', {}, ctx)
+  assert.deepEqual(pedidos, [], '0 L: primeiro a pergunta')
+  assert.match(motor.render(ctx), /Calibrar com 0 L\? Só com o depósito vazio\./)
+  await motor.acao('teclado-zero-nao', {}, ctx)
+  assert.match(motor.render(ctx), /data-acao="teclado-ok"/, 'de volta ao teclado')
+  await motor.acao('teclado-ok', {}, ctx)
+  await motor.acao('teclado-zero-sim', {}, ctx)
+  assert.deepEqual(pedidos, [['/plugins/signalk-arlequin-gasoleo/calibrar', { litros: '0' }]])
+  // Abasteci com 0 L: o OK desligado
+  await motor.acao('abrir-teclado', { modo: 'abasteci' }, ctx)
+  await motor.acao('tecla', { t: '0' }, ctx)
+  await motor.acao('tecla', { t: ',' }, ctx)
+  assert.match(motor.render(ctx), /data-acao="teclado-ok" disabled/)
+  await motor.acao('teclado-ok', {}, ctx)
+  assert.equal(pedidos.length, 1)
+})
+
+test('auditoria M-42: dados em falta de outros plugins dão "—", nunca "NaN" nem "0→0%"', () => {
+  const d = diario.render(contexto(store, { ia: { modelos: { velocidade: { versao: 'v0003', versoes: ['v0003'], frases: ['x'] } } }, iaEm: Date.now() }))
+  assert.match(d, /v0003 · — h · x/)
+  assert.doesNotMatch(d, /NaN/)
+  const m = motor.render(contexto(store, { sessoes: [{ inicio: '2026-07-14T23:30:00.000Z', duracaoMin: 95, ah: 42.5, socInicial: null, socFinal: 0.816 }, { inicio: null, ah: null }], sessoesEm: Date.now() }))
+  assert.match(m, /1 h 35 · \+42,5 Ah · —→81%/)
+  assert.doesNotMatch(m, /NaN|0→0%|undefined/)
+})
+
+test('auditoria M-43: a nota do Diário fica no estado (um desenho não a apaga) e o Gravar usa-a', async () => {
+  const gravados = []
+  const ctx = { ...contexto(store, {}), logbook: async (t, c) => { gravados.push([t, c]) } }
+  await diario.acao('campo', { campo: 'nota', valor: 'Golfinhos à proa' }, ctx)
+  assert.match(diario.render(ctx), /id="nota" data-campo="nota" value="Golfinhos à proa"/)
+  await diario.acao('nota', {}, ctx)
+  assert.deepEqual(gravados, [['Golfinhos à proa', 'navigation']])
+  assert.match(diario.render(ctx), /id="nota" data-campo="nota" value=""/)
+  // o valor escapa-se
+  await diario.acao('campo', { campo: 'nota', valor: '"<b>' }, ctx)
+  assert.match(diario.render(ctx), /value="&quot;&lt;b&gt;"/)
+})
+
 test('Diário: cartão da AI mostra mensagem genérica para erro sem status', async () => {
   const estado = {}
   const ctx = {
