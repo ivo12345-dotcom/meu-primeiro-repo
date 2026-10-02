@@ -408,6 +408,34 @@ test('Tarefa 8.2: pausado sem rota ativa: o texto por baixo do título diz "a ro
   }
 })
 
+// ---------- auditoria I-24: os avisos da rota ativos ao mesmo tempo, todos à vista no Leme ----------
+test('auditoria I-24: a faixa mostra uma linha por aviso ativo da rota (o campo avisos do GET /plano-ativo), com a cor da gravidade e escapada; o dos recursos só uma vez', async () => {
+  const avisos = [
+    { caminho: 'notifications.rota.lembrete.e3', state: 'alert', message: 'Às 15:57: rizar' },
+    { caminho: 'notifications.rota.recalcula', state: 'warn', message: 'Recalcula a rota: atraso de 40 min' },
+    { caminho: 'notifications.rota.recursos', state: 'warn', message: 'Recursos: gasóleo à chegada ~34 L' },
+    { caminho: 'notifications.rota.previsao', state: 'alarm', message: 'Previsão com 14 h: confia nos instrumentos e no barómetro' },
+    { caminho: 'notifications.rota.barometro', state: 'warn', message: 'Barómetro: caiu 3,4 hPa em 3 h — o tempo pode piorar antes do previsto' },
+    { caminho: 'notifications.rota.alarmeTerra', state: 'alert', message: 'Os contactos em terra ligam ao MRCC às 09:38 <b>' },
+    { caminho: 'notifications.rota.comer', state: 'normal', message: 'Normal' }
+  ]
+  for (const noite of [false, true]) {
+    const html = melhor.render(await leme({ ...PLANO, avisos }, { noite }))
+    limpo(html, 'avisos')
+    assert.match(html, /<span class="atencao">⚠ Recalcula a rota: atraso de 40 min<\/span>/)
+    assert.match(html, /<span class="perigo">⚠ Previsão com 14 h: confia nos instrumentos e no barómetro<\/span>/)
+    assert.match(html, /<span class="atencao">⚠ Barómetro: caiu 3,4 hPa em 3 h/)
+    assert.match(html, /<span>⚠ Às 15:57: rizar<\/span>/)
+    assert.match(html, /⚠ Os contactos em terra ligam ao MRCC às 09:38 &lt;b&gt;/)
+    assert.equal((texto(html).match(/gasóleo à chegada ~34 L/g) || []).length, 1, 'o dos recursos só na linha dos recursos')
+    assert.doesNotMatch(texto(html), /Normal/)
+    // os mais graves primeiro
+    assert.ok(html.indexOf('Previsão com 14 h') < html.indexOf('Recalcula a rota') && html.indexOf('Recalcula a rota') < html.indexOf('Às 15:57: rizar'))
+  }
+  // sem avisos (ou com lixo), nada
+  for (const lixo of [[], null, 'x', [null, { state: 'warn' }, { caminho: 'x', state: 'warn', message: 7 }]]) assert.doesNotMatch(melhor.render(await leme({ ...PLANO, avisos: lixo })), /⚠ /)
+})
+
 // ---------- revisão final (C1, I2, I3) ----------
 const ALARME = '2026-09-30T08:38:00.000Z' // 09:38 em Lisboa, amanhã
 
