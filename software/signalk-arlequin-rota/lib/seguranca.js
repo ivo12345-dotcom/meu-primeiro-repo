@@ -26,12 +26,15 @@
 //   pontos do rasto a ≤ corredorCanalMn desses troços (o corredor dos bordos é de 0,7 MN); um rasto
 //   sem posições (ou sem nenhum ponto perto) conta a rota toda. Sem ondas previstas num desses
 //   pontos é "desconhecido", nunca calmo: também excluída.
-// Excluída, ou aviso vermelho em "Sair agora mesmo assim" (desenho 3a):
+// Excluída, ou em "Sair agora mesmo assim" (desenho 3a) aviso vermelho E "não recomendada" (auditoria
+// K-06, decisão do Ivo n.º 1, 02/10: a faixa fica laranja "Não recomendado…", nunca "Segue" a verde
+// por cima do aviso vermelho; a alternativa mostra-se e pode ativar-se, com excluidaSemSairAgora):
 //   - a previsão sem dados (`semDados` de lib/previsao.js, nos pontos dos 3 rastos) de vento, rajada ou ondas em parte da rota — desconhecido não é calmo. Outros
 //     campos sem dados, e os `aproximado` (vieram de um ponto de previsão mais longe), só dão um
 //     aviso (avisos[]);
 //   - gasóleo < 40 L ou bateria < 50% à chegada, no cenário pessimista. O gasóleo inicial ou a
 //     bateria à chegada desconhecidos (não números) dão sempre um aviso vermelho, sem excluir.
+//   (lib/calculo.js trata da mesma maneira a previsão que acaba antes da chegada.)
 // "Não recomendada sozinho" (só com tripulação "so"):
 //   - vento médio > 22 nós, rajadas > 30 ou ondas > 3 m (o máximo dos 3 resumos: o vento do
 //     pessimista é o P90, e o máximo só acrescenta os momentos que os outros rastos apanham);
@@ -194,11 +197,12 @@ function minimoCosta (afastamento, opcoes = {}) {
 //   destino: { nome, conhecido }; tripulacao: 'so' | 'acompanhado'; sairAgora: bool
 //   gasoleoInicial (L); costa (para a distância à terra; opcional se costaMinMn vier dado)
 //   costaMinMn: a distância já medida (a geometria de 5 e 8 MN é a mesma em todas as partidas)
-// → { excluida, naoRecomendada, motivos[], avisosVermelhos[], avisos[], horasLemeEq, costaMinMn, chegadaNoite }
-//   (avisos: linhas de aviso que não excluem, ex.: a previsão aproximada)
+// → { excluida, excluidaSemSairAgora, naoRecomendada, motivos[], avisosVermelhos[], avisos[], horasLemeEq, costaMinMn, chegadaNoite }
+//   (avisos: linhas de aviso que não excluem, ex.: a previsão aproximada; excluidaSemSairAgora: em
+//   "Sair agora", uma exclusão levantada — a alternativa fica, não recomendada, com o motivo)
 function avaliar ({ alternativa, pessimista, provavel, otimista, destino, tripulacao, sairAgora = false, gasoleoInicial, costa, costaMinMn, opcoes = {} }) {
   const o = { ...PADRAO, ...opcoes }
-  const out = { excluida: false, naoRecomendada: false, motivos: [], avisosVermelhos: [], avisos: [], horasLemeEq: null, costaMinMn: null, chegadaNoite: false }
+  const out = { excluida: false, excluidaSemSairAgora: false, naoRecomendada: false, motivos: [], avisosVermelhos: [], avisos: [], horasLemeEq: null, costaMinMn: null, chegadaNoite: false }
   if (alternativa.excluida) {
     out.excluida = true
     out.motivos.push(alternativa.motivo || 'rota impossível')
@@ -262,8 +266,9 @@ function avaliar ({ alternativa, pessimista, provavel, otimista, destino, tripul
   if (!Number.isFinite(r.socFinal)) desconhecido.push('bateria à chegada desconhecida')
   else if (r.socFinal * 100 < o.bateriaMinPct) vermelho.push(`chegas com a bateria a ${inteiroAbaixo(Math.max(0, r.socFinal * 100))}% no pior caso (mínimo ${o.bateriaMinPct}%)`)
   if (vermelho.length) {
-    if (sairAgora) out.avisosVermelhos.push(...vermelho)
-    else { out.excluida = true; out.motivos.push(...vermelho) }
+    // em "sair agora" a exclusão levanta-se, mas a alternativa não fica recomendada (K-06): o motivo
+    // vai para os motivos (a faixa e o cartão dizem porquê) e o aviso vermelho fica como antes
+    if (sairAgora) { out.avisosVermelhos.push(...vermelho); out.excluidaSemSairAgora = true; out.naoRecomendada = true; out.motivos.push(...vermelho) } else { out.excluida = true; out.motivos.push(...vermelho) }
   }
   out.avisosVermelhos.push(...desconhecido)
   out.horasLemeEq = horasLemeEquivalentes(pessimista.pontos, o)

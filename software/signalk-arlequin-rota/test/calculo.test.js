@@ -270,6 +270,39 @@ test('"Sair agora": inclui as não recomendadas e os avisos vermelhos (previsão
   assert.ok(k.alternativas.some(a => a.naoRecomendada)) // ondas > 3 m: não recomendadas, mas mostradas
 })
 
+test('K-06 (decisão do Ivo n.º 1): "Sair agora" com o gasóleo curto, sem previsão do mar ou com a previsão a acabar antes da chegada: "Não recomendado" (nunca "Segue"), com o motivo e os avisos vermelhos; continua a poder ativar-se', async () => {
+  const MESMO_ASSIM = 'Se saíres mesmo assim, revê as precauções e os pontos de desistência.'
+  const casos = [
+    // a sonda do auditor (Algés → Peniche, acompanhado, 45 L no depósito): era "Segue" a verde
+    ['gasóleo', entrada({ instrumentos: { posicao: ALGES, socPct: 90, gasoleoL: 45 }, tripulacao: 'acompanhado', sairAgora: true }), deps(), 'chegas com 22 L de gasóleo no pior caso (mínimo 40 L)'],
+    ['sem mar', entrada({ tripulacao: 'acompanhado', sairAgora: true }), comPrevisao(P29_SEM_MAR), 'sem previsão de ondas em parte da rota: desconhecido não conta como calmo'],
+    ['previsão curta', entrada({ tripulacao: 'acompanhado', sairAgora: true }), comPrevisao({ ...P29, fim: AGORA + 2 * H }), 'a previsão acaba antes da chegada (07:22): o fim da passagem é sem previsão']
+  ]
+  for (const [nome, e, d, motivo] of casos) {
+    const r = await calcular(e, d)
+    assert.equal(r.erro, undefined, `${nome}: ${r.erro}`)
+    assert.equal(r.veredicto.tipo, 'nao-recomendado', `${nome}: ${JSON.stringify(r.veredicto)}`)
+    assert.equal(r.veredicto.texto, 'Não recomendado')
+    assert.deepEqual(r.veredicto.porque, [`A melhor para sair agora (a 5 MN a motor, agora): ${motivo}.`, MESMO_ASSIM], nome)
+    // as alternativas mostram-se (podem ativar-se), não recomendadas, com o motivo e o aviso vermelho
+    assert.equal(r.alternativas.length, 3, nome)
+    for (const a of r.alternativas) {
+      assert.equal(a.excluida, false, nome)
+      assert.equal(a.excluidaSemSairAgora, true, `${nome}: ${a.id}`)
+      assert.equal(a.naoRecomendada, true, `${nome}: ${a.id}`)
+      assert.equal(a.motivos.length, 1, `${nome}: ${JSON.stringify(a.motivos)}`)
+      assert.ok(a.avisosVermelhos.includes(a.motivos[0]), `${nome}: ${JSON.stringify(a.avisosVermelhos)}`)
+    }
+    assert.equal(r.alternativas[0].motivos[0], motivo)
+    assert.equal(r.estatisticas.recomendadas, 0, nome)
+  }
+  // sem "sair agora" a mesma passagem com 45 L fica de fora (excluída), como sempre
+  let cands = []
+  await calcular(entrada({ instrumentos: { posicao: ALGES, socPct: 90, gasoleoL: 45 }, tripulacao: 'acompanhado' }), deps({ aoCandidatos: l => { cands = l } }))
+  const agora = cands.filter(k => k.partida === AGORA)
+  assert.ok(agora.length > 0 && agora.every(k => k.excluida && !k.excluidaSemSairAgora), JSON.stringify(agora.map(k => [k.id, k.excluida, k.motivos])))
+})
+
 test('o cálculo nunca lança: previsão estragada, sem rota ativa, posição null, entrada e dependências em falta', async () => {
   const casos = [
     [entrada(), deps({ obterPrevisao: async () => ({ previsao: { pontos: null } }) })],
