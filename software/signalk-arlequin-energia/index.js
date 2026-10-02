@@ -51,16 +51,19 @@ module.exports = function (app) {
     }
   }
 
-  // As horas do MDI (plugin J1939) valem mais: se outra fonte publicou as horas
-  // de motor nos últimos 5 min, este contador fica só para as sessões de carga.
+  // As horas do MDI (plugin J1939) valem mais: se outra fonte já publicou as horas
+  // de motor (um número) desde que o servidor arrancou, este contador fica só para
+  // as sessões de carga. Com a ignição desligada o J1939 deixa de as republicar
+  // (auditoria K-07): a hora delas na árvore envelhece, mas continuam a ser as
+  // horas certas — trocá-las por este contador mostrava dois números diferentes.
   // Nos primeiros 30 s (tempo dos dados) espera, para dar tempo ao J1939 de arrancar.
   function outraFonteDeHoras (t) {
     if (inicioDados === null) inicioDados = t
     if (t - inicioDados < 30 * 1000) return true
     const p = app.getSelfPath?.(`propulsion.${opcoes.propulsao}.runTime`)
     if (!p) return false
-    const fontes = p.values ? Object.entries(p.values).map(([src, v]) => ({ src, ts: v.timestamp })) : [{ src: p.$source, ts: p.timestamp }]
-    return fontes.some(f => f.src && !String(f.src).startsWith(plugin.id) && Date.now() - Date.parse(f.ts) < 5 * 60 * 1000)
+    const fontes = p.values ? Object.entries(p.values).map(([src, v]) => ({ src, value: v.value })) : [{ src: p.$source, value: p.value }]
+    return fontes.some(f => f.src && !String(f.src).startsWith(plugin.id) && typeof f.value === 'number')
   }
 
   function tick () {

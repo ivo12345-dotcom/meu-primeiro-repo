@@ -135,6 +135,40 @@ test('GET /sessoes devolve as cargas, a mais recente primeiro', async () => {
   assert.ok(resposta.runTimeS > 3600)
 })
 
+test('horas de motor (auditoria K-07): o J1939 publicou-as há mais de 5 min (ignição desligada): continua a não publicar as suas', () => {
+  const app = appFalso()
+  app.getSelfPath = (p) => p === 'propulsion.main.runTime'
+    ? { value: 4475000, $source: 'signalk-arlequin-j1939', timestamp: new Date(Date.now() - 3 * 3600 * 1000).toISOString() }
+    : undefined
+  const plugin = criarPlugin(app)
+  plugin.start({})
+  let m = criarModelo({ socInicial: 0.9 }, Date.now())
+  for (let i = 0; i < 5; i++) {
+    const r = avancar(m, 60 * 1000, { motor: true })
+    m = r.modelo
+    app.receber(deltaDaLeitura(r.leitura))
+  }
+  plugin.stop()
+  assert.deepEqual(app.runTime, [])
+})
+
+test('horas de motor: um null de outra fonte não conta (só um número de horas)', () => {
+  const app = appFalso()
+  app.getSelfPath = (p) => p === 'propulsion.main.runTime'
+    ? { value: null, $source: 'outra-fonte', timestamp: new Date().toISOString() }
+    : undefined
+  const plugin = criarPlugin(app)
+  plugin.start({})
+  let m = criarModelo({ socInicial: 0.9 }, Date.now())
+  for (let i = 0; i < 5; i++) {
+    const r = avancar(m, 60 * 1000, { motor: true })
+    m = r.modelo
+    app.receber(deltaDaLeitura(r.leitura))
+  }
+  plugin.stop()
+  assert.ok(app.runTime.length > 0)
+})
+
 test('horas de motor: não publica se o J1939 (outra fonte) já as publica', () => {
   const app = appFalso()
   app.getSelfPath = (p) => p === 'propulsion.main.runTime'
