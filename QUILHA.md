@@ -16,7 +16,7 @@ quilha**, não no porão.
 - Resto da quilha: camadas velhas de antivegetativo empilhadas, adesão
   duvidosa, alguma ferrugem no bordo.
 
-**Mecanismo:** *rust jacking*. Humidade entra pela pintura, o ferro fundido
+**Mecanismo:** a ferrugem a empurrar a massa (*rust jacking*). Humidade entra pela pintura, o ferro fundido
 oxida dentro do bolso, a ferrugem ocupa mais volume e empurra a massa até a
 fissurar. A lavagem à pressão só revelou o que já estava solto.
 
@@ -32,7 +32,7 @@ fissurar. A lavagem à pressão só revelou o que já estava solto.
 
 1. **Decapagem.** Pedir orçamento ao estaleiro para jatear a quilha toda —
    é a melhor relação custo/benefício (uma manhã contra dias de lixadeira).
-   Em alternativa, à mão, desbastando bem para fora dos halos até só
+   Em alternativa, à mão, a desbastar bem para fora dos halos até só
    encontrar tinta que não levanta. Teste: passar a espátula; onde levanta,
    sai.
 2. **Limpar os bolsos** até ao ferro, incluindo o de cima.
@@ -43,8 +43,8 @@ fissurar. A lavagem à pressão só revelou o que já estava solto.
    camadas (de uma vez só a reação aquece e fissura).
 6. **Alisar** — só aqui se usa carga leve (407/410).
 7. **4–5 demãos de barreira epóxi** na quilha toda, não só nos remendos.
-8. **Tiecoat + tinta de silicone** (foul release) — decisão do
-   proprietário, em vez de antivegetativo. Ver secção abaixo.
+8. **Primário de ligação (*tiecoat*) + tinta de silicone antiaderente** (*foul release*) — decisão
+   do proprietário, em vez de antivegetativo. Ver secção abaixo.
 
 ### Nunca
 
@@ -55,7 +55,7 @@ fissurar. A lavagem à pressão só revelou o que já estava solto.
 - **Carga leve com microesferas dentro dos bolsos** — fraca e absorvente.
   Alta densidade nos bolsos, leve só no acabamento.
 
-## Acabamento: silicone (foul release), NÃO antivegetativo
+## Acabamento: silicone antiaderente (*foul release*), NÃO antivegetativo
 
 Decisão do proprietário. Os passos 1 a 7 acima não mudam — o esquema de
 epóxi mantém-se igual. Só muda o que vai por cima.
@@ -129,7 +129,7 @@ pessoa sozinha não consegue.**
 | Silic Seal (casco) | confirmar rendimento na ficha |
 | Light Primer (quilha) | confirmar rendimento na ficha |
 
-**Orçamento:** estimativa grosseira de €1.200–1.800 no conjunto — bem acima
+**Orçamento:** estimativa grosseira de €1 200–1 800 no conjunto — bem acima
 de antivegetativo convencional. **Pedir cotação antes de comprar.** Compensa
 em 3–5 anos sem repintar, mas o desembolso é todo à cabeça.
 - **O alisamento passa a ser mais crítico.** O silicone funciona por a
@@ -147,6 +147,10 @@ em 3–5 anos sem repintar, mas o desembolso é todo à cabeça.
   na água.
 
 ## Material
+
+*(Lista de 08/09, de antes das decisões abaixo. O "NÃO Interprotect" da secção do Silic One só
+valia para esse sistema, que foi abandonado a 09/09. O primário epóxi comprado e verificado a
+09/09 é o Jotun Yachting Antipest Primer: ver "Material confirmado", no fim.)*
 
 Primário epóxi para metal (Interprotect 2000E ou Hempel Light Primer);
 resina epóxi + carga 404 (alta densidade); carga 407/410 (leve, alisar);
@@ -189,7 +193,7 @@ Consequências:
   taça, e parar. Cada grama de laminado a mais que se tira é laminado a
   repor.
 - **Pintar na primavera continua certo**, mas por causa do tempo (as demãos
-  de epóxi querem temperatura e ar seco; Novembro em Portugal não dá
+  de epóxi querem temperatura e ar seco; novembro em Portugal não dá
   garantias), não por causa da secagem. Isso liberta o inverno para a quilha
   e para o piloto.
 - Com osmose desta escala, uma barreira epóxi bem feita provavelmente
@@ -217,7 +221,7 @@ Secagem e **barreira epóxi**. São a parte estrutural.
 
 Só o silicone. Aplicar antivegetativo convencional na primavera, navegar
 2–3 anos, e depois converter com **Silic Seal** por cima do antivegetativo
-(é precisamente para isso que o produto existe). Poupa os €1.200–1.800 do
+(é precisamente para isso que o produto existe). Poupa os €1 200–1 800 do
 Silic One agora sem sacrificar nada.
 
 ## Calendário revisto
