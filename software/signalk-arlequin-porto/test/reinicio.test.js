@@ -10,14 +10,15 @@ const criar = require('..')
 const { criarTelegramFalso } = require('../../dev/telegram-falso')
 
 function appFalso () {
-  const app = { arvore: {}, estado: '', erros: [] }
+  const app = { arvore: {}, estado: '', erros: [], ticks: 0 }
   app.dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arlequin-porto-reinicio-'))
   app.getDataDirPath = () => app.dir
   const pôr = (p, value) => { const ks = p.split('.'); let n = app.arvore; for (const k of ks) n = (n[k] = n[k] || {}); n.value = value }
   app.pôr = pôr
   app.getSelfPath = (p) => p.split('.').reduce((n, k) => n?.[k], app.arvore)
   app.handleMessage = (id, d) => { for (const u of d.updates) for (const v of u.values) pôr(v.path, v.value) }
-  app.setPluginStatus = (s) => { app.estado = s }
+  // ticks: quantas vezes o ciclo de 1 s do plugin correu (escreve o estado em cada uma)
+  app.setPluginStatus = (s) => { app.estado = s; app.ticks++ }
   app.error = (e) => app.erros.push(e)
   return app
 }
@@ -189,6 +190,34 @@ test('auditoria I-07 (contrato C1): o valor publicado leva o apito, também no a
     assert.deepEqual(app.getSelfPath(AGUA).value, { state: 'normal', method: [], message: 'Normal' })
     p.start(config)
     assert.deepEqual(app.getSelfPath(AGUA).value, { state: 'alarm', method: ['visual', 'sound'], message: 'Água no porão!', apito: 'continuo' })
+  } finally { p.stop(); await tgf.fechar() }
+})
+
+test('decisão do dono (Adenda 2, apito): a bomba de porão (a trabalhar há mais de 3 min) e o líquido debaixo do depósito publicam apito "continuo" (contam como água no porão e fuga de gasóleo), também depois de um reinício', async () => {
+  const tgf = await criarTelegramFalso()
+  const app = appFalso()
+  let agora = Date.parse('2026-10-02T10:00:00Z')
+  const p = criar(app, { agora: () => agora, ...RAPIDO })
+  const config = { telegramToken: 'TESTE', chatIds: ['111'], telegramBase: tgf.url, pollTimeout: 1 }
+  const BOMBA = 'notifications.arlequin.porto.bombaPorao'
+  const FUGA = 'notifications.arlequin.porto.fugaGasoleo'
+  const esperados = {
+    [BOMBA]: { state: 'alarm', method: ['visual', 'sound'], message: 'Bomba de porão a trabalhar há mais de 3 min seguidos', apito: 'continuo' },
+    [FUGA]: { state: 'alarm', method: ['visual', 'sound'], message: 'Líquido debaixo do depósito de gasóleo: possível fuga', apito: 'continuo' }
+  }
+  p.start(config)
+  try {
+    app.pôr('sensors.porao.bomba', 1)
+    app.pôr('sensors.gasoleo.liquido', 1)
+    // o plugin viu a bomba arrancar (com o relógio de agora) antes de o relógio andar 3 min
+    const ciclo = app.ticks
+    assert.ok(await ate(() => app.ticks >= ciclo + 2))
+    agora += 3 * 60000 + 1000
+    assert.ok(await ate(() => estadoDe(app, BOMBA) === 'alarm' && estadoDe(app, FUGA) === 'alarm'))
+    for (const [c, v] of Object.entries(esperados)) assert.deepEqual(app.getSelfPath(c).value, v, c)
+    p.stop()
+    p.start(config)
+    for (const [c, v] of Object.entries(esperados)) assert.deepEqual(app.getSelfPath(c).value, v, `${c} reposto`)
   } finally { p.stop(); await tgf.fechar() }
 })
 
