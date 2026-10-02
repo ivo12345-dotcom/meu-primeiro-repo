@@ -285,6 +285,21 @@ test('GET /sessoes devolve as cargas, a mais recente primeiro', async () => {
   assert.ok(resposta.runTimeS > 3600)
 })
 
+// Auditoria M-66 (E-M9): uma linha cortada no JSONL (corte de energia durante o appendFile) partia a
+// página Motor para sempre (erro 500).
+test('M-66: GET /sessoes salta uma linha cortada e devolve as outras', () => {
+  const app = appFalso()
+  const boa = { inicio: '2026-10-01T12:00:00.000Z', fim: '2026-10-01T13:00:00.000Z', duracaoMin: 60, ah: 40, socInicial: 0.55, socFinal: 0.8 }
+  fs.writeFileSync(path.join(app.dir, 'sessoes-carga.jsonl'), JSON.stringify(boa) + '\n{"inicio":"2026-10-02T09:00:00.000Z","fim":"2026-1')
+  const plugin = criarPlugin(app)
+  plugin.start({})
+  const rotas = {}
+  plugin.registerWithRouter({ get: (p, h) => { rotas[p] = h } })
+  let resposta
+  try { rotas['/sessoes']({ query: {} }, { json: (j) => { resposta = j } }) } finally { plugin.stop() }
+  assert.deepEqual(resposta.sessoes, [boa])
+})
+
 test('horas de motor (auditoria K-07): o J1939 publicou-as há mais de 5 min (ignição desligada): continua a não publicar as suas', () => {
   const app = appFalso()
   app.getSelfPath = (p) => p === 'propulsion.main.runTime'
