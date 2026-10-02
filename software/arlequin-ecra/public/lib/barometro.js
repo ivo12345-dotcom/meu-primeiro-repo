@@ -27,3 +27,9 @@ export function tendencia (b, agora) {
   const sentido = Math.abs(hpa3h) < 0.5 ? 'estavel' : hpa3h > 0 ? 'sobe' : 'desce'
   return { sentido, hpa3h }
 }
+
+// O barómetro guardado no browser (auditoria I-06): estragado volta vazio; só ficam as amostras com números.
+export function lerBarometro (x) {
+  const lista = Array.isArray(x?.amostras) ? x.amostras : []
+  return { amostras: lista.filter(a => a && Number.isFinite(a.t) && Number.isFinite(a.pa)) }
+}
