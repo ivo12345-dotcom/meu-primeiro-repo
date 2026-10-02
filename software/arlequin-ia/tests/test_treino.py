@@ -57,6 +57,39 @@ def test_vento_e_consumo_aprendem_o_desvio_da_previsao_e_da_volvo(treinado):
     assert len(r['velocidade']['frases']) == 3 and all('a polar dizia' in f for f in r['velocidade']['frases'])
 
 
+def test_o_motivo_diz_a_origem_certa_de_cada_modelo(treinado):
+    # a origem do vento é a previsão em bruto, não a polar; a do consumo é a curva da Volvo (auditoria M-56)
+    _, r = treinado
+    assert r['velocidade']['motivo'] == 'erra menos do que a polar'
+    assert r['ventoForca']['motivo'] == 'erra menos do que a previsão em bruto'
+    assert r['ventoDirecao']['motivo'] == 'erra menos do que a previsão em bruto'
+    assert r['consumo']['motivo'] == 'erra menos do que a curva da Volvo'
+
+
+class _Fixo:
+    """Um P50 que dá sempre o mesmo valor (para as frases dos modelos do vento)."""
+    def __init__(self, v):
+        self.v = v
+
+    def predict(self, x):
+        return np.full(len(x), self.v)
+
+
+def test_frases_do_vento_sem_0_por_cento_nem_0_graus():
+    # com |valor| < 1 a frase é neutra; os outros casos continuam como estavam (auditoria M-56)
+    from arlequin_ia.treino import frases
+    x = pd.DataFrame({'prevTws': [10.0, 12.0]})
+    f = lambda nome, v: frases(nome, x, x, _Fixo(v), POLAR)
+    assert f('ventoForca', 1.003) == ['o vento real é em média igual ao previsto']
+    assert f('ventoForca', 0.996) == ['o vento real é em média igual ao previsto']
+    assert f('ventoForca', 1.2) == ['o vento real é em média 20% mais forte do que a previsão']
+    assert f('ventoForca', 0.85) == ['o vento real é em média 15% mais fraco do que a previsão']
+    assert f('ventoDirecao', -0.4) == ['o vento real vem em média da direção prevista']
+    assert f('ventoDirecao', 0.4) == ['o vento real vem em média da direção prevista']
+    assert f('ventoDirecao', 7.6) == ['o vento real vem em média 8° mais à direita do que a previsão']
+    assert f('ventoDirecao', -12.2) == ['o vento real vem em média 12° mais à esquerda do que a previsão']
+
+
 def test_quantis_por_ordem_em_media(treinado):
     d, _ = treinado
     m = carregar(d / 'modelos' / 'velocidade', 'v0001')
