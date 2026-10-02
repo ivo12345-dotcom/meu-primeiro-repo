@@ -182,6 +182,33 @@ test('obterPrevisao: fetch injetado; o mar falhado fica a null; erro do forecast
   await assert.rejects(prev.obterPrevisao({ pontos: PONTOS, fetch: async () => ({ ok: false, status: 503 }) }), /503/)
 })
 
+test('M-11: o pedido do mar falhado fica marcado (marFalhou) e as ondas podem vir da previsão guardada mais recente (juntarMarDoArquivo)', async () => {
+  const semMar = await prev.obterPrevisao({ pontos: PONTOS, agora: T(FIX.obtidaSimulada), fetch: async (u) => (u.includes('marine') ? { ok: false, status: 502 } : { ok: true, json: async () => FIX.forecast }) })
+  assert.equal(semMar.marFalhou, true)
+  assert.equal((await prev.obterPrevisao({ pontos: PONTOS, agora: T(FIX.obtidaSimulada), fetch: async (u) => ({ ok: true, json: async () => (u.includes('marine') ? FIX.marine : FIX.forecast) }) })).marFalhou, undefined)
+  // a guardada de 3 h antes (com as ondas de 29/09)
+  const pasta = temp()
+  prev.guardarArquivo(pasta, { ...P29, obtida: '2026-09-29T11:00:00.000Z' })
+  const a = prev.lerArquivo(pasta, { pontos: PONTOS, desde: T('2026-09-29T14:00Z'), ate: T('2026-09-30T02:00Z'), agora: T('2026-09-29T14:00Z') })
+  assert.equal(a.erro, undefined)
+  const junta = prev.juntarMarDoArquivo(semMar, a.previsao)
+  assert.equal(junta.marDoArquivo, '2026-09-29T11:00:00.000Z')
+  assert.equal(junta.marFalhou, true)
+  for (const [i, p] of junta.pontos.entries()) {
+    assert.deepEqual(p.ondas, P29.pontos[i].ondas, `ponto ${i}`) // as mesmas horas e o mesmo ponto
+    assert.deepEqual(p.periodo, P29.pontos[i].periodo)
+    assert.deepEqual(p.ondasDir, P29.pontos[i].ondasDir)
+    assert.deepEqual(p.corrente, semMar.pontos[i].corrente) // a corrente não se arquiva: fica como estava (null)
+    assert.deepEqual(p.tws, semMar.pontos[i].tws) // o vento é o de agora
+  }
+  // não mexe na de entrada; um ponto longe de todos os guardados (> 15 MN) fica sem ondas
+  assert.ok(semMar.pontos[0].ondas.every(x => x == null))
+  const longe = prev.juntarMarDoArquivo({ ...semMar, pontos: [{ ...semMar.pontos[0], lat: 41, lon: -9 }] }, a.previsao)
+  assert.ok(longe.pontos[0].ondas.every(x => x == null))
+  // com o mar bom, nada muda
+  assert.equal(prev.juntarMarDoArquivo(P29, a.previsao), P29)
+})
+
 test('arquivo: um ficheiro por ponto no formato da Parte 2, escrita atómica, nomes sem ":"', () => {
   const pasta = temp()
   const fs1 = prev.guardarArquivo(pasta, P29)

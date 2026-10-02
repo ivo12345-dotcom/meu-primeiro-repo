@@ -119,16 +119,43 @@ async function pedirJson (fetchFn, url) {
   return r.json()
 }
 
-// Descarrega a previsão para os pontos. O mar é opcional (sem ele, ondas e corrente a null).
+// Descarrega a previsão para os pontos. O mar é opcional (sem ele, ondas e corrente a null); com o
+// pedido do mar falhado a previsão leva marFalhou: true (auditoria M-11: quem chama pode juntar as
+// ondas da previsão guardada mais recente, juntarMarDoArquivo).
 async function obterPrevisao ({ pontos, agora = Date.now(), fetch: fetchFn = fetch, horas = HORAS_PREVISAO }) {
   const partes = []
+  let marFalhou = false
   for (const g of urls(pontos, { horas })) {
     const forecast = await pedirJson(fetchFn, g.forecast)
     let marine = null
-    try { marine = await pedirJson(fetchFn, g.marine) } catch { marine = null }
+    try { marine = await pedirJson(fetchFn, g.marine) } catch { marine = null; marFalhou = true }
     partes.push(interpretar(g.pontos, forecast, marine, agora))
   }
-  return juntar(partes)
+  const p = juntar(partes)
+  return marFalhou ? { ...p, marFalhou: true } : p
+}
+
+// Com o pedido do mar falhado (marFalhou), as ondas (altura, período e direção: o que o arquivo
+// guarda) da previsão guardada mais recente: para cada ponto sem ondas nenhumas, o ponto guardado
+// mais perto a ≤ LIMITE_APROXIMADO_MN, hora a hora (as horas que a guardada não tem ficam null). A
+// corrente e o nível do mar não se arquivam: ficam null (a maré do Tejo fica a 0, com o aviso).
+// arquivada: a `previsao` de lerArquivo. → uma previsão nova com marDoArquivo (a hora da guardada),
+// ou a mesma se não há nada a juntar.
+function juntarMarDoArquivo (previsao, arquivada) {
+  if (!previsao?.marFalhou || !Array.isArray(arquivada?.pontos) || !arquivada.pontos.length) return previsao
+  const CAMPOS_MAR = ['ondas', 'periodo', 'ondasDir']
+  let juntou = false
+  const pontos = previsao.pontos.map(p => {
+    if (p.ondas?.some(x => x != null)) return p
+    const perto = arquivada.pontos.map(q => ({ q, mn: c.distanciaMn(p, q) })).filter(x => x.mn <= LIMITE_APROXIMADO_MN && x.q.ondas?.some(v => v != null)).sort((a, b) => a.mn - b.mn)[0]
+    if (!perto) return p
+    const indice = new Map(perto.q.t.map((t, k) => [t, k]))
+    const novo = { ...p }
+    for (const campo of CAMPOS_MAR) novo[campo] = p.t.map(t => { const k = indice.get(t); return k === undefined ? null : (perto.q[campo]?.[k] ?? null) })
+    juntou = true
+    return novo
+  })
+  return juntou ? { ...previsao, pontos, marDoArquivo: arquivada.obtida } : previsao
 }
 
 function juntar (partes) {
@@ -335,4 +362,4 @@ function lerArquivo (pasta, { pontos, desde, ate, agora = Date.now(), raioMn = 1
   }
 }
 
-module.exports = { MAX_PONTOS, HORAS_PREVISAO, CASCAIS, FORECAST, MARINE, pontosPrevisao, urls, interpretar, obterPrevisao, criarTempo, nivelDoMar, nomeArquivo, registoParte2, escreverAtomico, guardarArquivo, lerArquivo }
+module.exports = { MAX_PONTOS, HORAS_PREVISAO, CASCAIS, FORECAST, MARINE, pontosPrevisao, urls, interpretar, obterPrevisao, juntarMarDoArquivo, criarTempo, nivelDoMar, nomeArquivo, registoParte2, escreverAtomico, guardarArquivo, lerArquivo }

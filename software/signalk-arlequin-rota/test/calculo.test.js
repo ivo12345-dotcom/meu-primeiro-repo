@@ -120,6 +120,15 @@ test('sem dados do mar: calcula com a corrente da barra do Tejo a 0 e avisa', as
   assert.equal(r.alternativas[0].maximos.ondas, null)
 })
 
+test('M-11: as ondas vindas da previsão guardada (o pedido do mar falhou) dão o aviso com a idade dela', async () => {
+  const comArquivo = { ...P29, marFalhou: true, marDoArquivo: new Date(AGORA - 3 * H).toISOString() }
+  const r = await correr('marDoArquivo', entrada({ sairAgora: true }), comPrevisao(comArquivo))
+  assert.equal(r.erro, undefined, r.erro)
+  assert.ok(r.avisos.includes('Ondas da previsão guardada há 3 h (o pedido do mar falhou)'), JSON.stringify(r.avisos))
+  // sem ela, nada
+  assert.ok(!(await correr('agora', entrada({ sairAgora: true }), deps())).avisos.some(x => /^Ondas da previsão guardada/.test(x)))
+})
+
 test('falhas: sem GPS, sem previsão, destino desconhecido, já no destino, sem polar e erros dentro: nunca lança', async () => {
   assert.match((await calcular(entrada({ instrumentos: {} }), deps())).erro, /^Sem GPS/)
   assert.match((await calcular(entrada(), deps({ obterPrevisao: async () => ({ erro: 'não há previsão guardada que cubra a rota' }) }))).erro, /^Sem previsão que cubra a rota: não há previsão guardada/)
