@@ -270,7 +270,8 @@ module.exports = function (app) {
     try { verificarDisco(gastos) } catch (e) { erros++; app.error(`disco: ${e.message}`) }
     try {
       const mb = listarBruto().reduce((s, f) => s + f.bytes, 0) / 1e6
-      const hora = ultimaLinha ? new Date(ultimaLinha).toLocaleTimeString('pt-PT') : '—'
+      // Sempre a hora de Lisboa, seja qual for o fuso do Pi (decisão n.º 22).
+      const hora = ultimaLinha ? new Date(ultimaLinha).toLocaleTimeString('pt-PT', { timeZone: 'Europe/Lisbon' }) : '—'
       app.setPluginStatus(`${bruto.parado ? 'BRUTO PARADO · ' : ''}bruto ${mb.toFixed(1)} MB · disco ${Math.round(infoDisco?.usadoPct ?? 0)}% · última linha ${hora}`)
     } catch (e) { erros++; app.error(`estado: ${e.message}`) }
   }

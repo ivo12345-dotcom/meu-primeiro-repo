@@ -156,9 +156,10 @@ module.exports = function (app, deps = {}) {
     return { versao, versoes, podeVoltar, ...dados }
   }
 
+  // Sempre a hora de Lisboa, seja qual for o fuso do Pi (decisão n.º 22).
   function resumo () {
     const emUso = mod.NOMES.filter(n => mod.versaoAtual(pastaModelos(), n)).length
-    return `${emUso} de ${mod.NOMES.length} modelos em uso · última previsão ${estado.previsao.okEm ? new Date(estado.previsao.okEm).toLocaleTimeString('pt-PT') : '—'}`
+    return `${emUso} de ${mod.NOMES.length} modelos em uso · última previsão ${estado.previsao.okEm ? new Date(estado.previsao.okEm).toLocaleTimeString('pt-PT', { timeZone: 'Europe/Lisbon' }) : '—'}`
   }
 
   plugin.start = function (props) {
