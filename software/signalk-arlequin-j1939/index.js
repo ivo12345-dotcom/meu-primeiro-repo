@@ -11,16 +11,23 @@ const { novoEstadoMotor, avaliarMotor } = require('./lib/motor')
 const { novaDescoberta, registar, alarmesDoMapa } = require('./lib/descoberta')
 const { criarDetetor, estavel, novaCurva, amostra, resumo } = require('./lib/curva')
 
-// Sem EEC1 há 5 s: as rotações passam a desconhecidas (null), nunca 0. Tanto pode
-// ser a ignição desligada (a ECU cala-se) como o adaptador USB-CAN solto ou o
-// candump em baixo; quem lê trata null como "motor não está a trabalhar", mas a
-// AI não pode ler isto como "à vela" (ver arlequin-ia/treino.py). O estado do
-// motor fica "stopped", como antes.
-const RPM_VELHO = 5000
-
-// Sem PGN 65266 há 5 s: o último valor medido deixa de ser "medido" (senão fica-se com um
-// valor arrastado do MDI para sempre) e passa a "estimado" pela curva, como sem medição nenhuma.
-const LFE_VELHO = 5000
+// Cada caminho guarda a hora da última trama que o trouxe com um valor (vistoEm). Sem ele há mais de
+// 5 s — a PGN deixou de chegar ou chega com o campo "sem dado" — o caminho passa a desconhecido (null),
+// nunca um valor velho como se fosse atual (auditoria K-07). Tanto pode ser a ignição desligada (a ECU
+// cala-se) como o adaptador USB-CAN solto ou o candump em baixo.
+//   - Rotações: null, nunca 0; quem lê trata null como "motor não está a trabalhar", mas a AI não pode
+//     ler isto como "à vela" (ver arlequin-ia/treino.py). O estado do motor fica "stopped".
+//   - Consumo medido (PGN 65266): deixa de ser "medido" e passa a "estimado" pela curva, como sem
+//     medição nenhuma.
+//   - Horas do motor (PGN 65253): não passam a null nem se republicam; o valor não muda com o motor
+//     parado e a hora dele na árvore envelhece (assim o contador da energia não as substitui).
+//   - Alarmes do mapa do MDI (PGN 65417): limpam (o MDI deixou de os dizer). O sobreaquecimento
+//     calculado aqui não limpa só por faltar a temperatura (fica até haver uma leitura normal).
+const VELHO = 5000
+const REV = 'propulsion.main.revolutions'
+const CONSUMO = 'propulsion.main.fuel.rate'
+const HORAS = 'propulsion.main.runTime'
+const MAPA = 'pgn:65417'
 
 module.exports = function (app) {
   const plugin = {
@@ -60,22 +67,24 @@ module.exports = function (app) {
   let temporizador = null
   let ouvinte = null
   let valores = {} // caminho → valor (último)
-  let estado, desc, ativosMapa, rpmEm, rpmAtual, lfeEm, ficheiroDesc, vistasTotal
+  let vistoEm = {} // caminho → hora da última trama que o trouxe com valor; MAPA → a da última 65417
+  let estado, desc, ativosMapa, rpmAtual, ficheiroDesc, vistasTotal
   let detetor, curva, ficheiroCurva, ultimaGravacao
   let mudancas = [] // últimas 50 mudanças das PGN proprietárias (o ficheiro guarda todas)
+
+  const fresco = (p, agora) => agora - (vistoEm[p] ?? -Infinity) <= VELHO
 
   function aoReceber (linha) {
     const t = lerLinha(linha)
     if (!t) return
     vistasTotal++
-    for (const v of descodificar(t.pgn, t.dados)) valores[v.path] = v.value
-    if (t.pgn === 61444 && typeof valores['propulsion.main.revolutions'] === 'number') {
-      rpmEm = Date.now()
-      rpmAtual = valores['propulsion.main.revolutions'] * 60
+    const agora = Date.now()
+    for (const v of descodificar(t.pgn, t.dados)) {
+      valores[v.path] = v.value
+      vistoEm[v.path] = agora
+      if (v.path === REV) rpmAtual = v.value * 60
     }
-    if (t.pgn === 65266 && typeof valores['propulsion.main.fuel.rate'] === 'number') {
-      lfeEm = Date.now()
-    }
+    if (t.pgn === 65417) vistoEm[MAPA] = agora
     const r = registar(desc, t, rpmAtual)
     desc = r.d
     if (r.mudou) {
@@ -100,26 +109,37 @@ module.exports = function (app) {
   // A 1 Hz: publica os valores, o estado, o consumo estimado e os alarmes calculados.
   function publicar () {
     const agora = Date.now()
-    if (agora - rpmEm > RPM_VELHO) { valores['propulsion.main.revolutions'] = null; rpmAtual = 0 }
-    if (agora - lfeEm > LFE_VELHO) delete valores['propulsion.main.fuel.rate']
-    const rpm = (valores['propulsion.main.revolutions'] ?? 0) * 60
+    // os caminhos velhos (sem trama com valor há mais de 5 s): ver o cabeçalho (auditoria K-07)
+    for (const p of Object.keys(valores)) {
+      if (fresco(p, agora)) continue
+      if (p === CONSUMO) delete valores[p]
+      else if (p !== HORAS) valores[p] = null
+    }
+    if (!fresco(REV, agora)) { valores[REV] = null; rpmAtual = 0 } // também desde o arranque: null, nunca 0
+    if (Object.keys(ativosMapa).length && !fresco(MAPA, agora)) {
+      publicarNotificacoes(Object.keys(ativosMapa).map(id => ({ id, state: 'normal', method: [], message: 'Normal' })))
+      ativosMapa = {}
+    }
+    const rpm = (valores[REV] ?? 0) * 60
     const r = avaliarMotor(estado, { rpm, temp: valores['propulsion.main.temperature'], volt: valores['propulsion.main.alternatorVoltage'] }, agora)
     estado = r.estado
-    const vals = Object.entries(valores).map(([p, value]) => ({ path: p, value }))
+    const vals = Object.entries(valores)
+      .filter(([p]) => p !== HORAS || fresco(p, agora))
+      .map(([p, value]) => ({ path: p, value }))
     // Consumo: o real (PGN 65266) se o MDI o mandar; senão, a estimativa pelas rotações.
     // A origem vai em propulsion.main.fuel.rateOrigem ('medido' | 'estimado'): a AI só
     // aprende o consumo com o medido (a estimativa é a própria curva da Volvo × fator).
-    if ('propulsion.main.fuel.rate' in valores) {
+    if (CONSUMO in valores) {
       vals.push({ path: 'propulsion.main.fuel.rateOrigem', value: 'medido' })
     } else if (o.estimarConsumo) {
-      vals.push({ path: 'propulsion.main.fuel.rate', value: m3s(litrosHora(rpm, o.fatorConsumo)) })
+      vals.push({ path: CONSUMO, value: m3s(litrosHora(rpm, o.fatorConsumo)) })
       vals.push({ path: 'propulsion.main.fuel.rateOrigem', value: 'estimado' })
     }
     vals.push({ path: 'propulsion.main.state', value: estado.ligado ? 'started' : 'stopped' })
 
     // Curva aprendida: em regime estável, velocidade (na água, se houver) e consumo por faixa.
-    const lh = 'propulsion.main.fuel.rate' in valores
-      ? valores['propulsion.main.fuel.rate'] * 3600 * 1000
+    const lh = CONSUMO in valores
+      ? valores[CONSUMO] * 3600 * 1000
       : (o.estimarConsumo ? litrosHora(rpm, o.fatorConsumo) : null)
     const e = estavel(detetor, estado.ligado ? rpm : 0, agora)
     detetor = e.d
@@ -164,12 +184,11 @@ module.exports = function (app) {
   plugin.start = function (props) {
     o = { fonte: 'candump', interface: 'can1', estimarConsumo: true, fatorConsumo: 1, mapaAlarmes: [], ...props }
     valores = {}
+    vistoEm = {}
     estado = novoEstadoMotor()
     desc = novaDescoberta()
     ativosMapa = {}
-    rpmEm = 0
     rpmAtual = 0
-    lfeEm = 0
     vistasTotal = 0
     const dir = app.getDataDirPath()
     fs.mkdirSync(dir, { recursive: true })
@@ -208,7 +227,7 @@ module.exports = function (app) {
     // Curva de consumo aprendida no barco (para a página Motor).
     router.get('/consumo', (req, res) => res.json({
       ...resumo(curva || novaCurva()),
-      consumo: 'propulsion.main.fuel.rate' in valores ? 'medido pelo MDI' : `estimado (curva Volvo × ${o.fatorConsumo})`
+      consumo: CONSUMO in valores ? 'medido pelo MDI' : `estimado (curva Volvo × ${o.fatorConsumo})`
     }))
     router.get('/pagina', (req, res) => {
       const d = diag()
