@@ -11,6 +11,7 @@ const { novoEstadoMotor, avaliarMotor } = require('./lib/motor')
 const { novaDescoberta, registar, alarmesDoMapa } = require('./lib/descoberta')
 const { criarDetetor, estavel, novaCurva, amostra, resumo } = require('./lib/curva')
 const { lerInterface, avaliarLigacao } = require('./lib/ligacao')
+const { criarAtivos } = require('./lib/ativos')
 
 // Cada caminho guarda a hora da última trama que o trouxe com um valor (vistoEm). Sem ele há mais de
 // 5 s — a PGN deixou de chegar ou chega com o campo "sem dado" — o caminho passa a desconhecido (null),
@@ -36,6 +37,10 @@ const { lerInterface, avaliarLigacao } = require('./lib/ligacao')
 //     (warn, apito curto, só para o ecrã: o porto não o manda para o Telegram), que limpa com uma trama ou
 //     com 30 s seguidos de 'calado' (a interface a ir e vir não o faz apitar outra vez). O estado do plugin
 //     passa a erro com o motivo (o de cada segundo já não apaga o erro do candump).
+// Nota do SignalK 2.33 (adenda 2): ao parar o plugin o servidor apaga da árvore os valores dele. Os alarmes
+// ativos ficam em alarmes-ativos.json (lib/ativos.js) e o arranque seguinte volta a publicá-los e a pô-los
+// ativos nas regras (o sobreaquecimento, o alternador, o mapa do MDI, o semLigacao), que decidem depois se
+// continuam; o stop() continua a pôr a árvore a normal (auditoria I-21).
 const VELHO = 5000
 const REV = 'propulsion.main.revolutions'
 const CONSUMO = 'propulsion.main.fuel.rate'
@@ -98,6 +103,7 @@ module.exports = function (app, { spawn: lancar = spawn, lerInterface: interface
   let avisoLigacao = false // o aviso semLigacao está publicado
   let caladoDesde = null // desde quando está 'calado' seguido, com o aviso publicado
   let aCorrer = false // entre o start() e o stop()
+  let ativosArq = null // os alarmes ativos no ficheiro (lib/ativos.js)
 
   const fresco = (p, agora) => agora - (vistoEm[p] ?? -Infinity) <= VELHO
 
@@ -129,11 +135,12 @@ module.exports = function (app, { spawn: lancar = spawn, lerInterface: interface
     }
   }
 
-  function publicarNotificacoes (ns) {
+  // registar: o ficheiro dos ativos segue o que se publica (o "normal" do stop() não: o arranque seguinte repõe-nos)
+  function publicarNotificacoes (ns, { registar = true } = {}) {
     if (!ns.length) return
-    app.handleMessage(plugin.id, {
-      updates: [{ values: ns.map(n => ({ path: `notifications.propulsion.main.${n.id}`, value: { state: n.state, method: n.method, message: n.message, ...(n.apito ? { apito: n.apito } : {}) } })) }]
-    })
+    const values = ns.map(n => ({ path: `notifications.propulsion.main.${n.id}`, value: { state: n.state, method: n.method, message: n.message, ...(n.apito ? { apito: n.apito } : {}) } }))
+    app.handleMessage(plugin.id, { updates: [{ values }] })
+    if (registar) ativosArq?.registar(values)
   }
 
   // O aviso semLigacao (C11): acende ao ficar sem ligação; limpa com uma trama ou com CALADO_LIMPA
@@ -220,6 +227,7 @@ module.exports = function (app, { spawn: lancar = spawn, lerInterface: interface
       app.setPluginStatus(`${o.fonte} · calado (ignição desligada): ${ha} · ${vistasTotal} tramas · ${pgns}`)
     } else if (ligacao === null) app.setPluginStatus(`${o.fonte} · à escuta${o.fonte === 'simulador' ? '' : ` em ${o.interface}`}…`)
     else app.setPluginStatus(`${o.fonte} · ${vistasTotal} tramas · ${estado.ligado ? Math.round(rpm) + ' rpm' : 'parado'} · ${pgns}`)
+    ativosArq?.gravar()
   }
 
   // Velocidade na água se for recente; senão a velocidade no fundo.
@@ -286,14 +294,35 @@ module.exports = function (app, { spawn: lancar = spawn, lerInterface: interface
     avisoLigacao = false
     caladoDesde = null
     aCorrer = true
-    // Um alarme não pode ficar preso na árvore (auditoria I-21): os deste plugin que ficaram ativos de
-    // antes passam a normal (a regra volta a dar o alarme se ainda for verdade); no stop(), os ativos.
-    const ids = ['overTemperature', 'alternadorNaoCarrega', 'semLigacao', ...(o.mapaAlarmes || []).map(m => m.id)]
-    publicarNotificacoes([...new Set(ids)]
-      .filter(id => { const s = app.getSelfPath?.(`notifications.propulsion.main.${id}`)?.value?.state; return s && s !== 'normal' })
-      .map(id => ({ id, state: 'normal', method: [], message: 'Normal' })))
     const dir = app.getDataDirPath()
     fs.mkdirSync(dir, { recursive: true })
+    // Os alarmes que estavam ativos antes do reinício (nota do SignalK 2.33): voltam a publicar-se, com o
+    // mesmo valor, e ficam ativos nas regras (um id que já não está na configuração fica de fora).
+    ativosArq = criarAtivos(path.join(dir, 'alarmes-ativos.json'), { erro: (e) => (app.error ? app.error(e) : app.debug(e)) })
+    const PREFIXO = 'notifications.propulsion.main.'
+    const doMapa = new Set((o.mapaAlarmes || []).map(m => m.id))
+    const repostos = []
+    for (const [caminho, valor] of Object.entries(ativosArq.repor().ativos)) {
+      const id = caminho.startsWith(PREFIXO) ? caminho.slice(PREFIXO.length) : null
+      if (id === 'semLigacao') avisoLigacao = true
+      else if (id === 'overTemperature' && doMapa.has(id)) ativosMapa[id] = true
+      else if (id === 'overTemperature' || id === 'alternadorNaoCarrega') estado.ativos[id] = true
+      else if (doMapa.has(id)) ativosMapa[id] = true
+      else continue
+      repostos.push({ path: caminho, value: valor })
+    }
+    if (repostos.length) {
+      app.handleMessage(plugin.id, { updates: [{ values: repostos }] })
+      ativosArq.registar(repostos)
+    }
+    // Um alarme não pode ficar preso na árvore (auditoria I-21): os deste plugin que ficaram ativos de
+    // antes e não se repuseram passam a normal (a regra volta a dar o alarme se ainda for verdade); no
+    // stop(), os ativos.
+    const ids = ['overTemperature', 'alternadorNaoCarrega', 'semLigacao', ...doMapa]
+    publicarNotificacoes([...new Set(ids)]
+      .filter(id => !repostos.some(r => r.path === PREFIXO + id))
+      .filter(id => { const s = app.getSelfPath?.(PREFIXO + id)?.value?.state; return s && s !== 'normal' })
+      .map(id => ({ id, state: 'normal', method: [], message: 'Normal' })))
     ficheiroDesc = path.join(dir, 'descoberta-65417.jsonl')
     try { mudancas = fs.readFileSync(ficheiroDesc, 'utf8').trim().split('\n').filter(Boolean).slice(-50).map(l => JSON.parse(l)) } catch { mudancas = [] }
     ficheiroCurva = path.join(dir, 'curva-consumo.json')
@@ -321,8 +350,10 @@ module.exports = function (app, { spawn: lancar = spawn, lerInterface: interface
     proc = null // o 'close' dele já não conta (acabou)
     candumpVivo = false
     if (p) p.kill()
+    // o ficheiro fica com os ativos (o arranque seguinte repõe-nos); a árvore passa a normal (I-21)
+    ativosArq?.gravar({ forcar: true })
     const ativos = [...Object.keys(estado?.ativos || {}), ...Object.keys(ativosMapa || {}), ...(avisoLigacao ? ['semLigacao'] : [])]
-    publicarNotificacoes([...new Set(ativos)].map(id => ({ id, state: 'normal', method: [], message: 'Normal' })))
+    publicarNotificacoes([...new Set(ativos)].map(id => ({ id, state: 'normal', method: [], message: 'Normal' })), { registar: false })
     if (estado) estado = { ...estado, ativos: {} }
     ativosMapa = {}
     avisoLigacao = false
