@@ -56,7 +56,8 @@ export function textoDaEntrada (x) {
   return t
 }
 
-const MODELOS_IA = [['velocidade', 'Velocidade'], ['ventoForca', 'Vento'], ['consumo', 'Consumo']]
+// os 4 modelos da AI (signalk-arlequin-ia/lib/modelos.js, NOMES; auditoria M-48: faltava a direção do vento)
+const MODELOS_IA = [['velocidade', 'Velocidade'], ['ventoForca', 'Vento'], ['ventoDirecao', 'Direção do vento'], ['consumo', 'Consumo']]
 
 const agora = (ctx) => (Number.isFinite(ctx.agora) ? ctx.agora : Date.now())
 // o dia de Lisboa (o plugin do ecrã junta os dois dias UTC do logbook que lhe tocam)
