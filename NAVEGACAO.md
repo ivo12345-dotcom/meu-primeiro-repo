@@ -312,7 +312,7 @@ contra os 90 L de origem. Consequências:
   primeiro.
 
 **Calibração** (o depósito não é um cubo, por isso a leitura não é linear):
-- Com o depósito quase vazio, ir **enchendo aos 20 L** (10 pontos até aos
+- Com o depósito quase vazio, **encher de 20 em 20 L** (10 pontos até aos
   200 L) e registar a leitura a cada passo.
 - **Atalho:** o dono anterior deixou um **desenho do medidor com as
   quantidades**. Com essa tabela (posição do ponteiro → litros) basta
@@ -468,7 +468,7 @@ alimentação da HAT a alimentar tudo
 | 15 | **2 besouros piezo ativos 12 V, 95 dB a 30 cm**, 8 mA (1 no poço, 1 na **cabine do comandante**, junto ao beliche e ao ecrã 2) | [Botnroll PT](https://www.botnroll.com/en/sounders/861-buzzer-piezoelectrico.html) | **€3,60** (2 × €1,80) | Comandados pelo Pi por um **transístor NPN** (BC337 ou 2N2222) + resistência de 1 kΩ, a partir de um GPIO (cêntimos). Testar se o volume acorda quem dorme; se não, trocar por uma sirene de painel mais forte |
 | 16 | **Sensor de inclinação (IMU) SparkFun 9DoF ICM-20948 (Qwiic)**: adorno e caimento para o abatimento | [RS Online](https://es.rs-online.com/web/p/kits-de-desarrollo-de-sensores/2836590) | **~€25,51** (€21,08 s/IVA) | Liga à ficha Qwiic/I²C da MacArthur. O da OpenMarine (€10 s/IVA) está esgotado e o revendedor dos EUA deixou de o vender por problemas de qualidade. Montar rígido e alinhado com o eixo do barco, longe de ferro |
 | 17 | **Sensor de temperatura DS18B20 à prova de água, 2 m** (frigorífico) + resistência de 4,7 kΩ | [Botnroll PT](https://www.botnroll.com/en/temperature/429-sensor-de-temperatura-a-prova-de-agua-ds18b20-09m-.html) | **€4,65** (em promoção, antes €9,30) | 1-Wire num GPIO do Pi. Vários no mesmo fio: dá para juntar depois a casa do motor, a cabine, etc. Alarme se o frigorífico aquecer |
-| | **Total** | | **≈ €597** (€482 + ~€50 motor + ~€8 gasóleo + €24 barómetro + €4 besouros + €26 IMU + €5 frigorífico) | Sem portes, sem cabos e sem o kit N2K. Portes: contar €30–50 |
+| | **Total** | | **≈ €596** (€482 dos itens 1–11 + €49,21 motor + ~€7,50 gasóleo + €23,80 barómetro + €3,60 besouros + €25,51 IMU + €4,65 frigorífico) | Sem portes, sem cabos e sem o kit N2K. Portes: contar €30–50 |
 
 **Também é preciso** (preço não confirmado, loja náutica ou sobras):
 - Cabo **estanhado** de 1,5 mm² (≥ 16 AWG) vermelho/preto, do quadro até ao
@@ -1046,7 +1046,7 @@ Fontes: [signalk-logbook](https://github.com/meri-imperiumi/signalk-logbook),
 acesso **pela cabine** e **tirando a escada**. A ficha Deutsch do MDI e a
 ligação ao Pi (USB–CAN) ficam a poucos metros da mesa de navegação.
 
-**Planta (ficha técnica Jeanneau, em `Documents\Veleirorochura`):** de popa
+**Planta (ficha técnica Jeanneau, em `Documents\Veleiro\brochura`):** de popa
 para proa: cabine de popa com cama de casal a **estibordo**, por baixo do poço;
 **mesa de navegação a estibordo** à frente dela; cozinha a bombordo; escada
 ao centro; sala com beliches dos dois lados (os **depósitos de água** estão
@@ -1152,8 +1152,8 @@ funcionar também ali:
     de cada MPPT, junto às baterias. Preço do MPPT 100/30 (29/09): **€129,95** na
     [SVB](https://www.svb24.pt/pt/victron-controlador-de-carga-solar-smartsolar-mppt-100-30.html). Cabo de 6 mm² do MPPT às baterias (troço
     curto) e 4–6 mm² com MC4 do painel ao MPPT. Confirmar que o Voc a frio do
-    painel escolhido fica abaixo de 100 V. Produção estimada: ~150–180 Ah/dia
-    no verão e ~60–80 Ah/dia no inverno.
+    painel escolhido fica abaixo de 100 V. Produção estimada: ~168–229 Ah/dia
+    no verão e ~70–95 Ah/dia no inverno (o quadro do §5c; aqui dizia ~150–180 e ~60–80).
     **Painel candidato (29/09):** Victron BlueSolar 305W-20V mono
     (SPM043052002): 1658 × 1002 × 35 mm, 19 kg; Vmp 32,5 V, Imp 9,38 A, Voc
     39,7 V, Isc 10,27 A. Com o MPPT 100/30: Voc a 0 °C ≈ 43 V (< 100 V),
@@ -1190,7 +1190,14 @@ Garmin é fraco. No Pi, acrescentar à lista um **altifalante ou besouro forte**
 5. Desenhar e imprimir o suporte e a pala.
 6. Instalar, e testar primeiro no porto e depois a navegar.
 
-## 10. Fora do âmbito deste documento (subprojeto seguinte)
+## 10. Monitorização no porto (notas de 28/09, antes do plugin porto)
+
+**Substituído (29/09):** a monitorização no porto é o plugin `signalk-arlequin-porto`, no mesmo
+Pi: alarmes e comandos pelo **Telegram**, com o router Teltonika **RUT241** (desenho
+`docs/superpowers/specs/2026-09-29-porto-design.md`); o Meshtastic fica para depois de o sistema
+estar validado. A base é o próprio Pi, com o SmartShunt lido por Bluetooth, e não o Victron Cerbo
+GX. O solar decidido é de **2 × 305 W** (§8b, ponto 16) e, com 220 Ah úteis e ~27 Ah/dia, o barco
+aguenta **~8 dias** sem carregar (§5b). O texto abaixo é o de 28/09.
 
 ### Atualização de 28/09: decisões para a monitorização no porto
 - **O mesmo Pi fica sempre ligado.** O Ivo vai pôr painéis solares; a energia
