@@ -5,49 +5,73 @@
 //            por um delta no WebSocket. Com o arlequin-simulador ligado a posição volta a ser a
 //            dele no segundo seguinte: para isto, desliga o simulador.
 // --ativar:  ativa a melhor alternativa e confirma na API de rumo v2 que a rota ficou ativa.
+// NUNCA no Pi (auditoria I-35, contrato C9): o --em e o --ativar só correm no SignalK do dev — o plugin
+// da rota com o modoTeste ligado (como na configuração do dev), a configuração legível (sem a segurança
+// do SignalK) e o porto desligado ou ligado ao Telegram falso só com os contactos falsos (a mesma guarda
+// da viagem acelerada, guarda-dev.js, sem exigir a hora simulada). O cálculo sozinho corre em qualquer
+// lado. O que o --em injeta leva a fonte 'arlequin-simulador.testar-rota': a caixa negra marca-o simulado.
 const fs = require('node:fs')
 const path = require('node:path')
+const { fonteDev, motivosParaNaoCorrer } = require('./guarda-dev')
 
-const args = process.argv.slice(2)
-const arg = (nome, padrao) => { const i = args.indexOf(`--${nome}`); return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : padrao }
-const tem = (nome) => args.includes(`--${nome}`)
-const porta = Number(arg('porta', 3000))
-const base = `http://localhost:${porta}`
-const plugin = `${base}/plugins/signalk-arlequin-rota`
+const FONTE = fonteDev('testar-rota')
 
-async function json (url, opcoes) {
-  const r = await fetch(url, { ...opcoes, headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(30000) })
-  const texto = await r.text()
-  let corpo = null
-  try { corpo = JSON.parse(texto) } catch { corpo = texto }
-  return { status: r.status, corpo }
-}
-
-async function porNoCais (id) {
-  const d = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'signalk-arlequin-rota', 'dados', 'destinos.json'), 'utf8')).find(x => x.id === id)
-  if (!d) throw new Error(`destino desconhecido: ${id}`)
-  const [lat, lon] = d.aproximacao.at(-1)
-  const ws = new WebSocket(`ws://localhost:${porta}/signalk/v1/stream?subscribe=none`)
-  await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = () => reject(new Error('WebSocket do SignalK')) })
-  ws.send(JSON.stringify({
+// O delta do --em: o barco no cais, com SoC 90 % e 124 L de gasóleo.
+function deltaNoCais ({ lat, lon }, agora = Date.now()) {
+  return {
     context: 'vessels.self',
     updates: [{
-      $source: 'testar-rota',
-      timestamp: new Date().toISOString(),
+      $source: FONTE,
+      timestamp: new Date(agora).toISOString(),
       values: [
         { path: 'navigation.position', value: { latitude: lat, longitude: lon } },
         { path: 'electrical.batteries.servico.capacity.stateOfCharge', value: 0.9 },
         { path: 'tanks.fuel.0.currentVolume', value: 0.124 }
       ]
     }]
-  }))
-  await new Promise(resolve => setTimeout(resolve, 500))
-  ws.close()
-  const pos = await json(`${base}/signalk/v1/api/vessels/self/navigation/position/value`)
-  console.log(`posição no SignalK: ${JSON.stringify(pos.corpo)} (${d.nome})`)
+  }
 }
 
-async function main () {
+const precisaGuarda = (args) => args.includes('--em') || args.includes('--ativar')
+
+// → [motivo] para não correr (vazio: pode). Só pergunta ao servidor com --em ou --ativar.
+async function guarda (args, base, json) {
+  if (!precisaGuarda(args)) return []
+  return motivosParaNaoCorrer(base, json, { viagem: false })
+}
+
+async function main (args = process.argv.slice(2)) {
+  const arg = (nome, padrao) => { const i = args.indexOf(`--${nome}`); return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : padrao }
+  const tem = (nome) => args.includes(`--${nome}`)
+  const porta = Number(arg('porta', 3000))
+  const base = `http://localhost:${porta}`
+  const plugin = `${base}/plugins/signalk-arlequin-rota`
+
+  async function json (url, opcoes) {
+    const r = await fetch(url, { ...opcoes, headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(30000) })
+    const texto = await r.text()
+    let corpo = null
+    try { corpo = JSON.parse(texto) } catch { corpo = texto }
+    return { status: r.status, corpo }
+  }
+
+  async function porNoCais (id) {
+    const d = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'signalk-arlequin-rota', 'dados', 'destinos.json'), 'utf8')).find(x => x.id === id)
+    if (!d) throw new Error(`destino desconhecido: ${id}`)
+    const [lat, lon] = d.aproximacao.at(-1)
+    const ws = new WebSocket(`ws://localhost:${porta}/signalk/v1/stream?subscribe=none`)
+    await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = () => reject(new Error('WebSocket do SignalK')) })
+    ws.send(JSON.stringify(deltaNoCais({ lat, lon })))
+    await new Promise(resolve => setTimeout(resolve, 500))
+    ws.close()
+    const pos = await json(`${base}/signalk/v1/api/vessels/self/navigation/position/value`)
+    console.log(`posição no SignalK: ${JSON.stringify(pos.corpo)} (${d.nome})`)
+  }
+
+  // 0. o --em e o --ativar só no SignalK do dev (nunca no Pi)
+  const motivos = await guarda(args, base, json)
+  if (motivos.length) throw new Error(`não corro o --em nem o --ativar aqui (só no SignalK do dev):\n  - ${motivos.join('\n  - ')}`)
+
   if (arg('em')) await porNoCais(arg('em'))
   const pedido = { destino: arg('destino', 'peniche'), tripulacao: arg('tripulacao', 'so'), sairAgora: tem('sair-agora') }
   const a = await json(`${plugin}/calcular`, { method: 'POST', body: JSON.stringify(pedido) })
@@ -82,4 +106,8 @@ async function main () {
   }
 }
 
-main().catch(e => { console.error(`falhou: ${e.message}`); process.exitCode = 1 })
+if (require.main === module) {
+  main().catch(e => { console.error(`falhou: ${e.message}`); process.exitCode = 1 })
+}
+
+module.exports = { FONTE, deltaNoCais, precisaGuarda, guarda }

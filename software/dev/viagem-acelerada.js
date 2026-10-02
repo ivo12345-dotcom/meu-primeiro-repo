@@ -13,8 +13,10 @@
 // ligado ao Telegram falso (telegramBase em localhost) só com os contactos falsos do dev (chatId 222);
 // com a segurança do SignalK ligada (como no barco), a configuração não se lê e também recusa.
 // Ctrl-C (ou um erro a meio): termina o plano, desativa a rota e repõe a hora (navigation.datetime de
-// agora). No fim do teste, desliga o modoTeste no plugin da rota (as opções de teste ficam desligadas
-// por omissão).
+// agora). No fim do teste, desliga a horaSimulada e põe o cicloSegundos nos 60 (no plugin da rota as
+// opções de teste vêm desligadas por omissão; na configuração do dev o modoTeste fica ligado — é a marca
+// de que este SignalK é de testes, e o testar-rota --em/--ativar também a pede).
+// Os deltas levam a fonte 'arlequin-simulador.viagem-acelerada': a caixa negra marca-os "simulado".
 //
 // Antes (o plugin da rota com modoTeste, horaSimulada e cicloSegundos 1; o simulador desligado; o porto
 // ligado ao Telegram falso):
@@ -33,37 +35,18 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const { ROTA_ID, FALSOS, fonteDev, verificarDev, motivosParaNaoCorrer } = require('./guarda-dev')
 
 const MIN = 60000
 const H = 3600000
 const NO = 1852 / 3600
 const GRAU = Math.PI / 180
-// os contactos do plano falsos do dev (config/plugin-config-data/signalk-arlequin-porto.json)
-const FALSOS = new Set(['222'])
-const ROTA_ID = 'signalk-arlequin-rota'
-const PORTO_ID = 'signalk-arlequin-porto'
+// A fonte dos deltas (auditoria I-35, contrato C9): a caixa negra marca 'arlequin-simulador.*' como
+// simulado (nunca treina a AI). A guarda (verificarDev) e os contactos falsos estão em guarda-dev.js.
+const FONTE = fonteDev('viagem-acelerada')
 
-// O SignalK é o do dev? rota e porto: as configurações (GET /plugins/<id>/config) ou null (não se
-// leram). → [motivo] (vazio: pode correr)
-function verificarDev ({ rota, porto }) {
-  const motivos = []
-  const cr = rota?.configuration
-  if (!cr) motivos.push(`não consegui ler a configuração do plugin da rota (a segurança do SignalK está ligada? isto é o Pi?): só corre no SignalK do dev`)
-  else {
-    if (cr.modoTeste !== true) motivos.push('o plugin da rota não tem o modoTeste ligado (só no dev)')
-    if (cr.horaSimulada !== true) motivos.push('o plugin da rota não tem a horaSimulada ligada (com o modoTeste)')
-  }
-  const cp = porto?.configuration
-  if (!porto) motivos.push('não consegui ler a configuração do plugin porto')
-  else if (porto.enabled !== false) {
-    let base = null
-    try { base = new URL(cp?.telegramBase || 'https://api.telegram.org') } catch { base = null }
-    if (!base || !['localhost', '127.0.0.1', '[::1]'].includes(base.hostname)) motivos.push('o plugin porto não está ligado ao Telegram falso (telegramBase em localhost)')
-    const verdadeiros = (Array.isArray(cp?.contactosPlano) ? cp.contactosPlano : []).filter(c => !FALSOS.has(String(c?.chatId ?? '').trim()))
-    if (verdadeiros.length) motivos.push(`o plugin porto tem contactos do plano verdadeiros: ${verdadeiros.map(c => c?.nome || c?.chatId).join(', ')}`)
-  }
-  return motivos
-}
+// O delta que a viagem manda pelo WebSocket, à hora (simulada) t.
+const deltaViagem = (t, valores) => ({ context: 'vessels.self', updates: [{ $source: FONTE, timestamp: new Date(t).toISOString(), values: valores }] })
 
 // Ctrl-C ou um erro a meio: termina o plano, desativa a rota e repõe a hora (um passo que falha não
 // impede os outros).
@@ -163,13 +146,12 @@ async function main () {
   }
   const enviar = (t, valores) => {
     if (!ligado) return false
-    ws.send(JSON.stringify({ context: 'vessels.self', updates: [{ $source: 'viagem-acelerada', timestamp: new Date(t).toISOString(), values: valores }] }))
+    ws.send(JSON.stringify(deltaViagem(t, valores)))
     return true
   }
 
   // 0. só no SignalK do dev (nunca no Pi): a configuração lida do servidor
-  const config = async (id) => { try { const r = await json(`${base}/plugins/${id}/config`); return r.status === 200 && r.corpo && typeof r.corpo === 'object' ? r.corpo : null } catch { return null } }
-  const motivos = verificarDev({ rota: await config(ROTA_ID), porto: await config(PORTO_ID) })
+  const motivos = await motivosParaNaoCorrer(base, json)
   if (motivos.length) throw new Error(`não corro aqui (só no SignalK do dev):\n  - ${motivos.join('\n  - ')}`)
 
   // Ctrl-C a meio: termina o plano, desativa a rota e repõe a hora
@@ -302,4 +284,4 @@ if (require.main === module) {
   })
 }
 
-module.exports = { posicaoNoRasto, criarCenario, verificarDev, limpar, FALSOS }
+module.exports = { posicaoNoRasto, criarCenario, verificarDev, limpar, FALSOS, FONTE, deltaViagem }

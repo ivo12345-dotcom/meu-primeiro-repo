@@ -6,6 +6,7 @@
     "afastamentoMinimo": 5,
     "rpmCruzeiro": 2100,
     "previsoes": true,
-    "porta": 3000
+    "porta": 3000,
+    "modoTeste": true
   }
 }
