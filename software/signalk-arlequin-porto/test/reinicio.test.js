@@ -177,3 +177,17 @@ test('auditoria I-21: um alarme do porto preso na árvore por uma versão antiga
     assert.deepEqual(textos(tgf), ['✓ Resolvido: Água no porão!'])
   } finally { p.stop(); await tgf.fechar() }
 })
+
+test('auditoria I-07 (contrato C1): o valor publicado leva o apito, também no alarme reposto depois de um reinício', async () => {
+  const { tgf, app, p, config } = await arrancar()
+  p.start(config)
+  try {
+    app.pôr('sensors.porao.agua', 1)
+    assert.ok(await ate(() => estadoDe(app, AGUA) === 'alarm'))
+    assert.deepEqual(app.getSelfPath(AGUA).value, { state: 'alarm', method: ['visual', 'sound'], message: 'Água no porão!', apito: 'continuo' })
+    p.stop()
+    assert.deepEqual(app.getSelfPath(AGUA).value, { state: 'normal', method: [], message: 'Normal' })
+    p.start(config)
+    assert.deepEqual(app.getSelfPath(AGUA).value, { state: 'alarm', method: ['visual', 'sound'], message: 'Água no porão!', apito: 'continuo' })
+  } finally { p.stop(); await tgf.fechar() }
+})

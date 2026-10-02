@@ -1,7 +1,7 @@
 'use strict'
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { novoEstado, passo, distancia, LIMITES } = require('../lib/regras')
+const { novoEstado, passo, distancia, LIMITES, ALARMES, APITO } = require('../lib/regras')
 
 const S = 1000
 const MIN = 60 * S
@@ -73,6 +73,25 @@ test('fumo é emergência; líquido debaixo do depósito é alarme', () => {
   const r = correr([[0, { fumo: true, liquidoGasoleo: true }]])
   assert.equal(r.notif.find(n => n.id === 'fumo').state, 'emergency')
   assert.equal(r.notif.find(n => n.id === 'fugaGasoleo').state, 'alarm')
+})
+
+test('auditoria I-07 (decisão n.º 2, contrato C1): apito contínuo para o perigo imediato (fumo, água no porão e bomba, fuga de gasóleo); curto para a intrusão e a deriva; o normal sem apito', () => {
+  const r = correr([
+    [0, { agua: true, fumo: true, liquidoGasoleo: true, bomba: true, armado: true, movimento: true }],
+    [3 * MIN + S, { agua: true, fumo: true, liquidoGasoleo: true, bomba: true, armado: true }],
+    ...minutos(4, 34, { agua: true, fumo: true, liquidoGasoleo: true, bomba: true, armado: true }),
+    [35 * MIN, { posicao: aNorte(40), agua: false, fumo: false, liquidoGasoleo: false, bomba: false, armado: false }]
+  ])
+  const apito = (id, state) => r.notif.filter(n => n.id === id && n.state === state).map(n => n.apito)
+  assert.deepEqual(apito('aguaPorao', 'alarm'), ['continuo'])
+  assert.deepEqual(apito('fumo', 'emergency'), ['continuo'])
+  assert.deepEqual(apito('fugaGasoleo', 'alarm'), ['continuo'])
+  assert.deepEqual(apito('bombaPorao', 'alarm'), ['continuo'])
+  assert.deepEqual(apito('intrusao', 'alarm'), ['curto'])
+  assert.deepEqual(apito('deriva', 'alarm'), ['curto'])
+  for (const id of ['aguaPorao', 'fumo', 'fugaGasoleo', 'intrusao']) assert.deepEqual(apito(id, 'normal'), [undefined], id)
+  // todos os alarmes deste plugin têm o seu apito
+  assert.deepEqual(Object.keys(APITO).sort(), [...ALARMES].sort())
 })
 
 test('intrusão: só armado; gaiuta ou movimento → alarme e pede fotografia', () => {

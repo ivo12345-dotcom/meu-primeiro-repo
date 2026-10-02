@@ -35,7 +35,7 @@ const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 const { exec } = require('node:child_process')
-const { ALARMES, novoEstado, passo, distancia } = require('./lib/regras')
+const { ALARMES, APITO, novoEstado, passo, distancia } = require('./lib/regras')
 const { novoEncaminhador, encaminhar, listarNotificacoes, alarmesAtivos } = require('./lib/mensagens')
 const { porNaFila, textoAEnviar, recuoMs, filaValida } = require('./lib/fila')
 const { resumo } = require('./lib/resumo')
@@ -301,11 +301,12 @@ module.exports = function (app, deps = {}) {
     }
   }
 
-  // notificacoes: [{ id, state, method, message }] → notifications.arlequin.porto.<id>
+  // notificacoes: [{ id, state, method, message, apito? }] → notifications.arlequin.porto.<id> (o apito do
+  // ecrã vai no valor: contrato C1)
   function publicar (notificacoes) {
     if (!notificacoes.length) return
     app.handleMessage(plugin.id, {
-      updates: [{ values: notificacoes.map(n => ({ path: `notifications.arlequin.porto.${n.id}`, value: { state: n.state, method: n.method, message: n.message } })) }]
+      updates: [{ values: notificacoes.map(n => ({ path: `notifications.arlequin.porto.${n.id}`, value: { state: n.state, method: n.method, message: n.message, ...(n.apito ? { apito: n.apito } : {}) } })) }]
     })
   }
 
@@ -328,7 +329,7 @@ module.exports = function (app, deps = {}) {
   }
   const comoNotificacao = (ativos, normal = false) => Object.entries(ativos).map(([id, a]) => normal
     ? { id, state: 'normal', method: [], message: 'Normal' }
-    : { id, state: a.state, method: ['visual', 'sound'], message: a.message })
+    : { id, state: a.state, method: ['visual', 'sound'], message: a.message, apito: APITO[id] })
 
   function tick () {
     const c = { ...CAMINHOS, ...(o.caminhos || {}) }

@@ -28,6 +28,12 @@ function distancia (a, b) {
 // Os alarmes que este plugin publica (notifications.arlequin.porto.<id>).
 const ALARMES = Object.freeze(['deriva', 'aguaPorao', 'bombaPorao', 'fumo', 'fugaGasoleo', 'intrusao'])
 
+// O apito no ecrã (decisão n.º 2 do dono, contrato C1; o campo `apito` no valor da notificação): o
+// contínuo só para o perigo imediato — o fumo, a água no porão (o sensor e a bomba a trabalhar sem
+// parar: "está a entrar água") e a fuga de gasóleo (o líquido debaixo do depósito); o resto com o
+// apito curto. O Telegram não muda com isto.
+const APITO = Object.freeze({ fumo: 'continuo', aguaPorao: 'continuo', bombaPorao: 'continuo', fugaGasoleo: 'continuo', intrusao: 'curto', deriva: 'curto' })
+
 // ativos: { id: { state, message } } os alarmes publicados ativos (o plugin grava-os no porto.json para
 // os repor depois de um reinício: auditoria I-21)
 function novoEstado () {
@@ -47,7 +53,7 @@ function passo (e0, l, t, lim = LIMITES) {
   const acoes = []
   const mudar = (id, deve, estado, mensagem) => {
     if (deve === null || deve === undefined || deve === !!e.ativos[id]) return
-    if (deve) { e.ativos[id] = { state: estado, message: mensagem }; notificacoes.push({ id, state: estado, method: ['visual', 'sound'], message: mensagem }) }
+    if (deve) { e.ativos[id] = { state: estado, message: mensagem }; notificacoes.push({ id, state: estado, method: ['visual', 'sound'], message: mensagem, apito: APITO[id] }) }
     else { delete e.ativos[id]; notificacoes.push({ id, state: 'normal', method: [], message: 'Normal' }) }
   }
 
@@ -112,4 +118,4 @@ function passo (e0, l, t, lim = LIMITES) {
   return { estado: e, notificacoes, acoes }
 }
 
-module.exports = { LIMITES, ALARMES, novoEstado, passo, distancia }
+module.exports = { LIMITES, ALARMES, APITO, novoEstado, passo, distancia }
