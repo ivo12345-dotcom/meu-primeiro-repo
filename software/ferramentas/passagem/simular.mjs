@@ -4,7 +4,11 @@
 // O motor da simulação é o do plugin da rota (signalk-arlequin-rota/lib/passagem.js);
 // aqui ficam a rota, a meteorologia deste caso, a energia do simulador e os alarmes.
 //   node simular.mjs [partida ISO local] [--dia AAAA-MM-DD] [--meteo f.json[.gz]] [--guardar-meteo f.json[.gz]]
-//     → passagem.json + resumo.json
+//     → passagem.json + resumo.json + rota.json, aqui ao lado (para o relatorio.mjs). São saídas de
+//     cada corrida, fora do git (.gitignore): NÃO são o resultado de referência. A referência de 29/09
+//     é a do teste do plugin da rota (signalk-arlequin-rota/test/fixtures/simular-2026-09-29-*.json*,
+//     com a meteorologia meteo-simular-2026-09-29.json.gz); para a ver aqui (auditoria M-16):
+//       node simular.mjs 2026-09-29T15:32 --meteo ../../signalk-arlequin-rota/test/fixtures/meteo-simular-2026-09-29.json.gz
 //   --dia: previsão de um dia passado (arquivo da Open-Meteo, esse dia e o seguinte)
 //   --meteo: corre com a meteorologia gravada (sem rede); --guardar-meteo: grava a que usou
 // Tudo o que é estimativa está assinalado no resumo.
@@ -24,7 +28,8 @@
 //   - os textos dos eventos mostram sempre a hora de Lisboa (`horaLisboa`), não a
 //     hora local do sistema onde o script corre.
 //
-// Eventos de noite: para a partida golden (29/09 15:32, chegada 05:00 antes do nascer do sol)
+// Eventos de noite: para a partida golden (29/09 15:32, chegada a 30/09 às 05:01 UTC — 06:01 em
+// Lisboa —, antes do nascer do sol; era 05:00 até 01/10, com a maré do Tejo errada à chegada a Peniche)
 // não há "Nascer do sol" nem "Partida de noite" nos eventos — por isso o golden não os mostra.
 // Outras partidas (mais cedo, mais tarde, ou viagens mais longas) PODEM emitir esses eventos
 // (lib/passagem.js: noitePeloSol), o que é esperado e não é "sem mudar resultados" para elas;

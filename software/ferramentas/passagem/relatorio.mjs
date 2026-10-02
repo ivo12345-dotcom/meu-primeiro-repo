@@ -1,6 +1,8 @@
 // Relatório da passagem simulada: SVG com o mapa (costa aproximada, rota,
 // rasto à vela/a motor, dia/noite) e gráficos de vento, velocidade e ondas.
 //   node relatorio.mjs → relatorio.svg
+// Lê as saídas da última corrida do simular.mjs (passagem.json, resumo.json, rota.json, aqui ao lado,
+// fora do git): corre primeiro o simular.mjs (ver lá como reproduzir o resultado de referência de 29/09).
 import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
