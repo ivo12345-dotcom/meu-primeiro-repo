@@ -685,3 +685,74 @@ test('revisão final C1: parado com o "Estou bem" do Ivo → sai uma mensagem; s
   assert.equal((await chamar(s.r.get['/plano-ativo'])).atrasoRetido.motivo, 'parado')
   s.p.stop()
 })
+
+// ---------- revisão final I1: o plano entregue em terra é de outra alternativa ou de outro cálculo ----------
+// Cascais → Algés, a 1.ª alternativa enviada à Mãe; nada ativado.
+async function enviarSem ({ alternativa = 0 } = {}) {
+  const app = appFalso()
+  const pl = plugin(app, { agendarCiclo: () => 1, pararCiclo: () => {}, agendar: () => 1, cancelar: () => {} })
+  pl.p.start({ pasta: path.join(app.dir, 'dados') })
+  const recebidos = []
+  app.on('arlequin:plano', (e) => { recebidos.push(e); app.emit('arlequin:plano-enviado', { pedido: e.pedido, entregues: ['chat 111', 'Mãe'], contactos: ['Mãe'], chats: ['222'], falhas: [] }) })
+  const { id, resultado } = await calcular(pl.r, { destino: 'alges', tripulacao: 'so' })
+  await chamar(pl.r.post['/plano-telegram'], { body: { id, alternativa } })
+  recebidos.length = 0
+  return { app, ...pl, id, resultado, recebidos }
+}
+
+test('revisão final I1 (sonda B): enviado o plano da 1.ª alternativa e ativada a 2.ª → o plano novo segue à Mãe com "Este plano substitui o anterior"; o plano ativo fica com os contactos e a hora de alarme de terra', async () => {
+  const s = await enviarSem()
+  // o Resultado diz que os contactos em terra têm o plano da 1.ª
+  const r = await chamar(s.r.get['/resultado/:id'], { params: { id: s.id } })
+  assert.deepEqual({ ...r.envioEmTerra, alarme: undefined }, { idCalculo: s.id, indice: 0, contactos: ['Mãe'], alarme: undefined })
+  assert.equal(r.envioEmTerra.alarme, new Date(require('../lib/plano').horaAlarme(s.resultado.alternativas[0])).toISOString())
+  const a = await chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 1 } })
+  assert.equal(a.code, 200, a.erro)
+  const planos = s.recebidos.filter(e => e.tipo === 'plano')
+  assert.equal(planos.length, 1)
+  assert.ok(planos[0].texto.includes(`\n${require('../lib/contactos').SUBSTITUI}\n`), planos[0].texto)
+  assert.deepEqual(planos[0].contactos, ['Mãe'])
+  const g = await chamar(s.r.get['/plano-ativo'])
+  assert.deepEqual(g.envio.contactos, ['Mãe'])
+  assert.equal(g.envio.alarme, new Date(require('../lib/plano').horaAlarme(s.resultado.alternativas[1])).toISOString(), 'entregue: a hora de alarme do plano novo')
+  s.p.stop()
+})
+
+test('revisão final I1: o envio entregue fica em ultimo-envio.json: depois de reiniciar o plugin, um cálculo novo ativado sem enviar segue aos contactos com "Este plano substitui o anterior"', async () => {
+  const s = await enviarSem()
+  s.p.stop()
+  const q = plugin(s.app, { agendarCiclo: () => 1, pararCiclo: () => {}, agendar: () => 1, cancelar: () => {} })
+  q.acertar(s.agora())
+  q.p.start({ pasta: path.join(s.app.dir, 'dados') })
+  const { id } = await calcular(q.r, { destino: 'alges', tripulacao: 'so' })
+  const r = await chamar(q.r.get['/resultado/:id'], { params: { id } })
+  assert.equal(r.envioEmTerra.idCalculo, s.id)
+  const a = await chamar(q.r.post['/ativar'], { body: { id, alternativa: 0 } })
+  assert.equal(a.code, 200, a.erro)
+  const planos = s.recebidos.filter(e => e.tipo === 'plano')
+  assert.equal(planos.length, 1)
+  assert.deepEqual(planos[0].contactos, ['Mãe'])
+  assert.deepEqual(q.p.planoAtivo().envio.contactos, ['Mãe'])
+  q.p.stop()
+})
+
+test('revisão final I1: depois do "cheguei bem" entregue, ou com a hora de alarme já passada, ativar outro plano não manda nada', async () => {
+  const s = await preparar()
+  await sair(s)
+  await chegar(s)
+  assert.ok(s.recebidos.some(e => e.tipo === 'chegada'))
+  const n = s.recebidos.length
+  const a = await chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 1 } })
+  assert.equal(a.code, 200, a.erro)
+  assert.equal(s.recebidos.length, n, 'a viagem acabou: terra já não tem hora de alarme')
+  assert.equal(s.p.planoAtivo().envio, null)
+  assert.equal((await chamar(s.r.get['/resultado/:id'], { params: { id: s.id } })).envioEmTerra, null)
+  s.p.stop()
+  // a hora de alarme do plano enviado já passou
+  const t = await enviarSem()
+  t.acertar(require('../lib/plano').horaAlarme(t.resultado.alternativas[0]) + MIN)
+  const { id } = await calcular(t.r, { destino: 'alges', tripulacao: 'so' })
+  assert.equal((await chamar(t.r.post['/ativar'], { body: { id, alternativa: 0 } })).code, 200)
+  assert.deepEqual(t.recebidos.filter(e => e.tipo === 'plano'), [])
+  t.p.stop()
+})

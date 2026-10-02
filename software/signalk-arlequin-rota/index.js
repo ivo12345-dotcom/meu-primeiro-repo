@@ -7,7 +7,9 @@
 // (readonly) e os POST um utilizador "read/write" (router.access; sem ele, só admin):
 //   POST /calcular { destino, tripulacao: 'so' | 'acompanhado', sairAgora } → 202 { id }
 //        (409 se já houver um a calcular; 503 com o plugin parado)
-//   GET  /resultado/:id → { estado: 'a calcular' | 'pronto' | 'erro', progresso, texto, resultado?, erro? }
+//   GET  /resultado/:id → { estado: 'a calcular' | 'pronto' | 'erro', progresso, texto, resultado?, erro?,
+//        envioEmTerra: { idCalculo, indice, contactos, alarme } | null } (envioEmTerra: o último plano entregue
+//        a contactos em terra que ainda conta — ultimo-envio.json; ao Ativar outro, segue o novo)
 //   GET  /destinos, POST /destinos { nome, lat, lon | posicaoAtual: true, conhecido, abrigo? (false) }
 //   POST /ativar { id, alternativa } (alternativa: índice 0–2 ou o id) → grava e ativa a rota
 //        → { ok, rota, href, via, alternativa, nota, planoAtivo: { estado } } (nota: a do canal, se a
@@ -51,7 +53,9 @@
 // na rota na última hora, a avançar agora e a ≤ 2 MN da rota, e nunca mais de 3 h sobre a hora de alarme
 // do plano sem o "Estou bem" do Ivo; parado ou à deriva não sai nada e fica a hora de alarme que terra
 // tem), "viagem terminada" no Terminar, e o plano novo ao Ativar outra alternativa com
-// um plano enviado aberto (o 422 de um cálculo antigo não ativa nada e o plano antigo fica). Pelo
+// um plano enviado aberto, ou sem ele quando os contactos em terra têm o plano de outra alternativa ou de
+// outro cálculo (o último entregue, em ultimo-envio.json, com a hora de alarme por passar e sem "cheguei
+// bem"/"terminada"; revisão final I1) (o 422 de um cálculo antigo não ativa nada e o plano antigo fica). Pelo
 // mesmo evento 'arlequin:plano' { pedido, tipo, texto, gpx? (só no tipo 'plano'), nomeFicheiro?,
 // destinatarios: 'contactos-do-plano', contactos: [nome], chats: [chatId] } (o porto escolhe pelo chatId),
 // uma mensagem de cada vez; a fila fica no plano ativo (sem resposta em 30 s ou sem o porto, nova
@@ -251,6 +255,32 @@ module.exports = function (app, deps = {}) {
   // (hora simulada, ciclo de 1 s) · …", para nunca passar despercebido no barco
   let modoTesteTexto = ''
   function estadoPlugin (texto) { app.setPluginStatus(`${modoTesteTexto}${texto}`) }
+  // O último plano entregue a contactos em terra (revisão final I1), em ultimo-envio.json (escrita atómica,
+  // vale depois de um reinício): { idCalculo, indice, contactos, chats, alarme (a hora de alarme que terra
+  // tem), enviadoEm, fechado } — fechado com o "cheguei bem"/"terminada" entregue (terra já não espera).
+  const ficheiroUltimoEnvio = () => path.join(dirPlugin, 'ultimo-envio.json')
+  function lerUltimoEnvio () {
+    try {
+      const x = JSON.parse(fs.readFileSync(ficheiroUltimoEnvio(), 'utf8'))
+      return eObjeto(x) && Array.isArray(x.contactos) ? x : null
+    } catch { return null }
+  }
+  function gravarUltimoEnvio (x) {
+    try { escreverAtomico(ficheiroUltimoEnvio(), JSON.stringify(x)) } catch (e) { app.error(`não gravei o último envio: ${e.message}`) }
+  }
+  // O do plano ativo (o envio dele chegou a terra, ou um atraso dele): passa a ser o último entregue.
+  function ultimoEnvioDoPlano () {
+    const p = planoAtivo
+    if (!p?.envio?.contactos?.length || !Number.isFinite(alarmeEmTerra(p))) return
+    gravarUltimoEnvio({ idCalculo: p.idCalculo, indice: p.indice, contactos: [...p.envio.contactos], chats: [...(p.envio.chats || [])], alarme: new Date(alarmeEmTerra(p)).toISOString(), enviadoEm: p.envio.enviadoEm ?? null, fechado: false })
+  }
+  // O último entregue em terra que ainda conta: com contactos, sem "cheguei bem"/"terminada" e com a hora de
+  // alarme por passar; senão null.
+  function envioEmTerra (agora) {
+    const x = lerUltimoEnvio()
+    if (!x || x.fechado || !x.contactos.length || !(Date.parse(x.alarme) > agora)) return null
+    return x
+  }
   function gravarPlanoAtivo () {
     try { pa.gravar(dirPlugin, planoAtivo); afastGravado = planoAtivo?.afastamentoMaxMn ?? null } catch (e) { app.error(`não gravei o plano ativo: ${e.message}`) }
   }
@@ -279,6 +309,11 @@ module.exports = function (app, deps = {}) {
     p.estado = p.entregues.length ? 'enviado' : 'falhou'
     p.enviadoEm = new Date(relogio()).toISOString()
     if (!p.entregues.length) p.motivo = p.falhas.length ? p.falhas.map(f => `${f.nome}: ${f.erro}`).join('; ') : SEM_DESTINATARIOS
+    // entregue em terra: o último envio (revisão final I1)
+    if (p.contactos.length) {
+      const alarme = plano.horaAlarme(trabalhos.get(p.id)?.resultado?.alternativas?.[p.indice])
+      if (alarme != null) gravarUltimoEnvio({ idCalculo: p.id, indice: p.indice, contactos: [...p.contactos], chats: [...p.chats], alarme: new Date(alarme).toISOString(), enviadoEm: p.enviadoEm, fechado: false })
+    }
     // enviado depois de Ativar a mesma alternativa: fica no plano ativo
     if (pa.aberto(planoAtivo) && p.contactos.length && p.id === planoAtivo.idCalculo && p.indice === planoAtivo.indice) {
       const alt = trabalhos.get(p.id)?.resultado?.alternativas?.[p.indice]
@@ -438,6 +473,13 @@ module.exports = function (app, deps = {}) {
     }
     // o atraso só conta quando chega a terra: a hora de alarme do GET e o "em vez de" seguintes
     if (entregue && msg.tipo === 'atraso' && Number.isFinite(enviada.chegada)) planoAtivo = { ...planoAtivo, atrasoEnviado: { ultimoEm: agora, chegada: enviada.chegada, alarme: enviada.alarme } }
+    // o último envio em terra (revisão final I1): o plano novo ou o atraso entregues; o "cheguei bem" ou a
+    // "terminada" entregues fecham-no
+    if (entregue && (msg.tipo === 'plano' || msg.tipo === 'atraso')) ultimoEnvioDoPlano()
+    if (msg && enviada?.id === msg.id && (msg.tipo === 'chegada' || msg.tipo === 'terminado')) {
+      const u = lerUltimoEnvio()
+      if (u && !u.fechado) gravarUltimoEnvio({ ...u, fechado: true })
+    }
     gravarPlanoAtivo()
     enviarFila(agora)
   }
@@ -894,6 +936,9 @@ module.exports = function (app, deps = {}) {
       const out = { estado: t.estado, progresso: t.progresso, texto: t.texto }
       if (t.resultado) out.resultado = t.resultado
       if (t.erro) out.erro = t.erro
+      // o plano que os contactos em terra têm (revisão final I1): o Resultado avisa que, ao Ativar outro, segue o novo
+      const u = envioEmTerra(relogio())
+      out.envioEmTerra = u ? { idCalculo: u.idCalculo, indice: u.indice, contactos: [...u.contactos], alarme: u.alarme } : null
       res.json(out)
     })
 
@@ -946,8 +991,13 @@ module.exports = function (app, deps = {}) {
       const envioNovo = envioDe(id, indice, alt)
       const novoJaEnviado = !!envioNovo && !!antigo && Date.parse(envioNovo.enviadoEm) >= Date.parse(antigo.ativadoEm)
       const reenviar = !!antigo && !mesmo && !novoJaEnviado && !!antigo.envio?.contactos?.length
+      // revisão final I1: sem um plano aberto enviado, os contactos em terra podem ter o plano de outra
+      // alternativa ou de outro cálculo (o último entregue, com a hora de alarme por passar): o novo segue
+      // pelo caminho do reenvio ("Este plano substitui o anterior")
+      const emTerra = !reenviar && !mesmo ? envioEmTerra(relogio()) : null
+      const terraOutro = !!emTerra && !(emTerra.idCalculo === id && emTerra.indice === indice)
       let novoTexto = null
-      if (reenviar) {
+      if (reenviar || terraOutro) {
         try {
           novoTexto = plano.montarPlano({ resultado: t.resultado, indice, barco: o.barco, telefones: o.telefones, agora: relogio() })
         } catch (e) {
@@ -968,13 +1018,17 @@ module.exports = function (app, deps = {}) {
             planoAtivo = { ...anterior, href: r.href, estado: anterior.estado === 'pausado' ? anterior.pausadoDe || pa.ESTADOS.ESPERA : anterior.estado, pausadoDe: null }
           } else {
             let envio = envioNovo
-            if (reenviar) {
+            if (reenviar || terraOutro) {
               const alarme = plano.horaAlarme(alt)
-              const velho = anterior?.envio?.contactos?.length ? anterior : antigo
-              const de = velho.envio
-              // a hora de alarme em terra só muda quando o plano novo lá chegar (re-revisão M-3): até lá, a
-              // última entregue do plano antigo (o atraso entregue, ou a do plano); a nova fica pendente
-              const entregue = Number.isFinite(velho.atrasoEnviado?.alarme) ? new Date(velho.atrasoEnviado.alarme).toISOString() : de.alarme
+              let de = emTerra
+              let entregue = emTerra?.alarme
+              if (reenviar) {
+                const velho = anterior?.envio?.contactos?.length ? anterior : antigo
+                de = velho.envio
+                // a hora de alarme em terra só muda quando o plano novo lá chegar (re-revisão M-3): até lá, a
+                // última entregue do plano antigo (o atraso entregue, ou a do plano); a nova fica pendente
+                entregue = Number.isFinite(velho.atrasoEnviado?.alarme) ? new Date(velho.atrasoEnviado.alarme).toISOString() : de.alarme
+              }
               envio = { contactos: [...de.contactos], chats: [...(de.chats || [])], alarme: entregue, alarmePendente: alarme == null ? null : new Date(alarme).toISOString(), pedido: null, enviadoEm: null, substitui: true }
             }
             // um plano novo começa limpo (decisão do Ivo de 01/10): só herda do antigo o "cheguei
@@ -984,7 +1038,7 @@ module.exports = function (app, deps = {}) {
               planoAtivo.contactos = ct.herdar(anterior.contactos)
               try { pa.arquivar(dirPlugin, anterior, agora) } catch (e) { app.error(`não arquivei o plano antigo: ${e.message}`) }
             }
-            if (reenviar) porMensagem('plano', ct.textoSubstitui(novoTexto.texto), agora, { gpx: novoTexto.gpx, nomeFicheiro: novoTexto.nomeFicheiro })
+            if (reenviar || terraOutro) porMensagem('plano', ct.textoSubstitui(novoTexto.texto), agora, { gpx: novoTexto.gpx, nomeFicheiro: novoTexto.nomeFicheiro })
             memPlano = pa.novaMemoria(); estAcomp = ac.novoEstado(); estAvisos = av.novoEstado(); ventos = []; ultimo = null; retido = null
           }
           gravarPlanoAtivo()
