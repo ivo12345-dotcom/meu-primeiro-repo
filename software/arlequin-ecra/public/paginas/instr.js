@@ -19,7 +19,7 @@ export default {
     const cur = ctx.v('environment.current')
     const p = ctx.v('environment.outside.pressure')
     const t = ctx.baro
-    const tend = !t ? 'a medir (1 h)' : `${t.sentido === 'sobe' ? '▲' : t.sentido === 'desce' ? '▼' : '▬'} ${num(Math.abs(t.hpa3h), 1)} hPa/3 h`
+    const tend = !t ? 'a medir (3 h)' : `${t.sentido === 'sobe' ? '▲' : t.sentido === 'desce' ? '▼' : '▬'} ${num(Math.abs(t.hpa3h), 1)} hPa/3 h`
     const tIn = ctx.v('environment.inside.temperature')
     const hIn = ctx.v('environment.inside.relativeHumidity')
     const pr = proa(ctx)

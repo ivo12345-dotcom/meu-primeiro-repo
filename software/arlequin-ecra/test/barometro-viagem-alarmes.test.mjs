@@ -24,6 +24,24 @@ test('barómetro: menos de 1 h de histórico → sem tendência; ±0,5 hPa = est
   assert.equal(tendencia(c, 180 * 60000).sentido, 'estavel')
 })
 
+test('auditoria M-44: o barómetro do ecrã mede como o da rota — a queda real das últimas 3 h, sem extrapolar; até ter ~3 h de amostras, "a medir"', async () => {
+  // 1 h a descer 1,2 hPa: antes dava "▼ 3,6 hPa/3 h" (extrapolava) e a rota, com a mesma 1 h, 1,2 (sem aviso)
+  let b = criarBarometro()
+  for (let m = 0; m <= 60; m += 10) b = registarPressao(b, 101600 - m * 2, m * 60000)
+  assert.equal(tendencia(b, 60 * 60000), null)
+  for (let m = 70; m <= 160; m += 10) b = registarPressao(b, 101600 - m * 2, m * 60000)
+  assert.equal(tendencia(b, 160 * 60000), null, '2 h 40: ainda a medir')
+  for (let m = 170; m <= 240; m += 10) b = registarPressao(b, 101600 - m * 2, m * 60000)
+  // às 4 h: a queda das últimas 3 h (da amostra das 1 h às 4 h), como o quedaEm3h da rota: 3,6 hPa
+  const t = tendencia(b, 240 * 60000)
+  assert.equal(t.sentido, 'desce')
+  assert.ok(Math.abs(t.hpa3h + 3.6) < 0.01, String(t.hpa3h))
+  // a Instr. diz que precisa de 3 h
+  const { default: instr } = await import('../public/paginas/instr.js')
+  const html = instr.render({ v: () => undefined, baro: null, polar: null })
+  assert.match(html, /a medir \(3 h\)/)
+})
+
 test('barómetro guarda só 6 h', () => {
   let b = criarBarometro()
   for (let m = 0; m <= 600; m += 10) b = registarPressao(b, 101600, m * 60000)

@@ -14,16 +14,18 @@ export function registarPressao (b, pa, t) {
   return { amostras }
 }
 
-// { sentido: 'sobe'|'desce'|'estavel', hpa3h } ou null com menos de 1 h.
+// { sentido: 'sobe'|'desce'|'estavel', hpa3h } ou null ("a medir") sem ~3 h de amostras. A medida é a da
+// rota (o quedaEm3h do aviso do barómetro, signalk-arlequin-rota/lib/avisos-navegar.js): a diferença entre
+// a amostra mais antiga das últimas 3 h e a mais recente, sem extrapolar (auditoria M-44: com 1 h o ecrã
+// multiplicava por 3 e dizia "▼ 3,6 hPa/3 h" quando a rota, com a mesma hora, contava 1,2).
+const MINIMO = 2.75 * H // as amostras são de minuto a minuto: "~3 h"
 export function tendencia (b, agora) {
-  const a = b.amostras
+  const a = b.amostras.filter(x => x.t >= agora - 3 * H && x.t <= agora)
   if (!a.length) return null
-  const alvo = agora - 3 * H
-  const antiga = a.reduce((m, x) => Math.abs(x.t - alvo) < Math.abs(m.t - alvo) ? x : m, a[0])
-  const atual = a[a.length - 1]
-  const span = atual.t - antiga.t
-  if (span < H) return null
-  const hpa3h = Math.round((atual.pa - antiga.pa) / 100 * (3 * H / span) * 100) / 100
+  const antiga = a.reduce((m, x) => (x.t < m.t ? x : m), a[0])
+  const atual = a.reduce((m, x) => (x.t > m.t ? x : m), a[0])
+  if (atual.t - antiga.t < MINIMO) return null
+  const hpa3h = Math.round((atual.pa - antiga.pa) / 100 * 100) / 100
   const sentido = Math.abs(hpa3h) < 0.5 ? 'estavel' : hpa3h > 0 ? 'sobe' : 'desce'
   return { sentido, hpa3h }
 }
