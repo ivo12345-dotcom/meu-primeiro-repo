@@ -628,11 +628,12 @@ test('destino pela rota ativa do OpenCPN: o largo da lista, ou um ponto avulso c
   assert.equal(r.destinoDaRotaAtiva(real, []), null)
 })
 
-test('rápido: as 3 alternativas de Algés → Lagos em menos de 2 s (limite largo, para máquinas lentas)', () => {
-  const t = performance.now()
+test('as 3 alternativas de Algés → Lagos (a costa toda até ao Algarve): a de 3 MN fora pelo vento do mar, as de 5 e 8 MN pela linha', () => {
+  // sem limite de tempo (auditoria M-17: era "em menos de 2 s", o relógio de parede de uma máquina lenta)
   const alts = r.gerarRotas(real, { posicao: { lat: 38.6955, lon: -9.233 }, destino: D('lagos'), twd: 45 })
-  assert.equal(alts.length, 3)
-  assert.ok(performance.now() - t < 2000)
+  assert.deepEqual(alts.map(a => [a.afastamento, a.excluida]), [[3, true], [5, false], [8, false]])
+  assert.equal(alts[0].motivo, VENTO_DO_MAR)
+  for (const a of alts.slice(1)) assert.ok(a.milhas > 140 && a.milhas < 160, `${a.afastamento} MN: ${a.milhas}`)
 })
 
 test('canais.json em falta ou mal formado: só desativa as variantes por canal (registado), nunca as alternativas normais', () => {

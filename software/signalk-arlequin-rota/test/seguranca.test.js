@@ -170,7 +170,7 @@ test('calma (decisão do Ivo, C2): vento < 10 nós e (ondas < 2 m, ou ondas ≤ 
   assert.equal(um({ motor: false }), false)
 })
 
-test('chegada de noite a um porto desconhecido (no pessimista ou no provável)', () => {
+test('chegada de noite a um porto desconhecido (em qualquer um dos 3 cenários)', () => {
   const noite = (p) => { p.pontos.at(-1).noite = true; return p }
   const desconhecido = { nome: 'Figueira da Foz', conhecido: false }
   const r = s.avaliar(base({ destino: desconhecido, pessimista: noite(passagem()) }))
@@ -178,6 +178,7 @@ test('chegada de noite a um porto desconhecido (no pessimista ou no provável)',
   assert.deepEqual(r.motivos, ['chegada de noite a Figueira da Foz, um porto que não conheces'])
   assert.equal(r.chegadaNoite, true)
   assert.equal(s.avaliar(base({ destino: desconhecido, provavel: noite(passagem()) })).naoRecomendada, true)
+  assert.equal(s.avaliar(base({ destino: desconhecido, otimista: noite(passagem()) })).naoRecomendada, true)
   assert.equal(s.avaliar(base({ destino: { nome: 'Peniche', conhecido: true }, pessimista: noite(passagem()) })).naoRecomendada, false)
   assert.equal(s.avaliar(base({ destino: desconhecido })).naoRecomendada, false)
 })
