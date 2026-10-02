@@ -17,6 +17,7 @@ const confirmados = require('./lib/confirmados')
 const disco = require('./lib/disco')
 const velasLib = require('./lib/velas')
 const { PORTOS, portoMaisPerto } = require('./lib/geo')
+const { proaVerdadeira, DECLINACAO_MAX_MS } = require('./lib/proa')
 
 const NOME_GRANDE = { 0: 'inteira', 1: '1 rizo', 2: '2 rizos', '-1': 'arriada' }
 
@@ -110,10 +111,17 @@ module.exports = function (app) {
     }
   }
 
+  // A proa verdadeira: a headingTrue, ou a magnética das bússolas do barco + a declinação (lib/proa.js).
+  const proa = (agora) => proaVerdadeira({
+    headingTrue: est.valor(estado, 'navigation.headingTrue', agora),
+    headingMagnetic: est.valor(estado, 'navigation.headingMagnetic', agora),
+    magneticVariation: est.valor(estado, 'navigation.magneticVariation', agora, DECLINACAO_MAX_MS)
+  })
+
   function segundo () {
     const agora = Date.now()
     const v = (c) => est.valor(estado, c, agora)
-    estavel.juntar(janela, { t: agora, proa: v('navigation.headingTrue'), stw: v('navigation.speedThroughWater'), tws: v('environment.wind.speedTrue') })
+    estavel.juntar(janela, { t: agora, proa: proa(agora), stw: v('navigation.speedThroughWater'), tws: v('environment.wind.speedTrue') })
     contador++
     if (contador % 10 === 0) {
       try { dezSegundos(agora, v) } catch (e) { erros++; app.error(`caixa negra: ${e.message}`) }
@@ -132,8 +140,12 @@ module.exports = function (app) {
     const eEstavel = !est.simuladoRecente(estado, agora, estavel.JANELA_MS + 15000) &&
       estavel.estavel(janela, { longeDoPorto: !!perto && perto.mn > 0.5 })
     // As velas são estado do próprio plugin (só publicadas quando mudam), não
-    // um sensor: não podem caducar pela regra dos 15 s do `v` normal.
-    const vLinha = (c) => c === 'sails.grande.rizos' ? velas.grandeRizos : c === 'sails.genoa.percentagem' ? velas.genoaPct : v(c)
+    // um sensor: não podem caducar pela regra dos 15 s do `v` normal. A coluna
+    // proa é a proa verdadeira (a mesma da janela do "estável").
+    const vLinha = (c) => c === 'sails.grande.rizos' ? velas.grandeRizos
+      : c === 'sails.genoa.percentagem' ? velas.genoaPct
+        : c === 'navigation.headingTrue' ? proa(agora)
+          : v(c)
     try {
       tabela.escrever(path.join(base, 'tabela'), agora, tabela.linha({ v: vLinha, agora, rajadaMs: estavel.rajada(janela), simulado, estavel: eEstavel }))
       ultimaLinha = agora
