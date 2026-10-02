@@ -17,6 +17,12 @@ const DUAS_HORAS = 2 * 3600 * 1000
 const SENSOR_VELHO = 10 * 1000
 const SONDA_VELHA = 60 * 1000
 const SONDA_PERDIDA = 5 * 60 * 1000 // sem a sonda há tanto tempo: aviso sondaPerdida, só no ecrã
+// Sem a sonda (revisão F6, Importante 4 e Menor 10): a razão de antes deixa de existir (o /estado não a
+// mostra e "Calibrar"/"Abasteci" recusam, com o motivo; quando a sonda volta, a janela recomeça), e os
+// litros só se publicam enquanto o consumo do motor os acompanha — as rotações do J1939 recentes, ou o
+// motor sabido desligado (propulsion.main.ligacao 'calado', a ignição desligada). Sem nada disso (o J1939
+// sem ligação ou parado) o nível não se republica como novo: a hora dele na árvore envelhece.
+const SEM_SONDA = 'sem leitura da sonda do gasóleo (ADS1115, app I2C do OpenPlotter): não gravei nada; tenta outra vez quando a sonda voltar'
 const FOLGA_CHEIO = 5 // L: "Abasteci" até 5 L acima da capacidade conta como cheio; mais, não cabia (M-68)
 
 // A razão sonda/alimentação no estado do plugin: com vírgula, e "—" sem ela (nunca "undefined", M-67).
@@ -57,10 +63,11 @@ module.exports = function (app) {
   let semSondaDesde = null // desde quando faltam (ou estão velhas) as tensões da sonda
   let avisoSonda = false // o aviso sondaPerdida está publicado
 
-  // Um número da árvore com a hora há menos de maxIdade ms; sem hora não se sabe a idade: não conta.
-  const fresco = (p, maxIdade) => {
+  // Um valor da árvore (um número, ou do tipo pedido) com a hora há menos de maxIdade ms; sem hora não se
+  // sabe a idade: não conta.
+  const fresco = (p, maxIdade, tipo = 'number') => {
     const v = app.getSelfPath?.(p)
-    return typeof v?.value === 'number' && Date.now() - Date.parse(v.timestamp) <= maxIdade ? v.value : null
+    return typeof v?.value === tipo && Date.now() - Date.parse(v.timestamp) <= maxIdade ? v.value : null
   }
 
   function publicar (values) {
@@ -90,10 +97,15 @@ module.exports = function (app) {
     if (ids.length) publicar(ids.map(id => ({ path: `notifications.tanks.fuel.0.${id}`, value: { state: 'normal', method: [], message: 'Normal' } })))
   }
 
-  function avisarSonda (perdida) {
+  // O que se sabe dos litros sem a sonda: pelo consumo do motor, ou parados sem leitura do motor.
+  const semSondaTexto = (acompanha) => estado.litros === null ? 'nível desconhecido'
+    : acompanha ? `os ${Math.round(estado.litros)} L vêm só do consumo do motor`
+      : `sem leitura do motor: o nível (${Math.round(estado.litros)} L) não se atualiza`
+
+  function avisarSonda (perdida, acompanha = true) {
     if (perdida === avisoSonda) return
     avisoSonda = perdida
-    const texto = `Sonda do gasóleo sem leitura há mais de 5 min (ADS1115, app I2C do OpenPlotter): ${estado.litros !== null ? `os ${Math.round(estado.litros)} L vêm só do consumo do motor` : 'nível desconhecido'}`
+    const texto = `Sonda do gasóleo sem leitura há mais de 5 min (ADS1115, app I2C do OpenPlotter): ${semSondaTexto(acompanha)}`
     publicar([{ path: 'notifications.tanks.fuel.0.sondaPerdida', value: perdida ? { state: 'warn', method: ['visual'], message: texto } : { state: 'normal', method: [], message: 'Normal' } }])
   }
 
@@ -115,17 +127,29 @@ module.exports = function (app) {
     const motor = { t: agora, fuelRate: fresco('propulsion.main.fuel.rate', SENSOR_VELHO), motorLigado: typeof rpm === 'number' && rpm > 5 }
     if (sonda === null || alimentacao === null) {
       // Sem a sonda (auditoria I-12): os litros continuam a descer com o consumo do motor e continuam
-      // a ser publicados; aos 5 min, o aviso sondaPerdida (só no ecrã).
+      // a ser publicados enquanto o motor os acompanhar; aos 5 min, o aviso sondaPerdida (só no ecrã).
       if (semSondaDesde === null) semSondaDesde = agora
-      if (!calib) {
-        const rv = avisoReserva(descontar(estado, motor)) // a reserva também pelos litros do consumo
-        estado = rv.estado
-        guardarNivel()
-        publicarNivel()
-        if (rv.notificacoes.length) publicar(rv.notificacoes.map(n => ({ path: `notifications.tanks.fuel.0.${n.id}`, value: { state: n.state, method: n.method, message: n.message } })))
+      // a razão de uma sonda que já não lê não conta (revisão F6, Importante 4)
+      if (estado.razao !== null || estado.razaoMediana !== null || estado.mediana !== null || estado.janela.length) {
+        estado = { ...estado, razao: null, razaoMediana: null, mediana: null, janela: [] }
       }
-      if (agora - semSondaDesde >= SONDA_PERDIDA) avisarSonda(true)
-      app.setPluginStatus(`À espera das tensões do ADS1115 (app I2C do OpenPlotter)${estado.litros !== null ? ` · ${Math.round(estado.litros)} L pelo consumo do motor` : ''}`)
+      // o consumo acompanha os litros: o motor a trabalhar com o consumo conhecido, ou o motor parado
+      // (as rotações recentes, ou o J1939 a dizer 'calado': a ignição desligada) — revisão F6, Menor 10
+      const ligacao = fresco('propulsion.main.ligacao', SENSOR_VELHO, 'string')
+      const acompanha = motor.motorLigado ? typeof motor.fuelRate === 'number' : (typeof rpm === 'number' || ligacao === 'calado')
+      if (!calib) {
+        if (acompanha) {
+          const rv = avisoReserva(descontar(estado, motor)) // a reserva também pelos litros do consumo
+          estado = rv.estado
+          guardarNivel()
+          publicarNivel()
+          if (rv.notificacoes.length) publicar(rv.notificacoes.map(n => ({ path: `notifications.tanks.fuel.0.${n.id}`, value: { state: n.state, method: n.method, message: n.message } })))
+        } else {
+          estado = descontar(estado, { ...motor, motorLigado: false }) // só a hora: nada a descontar sem saber
+        }
+      }
+      if (agora - semSondaDesde >= SONDA_PERDIDA) avisarSonda(true, acompanha)
+      app.setPluginStatus(`À espera das tensões do ADS1115 (app I2C do OpenPlotter)${estado.litros !== null ? ` · ${acompanha ? `${Math.round(estado.litros)} L pelo consumo do motor` : semSondaTexto(false)}` : ''}`)
       return
     }
     semSondaDesde = null
@@ -264,9 +288,12 @@ module.exports = function (app) {
     }))
 
     // "O depósito tem agora X litros" (cheio = 200, ou uma marca do desenho do dono anterior).
+    // Sem a sonda (revisão F6, Importante 4): recusa com o motivo, seja qual for a tabela (vazia, um ponto
+    // ou cheia) — antes gravava a razão de antes de a sonda morrer. 503: o ecrã mostra o motivo.
     escrever.post('/calibrar', (req, res) => {
       const litros = litrosDoPedido(req)
       if (!(litros >= 0 && litros <= o.capacidadeL)) return res.status(400).json({ ok: false, erro: `litros entre 0 e ${o.capacidadeL}` })
+      if (semSondaDesde !== null) return res.status(503).json({ ok: false, erro: SEM_SONDA })
       if (estado.razaoMediana === null) return res.status(409).json({ ok: false, erro: 'ainda a medir (3 min com o barco direito)' })
       const r = acrescentarPonto(o.tabela, { razao: estado.razaoMediana, litros })
       if (r.erro) return res.status(422).json({ ok: false, erro: r.erro })
@@ -278,6 +305,7 @@ module.exports = function (app) {
     escrever.post('/abastecimento', (req, res) => {
       const litros = litrosDoPedido(req)
       if (!(litros > 0 && litros <= o.capacidadeL)) return res.status(400).json({ ok: false, erro: 'litros inválidos' })
+      if (semSondaDesde !== null) return res.status(503).json({ ok: false, erro: SEM_SONDA })
       if (estado.razaoMediana === null) return res.status(409).json({ ok: false, erro: 'ainda a medir (3 min com o barco direito)' })
       const recente = ultimoAbastecimento && Date.now() - ultimoAbastecimento.t < DUAS_HORAS
       const antes = recente ? ultimoAbastecimento.antes : estado.litros
