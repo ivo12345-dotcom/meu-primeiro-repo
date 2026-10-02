@@ -61,6 +61,32 @@ test('M-03: chegada de noite a um destino sem o campo "conhecido": "um porto que
   assert.match(conhecido.find(x => x.tipo === 'chegada-noite').texto, /^Chegada de noite a Peniche: /)
 })
 
+test('M-07: nenhuma "rotação do vento" a ±1 h de uma passagem da frente (essa já diz "roda para"); longe dela, sim', () => {
+  const n = 6 * 60
+  const m = {}
+  for (let i = 120; i < n; i++) m[i] = { twd: 0 } // o vento roda de 270° para 000° às 2 h
+  const pontos = linha(n, { tws: 12 }, m)
+  const frente = (h) => [{ t: T0 + h * H, texto: 'Passagem da frente: o vento cai de 15 para 6 nós e roda para 000°. Fica o mar (1,5 m)', tipo: 'tempo' }]
+  const tipos = (ev) => avisosDaPassagem({ passagem: { pontos, eventos: ev, resumo: { chegou: true } }, tripulacao: 'acompanhado' }).map(x => x.tipo)
+  // sem frente: a rotação (a janela de 1 h começa às 1 h)
+  assert.ok(tipos([]).includes('rotacao'))
+  // com a frente às 2 h (o aviso da rotação seria à 1 h, a 1 h dela): só a frente
+  assert.deepEqual(tipos(frente(2)).filter(t => t === 'rotacao' || t === 'frente'), ['frente'])
+  // com a frente às 4 h (a 3 h): os dois
+  assert.deepEqual(tipos(frente(4)).filter(t => t === 'rotacao' || t === 'frente').sort(), ['frente', 'rotacao'])
+})
+
+test('M-06: sem previsão de rajadas antes da barra, "Rizo feito à saída" (o desconhecido não é calmo)', () => {
+  const m = {}
+  for (let i = 0; i < 30; i++) m[i] = { rajada: null, wp: 'Largo de Algés (CNA)' }
+  const pr = precaucoes({ passagem: { pontos: linha(120, { rajada: 12 }, m), eventos: [] }, tripulacao: 'acompanhado' })
+  const rizo = pr.find(x => x.id === 'rizo-saida')
+  assert.ok(rizo, JSON.stringify(pr.map(x => x.id)))
+  assert.equal(rizo.porque, 'sem previsão de rajadas antes da barra')
+  // com as rajadas conhecidas e fracas, não
+  assert.ok(!precaucoes({ passagem: { pontos: linha(120, { rajada: 12 }), eventos: [] }, tripulacao: 'acompanhado' }).some(x => x.id === 'rizo-saida'))
+})
+
 test('avisos a partir do motor da passagem: cambadelas em popa e a frente', () => {
   const rota = [{ nome: 'A', lat: 39, lon: -9.5 }, { nome: 'B', lat: 39 + 12 / 60, lon: -9.5 }]
   let k = 0
