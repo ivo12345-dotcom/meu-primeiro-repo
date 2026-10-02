@@ -170,14 +170,70 @@ test('8 (porto): o evento leva os chats (chatId) dos contactos a par dos nomes; 
   assert.deepEqual(ct.porNaFila(ct.novaFila(), { tipo: 'chegada', texto: 'c', contactos: ['Mãe'], chats: ['222'] }, T0).fila[0].chats, ['222'])
 })
 
-test('re-revisão M-5: o evento de uma nova tentativa diz a tentativa (o porto já não a repete ao Ivo); a 1.ª não leva o campo', () => {
+test('re-revisão M-5 + revisão final M3: o evento de uma nova tentativa só diz a tentativa (o porto já não a repete ao Ivo) depois de o Ivo a ter recebido; sem resposta do porto, a 2.ª ainda vai ao Ivo', () => {
   let c = ct.porNaFila(ct.novaFila(), { tipo: 'atraso', texto: 'a', contactos: ['Mãe'], chats: ['222'] }, T0)
   c = ct.marcarAEnviar(c, c.fila[0].id, 'p1', T0)
   assert.equal(ct.evento(c.fila[0], 'p1').tentativa, undefined)
+  // sem resposta (o porto desligado, ou 30 s): o Ivo também não a recebeu
   c = ct.falhou(c, 'p1', 'sem resposta', T0)
   c = ct.marcarAEnviar(c, c.fila[0].id, 'p2', T0 + 2 * MIN)
-  assert.equal(ct.evento(c.fila[0], 'p2').tentativa, 2)
+  assert.equal(ct.evento(c.fila[0], 'p2').tentativa, undefined, 'a cópia do Ivo não se perde')
+  // a resposta: só o chat do Ivo a recebeu (a Mãe falhou)
+  c = ct.resposta(c, 'p2', { contactos: [], entregues: ['chat 111'], falhas: [{ nome: 'Mãe', erro: 'sem ligação ao Telegram' }] }, T0 + 2 * MIN)
+  assert.equal(c.fila[0].ivoRecebeu, true)
+  c = ct.marcarAEnviar(c, c.fila[0].id, 'p3', T0 + 4 * MIN)
+  assert.equal(ct.evento(c.fila[0], 'p3').tentativa, 3)
 })
+
+test('revisão final I3: dois contactos, um falha → a mensagem conta como enviada e volta à fila só para quem falhou (a mesma ref, daqui a 2 min, sem ir outra vez ao Ivo); continua até entregar', () => {
+  let c = ct.porNaFila(ct.novaFila(), { tipo: 'atraso', texto: 'a', contactos: ['Mãe', 'Pai'], chats: ['222', '333'], chegada: T0 + H, alarme: T0 + 3 * H }, T0)
+  const ref = c.fila[0].ref
+  c = ct.marcarAEnviar(c, c.fila[0].id, 'p1', T0)
+  c = ct.resposta(c, 'p1', { contactos: ['Mãe'], chats: ['222'], entregues: ['chat 111', 'Mãe'], falhas: [{ nome: 'Pai', erro: 'bloqueou o bot' }] }, T0 + 1000)
+  assert.equal(c.enviadas.length, 1)
+  assert.deepEqual(c.enviadas[0].falhas, [{ nome: 'Pai', erro: 'bloqueou o bot' }])
+  assert.equal(c.fila.length, 1)
+  const r = c.fila[0]
+  assert.deepEqual({ tipo: r.tipo, ref: r.ref, contactos: r.contactos, chats: r.chats, parcial: r.parcial, estado: r.estado, proxima: r.proxima, ivoRecebeu: r.ivoRecebeu, chegada: r.chegada, alarme: r.alarme },
+    { tipo: 'atraso', ref, contactos: ['Pai'], chats: ['333'], parcial: true, estado: 'fila', proxima: iso(T0 + 1000 + 2 * MIN), ivoRecebeu: true, chegada: T0 + H, alarme: T0 + 3 * H })
+  assert.notEqual(r.id, c.enviadas[0].id)
+  c = ct.marcarAEnviar(c, r.id, 'p2', T0 + 3 * MIN)
+  const ev = ct.evento(c.fila[0], 'p2')
+  assert.deepEqual(ev.chats, ['333'])
+  assert.ok(ev.texto.endsWith(`
+ref. ${ref}`))
+  assert.equal(ev.tentativa, 2, 'o Ivo já a recebeu')
+  // volta a falhar: outra vez daqui a 2 min; depois entrega
+  c = ct.resposta(c, 'p2', { contactos: [], chats: [], entregues: [], falhas: [{ nome: 'Pai', erro: 'bloqueou o bot' }] }, T0 + 3 * MIN)
+  assert.equal(c.fila[0].proxima, iso(T0 + 5 * MIN))
+  c = ct.marcarAEnviar(c, c.fila[0].id, 'p3', T0 + 5 * MIN)
+  c = ct.resposta(c, 'p3', { contactos: ['Pai'], chats: ['333'], entregues: ['Pai'], falhas: [] }, T0 + 5 * MIN)
+  assert.deepEqual(c.fila, [])
+  assert.deepEqual(c.enviadas.map(x => x.contactos), [['Mãe'], ['Pai']])
+  // um atraso mais novo tira o parcial que ainda não saiu (deixou de interessar)
+  let d = ct.porNaFila(ct.novaFila(), { tipo: 'atraso', texto: 'a', contactos: ['Mãe', 'Pai'], chats: ['222', '333'] }, T0)
+  d = ct.marcarAEnviar(d, d.fila[0].id, 'q1', T0)
+  d = ct.resposta(d, 'q1', { contactos: ['Mãe'], chats: ['222'], entregues: ['Mãe'], falhas: [{ nome: 'Pai', erro: 'x' }] }, T0)
+  d = ct.porNaFila(d, { tipo: 'atraso', texto: 'b', contactos: ['Mãe', 'Pai'], chats: ['222', '333'] }, T0 + H)
+  assert.deepEqual(d.fila.map(x => [x.texto, x.chats]), [['b', ['222', '333']]])
+})
+
+test('revisão final M4: o "cheguei bem"/"terminada" passam à frente de um plano que já falhou 3 vezes (e de um parcial); o atraso que ainda não saiu já saiu da fila com o "cheguei bem"', () => {
+  let c = ct.porNaFila(ct.novaFila(), { tipo: 'plano', texto: 'PLANO', contactos: ['Mãe'], chats: ['222'] }, T0)
+  for (let k = 1; k <= 2; k++) { c = ct.marcarAEnviar(c, c.fila[0].id, `p${k}`, T0); c = ct.falhou(c, `p${k}`, 'GPX', T0) }
+  c = ct.porNaFila(c, { tipo: 'atraso', texto: 'a', contactos: ['Mãe'], chats: ['222'] }, T0)
+  c = ct.porNaFila(c, { tipo: 'chegada', texto: 'cheguei', contactos: ['Mãe'], chats: ['222'] }, T0)
+  // com 2 tentativas, o plano ainda vai primeiro
+  assert.equal(ct.proxima(c, T0 + 2 * MIN).tipo, 'plano')
+  c = ct.marcarAEnviar(c, c.fila[0].id, 'p3', T0 + 2 * MIN)
+  c = ct.falhou(c, 'p3', 'GPX', T0 + 2 * MIN)
+  const m = ct.proxima(c, T0 + 2 * MIN)
+  assert.equal(m.tipo, 'chegada', 'o plano falhou 3 vezes: a chegada passa à frente')
+  c = ct.marcarAEnviar(c, m.id, 'p4', T0 + 2 * MIN)
+  c = ct.resposta(c, 'p4', { contactos: ['Mãe'], chats: ['222'], entregues: ['Mãe'], falhas: [] }, T0 + 2 * MIN)
+  assert.deepEqual(c.fila.map(x => x.tipo), ['plano'], 'o atraso deixou de interessar')
+})
+
 
 test('Tarefa 8.4: cada mensagem para terra leva no fim uma referência curta e estável ("ref. A3"): a mesma em todas as tentativas e depois de um reinício; o plano seguinte passa à letra seguinte', () => {
   let c = ct.porNaFila(ct.novaFila(), { tipo: 'atraso', texto: 'Ainda a navegar.', contactos: ['Mãe'], chats: ['222'] }, T0)

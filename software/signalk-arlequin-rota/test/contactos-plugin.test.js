@@ -16,13 +16,14 @@ const NO = 1852 / 3600
 
 // Cascais → Algés (a melhor sai amanhã às 09:30), o plano enviado à Mãe e ativado. O porto falso
 // responde a cada 'arlequin:plano' (resposta: a função que decide o que responde; null não responde).
-async function preparar ({ enviar = true, alternativa = 0 } = {}) {
+async function preparar ({ enviar = true, alternativa = 0, contactos = [['Mãe', '222']] } = {}) {
   const app = appFalso()
   const agendados = []
   const pl = plugin(app, { agendarCiclo: () => 1, pararCiclo: () => {}, agendar: (fn, ms) => { agendados.push({ fn, ms }); return agendados.length }, cancelar: () => {} })
   pl.p.start({ pasta: path.join(app.dir, 'dados') })
   const recebidos = []
-  const porto = { resposta: (e) => ({ pedido: e.pedido, entregues: ['chat 111', ...(e.contactos || ['Mãe'])], contactos: e.contactos || ['Mãe'], chats: e.chats || ['222'], falhas: [] }) }
+  const nomes = contactos.map(x => x[0]); const ids = contactos.map(x => x[1])
+  const porto = { resposta: (e) => ({ pedido: e.pedido, entregues: ['chat 111', ...(e.contactos || nomes)], contactos: e.contactos || nomes, chats: e.chats || ids, falhas: [] }) }
   app.on('arlequin:plano', (e) => { recebidos.push(e); const r = porto.resposta(e); if (r) app.emit('arlequin:plano-enviado', r) })
   const { id, resultado } = await calcular(pl.r, { destino: 'alges', tripulacao: 'so' })
   if (enviar) await chamar(pl.r.post['/plano-telegram'], { body: { id, alternativa } })
@@ -785,4 +786,31 @@ test('revisão final I2: o aviso da hora de alarme em terra sai 60 min antes, ta
   await t.ciclo(0)
   assert.equal(t.app.self[caminho].state, 'alert')
   t.p.stop()
+})
+
+test('revisão final I3: a Mãe recebe o atraso e o Pai não (bloqueou o bot) → daqui a 2 min o mesmo atraso (a mesma ref) só para o Pai, sem ir outra vez ao Ivo; o GET mostra a falha e o que está por entregar', async () => {
+  const s = await preparar({ contactos: [['Mãe', '222'], ['Pai', '333']] })
+  assert.deepEqual(s.p.planoAtivo().envio.contactos, ['Mãe', 'Pai'])
+  await sair(s)
+  const normal = s.porto.resposta
+  // o Pai falha
+  s.porto.resposta = (e) => ({ pedido: e.pedido, entregues: [...(e.tentativa ? [] : ['chat 111']), 'Mãe'].filter(n => e.contactos.includes(n) || n === 'chat 111'), contactos: e.contactos.filter(n => n === 'Mãe'), chats: e.chats.filter(c => c === '222'), falhas: e.chats.includes('333') ? [{ nome: 'Pai', erro: 'bloqueou o bot' }] : [] })
+  const anda = devagar(s, 0.4)
+  for (let m = 0; m < 150 && !s.recebidos.some(e => e.tipo === 'atraso'); m++) await anda()
+  const [a1] = s.recebidos.filter(e => e.tipo === 'atraso')
+  assert.deepEqual(a1.chats, ['222', '333'])
+  let g = await chamar(s.r.get['/plano-ativo'])
+  assert.deepEqual(g.enviadas.at(-1).falhas, [{ nome: 'Pai', erro: 'bloqueou o bot' }])
+  assert.deepEqual(g.filaContactos.map(m => ({ tipo: m.tipo, contactos: m.contactos, parcial: m.parcial })), [{ tipo: 'atraso', contactos: ['Pai'], parcial: true }])
+  // o Pai desbloqueia; 2 min depois sai só para ele, com a mesma ref
+  s.porto.resposta = normal
+  await anda(); await anda()
+  const atrasos = s.recebidos.filter(e => e.tipo === 'atraso')
+  assert.equal(atrasos.length, 2)
+  assert.deepEqual(atrasos[1].chats, ['333'])
+  assert.equal(atrasos[1].texto, a1.texto)
+  assert.equal(atrasos[1].tentativa, 2, 'o Ivo já a recebeu')
+  g = await chamar(s.r.get['/plano-ativo'])
+  assert.deepEqual(g.filaContactos, [])
+  s.p.stop()
 })

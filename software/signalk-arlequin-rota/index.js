@@ -32,7 +32,9 @@
 //        quedaHpa }, previsaoIdadeH, avisos: [{ caminho, state, message }], envio: { contactos, alarme (o
 //        último entregue em terra: o de um plano reenviado só quando chega), alarmePlano (o deste plano) } | null,
 //        chegadaOutro: { id, nome } | null,
-//        filaContactos: [{ tipo, criada, tentativas, proxima, estado, erro }], enviadas: [{ tipo, enviadaEm, contactos }],
+//        filaContactos: [{ tipo, criada, tentativas, proxima, estado, erro, contactos, parcial }], enviadas: [{ tipo,
+//        enviadaEm, contactos, falhas: [{ nome, erro }] }] (parcial: a mesma mensagem só para os contactos que
+//        falharam, revisão final I3),
 //        atrasoRetido: { motivo: 'parado' | 'limite', alarme (a hora de alarme que terra tem) } | null }
 //        atrasoRetido (revisão final C1, decisão do Ivo de 02/10): um atraso para terra que as guardas não
 //        deixaram sair (o barco parado ou à deriva, ou o teto de 3 h): o ecrã pede o "Estou bem"
@@ -427,7 +429,8 @@ module.exports = function (app, deps = {}) {
     if (!m0) return
     // o atraso faz-se com os valores de agora (re-revisão M-2): com o último acompanhamento a navegar,
     // sai da fila se deixou de valer, senão leva a chegada e o alarme mais recentes
-    if (m0.tipo === 'atraso' && !m0.anterior && ultimo?.estado === pa.ESTADOS.NAVEGAR && !ultimo.semGps) {
+    // (o parcial, revisão final I3, vai igual ao que os outros receberam: a mesma ref, o mesmo texto)
+    if (m0.tipo === 'atraso' && !m0.anterior && !m0.parcial && ultimo?.estado === pa.ESTADOS.NAVEGAR && !ultimo.semGps) {
       const d = atrasoAgora(ultimo, agora)
       // deixou de valer, ou o barco parou entretanto (revisão final C1: só o que o "Estou bem" libertou passa)
       if (!d || (!m0.confirmado && retencao(ultimo, d, agora))) {
@@ -440,7 +443,7 @@ module.exports = function (app, deps = {}) {
     }
     const pedido = crypto.randomUUID()
     // o atraso diz "em vez de" o último alarme entregue em terra (o texto faz-se à hora de sair)
-    const texto = m0.tipo === 'atraso' && !m0.anterior && Number.isFinite(m0.chegada) ? textoAtraso(m0, agora) : null
+    const texto = m0.tipo === 'atraso' && !m0.anterior && !m0.parcial && Number.isFinite(m0.chegada) ? textoAtraso(m0, agora) : null
     planoAtivo = { ...planoAtivo, contactos: ct.marcarAEnviar(planoAtivo.contactos, m0.id, pedido, agora, texto) }
     const m = planoAtivo.contactos.fila.find(x => x.id === m0.id)
     gravarPlanoAtivo()
@@ -465,14 +468,17 @@ module.exports = function (app, deps = {}) {
     planoAtivo = { ...planoAtivo, contactos: ct.resposta(planoAtivo.contactos, m.pedido, m, agora) }
     const enviada = planoAtivo.contactos.enviadas.at(-1)
     const entregue = !!msg && !msg.anterior && enviada?.id === msg.id
-    // o plano novo entregue: o envio passa a ser este (a quem chegou)
-    if (entregue && msg.tipo === 'plano' && planoAtivo.envio) {
+    // o plano novo entregue: o envio passa a ser este (a quem chegou, mais os que falharam e estão a
+    // receber o parcial, revisão final I3)
+    if (entregue && msg.tipo === 'plano' && planoAtivo.envio && !msg.parcial) {
       const { alarmePendente, ...envio } = planoAtivo.envio
+      const quem = juntarContactos(enviada, planoAtivo.contactos.fila.find(x => x.parcial && x.ref === msg.ref))
       // a hora de alarme do plano novo passa a contar agora que chegou (re-revisão M-3)
-      planoAtivo = { ...planoAtivo, envio: { ...envio, ...(alarmePendente !== undefined ? { alarme: alarmePendente } : {}), contactos: [...enviada.contactos], chats: [...(enviada.chats || [])], pedido: m.pedido, enviadoEm: enviada.enviadaEm } }
+      planoAtivo = { ...planoAtivo, envio: { ...envio, ...(alarmePendente !== undefined ? { alarme: alarmePendente } : {}), ...quem, pedido: m.pedido, enviadoEm: enviada.enviadaEm } }
     }
-    // o atraso só conta quando chega a terra: a hora de alarme do GET e o "em vez de" seguintes
-    if (entregue && msg.tipo === 'atraso' && Number.isFinite(enviada.chegada)) planoAtivo = { ...planoAtivo, atrasoEnviado: { ultimoEm: agora, chegada: enviada.chegada, alarme: enviada.alarme } }
+    // o atraso só conta quando chega a terra: a hora de alarme do GET e o "em vez de" seguintes (o parcial
+    // é o mesmo atraso, para quem falhou: não conta outra vez)
+    if (entregue && msg.tipo === 'atraso' && !msg.parcial && Number.isFinite(enviada.chegada)) planoAtivo = { ...planoAtivo, atrasoEnviado: { ultimoEm: agora, chegada: enviada.chegada, alarme: enviada.alarme } }
     // o último envio em terra (revisão final I1): o plano novo ou o atraso entregues; o "cheguei bem" ou a
     // "terminada" entregues fecham-no
     if (entregue && (msg.tipo === 'plano' || msg.tipo === 'atraso')) ultimoEnvioDoPlano()
@@ -500,6 +506,13 @@ module.exports = function (app, deps = {}) {
       estouBem: planoAtivo.estouBem
     })
   }
+  // Os contactos de um envio: os que receberam (enviada) e os do parcial que ainda está a tentar.
+  function juntarContactos (enviada, parcial) {
+    const contactos = [...enviada.contactos]
+    const chats = [...(enviada.chats || [])]
+    for (const [i, id] of (parcial?.chats || []).entries()) if (!chats.includes(id)) { chats.push(id); contactos.push(parcial.contactos?.[i] ?? `chat ${id}`) }
+    return { contactos, chats }
+  }
   // O texto do atraso: "em vez de" o último alarme entregue em terra (sem nenhum, o do plano).
   function textoAtraso (m, agora) {
     const antes = alarmeEmTerra()
@@ -523,7 +536,8 @@ module.exports = function (app, deps = {}) {
     if (!envio?.contactos?.length || res.semGps) return
     const d = atrasoAgora(res, agora)
     const c = planoAtivo.contactos || ct.novaFila()
-    const pendente = c.fila.find(m => m.tipo === 'atraso' && !m.anterior)
+    // (o parcial, revisão final I3, é um atraso já entregue a outros: não é o pendente)
+    const pendente = c.fila.find(m => m.tipo === 'atraso' && !m.anterior && !m.parcial)
     // deixou de valer (o barco recuperou): o atraso que ainda está na fila sai (re-revisão M-2)
     if (!d) {
       if (pendente?.estado === 'fila') { planoAtivo = { ...planoAtivo, contactos: ct.tirar(c, pendente.id) }; gravarPlanoAtivo() }
@@ -717,8 +731,9 @@ module.exports = function (app, deps = {}) {
       // o atraso que não seguiu para terra (revisão final C1): o ecrã pede o "Estou bem"
       atrasoRetido: retido && p.estado === pa.ESTADOS.NAVEGAR && Number.isFinite(alarmeEmTerra(p)) ? { motivo: retido.motivo, alarme: new Date(alarmeEmTerra(p)).toISOString() } : null,
       chegadaOutro: sug ? { id: sug.id, nome: sug.nome } : null,
-      filaContactos: c.fila.map(m => ({ tipo: m.tipo, criada: m.criada, tentativas: m.tentativas, proxima: m.proxima, estado: m.estado, erro: m.erro })),
-      enviadas: c.enviadas.map(m => ({ tipo: m.tipo, enviadaEm: m.enviadaEm, contactos: m.contactos }))
+      // contactos: a quem vai; parcial: só para os que falharam (revisão final I3)
+      filaContactos: c.fila.map(m => ({ tipo: m.tipo, criada: m.criada, tentativas: m.tentativas, proxima: m.proxima, estado: m.estado, erro: m.erro, contactos: [...(m.contactos || [])], parcial: !!m.parcial })),
+      enviadas: c.enviadas.map(m => ({ tipo: m.tipo, enviadaEm: m.enviadaEm, contactos: m.contactos, falhas: Array.isArray(m.falhas) ? m.falhas.map(f => ({ nome: String(f?.nome ?? ''), erro: String(f?.erro ?? '') })) : [] }))
     }
   }
 

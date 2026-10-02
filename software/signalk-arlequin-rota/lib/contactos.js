@@ -40,8 +40,8 @@
 //     passava 3 h da do plano; depois de um "Estou bem", 3 h da hora de alarme da mensagem que o toque
 //     libertou). Um atraso libertado pelo "Estou bem" (confirmado: true) passa as guardas.
 // evento(msg, pedido): o que se emite em 'arlequin:plano' para o porto (aos contactos da mensagem: o
-//   porto escolhe-os pelos chats); numa nova tentativa, com tentativa (2, 3, …): o porto só a manda ao
-//   chat do Ivo na 1.ª.
+//   porto escolhe-os pelos chats); numa nova tentativa que o Ivo já recebeu (ivoRecebeu), com tentativa
+//   (2, 3, …): o porto já não a manda ao chat do Ivo.
 
 const { horaLisboa, asHoras } = require('./plano')
 const c = require('./costa')
@@ -201,11 +201,19 @@ function atualizarAtraso (c, id, { chegada, alarme, texto }) {
 // Tira da fila uma mensagem que ainda não saiu (estado 'fila'): o atraso que deixou de valer.
 const tirar = (c, id) => ({ ...c, fila: c.fila.filter(m => !(m.id === id && m.estado === 'fila')) })
 
-// A próxima a enviar: a primeira da fila, se já for a hora dela e nenhuma estiver "a enviar".
+// A próxima a enviar: a primeira da fila, se já for a hora dela e nenhuma estiver "a enviar". Uma
+// cabeça que já falhou 3 vezes não prende a fila (revisão final M4): um 'plano' deixa passar à frente o
+// "cheguei bem"/"terminada"; um parcial (só os contactos que falharam, I3) deixa passar qualquer uma.
+const TENTATIVAS_PRENDE = 3
 function proxima (c, agora) {
   if (!c?.fila?.length || c.fila.some(m => m.estado === 'a enviar')) return null
+  const pronta = (m) => Date.parse(m.proxima) <= agora
   const m = c.fila[0]
-  return Date.parse(m.proxima) <= agora ? m : null
+  if (m.tentativas >= TENTATIVAS_PRENDE && (m.tipo === 'plano' || m.parcial)) {
+    const outra = c.fila.slice(1).find(x => pronta(x) && (m.parcial || FECHO.has(x.tipo)))
+    if (outra) return outra
+  }
+  return pronta(m) ? m : null
 }
 
 const mudar = (c, f, fn) => ({ ...c, fila: c.fila.map(m => (f(m) ? fn(m) : m)) })
@@ -217,16 +225,35 @@ function falhou (c, pedido, erro, agora) {
   return mudar(c, m => m.pedido === pedido, m => ({ ...m, estado: 'fila', pedido: null, erro, proxima: iso(agora + REPETIR_MS) }))
 }
 
-// A resposta do porto ({ entregues, contactos, falhas }): enviada com pelo menos um contacto em terra.
+// A resposta do porto ({ entregues, contactos, chats, falhas }): enviada com pelo menos um contacto em
+// terra. ivoRecebeu (revisão final M3): um entregue que não é contacto (o chat do Ivo) — só então as novas
+// tentativas deixam de ir ao Ivo. Os chats pedidos que não a receberam (revisão final I3: o Pai bloqueou o
+// bot, um erro do Telegram) voltam à fila numa mensagem igual, com a mesma ref, só para eles (parcial),
+// daqui a 2 min, até entregar ou deixar de interessar (as regras do porNaFila).
 function resposta (c, pedido, r = {}, agora) {
   const m = c.fila.find(x => x.pedido === pedido)
   if (!m) return c
   const contactos = Array.isArray(r.contactos) ? r.contactos.map(String) : []
+  const chats = Array.isArray(r.chats) ? r.chats.map(String) : []
+  const entregues = Array.isArray(r.entregues) ? r.entregues.map(String) : []
   const falhas = Array.isArray(r.falhas) ? r.falhas : []
-  if (!contactos.length) return falhou(c, pedido, falhas.length ? falhas.map(f => `${f.nome}: ${f.erro}`).join('; ') : 'nenhum contacto em terra a recebeu', agora)
+  const ivo = m.ivoRecebeu || entregues.some(x => !contactos.includes(x))
+  if (!contactos.length) {
+    const f = falhou(c, pedido, falhas.length ? falhas.map(x => `${x.nome}: ${x.erro}`).join('; ') : 'nenhum contacto em terra a recebeu', agora)
+    return ivo ? mudar(f, x => x.id === m.id, x => ({ ...x, ivoRecebeu: true })) : f
+  }
   const { gpx, nomeFicheiro, estado, pedido: _p, proxima: _x, ...resto } = m
-  const enviada = { ...resto, enviadaEm: iso(agora), contactos, chats: Array.isArray(r.chats) ? r.chats.map(String) : [], entregues: Array.isArray(r.entregues) ? r.entregues.map(String) : [], falhas }
-  return { ...c, fila: c.fila.filter(x => x !== m), enviadas: [...c.enviadas, enviada] }
+  const enviada = { ...resto, enviadaEm: iso(agora), contactos, chats, entregues, falhas }
+  let out = { ...c, fila: c.fila.filter(x => x !== m), enviadas: [...c.enviadas, enviada] }
+  // os que falharam: a mesma mensagem, só para eles
+  const pedidos = Array.isArray(m.chats) ? m.chats.map(String) : []
+  const faltam = pedidos.map((id, i) => ({ id, nome: pedidos.length === (m.contactos || []).length ? m.contactos[i] : `chat ${id}` })).filter(x => !chats.includes(x.id))
+  if (faltam.length) {
+    const seq = out.seq + 1
+    const nova = { ...m, id: `m${seq}`, contactos: faltam.map(x => x.nome), chats: faltam.map(x => x.id), parcial: true, ...(ivo ? { ivoRecebeu: true } : {}), estado: 'fila', pedido: null, erro: falhas.map(x => `${x.nome}: ${x.erro}`).join('; ') || null, proxima: iso(agora + REPETIR_MS) }
+    out = { ...out, seq, fila: [...out.fila, nova] }
+  }
+  return out
 }
 
 // Ao arrancar: a que estava "a enviar" já não tem resposta; volta à fila para tentar já.
@@ -245,8 +272,9 @@ function evento (msg, pedido, contactos = msg.contactos || [], chats = msg.chats
     destinatarios: 'contactos-do-plano',
     contactos: [...contactos],
     chats: [...chats],
-    // uma nova tentativa (re-revisão M-5): o porto já não a repete ao chat do Ivo
-    ...(msg.tentativas > 1 ? { tentativa: msg.tentativas } : {})
+    // uma nova tentativa (re-revisão M-5): o porto já não a repete ao chat do Ivo — só se ele já a recebeu
+    // (revisão final M3: sem resposta do porto, ou sem o porto, a 1.ª nunca chegou ao Telegram)
+    ...(msg.tentativas > 1 && msg.ivoRecebeu ? { tentativa: msg.tentativas } : {})
   }
 }
 
