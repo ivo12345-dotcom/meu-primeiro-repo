@@ -756,3 +756,33 @@ test('revisão final I1: depois do "cheguei bem" entregue, ou com a hora de alar
   assert.deepEqual(t.recebidos.filter(e => e.tipo === 'plano'), [])
   t.p.stop()
 })
+
+test('revisão final I2: o aviso da hora de alarme em terra sai 60 min antes, também à espera de sair e em pausa, e volta a normal quando o plano fecha', async () => {
+  const s = await preparar()
+  const caminho = 'notifications.rota.alarmeTerra'
+  const alarme = Date.parse((await chamar(s.r.get['/plano-ativo'])).envio.alarme)
+  // à espera de sair (o Ivo desistiu e esqueceu-se do Terminar)
+  s.acertar(alarme - 62 * MIN)
+  await s.ciclo()
+  assert.notEqual(s.app.self[caminho]?.state, 'alert')
+  await s.ciclo(2 * MIN)
+  assert.equal(s.p.planoAtivo().estado, 'a espera de sair')
+  assert.equal(s.app.self[caminho].state, 'alert')
+  assert.equal(s.app.self[caminho].apito, 'curto')
+  assert.match(s.app.self[caminho].message, /^Os contactos em terra ligam ao MRCC (às|[a-z]{3} \d\d\/\d\d às) \d\d:\d\d: avisa-os ou Terminar$/)
+  assert.ok((await chamar(s.r.get['/plano-ativo'])).avisos.some(a => a.caminho === caminho))
+  // Terminar: normal
+  await chamar(s.r.post['/plano-ativo/terminar'])
+  assert.equal(s.app.self[caminho].state, 'normal')
+  s.p.stop()
+  // em pausa no mar (a rota do plano limpa)
+  const t = await preparar()
+  await sair(t)
+  t.app.rotaAtiva = null
+  await pausar(t)
+  assert.equal(t.p.planoAtivo().estado, 'pausado')
+  t.acertar(Date.parse((await chamar(t.r.get['/plano-ativo'])).envio.alarme) - 30 * MIN)
+  await t.ciclo(0)
+  assert.equal(t.app.self[caminho].state, 'alert')
+  t.p.stop()
+})

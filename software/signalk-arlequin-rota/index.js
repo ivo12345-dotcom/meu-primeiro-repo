@@ -561,6 +561,8 @@ module.exports = function (app, deps = {}) {
     if (!Number.isFinite(hora) || agora - hora > LEITURA_VELHA_MS) return null
     return x.value
   }
+  // O aviso da hora de alarme em terra (revisão final I2): com o plano aberto e enviado a contactos em terra.
+  const avisoTerra = (agora) => ({ [av.CAMINHO_ALARME_TERRA]: av.alarmeTerra({ aberto: pa.aberto(planoAtivo) && !!planoAtivo.envio?.contactos?.length, alarme: alarmeEmTerra() }, agora) })
   function publicarAvisos (avisos) {
     const r = av.publicar(publicados, avisos)
     publicados = r.publicados
@@ -617,7 +619,8 @@ module.exports = function (app, deps = {}) {
       ultimo = null
       retido = null
       estAvisos = av.novoEstado()
-      publicarAvisos({})
+      // em pausa só fica o da hora de alarme em terra (revisão final I2)
+      publicarAvisos(pa.aberto(planoAtivo) ? avisoTerra(agora) : {})
       enviarFila(agora)
       return
     }
@@ -645,8 +648,9 @@ module.exports = function (app, deps = {}) {
       atrasoMin: res.atrasoMin, vento, previsaoIdadeH: pv ? pv.idadeH : null, barometro: pressoes, recursos: res.recursos, eventos: res.eventos, chegadaNoite: res.chegadaNoite
     }, agora)
     estAvisos = x.estado
-    publicarAvisos(x.avisos)
-    ultimo = { ...res, posicao: leitura.posicao, agora, vento, previsaoIdadeH: pv ? pv.idadeH : null, barometroSemLeitura: !comPressao, quedaBarometro: av.quedaEm3h(pressoes, agora), avisos: x.avisos }
+    const avisos = { ...x.avisos, ...avisoTerra(agora) }
+    publicarAvisos(avisos)
+    ultimo = { ...res, posicao: leitura.posicao, agora, vento, previsaoIdadeH: pv ? pv.idadeH : null, barometroSemLeitura: !comPressao, quedaBarometro: av.quedaEm3h(pressoes, agora), avisos }
     // a posição na rota: no plano ativo, para um reinício continuar dali
     const ant = estAcomp.anterior
     if (navegar && ant && (!planoAtivo.seguimento || Math.abs(planoAtivo.seguimento.s - ant.s) >= SEGUIMENTO_MN)) {

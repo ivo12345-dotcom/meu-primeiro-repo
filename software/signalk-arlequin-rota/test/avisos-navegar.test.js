@@ -260,3 +260,16 @@ test('Tarefa 8.5: os lembretes novos, 30 min antes: "Às HH:MM: virar/cambar no 
   // sem GPS, o de sítio para
   assert.equal(av.avaliar(av.novoEstado(), base({ eventos, semGps: true }), T0 + 30 * MIN).avisos[L('e9')], undefined)
 })
+
+test('revisão final I2: notifications.rota.alarmeTerra (alert, apito curto, só no ecrã) 60 min antes da hora de alarme que terra tem, com o plano aberto: "Os contactos em terra ligam ao MRCC às HH:MM: avisa-os ou Terminar"', () => {
+  const alarme = T0 + 3 * H // 18:00 em Lisboa
+  assert.equal(av.alarmeTerra({ aberto: true, alarme }, alarme - 61 * MIN).state, 'normal')
+  const a = av.alarmeTerra({ aberto: true, alarme }, alarme - 59 * MIN)
+  assert.deepEqual(a, { state: 'alert', method: METODO, message: 'Os contactos em terra ligam ao MRCC às 18:00: avisa-os ou Terminar', apito: 'curto', chave: iso(alarme) })
+  // passada a hora fica (terra pode já estar a ligar)
+  assert.equal(av.alarmeTerra({ aberto: true, alarme }, alarme + 30 * MIN).state, 'alert')
+  // sem plano aberto ou sem hora de alarme em terra: normal
+  assert.equal(av.alarmeTerra({ aberto: false, alarme }, alarme - 10 * MIN).state, 'normal')
+  assert.equal(av.alarmeTerra({ aberto: true, alarme: NaN }, alarme - 10 * MIN).state, 'normal')
+  assert.equal(av.CAMINHO_ALARME_TERRA, 'notifications.rota.alarmeTerra')
+})

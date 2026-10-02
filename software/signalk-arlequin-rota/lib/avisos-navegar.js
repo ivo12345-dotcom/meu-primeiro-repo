@@ -16,6 +16,11 @@
 //   apito: 'curto') com mais de 12 h ou sem previsão nenhuma.
 // notifications.rota.barometro      warn   queda > 3 hPa em 3 h (amostras de minuto a minuto); apaga-se
 //   com a queda em 3 h ≤ 2 hPa.
+// notifications.rota.alarmeTerra    alert (apito: 'curto')  60 min antes da hora de alarme que os contactos
+//   em terra têm, com o plano aberto (à espera de sair, a navegar ou em pausa; passada a hora fica): "Os
+//   contactos em terra ligam ao MRCC às HH:MM: avisa-os ou Terminar" (revisão final I2). Só no ecrã: o
+//   porto não o manda ao Telegram (a lista dos avisos para o Telegram é decisão do Ivo). alarmeTerra({
+//   aberto, alarme (ms) }, agora).
 //
 // avaliar(estado, entrada, agora) → { estado, avisos: { caminho: { state, method, message, apito?, chave? } } }
 //   entrada: { navegar, tripulacao, saida (ms), destino (nome), semGps, atrasoMin, vento: { medido,
@@ -51,8 +56,10 @@ const LIMITES = Object.freeze({
   quedaHpa: 3,
   quedaApagaHpa: 2,
   janelaBaroH: 3,
-  amostrasMaxMin: 2
+  amostrasMaxMin: 2,
+  alarmeTerraMin: 60
 })
+const CAMINHO_ALARME_TERRA = `${PREFIXO}.alarmeTerra`
 
 const virgula = (x, d = 1) => x.toFixed(d).replace('.', ',')
 // Os números das mensagens arredondam para o lado do aviso: nunca "atraso de 30 min" com o limite de
@@ -180,6 +187,12 @@ function avaliar (estado0, entrada, agora) {
   return { estado: est, avisos }
 }
 
+// ---------- a hora de alarme em terra (revisão final I2) ----------
+function alarmeTerra ({ aberto, alarme }, agora) {
+  if (!aberto || !Number.isFinite(alarme) || agora < alarme - LIMITES.alarmeTerraMin * MIN) return normal()
+  return aviso('alert', `Os contactos em terra ligam ao MRCC ${asHoras(alarme, agora)}: avisa-os ou Terminar`, { apito: 'curto', chave: new Date(alarme).toISOString() })
+}
+
 // ---------- publicar ----------
 function publicar (publicados0 = {}, avisos = {}) {
   const publicados = { ...publicados0 }
@@ -211,4 +224,4 @@ function publicadosDaArvore (arvore, prefixo = PREFIXO) {
   return out
 }
 
-module.exports = { PREFIXO, METODO, LIMITES, acima, novoEstado, juntarPressao, quedaEm3h, avaliar, publicar, publicadosDaArvore }
+module.exports = { PREFIXO, METODO, LIMITES, CAMINHO_ALARME_TERRA, alarmeTerra, acima, novoEstado, juntarPressao, quedaEm3h, avaliar, publicar, publicadosDaArvore }
