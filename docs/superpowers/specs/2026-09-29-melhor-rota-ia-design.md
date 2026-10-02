@@ -24,7 +24,7 @@ A decisão é sempre do Ivo. O botão **"Sair agora mesmo assim"** dá a melhor 
 | Destino | **Lista no ecrã + rota ativa do OpenCPN** no topo da lista |
 | Arquitetura | **Opção 1:** caixa negra (Node) + treino em Python + previsões e rota em Node |
 | Guardar dados | **Desde o 1.º dia, nunca apagar sozinho.** Aos 80% do SSD passa o mais antigo para o **portátil** (opção B), só depois de confirmado |
-| Limites "não recomendado sozinho" | vento médio > **22 nós**, rajadas > **30**, ondas > **3 m**, > **8 h** equivalentes ao leme (motor em calma conta metade, a roda tem travão), chegada de noite a porto desconhecido |
+| Limites "não recomendado sozinho" | vento médio > **22 nós**, rajadas > **30**, ondas > **3 m**, > **8 h** equivalentes ao leme (motor em calma conta metade, a roda tem travão), chegada de noite a porto desconhecido. *(Nota de 02/10: a calma ficou definida a 30/09 no desenho 3a — vento < 10 nós e (ondas < 2 m, ou ≤ 3 m com período ≥ 9 s) — e com "acompanhado" há limites próprios de 28/35/4 m, decisão de 01/10.)* |
 | Sair contra a recomendação | Botão **"Sair agora mesmo assim"** |
 | Rotas costeiras | **Por fora**, afastamento mínimo **5 MN** por defeito |
 
@@ -103,8 +103,21 @@ Plugin SignalK. Grava **desde o primeiro dia** em `~/arlequin-dados/`:
   - Ao arrancar, o bruto da hora e a tabela do dia que não se descomprimam inteiros (corte de energia) passam a `<nome>.danificado-<hora UTC>` e começa-se um ficheiro limpo; esses nunca se confirmam.
   - Hora do GPS a mais de 60 s da do Pi → aviso `notifications.arlequin.caixanegra.relogio` (só ecrã). Relógio: pilha do RTC do Pi 5 e hora pelo GPS.
   - O portátil nunca sobrescreve um bruto confirmado ou de hora fechada, nem um ficheiro da `tabela/`, com uma versão mais pequena: guarda-a ao lado como `<nome>.N` (na tabela, acontece quando o Pi isola o ficheiro do dia danificado e recomeça).
+- **Nota de 02/10 (como ficou no código):**
+  - a **saída** não usa o motor: começa quando o barco fica a mais de 0,5 MN do porto mais perto da lista da caixa negra e acaba quando volta a um porto da lista e fica parado (< 0,5 nó) 10 min (`caixanegra/lib/saidas.js`);
+  - a **tabela** tem 25 colunas, sem a previsão (que se junta no treino): `t, lat, lon, proa, cog, sog, stw, tws, twa, twd, aws, awa, rajada, adorno, caimento, pressao, rpm, litrosHora, grandeRizos, genoaPct, profundidade, soc, simulado, estavel, consumoMedido`;
+  - a pasta `previsoes/` é escrita pelos dois plugins: o da AI de hora a hora a navegar (de 3 em 3 h parado), com um ponto, e o da rota com um ficheiro por ponto da rota, sempre que descarrega a previsão para um cálculo.
 
 ## Parte 2: AI (`software/arlequin-ia/`, Python)
+
+> **Mudado depois (nota de 02/10):** os modelos desta parte mudaram a 30/09 com o desenho 3a
+> (`2026-09-30-melhor-rota-calculo-design.md`, "Ajustes à Parte 2", decisão do Ivo "Opção A"). A
+> velocidade e o consumo usam só o que se sabe antes de partir: a previsão em bruto (`prevTws`,
+> `twaPrevAbs`, `prevRajada`, as ondas), os rizos, a genoa e, no consumo, as rotações — e não o
+> vento, o adorno, o balanço da IMU nem a STW medidos. As células da mistura com a polar são de
+> vento previsto em bruto (`prevTws` × `twaPrevAbs`). O treino e o `/ia` ficaram no plugin
+> `signalk-arlequin-ia` (notas de 29/09, abaixo): `GET /plugins/signalk-arlequin-ia/ia`,
+> `POST …/treinar` e `POST …/voltar`. Onde este texto e o 3a diferem, vale o 3a.
 
 ### Modelos
 
@@ -165,6 +178,13 @@ Todos são LightGBM com **regressão por quantis: P10, P50 e P90** (pessimista, 
 
 ## Parte 3: Melhor rota: cálculo (`software/signalk-arlequin-rota/`)
 
+> **Substituído (nota de 02/10):** esta parte foi refeita no desenho 3a
+> (`2026-09-30-melhor-rota-calculo-design.md`, 30/09, com a revisão final de 01/10); onde diferem,
+> vale o 3a. Por exemplo: a calma é vento < 10 nós e (ondas < 2 m, ou ≤ 3 m com período ≥ 9 s); a
+> alternativa de 3 MN só existe com vento de terra; os limites contam no pior dos 3 cenários; com
+> "acompanhado" há limites próprios (28 nós, rajadas de 35, ondas de 4 m); as partidas vão de 3 em
+> 3 h até +48 h; e as 3 melhores são as recomendadas primeiro, depois por custo.
+
 ### Recolha
 
 | Fonte | O quê |
@@ -189,13 +209,13 @@ Todos são LightGBM com **regressão por quantis: P10, P50 e P90** (pessimista, 
 
 - **Excluída sempre:** passa em terra, numa zona a evitar ou no separador de tráfego, ou mais perto da costa do que o afastamento mínimo (fora das aproximações).
 - **Excluída (vira aviso vermelho em "Sair agora mesmo assim"):** gasóleo < 40 L ou bateria < 50% à chegada, no cenário **P10**.
-- **"Não recomendada sozinho"** (só com tripulação "só eu"): vento médio > 22 nós, rajadas > 30, ondas > 3 m, > 8 h equivalentes ao leme (o motor em calma, com vento < 10 nós e ondas < 1,5 m, conta a metade), chegada de noite a porto marcado como desconhecido.
+- **"Não recomendada sozinho"** (só com tripulação "só eu"): vento médio > 22 nós, rajadas > 30, ondas > 3 m, > 8 h equivalentes ao leme (o motor em calma, com vento < 10 nós e ~~ondas < 1,5 m~~ **(ondas < 2 m, ou ≤ 3 m com período ≥ 9 s; regra do Ivo de 30/09, no desenho 3a)**, conta a metade), chegada de noite a porto marcado como desconhecido.
 
 ### Decisão
 
 - **Custo** = horas de viagem + 0,25 × horas de espera até partir + 1,5 × horas de noite + 1,0 × horas ao leme (só eu) + 0,5 × (rajada máxima − 20, se positivo) + 2 × (onda máxima − 2 m, se positivo) + 0,5 × horas contra o vento.
   - **Esperar ganha quando poupa mais risco do que tempo.**
-  - **Horas ao leme (decidido pelo Ivo a 29/09, opção b):** sem piloto contam todas as horas, à vela e a motor. **As horas a motor em calma (vento < 10 nós e ondas < 1,5 m) contam a metade**, porque a roda tem travão e dá para pausas curtas. Isto vale para o limite das 8 h e para o custo.
+  - **Horas ao leme (decidido pelo Ivo a 29/09, opção b):** sem piloto contam todas as horas, à vela e a motor. **As horas a motor em calma (vento < 10 nós e ~~ondas < 1,5 m~~ ondas < 2 m, ou ≤ 3 m com período ≥ 9 s — regra do Ivo de 30/09) contam a metade**, porque a roda tem travão e dá para pausas curtas. Isto vale para o limite das 8 h e para o custo.
 - **Exemplo (29/09, só eu):**
   - partir agora por fora: 14,3 + 0 + 15,6 + 14,3 + 3,5 + 1,2 + 0 = **48,9**. O motor depois da meia-noite apanha ondas de 2,5 m, por isso não conta como calma. Tem 14,3 h equivalentes ao leme, o que a marca como "não recomendada sozinho";
   - amanhã às 08:00 a motor: 12,2 + 4,1 + 1,4 + 6,1 + 0 + 0 + 0 = **23,8**. São 12,2 h a motor em calma, que equivalem a 6,1 h ao leme, abaixo das 8 h;
@@ -223,6 +243,14 @@ Todos são LightGBM com **regressão por quantis: P10, P50 e P90** (pessimista, 
 - `POST /treinar`, `GET /ia` (estado da AI), `POST /ia/voltar`.
 
 ## Parte 4: Ecrã, avisos e precauções
+
+> **Substituído (nota de 02/10):** o ecrã e os avisos desta parte foram desenhados de novo na 3b-1
+> (`2026-10-01-melhor-rota-ecra-3b1-design.md`: a página, o mapa e o plano pelo Telegram) e na
+> 3b-2 (`2026-10-01-melhor-rota-navegar-3b2-design.md`: o plano ativo, os avisos durante a viagem
+> e as mensagens para terra), ambas de 01/10; onde diferem, valem essas. Por exemplo: o
+> acompanhamento corre de minuto a minuto no plugin da rota, e não de 30 em 30 min; o plano vai
+> para os "Contactos do plano", que só recebem; e o modo noite deixou de ser vermelho (decisão do
+> Ivo de 01/10).
 
 ### Página "Melhor rota" (`arlequin-ecra/public/paginas/melhor.js`)
 
