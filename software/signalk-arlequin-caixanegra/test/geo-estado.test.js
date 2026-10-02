@@ -1,6 +1,9 @@
 'use strict'
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const os = require('node:os')
+const path = require('node:path')
 const geo = require('../lib/geo')
 const est = require('../lib/estado')
 
@@ -21,6 +24,46 @@ test('porto mais perto; sem posição dá null', () => {
   assert.ok(p.mn < 0.5)
   assert.equal(geo.portoMaisPerto(undefined, geo.PORTOS), null)
   assert.equal(geo.portoMaisPerto({ latitude: NaN, longitude: 1 }, geo.PORTOS), null)
+})
+
+test('uma só lista de portos: os 15 destinos da rota (o cais, último ponto da aproximação) e os extras da caixa negra (decisão n.º 25; auditoria I-33)', () => {
+  const rota = JSON.parse(fs.readFileSync(geo.DESTINOS_DA_ROTA, 'utf8'))
+  const daRota = geo.portosDaRota()
+  assert.equal(daRota.length, rota.length)
+  assert.equal(daRota.length, 15)
+  for (const d of rota) {
+    const p = daRota.find(x => x.nome === d.nome)
+    assert.ok(p, `falta ${d.nome}`)
+    assert.deepEqual([p.lat, p.lon], d.aproximacao.at(-1), `${d.nome}: o cais, como o plugin da rota`)
+  }
+  const nomes = geo.PORTOS.map(p => p.nome)
+  for (const n of ['Viana do Castelo', 'Leixões', 'Figueira da Foz', 'Setúbal', 'Sines', 'Lagos', 'Portimão', 'Vilamoura', 'Olhão']) {
+    assert.ok(nomes.includes(n), `a caixa negra tem de conhecer ${n}`)
+  }
+  assert.ok(nomes.includes('Ericeira'), 'a Ericeira não é destino da rota, mas fecha as saídas (extra da caixa negra)')
+  assert.equal(nomes.length, 16)
+  assert.equal(new Set(nomes).size, nomes.length, 'sem repetidos')
+})
+
+test('juntar os extras: um extra com o nome de um porto da rota fica de fora (vale o da rota); um sem coordenadas também', () => {
+  const daRota = [{ nome: 'Peniche', lat: 39.3522, lon: -9.376 }]
+  const extras = [{ nome: ' peniche ', lat: 39.353, lon: -9.377 }, { nome: 'Ericeira', lat: 38.963, lon: -9.418 }, { nome: 'Sem sítio' }, null]
+  assert.deepEqual(geo.juntarPortos(daRota, extras), [{ nome: 'Peniche', lat: 39.3522, lon: -9.376 }, { nome: 'Ericeira', lat: 38.963, lon: -9.418 }])
+})
+
+test('destinos da rota: sem aproximação vale o largo; um destino sem sítio nenhum fica de fora; ficheiro em falta rebenta (quem chama avisa)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arlequin-geo-'))
+  const f = path.join(dir, 'destinos.json')
+  fs.writeFileSync(f, JSON.stringify([
+    { nome: 'A', largo: [39, -9.5], aproximacao: [[39, -9.5], [39.1, -9.4]] },
+    { nome: 'B', largo: [38, -9] },
+    { nome: 'C' },
+    { nome: 'D', largo: [37, 'x'], aproximacao: [] }
+  ]))
+  assert.deepEqual(geo.portosDaRota(f), [{ nome: 'A', lat: 39.1, lon: -9.4 }, { nome: 'B', lat: 38, lon: -9 }])
+  assert.throws(() => geo.portosDaRota(path.join(dir, 'nao-existe.json')), /ENOENT/)
+  fs.writeFileSync(f, '{"nao": "lista"}')
+  assert.throws(() => geo.portosDaRota(f), /lista/)
 })
 
 test('estado: guarda só o próprio barco, ignora notificações, envelhece aos 15 s', () => {

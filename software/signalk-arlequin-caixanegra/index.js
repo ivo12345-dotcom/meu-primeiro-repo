@@ -16,7 +16,7 @@ const saidasLib = require('./lib/saidas')
 const confirmados = require('./lib/confirmados')
 const disco = require('./lib/disco')
 const velasLib = require('./lib/velas')
-const { PORTOS, portoMaisPerto } = require('./lib/geo')
+const { EXTRAS, DESTINOS_DA_ROTA, portosDaRota, juntarPortos, portoMaisPerto } = require('./lib/geo')
 const { proaVerdadeira, DECLINACAO_MAX_MS } = require('./lib/proa')
 
 const NOME_GRANDE = { 0: 'inteira', 1: '1 rizo', 2: '2 rizos', '-1': 'arriada' }
@@ -36,12 +36,15 @@ module.exports = function (app) {
       pasta: { type: 'string', title: 'Pasta dos dados', default: '~/arlequin-dados' },
       limiteAviso: { type: 'number', title: 'Aviso e arquivo a partir de (% do disco)', default: 80 },
       limiteParar: { type: 'number', title: 'Parar o bruto a partir de (% do disco)', default: 95 },
+      // As saídas fecham nos destinos da rota (lidos do destinos.json dela) e nestes extras
+      // (decisão n.º 25). Um extra com o nome de um destino da rota fica de fora.
       portos: {
         type: 'array',
-        title: 'Portos (para detetar as saídas)',
-        default: PORTOS,
+        title: 'Portos e fundeadouros que não são destinos da rota (para detetar as saídas; os destinos da rota já contam)',
+        default: EXTRAS,
         items: { type: 'object', properties: { nome: { type: 'string' }, lat: { type: 'number' }, lon: { type: 'number' } } }
-      }
+      },
+      destinos: { type: 'string', title: 'Ficheiro dos destinos da rota (só se lê)', default: DESTINOS_DA_ROTA }
     }
   }
 
@@ -60,6 +63,8 @@ module.exports = function (app) {
   let avisoDisco = 'normal'
   let relogioErrado = false
   let erros = 0
+  let portos = [] // os destinos da rota e os extras (lib/geo.js)
+  let semPortosDaRota = null // o motivo, quando não se leu o destinos.json da rota
 
   // Corre dentro do emit do SignalK: se rebentasse aqui, a mensagem perdia-se
   // para o servidor todo. Conta sempre o erro, mas só o regista 1 vez por minuto.
@@ -154,7 +159,7 @@ module.exports = function (app) {
   function dezSegundos (agora, v) {
     try { bruto.despejar() } catch (e) { erros++; app.error(`bruto: ${e.message}`) }
     const pos = v('navigation.position')
-    const perto = portoMaisPerto(pos, o.portos)
+    const perto = portoMaisPerto(pos, portos)
     const simulado = est.simuladoRecente(estado, agora)
     const eEstavel = !est.simuladoRecente(estado, agora, estavel.JANELA_MS + 15000) &&
       estavel.estavel(janela, { longeDoPorto: !!perto && perto.mn > 0.5 })
@@ -179,7 +184,7 @@ module.exports = function (app) {
       litrosHora: Number.isFinite(caudal) ? caudal * 3.6e6 : undefined,
       soc: v('electrical.batteries.servico.capacity.stateOfCharge'),
       simulado
-    }, o.portos)
+    }, portos)
     saidas = r.s
     if (r.terminada) guardar(path.join(base, 'saidas', r.terminada.inicio.slice(0, 16).replace(':', '-') + '.json'), r.terminada)
     if (velasLib.precisaLembrete(velas, agora, twsMedio())) {
@@ -272,7 +277,7 @@ module.exports = function (app) {
       const mb = listarBruto().reduce((s, f) => s + f.bytes, 0) / 1e6
       // Sempre a hora de Lisboa, seja qual for o fuso do Pi (decisão n.º 22).
       const hora = ultimaLinha ? new Date(ultimaLinha).toLocaleTimeString('pt-PT', { timeZone: 'Europe/Lisbon' }) : '—'
-      app.setPluginStatus(`${bruto.parado ? 'BRUTO PARADO · ' : ''}bruto ${mb.toFixed(1)} MB · disco ${Math.round(infoDisco?.usadoPct ?? 0)}% · última linha ${hora}`)
+      app.setPluginStatus(`${semPortosDaRota ? 'SEM OS PORTOS DA ROTA · ' : ''}${bruto.parado ? 'BRUTO PARADO · ' : ''}bruto ${mb.toFixed(1)} MB · disco ${Math.round(infoDisco?.usadoPct ?? 0)}% · última linha ${hora}`)
     } catch (e) { erros++; app.error(`estado: ${e.message}`) }
   }
 
@@ -288,7 +293,7 @@ module.exports = function (app) {
   }
 
   plugin.start = function (props) {
-    o = { pasta: '~/arlequin-dados', limiteAviso: 80, limiteParar: 95, portos: PORTOS, ...props }
+    o = { pasta: '~/arlequin-dados', limiteAviso: 80, limiteParar: 95, portos: EXTRAS, destinos: DESTINOS_DA_ROTA, ...props }
     base = path.resolve(o.pasta.startsWith('~') ? path.join(os.homedir(), o.pasta.slice(1)) : o.pasta)
     for (const d of ['bruto', 'tabela', 'saidas', 'previsoes', 'entrada']) fs.mkdirSync(path.join(base, d), { recursive: true })
     dirPlugin = app.getDataDirPath()
@@ -307,11 +312,21 @@ module.exports = function (app) {
     mudados = new Set()
     erros = 0
     ultimoErroDelta = -Infinity
+    // Os portos das saídas: os destinos da rota (lidos agora: uma atualização do repositório
+    // conta no arranque seguinte) e os extras. Sem o ficheiro da rota, só os extras, e diz-se.
+    let daRota = []
+    semPortosDaRota = null
+    try { daRota = portosDaRota(o.destinos) } catch (e) {
+      semPortosDaRota = `não li os destinos da rota (${o.destinos}): ${e.message}`
+      erros++
+      app.error(`caixa negra: ${semPortosDaRota}; as saídas só fecham nos portos extra`)
+    }
+    portos = juntarPortos(daRota, Array.isArray(o.portos) ? o.portos : EXTRAS)
     isolarDanificados(Date.now())
     publicarVelas()
     app.signalk.on('unfilteredDelta', aoDelta)
     temporizador = setInterval(segundo, 1000)
-    app.setPluginStatus(`A gravar em ${base}`)
+    app.setPluginStatus(`${semPortosDaRota ? 'SEM OS PORTOS DA ROTA · ' : ''}A gravar em ${base}`)
   }
 
   plugin.stop = function () {
@@ -344,6 +359,7 @@ module.exports = function (app) {
         ultimaLinha: ultimaLinha ? new Date(ultimaLinha).toISOString() : null,
         erros,
         velas: { grandeRizos: velas.grandeRizos, genoaPct: velas.genoaPct },
+        portos: portos.map(p => p.nome), // onde as saídas começam e acabam
         saidaEmCurso: saidas.emCurso
           ? { inicio: new Date(saidas.emCurso.inicio).toISOString(), de: saidas.emCurso.de, milhas: Math.round(saidas.emCurso.milhas * 10) / 10 }
           : null
