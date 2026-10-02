@@ -205,8 +205,10 @@ async function meteorologia () {
   const lon = PONTOS.map(p => p.lon).join(',')
   // dias: os próximos 2, ou (--dia) esse dia e o seguinte, do arquivo de previsões da Open-Meteo
   const dias = ARGS.dia ? `start_date=${ARGS.dia}&end_date=${new Date(Date.parse(ARGS.dia) + 86400000).toISOString().slice(0, 10)}` : 'forecast_days=2'
-  const v = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,visibility,cloud_cover&wind_speed_unit=kn&timezone=Europe%2FLisbon&${dias}`)).json()
-  const m = await (await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height,wave_period,wave_direction,ocean_current_velocity,ocean_current_direction&timezone=Europe%2FLisbon&${dias}`)).json()
+  // cell_selection=sea (auditoria K-05, como o plugin da rota): a omissão (`land`) serve junto à costa o
+  // vento de uma célula de terra, mais fraco. A meteorologia gravada de 29/09 (o golden) é de antes.
+  const v = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,visibility,cloud_cover&wind_speed_unit=kn&timezone=Europe%2FLisbon&${dias}&cell_selection=sea`)).json()
+  const m = await (await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height,wave_period,wave_direction,ocean_current_velocity,ocean_current_direction&timezone=Europe%2FLisbon&${dias}&cell_selection=sea`)).json()
   const s = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=38.9&longitude=-9.45&daily=sunrise,sunset&timezone=Europe%2FLisbon&${dias}`)).json()
   const met = { v, m, s, obtida: new Date().toISOString() }
   if (ARGS.guardarMeteo) escreverJson(ARGS.guardarMeteo, met)

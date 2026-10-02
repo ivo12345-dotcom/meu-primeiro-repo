@@ -53,8 +53,11 @@ function urls (pontos, { horas = 48 } = {}) {
     const q = `latitude=${g.map(p => R3(p.lat)).join(',')}&longitude=${g.map(p => R3(p.lon)).join(',')}`
     grupos.push({
       pontos: g,
-      forecast: `https://api.open-meteo.com/v1/forecast?${q}&hourly=${FORECAST.join(',')}&wind_speed_unit=kn&timezone=UTC&forecast_hours=${horas}`,
-      // wind_speed_unit=kn também põe a corrente em nós; cell_selection=sea evita as células de terra
+      // cell_selection=sea nos DOIS pedidos (auditoria K-05): a omissão da Open-Meteo é `land`, que
+      // ao largo de Cascais e na barra do Tejo serve o vento de uma célula colada à costa (ou em
+      // terra) e o subestima ~40 % (02/10, a 5 MN de terra: 8,4 nós com `land`, 14,5 com `sea`).
+      forecast: `https://api.open-meteo.com/v1/forecast?${q}&hourly=${FORECAST.join(',')}&wind_speed_unit=kn&timezone=UTC&forecast_hours=${horas}&cell_selection=sea`,
+      // wind_speed_unit=kn também põe a corrente em nós
       marine: `https://marine-api.open-meteo.com/v1/marine?${q}&hourly=${MARINE.join(',')}&timezone=UTC&forecast_hours=${horas}&cell_selection=sea&wind_speed_unit=kn`
     })
   }
