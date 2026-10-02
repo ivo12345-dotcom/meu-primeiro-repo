@@ -82,6 +82,49 @@ test('inverno a navegar: pede para ligar, o motor liga, pede para desligar, regi
   assert.ok(fs.existsSync(path.join(app.dir, 'runtime.json')))
 })
 
+// Auditoria M-60 (E-M2): um só "relógio dos dados" para todos os caminhos. No dev, com o J1939 ligado
+// (sem tramas: rotações null em hora real) e um cenário acelerado (hora simulada), a energia saltava entre
+// janeiro e outubro: avisos "sensor perdido" falsos e sessões de carga partidas.
+test('M-60: no dev acelerado com o J1939 a publicar rotações null em hora real: nenhum "sensor perdido" falso, a carga numa só sessão', async () => {
+  const app = appFalso()
+  const plugin = criarPlugin(app)
+  plugin.start({})
+  const cenario = CENARIOS['inverno-navegar']
+  let m = criarModelo(cenario.opcoes, new Date('2026-01-10T08:00:00').getTime())
+  for (let minuto = 0; ; minuto++) {
+    const passo = passoEm(cenario, minuto)
+    if (!passo) break
+    const r = avancar(m, 60 * 1000, passo)
+    m = r.modelo
+    app.receber(deltaDaLeitura(r.leitura))
+    app.receber({ updates: [{ timestamp: new Date().toISOString(), values: [{ path: 'propulsion.main.revolutions', value: null }] }] })
+  }
+  plugin.stop()
+  const seq = sequencia(app.notificacoes)
+  assert.ok(!seq.includes('sensorPerdido:warn'), seq.join(' '))
+  const i = seq.indexOf('ligarMotor:warn')
+  assert.deepEqual(seq.slice(i, i + 4), ['ligarMotor:warn', 'ligarMotor:normal', 'desligarMotor:warn', 'desligarMotor:normal'])
+  await new Promise(r => setTimeout(r, 50))
+  const sessoes = fs.readFileSync(path.join(app.dir, 'sessoes-carga.jsonl'), 'utf8').trim().split('\n').map(JSON.parse)
+  assert.ok(sessoes[0].ah > 50, `Ah ${sessoes[0].ah} em ${sessoes.length} sessões`)
+})
+
+// Auditoria M-65 (E-M8): uma falha do EEC1 (> 5 s: o J1939 publica null) fechava e reabria a sessão.
+test('M-65: rotações null (o J1939 sem EEC1) não param o motor antes dos 2 min: a sessão não se parte', async () => {
+  const app = appFalso()
+  const plugin = criarPlugin(app)
+  plugin.start({})
+  let m = criarModelo({ socInicial: 0.6 }, Date.now())
+  const enviar = (r, rpm) => app.receber({ updates: [{ ...deltaDaLeitura(r.leitura).updates[0], values: deltaDaLeitura(r.leitura).updates[0].values.map(v => v.path.endsWith('revolutions') ? { ...v, value: rpm } : v) }] })
+  for (let i = 0; i < 30; i++) { const r = avancar(m, 60 * 1000, { motor: true }); m = r.modelo; enviar(r, i >= 10 && i < 11 ? null : r.leitura.rpm) }
+  for (let i = 0; i < 10; i++) { const r = avancar(m, 60 * 1000, {}); m = r.modelo; enviar(r, r.leitura.rpm) }
+  plugin.stop()
+  await new Promise(r => setTimeout(r, 50))
+  const sessoes = fs.readFileSync(path.join(app.dir, 'sessoes-carga.jsonl'), 'utf8').trim().split('\n').map(JSON.parse)
+  assert.equal(sessoes.length, 1, JSON.stringify(sessoes))
+  assert.equal(sessoes[0].duracaoMin, 30)
+})
+
 test('descarga sem motor: 55% no ecrã e depois alarme crítico com som', () => {
   const { app } = correrCenario('descarga-critica')
   const seq = sequencia(app.notificacoes)
