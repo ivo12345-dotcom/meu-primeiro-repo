@@ -15,6 +15,7 @@
 // A fila (gravada no plano ativo, em plano.contactos): { fila: [msg], enviadas: [msg], seq }
 //   msg: { id, ref ("A3": a letra do plano e o número; vai no fim do texto, "ref. A3", a mesma em todas as
 //   tentativas — perder um atraso é pior do que o contacto o receber duas vezes), tipo, texto, contactos (a quem: os nomes dos contactos entregues do plano quando entrou),
+//   idCalculo/indice (o plano a que pertence: auditoria I-04),
 //   chats (os chatId deles), gpx?, nomeFicheiro?, chegada?/alarme? (só no atraso, ms), anterior? (do
 //   plano anterior), criada, tentativas, proxima, estado: 'fila' | 'a enviar', pedido, erro }; as
 //   enviadas guardam a hora a que realmente saíram (enviadaEm) e a quem.
@@ -211,6 +212,8 @@ function porNaFila (c0, msg, agora) {
     ...(msg.tipo === 'atraso' && valido(msg.chegada) && valido(msg.alarme) ? { chegada: msg.chegada, alarme: msg.alarme } : {}),
     // o plano novo: a hora de alarme dele (ms), que cada contacto passa a ter quando lhe chega (I-01)
     ...(msg.tipo === 'plano' && valido(msg.alarme) ? { alarme: msg.alarme } : {}),
+    // o plano a que pertence (auditoria I-04): um "cheguei bem" atrasado só fecha o envio do seu plano
+    ...(msg.idCalculo != null ? { idCalculo: msg.idCalculo, indice: msg.indice } : {}),
     // o atraso libertado pelo "Estou bem" do Ivo (passa as guardas, também à hora de sair)
     ...(msg.tipo === 'atraso' && msg.confirmado === true ? { confirmado: true } : {}),
     criada: iso(agora),

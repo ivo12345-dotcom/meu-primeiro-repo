@@ -1060,3 +1060,32 @@ test('auditoria I-02: com um plano ativo aberto que não é o que terra tem (o I
   assert.equal(s.app.self[ALARME_TERRA].message, `Os contactos em terra têm o plano de outra alternativa, com alarme ${asHoras(alarme, s.agora())}: avisa-os`)
   s.p.stop()
 })
+
+// ---------- auditoria I-04: um "cheguei bem" atrasado só fecha o envio do seu plano ----------
+test('auditoria I-04: o "cheguei bem" da viagem 1 entregue depois de o plano da viagem 2 ter sido mandado não fecha o envio da viagem 2: ao ativar outra alternativa, o plano novo segue com "Este plano substitui o anterior"', async () => {
+  const s = await preparar()
+  await sair(s)
+  s.porto.resposta = () => null // o porto não responde (sem rede na marina)
+  await chegar(s)
+  assert.equal(s.p.planoAtivo().estado, 'chegado')
+  s.agendados.at(-1).fn() // passaram os 30 s: o "cheguei bem" volta à fila
+  assert.equal(s.p.planoAtivo().contactos.fila[0].estado, 'fila')
+  // a rede volta e o Ivo manda já o plano da viagem 2 (outro cálculo) pelo Telegram, antes de o "cheguei
+  // bem" da viagem 1 voltar a tentar
+  s.porto.resposta = (e) => ({ pedido: e.pedido, entregues: ['chat 111', 'Mãe'], contactos: ['Mãe'], chats: ['222'], falhas: [] })
+  const { id } = await calcular(s.r, { destino: 'cascais', tripulacao: 'so' })
+  await chamar(s.r.post['/plano-telegram'], { body: { id, alternativa: 0 } })
+  assert.equal((await chamar(s.r.get['/resultado/:id'], { params: { id } })).envioEmTerra.idCalculo, id)
+  // o "cheguei bem" da viagem 1 chega agora a terra
+  for (let m = 0; m < 3; m++) await s.ciclo()
+  assert.ok(s.recebidos.some(e => e.tipo === 'chegada'))
+  const r = await chamar(s.r.get['/resultado/:id'], { params: { id } })
+  assert.equal(r.envioEmTerra?.idCalculo, id, 'o envio da viagem 2 continua a contar')
+  // ativar outra alternativa da viagem 2: segue o plano novo, que substitui o que a Mãe tem
+  const n = s.recebidos.filter(e => e.tipo === 'plano').length
+  assert.equal((await chamar(s.r.post['/ativar'], { body: { id, alternativa: 1 } })).code, 200)
+  assert.equal(s.recebidos.filter(e => e.tipo === 'plano').length, n + 1)
+  assert.ok(s.recebidos.filter(e => e.tipo === 'plano').at(-1).texto.includes('Este plano substitui o anterior.'))
+  assert.deepEqual(s.p.planoAtivo().envio.contactos, ['Mãe'])
+  s.p.stop()
+})
