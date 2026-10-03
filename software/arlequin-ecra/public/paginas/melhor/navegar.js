@@ -17,7 +17,13 @@
 //   um erro da leitura que não seja 404: "sem ligação ao plugin da rota: os dados podem estar velhos";
 //   os contactos em terra (revisão final I2, I3): "contactos em terra: alarme HH:MM" na faixa e na caixa
 //     da pausa, "mensagem para terra por enviar (sem rede)" (uma na fila que já falhou), "não chegou a X
-//     (a tentar outra vez)" (o parcial) e, em pausa, "em pausa: os atrasos não seguem para terra";
+//     (a tentar outra vez)" (o parcial) e, em pausa, "em pausa: os atrasos não seguem para terra"; a hora de
+//     alarme da faixa é a MAIS CEDO que algum contacto tem (envio.alarme, decisão n.º 14) e, com horas
+//     diferentes, "Pai: alarme HH:MM · Mãe: alarme HH:MM" (envio.porContacto, I-01, F3b);
+//   o que pede uma ação em relação a terra — o relógio do Pi desacertado, o «cheguei bem» por entregar com o plano
+//     já fechado (K-12), a quem se desistiu de entregar (I-05) e o plano que terra tem sem ser o ativo (I-02) —
+//     vai num mosaico à parte, "Contactos em terra" (terra.js), também no Pedir; o 404 do GET /plano-ativo traz
+//     o envioEmTerra e o relógio (estado.semPlano);
 //   o atraso retido (revisão final C1, decisão do Ivo de 02/10): "A hora de alarme em terra é HH:MM e não
 //     foi adiada (barco parado / limite de 3 h). Se estás bem, carrega Estou bem." com o botão (POST
 //     /plano-ativo/estou-bem: sai um atraso com a estimativa de agora).
@@ -29,6 +35,7 @@ import { esc, horaLisboa, quandoAs, aNome } from '../../lib/rota-texto.js'
 import { GRAVIDADE, COR_GRAVIDADE } from '../../lib/alarmes.js'
 import { URL_ROTA, calcular, motivoAcao } from './pedir.js'
 import { aberto, planoAberto, pausado, aEspera } from './aberto.js'
+import { alarmesPorContacto, horaPlugin } from './terra.js'
 
 const LER_MS = 10000
 const CONFIRMAR = "Terminar o plano? Os contactos em terra recebem 'viagem terminada, estou bem'"
@@ -41,10 +48,16 @@ const chave = (p) => (p ? `${p.idCalculo ?? ''}|${p.indice ?? ''}|${p.ativadoEm 
 // avisos do GET /plano-ativo, os mais graves primeiro; o dos recursos já tem a sua linha na faixa. Num mosaico
 // próprio, na coluna da direita do Leme: na faixa, a 1024×600, empurravam o "Rumo a seguir" para fora do ecrã.
 // A gravidade e a cor vêm do lib/alarmes.js (uma só fonte, revisão F3 Minor 15).
+// O relógio do Pi desacertado e o que terra tem (o «cheguei bem» por entregar, outro plano, nenhum) já têm o mosaico
+// "Contactos em terra" (terra.js, F3b item 1), a toda a hora e não só 60 min antes: o aviso do mesmo não se repete aqui.
 const CAMINHO_RECURSOS = 'notifications.rota.recursos'
+const JA_EM_TERRA = /ainda não chegou a terra|^Os contactos em terra têm /
 function avisosAtivos (p) {
+  const mosaicoRelogio = ok(p.relogioDesacertadoS) && p.relogioDesacertadoS !== 0
+  const mosaicoTerra = !!(p.fechoPorEntregar || p.envioEmTerra)
   return (Array.isArray(p.avisos) ? p.avisos : [])
     .filter(a => a && GRAVIDADE[a.state] && typeof a.message === 'string' && a.message.trim() && a.caminho !== CAMINHO_RECURSOS)
+    .filter(a => !(mosaicoRelogio && a.caminho === 'notifications.rota.relogio') && !(mosaicoTerra && a.caminho === 'notifications.rota.alarmeTerra' && JA_EM_TERRA.test(a.message)))
     .sort((a, b) => GRAVIDADE[b.state] - GRAVIDADE[a.state])
 }
 
@@ -72,6 +85,7 @@ export function buscarPlanoAtivo (ctx, forcar = false) {
     .then(r => {
       if (e.lerDeNovo) return
       e.planoAtivo = r && typeof r === 'object' ? r : null
+      e.semPlano = null
       e.planoAtivoLidoEm = t
       e.semLigacao = false
       acertar(e)
@@ -79,7 +93,8 @@ export function buscarPlanoAtivo (ctx, forcar = false) {
     .catch(err => {
       if (e.lerDeNovo) return
       // 404: não há plano; outro erro (o plugin a reiniciar, a rede): fica o plano lido, com o aviso
-      if (err?.status === 404) { e.planoAtivo = null; e.semLigacao = false; acertar(e) } else e.semLigacao = true
+      // (o corpo do 404 traz o que terra tem sem plano ativo e o relógio, F2: terra.js)
+      if (err?.status === 404) { e.planoAtivo = null; e.semPlano = err.corpo && typeof err.corpo === 'object' ? err.corpo : {}; e.semLigacao = false; acertar(e) } else e.semLigacao = true
     })
     .finally(() => { e.aLerPlano = null; ctx.refrescar() })
   e.aLerPlano = leitura
@@ -99,13 +114,6 @@ function atrasoTexto (a) {
   if (!ok(a)) return ''
   if (a === 0) return 'no horário do plano'
   return `${a > 0 ? '+' : '−'}${Math.abs(a)} min sobre o plano`
-}
-
-// a hora do plugin agora (sem ela, a do ecrã)
-function horaPlugin (ctx, p) {
-  const base = Date.parse(p.agora)
-  const lido = ctx.estado.planoAtivoLidoEm
-  return ok(base) && ok(lido) ? base + (agora(ctx) - lido) : agora(ctx)
 }
 
 function linhasFaixa (ctx, p) {
@@ -144,7 +152,11 @@ function linhasTerra (p, t, { pausa = false, simples = false } = {}) {
   const cor = (classe, x) => (simples ? x : `<span class="${classe}">${x}</span>`)
   const out = []
   const alarme = Date.parse(p.envio.alarme)
-  if (ok(alarme)) out.push(cor('lab', `contactos em terra: alarme ${horaLisboa(alarme, t)}`))
+  // a hora a que terra liga ao MRCC é a que o Ivo tem de saber sempre (F3b item 1): no tamanho da faixa, não a cinzento miúdo
+  if (ok(alarme)) out.push(`contactos em terra: alarme <b>${horaLisboa(alarme, t)}</b>`)
+  // com horas diferentes por contacto (I-01): a de cada um; a de cima é a mais cedo
+  const porContacto = alarmesPorContacto(p.envio, t)
+  if (porContacto) out.push(cor('lab', porContacto))
   const fila = Array.isArray(p.filaContactos) ? p.filaContactos : []
   const nomes = [...new Set(fila.filter(m => m.parcial).flatMap(m => (Array.isArray(m.contactos) ? m.contactos : [])))]
   if (nomes.length) out.push(cor('atencao', `não chegou a ${esc(nomes.join(', '))} (a tentar outra vez)`))

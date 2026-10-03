@@ -12,6 +12,7 @@ import { barraXte } from '../../lib/desenho.js'
 import { proximoWp, proa as proaDe, marcaMag, velocidade, distancia, duracao, rumo, num, graus, ok } from '../comum.js'
 import { esc } from '../../lib/rota-texto.js'
 import * as navegar from './navegar.js'
+import { avisosTerra } from './terra.js'
 
 const NOVO = '<button class="acao" data-acao="rota-novo">Novo cálculo</button>'
 
@@ -26,6 +27,9 @@ export default {
     const plano = navegar.render(ctx)
     // os avisos da rota ativos (auditoria I-24), num mosaico à parte: o rumo nunca sai do ecrã
     const avisos = navegar.avisosRota(ctx)
+    // o que pede uma ação do Ivo em relação a terra (F3b item 1: o relógio, o «cheguei bem» por entregar, a quem se
+    // desistiu de entregar, o plano que terra tem e não é o ativo): outro mosaico, antes dos avisos da rota
+    const terra = avisosTerra(ctx)
     // com o plano ativo (Tarefa 8.2), só o Recalcular da faixa: sem o "Novo cálculo"
     const comPlano = !!navegar.planoAberto(ctx)
     if (!wp.ativo) {
@@ -36,7 +40,7 @@ export default {
       const explica = navegar.pausado(ctx) && !nome
         ? 'a rota do plano já não está ativa: Continuar volta a ativá-la.'
         : 'À espera do rumo do SignalK (o OpenCPN mostra a rota ativa). Aqui aparece o rumo a seguir ao leme.'
-      return `<div class="col" style="flex:1;">${plano}${avisos}<div class="tile centro" style="flex:1;"><div class="vv">${titulo}</div>
+      return `<div class="col rolar" data-rolar="leme-unica" style="flex:1;">${plano}${terra}${avisos}<div class="tile centro" style="flex:1;"><div class="vv">${titulo}</div>
 ${nome ? `<div class="v" style="margin-top:.4rem;">${esc(nome)}</div>` : ''}
 <div style="font-size:1.3rem;max-width:40rem;margin:.6rem 0;">${explica}</div>
 ${ctx.estado?.msgAtivar ? `<div class="lab" style="max-width:40rem;">${esc(ctx.estado.msgAtivar)}</div>` : ''}
@@ -63,16 +67,16 @@ ${comPlano ? '' : `<div class="acoes">${NOVO}</div>`}</div></div>`
         : c.lado === 'BB' ? `<span class="bb-txt">◀ ${c.graus}° BB</span>` : `<span class="eb-txt">${c.graus}° EB ▶</span>`
     return `<div class="col" style="flex:1.3;">
 ${plano}
-<div class="tile centro" style="flex:1;">
-  <div class="lab" style="font-size:1.2rem;">Rumo a seguir</div>
-  <div class="vvv" style="font-size:6rem;">${rumo(alvo)}</div>
-  <div class="vvv" style="font-size:4.6rem;margin-top:.4rem;">${grande}</div>
-  <div style="font-size:1.3rem;margin-top:.5rem;">proa atual ${rumo(proa)}${marcaMag(pr)}</div>
+<div class="tile centro rumo-tile">
+  <div class="lab rumo-lab">Rumo a seguir</div>
+  <div class="vvv rumo-valor">${rumo(alvo)}</div>
+  <div class="vvv rumo-corr">${grande}</div>
+  <div class="rumo-proa">proa atual ${rumo(proa)}${marcaMag(pr)}</div>
 </div>
 ${bordos}
 </div>
-<div class="col estica">
-${avisos}<div class="tile"><div class="lab">${esc(wp.nome)}</div><div class="vv">${distancia(wp.dist)} MN · ${duracao(wp.ttg)}</div><div class="lab">rumo direto ${rumo(wp.rumoWp)}</div></div>
+<div class="col estica rolar" data-rolar="leme-dir">
+${terra}${avisos}<div class="tile"><div class="lab">${esc(wp.nome)}</div><div class="vv">${distancia(wp.dist)} MN · ${duracao(wp.ttg)}</div><div class="lab">rumo direto ${rumo(wp.rumoWp)}</div></div>
 <div class="tile"><div class="lab">XTE ${ok(wp.xte) ? `${distancia(Math.abs(wp.xte), 2)} MN ${wp.xte > 0 ? 'EB' : 'BB'}` : '—'}</div>${barraXte(wp.xte)}</div>
 <div class="tile"><div class="lab">VMG ao WP</div><div class="vv">${velocidade(wp.vmg)} nós</div></div>
 <div class="tile"><div class="lab">Vento real</div><div class="vv">${velocidade(tws)} nós de ${rumo(twd)}</div></div>
