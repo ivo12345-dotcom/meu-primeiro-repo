@@ -79,3 +79,17 @@ test('re-revisão M-4: com o modoTeste ligado, o estado do plugin começa por "M
   assert.match(x.estado, /^Pronto · \d+ destinos$/)
   k.p.stop()
 })
+
+test('auditoria M-30: no modo de teste com a hora simulada, um getSelfPath que rebenta ao ler o navigation.datetime não dá uma rejeição por tratar: o ciclo regista o erro e o seguinte corre', async () => {
+  const app = appFalso()
+  const { p } = plugin(app, { agendarCiclo: () => 1, pararCiclo: () => {} })
+  p.start({ pasta: path.join(app.dir, 'dados'), modoTeste: true, horaSimulada: true, cicloSegundos: 1 })
+  const getSelfPath = app.getSelfPath
+  app.getSelfPath = () => { throw new Error('rebentou') }
+  await assert.doesNotReject(p.cicloNavegar())
+  assert.match(app.erros.at(-1), /^a navegar: rebentou$/)
+  app.getSelfPath = getSelfPath
+  app.self['navigation.datetime'] = new Date(AGORA).toISOString()
+  await assert.doesNotReject(p.cicloNavegar())
+  p.stop()
+})
