@@ -33,7 +33,8 @@
 //   metade); ou, numa rota com menos de 1 MN, 5 min "a navegar" antes (chegou = o início dos 5 min parado).
 //   Em pausa e na rota curta, também o afastamento máximo do cais desde a saída (afastamentoCaisMaxMn, no
 //   plano; à saída conta a partida) de pelo menos 0,5 MN: numa ida e volta, ou com o destino colado à
-//   partida, o barco tem de sair do círculo da chegada e voltar (revisão final M1).
+//   partida, o barco tem de sair do círculo da chegada e voltar (revisão final M1). Os dois afastamentos
+//   só sobem com 2 amostras seguidas, o menor das duas (auditoria M-26: um salto do GPS não conta).
 //   Pausado depois de sair, parado (SOG < 0,5 nó) 30 min a menos de 0,3 MN de outro porto da lista (não
 //   o destino): mem.sugestao = { id, nome, desde } (o ecrã pergunta "Chegaste a X?"; o plano não muda).
 // chegarA(plano, { id, nome }, chegou, agora): fecha o plano como chegado a outro porto (o botão).
@@ -108,8 +109,9 @@ const aberto = (p) => !!p && ABERTOS.has(p.estado)
 // longeDesde: a 1.ª amostra a mais de 0,5 MN da partida; outro: { id, desde } o outro porto onde está
 // parado (em pausa); sugestao: { id, nome, desde } ao fim de 30 min; ultimaT: a hora da última amostra
 // rotaDiferente: { desde, n } a rota ativa diferente da do plano (ainda não pausou)
-const novaMemoria = () => ({ sogAltaDesde: null, paradoDesde: null, longeDesde: null, outro: null, sugestao: null, rotaDiferente: null, ultimaT: null })
-const semJanelas = (m) => Object.assign(m, { sogAltaDesde: null, paradoDesde: null, longeDesde: null, outro: null, sugestao: null })
+// afastAntes: { partida, cais } os afastamentos da amostra anterior (auditoria M-26: só contam 2 seguidas)
+const novaMemoria = () => ({ sogAltaDesde: null, paradoDesde: null, longeDesde: null, outro: null, sugestao: null, rotaDiferente: null, ultimaT: null, afastAntes: null })
+const semJanelas = (m) => Object.assign(m, { sogAltaDesde: null, paradoDesde: null, longeDesde: null, outro: null, sugestao: null, afastAntes: null })
 
 // o comprimento da rota do plano (MN)
 function comprimentoRota (p) {
@@ -194,16 +196,23 @@ function avaliar (plano, leitura = {}, mem = novaMemoria(), agora, opcoes = {}) 
   const sog = Number.isFinite(leitura.sogNos) ? leitura.sogNos : null
   const milhas = Number.isFinite(leitura.milhas) ? leitura.milhas : null
   if (!pos) { semJanelas(m); return fim(null) }
-  // o afastamento máximo da partida desde a saída (a navegar ou em pausa depois de sair), no plano
+  // o afastamento máximo da partida desde a saída (a navegar ou em pausa depois de sair), no plano, e o do
+  // cais (revisão final M1; à saída o barco estava na partida). Só com 2 amostras seguidas (auditoria M-26,
+  // como a saída): conta o menor das duas — um salto do GPS (uma amostra longe e de volta) não é progresso e,
+  // em pausa, dava um "cheguei bem" falso
   const fora = p.estado === ESTADOS.NAVEGAR || (p.estado === ESTADOS.PAUSADO && p.pausadoDe === ESTADOS.NAVEGAR)
-  if (fora && p.partida) {
-    const d = c.distanciaMn(pos, p.partida)
-    if (!(p.afastamentoMaxMn >= d)) p.afastamentoMaxMn = d
-  }
-  // e o afastamento máximo do cais desde a saída (revisão final M1; à saída o barco estava na partida)
-  if (fora && p.destino?.cais) {
-    const d = Math.max(c.distanciaMn(pos, p.destino.cais), p.partida ? c.distanciaMn(p.partida, p.destino.cais) : 0)
-    if (!(p.afastamentoCaisMaxMn >= d)) p.afastamentoCaisMaxMn = d
+  if (fora) {
+    const agoraAfast = { partida: p.partida ? c.distanciaMn(pos, p.partida) : null, cais: p.destino?.cais ? c.distanciaMn(pos, p.destino.cais) : null }
+    const antes = m.afastAntes
+    m.afastAntes = agoraAfast
+    if (antes && Number.isFinite(antes.partida) && Number.isFinite(agoraAfast.partida)) {
+      const d = Math.min(antes.partida, agoraAfast.partida)
+      if (!(p.afastamentoMaxMn >= d)) p.afastamentoMaxMn = d
+    }
+    if (antes && Number.isFinite(antes.cais) && Number.isFinite(agoraAfast.cais)) {
+      const d = Math.max(Math.min(antes.cais, agoraAfast.cais), p.partida ? c.distanciaMn(p.partida, p.destino.cais) : 0)
+      if (!(p.afastamentoCaisMaxMn >= d)) p.afastamentoCaisMaxMn = d
+    }
   }
 
   // em pausa (decisão do Ivo de 01/10, "ver a chegada mesmo em pausa"): só depois de sair; a chegada ao
