@@ -181,6 +181,40 @@ export function calado (n, acao) {
   return { ...n, method: (n.method || []).filter(m => m !== 'sound'), status: { ...(n.status || {}), silenced: true } }
 }
 
+// O "silenciado" que sobrevive ao reinício de um plugin (F3b item 9, nota do SignalK 2.33): ao parar um plugin o servidor
+// apaga-lhe os valores e ao arrancar o plugin repõe os alarmes que ainda são verdade — o ecrã vê normal → o alarme outra
+// vez, com o estado reposto pelo servidor (sem silenciar nem reconhecer), e voltava a apitar o que o Ivo já calara. O ecrã
+// lembra-se, por caminho e mensagem, do que viu calado (pelo servidor ou já no ecrã) e, se o mesmo alarme volta dentro de
+// CALADO_VALE_MS, fica calado: continua ativo e à vista, só não apita. Um alarme que falta mais do que isso (passou de
+// verdade, ou o servidor esteve em baixo) e volta é outro alarme e apita. Só o que se cala sem ser emergência: a emergência
+// (o fumo) tem a política do decidirSom — se o fumo passar e voltar, apita contínuo outra vez — e um aviso calado que volta
+// mais grave também apita (o servidor repõe o calado quando a gravidade sobe, e o ecrã faz o mesmo).
+// O custo, a assumir: um alarme com a mesma mensagem que passa e volta em menos de 3 minutos (a bomba do porão seca o
+// sensor e a água sobe outra vez) fica calado — vê-se na barra, só não apita; o Telegram do porto não muda com isto.
+export const CALADO_VALE_MS = 3 * 60 * 1000
+const chaveCalado = (n) => `${n.caminho}|${n.message}`
+const vistoCalado = (n) => n.status?.silenced === true || n.status?.acknowledged === true
+export const novaMemoriaCalados = () => new Map()
+
+// A cada ciclo, antes de o som decidir: notificacoes é o Map do store (caminho → notificação), que se muda no lugar.
+// Um alarme calado (por quem for) lembra-se; um ativo por calar que a memória conhece volta calado; o que passou do prazo
+// esquece-se. memoria: Map chave → { visto (a última vez que se viu ativo e calado), nivel (a gravidade, 0–4), acao }.
+export function reporCalados (notificacoes, memoria, agora) {
+  for (const [caminho, n] of notificacoes) {
+    if (nivel(n) === 0 || n.state === 'emergency' || typeof n.message !== 'string') continue
+    const chave = chaveCalado(n)
+    if (vistoCalado(n)) {
+      memoria.set(chave, { visto: agora, nivel: nivel(n), acao: n.status.acknowledged === true ? 'reconhecer' : 'silenciar' })
+      continue
+    }
+    const m = memoria.get(chave)
+    if (!m || agora - m.visto > CALADO_VALE_MS || nivel(n) > m.nivel || !deveTocar(n)) continue
+    notificacoes.set(caminho, calado(n, m.acao))
+    m.visto = agora
+  }
+  for (const [chave, m] of memoria) if (agora - m.visto > CALADO_VALE_MS) memoria.delete(chave)
+}
+
 // "Larguei (sou eu)" (contrato C10, Adenda 2 do dono): o plugin do porto põe acao: 'largar' no valor do alarme "o
 // barco saiu do lugar" e o ecrã oferece o botão — o mesmo que o /largar do Telegram: apaga o ponto de amarração e o
 // alarme limpa. Sem motor, esse alarme nunca se apaga sozinho; este botão é a maneira de dizer "fui eu".
