@@ -754,3 +754,33 @@ test('auditoria I-16 (parte index.js): a tendência do barómetro em 3 h (as amo
     pl.p.stop()
   } finally { calculo.calcular = original }
 })
+
+test('auditoria M-11 (parte index.js): com o vento descarregado e o pedido do mar falhado, as ondas vêm da previsão guardada mais recente que as tem (com o aviso); sem nenhuma guardada, "Sem previsão do mar"', async () => {
+  const app = appFalso()
+  const { p, r, avancar } = plugin(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  // a 1.ª, com rede: arquiva o vento e o mar
+  const x = await esperarResultado(r, (await chamar(r.post['/calcular'], { body: { destino: 'peniche', tripulacao: 'acompanhado', sairAgora: true } })).id)
+  assert.equal(x.estado, 'pronto', x.erro)
+  p.stop()
+  // 2 h depois, o Open-Meteo do mar não responde (só o do vento)
+  avancar(2 * H)
+  const f = fetchFalso()
+  const semMar = plugin(app, { fetch: async (url, o) => { if (new URL(url).hostname.startsWith('marine')) throw new Error('fetch failed'); return f(url, o) } })
+  semMar.avancar(2 * H)
+  semMar.p.start({ pasta: path.join(app.dir, 'dados') })
+  const y = await esperarResultado(semMar.r, (await chamar(semMar.r.post['/calcular'], { body: { destino: 'peniche', tripulacao: 'acompanhado', sairAgora: true } })).id)
+  assert.equal(y.estado, 'pronto', y.erro)
+  assert.equal(y.resultado.previsao.idadeH, 0, 'o vento é o de agora')
+  assert.ok(y.resultado.avisos.includes('Ondas da previsão guardada há 2 h (o pedido do mar falhou)'), JSON.stringify(y.resultado.avisos))
+  assert.ok(!y.resultado.avisos.some(a => a.startsWith('Sem previsão do mar')), JSON.stringify(y.resultado.avisos))
+  semMar.p.stop()
+  // sem nenhuma previsão do mar guardada: fica desconhecido, com o aviso
+  const vazio = appFalso()
+  const nada = plugin(vazio, { fetch: async (url, o) => { if (new URL(url).hostname.startsWith('marine')) throw new Error('fetch failed'); return f(url, o) } })
+  nada.p.start({ pasta: path.join(vazio.dir, 'dados') })
+  const z = await esperarResultado(nada.r, (await chamar(nada.r.post['/calcular'], { body: { destino: 'peniche', tripulacao: 'acompanhado', sairAgora: true } })).id)
+  assert.equal(z.estado, 'pronto', z.erro)
+  assert.ok(z.resultado.avisos.some(a => a.startsWith('Sem previsão do mar')), JSON.stringify(z.resultado.avisos))
+  nada.p.stop()
+})
