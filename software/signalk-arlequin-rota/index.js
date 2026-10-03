@@ -541,6 +541,16 @@ module.exports = function (app, deps = {}) {
     return Promise.race([Promise.resolve().then(() => app.getCourse()), limite]).finally(() => clearTimeout(t))
   }
 
+  // Um pedido à API do servidor com o mesmo limite da API de rumo (10 s; auditoria M-24): pendurado, rejeita
+  // com "o SignalK não respondeu a tempo" (antes um getResource pendurado deixava o /calcular a dar 409, e o
+  // Ativar preso, até reiniciar o servidor).
+  const NAO_RESPONDEU = 'o SignalK não respondeu a tempo'
+  function comLimite (fn) {
+    let t = null
+    const limite = new Promise((resolve, reject) => { t = setTimeout(() => reject(erroPt(NAO_RESPONDEU)), esperaRumoMs); t.unref?.() })
+    return Promise.race([Promise.resolve().then(fn), limite]).finally(() => clearTimeout(t))
+  }
+
   // O fim da rota ativa no SignalK (API de rumo v2), para o destino 'rota-ativa'.
   async function pontosRotaAtiva () {
     const c0 = typeof app.getCourse === 'function' ? await curso() : null
@@ -548,7 +558,7 @@ module.exports = function (app, deps = {}) {
     if (!href) return null
     const id = href.split('/').pop()
     let r
-    try { r = await app.resourcesApi?.getResource?.('routes', id) } catch (e) {
+    try { r = await comLimite(() => app.resourcesApi?.getResource?.('routes', id)) } catch (e) {
       app.error(`rota ativa: ${e?.message ?? e}`)
       throw erroPt('não consegui ler a rota ativa do SignalK (o pormenor ficou no registo)')
     }
@@ -1001,7 +1011,7 @@ module.exports = function (app, deps = {}) {
 
   // Ativar um href na API de rumo (Continuar): a API do servidor, ou HTTP para o próprio servidor.
   async function ativarHref (href, pointIndex) {
-    if (typeof app.activateRoute === 'function') return app.activateRoute({ href, pointIndex })
+    if (typeof app.activateRoute === 'function') return comLimite(() => app.activateRoute({ href, pointIndex }))
     const r = await fetchFn(`http://localhost:${o.porta || 3000}/signalk/v2/api/vessels/self/navigation/course/activeRoute`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ href, pointIndex }), signal: AbortSignal.timeout(10000) })
     if (!r.ok) throw erroPt(`a API de rumo do SignalK respondeu ${r.status}`)
   }
@@ -1087,15 +1097,19 @@ module.exports = function (app, deps = {}) {
     // o barco está no primeiro ponto (o cais ou a posição): o próximo é o seguinte
     const destinoCurso = { href, pointIndex: pts.length > 1 ? 1 : 0 }
     if (app.resourcesApi && typeof app.resourcesApi.setResource === 'function' && typeof app.activateRoute === 'function') {
-      await app.resourcesApi.setResource('routes', id, dados)
-      // o setResource do servidor não espera pela escrita do fornecedor: esperar até se ler
+      await comLimite(() => app.resourcesApi.setResource('routes', id, dados))
+      // o setResource do servidor não espera pela escrita do fornecedor: esperar até se ler (um pedido
+      // pendurado acaba no limite de tempo e não se repete)
       let lida = false
       for (let i = 0; i < 30 && !lida; i++) {
-        try { lida = !!(await app.resourcesApi.getResource('routes', id)) } catch { lida = false }
+        try { lida = !!(await comLimite(() => app.resourcesApi.getResource('routes', id))) } catch (e) {
+          if (e?.pt && e.message === NAO_RESPONDEU) throw e
+          lida = false
+        }
         if (!lida) await esperar(100)
       }
       if (!lida) throw erroPt('a rota foi gravada mas não se consegue ler de volta')
-      await app.activateRoute(destinoCurso)
+      await comLimite(() => app.activateRoute(destinoCurso))
       return { rota: id, href, via: 'api interna' }
     }
     const url = `http://localhost:${o.porta || 3000}`
