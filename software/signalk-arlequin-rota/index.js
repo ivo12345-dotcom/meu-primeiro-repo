@@ -133,6 +133,7 @@ const SEGUIMENTO_MN = 0.1 // a posição na rota grava-se no plano ativo quando 
 const LEITURA_VELHA_MS = 2 * MIN // posição, SOG, vento e pressão com mais de 2 min: em falta
 const ESPERA_RUMO_MS = 10000 // a API de rumo sem resposta em 10 s: não se sabe a rota
 const BARO_GRAVAR_MS = 10 * MIN // o barometro.json no máximo de 10 em 10 min
+const RELOGIO_MAX_MS = 60000 // decisão do Ivo n.º 19: o relógio do Pi a mais de 60 s da hora do GPS
 const CAPACIDADE_AH_ANTIGA = 200 // o valor por omissão do esquema até 02/10 (auditoria I-13)
 const AVISO_IVO_MS = 24 * 3600000 // o aviso ao Ivo de uma mensagem que não chegou: tenta-se durante 24 h
 // a escrita atómica (com o fsync do ficheiro e da pasta, onde o sistema deixa): uma só, a do lib/previsao.js
@@ -283,6 +284,30 @@ module.exports = function (app, deps = {}) {
   let retido = null
 
   let afastGravado = null // o afastamento máximo da partida da última gravação do plano
+
+  // ---------- o relógio do Pi contra a hora do GPS (decisão do Ivo n.º 19) ----------
+  // A hora de alarme que vai para terra e a frescura das leituras saem do relógio do Pi. Com ele a mais de 60 s
+  // da hora do GPS (navigation.datetime), o envio do plano dá 422, o ciclo a navegar não corre (nada sai para
+  // terra; o aviso notifications.rota.relogio diz porquê) e o GET diz relogioDesacertadoS. A hora do GPS só
+  // conta enquanto muda (um GPS parado ou desligado não é um relógio errado: não se sabe, e o ciclo corre).
+  // Com a hora simulada (só testes) o relógio do plugin é o próprio navigation.datetime.
+  let dataGps = null // { g: a hora do GPS (ms), em: a hora do plugin em que a vi mudar, desvio (ms) | null }
+  let desacertoAtual = null // o do último ciclo (ms, Pi − GPS) quando passa os 60 s; senão null
+  function desacertoRelogio (agora) {
+    if (simulada()) return null
+    const g = Date.parse(app.getSelfPath?.('navigation.datetime')?.value)
+    if (!Number.isFinite(g)) { dataGps = null; return null }
+    if (!dataGps) { dataGps = { g, em: agora, desvio: null }; return null }
+    if (g !== dataGps.g) dataGps = { g, em: agora, desvio: agora - g }
+    else if (agora - dataGps.em > LEITURA_VELHA_MS || agora < dataGps.em) return null
+    return dataGps.desvio
+  }
+  function relogioErrado (agora) {
+    const d = desacertoRelogio(agora)
+    return Number.isFinite(d) && Math.abs(d) > RELOGIO_MAX_MS ? d : null
+  }
+  const minutosDesacerto = (d) => `${Math.max(1, Math.round(Math.abs(d) / MIN))} min`
+  const recusaRelogio = (d) => `o relógio do Pi está desacertado ${minutosDesacerto(d)} da hora do GPS: a hora de alarme sairia errada — acerta a hora antes de enviar o plano`
   // O estado do plugin (Plugin Config); com o modoTeste ligado, à frente (re-revisão M-4): "MODO DE TESTE
   // (hora simulada, ciclo de 1 s) · …", para nunca passar despercebido no barco
   let modoTesteTexto = ''
@@ -531,7 +556,8 @@ module.exports = function (app, deps = {}) {
       planoAtivo = { ...planoAtivo, contactos: ct.tirarSe(planoAtivo.contactos, ct.atrasoAutomatico) }
       gravarPlanoAtivo()
     }
-    const comLeitura = ultimo?.estado === pa.ESTADOS.NAVEGAR && !ultimo.semGps
+    // (com o relógio do Pi desacertado, o último acompanhamento já não vale: decisão n.º 19)
+    const comLeitura = desacertoAtual == null && ultimo?.estado === pa.ESTADOS.NAVEGAR && !ultimo.semGps
     let m0 = ct.proxima(planoAtivo.contactos, agora, { saltar: (m) => ct.atrasoAutomatico(m) && !comLeitura })
     if (!m0) return
     if (ct.atrasoAutomatico(m0)) {
@@ -773,6 +799,12 @@ module.exports = function (app, deps = {}) {
 
   async function passoNavegar () {
     const agora = relogio()
+    // decisão n.º 19: com o relógio do Pi desacertado o ciclo não corre (os avisos ficam como estão)
+    desacertoAtual = relogioErrado(agora)
+    if (desacertoAtual != null) {
+      publicarAvisos({ ...avisosPublicados, [`${av.PREFIXO}.relogio`]: { state: 'warn', method: [...av.METODO], message: `Relógio do Pi desacertado ${minutosDesacerto(desacertoAtual)} da hora do GPS: o acompanhamento e as mensagens para terra estão parados — acerta a hora do Pi` } })
+      return
+    }
     const hPa = numeroFresco('environment.outside.pressure', agora)
     const comPressao = hPa != null
     // as amostras em memória (uma por hora: o mesmo instante outra vez não conta)
@@ -905,6 +937,9 @@ module.exports = function (app, deps = {}) {
       // o "cheguei bem"/"terminada" deste plano ainda por entregar (auditoria K-12): o ecrã diz "ainda não
       // chegou a terra: liga-lhes"
       fechoPorEntregar: fechoPorEntregar(p),
+      // o relógio do Pi desacertado da hora do GPS (s, Pi − GPS; decisão n.º 19): o Leme diz "Relógio do Pi
+      // desacertado"; null quando está certo ou não se sabe
+      relogioDesacertadoS: desacertoAtual != null ? Math.round(desacertoAtual / 1000) : null,
       // o plano que os contactos em terra têm, quando não é este (decisão n.º 15, auditoria I-02): o ecrã diz
       // "os contactos em terra têm o plano de outra alternativa, com alarme HH:MM"
       envioEmTerra: envioEmTerraGet(terraSemPlano(relogio())),
@@ -1072,6 +1107,8 @@ module.exports = function (app, deps = {}) {
     ultimo = null
     retido = null
     pressoes = lerPressoes()
+    dataGps = null
+    desacertoAtual = null
     baroGravadoEm = null
     baroPorGravar = false
     portos = costaBase.destinos.filter(d => d.id && Array.isArray(d.aproximacao) && d.aproximacao.length).map(d => ({ id: d.id, nome: d.nome, cais: c.P(d.aproximacao.at(-1)) }))
@@ -1214,6 +1251,9 @@ module.exports = function (app, deps = {}) {
       const terraOutro = !!emTerra && !(emTerra.idCalculo === id && emTerra.indice === indice)
       let novoTexto = null
       if (reenviar || terraOutro) {
+        // o plano novo segue para terra: com o relógio do Pi desacertado, não (decisão n.º 19)
+        const errado = relogioErrado(relogio())
+        if (errado != null) return res.status(422).json({ ok: false, erro: recusaRelogio(errado) })
         try {
           novoTexto = plano.montarPlano({ resultado: t.resultado, indice, barco: o.barco, telefones: o.telefones, agora: relogio() })
         } catch (e) {
@@ -1280,6 +1320,9 @@ module.exports = function (app, deps = {}) {
       const indice = Number.isInteger(b.alternativa) ? b.alternativa : lista.findIndex(a => a.id === b.alternativa)
       if (!lista[indice]) return res.status(404).json({ ok: false, erro: 'alternativa desconhecida' })
       if (typeof app.emit !== 'function') return res.status(503).json({ ok: false, erro: 'o servidor não tem eventos: não dá para enviar o plano ao plugin porto' })
+      // decisão n.º 19: com o relógio do Pi desacertado, a hora de alarme sairia errada
+      const errado = relogioErrado(relogio())
+      if (errado != null) return res.status(422).json({ ok: false, erro: recusaRelogio(errado) })
       // ninguém a ouvir (o plugin porto desligado, o padrão no dev): diz logo, sem esperar os 30 s
       if (app.listenerCount?.('arlequin:plano') === 0) return res.status(503).json({ ok: false, erro: PORTO_DESLIGADO })
       let p
@@ -1312,7 +1355,7 @@ module.exports = function (app, deps = {}) {
       if (!ligado()) return parado(res)
       // sem plano: 404, com o plano que os contactos em terra têm (decisão n.º 15, auditoria I-02: o ecrã diz
       // "os contactos em terra têm um plano com alarme HH:MM e não há plano ativo: ativa-o ou avisa-os")
-      if (!planoAtivo) return res.status(404).json({ ok: false, erro: 'não há plano ativo', envioEmTerra: envioEmTerraGet(terraSemPlano(relogio())) })
+      if (!planoAtivo) return res.status(404).json({ ok: false, erro: 'não há plano ativo', envioEmTerra: envioEmTerraGet(terraSemPlano(relogio())), relogioDesacertadoS: desacertoAtual != null ? Math.round(desacertoAtual / 1000) : null })
       res.json(estadoPlanoAtivo())
     })
 
