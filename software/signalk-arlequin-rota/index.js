@@ -266,8 +266,8 @@ module.exports = function (app, deps = {}) {
     type: 'object',
     properties: {
       pasta: { type: 'string', title: 'Pasta dos dados da caixa negra (previsões e modelos da AI)', default: '~/arlequin-dados' },
-      afastamentoMinimo: { type: 'number', title: 'Afastamento mínimo da costa fora das aproximações (MN)', default: 5 },
-      rpmCruzeiro: { type: 'number', title: 'Rotação de cruzeiro do motor (rpm)', default: 2100 },
+      afastamentoMinimo: { type: 'number', title: 'Afastamento mínimo da costa fora das aproximações (MN)', default: seguranca.PADRAO.afastamentoMinimo },
+      rpmCruzeiro: { type: 'number', title: 'Rotação de cruzeiro do motor (rpm)', default: base.RPM_CRUZEIRO },
       polar: { type: 'string', title: 'Ficheiro da polar (CSV do ecrã)', default: base.POLAR_PADRAO },
       previsoes: { type: 'boolean', title: 'Descarregar a previsão (Open-Meteo); desligado usa só as guardadas', default: true },
       bateria: { type: 'string', title: 'ID do banco de serviço (electrical.batteries.<id>)', default: 'servico' },
@@ -1195,7 +1195,7 @@ module.exports = function (app, deps = {}) {
 
   plugin.start = function (props) {
     o = {
-      pasta: '~/arlequin-dados', afastamentoMinimo: 5, rpmCruzeiro: 2100, polar: base.POLAR_PADRAO, previsoes: true,
+      pasta: '~/arlequin-dados', afastamentoMinimo: seguranca.PADRAO.afastamentoMinimo, rpmCruzeiro: base.RPM_CRUZEIRO, polar: base.POLAR_PADRAO, previsoes: true,
       bateria: 'servico', deposito: '0', socDesconhecido: 0.8, gasoleoDesconhecidoL: 100, energia: {}, porta: 3000, ...props
     }
     o.barco = { ...padroes(plugin.schema.properties.barco), ...(eObjeto(props?.barco) ? props.barco : {}) }

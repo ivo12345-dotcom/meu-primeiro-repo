@@ -29,7 +29,7 @@
 // em % (o % fica null com a previsão de calma, 0 nós: nunca Infinity).
 
 const c = require('./costa')
-const { litrosHora } = require('./base')
+const { litrosHora, RPM_CRUZEIRO } = require('./base')
 const { criarEnergia } = require('./energia')
 const { nasceresPores } = require('./sol')
 const { noitePeloSol } = require('./passagem')
@@ -39,11 +39,11 @@ const MIN = 60000
 const H = 3600000
 const DIA = 86400000
 const JANELA_MEDIA = 10 * MIN
-const PADRAO = Object.freeze({ recuoMn: 0.5, velMaxNos: 15, avancoMinMn: 2, rpm: 2100 })
+const PADRAO = Object.freeze({ recuoMn: 0.5, velMaxNos: 15, avancoMinMn: 2, rpm: RPM_CRUZEIRO })
 const SITIO = new Set(['partida', 'wp', 'vela', 'motor', 'chegada', 'viragem'])
 // os lembretes gerados do plano (Tarefa 8.5)
 const VIRAGEM_GRAUS = 45 // o rumo da rota muda mais do que isto num ponto
-const ROTACAO_GRAUS = 45 // o vento previsto roda mais do que isto…
+const ROTACAO_GRAUS = AVISOS_3A.rotacaoVento // o vento previsto roda mais do que isto (45°; o da 3a, M-20)…
 const ROTACAO_MS = H // …em 1 h
 const ROTACAO_INICIO_GRAUS = 5 // o início da rotação: o último ponto ainda a ≤ 5° da direção de antes
 // revisão final I4 (a 3a já fazia assim, lib/avisos.js): só com vento previsto de 6 nós ou mais nas duas

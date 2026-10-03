@@ -372,3 +372,19 @@ test('auditoria M-19 (parte acompanhamento.js): a viragem leva a preposição do
   assert.equal(nomes('Peniche'), 'Virar/cambar em Peniche')
   assert.equal(nomes('Berlengas'), 'Virar/cambar nas Berlengas')
 })
+
+test('auditoria M-20 (parte acompanhamento.js): as rpm de cruzeiro são as do lib/base.js (RPM_CRUZEIRO), não 2100 escrito à mão', () => {
+  const { comOutro } = require('./ajuda')
+  const outro = comOutro('lib/acompanhamento.js', { 'lib/base.js': (b) => ({ ...b, RPM_CRUZEIRO: 1800 }) })
+  assert.equal(outro.PADRAO.rpm, 1800)
+  assert.equal(ac.PADRAO.rpm, require('../lib/base').RPM_CRUZEIRO)
+})
+
+test('auditoria M-20 (parte acompanhamento.js): a rotação do vento dos lembretes é a do desenho 3a (lib/avisos.js, rotacaoVento: 45°), não um 45 escrito à mão', () => {
+  const { comOutro } = require('./ajuda')
+  const outro = comOutro('lib/acompanhamento.js', { 'lib/avisos.js': (a) => ({ ...a, PADRAO: Object.freeze({ ...a.PADRAO, rotacaoVento: 30 }) }) })
+  // 45° em 1 h: com 45 não conta; com 30 conta
+  const lento = (i) => (i < 18 ? 0 : i <= 24 ? (i - 18) * 7.5 : 45)
+  assert.deepEqual(ac.lembretesDoPlano(planoV(rastoV({ twd: lento }))).filter(e => e.tipo === 'vento'), [])
+  assert.deepEqual(outro.lembretesDoPlano(planoV(rastoV({ twd: lento }))).filter(e => e.tipo === 'vento').map(e => e.texto), ['Rotação do vento de 0° para 45°'])
+})

@@ -76,11 +76,12 @@ async function esperarResultado (r, id) {
   throw new Error('esperei demasiado')
 }
 
-function plugin (app, extra = {}) {
+// fabrica: o index.js carregado de outra maneira (auditoria M-20: ajuda.comOutro); por omissão o verdadeiro
+function plugin (app, extra = {}, fabrica = criar) {
   let agora = AGORA
   const registo = []
   app.relogio = () => agora
-  const p = criar(app, { fetch: fetchFalso(registo), relogio: () => agora, esperar: async () => {}, costa, ...extra })
+  const p = fabrica(app, { fetch: fetchFalso(registo), relogio: () => agora, esperar: async () => {}, costa, ...extra })
   return { p, r: rotas(p), registo, avancar: (ms) => { agora += ms } }
 }
 
@@ -888,5 +889,32 @@ test('auditoria M-29: no OpenCPN, "direta (salto curto)" só numa alternativa di
     assert.doesNotMatch(d, /direta/)
     assert.equal(require('../lib/plano').rotaTexto(semAfastamento), 'vela e motor')
     p.stop()
+  } finally { calculo.calcular = original }
+})
+
+test('auditoria M-20 (parte index.js): a rotação de cruzeiro e o afastamento mínimo do esquema e do start() sem configuração são os do lib/base.js e do lib/seguranca.js, não escritos à mão', async () => {
+  const { comOutro } = require('./ajuda')
+  const base = require('../lib/base')
+  const seguranca = require('../lib/seguranca')
+  const calculo = require('../lib/calculo')
+  const original = calculo.calcular
+  const opcoes = []
+  calculo.calcular = async (entrada, deps) => { opcoes.push(deps.opcoes); return { veredicto: { tipo: 'segue', texto: 'Segue', porque: [] }, destino: { id: 'peniche', nome: 'Peniche' }, alternativas: [] } }
+  try {
+    // com outros números lá, o plugin segue-os
+    const outro = comOutro('index.js', {
+      'lib/base.js': (b) => ({ ...b, RPM_CRUZEIRO: 1800 }),
+      'lib/seguranca.js': (s) => ({ ...s, PADRAO: Object.freeze({ ...s.PADRAO, afastamentoMinimo: 6 }) })
+    })
+    for (const [fabrica, rpm, mn] of [[outro, 1800, 6], [criar, base.RPM_CRUZEIRO, seguranca.PADRAO.afastamentoMinimo]]) {
+      const app = appFalso()
+      const pl = plugin(app, {}, fabrica)
+      assert.equal(pl.p.schema.properties.rpmCruzeiro.default, rpm)
+      assert.equal(pl.p.schema.properties.afastamentoMinimo.default, mn)
+      pl.p.start({ pasta: path.join(app.dir, 'dados') })
+      await esperarResultado(pl.r, (await chamar(pl.r.post['/calcular'], { body: { destino: 'peniche', tripulacao: 'so' } })).id)
+      assert.deepEqual([opcoes.at(-1).rpmCruzeiro, opcoes.at(-1).afastamentoMinimo], [rpm, mn])
+      pl.p.stop()
+    }
   } finally { calculo.calcular = original }
 })

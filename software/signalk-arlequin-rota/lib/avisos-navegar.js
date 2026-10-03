@@ -38,22 +38,26 @@
 
 const { asHoras } = require('./plano')
 const { sitio } = require('./costa')
+// os números que já têm dono (auditoria M-20): a antecedência dos lembretes e o "come e bebe" do desenho 3a,
+// a reserva à chegada da segurança
+const { PADRAO: AVISOS_3A } = require('./avisos')
+const { PADRAO: SEGURANCA } = require('./seguranca')
 
 const MIN = 60000
 const H = 3600000
 const PREFIXO = 'notifications.rota'
 const METODO = Object.freeze(['visual', 'sound'])
 const LIMITES = Object.freeze({
-  lembreteMin: 30,
-  comerH: 3,
+  lembreteMin: AVISOS_3A.antecedenciaMin, // 30
+  comerH: AVISOS_3A.comerCadaH, // 3
   comerMin: 15,
   atrasoMin: 30,
   ventoPct: 30,
   ventoNos: 4,
   ventoSeguidosMin: 30,
   normalSeguidosMin: 10,
-  gasoleoL: 40,
-  bateriaPct: 50,
+  gasoleoL: SEGURANCA.gasoleoMinL, // 40 (sem os limites configurados)
+  bateriaPct: SEGURANCA.bateriaMinPct, // 50
   previsaoAvisoH: 6,
   previsaoAlarmeH: 12,
   quedaHpa: 3,

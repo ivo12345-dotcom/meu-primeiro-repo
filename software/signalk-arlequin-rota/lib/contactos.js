@@ -47,7 +47,8 @@
 //   porto escolhe-os pelos chats); numa nova tentativa que o Ivo já recebeu (ivoRecebeu), com tentativa
 //   (2, 3, …): o porto já não a manda ao chat do Ivo.
 
-const { horaLisboa, diaEHora } = require('./plano')
+// as 2 h da hora de alarme são as do plano (auditoria M-20: um só número)
+const { horaLisboa, diaEHora, ALARME_DEPOIS_MS } = require('./plano')
 const c = require('./costa')
 
 const MIN = 60000
@@ -56,7 +57,6 @@ const REPETIR_MS = 2 * MIN
 const ATRASO_INTERVALO_MS = H
 const ATRASO_ESCORREGA_MS = 15 * MIN
 const ATRASO_MARGEM_MS = 30 * MIN // o 1.º atraso: a chegada prevista 30 min ou mais depois da p90
-const ALARME_DEPOIS_MS = 2 * H
 const FECHO = new Set(['chegada', 'terminado'])
 // Do plano anterior só ficam (herdar) o "cheguei bem"/"terminada" e os avisos ao Ivo: terra ainda espera
 // por eles. Um atraso ou um plano do plano anterior que estava "a enviar" e falhou já não interessa (o

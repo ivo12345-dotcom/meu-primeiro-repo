@@ -283,3 +283,19 @@ test('auditoria I-03 (decisão n.º 13): calculoAntigo — a hora de alarme já 
   // sem a chegada mais tarde não há hora de alarme: só conta a partida
   assert.equal(plano.calculoAntigo({ partida: alt.partida, chegada: {} }, partida + 30 * 60000), null)
 })
+
+test('auditoria M-20 (parte plano.js): a hora de alarme é a chegada mais tarde + 2 h de um só número (ALARME_DEPOIS_MS, o mesmo dos atrasos para terra no lib/contactos.js)', () => {
+  assert.equal(plano.ALARME_DEPOIS_MS, 2 * 3600000)
+  const alt = { chegada: { p90: '2026-09-29T20:00:00Z' } }
+  assert.equal(plano.horaAlarme(alt), Date.parse(alt.chegada.p90) + plano.ALARME_DEPOIS_MS)
+})
+
+test('auditoria M-20 (parte plano.js): sem o semVela do cálculo, uma "vela e motor" é "só motor" abaixo do limiar do veredicto (decisao.LIMIAR_VELA_H, 0,1 h), não de um 0,1 escrito à mão', () => {
+  const { comOutro } = require('./ajuda')
+  const outro = comOutro('lib/plano.js', { 'lib/decisao.js': (d) => ({ ...d, LIMIAR_VELA_H: 0.5 }) })
+  assert.equal(outro.semVela({ horas: { vela: 0.3 } }), true)
+  assert.equal(plano.semVela({ horas: { vela: 0.3 } }), false)
+  assert.equal(plano.semVela({ horas: { vela: 0.05 } }), true)
+  // o do cálculo manda sempre
+  assert.equal(outro.semVela({ semVela: false, horas: { vela: 0.3 } }), false)
+})
