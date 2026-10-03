@@ -502,11 +502,12 @@ test('auditoria I-23: o motor tem três estados — a trabalhar, desligado e "se
   for (const x of [null, undefined, NaN, 'x']) assert.equal(motorLigado(x), null, String(x))
   const com = (rpm) => ({ ...contexto(store, {}), v: (p) => (p === 'propulsion.main.revolutions' ? rpm : undefined) })
   assert.match(motorResumo(com(null)).estado, /<span class="lab">sem leitura do motor<\/span>/)
-  assert.match(motorResumo(com(0)).estado, /<span class="ok">desligado<\/span>/)
+  // (F3b, contrato C11: o estado conhecido como desligado diz "motor desligado", como a decisão do dono)
+  assert.match(motorResumo(com(0)).estado, /<span class="ok">motor desligado<\/span>/)
   assert.match(motorResumo(com(30)).estado, /a trabalhar · 1800 rpm/)
   const m = motor.render(com(null))
   assert.match(m, /Volvo Penta D1-20B<\/span><span class="lab">sem leitura do motor<\/span>/)
-  assert.doesNotMatch(m, /class="ok">desligado/)
+  assert.doesNotMatch(m, /class="ok">(motor )?desligado/)
   assert.match(carta.render(com(null)), /sem leitura do motor/)
 })
 
@@ -522,9 +523,10 @@ test('auditoria I-23: no resumo da viagem, sem leitura do motor não conta nem p
   assert.ok(v.distancia > 13000, 'a distância conta')
   const html = viagem.render({ ...contexto(store, {}), viagem: { ...v, ultimo: 5400e3 } })
   assert.match(html, /À vela<\/div><div class="vv">0 min<\/div><div class="lab">\+ 1 h 30 sem leitura do motor<\/div>/)
-  // o app.js manda os três estados (antes: rpm em falta = 0 = desligado = vela)
+  // o app.js manda os três estados (antes: rpm em falta = 0 = desligado = vela); com a ligação do J1939 (F3b, C11:
+  // motorEstado lê as rotações e propulsion.main.ligacao; test/motor-ligacao.test.mjs)
   const app = lerFonte('app.js')
-  assert.match(app, /motor:\s*motorLigado\(v\('propulsion\.main\.revolutions'\)\)/)
+  assert.match(app, /motor:\s*motorEstado\(\{ v, idade:/)
 })
 
 // ---------- auditoria I-26: todos os alvos de toque cobertos pelas regras de 44 px do estilo ----------

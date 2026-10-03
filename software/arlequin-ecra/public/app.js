@@ -20,7 +20,7 @@ import viagem from './paginas/viagem.js'
 import diario, { gravarNoDiario } from './paginas/diario.js'
 import melhor from './paginas/melhor.js'
 import velas from './paginas/velas.js'
-import { motorLigado } from './paginas/comum.js'
+import { motorEstado } from './paginas/comum.js'
 
 const PAGINAS = { carta, instr, ais, motor, viagem, diario, melhor, velas }
 const FALHA_CALAR_MS = 15000 // a falha do silenciar/reconhecer fica 15 s na barra
@@ -314,8 +314,9 @@ function registarDados () {
   app.viagem = acumular(app.viagem, {
     t: Date.now(),
     sog: v('navigation.speedOverGround'),
-    // true | false | null: sem leitura não conta nem para a vela nem para o motor (auditoria I-23)
-    motor: motorLigado(v('propulsion.main.revolutions')),
+    // true | false | null: sem leitura não conta nem para a vela nem para o motor (auditoria I-23); com a ignição
+    // desligada (propulsion.main.ligacao 'calado', contrato C11) o motor está desligado: conta como vela
+    motor: motorEstado({ v, idade: (p) => idade(store, p) }),
     fuelRate: v('propulsion.main.fuel.rate'),
     ventoReal: v('environment.wind.speedTrue'),
     pressao: p

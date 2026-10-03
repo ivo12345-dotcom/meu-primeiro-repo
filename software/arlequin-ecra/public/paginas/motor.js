@@ -3,7 +3,7 @@
 
 import { barra } from '../lib/desenho.js'
 import { celsius } from '../lib/formato.js'
-import { tile, gasoleo, corGasoleo, num, ok, esc, motorLigado, ESTADO_MOTOR, CLASSE_MOTOR, TEMPERATURA_ALARME_C } from './comum.js'
+import { tile, gasoleo, corGasoleo, num, ok, esc, motorEstado, ESTADO_MOTOR, CLASSE_MOTOR, TEMPERATURA_ALARME_C } from './comum.js'
 import { litrosPorMilha } from '../lib/consumo-milha.js'
 import { motivo } from '../lib/erros.js'
 import { diaHoraLisboa } from '../lib/rota-texto.js'
@@ -170,7 +170,7 @@ export default {
     if (ctx.estado.calibAberta) buscarCalib(ctx)
     buscarAgua(ctx, ctx.estado.bombaCalib !== undefined && ctx.estado.bombaCalib !== null ? 1500 : 10000)
     const rpm = ctx.v('propulsion.main.revolutions')
-    const estadoMotor = motorLigado(rpm) // true | false | null (sem leitura, auditoria I-23)
+    const estadoMotor = motorEstado(ctx) // true | false | null (sem leitura: auditoria I-23, contrato C11)
     const ligado = estadoMotor === true
     const temp = ctx.v('propulsion.main.temperature')
     const oleo = ctx.v('propulsion.main.oilPressure')
