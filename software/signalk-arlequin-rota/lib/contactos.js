@@ -246,8 +246,9 @@ function porNaFila (c0, msg, agora) {
   // só o "cheguei bem"/"terminada" deste plano fecha (os herdados do plano anterior não)
   const fechado = [...c.enviadas, ...c.fila].some(m => FECHO.has(m.tipo) && !m.anterior)
   if (msg.tipo === 'atraso' && fechado) return c
-  // o que deixou de interessar (só o que ainda não saiu: o que está "a enviar" fica)
-  const tira = (m) => m.estado === 'fila' && (m.tipo === 'atraso' || (msg.tipo === 'plano' && m.tipo === 'plano'))
+  // o que deixou de interessar (só o que ainda não saiu: o que está "a enviar" fica). Um aviso ao Ivo não é
+  // para terra: não tira nada (F2b Menor 1: tirava o atraso em espera, até o confirmado pelo "Estou bem")
+  const tira = (m) => msg.tipo !== 'aviso' && m.estado === 'fila' && (m.tipo === 'atraso' || (msg.tipo === 'plano' && m.tipo === 'plano'))
   const seq = c.seq + 1
   const nova = {
     id: `m${seq}`,
