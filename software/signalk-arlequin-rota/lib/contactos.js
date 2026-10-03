@@ -329,13 +329,16 @@ function desistir (c0, agora) {
 // tentativas deixam de ir ao Ivo. Os chats pedidos que não a receberam (revisão final I3: o Pai bloqueou o
 // bot, um erro do Telegram) voltam à fila numa mensagem igual, com a mesma ref, só para eles (parcial),
 // daqui a 2 min, até entregar ou deixar de interessar (as regras do porNaFila).
-function resposta (c, pedido, r = {}, agora) {
+// (auditoria M-25: uma resposta mal formada — não um objeto, falhas que não são objetos — não rebenta: corre
+// dentro do emit do porto, com a fila a meio)
+function resposta (c, pedido, r0 = {}, agora) {
+  const r = r0 !== null && typeof r0 === 'object' && !Array.isArray(r0) ? r0 : {}
   const m = c.fila.find(x => x.pedido === pedido)
   if (!m) return c
   const contactos = Array.isArray(r.contactos) ? r.contactos.map(String) : []
   const chats = Array.isArray(r.chats) ? r.chats.map(String) : []
   const entregues = Array.isArray(r.entregues) ? r.entregues.map(String) : []
-  const falhas = Array.isArray(r.falhas) ? r.falhas : []
+  const falhas = Array.isArray(r.falhas) ? r.falhas.filter(f => f !== null && typeof f === 'object' && !Array.isArray(f)) : []
   const ivo = m.ivoRecebeu || entregues.some(x => !contactos.includes(x))
   // o aviso ao Ivo (auditoria I-05): entregue quando o Ivo o recebe (não tem contactos)
   if (m.tipo === 'aviso') {

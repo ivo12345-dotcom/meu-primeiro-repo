@@ -440,3 +440,14 @@ test('auditoria M-22: a "viagem terminada" com uma posição que não é de agor
   assert.equal(ct.textoTerminado({ posicao: p, posicaoEm: T0 - 40 * MIN, agora: T0 }), "Viagem terminada / mudança de planos: estou bem, ter 29/09 às 21:00 (última posição conhecida 38°41,6' N 9°25,0' W, ter 29/09 às 20:20).")
   assert.equal(ct.textoTerminado({ posicao: null, agora: T0 }), 'Viagem terminada / mudança de planos: estou bem, ter 29/09 às 21:00.')
 })
+
+test('auditoria M-25: uma resposta do porto mal formada (falhas com null ou texto, a resposta null) não rebenta: as falhas que não são objetos não contam', () => {
+  let c = ct.porNaFila(ct.novaFila(), { tipo: 'chegada', texto: 'c', contactos: ['Mãe'], chats: ['222'] }, T0)
+  c = ct.marcarAEnviar(c, c.fila[0].id, 'p1', T0)
+  const d = ct.resposta(c, 'p1', { entregues: [], contactos: [], chats: [], falhas: [null, 'sem rede', { nome: 'Mãe', erro: 'bloqueou o bot' }] }, T0)
+  assert.equal(d.fila[0].estado, 'fila')
+  assert.equal(d.fila[0].erro, 'Mãe: bloqueou o bot')
+  const e = ct.resposta(c, 'p1', null, T0)
+  assert.equal(e.fila[0].estado, 'fila')
+  assert.equal(e.fila[0].erro, 'nenhum contacto em terra a recebeu')
+})

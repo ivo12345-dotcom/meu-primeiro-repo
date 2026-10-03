@@ -399,7 +399,11 @@ module.exports = function (app, deps = {}) {
 
   // A resposta do plugin porto a um plano: "enviado" com pelo menos uma entrega; sem nenhuma,
   // "falhou" com as falhas (ou sem destinatários). Uma resposta depois do limite já não conta.
+  // Corre dentro do emit do porto (auditoria M-25): um erro aqui não pode rebentar lá; fica no registo.
   function aoPlanoEnviado (m) {
+    try { tratarPlanoEnviado(m) } catch (e) { app.error(`resposta do porto: ${e?.message ?? e}`) }
+  }
+  function tratarPlanoEnviado (m) {
     if (eObjeto(m) && pedidosContactos.has(m.pedido)) return respostaContactos(m)
     const p = eObjeto(m) ? planos.get(m.pedido) : null
     if (!p || p.estado !== 'a enviar') return
