@@ -847,6 +847,40 @@ test('auditoria M-42: dados em falta de outros plugins dão "—", nunca "NaN" n
   assert.doesNotMatch(m, /NaN|0→0%|undefined/)
 })
 
+// ---------- revisão F3, Minor 9 e Minor 14: o último texto cru e o "NaN → NaN L" ----------
+test('revisão F3 (Minor 9): as pedaladas da calibração da bomba (do /estado do plugin da água) passam pelo num — nunca texto cru; sem número, "—"', () => {
+  const st = storeSimulado(1)
+  aplicarDelta(st, { updates: [{ timestamp: new Date().toISOString(), values: [{ path: 'tanks.freshWater.0.name', value: 'Cozinha (BB)' }, { path: 'tanks.freshWater.0.currentVolume', value: 0.04 }, { path: 'tanks.freshWater.0.currentLevel', value: 0.5 }] }] })
+  const painel = (pedaladas) => motor.render(contexto(st, { bombaCalib: 0, agua: { tanques: [{ id: 0, nome: 'Cozinha (BB)', pedaladasCalibracao: pedaladas }] }, aguaEm: Date.now() }))
+  for (const mau of [MAU, '<!--', '"><img src=x onerror=alert(1)>', "'><svg onload=alert(1)>", '12', { a: 1 }, NaN, null, undefined]) {
+    const html = painel(mau)
+    semCru(html, `pedaladas ${JSON.stringify(mau)}`)
+    assert.doesNotMatch(html, /<img src=x|<svg onload|\[object Object\]|NaN|undefined/, `pedaladas ${JSON.stringify(mau)}`)
+    assert.match(html, /<div class="vvv">— <span[^>]*>pedaladas<\/span>/, `pedaladas ${JSON.stringify(mau)}: "—"`)
+  }
+  assert.match(painel(12), /<div class="vvv">12 <span[^>]*>pedaladas<\/span>/)
+  assert.match(painel(0), /<div class="vvv">0 <span[^>]*>pedaladas<\/span>/)
+})
+
+test('revisão F3 (Minor 14): "Abastecimento registado" nunca mostra NaN — com a resposta do plugin sem os litros de antes e de depois, só a frase', async () => {
+  const gasto = async (resposta) => {
+    const estado = {}
+    const ctx = { ...contexto(store, estado), pedir: async () => resposta }
+    await motor.acao('abrir-teclado', { modo: 'abasteci' }, ctx)
+    for (const t of ['8', '5']) await motor.acao('tecla', { t }, ctx)
+    await motor.acao('teclado-ok', {}, ctx)
+    return estado
+  }
+  const bom = await gasto({ antes: 40, depois: 125 })
+  assert.equal(bom.msgGas, 'Abastecimento registado: 40 → 125 L')
+  assert.equal(bom.msgGasErro, false)
+  for (const resposta of [{ ok: true }, {}, { antes: null, depois: null }, { antes: 'x', depois: undefined }, { antes: 40 }, { depois: 125 }, null, undefined, 'OK', 7]) {
+    const e = await gasto(resposta)
+    assert.equal(e.msgGas, 'Abastecimento registado', JSON.stringify(resposta))
+    assert.equal(e.msgGasErro, false, `${JSON.stringify(resposta)}: gravou, não é um erro`)
+  }
+})
+
 test('auditoria M-43: a nota do Diário fica no estado (um desenho não a apaga) e o Gravar usa-a', async () => {
   const gravados = []
   const ctx = { ...contexto(store, {}), logbook: async (t, c) => { gravados.push([t, c]) } }
