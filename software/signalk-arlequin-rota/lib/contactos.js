@@ -93,8 +93,11 @@ const quando = (t) => (valido(t) ? ` ${diaEHora(t)}` : '')
 const textoChegada = ({ destino, chegou }) => `Cheguei bem a ${destino || 'destino'}${quando(chegou)}. Obrigado!`
 const textoAtraso = ({ chegada, alarme, alarmeAntes, agora }) =>
   `Ainda a navegar, tudo bem. Nova chegada prevista ~${horaLisboa(chegada, agora)}. Nova hora de alarme: ${horaLisboa(alarme, agora)} (em vez de ${horaLisboa(alarmeAntes, agora)}).`
-function textoTerminado ({ posicao, agora }) {
-  const onde = posicao && Number.isFinite(posicao.lat) && Number.isFinite(posicao.lon) ? ` em ${grausMinutos(posicao)}` : ''
+// posicaoEm (auditoria M-22): a hora da posição quando não é de agora (sem GPS): "última posição conhecida"
+function textoTerminado ({ posicao, posicaoEm = null, agora }) {
+  const temPos = posicao && Number.isFinite(posicao.lat) && Number.isFinite(posicao.lon)
+  if (temPos && valido(posicaoEm)) return `Viagem terminada / mudança de planos: estou bem,${quando(agora)} (última posição conhecida ${grausMinutos(posicao)}, ${diaEHora(posicaoEm)}).`
+  const onde = temPos ? ` em ${grausMinutos(posicao)}` : ''
   return `Viagem terminada / mudança de planos: estou bem,${onde}${quando(agora)}.`
 }
 // a linha "Este plano substitui o anterior." logo a seguir à do envio (a 2.ª)

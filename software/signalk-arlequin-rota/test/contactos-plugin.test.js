@@ -8,6 +8,7 @@ const assert = require('node:assert/strict')
 const path = require('node:path')
 const pa = require('../lib/plano-ativo')
 const prev = require('../lib/previsao')
+const ct = require('../lib/contactos')
 const { appFalso, plugin, chamar, calcular, fetchFalso, caisDe, costa, H, posNoRasto } = require('./ajuda')
 const plano_ = require('../lib/plano')
 const { horaLisboa, asHoras } = plano_
@@ -1241,5 +1242,23 @@ test('auditoria M-21 (sonda S8): dois toques em Ativar (outra alternativa, com o
   assert.deepEqual(pa.lerFechados(s.app.getDataDirPath()).map(x => x.indice), [0], 'só o plano antigo foi arquivado')
   // acabada a 1.ª, outra ativação já pode
   assert.equal((await chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 1 } })).code, 200)
+  s.p.stop()
+})
+
+// ---------- auditoria M-22: o Terminar sem GPS ----------
+test('auditoria M-22: "Terminar" sem GPS não manda a última posição como se fosse de agora — diz que é a última conhecida e de quando', async () => {
+  const s = await preparar()
+  await sair(s)
+  await s.ciclo()
+  const ultima = s.app.self['navigation.position']
+  const quando = s.agora()
+  // o GPS para: 40 min depois, sem posição fresca
+  s.app.horas['navigation.position'] = new Date(quando).toISOString()
+  for (let m = 0; m < 40; m++) await s.ciclo()
+  assert.equal((await chamar(s.r.post['/plano-ativo/terminar'])).code, 200)
+  const m = s.recebidos.filter(e => e.tipo === 'terminado')
+  assert.equal(m.length, 1)
+  const pos = ct.grausMinutos({ lat: ultima.latitude, lon: ultima.longitude })
+  assert.equal(m[0].texto, `Viagem terminada / mudança de planos: estou bem, ${plano_.diaEHora(s.agora())} (última posição conhecida ${pos}, ${plano_.diaEHora(quando)}).\nref. ${plano(s).contactos.enviadas.at(-1).ref}`)
   s.p.stop()
 })

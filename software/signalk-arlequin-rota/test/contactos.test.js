@@ -433,3 +433,10 @@ test('auditoria I-05: o aviso ao Ivo (tipo "aviso") vai só ao chat do Ivo (sem 
   assert.equal(ct.textoDesisti({ tipo: 'terminado', ref: 'A6', contactos: ['Mãe', 'Pai'], desisteEm: T0 + H }), 'Mãe e Pai não receberam a «viagem terminada» (ref. A6) e já passou a hora de alarme (ter 29/09 às 22:00): desisti de a entregar. Liga-lhes.')
   assert.equal(ct.textoDesisti({ tipo: 'plano', ref: 'C1', contactos: ['Mãe'], alarme: T0 + 30 * MIN, desisteEm: T0 + 2 * H }), 'Mãe não recebeu o plano novo (ref. C1) antes da hora de alarme dele (ter 29/09 às 21:30): ficou com o plano antigo. Liga-lhe.')
 })
+
+test('auditoria M-22: a "viagem terminada" com uma posição que não é de agora diz que é a última conhecida e de quando; sem nenhuma, sem posição', () => {
+  const p = { lat: 38.6928, lon: -9.4159 }
+  assert.equal(ct.textoTerminado({ posicao: p, agora: T0 }), "Viagem terminada / mudança de planos: estou bem, em 38°41,6' N 9°25,0' W ter 29/09 às 21:00.")
+  assert.equal(ct.textoTerminado({ posicao: p, posicaoEm: T0 - 40 * MIN, agora: T0 }), "Viagem terminada / mudança de planos: estou bem, ter 29/09 às 21:00 (última posição conhecida 38°41,6' N 9°25,0' W, ter 29/09 às 20:20).")
+  assert.equal(ct.textoTerminado({ posicao: null, agora: T0 }), 'Viagem terminada / mudança de planos: estou bem, ter 29/09 às 21:00.')
+})
