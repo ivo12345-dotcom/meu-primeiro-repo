@@ -861,7 +861,8 @@ module.exports = function (app, deps = {}) {
     // as milhas feitas na rota (a chegada pede progresso): a última posição na rota
     const milhas = estAcomp.anterior?.s ?? planoAtivo.seguimento?.s ?? null
     const leitura = { posicao: leituraPosicao(agora), sogNos: sog != null ? sog * NOS : null, href: await hrefAtivo(), milhas }
-    if (leitura.posicao) ultimaPosicao = leitura.posicao
+    // a última posição e a hora dela (a do SignalK: a do GPS), para o Terminar sem GPS (auditoria M-22)
+    if (leitura.posicao) { const t = Date.parse(app.getSelfPath?.('navigation.position')?.timestamp); ultimaPosicao = { ...leitura.posicao, t: Number.isFinite(t) ? t : agora } }
     const r = pa.avaliar(planoAtivo, leitura, memPlano, agora, { portos })
     planoAtivo = r.plano
     memPlano = r.mem
@@ -1421,9 +1422,11 @@ module.exports = function (app, deps = {}) {
       if (!ligado()) return parado(res)
       if (!pa.aberto(planoAtivo)) return res.status(409).json({ ok: false, erro: 'não há um plano ativo aberto' })
       const agora = relogio()
-      const posicao = leituraPosicao(agora) || ultimaPosicao
+      // só a posição de agora; sem GPS, a última conhecida, com a hora dela (auditoria M-22)
+      const agoraPos = leituraPosicao(agora)
+      const posicao = agoraPos || ultimaPosicao
       planoAtivo = pa.terminar(planoAtivo, agora)
-      const contactos = porMensagem('terminado', ct.textoTerminado({ posicao, agora }), agora)
+      const contactos = porMensagem('terminado', ct.textoTerminado({ posicao, posicaoEm: agoraPos ? null : ultimaPosicao?.t ?? null, agora }), agora)
       estAvisos = av.novoEstado()
       ultimo = null
       gravarPlanoAtivo()
