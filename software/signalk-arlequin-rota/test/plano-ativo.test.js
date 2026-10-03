@@ -27,13 +27,13 @@ const ler = (posicao, sogNos, href = HREF) => ({ posicao, sogNos, href })
 // a d MN para norte de p
 const aNorte = (p, d) => c.deslocar(p, 0, d)
 
-test('criarPlano: guarda o cálculo, a alternativa (rota, rasto, eventos, chegada, partida), o destino com a aproximação e o cais, a desistência, a tripulação, o href e o estado "a espera de sair"', () => {
+test('criarPlano: guarda o cálculo, a alternativa (rota, rasto, eventos, chegada, partida), o destino com a aproximação e o cais, a desistência, a tripulação, o href e o estado "à espera de sair"', () => {
   const p = novo()
   assert.equal(p.versao, 1)
   assert.equal(p.idCalculo, 'calc-1')
   assert.equal(p.indice, 0)
   assert.equal(p.href, HREF)
-  assert.equal(p.estado, 'a espera de sair')
+  assert.equal(p.estado, 'à espera de sair')
   assert.equal(p.ativadoEm, new Date(AGORA).toISOString())
   assert.equal(p.saida, null)
   assert.equal(p.chegou, null)
@@ -90,18 +90,18 @@ test('saída: a mais de 0,5 MN da partida em 2 amostras seguidas passa a "a nave
   let p = novo()
   let mem = pa.novaMemoria()
   let r = pa.avaliar(p, ler(aNorte(PARTIDA, 0.49), 1.5), mem, AGORA + MIN)
-  assert.equal(r.plano.estado, 'a espera de sair')
+  assert.equal(r.plano.estado, 'à espera de sair')
   assert.equal(r.mudou, null)
   p = r.plano; mem = r.mem
   r = pa.avaliar(p, ler(aNorte(PARTIDA, 0.51), 1.5), mem, AGORA + 2 * MIN)
-  assert.equal(r.plano.estado, 'a espera de sair', 'uma amostra só (um salto do GPS) não chega')
+  assert.equal(r.plano.estado, 'à espera de sair', 'uma amostra só (um salto do GPS) não chega')
   p = r.plano; mem = r.mem
   r = pa.avaliar(p, ler(aNorte(PARTIDA, 0.52), 1.5), mem, AGORA + 3 * MIN)
   assert.equal(r.plano.estado, 'a navegar')
   assert.equal(r.mudou, 'saiu')
   assert.equal(r.plano.saida, new Date(AGORA + 2 * MIN).toISOString())
   // o plano de entrada não muda (funções puras)
-  assert.equal(p.estado, 'a espera de sair')
+  assert.equal(p.estado, 'à espera de sair')
 })
 
 test('M1: um salto do GPS (uma amostra a mais de 0,5 MN e a seguinte de volta ao cais) não é a saída', () => {
@@ -110,9 +110,9 @@ test('M1: um salto do GPS (uma amostra a mais de 0,5 MN e a seguinte de volta ao
   const passo = (min, posicao) => { const r = pa.avaliar(p, ler(posicao, 0), mem, AGORA + min * MIN); p = r.plano; mem = r.mem; return r }
   passo(0, aNorte(PARTIDA, 0.05))
   passo(1, aNorte(PARTIDA, 3)) // o salto
-  assert.equal(passo(2, aNorte(PARTIDA, 0.05)).plano.estado, 'a espera de sair')
-  assert.equal(passo(3, aNorte(PARTIDA, 3)).plano.estado, 'a espera de sair', 'outra vez só uma amostra')
-  assert.equal(passo(4, aNorte(PARTIDA, 0.05)).plano.estado, 'a espera de sair')
+  assert.equal(passo(2, aNorte(PARTIDA, 0.05)).plano.estado, 'à espera de sair')
+  assert.equal(passo(3, aNorte(PARTIDA, 3)).plano.estado, 'à espera de sair', 'outra vez só uma amostra')
+  assert.equal(passo(4, aNorte(PARTIDA, 0.05)).plano.estado, 'à espera de sair')
 })
 
 test('M2: as janelas "seguidos" só contam amostras com até 2 min entre elas; um salto do relógio (para a frente ou para trás) recomeça a janela', () => {
@@ -122,14 +122,14 @@ test('M2: as janelas "seguidos" só contam amostras com até 2 min entre elas; u
   let mem = pa.novaMemoria()
   const passo = (min, posicao, sog) => { const r = pa.avaliar(p, ler(posicao, sog), mem, AGORA + min * MIN); p = r.plano; mem = r.mem; return r }
   passo(0, perto, 3)
-  assert.equal(passo(6, perto, 3).plano.estado, 'a espera de sair', 'uma amostra antes do salto e outra depois')
+  assert.equal(passo(6, perto, 3).plano.estado, 'à espera de sair', 'uma amostra antes do salto e outra depois')
   for (const m of [8, 10]) passo(m, perto, 3) // de 2 em 2 min ainda conta
   assert.equal(passo(11, perto, 3).plano.estado, 'a navegar')
   assert.equal(p.saida, new Date(AGORA + 6 * MIN).toISOString())
   // a saída pela distância: 2 amostras a mais de 2 min uma da outra não são seguidas
   p = novo(); mem = pa.novaMemoria()
   passo(0, aNorte(PARTIDA, 0.6), 0)
-  assert.equal(passo(3, aNorte(PARTIDA, 0.6), 0).plano.estado, 'a espera de sair')
+  assert.equal(passo(3, aNorte(PARTIDA, 0.6), 0).plano.estado, 'à espera de sair')
   assert.equal(passo(4, aNorte(PARTIDA, 0.6), 0).plano.estado, 'a navegar')
   // a chegada: parado no cais às 600 min e outra amostra às 610 (o relógio saltou): ainda não
   p = { ...novo(), estado: 'a navegar', saida: new Date(AGORA).toISOString() }; mem = pa.novaMemoria()
@@ -152,7 +152,7 @@ test('saída: SOG > 2 nós durante 5 min seguidos (4 min não chegam; uma parage
   passo(2, 2.5)
   passo(3, 2) // 2 nós não é mais de 2: recomeça
   for (let m = 4; m <= 7; m++) passo(m, 2.1)
-  assert.equal(passo(8, 2.1).plano.estado, 'a espera de sair', '4 min seguidos')
+  assert.equal(passo(8, 2.1).plano.estado, 'à espera de sair', '4 min seguidos')
   const r = passo(9, 2.1)
   assert.equal(r.plano.estado, 'a navegar')
   assert.equal(r.mudou, 'saiu')
@@ -160,7 +160,7 @@ test('saída: SOG > 2 nós durante 5 min seguidos (4 min não chegam; uma parage
   // sem SOG (null) também recomeça
   p = novo(); mem = pa.novaMemoria()
   passo(0, 3); passo(3, null); passo(5, 3)
-  assert.equal(passo(9, 3).plano.estado, 'a espera de sair')
+  assert.equal(passo(9, 3).plano.estado, 'à espera de sair')
 })
 
 test('chegada: a menos de 0,3 MN do cais e SOG < 0,5 nó durante 5 min seguidos (com o progresso na rota); 0,31 MN ou 0,5 nó não contam', () => {
@@ -226,10 +226,10 @@ test('rota mudada: o href da rota ativa deixa de ser o do plano (outra rota ou n
   assert.equal(s.plano.estado, 'a navegar')
   assert.equal(s.plano.pausadoDe, null)
   assert.equal(s.mudou, 'retomado')
-  // à espera de sair também pausa, e retoma "a espera de sair"
+  // à espera de sair também pausa, e retoma "à espera de sair"
   const e = seguidas(novo(), ler(PARTIDA, 0, null), pa.novaMemoria(), AGORA - 2 * MIN, AGORA)
   assert.equal(e.plano.estado, 'pausado')
-  assert.equal(pa.avaliar(e.plano, ler(PARTIDA, 0, HREF), e.mem, AGORA + MIN).plano.estado, 'a espera de sair')
+  assert.equal(pa.avaliar(e.plano, ler(PARTIDA, 0, HREF), e.mem, AGORA + MIN).plano.estado, 'à espera de sair')
 })
 
 test('sem GPS (posição null): nem saída nem chegada, e a contagem dos 5 min recomeça', () => {
@@ -238,7 +238,7 @@ test('sem GPS (posição null): nem saída nem chegada, e a contagem dos 5 min r
   const passo = (min, posicao, sog) => { const r = pa.avaliar(p, ler(posicao, sog), mem, AGORA + min * MIN); p = r.plano; mem = r.mem; return r }
   passo(0, aNorte(PARTIDA, 0.1), 3)
   passo(3, null, 3)
-  assert.equal(passo(6, aNorte(PARTIDA, 0.2), 3).plano.estado, 'a espera de sair')
+  assert.equal(passo(6, aNorte(PARTIDA, 0.2), 3).plano.estado, 'à espera de sair')
   for (let m = 7; m <= 10; m++) passo(m, aNorte(PARTIDA, 0.2), 3)
   assert.equal(passo(11, aNorte(PARTIDA, 0.2), 3).plano.estado, 'a navegar')
 })
@@ -251,7 +251,7 @@ test('terminar: fecha o plano ("terminado", com a hora); continuar: volta ao est
   const k = pa.continuar(p)
   assert.equal(k.estado, 'a navegar')
   assert.equal(k.pausadoDe, null)
-  assert.equal(pa.continuar(novo()).estado, 'a espera de sair', 'sem pausa fica como está')
+  assert.equal(pa.continuar(novo()).estado, 'à espera de sair', 'sem pausa fica como está')
   assert.ok(pa.aberto(novo()))
   assert.ok(pa.aberto(p))
   assert.ok(!pa.aberto(t))
@@ -328,7 +328,7 @@ test('decisão 5 (Ivo): em pausa no mar, a chegada ao cais do plano continua a c
   passo(606, aNorte(CAIS, 0.1), 0, 1)
   assert.equal(p.estado, 'chegado')
   // pausado antes de sair: nunca
-  p = { ...novo(), estado: 'pausado', pausadoDe: 'a espera de sair' }; mem = pa.novaMemoria()
+  p = { ...novo(), estado: 'pausado', pausadoDe: 'à espera de sair' }; mem = pa.novaMemoria()
   for (let m = 600; m <= 610; m++) passo(m, aNorte(CAIS, 0.1), 0)
   assert.equal(p.estado, 'pausado')
 })
@@ -390,7 +390,7 @@ test('decisão 5 (Ivo): em pausa no mar, parado (SOG < 0,5 nó) 30 min a menos d
   for (let m = 250; m <= 290; m++) passo(m, aNorte(CAIS, 0.1), 0)
   assert.equal(mem.sugestao, null)
   // pausado antes de sair (no porto de partida): nunca
-  p = { ...novo(), estado: 'pausado', pausadoDe: 'a espera de sair' }; mem = pa.novaMemoria()
+  p = { ...novo(), estado: 'pausado', pausadoDe: 'à espera de sair' }; mem = pa.novaMemoria()
   for (let m = 300; m <= 340; m++) passo(m, c.deslocar(cascais, 45, 0.1), 0)
   assert.equal(mem.sugestao, null)
   // fora da pausa (a navegar), também não
@@ -475,4 +475,17 @@ test('auditoria M-26: os afastamentos (da partida e do cais) só sobem com 2 amo
   // duas amostras seguidas longe contam (o mínimo das duas)
   passo(21, aNorte(PARTIDA, 0.7)); passo(22, aNorte(PARTIDA, 0.6))
   assert.ok(Math.abs(p.afastamentoMaxMn - 0.6) < 1e-4, `${p.afastamentoMaxMn}`)
+})
+
+test('auditoria M-35: o estado "à espera de sair" leva o acento (no plano gravado e no GET); um plano-ativo.json de antes, com "a espera de sair" (também no pausadoDe), lê-se com o acento', () => {
+  assert.equal(pa.ESTADOS.ESPERA, 'à espera de sair')
+  assert.equal(novo().estado, 'à espera de sair')
+  const dir = pasta()
+  pa.gravar(dir, { ...novo(), estado: 'a espera de sair' })
+  assert.equal(pa.ler(dir).plano.estado, 'à espera de sair')
+  pa.gravar(dir, { ...novo(), estado: 'pausado', pausadoDe: 'a espera de sair' })
+  const lido = pa.ler(dir).plano
+  assert.equal(lido.pausadoDe, 'à espera de sair')
+  assert.ok(pa.aberto(lido))
+  assert.equal(pa.continuar(lido).estado, 'à espera de sair')
 })

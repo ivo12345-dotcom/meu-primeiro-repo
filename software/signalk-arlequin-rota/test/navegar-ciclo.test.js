@@ -53,7 +53,7 @@ test('o start() regista o ciclo de minuto a minuto (60 s); sem plano ativo o cic
 test('à espera de sair: sem avisos; ao sair (> 0,5 MN) passa a "a navegar" e grava a saída; parado no rasto, o atraso cresce e passa os 30 min → recalcula (warn)', async () => {
   const s = await preparar()
   await s.ciclo(0)
-  assert.equal(s.p.planoAtivo().estado, 'a espera de sair')
+  assert.equal(s.p.planoAtivo().estado, 'à espera de sair')
   assert.deepEqual(s.app.deltas.flatMap(d => d.updates.flatMap(u => u.values)).filter(v => v.value.state !== 'normal'), [])
   // 20 min depois, no ponto do rasto dos 20 min: a navegar, sem atraso
   const r20 = s.alt.rasto[2]
@@ -184,7 +184,7 @@ test('um erro no ciclo vai para o registo e o ciclo seguinte corre', async () =>
   assert.match(s.app.erros.at(-1), /^a navegar: rebentou$/)
   s.app.getSelfPath = getSelfPath
   await s.ciclo()
-  assert.equal(s.p.planoAtivo().estado, 'a espera de sair')
+  assert.equal(s.p.planoAtivo().estado, 'à espera de sair')
   s.p.stop()
 })
 
@@ -217,7 +217,7 @@ test('M3: um SOG velho (de antes de parar o GPS) não conta: SOG > 2 nós com ma
   s.por(partida, 3)
   s.app.horas['navigation.speedOverGround'] = new Date(s.agora() - 3 * MIN).toISOString()
   for (let m = 0; m < 8; m++) { s.app.horas['navigation.speedOverGround'] = new Date(s.agora() - 2 * MIN).toISOString(); await s.ciclo() }
-  assert.equal(s.p.planoAtivo().estado, 'a espera de sair')
+  assert.equal(s.p.planoAtivo().estado, 'à espera de sair')
   s.p.stop()
 })
 
@@ -229,7 +229,7 @@ test('M4: a API de rumo que nunca responde não pára o ciclo (limite: não se s
     await Promise.race([s.ciclo(), parado(1000)])
     assert.equal(s.p.acompanhamento().agora, s.agora(), `o ciclo ${m} correu`)
   }
-  assert.equal(s.p.planoAtivo().estado, 'a espera de sair')
+  assert.equal(s.p.planoAtivo().estado, 'à espera de sair')
   s.p.stop()
 })
 
