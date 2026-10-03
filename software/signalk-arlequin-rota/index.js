@@ -1046,10 +1046,13 @@ module.exports = function (app, deps = {}) {
   }
   async function cicloNavegar () {
     if (!o || !dirPlugin || aCorrerCiclo) return
-    // com a hora simulada e sem navigation.datetime, não há hora: não corre
-    if (simulada() && !Number.isFinite(horaSimulada())) return
     aCorrerCiclo = true
-    try { await passoNavegar() } catch (e) { app.error(`a navegar: ${e.message}`) } finally { aCorrerCiclo = false }
+    try {
+      // com a hora simulada e sem navigation.datetime, não há hora: não corre (a leitura dentro do try:
+      // auditoria M-30, um getSelfPath que rebenta não dá uma rejeição por tratar)
+      if (simulada() && !Number.isFinite(horaSimulada())) return
+      await passoNavegar()
+    } catch (e) { app.error(`a navegar: ${e.message}`) } finally { aCorrerCiclo = false }
   }
 
   function guardarTrabalho (id, t) {
