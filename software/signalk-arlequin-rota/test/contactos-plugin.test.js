@@ -1262,3 +1262,20 @@ test('auditoria M-22: "Terminar" sem GPS não manda a última posição como se 
   assert.equal(m[0].texto, `Viagem terminada / mudança de planos: estou bem, ${plano_.diaEHora(s.agora())} (última posição conhecida ${pos}, ${plano_.diaEHora(quando)}).\nref. ${plano(s).contactos.enviadas.at(-1).ref}`)
   s.p.stop()
 })
+
+// ---------- auditoria M-25: os ouvintes dos eventos não rebentam dentro do porto ----------
+test('auditoria M-25: uma resposta do porto mal formada (falhas com null, ou o evento sem objeto) não rebenta dentro do emit do porto: a mensagem volta à fila', async () => {
+  const s = await preparar()
+  await sair(s)
+  s.porto.resposta = () => null
+  const ouvintes = s.app.listeners('arlequin:plano')
+  s.app.removeAllListeners('arlequin:plano')
+  s.app.on('arlequin:plano', ouvintes[0]) // o porto falso, sem responder
+  assert.equal((await chamar(s.r.post['/plano-ativo/terminar'])).code, 200)
+  const ev = s.recebidos.filter(e => e.tipo === 'terminado').at(-1)
+  assert.doesNotThrow(() => s.app.emit('arlequin:plano-enviado', { pedido: ev.pedido, entregues: [], contactos: [], chats: [], falhas: [null] }))
+  assert.equal(s.p.planoAtivo().contactos.fila[0].estado, 'fila')
+  assert.doesNotThrow(() => s.app.emit('arlequin:plano-enviado', null))
+  assert.doesNotThrow(() => s.app.emit('arlequin:plano-enviado', 'texto'))
+  s.p.stop()
+})
