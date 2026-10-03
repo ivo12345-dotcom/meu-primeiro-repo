@@ -8,6 +8,7 @@ import { esc, num } from '../../lib/rota-texto.js'
 import { proximoWp } from '../comum.js'
 import { SEM_AUTORIZACAO, explicado } from '../../lib/erros.js'
 import { planoAberto } from './aberto.js'
+import { avisosTerra } from './terra.js'
 
 export const URL_ROTA = '/plugins/signalk-arlequin-rota'
 export const PLUGIN_DESLIGADO = 'o plugin da rota não responde'
@@ -212,7 +213,7 @@ ${erro}
 ${acrescentarHtml(e)}
 </div>
 <div class="col" style="flex:1;">
-${semGps}
+${avisosTerra(ctx)}${semGps}
 <div class="tile"><div class="lab">Tripulação</div><div class="acoes">
 <button class="acao${trip === 'so' ? ' go' : ''}" data-acao="rota-tripulacao" data-t="so">Só eu</button>
 <button class="acao${trip === 'acompanhado' ? ' go' : ''}" data-acao="rota-tripulacao" data-t="acompanhado">2 ou mais</button></div></div>

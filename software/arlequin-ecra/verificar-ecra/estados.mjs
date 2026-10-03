@@ -190,6 +190,34 @@ export function estados () {
   const comPlano = (estado, noite = false) => ({ ...contexto(st, { planoAtivo: PLANO, planoAtivoEm: Date.now(), planoAtivoLidoEm: Date.now(), ...estado }, { noite }), v: (p) => valoresLeme[p] })
   junta('leme-6-avisos', barra({ lista: [TERRA] }), melhor.render(comPlano({})))
   junta('leme-6-avisos-noite', barra({ lista: [TERRA] }), melhor.render(comPlano({}, true)), { noite: true })
+
+  // ---------- os contactos em terra com os campos da F2 (F3b item 1): o Leme no pior caso, com o plano fechado, sem plano ----------
+  const hora = (min) => new Date(Date.now() + min * 60e3).toISOString()
+  const F2 = {
+    envio: { contactos: ['Pai', 'Mãe'], alarme: hora(180), alarmePlano: hora(300), porContacto: [{ nome: 'Pai', alarme: hora(180), fechado: false }, { nome: 'Mãe', alarme: hora(300), fechado: false }] },
+    relogioDesacertadoS: 240,
+    envioEmTerra: { idCalculo: 'calc-0', indice: 1, contactos: ['Mãe'], alarme: hora(360) },
+    desistencias: [{ tipo: 'chegada', ref: 'A1', contactos: ['Tio'], em: hora(-5), alarme: null }, { tipo: 'atraso', ref: 'A2', contactos: ['Pai'], em: hora(-3), alarme: null }],
+    fechoPorEntregar: null
+  }
+  // a navegar com tudo ao mesmo tempo: o atraso retido, o parcial na fila, as horas por contacto, o relógio, outro plano em terra,
+  // duas desistências e os 6 avisos
+  const PIOR = { ...PLANO, ...F2, atrasoRetido: { motivo: 'parado', alarme: hora(180) } }
+  junta('leme-terra-pior-caso', barra({ lista: [TERRA] }), melhor.render(comPlano({ planoAtivo: PIOR })))
+  junta('leme-terra-pior-caso-noite', barra({ lista: [TERRA] }), melhor.render(comPlano({ planoAtivo: PIOR }, true)), { noite: true })
+  // o plano acabou de fechar com o «cheguei bem» por entregar (a rota ainda ativa): o Leme sem a faixa
+  const FECHADO = { ...PLANO, ...F2, estado: 'chegado', proximo: null, chegadaAgora: null, chegadaPlano: null, atrasoMin: null, envioEmTerra: null, avisos: [], atrasoRetido: null, fechoPorEntregar: { tipo: 'chegada', contactos: ['Pai', 'Mãe'], tentativas: 3, erro: 'sem rede' } }
+  junta('leme-fecho-por-entregar', barra(), melhor.render(comPlano({ planoAtivo: FECHADO })))
+  junta('leme-fecho-por-entregar-noite', barra(), melhor.render(comPlano({ planoAtivo: FECHADO }, true)), { noite: true })
+  // à espera de sair, sem rota ativa (a página de uma coluna) com o mesmo
+  const semRota = (planoAtivo, extra = {}) => ({ ...comPlano({ planoAtivo, ...extra }), v: (p) => (p === 'navigation.course.activeRoute' || p.startsWith('navigation.course.calcValues') ? undefined : valoresLeme[p]) })
+  junta('leme-espera-terra', barra(), melhor.render(semRota({ ...PLANO, ...F2, estado: 'à espera de sair', saida: null, atrasoMin: null, proximo: null })))
+  junta('leme-pausado-terra', barra(), melhor.render(semRota({ ...PLANO, ...F2, estado: 'pausado', pausadoDe: 'a navegar', chegadaOutro: { id: 'cascais', nome: 'Cascais' } })))
+  // sem plano nenhum: o Pedir com o plano que terra tem sem estar ativo e o relógio (o corpo do 404), e o plano fechado sem rota
+  const pedirTerra = (extra) => ({ ...contexto(st, { destinos: DESTINOS, destinosEm: Date.now(), planoAtivoEm: Date.now(), ...extra }), v: () => undefined })
+  junta('pedir-terra-sem-plano', barra(), melhor.render(pedirTerra({ planoAtivo: null, semPlano: { ok: false, erro: 'não há plano ativo', envioEmTerra: F2.envioEmTerra, relogioDesacertadoS: 240 } })))
+  junta('pedir-terra-fechado', barra(), melhor.render(pedirTerra({ planoAtivo: { ...FECHADO, desistencias: F2.desistencias, envioEmTerra: F2.envioEmTerra } })))
+  junta('pedir-terra-fechado-noite', barra(), melhor.render(pedirTerra({ planoAtivo: { ...FECHADO, desistencias: F2.desistencias, envioEmTerra: F2.envioEmTerra } })), { noite: true })
   for (const f of ['fuga', 'direta', 'canal']) {
     const resultado = fixture(f)
     junta(`resultado-${f}`, barra(), melhor.render(comPlano({ vista: 'resultado', resultado, idCalculo: 'calc-1', selecionada: 0, novo: true })))

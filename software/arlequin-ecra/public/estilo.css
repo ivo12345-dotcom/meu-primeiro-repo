@@ -177,6 +177,17 @@ body.noite button, body.noite .btn { color: var(--texto); }
 /* A navegar (3b-2): a faixa do plano ativo por cima do rumo e a caixa da rota mudada. */
 .plano-faixa { font-size: 1.3rem; border-left: .35rem solid var(--azul); }
 .plano-faixa .acoes, .plano-pausado .acoes, .plano-confirmar .acoes { margin-top: .35rem; }
+/* O mosaico "Contactos em terra" (F3b item 1): o que pede uma ação do Ivo em relação a terra, ao lado do rumo (na coluna da direita
+   do Leme e no Pedir), com a borda âmbar das coisas por fazer. */
+.avisos-terra { border-left: .35rem solid var(--amarelo); }
+/* O cartão do rumo do Leme nunca se corta (F3b, itens 1 e 10): o tamanho das letras acompanha a altura que o cartão tem
+   (unidades de contentor, cqh), no máximo o de sempre (6 e 4,6 rem). Com a faixa do plano, o atraso retido e os avisos a
+   tomarem altura — ou com uma letra mais larga do que a do Pi (a DejaVu Sans) — as letras encolhem em vez de saírem do ecrã. */
+.rumo-tile { flex: 1 1 0; min-height: 7rem; container-type: size; overflow: hidden; }
+.rumo-lab { font-size: min(1.2rem, 8cqh); }
+.rumo-valor { font-size: min(6rem, 36cqh); }
+.rumo-corr { font-size: min(4.6rem, 28cqh); margin-top: .4rem; }
+.rumo-proa { font-size: min(1.3rem, 8cqh); margin-top: .5rem; }
 /* O Terminar dentro da caixa vermelha (mesmo fundo): um contorno de dia; de noite, fundo e letra à parte. */
 .plano-pausado .acao.stop { outline: 2px solid #fff; outline-offset: -2px; }
 body.noite .plano-pausado .acao.stop { background: #000; color: var(--texto); outline: 2px solid var(--texto); outline-offset: -2px; }
