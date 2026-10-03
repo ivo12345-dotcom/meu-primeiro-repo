@@ -9,7 +9,8 @@
 //        (409 se já houver um a calcular; 503 com o plugin parado)
 //   GET  /resultado/:id → { estado: 'a calcular' | 'pronto' | 'erro', progresso, texto, resultado?, erro?,
 //        envioEmTerra: { idCalculo, indice, contactos, alarme } | null } (envioEmTerra: o último plano entregue
-//        a contactos em terra que ainda conta — ultimo-envio.json; ao Ativar outro, segue o novo)
+//        a contactos em terra que ainda conta — ultimo-envio.json; ao Ativar outro, segue o novo; alarme: a mais
+//        cedo que algum contacto tem, como no GET /plano-ativo)
 //   GET  /destinos, POST /destinos { nome, lat, lon | posicaoAtual: true, conhecido, abrigo? (false) }
 //   POST /ativar { id, alternativa } (alternativa: índice 0–2 ou o id) → grava e ativa a rota
 //        → { ok, rota, href, via, alternativa, nota, planoAtivo: { estado } } (nota: a do canal, se a
@@ -385,8 +386,10 @@ module.exports = function (app, deps = {}) {
   let modoTesteTexto = ''
   function estadoPlugin (texto) { app.setPluginStatus(`${modoTesteTexto}${texto}`) }
   // O último plano entregue a contactos em terra (revisão final I1), em ultimo-envio.json (escrita atómica,
-  // vale depois de um reinício): { idCalculo, indice, contactos, chats, alarme (a hora de alarme que terra
-  // tem), enviadoEm, fechado } — fechado com o "cheguei bem"/"terminada" entregue (terra já não espera).
+  // vale depois de um reinício): { idCalculo, indice, contactos, chats, alarme (a hora de alarme mais tarde
+  // que terra tem: até lá ainda espera notícias), alarmeMaisCedo? (a mais cedo, quando os contactos têm horas
+  // diferentes: auditoria I-01), enviadoEm, fechado } — fechado com o "cheguei bem"/"terminada" entregue
+  // (terra já não espera).
   const ficheiroUltimoEnvio = () => path.join(dirPlugin, 'ultimo-envio.json')
   function lerUltimoEnvio () {
     try {
@@ -846,18 +849,21 @@ module.exports = function (app, deps = {}) {
     const fecho = comEnvio && !pa.aberto(p) ? fechoPorEntregar(p) : null
     const doPlano = av.alarmeTerra({ aberto: comEnvio && pa.aberto(p), alarme: alarmeEmTerra(), fecho: fecho?.tipo ?? null }, agora)
     const u = terraSemPlano(agora)
-    const alarmeOutro = u ? Date.parse(u.alarmeMaisCedo ?? u.alarme) : NaN
+    const alarmeOutro = u ? alarmeCedoDe(u) : NaN
     const doOutro = u ? av.alarmeTerra({ semPlano: pa.aberto(p) ? 'outro' : 'nenhum', alarme: alarmeOutro }, agora) : null
     const escolhido = doOutro && doOutro.state !== 'normal' && (doPlano.state === 'normal' || alarmeOutro < alarmeEmTerra()) ? doOutro : doPlano
     return { [av.CAMINHO_ALARME_TERRA]: escolhido }
   }
+  // A hora de alarme mais cedo de um último envio (ms); sem ela, ou ilegível (um ficheiro antigo ou estragado),
+  // a alarme (a que o envioEmTerra já validou)
+  const alarmeCedoDe = (u) => { const t = Date.parse(u?.alarmeMaisCedo); return Number.isFinite(t) ? t : Date.parse(u?.alarme) }
   // O plano que os contactos em terra têm (ultimo-envio.json, ainda a contar) quando não é o do plano ativo.
   function terraSemPlano (agora) {
     const u = envioEmTerra(agora)
     if (!u || (planoAtivo && u.idCalculo === planoAtivo.idCalculo && u.indice === planoAtivo.indice)) return null
     return u
   }
-  const envioEmTerraGet = (u) => (u ? { idCalculo: u.idCalculo, indice: u.indice, contactos: [...u.contactos], alarme: new Date(Date.parse(u.alarmeMaisCedo ?? u.alarme)).toISOString() } : null)
+  const envioEmTerraGet = (u) => (u ? { idCalculo: u.idCalculo, indice: u.indice, contactos: [...u.contactos], alarme: new Date(alarmeCedoDe(u)).toISOString() } : null)
   function publicarAvisos (avisos) {
     avisosPublicados = avisos
     const r = av.publicar(publicados, avisos)
@@ -1317,9 +1323,9 @@ module.exports = function (app, deps = {}) {
       const out = { estado: t.estado, progresso: t.progresso, texto: t.texto }
       if (t.resultado) out.resultado = t.resultado
       if (t.erro) out.erro = t.erro
-      // o plano que os contactos em terra têm (revisão final I1): o Resultado avisa que, ao Ativar outro, segue o novo
-      const u = envioEmTerra(relogio())
-      out.envioEmTerra = u ? { idCalculo: u.idCalculo, indice: u.indice, contactos: [...u.contactos], alarme: u.alarme } : null
+      // o plano que os contactos em terra têm (revisão final I1): o Resultado avisa que, ao Ativar outro, segue o novo.
+      // A hora de alarme é a mais cedo que algum contacto tem, como no GET /plano-ativo (auditoria I-01, decisão n.º 14)
+      out.envioEmTerra = envioEmTerraGet(envioEmTerra(relogio()))
       res.json(out)
     })
 
@@ -1434,7 +1440,7 @@ module.exports = function (app, deps = {}) {
             // a hora de alarme de cada contacto (auditoria I-01): com o plano antigo aberto e reenviado, a que
             // cada um tinha dele; com o plano de terra (ultimo-envio.json), a mais cedo; senão, a do envio
             planoAtivo.terra = reenviar ? terraDe(anterior?.envio?.contactos?.length ? anterior : antigo).map(a => ({ ...a }))
-              : terraOutro ? ct.terraInicial({ ...envio, alarme: Date.parse(emTerra.alarmeMaisCedo ?? emTerra.alarme) })
+              : terraOutro ? ct.terraInicial({ ...envio, alarme: alarmeCedoDe(emTerra) })
                 : envio ? ct.terraInicial(envio) : []
             if (anterior) {
               planoAtivo.contactos = ct.herdar(anterior.contactos)
