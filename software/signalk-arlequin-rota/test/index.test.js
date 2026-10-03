@@ -835,3 +835,31 @@ test('auditoria I-37 (o require): o index.js carrega os modelos da AI por um cam
   // o mesmo módulo que o lib/cenarios.js usa (o resolvido pelo node_modules aponta para a mesma pasta)
   assert.equal(require.resolve(caminho), fs.realpathSync(require.resolve('signalk-arlequin-ia/lib/modelos')))
 })
+
+test('auditoria M-24: os pedidos à API do servidor têm o mesmo limite de tempo da API de rumo — um pendurado já não deixa o /calcular (409) nem o Ativar presos até reiniciar', async () => {
+  const pendurado = () => new Promise(() => {})
+  // a rota ativa (destino "rota-ativa"): o getResource que nunca responde
+  const app = appFalso({ rotaAtiva: [[38.8, -9.6], [39.31, -9.42]] })
+  app.leiturasFalhadas = 0
+  const { p, r } = plugin(app, { esperaRumoMs: 20 })
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  app.resourcesApi.getResource = pendurado
+  const x = await esperarResultado(r, (await chamar(r.post['/calcular'], { body: { destino: 'rota-ativa', tripulacao: 'so' } })).id)
+  assert.equal(x.estado, 'erro')
+  assert.equal(x.erro, 'não consegui ler a rota ativa do SignalK (o pormenor ficou no registo)')
+  // o seguinte já corre (antes: 409 "já há um cálculo a correr" até reiniciar o servidor)
+  app.resourcesApi.getResource = async (tipo, id) => { const v = app.recursos.get(`${tipo}/${id}`); if (!v) throw new Error('não existe'); return v }
+  const id = (await chamar(r.post['/calcular'], { body: { destino: 'peniche', tripulacao: 'acompanhado', sairAgora: true } })).id
+  assert.equal((await esperarResultado(r, id)).estado, 'pronto')
+  // o Ativar: o setResource e o activateRoute que nunca respondem
+  app.resourcesApi.setResource = pendurado
+  const a = await chamar(r.post['/ativar'], { body: { id, alternativa: 0 } })
+  assert.equal(a.code, 502)
+  assert.equal(a.erro, 'não ativei a rota: o SignalK não respondeu a tempo')
+  app.resourcesApi.setResource = async (tipo, rid, dados) => { app.recursos.set(`${tipo}/${rid}`, dados) }
+  app.activateRoute = pendurado
+  const b = await chamar(r.post['/ativar'], { body: { id, alternativa: 0 } })
+  assert.equal(b.code, 502, 'e o seguinte não fica preso no 409')
+  assert.equal(b.erro, 'não ativei a rota: o SignalK não respondeu a tempo')
+  p.stop()
+})
