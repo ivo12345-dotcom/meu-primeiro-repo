@@ -297,6 +297,7 @@ module.exports = function (app, deps = {}) {
   let polar = null
   let erroArranque = null
   let aCorrer = null // id do cálculo em curso
+  let aAtivar = false // um Ativar a meio (auditoria M-21: o 2.º toque dá 409)
   const trabalhos = new Map()
   const planos = new Map() // pedido → { id, indice, estado, entregues, contactos, falhas, avisos, motivo?, criado, enviadoEm?, temporizador }
   let planoAtivo = null // o plano ativo (lib/plano-ativo.js), também em plano-ativo.json
@@ -1310,6 +1311,10 @@ module.exports = function (app, deps = {}) {
           return res.status(500).json({ ok: false, erro: 'não montei o plano: erro interno (o pormenor ficou no registo)' })
         }
       }
+      // dois toques em Ativar (auditoria M-21, sonda S8): as decisões acima fazem-se antes da ativação, e o 2.º
+      // pedido mandava outro "Este plano substitui o anterior" e gravava mais uma rota
+      if (aAtivar) return res.status(409).json({ ok: false, erro: 'já há uma ativação a meio: espera um momento' })
+      aAtivar = true
       ativarRota(alt, t.resultado.destino.nome)
         .then(r => {
           const agora = relogio()
@@ -1353,10 +1358,12 @@ module.exports = function (app, deps = {}) {
           }
           gravarPlanoAtivo()
           enviarFila(agora)
+          aAtivar = false // (antes da resposta: o ecrã pode pedir outra logo a seguir)
           res.json({ ok: true, ...r, alternativa: alt.id, nota: alt.nota || null, planoAtivo: { estado: planoAtivo.estado } })
         })
-        .catch(e => res.status(502).json({ ok: false, erro: `não ativei a rota: ${motivoSignalK(e, 'ativar')}` }))
+        .catch(e => { aAtivar = false; res.status(502).json({ ok: false, erro: `não ativei a rota: ${motivoSignalK(e, 'ativar')}` }) })
         .catch(e => app.error(`ativar: ${e.message}`))
+        .finally(() => { aAtivar = false })
     })
 
     escrever.post('/plano-telegram', (req, res) => {
