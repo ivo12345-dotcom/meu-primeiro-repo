@@ -59,10 +59,10 @@ test('o texto do plano (Peniche → Nazaré pelo Canal da Berlenga), exatamente'
     'Rota: a 5 MN da costa, via Canal da Berlenga, só motor',
     'Chegada provável: qua 30/09 18:21 (o mais tarde: qua 30/09 18:21)',
     'Tripulação: só eu',
-    'Até qua 30/09 às 17:09 ainda volta a Peniche, exceto qua 30/09 às 10:33 (fuga junto à costa com vento do mar), qua 30/09 às 13:10 (fuga junto à costa com vento do mar) e qua 30/09 às 14:34 (sem volta a Peniche; abrigo em Nazaré).',
+    'Até qua 30/09 às 17:09 ainda volta a Peniche, exceto qua 30/09 às 10:33 (fuga junto à costa com vento do mar), qua 30/09 às 13:10 (fuga junto à costa com vento do mar) e qua 30/09 às 14:34 (sem volta a Peniche; abrigo na Nazaré).',
     '',
     'Hora de alarme: qua 30/09 20:21',
-    'Se não houver notícias até qua 30/09 20:21, liga ao Ivo. Se não atender, liga ao MRCC Lisboa +351 214 401 919 (ou 112) e diz: veleiro ARLEQUIN, de Peniche para Nazaré, saída qua 30/09 09:30.',
+    'Se não houver notícias até qua 30/09 20:21, liga ao Ivo. Se não atender, liga ao MRCC Lisboa +351 214 401 919 (ou 112) e diz: veleiro ARLEQUIN, de Peniche para a Nazaré, saída qua 30/09 09:30.',
     '',
     'A rota vai em anexo (GPX).'
   ].join('\n'))

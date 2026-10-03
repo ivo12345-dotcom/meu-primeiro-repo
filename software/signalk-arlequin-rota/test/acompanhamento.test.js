@@ -360,3 +360,15 @@ test('auditoria I-17 (decisão n.º 10): o evento de visibilidade da 3a vem agor
   assert.deepEqual(k.resultado.eventos.filter(e => e.tipo === 'tempo').map(e => [e.texto, e.curto]), [[da3a.texto, 'visibilidade']])
   assert.equal(ac.textoCurto({ tipo: 'tempo', texto: 'Chuva e visibilidade 2,5 km: radar ligado' }), 'chuva e visibilidade')
 })
+
+test('auditoria M-19 (parte acompanhamento.js): a viragem leva a preposição do nome do ponto — "na Nazaré", "no Largo da Nazaré", "em Peniche", "nas Berlengas" (a função do lib/costa.js, não uma lista à parte)', () => {
+  const nomes = (nome) => {
+    const p = planoV(rastoV())
+    const r = ROTA_V.map((q, i) => (i === 1 ? { ...q, nome } : q))
+    return ac.lembretesDoPlano({ ...p, alternativa: { ...p.alternativa, pontosRota: r } }).find(e => e.tipo === 'viragem').texto
+  }
+  assert.equal(nomes('Nazaré'), 'Virar/cambar na Nazaré')
+  assert.equal(nomes('Largo da Nazaré'), 'Virar/cambar no Largo da Nazaré')
+  assert.equal(nomes('Peniche'), 'Virar/cambar em Peniche')
+  assert.equal(nomes('Berlengas'), 'Virar/cambar nas Berlengas')
+})

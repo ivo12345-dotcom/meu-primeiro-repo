@@ -25,6 +25,9 @@
 // escreve null, NaN nem undefined: o que falta fica de fora ou como "—".
 
 const { gpxRota } = require('./gpx')
+// as preposições com os nomes dos sítios ("à Nazaré", "na Figueira da Foz", "ao Cabo Raso", "em Peniche"):
+// a função partilhada do lib/costa.js (auditoria M-19)
+const { sitio } = require('./costa')
 const { slug } = require('./slug')
 
 const H = 3600000
@@ -130,10 +133,10 @@ function excecoes (desistencia, volta, agora, fuso) {
     const t = Date.parse(p.t)
     if (!Number.isFinite(t)) return []
     const nome = p.tipo === 'cabo' && texto(p.nome)
-    const onde = nome ? `junto ${/^(Ponta|Nazaré)/.test(nome) ? 'à' : 'ao'} ${nome} ${asHoras(t, agora, fuso)}` : asHoras(t, agora, fuso)
+    const onde = nome ? `${sitio.junto(nome)} ${asHoras(t, agora, fuso)}` : asHoras(t, agora, fuso)
     // sem volta mas com abrigo limpo: o abrigo (não é "sem fuga possível")
     const abrigoLimpo = !p.voltar && p.abrigo && !p.abrigo.avisoVermelho && texto(p.abrigo.nome)
-    const porque = abrigoLimpo ? `sem volta a ${texto(volta.voltar.nome)}; abrigo em ${abrigoLimpo}` : !p.voltar ? 'sem fuga possível' : AVISO_SEM_VENTO.test(p.voltar.avisoVermelho) ? 'fuga junto à costa sem vento previsto' : 'fuga junto à costa com vento do mar'
+    const porque = abrigoLimpo ? `sem volta ${sitio.a(texto(volta.voltar.nome))}; abrigo ${sitio.em(abrigoLimpo)}` : !p.voltar ? 'sem fuga possível' : AVISO_SEM_VENTO.test(p.voltar.avisoVermelho) ? 'fuga junto à costa sem vento previsto' : 'fuga junto à costa com vento do mar'
     return [`${onde} (${porque})`]
   })
   if (!lista.length) return ''
@@ -167,7 +170,7 @@ function montarPlano ({ resultado, indice = 0, barco = {}, telefones = {}, agora
   if (alarme == null) throw Object.assign(new Error(SEM_ALARME), { status: 422 })
   const antigo = calculoAntigo(alt, agora, { fuso })
   if (antigo) throw Object.assign(new Error(antigo), { status: 422 })
-  const de = origemMar ? `da posição ${origemMar}` : origem ? `de ${origem}` : null
+  const de = origemMar ? `da posição ${origemMar}` : origem ? sitio.de(origem) : null
 
   const linhas = [
     `PLANO DE NAVEGAÇÃO · ${nomeBarco}`,
@@ -188,7 +191,7 @@ function montarPlano ({ resultado, indice = 0, barco = {}, telefones = {}, agora
   const volta = indice === 0 ? ultimaVolta(r.desistencia) : null
   if (volta) {
     const frase = ateAs(Date.parse(volta.t), agora, fuso)
-    linhas.push(`${frase[0].toUpperCase()}${frase.slice(1)} ainda volta a ${texto(volta.voltar.nome)}${excecoes(r.desistencia, volta, agora, fuso)}.`)
+    linhas.push(`${frase[0].toUpperCase()}${frase.slice(1)} ainda volta ${sitio.a(texto(volta.voltar.nome))}${excecoes(r.desistencia, volta, agora, fuso)}.`)
   }
 
   const ivo = texto(telefones.ivo)
@@ -197,7 +200,7 @@ function montarPlano ({ resultado, indice = 0, barco = {}, telefones = {}, agora
   linhas.push(
     '',
     `Hora de alarme: ${hl(alarme)}`,
-    `Se não houver notícias até ${hl(alarme)}, liga ao Ivo${ivo ? ` (${ivo})` : ''}. Se não atender, ${ligarEmergencia} e diz: veleiro ${nomeBarco}, de ${origem || SEM} para ${destino || SEM}, saída ${hl(partida)}.`,
+    `Se não houver notícias até ${hl(alarme)}, liga ao Ivo${ivo ? ` (${ivo})` : ''}. Se não atender, ${ligarEmergencia} e diz: veleiro ${nomeBarco}, ${origem ? sitio.de(origem) : `de ${SEM}`} ${destino ? sitio.para(destino) : `para ${SEM}`}, saída ${hl(partida)}.`,
     '',
     'A rota vai em anexo (GPX).'
   )

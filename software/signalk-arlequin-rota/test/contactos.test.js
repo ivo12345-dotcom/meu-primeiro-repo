@@ -451,3 +451,13 @@ test('auditoria M-25: uma resposta do porto mal formada (falhas com null ou text
   assert.equal(e.fila[0].estado, 'fila')
   assert.equal(e.fila[0].erro, 'nenhum contacto em terra a recebeu')
 })
+
+test('auditoria M-19 (parte contactos.js): "Cheguei bem à Nazaré", "à Figueira da Foz", "ao Porto", "a Peniche", "ao destino" — a função das preposições do lib/costa.js', () => {
+  const t = (destino) => ct.textoChegada({ destino, chegou: T0, agora: T0 })
+  assert.equal(t('Nazaré'), 'Cheguei bem à Nazaré ter 29/09 às 21:00. Obrigado!')
+  assert.equal(t('Figueira da Foz'), 'Cheguei bem à Figueira da Foz ter 29/09 às 21:00. Obrigado!')
+  assert.equal(t('Porto'), 'Cheguei bem ao Porto ter 29/09 às 21:00. Obrigado!')
+  assert.equal(t('Peniche'), 'Cheguei bem a Peniche ter 29/09 às 21:00. Obrigado!')
+  assert.equal(t('Algés (CNA)'), 'Cheguei bem a Algés (CNA) ter 29/09 às 21:00. Obrigado!')
+  assert.equal(t(null), 'Cheguei bem ao destino ter 29/09 às 21:00. Obrigado!')
+})
