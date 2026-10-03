@@ -313,3 +313,10 @@ test('auditoria M-23: os números das mensagens arredondam para o lado do aviso 
   const abaixo = { medido: 12.528, previsto: 18, desvioNos: -5.472, desvioPct: -30.4 }
   assert.equal(correr(av.novoEstado(), 0, 30, base({ vento: abaixo })).avisos['notifications.rota.recalcula'].message, 'Recalcula a rota: vento de 13 nós, previsto 18 (−31 %)')
 })
+
+test('auditoria M-19: o lembrete da chegada de noite leva a preposição do destino — "à Nazaré", "a Peniche"', () => {
+  const eventos = [ev('c1', T0 + H, 'chegada', 'Chegada à Nazaré (16:00)', true, 'chegada à Nazaré')]
+  const lembrete = (destino) => av.avaliar(av.novoEstado(), base({ eventos, chegadaNoite: true, destino }), T0 + 30 * MIN).avisos['notifications.rota.lembrete.c1'].message
+  assert.equal(lembrete('Nazaré'), 'Às 16:00: chegada de noite à Nazaré')
+  assert.equal(lembrete('Peniche'), 'Às 16:00: chegada de noite a Peniche')
+})

@@ -37,6 +37,7 @@
 //   um reinício não publicar outra vez o que já está ativo.
 
 const { asHoras } = require('./plano')
+const { sitio } = require('./costa')
 
 const MIN = 60000
 const H = 3600000
@@ -91,7 +92,8 @@ function textoLembrete (e, t, agora, { chegadaNoite, destino }) {
   // sem chuva, o evento da 3a diz só "Visibilidade X km" (auditoria I-17: antes este lembrete perdia-se)
   if (e.tipo === 'tempo' && /^visibilidade/i.test(e.texto)) return `${quando}: pouca visibilidade — radar ligado e luzes`
   if (e.tipo === 'tempo' && /frente|roda/i.test(e.texto)) return `${quando}: ${e.texto}`
-  if (e.tipo === 'chegada' && chegadaNoite) return `${quando}: chegada de noite a ${destino || 'destino'}`
+  // "à Nazaré", "a Peniche" (auditoria M-19: a preposição do lib/costa.js)
+  if (e.tipo === 'chegada' && chegadaNoite) return `${quando}: chegada de noite ${sitio.a(destino || 'Destino')}`
   // os gerados do plano (Tarefa 8.5): a viragem num ponto da rota e a rotação do vento previsto
   if (e.tipo === 'viragem' || e.tipo === 'vento') return `${quando}: ${String(e.texto).charAt(0).toLowerCase()}${String(e.texto).slice(1)}`
   return null

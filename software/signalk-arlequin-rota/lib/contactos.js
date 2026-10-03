@@ -90,7 +90,8 @@ function grausMinutos (p) {
 // desbloqueou o bot, a rede voltou) nunca parece de agora
 const quando = (t) => (valido(t) ? ` ${diaEHora(t)}` : '')
 
-const textoChegada = ({ destino, chegou }) => `Cheguei bem a ${destino || 'destino'}${quando(chegou)}. Obrigado!`
+// "Cheguei bem à Nazaré", "a Peniche", "ao Porto" (auditoria M-19: a preposição do lib/costa.js)
+const textoChegada = ({ destino, chegou }) => `Cheguei bem ${c.sitio.a(destino || 'Destino')}${quando(chegou)}. Obrigado!`
 const textoAtraso = ({ chegada, alarme, alarmeAntes, agora }) =>
   `Ainda a navegar, tudo bem. Nova chegada prevista ~${horaLisboa(chegada, agora)}. Nova hora de alarme: ${horaLisboa(alarme, agora)} (em vez de ${horaLisboa(alarmeAntes, agora)}).`
 // posicaoEm (auditoria M-22): a hora da posição quando não é de agora (sem GPS): "última posição conhecida"
