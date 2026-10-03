@@ -1,21 +1,21 @@
 {
   "partida": "2026-09-29T14:32:00.000Z",
-  "chegada": "2026-09-30T05:01:00.000Z",
+  "chegada": "2026-09-30T05:03:00.000Z",
   "chegou": true,
-  "duracaoH": 14.483333333333333,
-  "milhas": 61.32953624826985,
-  "horasVela": 8.966666666666667,
-  "horasMotor": 5.516666666666667,
-  "horasNoite": 10.633333333333333,
-  "gasoleoGasto": 7.171666666664848,
-  "socFinal": 0.9886046994982464,
-  "socMin": 0.9020762720470504,
-  "ventoMax": 18.575687499582337,
-  "rajadaMax": 26.377606907510042,
+  "duracaoH": 14.516666666666667,
+  "milhas": 61.34670623769752,
+  "horasVela": 9.016666666666667,
+  "horasMotor": 5.5,
+  "horasNoite": 10.666666666666666,
+  "gasoleoGasto": 7.149999999998187,
+  "socFinal": 0.988594180033799,
+  "socMin": 0.901617938713717,
+  "ventoMax": 18.551905976665218,
+  "rajadaMax": 26.355702873244276,
   "ondasMax": 2.68,
   "viragens": 0,
   "cambadelas": 4,
-  "horasLemeSeguidas": 8.966666666666692,
+  "horasLemeSeguidas": 9.016666666666694,
   "costaMinMn": 1.07704672148117,
   "eventos": [
     {
@@ -44,7 +44,7 @@
       "tipo": "wp"
     },
     {
-      "t": 1790701500000,
+      "t": 1790701560000,
       "texto": "Largo de Cascais: 10,5 MN feitas",
       "tipo": "wp"
     },
@@ -59,27 +59,27 @@
       "tipo": "noite"
     },
     {
-      "t": 1790707380000,
+      "t": 1790707440000,
       "texto": "Largo do Cabo Raso: 17,9 MN feitas",
       "tipo": "wp"
     },
     {
-      "t": 1790710740000,
+      "t": 1790710800000,
       "texto": "Rizar: 1 rizo (vento 14 nós, rajadas 20)",
       "tipo": "vela"
     },
     {
-      "t": 1790712300000,
+      "t": 1790712360000,
       "texto": "Largo da Roca: 23,8 MN feitas",
       "tipo": "wp"
     },
     {
-      "t": 1790722500000,
+      "t": 1790722560000,
       "texto": "Largo da Ericeira: 36,4 MN feitas",
       "tipo": "wp"
     },
     {
-      "t": 1790727660000,
+      "t": 1790727780000,
       "texto": "Motor ligado (vento 9 nós: sem vento para andar)",
       "tipo": "motor"
     },
@@ -94,33 +94,33 @@
       "tipo": "motor"
     },
     {
-      "t": 1790729220000,
+      "t": 1790729280000,
       "texto": "Motor ligado (vento 7 nós: sem vento para andar)",
       "tipo": "motor"
     },
     {
-      "t": 1790731800000,
+      "t": 1790731920000,
       "texto": "Largo de Santa Cruz: 46,5 MN feitas",
       "tipo": "wp"
     },
     {
-      "t": 1790739840000,
+      "t": 1790739900000,
       "texto": "Largo de Peniche: 55,8 MN feitas",
       "tipo": "wp"
     },
     {
-      "t": 1790743080000,
+      "t": 1790743200000,
       "texto": "Peniche Sul: 59,7 MN feitas",
       "tipo": "wp"
     },
     {
-      "t": 1790744400000,
+      "t": 1790744520000,
       "texto": "Peniche (porto): 61,3 MN feitas",
       "tipo": "wp"
     },
     {
-      "t": 1790744460000,
-      "texto": "Chegada a Peniche (06:01)",
+      "t": 1790744580000,
+      "texto": "Chegada a Peniche (06:03)",
       "tipo": "chegada"
     }
   ],

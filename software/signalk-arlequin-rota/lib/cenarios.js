@@ -34,7 +34,9 @@
 // (previsaoAlemDoTreino). A tendência do barómetro (tendPressao3h, hPa: pressão agora − há 3 h,
 // ou null) entra no modelo como no treino; tendenciaPressao3h tira-a das amostras do barómetro.
 
-const modelosJs = require('signalk-arlequin-ia/lib/modelos')
+const path = require('node:path')
+// por caminho relativo e não pelo nome do pacote: no Pi o plugin pode não estar em node_modules (auditoria I-37)
+const modelosJs = require(path.join(__dirname, '..', '..', 'signalk-arlequin-ia', 'lib', 'modelos'))
 const { velocidadePolar, litrosHora } = require('./base')
 
 const H = 3600000

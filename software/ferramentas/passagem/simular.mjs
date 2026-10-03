@@ -277,16 +277,13 @@ function tempoAqui (met, lat, t) {
 // (coef. 90), que nesse dia é WEST = UTC+01:00 (fuso explícito abaixo, para dar
 // sempre o MESMO instante independentemente do fuso do sistema onde isto corre).
 // Estofo ~45 min depois; vazante positiva (sai a 250°), até ~1,8 nó na barra.
-// É a corrente de lib/mare.js do plugin da rota (com uma só preia-mar), só na caixa da
-// barra e do estuário do Tejo (38,60–38,72 N, 9,42–9,00 W). Até 01/10 aplicava-se a tudo a
-// leste de 9°25' W, também à chegada a Peniche (erro); o resultado de 29/09 foi regravado
-// (chegada 05:00 → 05:01). Desde 02/10 a caixa do plugin acaba a oeste em 9,40 W, para deixar de
-// fora a entrada da marina de Cascais (auditoria M-12, decisão do Ivo n.º 8); aqui fica o limite
-// oeste de 9,42 W com que esse resultado de referência foi gravado (o teste do plugin compara-o
-// número a número), passado à mão.
+// É a corrente de lib/mare.js do plugin da rota (com uma só preia-mar), com a caixa do plugin:
+// a barra e o estuário do Tejo, a oeste até 9,40 W, para deixar de fora a entrada da marina de
+// Cascais (auditoria M-12, decisão do Ivo n.º 8). O resultado de referência de 29/09 foi regravado
+// a 03/10 com esta caixa (chegada 05:01 → 05:03); antes de 01/10 a corrente aplicava-se a tudo a
+// leste de 9°25' W, também à chegada a Peniche (erro).
 const PREIA_MAR = new Date('2026-09-29T16:37:00+01:00').getTime()
-const MARE_LON_MIN_REFERENCIA = -9.42
-const mareTejo = criarMareTejo([{ t: PREIA_MAR }], { lonMin: MARE_LON_MIN_REFERENCIA })
+const mareTejo = criarMareTejo([{ t: PREIA_MAR }])
 
 // ---------- simulação ----------
 // Energia: o modelo do simulador (bancos de 440 Ah, frigorífico) com os alarmes do plugin da energia.

@@ -17,7 +17,7 @@ const SW = path.join(__dirname, '..', '..')
 const gz = (f) => JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(FIXTURES, f))))
 
 // ---------- o simular.mjs de 29/09 (resultado de referência gravado com o código antigo a 29/09 e ----------
-// ---------- regravado a 01/10, com a maré do Tejo só na caixa da barra: chegada 05:00 → 05:01) ----------
+// ---------- regravado a 01/10 (maré só na caixa da barra: chegada 05:00 → 05:01) e a 03/10 (caixa a oeste até 9,40 W, M-12: 05:01 → 05:03) ----------
 
 test('reproduz o simular.mjs de 29/09 (Algés → Peniche, partida 15:32): resumo e linha do tempo iguais', async () => {
   const { simular, parsePartida, ROTA, COSTA } = await import('file://' + path.join(SW, 'ferramentas', 'passagem', 'simular.mjs').replace(/\\/g, '/'))
@@ -36,7 +36,7 @@ test('reproduz o simular.mjs de 29/09 (Algés → Peniche, partida 15:32): resum
   const semPeriodo = (p) => { const { periodo, ...resto } = p; return resto }
   assert.ok(r.pontos.every(p => Number.isFinite(p.periodo)))
   assert.deepEqual(JSON.parse(JSON.stringify(r.pontos)).map(semPeriodo), gz('simular-2026-09-29-passagem.json.gz'))
-  assert.equal(ref.chegada, '2026-09-30T05:01:00.000Z') // 05:00 até 01/10, com a maré do Tejo errada à chegada a Peniche
+  assert.equal(ref.chegada, '2026-09-30T05:03:00.000Z') // 05:00 até 01/10 (maré errada à chegada a Peniche); 05:01 até 03/10 (caixa com a marina de Cascais)
   // rota.json (só nome/lat/lon + COSTA): igual ao gravado. Barato de comparar porque ROTA/COSTA
   // são exportados e não dependem da meteorologia nem da partida (principal() escreve o mesmo).
   const rotaJson = { ROTA: ROTA.map(({ nome, lat, lon }) => ({ nome, lat, lon })), COSTA }
