@@ -1482,3 +1482,49 @@ test('F2b Importante 1 (sonda p05 c): o plano novo ("substitui") que a Mãe nunc
   assert.equal(aviso.texto, `Mãe não recebeu o plano novo (ref. ${g.desistencias[0].ref}): ficou com o plano antigo, cuja hora de alarme (${plano_.diaEHora(antiga)}) já passou. Liga-lhe.\nref. ${plano(s).contactos.enviadas.find(m => m.tipo === 'aviso').ref}`)
   s.p.stop()
 })
+
+// ---------- revisão da F2 (F2b), Importante 3: a projeção presa quando o barco corta uma perna ----------
+test('F2b Importante 3 (sonda p13c): o barco sai de Cascais e não faz a perna para o largo — vai direito a leste e junta-se à rota do plano mais à frente; a projeção salta para a frente (uma vez), a chegada dá-se no cais, o "cheguei bem" sai e o aviso de terra apaga-se; nenhum atraso falso', async () => {
+  const cl = require('../lib/costa')
+  const s = await preparar()
+  const pts = s.alt.pontosRota
+  const largo = pts.findIndex(p => /largo de cascais/i.test(p.nome || ''))
+  assert.ok(largo > 0, 'a rota tem a perna para o Largo de Cascais')
+  await sair(s)
+  // em linha reta da posição atual para o ponto 7 (depois do largo), a 4 nós; depois segue a rota até ao cais
+  const alvo = 7
+  let pos = { lat: s.app.self['navigation.position'].latitude, lon: s.app.self['navigation.position'].longitude }
+  let m = 0
+  const ir = async (ate) => { while (cl.distanciaMn(pos, ate) > 0.1 && m < 900) { const v = cl.vetor(pos, ate); pos = cl.deslocar(pos, v.rumo, Math.min(4 / 60, v.mn)); s.por(pos, 4); await s.ciclo(); m++ } }
+  await ir(pts[alvo])
+  let u = s.p.acompanhamento()
+  assert.ok(u.milhas > 5 && u.distRota < 0.5, `ao chegar ao ponto ${alvo}: milhas ${u.milhas} distRota ${u.distRota}`)
+  assert.equal(u.saltos, 1, 'a projeção juntou-se à rota mais à frente, uma vez')
+  for (let k = alvo; k < pts.length - 1; k++) await ir(pts[k + 1])
+  u = s.p.acompanhamento()
+  assert.ok(Math.abs(u.milhas - s.alt.milhas) < 0.3, `no cais: milhas ${u.milhas} de ${s.alt.milhas}`)
+  assert.equal(u.saltos, 1)
+  s.por(pts.at(-1), 0)
+  for (let k = 0; k < 20 && s.p.planoAtivo().estado !== 'chegado'; k++) await s.ciclo()
+  assert.equal(s.p.planoAtivo().estado, 'chegado')
+  assert.equal(s.recebidos.filter(e => e.tipo === 'chegada').length, 1, 'o "cheguei bem" saiu')
+  assert.deepEqual(atrasosDe(s), [], 'nenhum atraso falso')
+  await s.ciclo()
+  assert.equal(s.app.self[ALARME_TERRA]?.state ?? 'normal', 'normal', 'o aviso de terra não fica armado com o barco amarrado')
+  s.p.stop()
+})
+
+test('F2b Importante 3: num rasto normal (Cascais → Algés pela rota do plano, com o gancho do largo) a projeção nunca salta — nem na curva do largo, onde a perna de volta começa no mesmo ponto', async () => {
+  const s = await preparar()
+  await sair(s)
+  for (let k = 3; k < s.alt.rasto.length; k++) {
+    s.por(s.alt.rasto[k]); await s.ciclo()
+    const u = s.p.acompanhamento()
+    assert.equal(u.saltos, 0, `salto no ponto ${k} do rasto: ${JSON.stringify(u.saltoRota)}`)
+    assert.ok(u.distRota < 0.3, `${u.distRota}`)
+  }
+  s.por(s.alt.pontosRota.at(-1), 0)
+  for (let k = 0; k < 20 && s.p.planoAtivo().estado !== 'chegado'; k++) await s.ciclo()
+  assert.equal(s.p.planoAtivo().estado, 'chegado')
+  s.p.stop()
+})

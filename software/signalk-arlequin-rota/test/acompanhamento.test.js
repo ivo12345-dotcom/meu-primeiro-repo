@@ -388,3 +388,80 @@ test('auditoria M-20 (parte acompanhamento.js): a rotação do vento dos lembret
   assert.deepEqual(ac.lembretesDoPlano(planoV(rastoV({ twd: lento }))).filter(e => e.tipo === 'vento'), [])
   assert.deepEqual(outro.lembretesDoPlano(planoV(rastoV({ twd: lento }))).filter(e => e.tipo === 'vento').map(e => e.texto), ['Rotação do vento de 0° para 45°'])
 })
+
+// ---------- revisão da F2 (F2b), Importante 3: o barco que corta uma perna e se junta à rota mais à frente ----------
+// A → 3 MN para SW (o "largo") → de volta a A → 5 MN para leste → mais 2 MN para leste (o cais): um gancho, como
+// o de Cascais → Algés. O rasto do plano segue a rota a 5 nós.
+function planoGancho () {
+  const B = c.deslocar(A, 225, 3)
+  const C = c.deslocar(A, 90, 5)
+  const D = c.deslocar(C, 90, 2)
+  const pts = [A, B, A, C, D].map(p => ({ lat: p.lat, lon: p.lon }))
+  const linha = c.prepararLinha(pts)
+  const rasto = Array.from({ length: Math.floor(linha.total / (5 / 6)) + 1 }, (_, i) => { const p = c.posicao(linha, i * 5 / 6); return { lat: p.lat, lon: p.lon, t: iso(T0 + i * 10 * MIN), motor: true, noite: false } })
+  const fim = T0 + Math.round(linha.total / 5 * H)
+  return { plano: plano({ saida: iso(T0), alternativa: { pontosRota: pts, rasto, eventos: [], chegada: { p10: iso(fim), p50: iso(fim), p90: iso(fim) }, partida: iso(T0) }, destino: { nome: 'Cais', cais: pts.at(-1) } }), linha }
+}
+// o barco de minuto a minuto: → [{ agora, r (resultado) }]
+function navegar (p, posicoes, estado0 = ac.novoEstado()) {
+  let estado = estado0
+  const out = []
+  for (const [k, pos] of posicoes.entries()) {
+    const agora = T0 + (k + 1) * MIN
+    const r = ac.acompanhar(estado, { plano: p, posicao: pos, agora })
+    estado = r.estado
+    out.push({ agora, r: r.resultado })
+  }
+  return { estado, out }
+}
+
+test('F2b Importante 3: o barco sai de A direito a leste (corta a perna do largo) — a projeção, presa na janela ao pé de A, salta para a frente para a perna A → C quando o barco está a ≥ 0,5 MN mais perto dela (e a ≤ 0,5 MN) durante 3 ciclos seguidos, nunca para trás; depois segue a rota e chega ao cais', () => {
+  const { plano: p, linha } = planoGancho()
+  // a 4 nós para leste, de minuto a minuto, durante 110 min (7,3 MN: passa o cais aos 7 MN)
+  const posicoes = Array.from({ length: 110 }, (_, k) => c.deslocar(A, 90, (k + 1) * 4 / 60))
+  const { out } = navegar(p, posicoes)
+  // enquanto está a menos de 0,5 MN de A a projeção fica ao pé de A (s ≈ 0): nem salta nem anda
+  for (const { r } of out.slice(0, 7)) assert.ok(r.milhas < 0.1 && !r.saltoRota, `${r.milhas} ${JSON.stringify(r.saltoRota)}`)
+  // a 0,5 MN de A a perna A → C (s = 6) fica 0,5 MN mais perto: 1.º ciclo e 2.º ciclo ainda não (histerese); ao 3.º salta
+  const salto = out.find(x => x.r.saltoRota)
+  assert.ok(salto, 'saltou')
+  const k = out.indexOf(salto)
+  assert.ok(k >= 9 && k <= 11, `saltou ao minuto ${k + 1}`)
+  assert.ok(out[k - 1].r.milhas < 0.1 && out[k - 2].r.milhas < 0.1, 'nos 2 ciclos antes ainda estava presa')
+  assert.ok(salto.r.saltoRota.para > salto.r.saltoRota.de, 'nunca para trás')
+  assert.ok(Math.abs(salto.r.milhas - (6 + (k + 1) * 4 / 60)) < 0.05, `${salto.r.milhas}`)
+  assert.ok(salto.r.distRota < 0.01)
+  assert.equal(salto.r.saltos, 1)
+  // daí em diante segue a rota, sem mais saltos, até ao cais (s = total)
+  for (const { r } of out.slice(k + 1)) assert.ok(!r.saltoRota)
+  assert.ok(Math.abs(out.at(-1).r.milhas - linha.total) < 0.01, `${out.at(-1).r.milhas} de ${linha.total}`)
+  assert.equal(out.at(-1).r.saltos, 1)
+  // o atraso passa a ser medido no sítio certo: o barco a 4 nós numa rota que o plano fazia a 5 nós (com 6 MN
+  // cortadas) vai ADIANTADO em relação ao plano, não "parado ao pé de A" com um atraso a crescer
+  assert.ok(out.at(-1).r.atrasoMin < 0, `${out.at(-1).r.atrasoMin}`)
+})
+
+test('F2b Importante 3: sem saltos falsos — numa ida e volta com as pernas a 0,3 MN uma da outra, um barco a bolinar 0,6 MN para o lado da perna de volta não salta para ela (a diferença nunca chega a 0,5 MN); e com as pernas a 1,5 MN, um barco ao pé da perna de volta mas a navegar no sentido da ida também não (só a andar no sentido dela)', () => {
+  const idaEVolta = (afast) => {
+    const B = norte(A, 5)
+    const pts = [A, B, c.deslocar(B, 90, afast), c.deslocar(A, 90, afast)].map(p => ({ lat: p.lat, lon: p.lon }))
+    const linha = c.prepararLinha(pts)
+    const rasto = Array.from({ length: Math.floor(linha.total / (5 / 6)) + 1 }, (_, i) => { const p = c.posicao(linha, i * 5 / 6); return { lat: p.lat, lon: p.lon, t: iso(T0 + i * 10 * MIN), motor: true, noite: false } })
+    return plano({ saida: iso(T0), alternativa: { pontosRota: pts, rasto, eventos: [], chegada: { p10: iso(T0 + 2 * H), p50: iso(T0 + 2 * H), p90: iso(T0 + 2 * H) }, partida: iso(T0) }, destino: { nome: 'Volta', cais: pts.at(-1) } })
+  }
+  // (a) pernas a 0,3 MN: a bolinar para norte com bordos até 0,6 MN a leste da perna de ida, 60 min
+  const bordos = Array.from({ length: 60 }, (_, k) => c.deslocar(norte(A, 0.5 + k * 3 / 60), 90, 0.6 * Math.abs(Math.sin(k / 8))))
+  const a = navegar(idaEVolta(0.3), bordos)
+  assert.ok(a.out.every(x => !x.r.saltoRota && x.r.milhas < 5), JSON.stringify(a.out.filter(x => x.r.saltoRota || x.r.milhas >= 5).map(x => x.r.milhas)))
+  assert.equal(a.out.at(-1).r.saltos, 0)
+  // (b) pernas a 1,5 MN: o barco a 1,2 MN a leste da ida (0,3 MN da volta), a andar para NORTE: não salta
+  const paraNorte = Array.from({ length: 30 }, (_, k) => c.deslocar(norte(A, 1 + k * 4 / 60), 90, 1.2))
+  const b = navegar(idaEVolta(1.5), paraNorte)
+  assert.ok(b.out.every(x => !x.r.saltoRota), 'a andar no sentido da ida não se junta à volta')
+  // (c) o mesmo barco a andar para SUL (de volta): junta-se à perna de volta ao 3.º ciclo
+  const paraSul = Array.from({ length: 10 }, (_, k) => c.deslocar(norte(A, 1 + 29 * 4 / 60 - (k + 1) * 4 / 60), 90, 1.2))
+  const cc = navegar(idaEVolta(1.5), paraSul, b.estado)
+  const salto = cc.out.find(x => x.r.saltoRota)
+  assert.ok(salto && cc.out.indexOf(salto) === 2, `${cc.out.findIndex(x => x.r.saltoRota)}`)
+  assert.ok(salto.r.milhas > 5, `${salto.r.milhas}`)
+})
