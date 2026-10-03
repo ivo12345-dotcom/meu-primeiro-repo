@@ -472,3 +472,73 @@ test('auditoria M-20 (parte contactos.js): a hora de alarme de um atraso é a ch
   const b = ct.decidirAtraso(null, caso)
   assert.equal(b.alarme - b.chegada, require('../lib/plano').ALARME_DEPOIS_MS)
 })
+
+// ---------- revisão da F2 (F2b), Importante 1 (decisão n.º 16): a desistência à hora de alarme DE CADA contacto ----------
+test('F2b Importante 1 (decisão n.º 16): cada mensagem guarda a hora de alarme que CADA contacto tem (desistePor); o parcial para quem falhou fica só com as deles; desiste-se de cada contacto no fim da hora dele — nunca na mais tarde de todos — e o registo diz a hora que passou', () => {
+  const plano = T0 + 4 * H
+  const terra = [{ chat: '222', nome: 'Mãe', alarme: plano + 2 * H, fechado: false }, { chat: '333', nome: 'Pai', alarme: plano, fechado: false }]
+  const d = ct.desistePorDe(terra, { contactos: ['Mãe', 'Pai'], chats: ['222', '333'] })
+  assert.deepEqual(d, { desistePor: { 222: plano + 2 * H, 333: plano }, desisteEm: plano + 2 * H })
+  // sem chats, pelo nome; um contacto sem hora fica de fora
+  assert.deepEqual(ct.desistePorDe([{ chat: null, nome: 'Tio', alarme: plano, fechado: false }, { chat: null, nome: 'Avó', alarme: null, fechado: false }], { contactos: ['Tio', 'Avó'] }), { desistePor: { Tio: plano }, desisteEm: plano })
+  assert.ok(Number.isNaN(ct.desistePorDe([], { contactos: ['Mãe'], chats: ['222'] }).desisteEm))
+  // a mensagem leva as horas; o parcial (a Mãe recebeu, o Pai não) fica só com a do Pai
+  let c = ct.porNaFila(ct.novaFila(), { tipo: 'atraso', texto: 'a', contactos: ['Mãe', 'Pai'], chats: ['222', '333'], chegada: plano, alarme: plano + 3 * H, ...d }, T0)
+  assert.deepEqual([c.fila[0].desistePor, c.fila[0].desisteEm], [{ 222: plano + 2 * H, 333: plano }, plano + 2 * H])
+  c = ct.marcarAEnviar(c, c.fila[0].id, 'p1', T0)
+  c = ct.resposta(c, 'p1', { contactos: ['Mãe'], chats: ['222'], entregues: ['chat 111', 'Mãe'], falhas: [{ nome: 'Pai', erro: 'bloqueou o bot' }] }, T0 + 1000)
+  const parcial = c.fila[0]
+  assert.deepEqual([parcial.parcial, parcial.contactos, parcial.desistePor, parcial.desisteEm], [true, ['Pai'], { 333: plano }, plano])
+  // à hora do Pai (e não à da Mãe, 2 h mais tarde) desiste-se; o registo e a desistida dizem a hora que passou
+  assert.equal(ct.desistir(c, plano - 1).desistidas.length, 0)
+  const r = ct.desistir(c, plano)
+  assert.deepEqual(r.c.fila, [])
+  assert.deepEqual(r.desistidas.map(m => [m.ref, m.contactos, m.chats, m.passou]), [[parcial.ref, ['Pai'], ['333'], plano]])
+  assert.deepEqual(r.c.desistencias.map(x => ({ ref: x.ref, tipo: x.tipo, contactos: x.contactos, alarme: x.alarme })), [{ ref: parcial.ref, tipo: 'atraso', contactos: ['Pai'], alarme: iso(plano) }])
+  assert.equal(ct.textoDesisti(r.desistidas[0]), `Pai não recebeu o aviso de atraso (ref. ${parcial.ref}) e já passou a hora de alarme (${require('../lib/plano').diaEHora(plano)}): desisti de o entregar. Liga-lhe.`)
+  // a mensagem inteira que só o Ivo recebeu, para dois contactos com horas diferentes: à hora do Pai sai só o
+  // Pai (a Mãe continua a tentar com a hora dela); à hora da Mãe sai ela
+  let e = ct.porNaFila(ct.novaFila(), { tipo: 'chegada', texto: 'c', contactos: ['Mãe', 'Pai'], chats: ['222', '333'], ...d }, T0)
+  e = ct.marcarAEnviar(e, e.fila[0].id, 'q1', T0)
+  e = ct.resposta(e, 'q1', { contactos: [], chats: [], entregues: ['chat 111'], falhas: [{ nome: 'Mãe', erro: 'x' }, { nome: 'Pai', erro: 'x' }] }, T0)
+  const soPai = ct.desistir(e, plano)
+  assert.deepEqual(soPai.desistidas.map(m => [m.contactos, m.passou]), [[['Pai'], plano]])
+  assert.deepEqual(soPai.c.fila.map(m => [m.contactos, m.chats, m.desistePor, m.estado]), [[['Mãe'], ['222'], { 222: plano + 2 * H }, 'fila']])
+  const depois = ct.desistir(soPai.c, plano + 2 * H)
+  assert.deepEqual(depois.desistidas.map(m => [m.contactos, m.passou]), [[['Mãe'], plano + 2 * H]])
+  assert.deepEqual(depois.c.fila, [])
+  assert.deepEqual(depois.c.desistencias.map(x => [x.contactos, x.alarme]), [[['Pai'], iso(plano)], [['Mãe'], iso(plano + 2 * H)]])
+  // com a terra de agora (a hora que cada um tem hoje) ela manda sobre a guardada na mensagem (não é do plano anterior)
+  const comTerra = ct.desistir(e, plano + H, { terra: [{ chat: '222', nome: 'Mãe', alarme: plano + H, fechado: false }, { chat: '333', nome: 'Pai', alarme: plano + 3 * H, fechado: false }] })
+  assert.deepEqual(comTerra.desistidas.map(m => [m.contactos, m.passou]), [[['Mãe'], plano + H]])
+  // uma mensagem do plano anterior fica com as horas guardadas (a terra de agora é a do plano novo)
+  const antiga = { ...e, fila: e.fila.map(m => ({ ...m, anterior: true })) }
+  assert.deepEqual(ct.desistir(antiga, plano, { terra: [{ chat: '333', nome: 'Pai', alarme: plano + 9 * H, fechado: false }] }).desistidas.map(m => [m.contactos, m.passou]), [[['Pai'], plano]])
+  // sem desistePor (um plano gravado antes): a hora da mensagem para todos
+  const velha = ct.porNaFila(ct.novaFila(), { tipo: 'chegada', texto: 'c', contactos: ['Mãe', 'Pai'], chats: ['222', '333'], desisteEm: plano }, T0)
+  const v = { ...velha, fila: velha.fila.map(m => ({ ...m, tentativas: 2, ivoRecebeu: true })) }
+  assert.deepEqual(ct.desistir(v, plano).desistidas.map(m => [m.contactos, m.passou]), [[['Mãe', 'Pai'], plano]])
+})
+
+test('F2b Importante 1: o plano novo ("substitui") que um contacto nunca recebe — desiste-se à hora de alarme ANTIGA que ele tem e o texto diz essa hora ("ficou com o plano antigo, cuja hora de alarme (…) já passou"); só quando é a hora de alarme do plano NOVO que passa primeiro é que o texto a diz, e nesse caso diz também a antiga', () => {
+  const { diaEHora } = require('../lib/plano')
+  const antiga = T0 + 2 * H
+  const nova = T0 + 8 * H
+  let c = ct.porNaFila(ct.novaFila(), { tipo: 'plano', texto: 'P', contactos: ['Mãe'], chats: ['222'], alarme: nova, desistePor: { 222: antiga }, desisteEm: antiga }, T0)
+  c = ct.marcarAEnviar(c, c.fila[0].id, 'p1', T0)
+  c = ct.resposta(c, 'p1', { contactos: [], chats: [], entregues: ['chat 111'], falhas: [{ nome: 'Mãe', erro: 'file is too big' }] }, T0)
+  const ref = c.fila[0].ref
+  assert.equal(ct.desistir(c, antiga - 1).desistidas.length, 0)
+  const r = ct.desistir(c, antiga)
+  assert.deepEqual(r.desistidas.map(m => [m.passou, m.porAlarmeDoPlano]), [[antiga, false]])
+  assert.equal(r.c.desistencias[0].alarme, iso(antiga))
+  assert.equal(ct.textoDesisti(r.desistidas[0]), `Mãe não recebeu o plano novo (ref. ${ref}): ficou com o plano antigo, cuja hora de alarme (${diaEHora(antiga)}) já passou. Liga-lhe.`)
+  // a hora de alarme do plano novo passa primeiro (um plano mais curto): sai com ou sem rede, e o texto diz as duas
+  let d = ct.porNaFila(ct.novaFila(), { tipo: 'plano', texto: 'P', contactos: ['Mãe'], chats: ['222'], alarme: antiga, desistePor: { 222: nova }, desisteEm: nova }, T0)
+  d = ct.marcarAEnviar(d, d.fila[0].id, 'p1', T0)
+  d = ct.falhou(d, 'p1', 'sem resposta', T0)
+  const s = ct.desistir(d, antiga)
+  assert.deepEqual(s.desistidas.map(m => [m.passou, m.porAlarmeDoPlano]), [[antiga, true]])
+  assert.equal(s.c.desistencias[0].alarme, iso(antiga))
+  assert.equal(ct.textoDesisti(s.desistidas[0]), `Mãe não recebeu o plano novo (ref. ${d.fila[0].ref}) antes da hora de alarme dele (${diaEHora(antiga)}): ficou com o plano antigo (hora de alarme ${diaEHora(nova)}). Liga-lhe.`)
+})

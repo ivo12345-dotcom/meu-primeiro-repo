@@ -611,11 +611,12 @@ module.exports = function (app, deps = {}) {
   function porMensagem (tipo, texto, agora, extra = {}) {
     const contactos = planoAtivo?.envio?.contactos
     if (!contactos?.length) return false
-    // a hora de alarme que estes contactos têm: passada ela, desiste-se de quem nunca a recebe (auditoria
-    // I-05, decisão do Ivo n.º 16)
-    const tarde = ct.alarmeMaisTarde(terraDe())
+    // a hora de alarme que CADA um destes contactos tem (desistePor): passada a dele, desiste-se dele se nunca
+    // a recebe (auditoria I-05, decisão do Ivo n.º 16; F2b Importante 1: a de cada um, não a mais tarde de todos)
+    const chats = planoAtivo.envio.chats || []
+    const { desistePor, desisteEm: tarde } = ct.desistePorDe(terraDe(), { contactos, chats })
     const desisteEm = Number.isFinite(tarde) ? tarde : Date.parse(planoAtivo.envio.alarme)
-    planoAtivo = { ...planoAtivo, contactos: ct.porNaFila(planoAtivo.contactos || ct.novaFila(), { tipo, texto, contactos, chats: planoAtivo.envio.chats || [], idCalculo: planoAtivo.idCalculo, indice: planoAtivo.indice, ...(Number.isFinite(desisteEm) ? { desisteEm } : {}), ...extra }, agora) }
+    planoAtivo = { ...planoAtivo, contactos: ct.porNaFila(planoAtivo.contactos || ct.novaFila(), { tipo, texto, contactos, chats, idCalculo: planoAtivo.idCalculo, indice: planoAtivo.indice, ...(Number.isFinite(desisteEm) ? { desisteEm } : {}), desistePor, ...extra }, agora) }
     return true
   }
   function falharContactos (pedido, motivo) {
@@ -633,9 +634,9 @@ module.exports = function (app, deps = {}) {
   // receberam — a mesma ref, o mesmo texto —, mas também só com o barco a avançar.
   function enviarFila (agora) {
     if (!planoAtivo?.contactos) return
-    // auditoria I-05 (decisão do Ivo n.º 16): de quem nunca recebe, desiste-se no fim da hora de alarme desse
-    // envio, e o Ivo é avisado pelo Telegram (só o chat dele) para lhe ligar
-    const des = ct.desistir(planoAtivo.contactos, agora)
+    // auditoria I-05 (decisão do Ivo n.º 16): de quem nunca recebe, desiste-se no fim da hora de alarme que ESSE
+    // contacto tem (terra; F2b Importante 1), e o Ivo é avisado pelo Telegram (só o chat dele) para lhe ligar
+    const des = ct.desistir(planoAtivo.contactos, agora, { terra: terraDe() })
     if (des.desistidas.length) {
       let c = des.c
       for (const m of des.desistidas) {
