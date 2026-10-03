@@ -2,6 +2,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { barraHtml } from '../public/lib/barra.js'
+import { lerFonte, funcao } from './ajuda-fonte.mjs'
 
 const base = { agora: Date.parse('2026-09-29T14:32:00Z'), gps: true, pressao: 101600, tendencia: { sentido: 'desce', hpa3h: -2.4 }, piloto: 'standby', ligado: true }
 
@@ -29,13 +30,8 @@ test('auditoria K-11: a falha das janelas/modo noite do OpenCPN fica à vista na
   assert.match(html, /<span class="chip falha">⚠ &lt;b&gt;<\/span>/)
   assert.doesNotMatch(barraHtml(base), /chip falha/)
   // o app.js guarda a falha e já não a engole
-  const { readFileSync } = await import('node:fs')
-  // sem os \r: no Windows o git pode entregar o ficheiro com CRLF, e o fim da função não se achava
-  const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8').replace(/\r/g, '')
-  const inicio = app.indexOf('function janela')
-  const fim = app.indexOf('\n}\n', inicio)
-  assert.ok(inicio >= 0 && fim > inicio, 'a função janela do app.js tem de se achar')
-  const janela = app.slice(inicio, fim)
+  // (sem depender dos fins de linha — no Windows o git entrega o ficheiro com CRLF — e a função tem de se achar)
+  const janela = funcao(lerFonte('app.js'), 'function janela')
   assert.doesNotMatch(janela, /\.catch\(\(\) => \{\}\)/)
   assert.match(janela, /falhaJanela\(/)
 })

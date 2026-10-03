@@ -4,6 +4,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import { lerFonte, funcao, corte } from './ajuda-fonte.mjs'
 import { criarStore, aplicarDelta } from '../public/signalk.js'
 import { cpa, classificar } from '../public/lib/cpa.js'
 import { lerPolar } from '../public/lib/polar.js'
@@ -522,7 +523,7 @@ test('auditoria I-23: no resumo da viagem, sem leitura do motor não conta nem p
   const html = viagem.render({ ...contexto(store, {}), viagem: { ...v, ultimo: 5400e3 } })
   assert.match(html, /À vela<\/div><div class="vv">0 min<\/div><div class="lab">\+ 1 h 30 sem leitura do motor<\/div>/)
   // o app.js manda os três estados (antes: rpm em falta = 0 = desligado = vela)
-  const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8')
+  const app = lerFonte('app.js')
   assert.match(app, /motor:\s*motorLigado\(v\('propulsion\.main\.revolutions'\)\)/)
 })
 
@@ -650,11 +651,9 @@ test('revisão F3, Important 5: em todas as páginas e estados, cada parte que r
 })
 
 test('revisão F3, Important 5: o app.js guarda o scrollTop antes de refazer a página e repõe-no a seguir; um scroll (em captura) pausa o desenho; depois de um toque num botão o desenho é forçado', () => {
-  const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8').replace(/\r/g, '')
-  const inicio = app.indexOf('function render (')
-  const fim = app.indexOf('\n}\n', inicio)
-  assert.ok(inicio >= 0 && fim > inicio && fim < app.indexOf('function aplicarNoite'), 'a função render do app.js')
-  const render = app.slice(inicio, fim)
+  const app = lerFonte('app.js')
+  const render = funcao(app, 'function render (')
+  assert.ok(app.indexOf(render) + render.length < app.indexOf('function aplicarNoite'), 'a função render acaba antes da aplicarNoite')
   const guardar = render.indexOf('guardarRolagem(el)')
   const html = render.indexOf('el.innerHTML =')
   const repor = render.indexOf('reporRolagem(el,')
@@ -665,7 +664,7 @@ test('revisão F3, Important 5: o app.js guarda o scrollTop antes de refazer a p
   assert.match(app, /addEventListener\('scroll', [\s\S]*?\{ capture: true, passive: true \}\)/)
   assert.match(app, /app\.repostos\.get\(ev\.target\)/)
   // depois de uma ação (botão da página, calar), o desenho é forçado (um scroll recente não o atrasa)
-  const clique = app.slice(app.indexOf("document.addEventListener('click'"), app.indexOf("document.addEventListener('keydown'"))
+  const clique = corte(app, "document.addEventListener('click'", "document.addEventListener('keydown'", 'o ouvinte do click')
   assert.match(clique, /registarErro\(`ação \$\{acao\}`, e\) \}\n  render\(true\)/)
   assert.match(clique, /registarErro\(acao, err\)\n    \}\n    return render\(true\)/)
 })
@@ -910,7 +909,7 @@ test('auditoria M-50: um alvo com o alarme do plugin AIS ativo é "perigo" no ec
   assert.equal(alvosAis({ vessels: [alvo], eu, notificacoes: [{ ...alarme, state: 'normal' }], agora: Date.now() })[0].classe, 'seguro')
   assert.equal(alvosAis({ vessels: [{ ...alvo, em: Date.now() - 11 * 60e3 }], eu, notificacoes: [alarme], agora: Date.now() }).length, 0)
   // o app.js usa este alvosAis
-  assert.match(readFileSync(new URL('../public/app.js', import.meta.url), 'utf8'), /alvos:\s*alvosAis\(\{/)
+  assert.match(lerFonte('app.js'), /alvos:\s*alvosAis\(\{/)
 })
 
 // ---------- revisão F3, Minor 7: os alvos só com a distância (as formas que o cpa.js da F6 devolve) ----------
