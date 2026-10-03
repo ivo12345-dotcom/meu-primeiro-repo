@@ -67,9 +67,9 @@ function contexto (store, estado = {}, extra = {}) {
 
 const SOM = ['visual', 'sound']
 const doServidor = (caminho, valor, status = {}) => ({ caminho, id: '0b6f3c2e-1d2a-4c55-9d1e-6a1f2b3c4d5e', timestamp: new Date().toISOString(), ...valor, status: { silenced: false, acknowledged: false, canSilence: true, canAcknowledge: true, ...status } })
-const barra = ({ som = 'running', falhas = [], lista = [], ligado = true } = {}) => barraHtml({
+const barra = ({ som = 'running', falhas = [], lista = [], ligado = true, calarFalha = null } = {}) => barraHtml({
   agora: Date.now(), gps: true, pressao: 101600, tendencia: { sentido: 'desce' }, somHtml: chipSemSom({ state: som }),
-  alarmeHtml: alarmes.chipAlarme(daBarra(lista), lista), piloto: 'standby', ligado, falhas
+  alarmeHtml: alarmes.chipAlarme(daBarra(lista), lista), calarFalha, piloto: 'standby', ligado, falhas
 })
 
 // os alarmes da barra: as formas dos plugins (contrato C1) com o id e o status do servidor
@@ -83,6 +83,9 @@ const TERRA = doServidor('notifications.rota.alarmeTerra', { state: 'alert', met
 const FUMO = doServidor('notifications.arlequin.porto.fumo', { state: 'emergency', method: SOM, apito: 'continuo', message: 'FUMO a bordo!' })
 const FUMO_RECONHECIDO = doServidor('notifications.arlequin.porto.fumo', { state: 'emergency', method: ['visual'], apito: 'continuo', message: 'FUMO a bordo!' }, { acknowledged: true })
 const PORAO = { ...doServidor('notifications.arlequin.porto.aguaPorao', { state: 'alarm', method: SOM, apito: 'continuo', message: 'Água no porão!' }), id: '1c7f4d3f-2e3b-4d66-8e2f-7b2a3c4d5e6f' }
+// o "o barco saiu do lugar" do porto (apito curto, acao: 'largar': o botão "Larguei (sou eu)", contrato C10)
+const DERIVA = doServidor('notifications.arlequin.porto.deriva', { state: 'alarm', method: SOM, apito: 'curto', acao: 'largar', message: 'O barco saiu do lugar: está a 45 m do ponto de amarração' })
+const DERIVA_LONGO = doServidor('notifications.arlequin.porto.deriva', { state: 'alarm', method: SOM, apito: 'curto', acao: 'largar', message: 'O barco saiu do lugar: está a 1234 m do ponto de amarração (a garrar?)' })
 const PORAO_SEM_ID = { caminho: 'notifications.arlequin.porto.aguaPorao', state: 'alarm', method: SOM, apito: 'continuo', message: 'Água no porão!', timestamp: new Date().toISOString() }
 
 const vazio = '<div class="col"><div class="tile">(página de teste da barra)</div></div>'
@@ -103,6 +106,12 @@ export function estados () {
   junta('barra-pior-caso', barra({ som: 'suspended', falhas: ['OpenCPN: o modo noite não mudou', 'não silenciou: sem ligação ao SignalK'], lista: [FUMO], ligado: false }), vazio)
   junta('barra-fumo-reconhecido-porao', barra({ lista: [FUMO_RECONHECIDO, PORAO] }), vazio)
   junta('barra-fumo-reconhecido-porao-sem-id', barra({ lista: [FUMO_RECONHECIDO, PORAO_SEM_ID] }), vazio)
+  // o "Larguei (sou eu)" ao lado do calar (contrato C10): sempre à vista, também com o pior caso da barra
+  junta('barra-larguei', barra({ lista: [DERIVA] }), vazio)
+  junta('barra-larguei-noite', barra({ lista: [DERIVA] }), vazio, { noite: true })
+  junta('barra-larguei-falha-semsom', barra({ som: 'suspended', falhas: ['OpenCPN: as janelas não mudaram'], lista: [DERIVA_LONGO] }), vazio)
+  junta('barra-larguei-pior-caso', barra({ som: 'suspended', falhas: ['OpenCPN: o modo noite não mudou'], lista: [DERIVA_LONGO], ligado: false, calarFalha: 'não larguei: o plugin porto não está ligado' }), vazio)
+  junta('barra-larguei-pior-caso-noite', barra({ som: 'suspended', falhas: ['OpenCPN: o modo noite não mudou'], lista: [DERIVA_LONGO], ligado: false, calarFalha: 'não larguei: o plugin porto não está ligado' }), vazio, { noite: true })
   junta('barra-fumo-reconhecido-ais', barra({ falhas: ['OpenCPN: as janelas não mudaram'], som: 'suspended', lista: [FUMO_RECONHECIDO, AIS_LONGO] }), vazio)
 
   // ---------- Motor: o pior caso realista (4 cargas, a tabela do gasóleo, 2 depósitos com sensor) ----------

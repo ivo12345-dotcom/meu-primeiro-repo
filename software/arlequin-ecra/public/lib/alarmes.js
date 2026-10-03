@@ -181,9 +181,19 @@ export function calado (n, acao) {
   return { ...n, method: (n.method || []).filter(m => m !== 'sound'), status: { ...(n.status || {}), silenced: true } }
 }
 
-// O chip do alarme na barra de cima e, ao lado, o botão de calar. O texto vem dos plugins (eventos da rota, nomes
-// dos destinos do Ivo): passa sempre pelo esc.
+// "Larguei (sou eu)" (contrato C10, Adenda 2 do dono): o plugin do porto põe acao: 'largar' no valor do alarme "o
+// barco saiu do lugar" e o ecrã oferece o botão — o mesmo que o /largar do Telegram: apaga o ponto de amarração e o
+// alarme limpa. Sem motor, esse alarme nunca se apaga sozinho; este botão é a maneira de dizer "fui eu".
+export const URL_LARGAR = '/plugins/signalk-arlequin-porto/largar'
+export const botaoLarguei = (al) => (al?.acao === 'largar' && nivel(al) > 0 ? '<button class="largar" data-acao="largar">Larguei (sou eu)</button>' : '')
+
+// POST /plugins/signalk-arlequin-porto/largar (conta "read/write", router.access do contrato C2). Um erro chega a
+// quem chama (o app.js mostra-o na barra, em pt-PT: lib/erros.js falhaLargar).
+export const largar = (pedir) => pedir(URL_LARGAR, { method: 'POST' })
+
+// O chip do alarme na barra de cima e, ao lado, o botão de calar e, no alarme do "saiu do lugar", o "Larguei". O
+// texto vem dos plugins (eventos da rota, nomes dos destinos do Ivo): passa sempre pelo esc.
 export function chipAlarme (al) {
   if (!al) return ''
-  return `<span class="chip ${al.state === 'warn' || al.state === 'alert' ? 'aviso' : 'alarme'}" data-acao="ir-alarme" data-caminho="${esc(al.caminho)}">⚠ ${esc(al.message || al.caminho)}</span>${botaoCalar(al)}`
+  return `<span class="chip ${al.state === 'warn' || al.state === 'alert' ? 'aviso' : 'alarme'}" data-acao="ir-alarme" data-caminho="${esc(al.caminho)}">⚠ ${esc(al.message || al.caminho)}</span>${botaoCalar(al)}${botaoLarguei(al)}`
 }
