@@ -16,7 +16,9 @@
 // escritas do ecrã passam por aqui e seguem para o logbook por HTTP local, com o token de admin posto só na
 // configuração deste plugin (nunca no browser). O logbook guarda um ficheiro por dia UTC: o dia de Lisboa
 // junta os dois dias UTC que lhe tocam (Lisboa está em UTC+0 ou UTC+1). Um logbook que falha dá 502 com o
-// motivo em pt-PT; o erro verdadeiro fica no registo do servidor.
+// motivo em pt-PT; o erro verdadeiro fica no registo do servidor. O 404 de um dia é "sem entradas" só se o logbook
+// estiver lá: com os dois dias a 404 pergunta-se a lista dos dias (GET /logs, que responde sempre) e, sem ela,
+// "o plugin do diário (signalk-logbook) não está instalado ou ligado" (502).
 
 const { exec: execPadrao } = require('node:child_process')
 
@@ -81,7 +83,7 @@ module.exports = function (app, { fetch: fetchFn = globalThis.fetch, exec = exec
         ? 'o diário (signalk-logbook) recusou o token de admin da configuração do plugin do ecrã: põe um token novo'
         : 'o diário (signalk-logbook) só aceita admin: põe um token de admin na configuração do plugin do ecrã'
     }
-    if (status === 404) return 'o diário (signalk-logbook) não está instalado ou ligado'
+    if (status === 404) return 'o plugin do diário (signalk-logbook) não está instalado ou ligado'
     return `o diário (signalk-logbook) deu um erro (HTTP ${status})`
   }
   class FalhaLogbook extends Error {}
@@ -96,9 +98,12 @@ module.exports = function (app, { fetch: fetchFn = globalThis.fetch, exec = exec
     return r
   }
 
+  // As entradas de um dia UTC; null se o logbook respondeu 404. O 404 quer dizer duas coisas: o logbook não tem
+  // ficheiro desse dia (nenhuma entrada) ou o servidor não tem a rota (o logbook não está instalado ou ligado);
+  // quem chama distingue (confirmarLogbook).
   async function lerDia (diaUtc) {
     const r = await pedirLogbook(`/${diaUtc}`)
-    if (r.status === 404) return [] // sem ficheiro nesse dia UTC (nenhuma entrada)
+    if (r.status === 404) return null
     if (!r.ok) {
       app.error(`diário: GET ${diaUtc} respondeu ${r.status}`)
       throw new FalhaLogbook(motivoLogbook(r.status))
@@ -107,11 +112,25 @@ module.exports = function (app, { fetch: fetchFn = globalThis.fetch, exec = exec
     return Array.isArray(lista) ? lista : []
   }
 
+  // O logbook está lá? A lista dos dias dele (GET /logs) responde sempre, mesmo vazia (o servidor cria a pasta do
+  // plugin ao arrancá-lo); um 404 aí é o servidor sem a rota (revisão F3, Minor 10: antes um logbook em falta dava
+  // "ainda não há entradas hoje").
+  async function confirmarLogbook () {
+    const r = await pedirLogbook('')
+    if (r.ok) return
+    app.error(`diário: GET /logs respondeu ${r.status}`)
+    throw new FalhaLogbook(motivoLogbook(r.status))
+  }
+
   async function diario (req, res) {
     const dia = req.params?.dia
     if (!diaValido(dia)) return res.status(400).json({ ok: false, erro: 'o dia tem de ser AAAA-MM-DD' })
     try {
-      const todas = [...await lerDia(vespera(dia)), ...await lerDia(dia)]
+      const antes = await lerDia(vespera(dia))
+      const hoje = await lerDia(dia)
+      // os dois dias a 404: um dia sem entradas, ou um logbook que não está lá — a lista dos dias diz qual
+      if (antes === null && hoje === null) await confirmarLogbook()
+      const todas = [...(antes || []), ...(hoje || [])]
       const entradas = todas
         .filter(x => x && typeof x === 'object' && Number.isFinite(Date.parse(x.datetime)) && diaDeLisboa(Date.parse(x.datetime)) === dia)
         .map(x => ({ datetime: new Date(Date.parse(x.datetime)).toISOString(), text: typeof x.text === 'string' ? x.text : '', category: typeof x.category === 'string' ? x.category : 'navigation', origin: typeof x.origin === 'string' ? x.origin : '', author: typeof x.author === 'string' ? x.author : '' }))

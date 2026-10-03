@@ -117,7 +117,8 @@ test('contrato C3: POST /diario recusa o que o logbook não aceita (400) e expli
   const sem = criar(appFalso(), { fetch: logbookFalso({}).fetch })
   sem.start(CONFIG)
   const y = await chamar(rotas(sem).post['/diario'], { body: { text: 'Rizei' } })
-  assert.deepEqual([y.code, y.erro], [502, 'o diário (signalk-logbook) não está instalado ou ligado'])
+  // (revisão F3, Minor 10: "o plugin do diário…", a mesma frase do GET quando o logbook não está lá)
+  assert.deepEqual([y.code, y.erro], [502, 'o plugin do diário (signalk-logbook) não está instalado ou ligado'])
   const app = appFalso()
   const morto = criar(app, { fetch: logbookFalso({ 'POST ': new TypeError('fetch failed') }).fetch })
   morto.start(CONFIG)
@@ -129,6 +130,8 @@ test('contrato C3: POST /diario recusa o que o logbook não aceita (400) e expli
 test('contrato C3 e auditoria I-31: GET /diario/:dia dá o dia de Lisboa — junta os dois dias UTC que lhe tocam (o logbook guarda por dia UTC)', async () => {
   const e = (datetime, text, extra = {}) => ({ datetime, text, author: '', category: 'navigation', origin: 'manual', position: { latitude: 39, longitude: -9 }, ...extra })
   const lb = logbookFalso({
+    // a lista dos dias do logbook (GET /logs): o logbook está lá (revisão F3, Minor 10: é o que distingue um dia vazio de um logbook em falta)
+    'GET ': ['2026-07-14', '2026-07-15'],
     // verão (UTC+1): o dia 15/07 de Lisboa vai de 14/07 23:00Z a 15/07 23:00Z
     'GET /2026-07-14': [e('2026-07-14T22:30:00.000Z', 'ainda dia 14 em Lisboa'), e('2026-07-14T23:30:00.000Z', 'já dia 15 em Lisboa')],
     'GET /2026-07-15': [e('2026-07-15T22:59:00.000Z', 'última do dia 15', { category: 'engine', origin: 'auto' }), e('2026-07-15T08:00:00.000Z', 'manhã'), e('2026-07-15T23:10:00.000Z', 'já dia 16 em Lisboa')]
@@ -151,4 +154,64 @@ test('contrato C3 e auditoria I-31: GET /diario/:dia dá o dia de Lisboa — jun
   const x = await chamar(rotas(s).get['/diario/:dia'], { params: { dia: '2026-07-15' } })
   assert.equal(x.code, 502)
   assert.match(x.erro, /põe um token de admin na configuração do plugin do ecrã/)
+})
+
+// ---------- revisão F3, Minor 10: um dia sem entradas não é um logbook em falta ----------
+const NAO_ESTA = 'o plugin do diário (signalk-logbook) não está instalado ou ligado'
+const aLista = (q) => q.url === CONFIG.logbookUrl // o GET /logs (a lista dos dias)
+
+test('revisão F3 (Minor 10): o logbook dá 404 a um dia sem ficheiro e o servidor dá 404 a um plugin que não está lá — com os dois dias a 404 pergunta a lista dos dias: sem ela, "o plugin do diário (signalk-logbook) não está instalado ou ligado" (502); com ela, um dia sem entradas (200)', async () => {
+  const dia = (p) => chamar(rotas(p).get['/diario/:dia'], { params: { dia: '2026-12-01' } })
+  // o logbook lá (a lista responde, mesmo vazia), sem ficheiro nesses dois dias: "ainda não há entradas"
+  for (const lista of [['2026-07-01'], []]) {
+    const lb = logbookFalso({ 'GET ': lista })
+    const p = criar(appFalso(), { fetch: lb.fetch })
+    p.start(CONFIG)
+    const r = await dia(p)
+    assert.deepEqual([r.code, r.dia, r.entradas], [200, '2026-12-01', []], JSON.stringify(lista))
+    assert.deepEqual(lb.pedidos.map(q => (aLista(q) ? '(lista)' : q.url.slice(-10))), ['2026-11-30', '2026-12-01', '(lista)'])
+    assert.equal(lb.pedidos[2].headers.Authorization, 'Bearer tok-admin', 'a lista também com o token')
+  }
+  // o logbook em falta: nem os dias nem a lista (o 404 do servidor a um plugin que não está instalado ou ligado)
+  const app = appFalso()
+  const sem = logbookFalso({})
+  const p = criar(app, { fetch: sem.fetch })
+  p.start(CONFIG)
+  const r = await dia(p)
+  assert.deepEqual([r.code, r.ok, r.erro], [502, false, NAO_ESTA])
+  assert.equal(sem.pedidos.length, 3)
+  assert.ok(app.erros.some(e => /GET \/logs respondeu 404/.test(e)), 'o motivo fica no registo do servidor')
+  // um dia com entradas, ou só o da véspera: o logbook está lá, não se pergunta a lista
+  const e = (datetime, text) => ({ datetime, text, author: '', category: 'navigation', origin: 'manual' })
+  const com = logbookFalso({ 'GET /2026-12-01': [e('2026-12-01T09:00:00.000Z', 'manhã')] })
+  const pc = criar(appFalso(), { fetch: com.fetch })
+  pc.start(CONFIG)
+  const rc = await dia(pc)
+  assert.deepEqual([rc.code, rc.entradas.map(x => x.text)], [200, ['manhã']])
+  assert.equal(com.pedidos.length, 2)
+  assert.ok(!com.pedidos.some(aLista))
+  const vespera = logbookFalso({ 'GET /2026-11-30': [e('2026-11-30T22:00:00.000Z', 'ontem à noite')] })
+  const pv = criar(appFalso(), { fetch: vespera.fetch })
+  pv.start(CONFIG)
+  const rv = await chamar(rotas(pv).get['/diario/:dia'], { params: { dia: '2026-11-30' } })
+  assert.equal(rv.code, 200)
+  assert.deepEqual(rv.entradas.map(x => x.text), ['ontem à noite'])
+  assert.ok(!vespera.pedidos.some(aLista), 'um dia com entradas: sem a lista')
+})
+
+test('revisão F3 (Minor 10): com os dois dias a 404, a lista dos dias que falha por outro motivo dá o motivo dela (token, sem resposta, erro) — nunca "ainda não há entradas"', async () => {
+  const dia = (p) => chamar(rotas(p).get['/diario/:dia'], { params: { dia: '2026-12-01' } })
+  for (const [lista, espera] of [[401, /só aceita admin|recusou o token/], [403, /só aceita admin|recusou o token/], [500, /deu um erro \(HTTP 500\)/]]) {
+    const p = criar(appFalso(), { fetch: logbookFalso({ 'GET ': lista }).fetch })
+    p.start(CONFIG)
+    const r = await dia(p)
+    assert.equal(r.code, 502, String(lista))
+    assert.match(r.erro, espera, String(lista))
+  }
+  const app = appFalso()
+  const morto = criar(app, { fetch: logbookFalso({ 'GET ': new TypeError('fetch failed') }).fetch })
+  morto.start(CONFIG)
+  const z = await dia(morto)
+  assert.deepEqual([z.code, z.erro], [502, 'o diário (signalk-logbook) não responde'])
+  assert.ok(app.erros.some(x => /fetch failed/.test(x)))
 })
