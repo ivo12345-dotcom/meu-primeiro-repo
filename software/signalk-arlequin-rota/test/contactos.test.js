@@ -542,3 +542,22 @@ test('F2b Importante 1: o plano novo ("substitui") que um contacto nunca recebe 
   assert.equal(s.c.desistencias[0].alarme, iso(antiga))
   assert.equal(ct.textoDesisti(s.desistidas[0]), `Mãe não recebeu o plano novo (ref. ${d.fila[0].ref}) antes da hora de alarme dele (${diaEHora(antiga)}): ficou com o plano antigo (hora de alarme ${diaEHora(nova)}). Liga-lhe.`)
 })
+
+test('F2b Menor 1 (sonda p10 d): pôr na fila um aviso ao Ivo (a desistência) não tira um atraso que lá estava em espera — nem o confirmado pelo "Estou bem" nem o automático; só uma mensagem para terra (atraso, plano, chegada, terminada) tira o atraso que deixou de interessar', () => {
+  const atraso = (extra = {}) => ({ tipo: 'atraso', texto: 'a', contactos: ['Mãe'], chats: ['222'], chegada: T0 + H, alarme: T0 + 3 * H, ...extra })
+  const aviso = { tipo: 'aviso', texto: 'x', contactos: [], chats: [], desisteEm: T0 + 24 * H }
+  let c = ct.porNaFila(ct.novaFila(), atraso({ confirmado: true }), T0)
+  c = ct.porNaFila(c, aviso, T0)
+  assert.deepEqual(c.fila.map(m => [m.tipo, m.confirmado]), [['atraso', true], ['aviso', undefined]])
+  let d = ct.porNaFila(ct.novaFila(), atraso(), T0)
+  d = ct.porNaFila(d, aviso, T0)
+  assert.deepEqual(d.fila.map(m => m.tipo), ['atraso', 'aviso'])
+  // o parcial de um atraso também fica
+  let e = ct.porNaFila(ct.novaFila(), atraso({ contactos: ['Mãe', 'Pai'], chats: ['222', '333'] }), T0)
+  e = ct.marcarAEnviar(e, e.fila[0].id, 'p1', T0)
+  e = ct.resposta(e, 'p1', { contactos: ['Mãe'], chats: ['222'], entregues: ['chat 111', 'Mãe'], falhas: [{ nome: 'Pai', erro: 'x' }] }, T0)
+  e = ct.porNaFila(e, aviso, T0)
+  assert.deepEqual(e.fila.map(m => [m.tipo, !!m.parcial]), [['atraso', true], ['aviso', false]])
+  // uma mensagem para terra continua a tirar o atraso em espera
+  assert.deepEqual(ct.porNaFila(d, { tipo: 'chegada', texto: 'c', contactos: ['Mãe'], chats: ['222'] }, T0).fila.map(m => m.tipo), ['aviso', 'chegada'])
+})
