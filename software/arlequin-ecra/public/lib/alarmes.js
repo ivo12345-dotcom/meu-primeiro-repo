@@ -57,6 +57,50 @@ export function deveTocar (n) {
   return 'curto'
 }
 
+// ---------- o som, ciclo a ciclo ----------
+// O fumo reconhecido (Adenda 2 do dono, 02/10): o servidor não deixa silenciar uma emergência, só reconhecê-la, e
+// reconhecida ela deixa de apitar (alarm.js: fica só visual) — o que apagava o único aviso de um fumo que continua.
+// Agora: o apito contínuo pára, o alarme fica vermelho no ecrã (a barra mostra-o enquanto estiver ativo, sem botão)
+// e o ecrã repete um bip curto de 2 em 2 minutos enquanto houver fumo; o 1.º, 2 minutos depois de o ver
+// reconhecido. Se o fumo passar (o porto publica "normal") e voltar, o servidor repõe o estado do alarme (sem
+// reconhecer, alarm.js syncFromNotificationUpdate) e o ecrã volta a apitar contínuo: a memória do lembrete só
+// vive enquanto o alarme está ativo e reconhecido. Só as emergências (o fumo é a única): o resto cala-se com o
+// "silenciar".
+export const LEMBRETE_RECONHECIDA_MS = 2 * 60 * 1000
+export const emergenciaReconhecida = (n) => !!n && n.state === 'emergency' && n.apito !== 'curto' && n.status?.acknowledged === true
+
+// A memória do som, que o app.js guarda de ciclo para ciclo: os alarmes que já deram o bip curto (caminho e hora) e,
+// por alarme reconhecido, a hora do último lembrete (ou de o ter visto reconhecido).
+export const novaMemoriaSom = () => ({ bipados: new Set(), lembretes: new Map() })
+
+// O que tocar neste ciclo: { continuo (o apito contínuo), curtos (os caminhos que dão o seu bip curto, uma vez por
+// alarme), lembretes (os caminhos das emergências reconhecidas com o lembrete à hora) }. O som lê as notificações
+// direto do store (nunca depende do desenho, auditoria I-06). `agora` em ms: o relógio é de quem chama (os testes
+// avançam-no).
+export function decidirSom (notificacoes, memoria, agora) {
+  let continuo = false
+  const curtos = []
+  const lembretes = []
+  const reconhecidas = new Set()
+  for (const n of notificacoes || []) {
+    const t = deveTocar(n)
+    if (t === 'continuo') continuo = true
+    else if (t === 'curto') {
+      const chave = `${n.caminho}@${n.timestamp}`
+      if (!memoria.bipados.has(chave)) { memoria.bipados.add(chave); curtos.push(n.caminho) }
+    }
+    if (emergenciaReconhecida(n)) {
+      reconhecidas.add(n.caminho)
+      const ultimo = memoria.lembretes.get(n.caminho)
+      if (ultimo === undefined) memoria.lembretes.set(n.caminho, agora)
+      else if (agora - ultimo >= LEMBRETE_RECONHECIDA_MS) { memoria.lembretes.set(n.caminho, agora); lembretes.push(n.caminho) }
+    }
+  }
+  // o que já não está ativo e reconhecido (o fumo passou, voltou por reconhecer, ou a ligação caiu) esquece-se
+  for (const caminho of [...memoria.lembretes.keys()]) if (!reconhecidas.has(caminho)) memoria.lembretes.delete(caminho)
+  return { continuo, curtos, lembretes }
+}
+
 export function paginaDoAlarme (caminho) {
   if (caminho.startsWith('notifications.rota.')) return 'melhor'
   if (caminho.includes('.caixanegra.velas')) return 'velas'
