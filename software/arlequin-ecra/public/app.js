@@ -2,7 +2,7 @@
 
 import { criarStore, ligar, valor, idade, pedir } from './signalk.js'
 import { barraHtml } from './lib/barra.js'
-import { alvosAis } from './lib/ais.js'
+import { alvosAis, emPortoDe } from './lib/ais.js'
 import { lerPolar } from './lib/polar.js'
 import { registarPressao, tendencia, lerBarometro } from './lib/barometro.js'
 import { novaViagem, acumular, lerViagem } from './lib/viagem.js'
@@ -70,6 +70,8 @@ function pedirRegistado (url, o = {}) {
 
 function contexto () {
   if (!app.estados[app.pagina]) app.estados[app.pagina] = {}
+  // em porto (contrato C12: o plugin AIS publica navigation.arlequin.emPorto): os alvos parados ficam a amarelo, sem som
+  const emPortoAgora = emPortoDe({ v: (p) => valor(store, p), idade: (p) => idade(store, p) })
   return {
     v: (p) => valor(store, p),
     idade: (p) => idade(store, p),
@@ -82,8 +84,10 @@ function contexto () {
       vessels: store.vessels.values(),
       eu: { position: valor(store, 'navigation.position'), cog: valor(store, 'navigation.courseOverGroundTrue'), sog: valor(store, 'navigation.speedOverGround') },
       notificacoes: [...store.notificacoes.values()],
-      agora: Date.now()
+      agora: Date.now(),
+      emPorto: emPortoAgora
     }),
+    emPorto: emPortoAgora,
     notificacoes: [...store.notificacoes.values()],
     estado: app.estados[app.pagina],
     demo: parametros.has('demo'),

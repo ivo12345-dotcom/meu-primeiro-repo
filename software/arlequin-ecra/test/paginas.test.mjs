@@ -915,7 +915,9 @@ test('auditoria M-50: um alvo com o alarme do plugin AIS ativo é "perigo" no ec
 })
 
 // ---------- revisão F3, Minor 7: os alvos só com a distância (as formas que o cpa.js da F6 devolve) ----------
-test('revisão F3 (Minor 7): um alvo sem rumo mostra a distância e o porquê ("sem rumo: só distância"), nunca "— MN · —"; sem o nosso rumo a AIS di-lo numa linha; o lado a lado e o que se afasta continuam; nada depende de null >= 0', async () => {
+// (F3b, item 5: o porquê diz de quem é o rumo que falta — "sem rumo do alvo" / "sem o nosso rumo" / "sem rumo de nenhum
+// dos dois" — em vez da frase única "sem rumo: só distância" da F3c; test/ais-porto.test.mjs tem os três casos)
+test('revisão F3 (Minor 7): um alvo sem rumo mostra a distância e o porquê ("sem rumo do alvo"), nunca "— MN · —"; sem o nosso rumo a AIS di-lo numa linha; o lado a lado e o que se afasta continuam; nada depende de null >= 0', async () => {
   const { alvosAis, leituraCpa } = await import('../public/lib/ais.js')
   const { cpa } = await import('../public/lib/cpa.js')
   const { linhaAlvo } = await import('../public/paginas/comum.js')
@@ -951,8 +953,8 @@ test('revisão F3 (Minor 7): um alvo sem rumo mostra a distância e o porquê ("
   const comCog = alvosAis({ vessels, eu, notificacoes, agora })
   const linha = (nome, alvos = comCog) => linhaAlvo(alvos.find(a => a.name === nome)).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
   // Carta
-  assert.equal(linha('SEM COG A 6 NOS'), 'SEM COG A 6 NOS 0,4 MN · sem rumo: só distância')
-  assert.equal(linha('SEM SOG NEM COG'), 'SEM SOG NEM COG 0,3 MN · sem rumo: só distância')
+  assert.equal(linha('SEM COG A 6 NOS'), 'SEM COG A 6 NOS 0,4 MN · sem rumo do alvo')
+  assert.equal(linha('SEM SOG NEM COG'), 'SEM SOG NEM COG 0,3 MN · sem rumo do alvo')
   assert.equal(linha('LADO A LADO'), 'LADO A LADO 0,3 MN · —')
   assert.equal(linha('A AFASTAR'), 'A AFASTAR afasta-se')
   assert.match(linha('NORMAL'), /^NORMAL 0,0 MN · 4 min$/)
@@ -961,14 +963,14 @@ test('revisão F3 (Minor 7): um alvo sem rumo mostra a distância e o porquê ("
   assert.doesNotMatch(html, /— MN|NaN|undefined|null/)
   // cada linha da tabela como "|célula|célula|…|" (as quebras de linha do desenho não contam)
   const linhas = Object.fromEntries([...html.matchAll(/<tr data-mmsi="(\d)"[^>]*>([\s\S]*?)<\/tr>/g)].map(m => [m[1], m[2].replace(/\n/g, '').replace(/<[^>]+>/g, '|').replace(/\|+/g, '|')]))
-  assert.match(linhas['1'], /\|0,4 MN\|[^|]*\|[^|]*\|sem rumo: só distância\|PERIGO\|/, 'o alvo sem rumo, perigo pelo alarme do plugin: a distância e o porquê')
+  assert.match(linhas['1'], /\|0,4 MN\|[^|]*\|[^|]*\|sem rumo do alvo\|PERIGO\|/, 'o alvo sem rumo, perigo pelo alarme do plugin: a distância e o porquê')
   assert.match(linhas['3'], /\|0,3 MN\|—\|/, 'lado a lado: o CPA é a distância, sem TCPA')
-  assert.match(html, /CPA · TCPA<\/div><div class="v">sem rumo: só distância</)
+  assert.match(html, /CPA · TCPA<\/div><div class="v">sem rumo do alvo</)
   assert.doesNotMatch(html, /sem o nosso rumo/i, 'com o nosso COG não há a linha')
   // sem o nosso COG (a 5 nós): todos só com a distância, e a página explica numa linha
   const semCog = alvosAis({ vessels, eu: { ...eu, cog: undefined }, notificacoes, agora })
   assert.ok(semCog.every(a => a.r.semVelocidade === 'eu' || a.r.semVelocidade === 'ambos'))
-  assert.equal(linha('NORMAL', semCog), 'NORMAL 1,0 MN · sem rumo: só distância')
+  assert.equal(linha('NORMAL', semCog), 'NORMAL 1,0 MN · sem o nosso rumo')
   const h2 = ais.render({ alvos: semCog, estado: {}, notificacoes: [] })
   assert.equal((h2.match(/Sem o nosso rumo \(COG\/SOG do GPS\): só a distância de cada alvo, sem CPA nem TCPA/g) || []).length, 1, 'uma linha só')
   assert.doesNotMatch(h2, /— MN|NaN|undefined|null/)
