@@ -140,3 +140,16 @@ test('Adenda 2 (fumo): o app.js toca pelo decidirSom com a hora do ecrã e dá u
   assert.match(app, /somMemoria:\s*novaMemoriaSom\(\)/)
   assert.doesNotMatch(app, /bipados:\s*new Set/, 'a memória do som é uma só, no lib/alarmes.js')
 })
+
+test('Adenda 2 (fumo): sem o id do servidor (o SignalK sem a gestão das notificações) o "reconhecer" cala pelo caminho e o calado local conta como reconhecido: o lembrete de 2 em 2 minutos também', async () => {
+  const { calado } = await import('../public/lib/alarmes.js')
+  const semId = { caminho: 'notifications.arlequin.porto.fumo', state: 'emergency', method: SOM, apito: 'continuo', message: 'FUMO a bordo!', timestamp: '2026-10-03T10:00:00.000Z' }
+  const local = calado(semId, 'reconhecer')
+  assert.equal(deveTocar(local), null)
+  assert.ok(emergenciaReconhecida(local), 'o calado local (só visual, silenciado) é reconhecido')
+  const r = correr(novaMemoriaSom(), 0, 250, [local])
+  assert.deepEqual(r.continuo, [])
+  assert.deepEqual(r.lembretes, [120, 240])
+  // por reconhecer, nada
+  assert.equal(emergenciaReconhecida(semId), false)
+})
