@@ -7,5 +7,8 @@
   "signalk": { "displayName": "Arlequin · ecrã" },
   "license": "MIT",
   "engines": { "node": ">=22" },
-  "scripts": { "test": "node --test \"test/*.test.mjs\"" }
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\"",
+    "verificar-ecra": "node verificar-ecra/verificar.mjs"
+  }
 }
