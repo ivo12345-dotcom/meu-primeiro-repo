@@ -115,7 +115,11 @@ const cenarios = require('./lib/cenarios')
 const energiaPlano = require('./lib/energia')
 const seguranca = require('./lib/seguranca')
 const { slug } = require('./lib/slug')
-const modelosJs = require('signalk-arlequin-ia/lib/modelos')
+// os modelos da AI pelo caminho relativo (auditoria I-37), como o lib/base.js faz com a polar: instalado com
+// "npm install <pasta>" (o npm 11 só liga a pasta e não instala as dependências dela), o pacote
+// signalk-arlequin-ia não está no node_modules da rota. (O lib/cenarios.js ainda o pede pelo nome: ver o
+// relatório da F2.)
+const modelosJs = require(path.join(__dirname, '..', 'signalk-arlequin-ia', 'lib', 'modelos'))
 
 const MAX_TRABALHOS = 20
 const MAX_PLANOS = 20
