@@ -7,6 +7,16 @@
 // atrás da última posição até ao que o barco pode ter andado desde então (15 nós, no mínimo 2 MN).
 // Assim, numa rota que volta atrás, a posição não salta para a perna de volta. Sem posição anterior,
 // a navegar, a janela começa na partida à hora da saída (revisão final M1); sem saída, a rota toda.
+// Juntar-se à rota mais à frente (revisão da F2, F2b Importante 3): um barco que corta uma perna (não faz
+// o largo de Cascais e vai direito a leste, juntando-se à rota no ponto 7) ficava com a projeção presa na
+// janela para sempre — a chegada nunca se dava e a hora de alarme ficava armada em terra com o barco
+// amarrado. Por isso a projeção pode saltar PARA A FRENTE (nunca para trás: a partir do fim da janela),
+// com histerese: só quando a rota depois da janela está a 0,5 MN ou mais MAIS perto do barco do que a
+// projeção na janela, a 0,5 MN ou menos do barco, e o barco anda no sentido dessa perna (o rumo sobre o
+// fundo desde o ciclo anterior a ≤ 90° do rumo da perna; parado não conta), durante 3 ciclos seguidos.
+// Numa ida e volta com as pernas a menos de 1 MN uma da outra nunca acontece (a diferença de distâncias
+// nunca chega a 0,5 MN), e um barco ao pé da perna de volta mas a navegar no sentido da ida também não.
+// O resultado diz saltoRota { de, para } no ciclo em que salta e saltos (quantos nesta viagem).
 // O rasto provável do plano (de 10 em 10 min) projeta-se da mesma maneira: a tabela { s, t } diz a
 // hora a que o plano passava em cada milha (s nunca desce).
 // Atraso = agora − a hora a que o rasto provável passava nas mesmas milhas (positivo = atrasado), em
@@ -39,7 +49,10 @@ const MIN = 60000
 const H = 3600000
 const DIA = 86400000
 const JANELA_MEDIA = 10 * MIN
-const PADRAO = Object.freeze({ recuoMn: 0.5, velMaxNos: 15, avancoMinMn: 2, rpm: RPM_CRUZEIRO })
+// saltoMn: a rota à frente da janela tem de estar isto MAIS perto do que a projeção na janela; saltoPertoMn:
+// e a menos disto do barco; saltoCiclos: durante tantos ciclos seguidos; saltoAnguloMax: o rumo sobre o fundo
+// a menos disto do rumo da perna; saltoMovMn: só com o barco a andar (o deslocamento desde o ciclo anterior)
+const PADRAO = Object.freeze({ recuoMn: 0.5, velMaxNos: 15, avancoMinMn: 2, rpm: RPM_CRUZEIRO, saltoMn: 0.5, saltoPertoMn: 0.5, saltoCiclos: 3, saltoAnguloMax: 90, saltoMovMn: 0.03 })
 const SITIO = new Set(['partida', 'wp', 'vela', 'motor', 'chegada', 'viragem'])
 // os lembretes gerados do plano (Tarefa 8.5)
 const VIRAGEM_GRAUS = 45 // o rumo da rota muda mais do que isto num ponto
@@ -54,14 +67,36 @@ const ROTACAO_FRENTE_MS = H
 const iso = (t) => new Date(t).toISOString()
 
 // ---------- a rota e o rasto ----------
+// o fim da janela de passagem: até onde o barco pode ter andado desde a posição anterior
+function fimJanela (linha, anterior, agora, o) {
+  const dtH = Math.max(0, (agora - anterior.t) / H)
+  return Math.min(linha.total, anterior.s + Math.max(o.avancoMinMn, o.velMaxNos * dtH))
+}
 function projetar (rota, pos, anterior, agora, opcoes = {}) {
   const o = { ...PADRAO, ...opcoes }
   const { linha } = rota
   if (!anterior || !Number.isFinite(anterior.s)) return c.projetar(linha, pos)
-  const dtH = Math.max(0, (agora - anterior.t) / H)
   const de = Math.max(0, anterior.s - o.recuoMn)
-  const ate = Math.min(linha.total, anterior.s + Math.max(o.avancoMinMn, o.velMaxNos * dtH))
-  return c.projetar(linha, pos, { de, ate })
+  return c.projetar(linha, pos, { de, ate: fimJanela(linha, anterior, agora, o) })
+}
+// Juntar-se à rota depois da janela (F2b Importante 3; ver o cabeçalho): q é a projeção na janela, mem traz
+// posAnterior (o ciclo anterior) e saltoFrente { n } (os ciclos seguidos em que a regra se cumpre).
+// → { q (a projeção a usar), saltoFrente, salto: { de, para } | null }
+function juntarAFrente (rota, pos, anterior, q, agora, mem, o) {
+  const { linha } = rota
+  const nada = { q, saltoFrente: null, salto: null }
+  const fim = fimJanela(linha, anterior, agora, o)
+  if (!(fim < linha.total)) return nada
+  const f = c.projetar(linha, pos, { de: fim, ate: linha.total })
+  const perto = f.dist <= o.saltoPertoMn && f.dist <= q.dist - o.saltoMn
+  if (!perto) return nada
+  const antes = mem.posAnterior
+  const andou = antes && Number.isFinite(antes.lat) && Number.isFinite(antes.lon) ? c.vetor(antes, pos) : null
+  const noSentido = !!andou && andou.mn >= o.saltoMovMn && Math.abs(c.dif(andou.rumo, f.rumo)) <= o.saltoAnguloMax
+  if (!noSentido) return nada
+  const n = (mem.saltoFrente?.n ?? 0) + 1
+  if (n < o.saltoCiclos) return { q, saltoFrente: { n }, salto: null }
+  return { q: f, saltoFrente: null, salto: { de: q.s, para: f.s } }
 }
 
 function prepararRota (plano, opcoes = {}) {
@@ -260,25 +295,36 @@ function desvioVento (amostras) {
 }
 
 // ---------- tudo junto, de minuto a minuto ----------
-const novoEstado = () => ({ anterior: null, amostras: [] })
+// (posAnterior, saltoFrente e saltos: o "juntar-se à rota mais à frente", F2b Importante 3)
+const novoEstado = () => ({ anterior: null, amostras: [], posAnterior: null, saltoFrente: null, saltos: 0 })
 
 // entrada: { plano, posicao | null (sem GPS), agora, gasoleoL?, socPct?, energia?, rpm?, radiacao?, opcoes? }
-// → { estado, resultado: { estado, semGps, milhas, distRota, atrasoMin, tPlano, chegadaPlano, chegadaAgora,
-//     chegadaNoite, eventos, proximo, recursos } }
+// → { estado, resultado: { estado, semGps, milhas, distRota, saltoRota, saltos, atrasoMin, tPlano, chegadaPlano,
+//     chegadaAgora, chegadaNoite, eventos, proximo, recursos } }
 function acompanhar (estado0, entrada) {
   const { plano, posicao, agora } = entrada
   const estado = { ...novoEstado(), ...estado0 }
+  const o = { ...PADRAO, ...entrada.opcoes }
   const rota = prepararRota(plano, entrada.opcoes)
   const navegar = plano.estado === 'a navegar'
   const semGps = !posicao
   let milhas = estado.anterior ? estado.anterior.s : null
   let distRota = null
+  let saltoRota = null
   if (navegar && posicao) {
     // sem posição anterior (acabou de sair, ou um reinício sem o seguimento), a projeção começa na partida
     // à hora da saída: numa ida e volta a 1.ª não se prende à perna de volta (revisão final M1)
     const saida = Date.parse(plano.saida)
     const desde = estado.anterior ?? (Number.isFinite(saida) && saida <= agora ? { s: 0, t: saida } : null)
-    const q = projetar(rota, posicao, desde, agora, entrada.opcoes)
+    let q = projetar(rota, posicao, desde, agora, entrada.opcoes)
+    // o barco que cortou uma perna e se juntou à rota mais à frente (F2b Importante 3): só para a frente
+    if (desde) {
+      const j = juntarAFrente(rota, posicao, desde, q, agora, estado, o)
+      q = j.q
+      estado.saltoFrente = j.saltoFrente
+      if (j.salto) { saltoRota = j.salto; estado.saltos = (estado.saltos || 0) + 1 }
+    } else estado.saltoFrente = null
+    estado.posAnterior = { lat: posicao.lat, lon: posicao.lon, t: agora }
     milhas = q.s
     distRota = q.dist
     estado.anterior = { s: q.s, t: agora }
@@ -306,6 +352,9 @@ function acompanhar (estado0, entrada) {
       semGps,
       milhas,
       distRota,
+      // o salto para a frente deste ciclo (F2b Importante 3) e quantos nesta viagem
+      saltoRota,
+      saltos: estado.saltos || 0,
       atrasoMin: atraso,
       tPlano,
       chegadaPlano: Number.isFinite(p50) ? iso(p50) : null,
@@ -318,4 +367,4 @@ function acompanhar (estado0, entrada) {
   }
 }
 
-module.exports = { PADRAO, SITIO, VENTO_MIN_ROTACAO, prepararRota, lembretesDoPlano, projetar, horaNoPlano, atrasoMin, juntarAmostra, media, textoCurto, deslizarEventos, proximoEvento, chegadaDeNoite, recursos, desvioVento, novoEstado, acompanhar }
+module.exports = { PADRAO, SITIO, VENTO_MIN_ROTACAO, prepararRota, lembretesDoPlano, projetar, juntarAFrente, horaNoPlano, atrasoMin, juntarAmostra, media, textoCurto, deslizarEventos, proximoEvento, chegadaDeNoite, recursos, desvioVento, novoEstado, acompanhar }
