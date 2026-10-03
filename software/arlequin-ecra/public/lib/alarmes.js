@@ -67,7 +67,9 @@ export function deveTocar (n) {
 // vive enquanto o alarme está ativo e reconhecido. Só as emergências (o fumo é a única): o resto cala-se com o
 // "silenciar".
 export const LEMBRETE_RECONHECIDA_MS = 2 * 60 * 1000
-export const emergenciaReconhecida = (n) => !!n && n.state === 'emergency' && n.apito !== 'curto' && n.status?.acknowledged === true
+// (sem o id do servidor — o SignalK sem a gestão das notificações — o "reconhecer" cala pelo caminho e o calado() local
+// marca-a silenciada, não reconhecida: o servidor nunca deixa silenciar uma emergência, por isso aqui também conta)
+export const emergenciaReconhecida = (n) => !!n && n.state === 'emergency' && n.apito !== 'curto' && (n.status?.acknowledged === true || n.status?.silenced === true)
 
 // A memória do som, que o app.js guarda de ciclo para ciclo: os alarmes que já deram o bip curto (caminho e hora) e,
 // por alarme reconhecido, a hora do último lembrete (ou de o ter visto reconhecido).
