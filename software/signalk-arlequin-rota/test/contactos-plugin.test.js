@@ -817,7 +817,8 @@ test('revisão final I2: o aviso da hora de alarme em terra sai 60 min antes, ta
   assert.equal(s.p.planoAtivo().estado, 'à espera de sair')
   assert.equal(s.app.self[caminho].state, 'alert')
   assert.equal(s.app.self[caminho].apito, 'curto')
-  assert.match(s.app.self[caminho].message, /^Os contactos em terra ligam ao MRCC (às|[a-z]{3} \d\d\/\d\d às) \d\d:\d\d: avisa-os ou Terminar$/)
+  // (auditoria M-17: uma só resposta — a hora de alarme do plano é às 14:57 do mesmo dia)
+  assert.equal(s.app.self[caminho].message, 'Os contactos em terra ligam ao MRCC às 14:57: avisa-os ou Terminar')
   assert.ok((await chamar(s.r.get['/plano-ativo'])).avisos.some(a => a.caminho === caminho))
   // Terminar: normal
   await chamar(s.r.post['/plano-ativo/terminar'])
