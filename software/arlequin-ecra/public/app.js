@@ -7,7 +7,7 @@ import { lerPolar } from './lib/polar.js'
 import { registarPressao, tendencia, lerBarometro } from './lib/barometro.js'
 import { novaViagem, acumular, lerViagem } from './lib/viagem.js'
 import { passoCiclo, desenharSeguro, escolherPagina, CAIXA_ERRO_DESENHO } from './lib/ciclo.js'
-import { alarmeDaBarra, decidirSom, novaMemoriaSom, paginaDoAlarme, bipDeLigacao, chipAlarme, calar, calado, largar } from './lib/alarmes.js'
+import { alarmeDaBarra, decidirSom, novaMemoriaSom, reporCalados, novaMemoriaCalados, paginaDoAlarme, bipDeLigacao, chipAlarme, calar, calado, largar } from './lib/alarmes.js'
 import { podeRedesenhar, aoEnter, aoEscrever, guardarRolagem, reporRolagem, PAUSA_ROLAR_MS } from './lib/interacao.js'
 import { NIVEIS, PADRAO as BRILHO_PADRAO, nivelValido, mudarNivel } from './lib/brilho.js'
 import { criarAudio, retomar, comSom, chipSemSom } from './lib/som.js'
@@ -46,6 +46,7 @@ const app = {
   // deixa-o suspenso até ao 1.º toque e o ciclo tenta retomá-lo de segundo a segundo
   audio: criarAudio(),
   somMemoria: novaMemoriaSom(), // o que já deu o bip curto e a hora dos lembretes do fumo reconhecido (lib/alarmes.js)
+  calados: novaMemoriaCalados(), // os alarmes que se viram calados, por caminho e mensagem: sobrevivem a um reinício de um plugin
   estavaLigado: null,
   sons: [], // últimos sons tocados (diagnóstico: window.arlequin.app.sons)
   premidoEm: null, // quando um dedo tocou no ecrã (do pointerdown ao pointerup; null: nenhum)
@@ -327,11 +328,18 @@ function registarDados () {
   })
   if (segundos % 30 === 0) guardar('arlequin.viagem', app.viagem)
 }
+// O som de cada ciclo: primeiro o calado de antes de um reinício de um plugin volta a valer (lib/alarmes.js, reporCalados:
+// o servidor repõe o estado do alarme que o plugin volta a publicar, e o ecrã apitava de novo o que o Ivo já calara), depois
+// o som decide.
+function somDoCiclo () {
+  reporCalados(store.notificacoes, app.calados, Date.now())
+  tocar([...store.notificacoes.values()])
+}
 // o apito primeiro, depois o desenho e os dados, cada um no seu try (auditoria I-06)
 function ciclo () {
   retomar(app.audio)
   passoCiclo({
-    tocar: () => tocar([...store.notificacoes.values()]),
+    tocar: somDoCiclo,
     desenhar: () => render(),
     dados: () => registarDados()
   }, (parte, e) => registarErro(parte, e))
