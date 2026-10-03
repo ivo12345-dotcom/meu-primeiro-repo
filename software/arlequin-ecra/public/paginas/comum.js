@@ -56,16 +56,29 @@ export function tileGasoleo (ctx, grande = false) {
   return `<div class="tile"><div class="linha"><span class="lab">Gasóleo</span><span class="${grande ? 'v' : ''}">${g.html}</span></div>${barra(g.nivel, corGasoleo(g))}</div>`
 }
 
-// O motor pelas rotações (Hz) do J1939 (auditoria I-23): true a trabalhar (> 5 Hz = 300 rpm), false
-// desligado, null sem leitura (o J1939 publica null sem tramas há 5 s: tanto a ignição desligada como o
-// sensor perdido com o motor a trabalhar — o ecrã não pode dizer "desligado").
-export const motorLigado = (rpm) => (ok(rpm) ? rpm > 5 : null)
-export const ESTADO_MOTOR = { true: 'a trabalhar', false: 'desligado', null: 'sem leitura do motor' }
+// O motor pelas rotações (Hz) e pela ligação do plugin J1939 (auditoria I-23; contrato C11): true a trabalhar
+// (> 5 Hz = 300 rpm), false desligado, null sem leitura. Sem tramas há 5 s o J1939 publica as rotações a null, e
+// isso é tanto a ignição desligada como a leitura perdida com o motor a trabalhar: o ecrã não pode dizer
+// "desligado" por um null. A propulsion.main.ligacao distingue-os: 'calado' (a interface CAN de pé e ninguém a
+// falar: a ignição desligada) é desligado — e conta como vela —; 'sem-ligacao' (a interface em baixo ou o leitor
+// a falhar) é desconhecido; 'a-receber', pelas rotações (a null: o MDI fala mas sem a EEC1, sem leitura). Sem o
+// estado (um plugin antigo, os 1.ºs 5 s) ou com um valor que não se conhece, pelas rotações como até aqui.
+export const motorLigado = (rpm, ligacao) => (ligacao === 'calado' ? false : ligacao === 'sem-ligacao' ? null : ok(rpm) ? rpm > 5 : null)
+
+// O estado do motor de um contexto ({ v, idade }): as rotações e a ligação. O plugin publica a ligação de segundo
+// a segundo; com mais de 20 s está parado (e as rotações com ela): não se sabe, nunca "desligado".
+export const LIGACAO_MOTOR_VELHA_MS = 20000
+export function motorEstado (ctx) {
+  const ligacao = ctx.v('propulsion.main.ligacao')
+  const velha = typeof ligacao === 'string' && typeof ctx.idade === 'function' && !(ctx.idade('propulsion.main.ligacao') < LIGACAO_MOTOR_VELHA_MS)
+  return motorLigado(ctx.v('propulsion.main.revolutions'), velha ? 'sem-ligacao' : ligacao)
+}
+export const ESTADO_MOTOR = { true: 'a trabalhar', false: 'motor desligado', null: 'sem leitura do motor' }
 export const CLASSE_MOTOR = { true: 'amarelo', false: 'ok', null: 'lab' }
 
 export function motorResumo (ctx) {
   const rpm = ctx.v('propulsion.main.revolutions')
-  const m = motorLigado(rpm)
+  const m = motorEstado(ctx)
   const ligado = m === true
   const horas = ctx.v('propulsion.main.runTime')
   const soc = ctx.v('electrical.batteries.servico.capacity.stateOfCharge')
