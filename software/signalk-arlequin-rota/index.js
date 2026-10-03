@@ -14,36 +14,49 @@
 //   POST /ativar { id, alternativa } (alternativa: índice 0–2 ou o id) → grava e ativa a rota
 //        → { ok, rota, href, via, alternativa, nota, planoAtivo: { estado } } (nota: a do canal, se a
 //        rota passar por um). Cria ou substitui o plano ativo (desenho 3b-2, lib/plano-ativo.js),
-//        gravado em plano-ativo.json na pasta do plugin, com o envio do plano se já foi enviado.
+//        gravado em plano-ativo.json na pasta do plugin, com o envio do plano se já foi enviado. 422 com
+//        um cálculo antigo (a partida há mais de 1 h ou a hora de alarme já passada; a alternativa do plano
+//        aberto ativada outra vez continua: decisão do Ivo n.º 13) e quando o plano novo seguiria para terra
+//        com o relógio do Pi desacertado (decisão n.º 19); 409 com outro Ativar a meio (auditoria M-21); 502
+//        se a API do servidor falhar. A rota do plano substituído apaga-se do servidor (auditoria M-34).
 //   POST /plano-telegram { id, alternativa } → 202 { pedido, avisos: [texto] } (404 cálculo ou
 //        alternativa desconhecidos; 409 se o cálculo não estiver pronto; 422 sem a chegada mais
-//        tarde (não há hora de alarme) ou com um cálculo antigo (a hora de alarme já passou, ou a
-//        partida foi há mais de 1 h); 503 sem eventos no servidor ou sem o plugin porto a ouvir)
+//        tarde (não há hora de alarme), com um cálculo antigo (a hora de alarme já passou, ou a
+//        partida foi há mais de 1 h) ou com o relógio do Pi a mais de 60 s da hora do GPS (decisão n.º 19);
+//        503 sem eventos no servidor ou sem o plugin porto a ouvir)
 //   GET  /plano-telegram/:pedido → { estado: 'a enviar' | 'enviado' | 'falhou', entregues: [nome],
-//        contactos: [nome], falhas: [{ nome, erro }], avisos: [texto], motivo? }
+//        contactos: [nome], falhas: [{ nome, erro }], avisos: [texto], criado (a hora do pedido), motivo? }
 //        contactos: os contactos em terra que o receberam (o chat do Ivo não conta; sem eles, ninguém
 //        em terra tem a hora de alarme e o ecrã não marca a precaução)
 //   avisos: o que o Ivo deve saber mas não impede o envio (sem o telefone dele na configuração, o
 //   plano diz só "liga ao Ivo").
-//   GET  /plano-ativo → 404 sem plano; { agora, estado, pausadoDe, ativadoEm, destino: { id, nome, lat, lon }, tripulacao, idCalculo,
+//   GET  /plano-ativo → 404 sem plano { ok: false, erro, envioEmTerra, relogioDesacertadoS }; com ele { agora,
+//        estado, pausadoDe, ativadoEm, destino: { id, nome, lat, lon }, tripulacao, idCalculo,
 //        indice, alternativa: { id, nome }, partida, saida, chegou, atrasoMin (arredondado para cima, como o
 //        aviso do recalcula), proximo: { texto, hora } | null, chegadaAgora, chegadaPlano, chegadaNoite,
 //        recursos: { gasoleoChegadaL, bateriaChegadaPct, semLeitura, aviso }, semGps, barometro: { semLeitura,
-//        quedaHpa }, previsaoIdadeH, avisos: [{ caminho, state, message }], envio: { contactos, alarme (o
-//        último entregue em terra: o de um plano reenviado só quando chega), alarmePlano (o deste plano) } | null,
+//        quedaHpa }, previsaoIdadeH, avisos: [{ caminho, state, message }] (os publicados: também em pausa e
+//        com o plano fechado), envio: { contactos, alarme (a mais cedo que algum contacto à espera tem: o
+//        que lhe chegou — um plano reenviado só quando chega; decisão do Ivo n.º 14), alarmePlano (o deste
+//        plano), porContacto: [{ nome, alarme, fechado }] } | null,
 //        chegadaOutro: { id, nome } | null,
 //        filaContactos: [{ tipo, criada, tentativas, proxima, estado, erro, contactos, parcial }], enviadas: [{ tipo,
 //        enviadaEm, contactos, falhas: [{ nome, erro }] }] (parcial: a mesma mensagem só para os contactos que
-//        falharam, revisão final I3),
-//        atrasoRetido: { motivo: 'parado' | 'limite', alarme (a hora de alarme que terra tem) } | null }
+//        falharam, revisão final I3; os avisos ao Ivo não entram, não são para terra),
+//        atrasoRetido: { motivo: 'parado' | 'limite', alarme (a hora de alarme que terra tem) } | null,
+//        fechoPorEntregar: { tipo: 'chegada' | 'terminado', contactos, tentativas, erro } | null (auditoria K-12),
+//        envioEmTerra: { idCalculo, indice, contactos, alarme } | null (o plano que os contactos em terra têm
+//        quando não é este: decisão n.º 15), relogioDesacertadoS: número | null (decisão n.º 19),
+//        desistencias: [{ tipo, ref, contactos, em, alarme }] (auditoria I-05, decisão n.º 16) }
 //        atrasoRetido (revisão final C1, decisão do Ivo de 02/10): um atraso para terra que as guardas não
 //        deixaram sair (o barco parado ou à deriva, ou o teto de 3 h): o ecrã pede o "Estou bem"
-//   POST /plano-ativo/estou-bem → { ok, chegada, alarme } (409 sem um atraso retido): o Ivo está bem; sai
-//        um atraso com a estimativa de agora e o teto passa a 3 h sobre a hora de alarme dele
 //        chegadaOutro (decisão do Ivo de 01/10): em pausa no mar, parado 30 min a menos de 0,3 MN de outro
 //        porto da lista (dados/destinos.json): o ecrã pergunta "Chegaste a X?"
+//   POST /plano-ativo/estou-bem → { ok, chegada, alarme } (409 sem um atraso retido): o Ivo está bem; sai
+//        um atraso com a estimativa de agora e o teto passa a 3 h sobre a hora de alarme dele
 //   POST /plano-ativo/terminar → { ok, estado: 'terminado', contactos } (409 sem plano aberto): fecha o
-//        plano, os avisos voltam a normal e os contactos recebem "viagem terminada" (contactos: true)
+//        plano, os avisos voltam a normal e os contactos recebem "viagem terminada" (contactos: true); sem
+//        GPS, com a última posição conhecida e a hora dela (auditoria M-22)
 //   POST /plano-ativo/continuar → { ok, estado } (409 se não estiver "pausado" ou se o plano mudou; 502 se
 //        a API de rumo falhar): volta a ativar a rota do plano, no ponto seguinte ao da posição na rota
 //   POST /plano-ativo/chegada { destino } → { ok, estado: 'chegado', contactos } (409 se o destino não for
@@ -54,38 +67,52 @@
 // máximo 1× por hora; decisão do Ivo de 02/10, "só a avançar + teto de 3 h": só com ≥ 1 MN de progresso
 // na rota na última hora, a avançar agora e a ≤ 2 MN da rota, e nunca mais de 3 h sobre a hora de alarme
 // do plano sem o "Estou bem" do Ivo; parado ou à deriva não sai nada e fica a hora de alarme que terra
-// tem), "viagem terminada" no Terminar, e o plano novo ao Ativar outra alternativa com
+// tem; um atraso já na fila também só sai a navegar e com GPS — em pausa ou com o plano fechado sai da
+// fila, sem GPS fica retido: auditoria K-02), "viagem terminada" no Terminar, e o plano novo ao Ativar
+// outra alternativa com
 // um plano enviado aberto, ou sem ele quando os contactos em terra têm o plano de outra alternativa ou de
 // outro cálculo (o último entregue, em ultimo-envio.json, com a hora de alarme por passar e sem "cheguei
 // bem"/"terminada"; revisão final I1) (o 422 de um cálculo antigo não ativa nada e o plano antigo fica). Pelo
 // mesmo evento 'arlequin:plano' { pedido, tipo, texto, gpx? (só no tipo 'plano'), nomeFicheiro?,
 // destinatarios: 'contactos-do-plano', contactos: [nome], chats: [chatId] } (o porto escolhe pelo chatId),
 // uma mensagem de cada vez; a fila fica no plano ativo (sem resposta em 30 s ou sem o porto, nova
-// tentativa daqui a 2 min). O atraso só conta quando chega a terra (decisão do Ivo de 01/10): a hora de
-// alarme do GET e o "em vez de" são os do último atraso entregue; um atraso ainda na fila passa a ter a
-// chegada mais recente e o texto faz-se à hora de sair.
+// tentativa daqui a 2 min; uma que falhou 3 vezes, as do plano anterior e os avisos ao Ivo nunca prendem as
+// outras: auditoria K-13). O atraso só conta quando chega a terra (decisão do Ivo de 01/10): a hora de
+// alarme de cada contacto é a do que LHE chegou (auditoria I-01), e o "em vez de" é o do último atraso
+// entregue; um atraso ainda na fila passa a ter a chegada mais recente e o texto faz-se à hora de sair.
+// De um contacto que nunca recebe (a falha é dele: outro ou o Ivo receberam) desiste-se no fim da hora de
+// alarme dele e o Ivo é avisado pelo Telegram, só no chat dele (tipo 'aviso'; decisão do Ivo n.º 16).
 // Um plano novo (Ativar) começa limpo (decisão do Ivo de 01/10): sem as mensagens enviadas, os atrasos,
 // a saída nem a posição do plano antigo; só segue o "cheguei bem"/"terminada" do antigo que ainda não
 // saiu. O plano substituído vai para planos-fechados.json (os 5 mais recentes).
+// O aviso notifications.rota.alarmeTerra (60 min antes da hora de alarme mais cedo que terra tem) vale com
+// o plano aberto, com o plano fechado enquanto o "cheguei bem" não chega a terra (auditoria K-12), e quando
+// terra tem um plano que não é o ativo (decisão n.º 15).
 //
 // O plano (desenho 3b-1): monta o texto e o GPX (lib/plano.js) e emite no servidor o evento
 // 'arlequin:plano' { pedido, texto, gpx, nomeFicheiro }; o plugin porto (que tem o bot do Telegram)
 // envia-o e responde com 'arlequin:plano-enviado' { pedido, entregues, contactos, falhas }. Sem resposta em
 // 30 s, "falhou": o plugin porto não respondeu. Um plano enviado com pelo menos um contacto em terra
-// fica no plano ativo (envio: a quem e a hora de alarme), antes ou depois de Ativar a mesma alternativa. Um stop() (o SignalK reinicia o plugin sempre que se
+// fica no plano ativo (envio: a quem e a hora de alarme), antes ou depois de Ativar a mesma alternativa
+// (mandado outra vez, junta-se aos que já o tinham e a hora de alarme volta à do plano: auditoria M-32); um
+// envio já fechado (o "cheguei bem" entregue) ou com a hora de alarme passada nunca se reaproveita (decisão
+// n.º 13). Um stop() (o SignalK reinicia o plugin sempre que se
 // grava a configuração) com planos "a enviar" deixa-os "falhou": a resposta do porto já não chegaria.
 // A lista dos planos guarda os 20 mais recentes, mas nunca tira um que ainda está "a enviar".
 //
 // A navegar (desenho 3b-2): um ciclo de minuto a minuto (setInterval) lê do SignalK a posição, o SOG, o
 // vento real e a pressão (cada um com a hora: mais de 2 min, ou sem hora legível, conta como em falta;
-// sem posição é "sem GPS"), o gasóleo, o SoC e a rota ativa (API de rumo v2, com um limite de 10 s: sem
+// sem posição é "sem GPS"), o gasóleo e o SoC (também só frescos e sem o aviso de sonda/sensor perdido:
+// auditoria I-12) e a rota ativa (API de rumo v2, com um limite de 10 s: sem
 // resposta não se sabe a rota e o ciclo segue); segue o plano ativo (lib/plano-ativo.js: saída, chegada
 // com progresso na rota, rota mudada, a chegada em pausa e a sugestão de outro porto), o acompanhamento
 // (lib/acompanhamento.js) com a previsão mais recente arquivada que cubra a posição (previsoes/ da
-// pasta dos dados), e publica os avisos (lib/avisos-navegar.js) em notifications.rota.* por delta, só
-// nas mudanças. As amostras da pressão (de minuto a minuto, 3 h) ficam em memória e em barometro.json
+// pasta dos dados; lida de 10 em 10 min e só as dos últimos 50 h: auditoria M-27), e publica os avisos
+// (lib/avisos-navegar.js) em notifications.rota.* por delta, só
+// nas mudanças. Com o relógio do Pi a mais de 60 s da hora do GPS o ciclo não corre (decisão n.º 19). As
+// amostras da pressão (de minuto a minuto, 3 h) ficam em memória e em barometro.json
 // só com um plano aberto, no máximo de 10 em 10 min (e no stop); a posição na rota fica no plano ativo
-// (seguimento), para um reinício não a perder.
+// (seguimento), para um reinício não a perder. A tendência do barómetro em 3 h vai à AI do vento (I-16).
 // Só testes (a viagem acelerada do dev, software/dev/viagem-acelerada.js), e só com modoTeste: true
 // (desligado por omissão; sem ele as duas opções não contam): com horaSimulada, a hora do plugin é o
 // navigation.datetime do SignalK (sem ele, o ciclo não corre) e o ciclo corre de cicloSegundos em
@@ -95,7 +122,8 @@
 // O destino do /calcular: o id de um destino da lista (dados/destinos.json ou os do Ivo),
 // 'rota-ativa' (o fim da rota ativa no SignalK/OpenCPN), ou { lat, lon, nome }.
 // Nada aqui derruba o servidor: o cálculo corre dentro de try/catch (lib/calculo.js nunca
-// lança) e todas as promessas acabam em .catch.
+// lança), todas as promessas acabam em .catch e os pedidos à API do servidor têm limite de tempo (M-24).
+// Ao Ivo só frases em pt-PT; o erro verdadeiro fica no registo do SignalK (auditoria I-32).
 
 const fs = require('node:fs')
 const os = require('node:os')
@@ -742,9 +770,6 @@ module.exports = function (app, deps = {}) {
     const antes = Number.isFinite(tarde) ? tarde : Date.parse(planoAtivo?.envio?.alarme)
     return ct.textoAtraso({ chegada: m.chegada, alarme: m.alarme, alarmeAntes: antes, agora })
   }
-  // O atraso para terra (só a navegar, com GPS e o plano enviado). Decide-se contra o último entregue;
-  // com um atraso ainda na fila, esse passa a ter a chegada mais recente (sem perder a vez da tentativa);
-  // com um "a enviar", espera a resposta.
   // O atraso que vale agora (decidido contra o último entregue), com o resultado do acompanhamento.
   // enviado: o último atraso entregue (o padrão); null para saber só se o barco está atrasado
   function atrasoAgora (res, agora, enviado = planoAtivo.atrasoEnviado || null) {
@@ -752,6 +777,9 @@ module.exports = function (app, deps = {}) {
       chegadaAgora: Date.parse(res.chegadaAgora), p90: Date.parse(planoAtivo.alternativa.chegada?.p90), alarmePlano: Date.parse(planoAtivo.envio?.alarme), agora
     })
   }
+  // O atraso para terra (só a navegar, com GPS e o plano enviado). Decide-se contra o último entregue;
+  // com um atraso ainda na fila, esse passa a ter a chegada mais recente (sem perder a vez da tentativa);
+  // com um "a enviar", espera a resposta.
   // As guardas (revisão final C1, decisão do Ivo de 02/10, "só a avançar + teto de 3 h"): sem progresso
   // real na rota (parado ou à deriva) ou acima do teto, nada sai, fica a hora de alarme que terra tem e o
   // ecrã pede o "Estou bem" (retido); um atraso na fila que ainda não saiu também sai dela.
@@ -882,7 +910,7 @@ module.exports = function (app, deps = {}) {
     }
     const hPa = numeroFresco('environment.outside.pressure', agora)
     const comPressao = hPa != null
-    // as amostras em memória (uma por hora: o mesmo instante outra vez não conta)
+    // as amostras em memória (uma por ciclo: o mesmo instante outra vez não conta)
     if (comPressao && pressoes.at(-1)?.t !== agora) { pressoes = av.juntarPressao(pressoes, { t: agora, hPa: hPa / 100 }, agora); baroPorGravar = true }
     // no disco só com um plano aberto, no máximo de 10 em 10 min
     if (baroPorGravar && pa.aberto(planoAtivo) && (baroGravadoEm == null || agora - baroGravadoEm >= BARO_GRAVAR_MS || agora < baroGravadoEm)) gravarPressoes(agora)
