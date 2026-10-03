@@ -47,6 +47,19 @@ export function falhaJanela (err, corpo = {}) {
   return typeof corpo?.noite === 'boolean' ? 'OpenCPN: o modo noite não mudou' : 'OpenCPN: as janelas não mudaram'
 }
 
+// A falha do "Larguei" (POST /plugins/signalk-arlequin-porto/largar, contrato C10), para a barra: curta e em pt-PT.
+// Um 503 do plugin parado traz o motivo dele ({ erro } na resposta, que o pedir() põe na mensagem).
+export function falhaLargar (err) {
+  const s = err?.status
+  const o = 'não larguei'
+  if (s === 401 || s === 403) return `${o}: sem permissão (entra no SignalK)`
+  if (!s) return `${o}: ${SEM_LIGACAO}`
+  if (explicado(err.message)) return `${o}: ${err.message.trim()}`
+  if (s === 404) return `${o}: o plugin do porto não está instalado ou ligado`
+  if (s === 503) return `${o}: o plugin do porto não está ligado`
+  return `${o}: o plugin do porto deu um erro (HTTP ${s})`
+}
+
 // A falha do silenciar/reconhecer de um alarme, para a barra (curta, em pt-PT; revisão F3, Important 4: também as
 // recusas do caminho v1 — o PUT …/method responde só com o código).
 const CALAR_CODIGO = {

@@ -7,11 +7,11 @@ import { lerPolar } from './lib/polar.js'
 import { registarPressao, tendencia, lerBarometro } from './lib/barometro.js'
 import { novaViagem, acumular, lerViagem } from './lib/viagem.js'
 import { passoCiclo, desenharSeguro, escolherPagina, CAIXA_ERRO_DESENHO } from './lib/ciclo.js'
-import { alarmeDaBarra, decidirSom, novaMemoriaSom, paginaDoAlarme, bipDeLigacao, chipAlarme, calar, calado } from './lib/alarmes.js'
+import { alarmeDaBarra, decidirSom, novaMemoriaSom, paginaDoAlarme, bipDeLigacao, chipAlarme, calar, calado, largar } from './lib/alarmes.js'
 import { podeRedesenhar, aoEnter, aoEscrever, guardarRolagem, reporRolagem, PAUSA_ROLAR_MS } from './lib/interacao.js'
 import { NIVEIS, PADRAO as BRILHO_PADRAO, nivelValido, mudarNivel } from './lib/brilho.js'
 import { criarAudio, retomar, comSom, chipSemSom } from './lib/som.js'
-import { falhaJanela, falhaCalar } from './lib/erros.js'
+import { falhaJanela, falhaCalar, falhaLargar } from './lib/erros.js'
 import carta from './paginas/carta.js'
 import instr from './paginas/instr.js'
 import ais from './paginas/ais.js'
@@ -53,7 +53,8 @@ const app = {
   rolarDesde: null,
   repostos: new WeakMap(), // lista → scrollTop que o render lhe repôs (esse scroll não é um dedo)
   falhaJanela: null, // a falha do último pedido das janelas/modo noite do OpenCPN (auditoria K-11), na barra
-  falhaCalar: null, // { texto, ate }: a falha do último silenciar/reconhecer (auditoria I-08), na barra uns segundos
+  falhaCalar: null, // { texto, ate }: a falha do último silenciar/reconhecer (auditoria I-08) ou "Larguei", na barra uns segundos
+  aLargar: false, // um "Larguei" a meio (contrato C10)
   erros: [] // registo dos últimos erros (diagnóstico: window.arlequin.app.erros); no ecrã só a frase em pt-PT
 }
 
@@ -264,6 +265,22 @@ document.addEventListener('click', async (ev) => {
     } catch (err) {
       app.falhaCalar = { texto: falhaCalar(err, acao), ate: Date.now() + FALHA_CALAR_MS }
       registarErro(acao, err)
+    }
+    return render(true)
+  }
+  // "Larguei (sou eu)" no alarme de o barco ter saído do lugar (contrato C10): apaga o ponto de amarração no plugin do
+  // porto; um pedido de cada vez; a falha fica na barra, em pt-PT, como a do calar (o alarme limpa no ciclo do plugin)
+  if (acao === 'largar') {
+    ev.stopPropagation()
+    if (!app.aLargar) {
+      app.aLargar = true
+      try {
+        await largar(pedir)
+        app.falhaCalar = null
+      } catch (err) {
+        app.falhaCalar = { texto: falhaLargar(err), ate: Date.now() + FALHA_CALAR_MS }
+        registarErro('largar', err)
+      } finally { app.aLargar = false }
     }
     return render(true)
   }
