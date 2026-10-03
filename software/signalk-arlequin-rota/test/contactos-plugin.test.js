@@ -936,26 +936,106 @@ test('auditoria K-02: o atraso libertado pelo "Estou bem" (confirmado) sai na me
   s.p.stop()
 })
 
-test('auditoria K-02: o parcial de um atraso (o Pai bloqueou o bot) não sai com o barco parado — ninguém recebe "tudo bem" de um barco parado; o Pai fica com a hora de alarme dele', async () => {
+test('auditoria K-02 e F2b Importante 2 (sonda p10d): o parcial de um atraso (o Pai bloqueou o bot) não sai com o barco parado — ninguém recebe "tudo bem" de um barco parado; mas fica RETIDO na fila (como sem GPS), nunca sai dela de vez: quando o barco volta a avançar, sai para o Pai com a mesma ref', async () => {
   const s = await preparar({ contactos: [['Mãe', '222'], ['Pai', '333']] })
   await sair(s)
   const normal = s.porto.resposta
   s.porto.resposta = (e) => ({ pedido: e.pedido, entregues: [...(e.tentativa ? [] : ['chat 111']), ...(e.chats.includes('222') ? ['Mãe'] : [])], contactos: e.chats.includes('222') ? ['Mãe'] : [], chats: e.chats.filter(c => c === '222'), falhas: e.chats.includes('333') ? [{ nome: 'Pai', erro: 'bloqueou o bot' }] : [] })
+  const t1 = s.agora(); const p1 = Date.parse(s.alt.rasto[2].t)
   const anda = devagar(s, 0.4)
   for (let m = 0; m < 150 && !atrasosDe(s).length; m++) await anda()
   assert.equal(atrasosDe(s).length, 1)
+  const ref = plano(s).contactos.enviadas.find(m => m.tipo === 'atraso').ref
   // o barco para (sem governo); o parcial do Pai continua a falhar
   const aqui = s.app.self['navigation.position']
+  const parou = s.agora()
   s.por({ lat: aqui.latitude, lon: aqui.longitude }, 0)
   for (let m = 0; m < 40; m++) await s.ciclo()
   const doPai = () => atrasosDe(s).filter(e => e.chats.includes('333')).length
   const antes = doPai()
-  // o Pai desbloqueia o bot: o barco continua parado, nada lhe chega
+  // o Pai desbloqueia o bot: o barco continua parado, nada lhe chega — mas o parcial fica na fila, retido
   s.porto.resposta = normal
   for (let m = 0; m < 10; m++) await s.ciclo()
   assert.equal(doPai(), antes, 'parado: o parcial "tudo bem" não sai')
-  const g = await chamar(s.r.get['/plano-ativo'])
+  let g = await chamar(s.r.get['/plano-ativo'])
+  assert.deepEqual(g.filaContactos.filter(m => m.tipo === 'atraso').map(m => ({ contactos: m.contactos, parcial: m.parcial, estado: m.estado })), [{ contactos: ['Pai'], parcial: true, estado: 'fila' }], 'retido, não tirado da fila')
+  assert.deepEqual(g.desistencias, [])
+  // o barco volta a avançar (a partir de onde parou): o atraso chega ao Pai — o parcial retido ou, passada
+  // mais de 1 h desde o 1.º, o atraso novo que o substituiu (nunca se perdeu nada: a mesma hora para os dois)
+  const anda2 = devagar(s, 0.4, { t: new Date(p1 + 0.4 * (parou - t1)).toISOString() })
+  const entreguesAoPai = () => s.p.planoAtivo().contactos.enviadas.filter(m => (m.chats || []).includes('333')).length
+  for (let m = 0; m < 120 && !entreguesAoPai(); m++) await anda2()
+  assert.equal(entreguesAoPai(), 1, 'a avançar outra vez, o atraso chegou ao Pai')
+  const aoPai = s.p.planoAtivo().contactos.enviadas.filter(m => (m.chats || []).includes('333')).at(-1)
+  assert.ok([ref, s.p.planoAtivo().contactos.enviadas.at(-1).ref].includes(aoPai.ref), aoPai.ref)
+  g = await chamar(s.r.get['/plano-ativo'])
   assert.deepEqual(g.filaContactos.filter(m => m.tipo === 'atraso'), [])
+  assert.equal(g.envio.porContacto.find(x => x.nome === 'Pai').alarme, g.envio.porContacto.find(x => x.nome === 'Mãe').alarme, 'o Pai ficou com a mesma hora de alarme que a Mãe')
+  s.p.stop()
+})
+
+test('F2b Importante 2: uns ciclos "parado" a meio das tentativas do parcial (o ritmo de agora caiu numa curva) não apagam o parcial: continua na fila, com as tentativas que já levava, e sai quando o barco avança', async () => {
+  const s = await preparar({ contactos: [['Mãe', '222'], ['Pai', '333']] })
+  await sair(s)
+  const normal = s.porto.resposta
+  s.porto.resposta = paiBloqueado
+  const t1 = s.agora(); const p1 = Date.parse(s.alt.rasto[2].t)
+  const anda = devagar(s, 0.5)
+  for (let m = 0; m < 200 && !atrasosDe(s).length; m++) await anda()
+  assert.equal(atrasosDe(s).length, 1)
+  const parcial = () => (s.p.planoAtivo().contactos.fila || []).filter(m => m.tipo === 'atraso' && m.parcial)
+  assert.equal(parcial().length, 1)
+  // o parcial tenta algumas vezes (falha: o Pai bloqueado); depois uns ciclos com o barco parado no sítio
+  for (let m = 0; m < 6; m++) await anda()
+  const tentativas = parcial()[0].tentativas
+  assert.ok(tentativas >= 2, `${tentativas}`)
+  const aqui = s.app.self['navigation.position']
+  const parou = s.agora()
+  s.por({ lat: aqui.latitude, lon: aqui.longitude }, 0)
+  // até a guarda dizer "parado" (o ritmo dos últimos 15 min abaixo de 1 MN/h) ainda tenta; a partir daí fica retido
+  const ritmo = () => { const u = s.p.acompanhamento(); return ct.progressoNaHora(s.p.planoAtivo().marcas, { s: u.milhas, ...u.posicao }, s.agora(), 15 * MIN) }
+  for (let m = 0; m < 20 && !(ritmo() < 1); m++) await s.ciclo()
+  assert.ok(ritmo() < 1, `${ritmo()}`)
+  assert.equal(parcial().length, 1, 'parado: o parcial fica na fila')
+  const retidoCom = parcial()[0].tentativas
+  for (let m = 0; m < 10; m++) await s.ciclo()
+  assert.equal(parcial().length, 1)
+  assert.equal(parcial()[0].tentativas, retidoCom, 'retido: nem tenta nem perde as tentativas que já levava')
+  assert.ok(retidoCom >= tentativas)
+  // o barco segue; o Pai desbloqueia: o parcial chega-lhe (as tentativas falhadas de antes não contam)
+  s.porto.resposta = normal
+  const anda2 = devagar(s, 0.5, { t: new Date(p1 + 0.5 * (parou - t1)).toISOString() })
+  const entreguesAoPai = () => s.p.planoAtivo().contactos.enviadas.filter(m => (m.chats || []).includes('333')).length
+  for (let m = 0; m < 120 && !entreguesAoPai(); m++) await anda2()
+  assert.equal(entreguesAoPai(), 1)
+  assert.deepEqual(parcial(), [])
+  s.p.stop()
+})
+
+test('F2b Importante 2: o parcial de um barco que entretanto recuperou (já não vai atrasado) também não se apaga: fica à espera na fila (o Pai a desbloquear não recebe um "tudo bem" que já não vale) até um atraso novo o substituir ou a chegada', async () => {
+  const s = await preparar({ contactos: [['Mãe', '222'], ['Pai', '333']] })
+  await sair(s)
+  const normal = s.porto.resposta
+  s.porto.resposta = paiBloqueado
+  const t1 = s.agora(); const p1 = Date.parse(s.alt.rasto[2].t)
+  const anda = devagar(s, 0.5)
+  for (let m = 0; m < 200 && !atrasosDe(s).length; m++) await anda()
+  assert.equal(atrasosDe(s).length, 1)
+  const parcial = () => (s.p.planoAtivo().contactos.fila || []).filter(m => m.tipo === 'atraso' && m.parcial)
+  assert.equal(parcial().length, 1)
+  // o barco apressa-se (2,5× o ritmo do plano) até deixar de ir atrasado 30 min sobre a "mais tarde"
+  const p90 = Date.parse(s.alt.chegada.p90)
+  const corre = devagar(s, 2.5, { t: new Date(p1 + 0.5 * (s.agora() - t1)).toISOString() })
+  const atrasado = () => Date.parse(s.p.acompanhamento().chegadaAgora) - p90 >= 30 * MIN
+  for (let m = 0; m < 60 && atrasado(); m++) await corre()
+  assert.equal(atrasado(), false, 'recuperou')
+  assert.equal(parcial().length, 1, 'o parcial não se apagou')
+  // o Pai desbloqueia: nada lhe chega enquanto o barco não voltar a ir atrasado; o parcial fica
+  s.porto.resposta = normal
+  const entreguesAoPai = () => s.p.planoAtivo().contactos.enviadas.filter(m => (m.chats || []).includes('333')).length
+  for (let m = 0; m < 10; m++) await corre()
+  assert.equal(entreguesAoPai(), 0)
+  assert.equal(parcial().length, 1)
   s.p.stop()
 })
 
