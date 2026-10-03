@@ -453,8 +453,15 @@ module.exports = function (app, deps = {}) {
     let erroRede = null
     if (oo.previsoes) {
       try {
-        const p = await prev.obterPrevisao({ pontos, agora, fetch: fetchFn })
+        let p = await prev.obterPrevisao({ pontos, agora, fetch: fetchFn })
         try { prev.guardarArquivo(pasta, p) } catch (e) { app.error(`não arquivei a previsão: ${e.message}`) }
+        // auditoria M-11: o vento chegou e o pedido do mar falhou — as ondas da previsão guardada mais recente
+        // que as tem (o lib/calculo.js põe o aviso "Ondas da previsão guardada há N h"); sem nenhuma, ficam
+        // desconhecidas ("Sem previsão do mar")
+        if (p.marFalhou) {
+          const a = prev.lerArquivo(pasta, { pontos, desde, ate, agora, soComOndas: true })
+          if (!a.erro) p = prev.juntarMarDoArquivo(p, a.previsao)
+        }
         return { previsao: p, obtida: p.obtida, idadeH: 0, aviso: null, texto: null }
       } catch (e) { erroRede = e.message }
     }
