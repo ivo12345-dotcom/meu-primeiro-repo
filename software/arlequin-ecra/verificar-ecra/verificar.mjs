@@ -2,7 +2,9 @@
 // npm run verificar-ecra — desenha cada página/estado do ecrã (estados.mjs: os módulos e o estilo verdadeiros)
 // num Chromium sem cabeça a 1024×600 (o LAFVIN 7" da roda) e confirma que nenhum alvo de toque fica fora do
 // ecrã, tapado pelos botões de baixo ou cortado, que as listas que rolam têm a chave data-rolar, que a barra
-// de cima cabe e que nenhum mosaico fica cortado sem rolar (problemas.mjs). Sai com 1 se houver problemas.
+// de cima cabe, que nenhum mosaico fica cortado sem rolar e que o rótulo de cada botão cabe na caixa dele
+// (problemas.mjs). Sai com 1 se houver problemas. A janela da Carta do OpenCPN (42 % do ecrã) mede-se com
+// `-- --so=carta --largura=430` (só a Carta, de dia e de noite): é o único estado que lá se vê.
 // Não corre no npm test (precisa de um Chromium): no portátil usa o Chrome ou o Edge; no Pi o chromium. O que não
 // precisa dele (o que conta como problema, os estados) tem testes no npm test (test/verificar-ecra.test.mjs).
 // Saída: 0 sem problemas · 1 com problemas · 2 sem browser ou um erro do próprio verificador.

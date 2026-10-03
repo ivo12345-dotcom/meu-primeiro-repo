@@ -172,6 +172,11 @@ body.noite button, body.noite .btn { color: var(--texto); }
   .carta-demo { display: none; }
   #barra { flex-wrap: wrap; }
   html { font-size: calc(100vw / 42); }
+  /* A janela da Carta (430 px, 42 % do ecrã; F3b, item 10): 9 botões de 44 px de dia e 11 de noite. O rótulo parte em duas
+     linhas ("Melhor / rota", "Noite / 2/5") em vez de sair da caixa e ser tapado pelo vizinho ("Melhor ro"), e de noite,
+     quando os 11 não cabem na fila, os do brilho (− e +) passam para uma 2.ª fila em vez de saírem do ecrã. */
+  #botoes { flex-wrap: wrap; }
+  #botoes button { white-space: normal; line-height: 1.1; padding: .3rem 0; }
 }
 
 /* A navegar (3b-2): a faixa do plano ativo por cima do rumo e a caixa da rota mudada. */

@@ -111,3 +111,42 @@ test('verificar-ecra: corre-se com npm run verificar-ecra (sai com 1 se houver p
   assert.match(fonte, /--headless=new/)
   assert.match(fonte, /1024/, 'o LAFVIN 7" da roda')
 })
+
+test('verificar-ecra (F3b, item 10): o rótulo de um botão tem de caber na caixa dele — "Melhor rota" a 430 px saía da caixa e o botão do lado tapava-o ("Melhor ro")', () => {
+  const botao = (o = {}) => alvo({ zona: 'botoes', acao: 'melhor', texto: 'Melhor rota', caixa: caixa(287, 553, 45, 44), vis: { w: 45, h: 44 }, corte: 0, ...o })
+  const p = problemas(dados({ alvos: [botao({ corte: 11 })] }))
+  assert.deepEqual(p.map(x => x.tipo), ['rótulo cortado'])
+  assert.match(p[0].alvo, /button\[melhor\] "Melhor rota"/)
+  assert.match(p[0].detalhe, /o texto passa 11 px da caixa de 45 px/)
+  assert.deepEqual(problemas(dados({ alvos: [botao({ corte: 0 })] })), [])
+  assert.deepEqual(problemas(dados({ alvos: [botao({ corte: 1 })] })), [], 'um píxel: arredondamento')
+  assert.deepEqual(problemas(dados({ alvos: [botao({ corte: undefined })] })), [], 'medida antiga, sem o corte')
+  // só os botões: uma linha de tabela mais larga do que a caixa (colunas) rola ou corta-se sozinha
+  assert.deepEqual(problemas(dados({ alvos: [botao({ tag: 'tr', corte: 40 })] })), [])
+  // o verificador mede-o em cada alvo
+  assert.match(readFileSync(new URL('../verificar-ecra/recolher.mjs', import.meta.url), 'utf8'), /corte: Math\.max\(0, el\.scrollWidth - el\.clientWidth\)/)
+})
+
+test('o estilo (F3b, item 10): a janela da Carta (430 px, ecrã ao alto) parte o rótulo dos botões de baixo em duas linhas e, de noite, passa os do brilho para uma 2.ª fila; o cartão do rumo do Leme dimensiona as letras pela altura que tem e nunca se corta', () => {
+  const css = readFileSync(new URL('../public/estilo.css', import.meta.url), 'utf8').replace(/\r/g, '')
+  const i = css.indexOf('@media (max-aspect-ratio: 1/1) {')
+  assert.ok(i > 0, 'o bloco dos ecrãs ao alto')
+  const bloco = css.slice(i, css.indexOf('\n}\n', i))
+  assert.match(bloco, /#botoes \{ flex-wrap: wrap; \}/)
+  assert.match(bloco, /#botoes button \{[^}]*white-space: normal;/)
+  // de dia e a 1024×600 os botões ficam numa fila só e sem partir
+  assert.match(css, /#botoes \{ display: flex; gap: \.2rem;/)
+  assert.match(css, /#botoes button \{ flex: 1; padding: \.75rem 0; font-size: 1\.05rem; white-space: nowrap; \}/)
+  // o cartão do rumo: unidades de contentor, no máximo o tamanho de sempre (6 e 4,6 rem)
+  const rumo = css.slice(css.indexOf('.rumo-tile {'), css.indexOf('.rumo-proa {'))
+  assert.match(rumo, /container-type: size/)
+  assert.match(rumo, /\.rumo-valor \{ font-size: min\(6rem, \d+cqh\); \}/)
+  assert.match(rumo, /\.rumo-corr \{ font-size: min\(4\.6rem, \d+cqh\);/)
+  assert.match(rumo, /min-height: 7rem/)
+  const leme = readFileSync(new URL('../public/paginas/melhor/leme.js', import.meta.url), 'utf8')
+  assert.match(leme, /class="tile centro rumo-tile"/)
+  assert.doesNotMatch(leme, /font-size:6rem|font-size:4\.6rem/, 'o tamanho fixo saiu do desenho')
+  // as colunas do Leme que podem passar do ecrã rolam (a do rumo não)
+  assert.match(leme, /<div class="col estica rolar" data-rolar="leme-dir">/)
+  assert.match(leme, /<div class="col rolar" data-rolar="leme-unica"/)
+})

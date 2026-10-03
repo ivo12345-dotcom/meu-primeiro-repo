@@ -255,6 +255,8 @@ export function estados () {
 
   // ---------- as outras páginas ----------
   junta('carta', barra({ lista: [AIS_NORMAL] }), carta.render(contexto(st)))
+  // a Carta de noite: na janela dela (430 px, --so=carta --largura=430) os botões do brilho têm de caber (F3b item 10)
+  junta('carta-noite', barra({ lista: [AIS_NORMAL] }), carta.render(contexto(st)), { noite: true })
   junta('instr', barra(), instr.render(contexto(st)))
   junta('viagem', barra(), viagem.render(contexto(st, { confirmarNova: true })))
   for (const passo of [-1, 0, 1, 2]) junta(`velas-passo-${passo}`, barra(), velas.render(contexto(st, { passo, msg: 'Diário: Início de recolher velas', msgErro: false })))
