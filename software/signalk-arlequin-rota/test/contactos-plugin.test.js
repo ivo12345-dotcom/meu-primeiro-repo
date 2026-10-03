@@ -1307,3 +1307,36 @@ test('auditoria M-34: cada Ativar grava uma rota nova; a do plano substituído (
   s.app.activateRoute = ativar
   s.p.stop()
 })
+
+test('auditoria I-01 (o Resultado, decisão n.º 14): o envioEmTerra do GET /resultado conta pela hora de alarme mais cedo que terra tem, como o do GET /plano-ativo e o aviso de terra (não pela mais tarde)', async () => {
+  const s = await preparar({ contactos: [['Mãe', '222'], ['Pai', '333']] })
+  await sair(s)
+  s.porto.resposta = paiBloqueado
+  const anda = devagar(s, 0.3)
+  const aMae = () => atrasosDe(s).filter(e => e.chats.includes('222')).length
+  for (let m = 0; m < 400 && aMae() < 2; m++) await anda()
+  assert.equal(aMae(), 2)
+  const g = await chamar(s.r.get['/plano-ativo'])
+  const mae = g.envio.porContacto.find(x => x.nome === 'Mãe').alarme
+  assert.ok(Date.parse(mae) > Date.parse(g.envio.alarme), 'a Mãe tem uma hora de alarme mais tarde do que o Pai')
+  const r = await chamar(s.r.get['/resultado/:id'], { params: { id: s.id } })
+  assert.equal(r.envioEmTerra.alarme, g.envio.alarme, 'a do Pai (a mais cedo), não a da Mãe')
+  s.p.stop()
+})
+
+test('auditoria I-01: um ultimo-envio.json sem a hora de alarme mais cedo legível (antigo ou estragado) conta pela alarme — o GET /resultado e o GET /plano-ativo não rebentam e o aviso de terra sai na mesma', async () => {
+  const fs = require('node:fs')
+  const s = await enviarSem()
+  const f = path.join(s.app.getDataDirPath(), 'ultimo-envio.json')
+  const x = JSON.parse(fs.readFileSync(f, 'utf8'))
+  fs.writeFileSync(f, JSON.stringify({ ...x, alarmeMaisCedo: 'ilegível' }))
+  const r = await chamar(s.r.get['/resultado/:id'], { params: { id: s.id } })
+  assert.equal(r.envioEmTerra.alarme, x.alarme)
+  const g = await chamar(s.r.get['/plano-ativo'])
+  assert.equal(g.code, 404)
+  assert.equal(g.envioEmTerra.alarme, x.alarme)
+  s.acertar(Date.parse(x.alarme) - 59 * MIN)
+  s.avancar(MIN); await s.p.cicloNavegar()
+  assert.equal(s.app.self[ALARME_TERRA].state, 'alert')
+  s.p.stop()
+})
