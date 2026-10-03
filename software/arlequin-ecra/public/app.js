@@ -7,7 +7,7 @@ import { lerPolar } from './lib/polar.js'
 import { registarPressao, tendencia, lerBarometro } from './lib/barometro.js'
 import { novaViagem, acumular, lerViagem } from './lib/viagem.js'
 import { passoCiclo, desenharSeguro, escolherPagina, CAIXA_ERRO_DESENHO } from './lib/ciclo.js'
-import { alarmeDaBarra, deveTocar, paginaDoAlarme, bipDeLigacao, chipAlarme, calar, calado } from './lib/alarmes.js'
+import { alarmeDaBarra, decidirSom, novaMemoriaSom, paginaDoAlarme, bipDeLigacao, chipAlarme, calar, calado } from './lib/alarmes.js'
 import { podeRedesenhar, aoEnter, aoEscrever, guardarRolagem, reporRolagem, PAUSA_ROLAR_MS } from './lib/interacao.js'
 import { NIVEIS, PADRAO as BRILHO_PADRAO, nivelValido, mudarNivel } from './lib/brilho.js'
 import { criarAudio, retomar, comSom, chipSemSom } from './lib/som.js'
@@ -45,7 +45,7 @@ const app = {
   // o som nasce já no arranque (auditoria K-03): no Pi o kiosk arranca com o autoplay; sem ele, o browser
   // deixa-o suspenso até ao 1.º toque e o ciclo tenta retomá-lo de segundo a segundo
   audio: criarAudio(),
-  bipados: new Set(),
+  somMemoria: novaMemoriaSom(), // o que já deu o bip curto e a hora dos lembretes do fumo reconhecido (lib/alarmes.js)
   estavaLigado: null,
   sons: [], // últimos sons tocados (diagnóstico: window.arlequin.app.sons)
   premidoEm: null, // quando um dedo tocou no ecrã (do pointerdown ao pointerup; null: nenhum)
@@ -137,16 +137,14 @@ function bip (duracao = 0.25, freq = 880, motivo = '') {
   o.stop(app.audio.currentTime + duracao)
 }
 
-// O som lê as notificações direto do store (nunca depende do contexto nem do desenho, auditoria I-06).
+// O som lê as notificações direto do store (nunca depende do contexto nem do desenho, auditoria I-06). O que tocar
+// decide-o lib/alarmes.js (decidirSom, com a hora do ecrã): o contínuo a cada ciclo, o bip curto uma vez por alarme
+// e, com o fumo reconhecido (Adenda 2 do dono), um bip curto de 2 em 2 minutos — um só, ainda que sejam vários.
 function tocar (notificacoes) {
-  let continuo = false
-  for (const n of notificacoes) {
-    const t = deveTocar(n)
-    if (t === 'continuo') continuo = true
-    const chave = `${n.caminho}@${n.timestamp}`
-    if (t === 'curto' && !app.bipados.has(chave)) { app.bipados.add(chave); bip(0.35, 660, n.caminho) }
-  }
-  if (continuo) bip(0.4, 1000, 'alarme')
+  const r = decidirSom(notificacoes, app.somMemoria, Date.now())
+  for (const caminho of r.curtos) bip(0.35, 660, caminho)
+  if (r.lembretes.length) bip(0.35, 660, `${r.lembretes.join(', ')} (lembrete)`)
+  if (r.continuo) bip(0.4, 1000, 'alarme')
 }
 
 // ---------- render ----------
