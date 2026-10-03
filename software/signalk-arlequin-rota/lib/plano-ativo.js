@@ -11,7 +11,7 @@
 //   aproximacao: a do destino na lista (dados/destinos.json ou os do Ivo), [[lat, lon], …]; sem ela
 //   (um destino avulso), o último ponto da rota. O cais é sempre o último ponto da rota (o fim da
 //   aproximação). A desistência só se calcula para a 1.ª alternativa: nas outras fica vazia.
-// Estados: 'a espera de sair' → 'a navegar' → 'chegado'; 'terminado' (botão Terminar); 'pausado'
+// Estados: 'à espera de sair' → 'a navegar' → 'chegado'; 'terminado' (botão Terminar); 'pausado'
 //   (a rota ativa deixou de ser a do plano em ≥ 2 leituras seguidas e durante ≥ 2 min: um null da API de
 //   rumo logo a seguir a um reinício não pausa), que volta ao estado de antes (pausadoDe) logo que a
 //   rota do plano volta a estar ativa (Continuar, ou o Ivo no OpenCPN).
@@ -52,7 +52,10 @@ const MIN = 60000
 const FICHEIRO = 'plano-ativo.json'
 const FECHADOS = 'planos-fechados.json'
 const MAX_FECHADOS = 5
-const ESTADOS = Object.freeze({ ESPERA: 'a espera de sair', NAVEGAR: 'a navegar', CHEGADO: 'chegado', TERMINADO: 'terminado', PAUSADO: 'pausado' })
+// (auditoria M-35: "à espera de sair" com o acento; um plano gravado antes, sem ele, lê-se com ele)
+const ESTADOS = Object.freeze({ ESPERA: 'à espera de sair', NAVEGAR: 'a navegar', CHEGADO: 'chegado', TERMINADO: 'terminado', PAUSADO: 'pausado' })
+const ESPERA_ANTIGA = 'a espera de sair'
+const estadoAtual = (e) => (e === ESPERA_ANTIGA ? ESTADOS.ESPERA : e)
 const ABERTOS = new Set([ESTADOS.ESPERA, ESTADOS.NAVEGAR, ESTADOS.PAUSADO])
 const PADRAO = Object.freeze({
   saidaMn: 0.5, saidaSogNos: 2, saidaMin: 5, chegadaMn: 0.3, chegadaSogNos: 0.5, chegadaMin: 5,
@@ -290,7 +293,7 @@ function ler (dir) {
   try {
     const p = JSON.parse(texto)
     if (!eObjeto(p) || p.versao !== 1 || typeof p.estado !== 'string' || !eObjeto(p.alternativa)) return { plano: null, erro: `${FICHEIRO} ilegível: não é um plano` }
-    return { plano: p, erro: null }
+    return { plano: { ...p, estado: estadoAtual(p.estado), pausadoDe: p.pausadoDe == null ? p.pausadoDe : estadoAtual(p.pausadoDe) }, erro: null }
   } catch (e) { return { plano: null, erro: `${FICHEIRO} ilegível: ${e.message}` } }
 }
 

@@ -12,7 +12,7 @@ const { appFalso, plugin, chamar, calcular, costa } = require('./ajuda')
 
 const lerPlano = (app) => pa.ler(app.getDataDirPath()).plano
 
-test('POST /ativar cria o plano ativo (gravado em plano-ativo.json) com o href da rota ativada, a aproximação do destino e "a espera de sair"; ativar outra substitui-o', async () => {
+test('POST /ativar cria o plano ativo (gravado em plano-ativo.json) com o href da rota ativada, a aproximação do destino e "à espera de sair"; ativar outra substitui-o', async () => {
   const app = appFalso()
   const { p, r, agora } = plugin(app)
   p.start({ pasta: path.join(app.dir, 'dados') })
@@ -20,12 +20,12 @@ test('POST /ativar cria o plano ativo (gravado em plano-ativo.json) com o href d
   assert.equal(lerPlano(app), null)
   const a = await chamar(r.post['/ativar'], { body: { id, alternativa: 0 } })
   assert.equal(a.code, 200, a.erro)
-  assert.deepEqual(a.planoAtivo, { estado: 'a espera de sair' })
+  assert.deepEqual(a.planoAtivo, { estado: 'à espera de sair' })
   const plano = lerPlano(app)
   assert.equal(plano.idCalculo, id)
   assert.equal(plano.indice, 0)
   assert.equal(plano.href, a.href)
-  assert.equal(plano.estado, 'a espera de sair')
+  assert.equal(plano.estado, 'à espera de sair')
   assert.equal(plano.ativadoEm, new Date(agora()).toISOString())
   assert.equal(plano.alternativa.id, resultado.alternativas[0].id)
   assert.deepEqual(plano.alternativa.rasto, resultado.alternativas[0].rasto)

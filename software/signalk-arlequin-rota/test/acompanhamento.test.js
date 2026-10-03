@@ -93,7 +93,7 @@ test('acompanhar: atraso médio, milhas, hora do plano, chegada prevista agora =
   assert.equal(r.chegadaAgora, iso(T0 + 6 * H + Math.round(r.atrasoMin) * MIN))
   assert.equal(r.chegadaPlano, iso(T0 + 6 * H))
   // à espera de sair: sem atraso nem chegada nova
-  const e = ac.acompanhar(ac.novoEstado(), { plano: plano({ estado: 'a espera de sair', saida: null }), posicao: A, agora: T0 }).resultado
+  const e = ac.acompanhar(ac.novoEstado(), { plano: plano({ estado: 'à espera de sair', saida: null }), posicao: A, agora: T0 }).resultado
   assert.equal(e.atrasoMin, null)
   assert.equal(e.chegadaAgora, iso(T0 + 6 * H))
   // sem GPS: o atraso fica o da média que havia, e diz sem GPS
