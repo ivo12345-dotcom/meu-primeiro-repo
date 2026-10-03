@@ -2,12 +2,14 @@
 
 import { velocidade, distancia, duracao, num, rumo, anguloBordo, graus, nos } from '../lib/formato.js'
 import { barra } from '../lib/desenho.js'
-import { esc } from '../lib/rota-texto.js'
+import { esc, idade as haTempo } from '../lib/rota-texto.js'
 import { leituraCpa, SO_DISTANCIA } from '../lib/ais.js'
 
 const ok = (v) => typeof v === 'number' && Number.isFinite(v)
 
-export const CONSUMO_CRUZEIRO = 0.9 / 3600 / 1000 // m³/s (0,9 L/h)
+// O consumo de cruzeiro do D1-20B: 1,45 L/h a 2100 rpm, o mesmo que a rota planeia (rota/lib/base.js:
+// litrosHora(RPM_CRUZEIRO)) e o simulador cruza (F3b, item 7; antes 0,9 L/h). Nenhum plugin o publica.
+export const CONSUMO_CRUZEIRO = 1.45 / 3600 / 1000 // m³/s (1,45 L/h)
 export const VELOCIDADE_MOTOR = 5.5 * 1852 / 3600 // m/s
 // Os limites dos alarmes (auditoria M-51): a cor do ecrã muda onde o alarme dispara.
 export const RESERVA_GASOLEO_L = 40 // a reserva do plugin do gasóleo (≤ 40 L, signalk-arlequin-gasoleo/lib/nivel.js)
@@ -28,12 +30,23 @@ export function ventoTexto (ctx) {
   }
 }
 
-// Gasóleo: litros, autonomia em horas e em MN (ao consumo atual ou de cruzeiro).
+// Gasóleo: litros, autonomia em horas e em MN (ao consumo atual ou de cruzeiro). O plugin do gasóleo publica o nível
+// de segundo a segundo; sem a sonda e sem leitura do motor deixa de o publicar (a hora dele na árvore envelhece,
+// revisão F6b): com mais de 2 min o nível é velho — "sem leitura (último N L, há X min)", nunca os litros como atuais
+// (nem a barra, nem a cor da reserva, nem a autonomia). O 2 min é largo para o plugin (a sonda vale 60 s) e curto para
+// um depósito que se esvazia devagar.
+export const NIVEL_GASOLEO_VELHO_MS = 2 * 60 * 1000
 export function gasoleo (ctx) {
   const nivel = ctx.v('tanks.fuel.0.currentLevel')
   const cap = ctx.v('tanks.fuel.0.capacity')
   if (!ok(nivel) || !ok(cap)) return { html: '<span class="lab">sem dados do depósito</span>', nivel: null, litros: null }
   const litros = nivel * cap * 1000
+  const idadeMs = typeof ctx.idade === 'function' ? ctx.idade('tanks.fuel.0.currentLevel') : 0
+  if (!(idadeMs <= NIVEL_GASOLEO_VELHO_MS)) {
+    const agora = Number.isFinite(ctx.agora) ? ctx.agora : Date.now()
+    const ha = Number.isFinite(idadeMs) ? `, ${haTempo(agora - idadeMs, agora)}` : ''
+    return { html: `<span class="atencao sem-leitura">sem leitura (último ${num(litros, 0)} L${ha})</span>`, nivel: null, litros: null, velho: { litros, idadeMs } }
+  }
   const taxa = ctx.v('propulsion.main.fuel.rate')
   const consumo = ok(taxa) && taxa > 0 ? taxa : CONSUMO_CRUZEIRO
   const horas = (nivel * cap) / consumo / 3600
@@ -48,8 +61,9 @@ export function gasoleo (ctx) {
 }
 
 // a cor da barra do gasóleo
-// vermelho a ≤ 40 L, como a reserva do plugin (antes: < 20 % da capacidade, que só dava 40 L com 200 L)
-export const corGasoleo = (g) => (ok(g.litros) && g.litros <= RESERVA_GASOLEO_L + 1e-9 ? 'var(--bb)' : 'var(--verde)')
+// vermelho a ≤ 40 L, como a reserva do plugin (antes: < 20 % da capacidade, que só dava 40 L com 200 L); cinzento sem
+// leitura (um nível velho não é verde nem vermelho)
+export const corGasoleo = (g) => (g.velho ? 'var(--linha)' : ok(g.litros) && g.litros <= RESERVA_GASOLEO_L + 1e-9 ? 'var(--bb)' : 'var(--verde)')
 
 export function tileGasoleo (ctx, grande = false) {
   const g = gasoleo(ctx)
