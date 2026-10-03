@@ -139,7 +139,7 @@ function recalcula (est, entrada, agora) {
   if (!est.recalcula) return normal()
   const partes = []
   if (condAtraso) partes.push(`atraso de ${acima(atraso)} min sobre o plano`)
-  if (foraVento && (condVento || est.motivos.includes('vento'))) partes.push(`vento de ${Math.round(v.medido)} nós, previsto ${Math.round(v.previsto)}${Number.isFinite(v.desvioPct) ? ` (${v.desvioPct >= 0 ? '+' : '−'}${Math.round(Math.abs(v.desvioPct))} %)` : ''}`)
+  if (foraVento && (condVento || est.motivos.includes('vento'))) partes.push(`vento de ${Math.round(v.medido)} nós, previsto ${Math.round(v.previsto)}${Number.isFinite(v.desvioPct) ? ` (${v.desvioPct >= 0 ? '+' : '−'}${acima(Math.abs(v.desvioPct))} %)` : ''}`)
   // a voltar ao normal (os 10 min): o motivo que havia
   if (!partes.length) partes.push(est.motivos.includes('atraso') ? 'atraso sobre o plano a voltar ao normal' : 'vento a voltar ao previsto')
   return aviso('warn', `Recalcula a rota: ${partes.join(' · ')}`, { chave: est.motivos.join(' ') })
@@ -161,8 +161,9 @@ function recursosAviso (entrada) {
 function previsaoAviso (entrada) {
   const h = entrada.previsaoIdadeH
   if (h == null || !Number.isFinite(h)) return aviso('alarm', 'Sem previsão: confia nos instrumentos e no barómetro', { apito: 'curto' })
-  if (h > LIMITES.previsaoAlarmeH) return aviso('alarm', `Previsão com ${Math.round(h)} h: confia nos instrumentos e no barómetro`, { apito: 'curto' })
-  if (h > LIMITES.previsaoAvisoH) return aviso('warn', `Previsão com ${Math.round(h)} h`)
+  // (a idade arredonda para cima, para o lado do aviso — auditoria M-23: "mais de 6 h" nunca diz 6 h)
+  if (h > LIMITES.previsaoAlarmeH) return aviso('alarm', `Previsão com ${acima(h)} h: confia nos instrumentos e no barómetro`, { apito: 'curto' })
+  if (h > LIMITES.previsaoAvisoH) return aviso('warn', `Previsão com ${acima(h)} h`)
   return normal()
 }
 
