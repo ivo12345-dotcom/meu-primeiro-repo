@@ -1191,3 +1191,37 @@ test('auditoria M-32 (B-M15): o plano da alternativa ativa mandado outra vez pel
   assert.ok(atrasosDe(s)[1].texto.includes(`(em vez de ${horaLisboa(Date.parse(g.envio.alarmePlano), s.agora())})`), atrasosDe(s)[1].texto)
   s.p.stop()
 })
+
+// ---------- decisão do Ivo n.º 19: o relógio do Pi contra a hora do GPS ----------
+test('decisão n.º 19 (relógio): com o relógio do Pi a mais de 60 s da hora do GPS, o "Enviar plano" dá 422, o ciclo a navegar não corre (nada sai para terra) e o aviso notifications.rota.relogio diz porquê; o GET diz relogioDesacertadoS; a hora do GPS parada não conta; acertado, tudo volta', async () => {
+  const s = await preparar()
+  await sair(s)
+  const RELOGIO = 'notifications.rota.relogio'
+  // o GPS (navigation.datetime) 5 min atrás do relógio do Pi, a andar (posto para o ciclo seguinte, que avança 1 min)
+  const gps = (atraso) => { s.app.self['navigation.datetime'] = new Date(s.agora() + MIN - atraso).toISOString() }
+  gps(5 * MIN); await s.ciclo()
+  assert.equal(s.app.self[RELOGIO]?.state ?? 'normal', 'normal', 'uma leitura só: ainda não se sabe se a hora do GPS anda')
+  gps(5 * MIN); await s.ciclo()
+  assert.equal(s.app.self[RELOGIO].state, 'warn')
+  assert.equal(s.app.self[RELOGIO].message, 'Relógio do Pi desacertado 5 min da hora do GPS: o acompanhamento e as mensagens para terra estão parados — acerta a hora do Pi')
+  let g = await chamar(s.r.get['/plano-ativo'])
+  assert.equal(g.relogioDesacertadoS, 300)
+  const x = await chamar(s.r.post['/plano-telegram'], { body: { id: s.id, alternativa: 0 } })
+  assert.equal(x.code, 422)
+  assert.equal(x.erro, 'o relógio do Pi está desacertado 5 min da hora do GPS: a hora de alarme sairia errada — acerta a hora antes de enviar o plano')
+  // o ciclo não corre: a andar devagar 2 h, nenhum atraso sai e o plano não muda
+  const anda = devagar(s, 0.4)
+  for (let m = 0; m < 120; m++) { gps(5 * MIN); await anda() }
+  assert.deepEqual(atrasosDe(s), [])
+  assert.equal(s.p.acompanhamento().agora < s.agora() - 100 * MIN, true, 'o acompanhamento parou')
+  // a hora do GPS parada (o GPS desligado): não se sabe o desacerto, o ciclo volta a correr
+  for (let m = 0; m < 3; m++) await anda()
+  assert.equal(s.app.self[RELOGIO].state, 'normal')
+  assert.equal(s.p.acompanhamento().agora, s.agora())
+  // acertado (a hora do GPS a andar com a do Pi): normal, e o envio volta a poder
+  gps(0); await anda(); gps(0); await anda()
+  assert.equal(s.app.self[RELOGIO].state, 'normal')
+  g = await chamar(s.r.get['/plano-ativo'])
+  assert.equal(g.relogioDesacertadoS, null)
+  s.p.stop()
+})
