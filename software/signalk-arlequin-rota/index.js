@@ -1095,19 +1095,20 @@ module.exports = function (app, deps = {}) {
 
   // Grava a rota na API de recursos v2 e ativa-a na API de rumo v2. Primeiro a API dentro do
   // servidor (app.resourcesApi e app.activateRoute); sem ela, HTTP para o próprio servidor.
-  // A rota direta (salto curto) não tem afastamento: diz "direta (salto curto)", nunca "null MN";
-  // uma variante por um canal leva a nota do canal (terra dos dois lados, por confirmar na carta).
+  // A rota direta (salto curto) não tem afastamento: diz "direta (salto curto)", nunca "null MN" — só com
+  // alt.direto, como o plano (auditoria M-29: uma alternativa sem afastamento e que não é direta não diz
+  // "direta"); uma variante por um canal leva a nota do canal (terra dos dois lados, por confirmar na carta).
   async function ativarRota (alt, destinoNome) {
     const quando = (iso) => decisao.quando(Date.parse(iso), relogio(), 'Europe/Lisbon')
     const pts = alt.pontosRota
     const id = crypto.randomUUID()
     const href = `/resources/routes/${id}`
-    const onde = alt.direto || !Number.isFinite(alt.afastamento) ? 'direta (salto curto)' : `${alt.afastamento} MN${alt.canal ? ` pelo ${alt.canal}` : ''}`
+    const onde = alt.direto ? 'direta (salto curto)' : Number.isFinite(alt.afastamento) ? `${alt.afastamento} MN${alt.canal ? ` pelo ${alt.canal}` : ''}` : null
     const dados = {
       name: `Arlequin → ${destinoNome} (${alt.nome})`,
       // as horas em hora de Lisboa (HH:MM), não o UTC em bruto: o OpenCPN mostra o texto tal e qual
       // a propulsão como no ecrã e no plano: "a motor (sem vento para vela)" quando vai toda a motor
-      description: `Melhor rota: ${onde}, ${plano.propulsaoTexto(alt)}, partida ${quando(alt.partida)}, chegada prevista ${quando(alt.chegada.p50)} (hora de Lisboa)${alt.nota ? `. ${alt.nota}` : ''}`,
+      description: `Melhor rota: ${onde ? `${onde}, ` : ''}${plano.propulsaoTexto(alt)}, partida ${quando(alt.partida)}, chegada prevista ${quando(alt.chegada.p50)} (hora de Lisboa)${alt.nota ? `. ${alt.nota}` : ''}`,
       ...(Number.isFinite(alt.milhas) ? { distance: Math.round(alt.milhas * 1852) } : {}),
       feature: {
         type: 'Feature',
