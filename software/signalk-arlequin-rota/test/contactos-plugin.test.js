@@ -1340,3 +1340,65 @@ test('auditoria I-01: um ultimo-envio.json sem a hora de alarme mais cedo legív
   assert.equal(s.app.self[ALARME_TERRA].state, 'alert')
   s.p.stop()
 })
+
+// ---------- revisão da F2 (F2b), Importante 1 (decisão n.º 16): a desistência à hora de alarme DO contacto ----------
+test('F2b Importante 1 (sonda p10b, decisão n.º 16): o Pai bloqueou o bot a meio da viagem e a Mãe vai recebendo os atrasos — desiste-se do parcial do Pai no fim da hora de alarme DELE (a do plano, que nunca lhe foi adiada), não à mais tarde da Mãe nem renovada por cada atraso; o Ivo recebe "desisti de o entregar. Liga-lhe." com essa hora e o GET regista-a', async () => {
+  const s = await preparar({ contactos: [['Mãe', '222'], ['Pai', '333']] })
+  await sair(s)
+  s.porto.resposta = paiBloqueado
+  const anda = devagar(s, 0.5)
+  const aMae = () => atrasosDe(s).filter(e => e.chats.includes('222')).length
+  for (let m = 0; m < 400 && aMae() < 1; m++) await anda()
+  assert.equal(aMae(), 1)
+  const g0 = await chamar(s.r.get['/plano-ativo'])
+  const alarmePai = Date.parse(g0.envio.porContacto.find(x => x.nome === 'Pai').alarme)
+  assert.equal(alarmePai, Date.parse(g0.envio.alarmePlano), 'o Pai nunca viu a hora adiada: tem a do plano')
+  assert.ok(alarmePai > s.agora() + 3 * H, 'a hora do Pai ainda vem longe: há tempo para mais atrasos à Mãe')
+  // até à hora do Pai a Mãe recebe mais atrasos (cada um faz um parcial novo para o Pai), sem nenhuma desistência
+  while (s.agora() < alarmePai - 5 * MIN) await anda()
+  assert.ok(aMae() >= 3, `atrasos à Mãe: ${aMae()}`)
+  let g = await chamar(s.r.get['/plano-ativo'])
+  assert.deepEqual(g.desistencias, [])
+  assert.equal(s.recebidos.filter(e => e.tipo === 'aviso').length, 0)
+  assert.ok(Date.parse(g.envio.porContacto.find(x => x.nome === 'Mãe').alarme) > alarmePai + H, 'a Mãe tem uma hora bem mais tarde')
+  // passa a hora do Pai: a desistência (atraso, Pai) com a hora DELE e o aviso ao Ivo, em poucos minutos
+  for (let m = 0; m < 10 && !(await chamar(s.r.get['/plano-ativo'])).desistencias.length; m++) await anda()
+  g = await chamar(s.r.get['/plano-ativo'])
+  assert.ok(s.agora() >= alarmePai && s.agora() <= alarmePai + 5 * MIN, `desistiu ${Math.round((s.agora() - alarmePai) / MIN)} min depois da hora do Pai`)
+  assert.deepEqual(g.desistencias.map(d => ({ tipo: d.tipo, contactos: d.contactos, alarme: d.alarme })), [{ tipo: 'atraso', contactos: ['Pai'], alarme: new Date(alarmePai).toISOString() }])
+  const avisos = s.recebidos.filter(e => e.tipo === 'aviso')
+  assert.equal(avisos.length, 1)
+  assert.deepEqual([avisos[0].contactos, avisos[0].chats], [[], []])
+  assert.equal(avisos[0].texto, `Pai não recebeu o aviso de atraso (ref. ${g.desistencias[0].ref}) e já passou a hora de alarme (${plano_.diaEHora(alarmePai)}): desisti de o entregar. Liga-lhe.\nref. ${plano(s).contactos.enviadas.find(m => m.tipo === 'aviso').ref}`)
+  assert.deepEqual(g.filaContactos.filter(m => m.parcial), [], 'o parcial do Pai saiu da fila')
+  // o Pai desbloqueia: o parcial desistido não lhe chega
+  const doPai = atrasosDe(s).filter(e => e.chats.includes('333')).length
+  s.porto.resposta = (e) => ({ pedido: e.pedido, entregues: [...(e.tentativa ? [] : ['chat 111']), ...e.contactos], contactos: e.contactos, chats: e.chats, falhas: [] })
+  for (let m = 0; m < 5; m++) await anda()
+  assert.equal(atrasosDe(s).filter(e => e.chats.includes('333')).length, doPai)
+  s.p.stop()
+})
+
+test('F2b Importante 1 (sonda p05 c): o plano novo ("substitui") que a Mãe nunca recebe (o Ivo recebe) — desiste-se à hora de alarme ANTIGA que ela tem; o registo e o aviso dizem essa hora ("ficou com o plano antigo, cuja hora de alarme (…) já passou"), não a do plano novo', async () => {
+  const s = await preparar()
+  await sair(s)
+  const normal = s.porto.resposta
+  s.porto.resposta = (e) => (e.tipo === 'plano' ? { pedido: e.pedido, entregues: ['chat 111'], contactos: [], chats: [], falhas: [{ nome: 'Mãe', erro: 'Bad Request: file is too big' }] } : normal(e))
+  const antiga = Date.parse((await chamar(s.r.get['/plano-ativo'])).envio.alarme)
+  const a = await chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 1 } })
+  assert.equal(a.code, 200, a.erro)
+  const nova = plano_.horaAlarme(s.resultado.alternativas[1])
+  assert.ok(nova > antiga + H, 'o plano novo tem a hora de alarme mais tarde')
+  // o "substitui" falha (só o Ivo o recebe) até à hora antiga da Mãe (a partida do plano novo ainda vem longe)
+  while (s.agora() < antiga - 3 * MIN) await s.ciclo(2 * MIN)
+  assert.ok(s.p.planoAtivo().contactos.fila.some(m => m.tipo === 'plano' && m.tentativas >= 2), 'o plano novo continua a tentar')
+  assert.deepEqual((await chamar(s.r.get['/plano-ativo'])).desistencias, [])
+  await s.ciclo(2 * MIN); await s.ciclo(2 * MIN)
+  const g = await chamar(s.r.get['/plano-ativo'])
+  assert.ok(s.agora() < nova, 'a hora de alarme do plano novo ainda não passou')
+  assert.deepEqual(g.desistencias.map(d => ({ tipo: d.tipo, contactos: d.contactos, alarme: d.alarme })), [{ tipo: 'plano', contactos: ['Mãe'], alarme: new Date(antiga).toISOString() }])
+  assert.deepEqual(g.filaContactos.filter(m => m.tipo === 'plano'), [])
+  const aviso = s.recebidos.find(e => e.tipo === 'aviso')
+  assert.equal(aviso.texto, `Mãe não recebeu o plano novo (ref. ${g.desistencias[0].ref}): ficou com o plano antigo, cuja hora de alarme (${plano_.diaEHora(antiga)}) já passou. Liga-lhe.\nref. ${plano(s).contactos.enviadas.find(m => m.tipo === 'aviso').ref}`)
+  s.p.stop()
+})

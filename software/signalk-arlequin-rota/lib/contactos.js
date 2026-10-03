@@ -109,7 +109,10 @@ function textoSubstitui (texto) {
 }
 
 // O aviso ao Ivo (pelo Telegram, só ao chat dele) de uma mensagem para terra de que se desistiu (auditoria
-// I-05, decisão n.º 16): a quem não chegou, o quê e a hora de alarme.
+// I-05, decisão n.º 16): a quem não chegou, o quê e a hora que passou — a de alarme que ESSE contacto tem
+// (m.passou, posta pelo desistir; revisão da F2, F2b Importante 1: nunca a do plano novo nem a de outro
+// contacto). Um plano novo que sai porque a hora de alarme DELE passou primeiro (porAlarmeDoPlano) di-lo, e
+// diz também a antiga, que é a que o contacto ainda tem.
 const O_QUE = Object.freeze({ chegada: ['o «cheguei bem»', 'o'], terminado: ['a «viagem terminada»', 'a'], atraso: ['o aviso de atraso', 'o'], plano: ['o plano novo', 'o'] })
 function textoDesisti (m) {
   const nomes = (m.contactos || []).map(String)
@@ -118,8 +121,15 @@ function textoDesisti (m) {
   const [oQue, pron] = O_QUE[m.tipo] ?? ['a mensagem', 'a']
   const recebeu = um ? 'recebeu' : 'receberam'
   const ligar = um ? 'Liga-lhe' : 'Liga-lhes'
-  if (m.tipo === 'plano' && valido(m.alarme)) return `${quem} não ${recebeu} ${oQue} (ref. ${m.ref}) antes da hora de alarme dele (${diaEHora(m.alarme)}): ${um ? 'ficou' : 'ficaram'} com o plano antigo. ${ligar}.`
-  return `${quem} não ${recebeu} ${oQue} (ref. ${m.ref}) e já passou a hora de alarme (${diaEHora(m.desisteEm)}): desisti de ${pron} entregar. ${ligar}.`
+  const passou = valido(m.passou) ? m.passou : m.desisteEm
+  if (m.tipo === 'plano') {
+    const ficou = um ? 'ficou' : 'ficaram'
+    // (sem a marca — uma desistida de antes desta revisão — vale a regra antiga: a hora do plano novo)
+    const proprio = m.porAlarmeDoPlano === true || (m.porAlarmeDoPlano == null && valido(m.alarme))
+    if (proprio && valido(m.alarme)) return `${quem} não ${recebeu} ${oQue} (ref. ${m.ref}) antes da hora de alarme dele (${diaEHora(m.alarme)}): ${ficou} com o plano antigo${valido(m.antiga) ? ` (hora de alarme ${diaEHora(m.antiga)})` : ''}. ${ligar}.`
+    return `${quem} não ${recebeu} ${oQue} (ref. ${m.ref}): ${ficou} com o plano antigo, cuja hora de alarme (${diaEHora(passou)}) já passou. ${ligar}.`
+  }
+  return `${quem} não ${recebeu} ${oQue} (ref. ${m.ref}) e já passou a hora de alarme (${diaEHora(passou)}): desisti de ${pron} entregar. ${ligar}.`
 }
 
 // ---------- o atraso ----------
@@ -207,6 +217,24 @@ const alarmesEmEspera = (terra) => (Array.isArray(terra) ? terra : []).filter(a 
 const alarmeMaisCedo = (terra) => { const l = alarmesEmEspera(terra); return l.length ? Math.min(...l) : NaN }
 // a mais tarde: até ela terra ainda espera notícias
 const alarmeMaisTarde = (terra) => { const l = alarmesEmEspera(terra); return l.length ? Math.max(...l) : NaN }
+// A hora a partir da qual se desiste de entregar uma mensagem a CADA contacto dela (revisão da F2, F2b
+// Importante 1, decisão n.º 16): a hora de alarme que esse contacto tem (terra), pelo chat (sem chat, pelo
+// nome) → { desistePor: { chat|nome: ms }, desisteEm: a mais tarde delas (NaN sem nenhuma) }. Vai na mensagem
+// (porNaFila) e o parcial fica só com as de quem falhou: a desistência de um contacto que nunca recebe dá-se
+// no fim da hora DELE, nunca na mais tarde de todos, e um atraso novo entregue aos outros não a renova.
+const chaveContacto = (chat, nome) => (chat != null ? String(chat) : String(nome))
+function desistePorDe (terra, { contactos = [], chats = [] } = {}) {
+  const desistePor = {}
+  for (const [i, nome0] of contactos.entries()) {
+    const nome = String(nome0)
+    const chat = chats[i] != null ? String(chats[i]) : null
+    const a = (Array.isArray(terra) ? terra : []).find(x => mesmoContacto(x, chat, nome))
+    if (valido(a?.alarme)) desistePor[chaveContacto(chat, nome)] = a.alarme
+  }
+  const l = Object.values(desistePor)
+  return { desistePor, desisteEm: l.length ? Math.max(...l) : NaN }
+}
+const desistePorValido = (x) => (x !== null && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).filter(([, t]) => valido(t))) : {})
 
 // ---------- a fila ----------
 // letra: a letra das referências deste plano ("ref. A3"); o plano seguinte passa à seguinte (Z → A)
@@ -238,8 +266,9 @@ function porNaFila (c0, msg, agora) {
     // o plano a que pertence (auditoria I-04): um "cheguei bem" atrasado só fecha o envio do seu plano
     ...(msg.idCalculo != null ? { idCalculo: msg.idCalculo, indice: msg.indice } : {}),
     // a hora a partir da qual se desiste de a entregar a um contacto que nunca a recebe (auditoria I-05):
-    // a hora de alarme que os contactos dela têm
+    // a hora de alarme que cada contacto dela tem (desistePor; F2b Importante 1) e a mais tarde delas
     ...(valido(msg.desisteEm) ? { desisteEm: msg.desisteEm } : {}),
+    ...(Object.keys(desistePorValido(msg.desistePor)).length ? { desistePor: desistePorValido(msg.desistePor) } : {}),
     // o atraso libertado pelo "Estou bem" do Ivo (passa as guardas, também à hora de sair)
     ...(msg.tipo === 'atraso' && msg.confirmado === true ? { confirmado: true } : {}),
     criada: iso(agora),
@@ -306,23 +335,79 @@ function falhou (c, pedido, erro, agora) {
   return mudar(c, m => m.pedido === pedido, m => ({ ...m, estado: 'fila', pedido: null, erro, proxima: iso(agora + REPETIR_MS) }))
 }
 
-// Desistir (auditoria I-05, decisão do Ivo n.º 16): uma mensagem para um contacto que nunca a recebe sai da
-// fila no fim da hora de alarme desse envio (desisteEm) — só quando a falha é do contacto (outro contacto
-// ou o Ivo recebeu: bloqueou o bot, saiu dos "Contactos do plano"); sem ninguém a receber (sem rede, o porto
-// desligado) nunca se desiste: chega quando a rede voltar. Também sai o plano novo que passou a hora de
-// alarme dele sem chegar (um plano com o alarme já passado dava um falso alarme), e um aviso ao Ivo ao fim
-// de 24 h. → { c (com as desistências registadas), desistidas: [msg] } (quem chama avisa o Ivo).
+// Desistir (auditoria I-05, decisão do Ivo n.º 16): de um contacto que nunca recebe uma mensagem desiste-se no
+// fim da hora de alarme DELE — a que esse contacto tem (terra, a de agora; numa mensagem do plano anterior,
+// ou sem terra, a guardada na mensagem: desistePor, e sem ela desisteEm para todos) — só quando a falha é do
+// contacto (outro contacto ou o Ivo recebeu: bloqueou o bot, saiu dos "Contactos do plano"); sem ninguém a
+// receber (sem rede, o porto desligado) nunca se desiste: chega quando a rede voltar. Com dois contactos de
+// horas diferentes, sai cada um à sua hora: a mensagem fica na fila só para os outros (revisão da F2, F2b
+// Importante 1: antes era a hora mais tarde de todos, renovada por cada atraso entregue aos outros, e o Pai
+// nunca produzia a desistência nem o "liga-lhe"). Também sai, inteiro e com ou sem rede, o plano novo que
+// passou a hora de alarme DELE sem chegar (um plano com o alarme já passado dava um falso alarme), e um aviso
+// ao Ivo ao fim de 24 h. → { c (com as desistências registadas: alarme = a hora que passou), desistidas:
+// [{ ...msg, contactos/chats: só os desistidos, passou (ms), porAlarmeDoPlano, antiga? }] } (quem chama avisa
+// o Ivo, com textoDesisti).
 const MAX_DESISTENCIAS = 10
-function desistir (c0, agora) {
+function desistir (c0, agora, { terra = null } = {}) {
   const c = { ...novaFila(), ...c0 }
   const daContacto = (m) => m.parcial || m.ivoRecebeu
-  const sai = (m) => m.estado === 'fila' && (
-    (m.tipo === 'plano' && valido(m.alarme) && agora >= m.alarme) ||
-    (m.tentativas >= 1 && valido(m.desisteEm) && agora >= m.desisteEm && (m.tipo === 'aviso' || daContacto(m))))
-  const desistidas = c.fila.filter(sai)
+  const fila = []
+  const desistidas = []
+  const registo = []
+  const regista = (m, g, passou) => {
+    desistidas.push({ ...m, contactos: g.contactos, chats: g.chats, passou, porAlarmeDoPlano: g.porAlarmeDoPlano === true, ...(valido(g.antiga) ? { antiga: g.antiga } : {}) })
+    registo.push({ ref: m.ref, tipo: m.tipo, contactos: [...g.contactos], chats: [...g.chats], em: iso(agora), alarme: valido(passou) ? iso(passou) : null, anterior: !!m.anterior })
+  }
+  for (const m of c.fila) {
+    if (m.estado !== 'fila') { fila.push(m); continue }
+    const tentada = m.tentativas >= 1
+    // o aviso ao Ivo: ao fim das 24 h, com ou sem rede
+    if (m.tipo === 'aviso') {
+      if (tentada && valido(m.desisteEm) && agora >= m.desisteEm) regista(m, { contactos: [], chats: [] }, m.desisteEm)
+      else fila.push(m)
+      continue
+    }
+    const nomes = (m.contactos || []).map(String)
+    const chats = (m.chats || []).map(String)
+    const n = Math.max(nomes.length, chats.length)
+    // a hora de alarme que o contacto i tem
+    const horaDe = (i) => {
+      const chat = chats[i] ?? null
+      const nome = nomes[i] ?? `chat ${chat}`
+      const atual = !m.anterior && Array.isArray(terra) ? terra.find(a => mesmoContacto(a, chat, nome))?.alarme : undefined
+      if (valido(atual)) return atual
+      const guardada = m.desistePor?.[chaveContacto(chat, nome)]
+      return valido(guardada) ? guardada : valido(m.desisteEm) ? m.desisteEm : NaN
+    }
+    const grupos = new Map() // a hora que passou → { contactos, chats }
+    const ficam = []
+    for (let i = 0; i < n; i++) {
+      const t = horaDe(i)
+      if (tentada && daContacto(m) && valido(t) && agora >= t) {
+        const g = grupos.get(t) || { contactos: [], chats: [] }
+        g.contactos.push(nomes[i] ?? `chat ${chats[i]}`)
+        if (chats[i] != null) g.chats.push(chats[i])
+        grupos.set(t, g)
+      } else ficam.push(i)
+    }
+    // (uma mensagem sem contactos: a hora da mensagem)
+    if (!n && tentada && daContacto(m) && valido(m.desisteEm) && agora >= m.desisteEm) grupos.set(m.desisteEm, { contactos: [], chats: [] })
+    // o plano novo com a hora de alarme dele já passada: os que ficavam saem também
+    if (m.tipo === 'plano' && valido(m.alarme) && agora >= m.alarme && (ficam.length || (!n && !grupos.size))) {
+      const horas = ficam.map(horaDe).filter(valido)
+      grupos.set(m.alarme, { contactos: ficam.map(i => nomes[i] ?? `chat ${chats[i]}`), chats: ficam.map(i => chats[i]).filter(x => x != null), porAlarmeDoPlano: true, antiga: horas.length ? Math.max(...horas) : NaN })
+      ficam.length = 0
+    }
+    if (!grupos.size) { fila.push(m); continue }
+    for (const [passou, g] of grupos) regista(m, g, passou)
+    if (ficam.length) {
+      const desistePor = Object.fromEntries(ficam.map(i => [chaveContacto(chats[i] ?? null, nomes[i]), m.desistePor?.[chaveContacto(chats[i] ?? null, nomes[i])]]).filter(([, t]) => valido(t)))
+      const horas = Object.values(desistePor)
+      fila.push({ ...m, contactos: ficam.map(i => nomes[i] ?? `chat ${chats[i]}`), chats: ficam.map(i => chats[i]).filter(x => x != null), ...(Object.keys(desistePor).length ? { desistePor } : {}), ...(horas.length ? { desisteEm: Math.max(...horas) } : {}) })
+    }
+  }
   if (!desistidas.length) return { c: c0, desistidas }
-  const registo = desistidas.map(m => ({ ref: m.ref, tipo: m.tipo, contactos: [...(m.contactos || [])], chats: [...(m.chats || [])], em: iso(agora), alarme: m.tipo === 'plano' && valido(m.alarme) ? iso(m.alarme) : valido(m.desisteEm) ? iso(m.desisteEm) : null, anterior: !!m.anterior }))
-  return { c: { ...c, fila: c.fila.filter(m => !sai(m)), desistencias: [...(c.desistencias || []), ...registo].slice(-MAX_DESISTENCIAS) }, desistidas }
+  return { c: { ...c, fila, desistencias: [...(c.desistencias || []), ...registo].slice(-MAX_DESISTENCIAS) }, desistidas }
 }
 
 // A resposta do porto ({ entregues, contactos, chats, falhas }): enviada com pelo menos um contacto em
@@ -359,7 +444,10 @@ function resposta (c, pedido, r0 = {}, agora) {
   const faltam = pedidos.map((id, i) => ({ id, nome: pedidos.length === (m.contactos || []).length ? m.contactos[i] : `chat ${id}` })).filter(x => !chats.includes(x.id))
   if (faltam.length && !doAnteriorSemInteresse(m)) {
     const seq = out.seq + 1
-    const nova = { ...m, id: `m${seq}`, contactos: faltam.map(x => x.nome), chats: faltam.map(x => x.id), parcial: true, ...(ivo ? { ivoRecebeu: true } : {}), estado: 'fila', pedido: null, erro: falhas.map(x => `${x.nome}: ${x.erro}`).join('; ') || null, proxima: iso(agora + REPETIR_MS) }
+    // a hora de desistir de cada um que falhou é a dele (F2b Importante 1): o parcial fica só com essas
+    const desistePor = Object.fromEntries(faltam.map(x => [chaveContacto(x.id, x.nome), m.desistePor?.[chaveContacto(x.id, x.nome)]]).filter(([, t]) => valido(t)))
+    const horas = Object.values(desistePor)
+    const nova = { ...m, id: `m${seq}`, contactos: faltam.map(x => x.nome), chats: faltam.map(x => x.id), parcial: true, ...(ivo ? { ivoRecebeu: true } : {}), estado: 'fila', pedido: null, erro: falhas.map(x => `${x.nome}: ${x.erro}`).join('; ') || null, proxima: iso(agora + REPETIR_MS), ...(Object.keys(desistePor).length ? { desistePor } : {}), ...(horas.length ? { desisteEm: Math.max(...horas) } : {}) }
     out = { ...out, seq, fila: [...out.fila, nova] }
   }
   return out
@@ -387,4 +475,4 @@ function evento (msg, pedido, contactos = msg.contactos || [], chats = msg.chats
   }
 }
 
-module.exports = { SUBSTITUI, REPETIR_MS, ATRASO_ESCORREGA_MS, ATRASO_MARGEM_MS, TETO_MS, PROGRESSO_MN_H, DIST_ROTA_MAX_MN, juntarMarca, progressoNaHora, retencaoAtraso, grausMinutos, textoChegada, textoAtraso, textoTerminado, textoSubstitui, textoDesisti, desistir, decidirAtraso, terraInicial, terraEntregue, alarmeMaisCedo, alarmeMaisTarde, novaFila, porNaFila, herdar, atualizarAtraso, tirar, tirarSe, atrasoAutomatico, proxima, marcarAEnviar, falhou, resposta, aoArrancar, evento }
+module.exports = { SUBSTITUI, REPETIR_MS, ATRASO_ESCORREGA_MS, ATRASO_MARGEM_MS, TETO_MS, PROGRESSO_MN_H, DIST_ROTA_MAX_MN, juntarMarca, progressoNaHora, retencaoAtraso, grausMinutos, textoChegada, textoAtraso, textoTerminado, textoSubstitui, textoDesisti, desistir, decidirAtraso, terraInicial, terraEntregue, alarmeMaisCedo, alarmeMaisTarde, desistePorDe, novaFila, porNaFila, herdar, atualizarAtraso, tirar, tirarSe, atrasoAutomatico, proxima, marcarAEnviar, falhou, resposta, aoArrancar, evento }
