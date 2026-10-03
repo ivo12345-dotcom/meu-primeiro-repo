@@ -362,15 +362,24 @@ module.exports = function (app, deps = {}) {
   // A hora de alarme que vai para terra e a frescura das leituras saem do relógio do Pi. Com ele a mais de 60 s
   // da hora do GPS (navigation.datetime), o envio do plano dá 422, o ciclo a navegar não corre (nada sai para
   // terra; o aviso notifications.rota.relogio diz porquê) e o GET diz relogioDesacertadoS. A hora do GPS só
-  // conta enquanto muda (um GPS parado ou desligado não é um relógio errado: não se sabe, e o ciclo corre).
+  // conta enquanto muda (um GPS parado ou desligado não é um relógio errado: não se sabe, e o ciclo corre);
+  // a 1.ª leitura conta logo se for fresca — recebida pelo servidor há 2 min ou menos, pelo relógio do Pi (o
+  // timestamp do valor), como as outras leituras (F2b Menor 2: antes esperava-se a 2.ª leitura, e no 1.º
+  // minuto depois de um arranque o envio passava com o relógio errado).
   // Com a hora simulada (só testes) o relógio do plugin é o próprio navigation.datetime.
   let dataGps = null // { g: a hora do GPS (ms), em: a hora do plugin em que a vi mudar, desvio (ms) | null }
   let desacertoAtual = null // o do último ciclo (ms, Pi − GPS) quando passa os 60 s; senão null
   function desacertoRelogio (agora) {
     if (simulada()) return null
-    const g = Date.parse(app.getSelfPath?.('navigation.datetime')?.value)
+    const x = app.getSelfPath?.('navigation.datetime')
+    const g = Date.parse(x?.value)
     if (!Number.isFinite(g)) { dataGps = null; return null }
-    if (!dataGps) { dataGps = { g, em: agora, desvio: null }; return null }
+    if (!dataGps) {
+      const hora = Date.parse(x.timestamp)
+      const fresca = Number.isFinite(hora) && Math.abs(agora - hora) <= LEITURA_VELHA_MS
+      dataGps = { g, em: agora, desvio: fresca ? agora - g : null }
+      return dataGps.desvio
+    }
     if (g !== dataGps.g) dataGps = { g, em: agora, desvio: agora - g }
     else if (agora - dataGps.em > LEITURA_VELHA_MS || agora < dataGps.em) return null
     return dataGps.desvio

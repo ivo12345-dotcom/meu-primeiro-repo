@@ -1284,7 +1284,7 @@ test('decisão n.º 19 (relógio): com o relógio do Pi a mais de 60 s da hora d
   // o GPS (navigation.datetime) 5 min atrás do relógio do Pi, a andar (posto para o ciclo seguinte, que avança 1 min)
   const gps = (atraso) => { s.app.self['navigation.datetime'] = new Date(s.agora() + MIN - atraso).toISOString() }
   gps(5 * MIN); await s.ciclo()
-  assert.equal(s.app.self[RELOGIO]?.state ?? 'normal', 'normal', 'uma leitura só: ainda não se sabe se a hora do GPS anda')
+  assert.equal(s.app.self[RELOGIO].state, 'warn', 'uma leitura fresca chega (F2b Menor 2: antes esperava a 2.ª)')
   gps(5 * MIN); await s.ciclo()
   assert.equal(s.app.self[RELOGIO].state, 'warn')
   assert.equal(s.app.self[RELOGIO].message, 'Relógio do Pi desacertado 5 min da hora do GPS: o acompanhamento e as mensagens para terra estão parados — acerta a hora do Pi')
@@ -1526,5 +1526,31 @@ test('F2b Importante 3: num rasto normal (Cascais → Algés pela rota do plano,
   s.por(s.alt.pontosRota.at(-1), 0)
   for (let k = 0; k < 20 && s.p.planoAtivo().estado !== 'chegado'; k++) await s.ciclo()
   assert.equal(s.p.planoAtivo().estado, 'chegado')
+  s.p.stop()
+})
+
+test('F2b Menor 2 (decisão n.º 19): o relógio do Pi contra a hora do GPS conta logo na 1.ª leitura quando ela é fresca (recebida há ≤ 2 min) — o "Enviar plano" dá 422 no 1.º minuto depois de um arranque, sem esperar a 2.ª leitura; uma 1.ª leitura velha (o GPS parado) não conta até mudar', async () => {
+  const RELOGIO = 'notifications.rota.relogio'
+  // acabado de arrancar (nenhum ciclo), o GPS 5 min atrás do Pi, recebido agora: o envio recusa já
+  let s = await preparar({ enviar: false })
+  s.app.self['navigation.datetime'] = new Date(s.agora() - 5 * MIN).toISOString()
+  const x = await chamar(s.r.post['/plano-telegram'], { body: { id: s.id, alternativa: 0 } })
+  assert.equal(x.code, 422, x.erro)
+  assert.match(x.erro, /^o relógio do Pi está desacertado 5 min da hora do GPS/)
+  await s.ciclo(0)
+  assert.equal(s.app.self[RELOGIO].state, 'warn')
+  assert.equal((await chamar(s.r.get['/plano-ativo'])).relogioDesacertadoS, 300)
+  s.p.stop()
+  // a 1.ª leitura recebida há 3 min (o GPS parado): não se sabe; quando a hora do GPS muda, conta
+  s = await preparar({ enviar: false })
+  s.app.self['navigation.datetime'] = new Date(s.agora() - 5 * MIN).toISOString()
+  s.app.horas['navigation.datetime'] = new Date(s.agora() - 3 * MIN).toISOString()
+  assert.equal((await chamar(s.r.post['/plano-telegram'], { body: { id: s.id, alternativa: 0 } })).code, 202, 'uma leitura velha não é um relógio errado')
+  await s.ciclo()
+  assert.equal(s.app.self[RELOGIO]?.state ?? 'normal', 'normal')
+  delete s.app.horas['navigation.datetime']
+  s.app.self['navigation.datetime'] = new Date(s.agora() + MIN - 5 * MIN).toISOString()
+  await s.ciclo()
+  assert.equal(s.app.self[RELOGIO].state, 'warn')
   s.p.stop()
 })
