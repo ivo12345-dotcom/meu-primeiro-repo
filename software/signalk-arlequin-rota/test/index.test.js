@@ -826,3 +826,12 @@ test('auditoria I-32 (parte index.js): ao Ivo só frases em pt-PT — "sem rede"
   assert.ok(app.erros.some(m => /Resource not found/.test(m)), JSON.stringify(app.erros))
   p.stop()
 })
+
+test('auditoria I-37 (o require): o index.js carrega os modelos da AI por um caminho relativo (../signalk-arlequin-ia), como o lib/base.js faz com a polar — instalado com "npm install <pasta>" (o npm 11 não instala as dependências da pasta ligada) não depende do node_modules da rota', () => {
+  const fonte = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8')
+  assert.doesNotMatch(fonte, /require\(['"]signalk-arlequin-ia/)
+  const caminho = path.join(__dirname, '..', '..', 'signalk-arlequin-ia', 'lib', 'modelos.js')
+  assert.ok(fs.existsSync(caminho), caminho)
+  // o mesmo módulo que o lib/cenarios.js usa (o resolvido pelo node_modules aponta para a mesma pasta)
+  assert.equal(require.resolve(caminho), fs.realpathSync(require.resolve('signalk-arlequin-ia/lib/modelos')))
+})
