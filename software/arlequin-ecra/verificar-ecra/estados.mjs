@@ -163,6 +163,12 @@ export function estados () {
     ctx.notificacoes = alarmesMotor.map(([c, s, m]) => doServidor(c, { state: s, method: SOM, message: m, ...(c.endsWith('fuga') ? { apito: 'continuo' } : {}) }))
     junta('motor-agua-por-confirmar-6-alarmes-encher', barra({ lista: ctx.notificacoes }), motor.render(ctx))
   }
+  // o gasóleo sem leitura (F3b, item 6): o último nível, com a hora, e a recusa do Abasteci com a sonda perdida (a frase mais
+  // comprida do mosaico); o nível velho também na Carta
+  const nivelVelho = { idade: (p) => (p === 'tanks.fuel.0.currentLevel' ? 12 * 60e3 : 0) }
+  junta('motor-gasoleo-sem-leitura', barra(), motor.render(contexto(stm, estadoMotor({ msgGas: 'Não gravou: sem leitura da sonda do gasóleo (ADS1115, app I2C do OpenPlotter): não gravei nada; tenta outra vez quando a sonda voltar', msgGasErro: true }), nivelVelho)))
+  junta('motor-gasoleo-sem-leitura-noite', barra(), motor.render(contexto(stm, estadoMotor({ msgGas: 'Não gravou: sem leitura da sonda do gasóleo (ADS1115, app I2C do OpenPlotter): não gravei nada; tenta outra vez quando a sonda voltar', msgGasErro: true }), nivelVelho)), { noite: true })
+  junta('carta-gasoleo-sem-leitura', barra(), carta.render(contexto(stm, {}, nivelVelho)))
   junta('motor-teclado', barra(), motor.render(contexto(stm, estadoMotor({ teclado: { modo: 'abasteci', valor: '85,5' } }))))
   junta('motor-calibracao', barra(), motor.render(contexto(stm, estadoMotor({ calibAberta: true, calib: { ativa: true, total: 25, pontos: [0, 5, 10, 15, 20, 25].map(l => ({ litros: l, razao: 0.1 + l / 250 })), pendente: null, razaoAtual: 0.2, boiaParada: { de: 10, ate: 15 } }, confirmarCancelarCalib: true }))))
   junta('motor-bomba', barra(), motor.render(contexto(stm, estadoMotor({ bombaCalib: 0, agua: { tanques: [{ id: 0, nome: 'Cozinha (BB)', pedaladasCalibracao: 12, semSensor: false, nivelConhecido: true }] }, msgAgua: 'o plugin da água não responde' }))))

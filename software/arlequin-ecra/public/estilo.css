@@ -99,6 +99,8 @@ body.noite .largar { color: var(--texto); outline: 2px solid var(--azul); outlin
 .perigo { color: var(--perigo-txt); font-weight: bold; }
 .atencao { color: var(--amarelo-txt); }
 .ok { color: var(--ok); }
+/* "sem leitura (último 100 L, há 12 min)" no lugar dos litros do gasóleo: uma frase, não um número grande (dentro do .v) */
+.sem-leitura { font-size: 1rem; font-weight: normal; }
 .azul { color: var(--azul); }
 .bb-txt { color: var(--bb-txt); }
 .eb-txt { color: var(--eb-txt); }
