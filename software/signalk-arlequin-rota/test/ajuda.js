@@ -126,4 +126,32 @@ function posNoRasto (rasto, t) {
   return { lat: rasto[i].lat + f * (rasto[i + 1].lat - rasto[i].lat), lon: rasto[i].lon + f * (rasto[i + 1].lon - rasto[i].lon) }
 }
 
-module.exports = { H, AGORA, posNoRasto, costa, caisDe, fetchFalso, appFalso, rotas, chamar, esperarResultado, plugin, calcular }
+// Auditoria M-20 (uma constante por número): carrega outra vez um ficheiro do plugin com os exports de
+// outros trocados, para provar que um número vem de lá e não está escrito à mão (com os valores iguais,
+// comparar não o mostra). alvo e as chaves de trocas: caminhos a partir da pasta do plugin ('index.js',
+// 'lib/plano.js'); trocas: { 'lib/x.js': (exports) => os exports trocados }. Devolve os exports do alvo
+// carregado assim; no fim a cache dos módulos fica como estava (o resto do ficheiro de testes não vê nada).
+function comOutro (alvo, trocas) {
+  const raiz = path.join(__dirname, '..')
+  const pAlvo = require.resolve(path.join(raiz, alvo))
+  require(pAlvo) // o alvo e tudo o que ele carrega, já na cache com os valores verdadeiros
+  const antes = require.cache[pAlvo]
+  const repor = []
+  try {
+    for (const [dep, trocar] of Object.entries(trocas)) {
+      const pDep = require.resolve(path.join(raiz, dep))
+      require(pDep)
+      const m = require.cache[pDep]
+      const verdadeiros = m.exports
+      m.exports = trocar(verdadeiros)
+      repor.push(() => { m.exports = verdadeiros })
+    }
+    delete require.cache[pAlvo]
+    return require(pAlvo)
+  } finally {
+    for (const f of repor) f()
+    require.cache[pAlvo] = antes
+  }
+}
+
+module.exports = { H, AGORA, posNoRasto, costa, caisDe, fetchFalso, appFalso, rotas, chamar, esperarResultado, plugin, calcular, comOutro }

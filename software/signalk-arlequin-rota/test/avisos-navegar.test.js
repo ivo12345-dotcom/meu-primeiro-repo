@@ -320,3 +320,16 @@ test('auditoria M-19: o lembrete da chegada de noite leva a preposição do dest
   assert.equal(lembrete('Nazaré'), 'Às 16:00: chegada de noite à Nazaré')
   assert.equal(lembrete('Peniche'), 'Às 16:00: chegada de noite a Peniche')
 })
+
+test('auditoria M-20 (parte avisos-navegar.js): a antecedência dos lembretes e o "come e bebe" são os do desenho 3a (lib/avisos.js) e a reserva à chegada a da segurança (lib/seguranca.js), não números escritos à mão', () => {
+  const { comOutro } = require('./ajuda')
+  const outro = comOutro('lib/avisos-navegar.js', {
+    'lib/avisos.js': (a) => ({ ...a, PADRAO: Object.freeze({ ...a.PADRAO, antecedenciaMin: 20, comerCadaH: 2 }) }),
+    'lib/seguranca.js': (s) => ({ ...s, PADRAO: Object.freeze({ ...s.PADRAO, gasoleoMinL: 41, bateriaMinPct: 55 }) })
+  })
+  const L = (m) => [m.LIMITES.lembreteMin, m.LIMITES.comerH, m.LIMITES.gasoleoL, m.LIMITES.bateriaPct]
+  assert.deepEqual(L(outro), [20, 2, 41, 55])
+  const A3 = require('../lib/avisos').PADRAO
+  const S = require('../lib/seguranca').PADRAO
+  assert.deepEqual(L(av), [A3.antecedenciaMin, A3.comerCadaH, S.gasoleoMinL, S.bateriaMinPct])
+})

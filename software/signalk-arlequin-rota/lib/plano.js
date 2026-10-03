@@ -29,6 +29,8 @@ const { gpxRota } = require('./gpx')
 // a função partilhada do lib/costa.js (auditoria M-19)
 const { sitio } = require('./costa')
 const { slug } = require('./slug')
+// o limiar do "só motor" é o do veredicto (auditoria M-20: um só número)
+const { LIMIAR_VELA_H } = require('./decisao')
 
 const H = 3600000
 const MIN = 60000
@@ -90,18 +92,21 @@ function diaEHora (t, fuso = FUSO) {
 // "até às 17:09" (hoje) ou "até qua 30/09 às 17:09".
 const ateAs = (t, agora, fuso = FUSO) => `até ${asHoras(t, agora, fuso)}`
 
+// A hora de alarme: 2 h depois da chegada mais tarde (NAVEGACAO). Os atrasos para terra (lib/contactos.js)
+// usam o mesmo número (auditoria M-20).
+const ALARME_DEPOIS_MS = 2 * H
 function horaAlarme (alt) {
   const p90 = Date.parse(alt?.chegada?.p90)
-  return Number.isFinite(p90) ? p90 + 2 * H : null
+  return Number.isFinite(p90) ? p90 + ALARME_DEPOIS_MS : null
 }
 
 const virgula4 = (x) => Math.abs(x).toFixed(4).replace('.', ',')
 const posicaoTexto = (p) => (Number.isFinite(p?.lat) && Number.isFinite(p?.lon) ? `${virgula4(p.lat)} ${p.lat >= 0 ? 'N' : 'S'} ${virgula4(p.lon)} ${p.lon >= 0 ? 'E' : 'W'}` : null)
 const texto = (x) => (typeof x === 'string' && x.trim() ? x.trim() : null)
 
-// Uma "vela e motor" com menos de 0,1 h de vela (o cenário provável) vai toda a motor: o campo semVela
-// do plugin (horas em bruto); sem ele (resultados antigos), o horas.vela arredondado.
-const semVela = (alt) => (typeof alt.semVela === 'boolean' ? alt.semVela : Number.isFinite(alt.horas?.vela) && alt.horas.vela < 0.1)
+// Uma "vela e motor" com menos de 0,1 h de vela (o cenário provável; LIMIAR_VELA_H do lib/decisao.js) vai
+// toda a motor: o campo semVela do plugin (horas em bruto); sem ele (resultados antigos), o horas.vela arredondado.
+const semVela = (alt) => (typeof alt.semVela === 'boolean' ? alt.semVela : Number.isFinite(alt.horas?.vela) && alt.horas.vela < LIMIAR_VELA_H)
 
 // A propulsão em texto (a mesma no OpenCPN, no ecrã e no plano): "só motor", "vela e motor", ou
 // "a motor (sem vento para vela)" quando a "vela e motor" vai toda a motor (semVela).
@@ -219,4 +224,4 @@ function montarPlano ({ resultado, indice = 0, barco = {}, telefones = {}, agora
   return { texto: linhas.join('\n'), gpx, nomeFicheiro }
 }
 
-module.exports = { MRCC, EMERGENCIA_PADRAO, SEM_ALARME, CALCULO_ANTIGO, calculoAntigo, horaLisboa, asHoras, diaEHora, horaAlarme, rotaTexto, propulsaoTexto, semVela, posicaoTexto, montarPlano }
+module.exports = { MRCC, EMERGENCIA_PADRAO, SEM_ALARME, ALARME_DEPOIS_MS, CALCULO_ANTIGO, calculoAntigo, horaLisboa, asHoras, diaEHora, horaAlarme, rotaTexto, propulsaoTexto, semVela, posicaoTexto, montarPlano }

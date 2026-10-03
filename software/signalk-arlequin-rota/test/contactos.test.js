@@ -461,3 +461,14 @@ test('auditoria M-19 (parte contactos.js): "Cheguei bem à Nazaré", "à Figueir
   assert.equal(t('Algés (CNA)'), 'Cheguei bem a Algés (CNA) ter 29/09 às 21:00. Obrigado!')
   assert.equal(t(null), 'Cheguei bem ao destino ter 29/09 às 21:00. Obrigado!')
 })
+
+test('auditoria M-20 (parte contactos.js): a hora de alarme de um atraso é a chegada prevista + as 2 h do plano (plano.ALARME_DEPOIS_MS: um só número)', () => {
+  const { comOutro } = require('./ajuda')
+  const outro = comOutro('lib/contactos.js', { 'lib/plano.js': (p) => ({ ...p, ALARME_DEPOIS_MS: 3 * H }) })
+  const p90 = T0 + 4 * H
+  const caso = { chegadaAgora: p90 + 40 * MIN, p90, alarmePlano: p90 + 2 * H, agora: T0 }
+  const a = outro.decidirAtraso(null, caso)
+  assert.equal(a.alarme - a.chegada, 3 * H)
+  const b = ct.decidirAtraso(null, caso)
+  assert.equal(b.alarme - b.chegada, require('../lib/plano').ALARME_DEPOIS_MS)
+})
