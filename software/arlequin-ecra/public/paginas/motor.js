@@ -150,7 +150,7 @@ function painelBomba (ctx) {
   return `<div class="teclado"><div class="tile teclado-caixa">
 <div class="vv">Calibrar a bomba: ${esc(t?.nome || '')}</div>
 <div style="font-size:1.15rem;margin:.5rem 0;">Bombeia água para uma <b>jarra de 1 L</b> até encher e carrega em Terminar.</div>
-<div class="vvv">${t?.pedaladasCalibracao ?? 0} <span style="font-size:1.4rem;">pedaladas</span></div>
+<div class="vvv">${num(t?.pedaladasCalibracao, 0)} <span style="font-size:1.4rem;">pedaladas</span></div>
 ${ctx.estado.msgAgua ? `<div class="perigo">${esc(ctx.estado.msgAgua)}</div>` : ''}
 <div class="acoes" style="margin-top:.6rem;"><button class="acao go" data-acao="bomba-terminar">Terminar (1 L)</button><button class="acao stop" data-acao="bomba-cancelar">Cancelar</button></div>
 </div></div>`
@@ -289,7 +289,8 @@ ${sess === undefined ? '<div class="lab">a carregar…</div>' : sess === null ? 
       const rota = modo === 'abasteci' ? 'abastecimento' : 'calibrar'
       try {
         const r = await ctx.pedir(`/plugins/signalk-arlequin-gasoleo/${rota}`, { method: 'POST', body: { litros: valor } })
-        e.msgGas = modo === 'abasteci' ? `Abastecimento registado: ${Math.round(r.antes)} → ${Math.round(r.depois)} L` : `Calibrado: ${valor} L`
+        // os litros de antes e de depois só se a resposta os trouxer (revisão F3, Minor 14: dava "NaN → NaN L")
+        e.msgGas = modo === 'abasteci' ? `Abastecimento registado${ok(r?.antes) && ok(r?.depois) ? `: ${Math.round(r.antes)} → ${Math.round(r.depois)} L` : ''}` : `Calibrado: ${valor} L`
         e.msgGasErro = false
         e.gasEm = 0
       } catch (err) {

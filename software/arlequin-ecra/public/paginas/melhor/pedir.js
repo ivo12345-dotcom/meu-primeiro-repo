@@ -6,7 +6,7 @@
 
 import { esc, num } from '../../lib/rota-texto.js'
 import { proximoWp } from '../comum.js'
-import { SEM_AUTORIZACAO } from '../../lib/erros.js'
+import { SEM_AUTORIZACAO, explicado } from '../../lib/erros.js'
 import { planoAberto } from './aberto.js'
 
 export const URL_ROTA = '/plugins/signalk-arlequin-rota'
@@ -44,7 +44,6 @@ export const botaoVoltarLeme = (ctx) => (rotaAtiva(ctx) || planoAberto(ctx) ? '<
 // o há ({ erro } na resposta); sem resposta, "não responde"; sem explicação, o que o código quer dizer.
 //   se404: o texto para um 404 (ex.: o /resultado de um cálculo que o plugin já não tem);
 //   desligado503: um 503 diz "o plugin da rota não responde (motivo)" (os pedidos de leitura).
-const explicado = (m) => typeof m === 'string' && m.trim() !== '' && !/^\d{3}$/.test(m.trim())
 export function motivoPlugin (err, { se404 = null, desligado503 = true } = {}) {
   const s = err?.status
   const msg = err?.message

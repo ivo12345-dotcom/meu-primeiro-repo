@@ -21,8 +21,9 @@ const DO_SERVIDOR = {
 }
 export const doServidor = (m) => (typeof m === 'string' ? DO_SERVIDOR[m.trim()] ?? null : null)
 
-// Uma mensagem que explica (a do plugin, em pt-PT), não só o código.
-const explicado = (m) => typeof m === 'string' && m.trim() !== '' && !/^\d{3}$/.test(m.trim()) && m !== SEM_LIGACAO
+// Uma mensagem que explica (a do plugin, em pt-PT), não só o código. A única definição: a Melhor rota
+// (paginas/melhor/pedir.js) importa-a daqui (revisão F3, Minor 15).
+export const explicado = (m) => typeof m === 'string' && m.trim() !== '' && !/^\d{3}$/.test(m.trim()) && m !== SEM_LIGACAO
 
 // A frase do que falhou. quem: "o plugin do gasóleo", "a caixa negra", "a AI", "o diário"…
 export function motivo (err, quem = 'o plugin') {
