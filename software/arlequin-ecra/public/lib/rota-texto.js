@@ -121,14 +121,52 @@ export function nomeAlternativa (alt = {}) {
   return semVela(alt) ? alt.nome.replace(/vela e motor$/, SEM_VENTO_VELA) : alt.nome
 }
 
-// As preposições com os nomes dos portos (auditoria M-19): os femininos levam o artigo — "à Nazaré", "na
-// Figueira da Foz", "à Ericeira" —, os outros não ("a Cascais", "em Peniche"). A mesma lista que o plugin da
-// rota (os portos da rota, os fundeadouros e os nomes de sítio femininos dos pontos).
-// (sem \b: no JavaScript o \b não conta o \"é\" como letra)
-const FEMININOS = /^(Nazaré|Figueira|Ericeira|Berlengas?|Póvoa|Costa|Fonte|Praia|Ponta|Baía|Ilha|Barra|Enseada|Lagoa|Linha|Foz|Boia|Bóia)(?!\p{L})/iu
-const feminino = (nome) => FEMININOS.test(String(nome ?? '').trim())
-export const aNome = (nome) => `${feminino(nome) ? 'à' : 'a'} ${nome}`
-export const emNome = (nome) => `${feminino(nome) ? 'na' : 'em'} ${nome}`
+// ---------- os nomes dos sítios: o artigo e as preposições (auditoria M-19; F3b item 8) ----------
+// A MESMA tabela e as MESMAS regras de signalk-arlequin-rota/lib/costa.js (sitio.a, sitio.em…), que o plugin usa nos
+// textos que manda aos contactos: "à Nazaré", "na Figueira da Foz", "ao Porto", "às Berlengas", "aos Farilhões", "em
+// Peniche", "em Lagoa". O ecrã é um módulo do browser e não pode carregar o costa.js (CommonJS, com a costa e os
+// dados): copia a tabela, sem lhe mudar uma letra, e test/sitios.test.mjs compara o texto das duas e o resultado sobre
+// os destinos da rota e os nomes do plugin. (Antes o ecrã tinha uma lista só de femininos, com a Lagoa e as Berlengas
+// no singular, e dizia "a Porto" e "à Berlengas".) Quem mudar uma tem de mudar a outra.
+const SEM_ARTIGO = /^(Porto Covo|Porto de Mós)(?![\p{L}\p{N}])/iu
+const ARTIGOS = Object.freeze([
+  ['as', /^(Berlengas|Estelas|Caldas)(?![\p{L}\p{N}])/iu],
+  ['os', /^(Farilhões|Açores)(?![\p{L}\p{N}])/iu],
+  ['a', /^(Nazaré|Figueira|Ericeira|Berlenga|Póvoa|Costa|Fonte|Arrábida|Linha|Ponta|Barra|Ilha|Baía|Praia|Foz|Enseada|Boia|Bóia|Marina|Doca|Ria|Posição|Desistência)(?![\p{L}\p{N}])/iu],
+  ['o', /^(Porto|Cabo|Largo|Canal|Cais|Ilhéu|Bugio|Farol|Molhe|Portinho|Cachopo|Banco|Rio|Pontal|Algarve|Tejo|Sado|Mondego|Destino|Fim|Fundeadouro|WP\d*)(?![\p{L}\p{N}])/iu]
+])
+const COMUNS = /^(Posição atual|Destino|Desistência|Fim da rota ativa)$/
+const CONTRACOES = Object.freeze({
+  a: { '': 'a', a: 'à', o: 'ao', as: 'às', os: 'aos' },
+  em: { '': 'em', a: 'na', o: 'no', as: 'nas', os: 'nos' },
+  de: { '': 'de', a: 'da', o: 'do', as: 'das', os: 'dos' },
+  por: { '': 'por', a: 'pela', o: 'pelo', as: 'pelas', os: 'pelos' },
+  para: { '': 'para', a: 'para a', o: 'para o', as: 'para as', os: 'para os' },
+  ate: { '': 'até', a: 'até à', o: 'até ao', as: 'até às', os: 'até aos' },
+  junto: { '': 'junto a', a: 'junto à', o: 'junto ao', as: 'junto às', os: 'junto aos' },
+  com: { '': '', a: 'a', o: 'o', as: 'as', os: 'os' } // só o artigo: "entre Peniche e a Nazaré"
+})
+// O nome como vai a meio da frase (as palavras comuns com minúscula).
+const noTexto = (nome) => { const n = String(nome ?? '').trim(); return COMUNS.test(n) ? n.charAt(0).toLowerCase() + n.slice(1) : n }
+// O artigo do nome: 'a' | 'o' | 'as' | 'os' | '' (sem artigo).
+export function artigo (nome) {
+  const n = noTexto(nome)
+  if (!n || SEM_ARTIGO.test(n)) return ''
+  for (const [a, re] of ARTIGOS) if (re.test(n)) return a
+  return ''
+}
+// A preposição (a, em, de, por, para, ate, junto, com) com o nome: preposicao('em', 'Nazaré') → "na Nazaré".
+export function preposicao (prep, nome) {
+  const t = CONTRACOES[prep]
+  if (!t) throw new Error(`preposição desconhecida: ${prep}`)
+  const n = noTexto(nome)
+  const p = t[artigo(n)]
+  return p ? `${p} ${n}` : n
+}
+// sitio.a('Nazaré') → "à Nazaré", sitio.em('Peniche') → "em Peniche", sitio.de('Posição atual') → "da posição atual"…
+export const sitio = Object.freeze(Object.fromEntries(Object.keys(CONTRACOES).map(k => [k, (nome) => preposicao(k, nome)])))
+export const aNome = (nome) => sitio.a(nome)
+export const emNome = (nome) => sitio.em(nome)
 
 const CORES = { segue: 'verde', espera: 'amarelo', 'nao-recomendado': 'laranja', volta: 'vermelho' }
 export const corVeredicto = (tipo) => CORES[tipo] || 'cinzento'
