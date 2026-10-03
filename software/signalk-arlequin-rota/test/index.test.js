@@ -863,3 +863,27 @@ test('auditoria M-24: os pedidos à API do servidor têm o mesmo limite de tempo
   assert.equal(b.erro, 'não ativei a rota: o SignalK não respondeu a tempo')
   p.stop()
 })
+
+test('auditoria M-29: no OpenCPN, "direta (salto curto)" só numa alternativa direta (alt.direto, como o plano); uma que não é direta e não tem afastamento não leva "direta"', async () => {
+  const calculo = require('../lib/calculo')
+  const original = calculo.calcular
+  const pts = [{ lat: 39.35, lon: -9.38, nome: 'Peniche (partida)' }, { lat: 39.59, lon: -9.08, nome: 'Nazaré' }]
+  const comum = { partida: '2026-09-29T14:32:00.000Z', chegada: { p10: '2026-09-29T20:00:00.000Z', p50: '2026-09-29T20:30:00.000Z', p90: '2026-09-29T21:00:00.000Z' }, propulsao: 'vela', pontosRota: pts, rota: pts.map(p => [p.lat, p.lon]), canal: null, nota: null, milhas: 18 }
+  const semAfastamento = { ...comum, id: 'x-vela', nome: 'Agora, vela e motor', afastamento: null, direto: false }
+  calculo.calcular = async () => ({ veredicto: { tipo: 'segue', texto: 'Segue agora', porque: [] }, destino: { id: 'nazare', nome: 'Nazaré' }, alternativas: [semAfastamento] })
+  try {
+    const app = appFalso()
+    app.leiturasFalhadas = 0
+    const { p, r } = plugin(app)
+    p.start({ pasta: path.join(app.dir, 'dados') })
+    const id = (await chamar(r.post['/calcular'], { body: { destino: 'nazare', tripulacao: 'so' } })).id
+    await esperarResultado(r, id)
+    const a = await chamar(r.post['/ativar'], { body: { id, alternativa: 0 } })
+    assert.equal(a.code, 200, a.erro)
+    const d = app.recursos.get(`routes/${a.rota}`).description
+    assert.match(d, /^Melhor rota: vela e motor, partida /)
+    assert.doesNotMatch(d, /direta/)
+    assert.equal(require('../lib/plano').rotaTexto(semAfastamento), 'vela e motor')
+    p.stop()
+  } finally { calculo.calcular = original }
+})
