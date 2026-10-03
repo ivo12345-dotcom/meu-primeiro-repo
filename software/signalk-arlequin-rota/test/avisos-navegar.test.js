@@ -75,7 +75,8 @@ test('recalcula pelo vento: ±31 % e mais de 4 nós durante 30 min seguidos (29 
   assert.equal(st(correr(av.novoEstado(), 0, 60, base({ vento: null })), 'recalcula'), 'normal')
   // os dois motivos na mensagem
   const dois = correr(av.novoEstado(), 0, 30, { ...vento(24, 18), atrasoMin: 40 })
-  assert.equal(dois.avisos['notifications.rota.recalcula'].message, 'Recalcula a rota: atraso de 40 min sobre o plano · vento de 24 nós, previsto 18 (+33 %)')
+  // (33,3 %: a percentagem arredonda para cima, para o lado do aviso — auditoria M-23)
+  assert.equal(dois.avisos['notifications.rota.recalcula'].message, 'Recalcula a rota: atraso de 40 min sobre o plano · vento de 24 nós, previsto 18 (+34 %)')
 })
 
 test('recalcula apaga-se quando o atraso e o vento voltam ao normal durante 10 min seguidos', () => {
@@ -107,7 +108,8 @@ test('recursos: gasóleo à chegada < 40 L (39 sim, 40 não) ou bateria < 50 % (
 test('previsão: 6 h nada, mais de 6 h warn, mais de 12 h alarm com o apito curto e o texto; sem previsão nenhuma, alarm', () => {
   const p = (h) => av.avaliar(av.novoEstado(), base({ previsaoIdadeH: h }), T0).avisos['notifications.rota.previsao']
   assert.equal(p(6).state, 'normal')
-  assert.deepEqual(p(6.2), { state: 'warn', method: METODO, message: 'Previsão com 6 h' })
+  // (auditoria M-23: a idade arredonda para o lado do aviso, para cima — o aviso de "mais de 6 h" nunca diz 6 h)
+  assert.deepEqual(p(6.2), { state: 'warn', method: METODO, message: 'Previsão com 7 h' })
   assert.deepEqual(p(12), { state: 'warn', method: METODO, message: 'Previsão com 12 h' })
   assert.deepEqual(p(12.6), { state: 'alarm', method: METODO, apito: 'curto', message: 'Previsão com 13 h: confia nos instrumentos e no barómetro' })
   assert.deepEqual(p(null), { state: 'alarm', method: METODO, apito: 'curto', message: 'Sem previsão: confia nos instrumentos e no barómetro' })
@@ -298,4 +300,16 @@ test('auditoria I-17: o lembrete do evento "Visibilidade X km: radar ligado" (se
   const L = (id) => `notifications.rota.lembrete.${id}`
   assert.deepEqual(av.avaliar(av.novoEstado(), base({ eventos }), T0 + 30 * MIN).avisos[L('v1')], { state: 'alert', method: METODO, message: 'Às 16:00: pouca visibilidade — radar ligado e luzes' })
   assert.equal(av.avaliar(av.novoEstado(), base({ eventos }), T0 + 150 * MIN).avisos[L('v2')].message, 'Às 18:00: chuva e pouca visibilidade — radar ligado e luzes')
+})
+
+test('auditoria M-23: os números das mensagens arredondam para o lado do aviso — a idade da previsão e a percentagem do vento para cima (o recalcula de "mais de 30 %" nunca diz +30 %)', () => {
+  const p = (h) => av.avaliar(av.novoEstado(), base({ previsaoIdadeH: h }), T0).avisos['notifications.rota.previsao'].message
+  assert.equal(p(6.2), 'Previsão com 7 h')
+  assert.equal(p(12.4), 'Previsão com 13 h: confia nos instrumentos e no barómetro')
+  // 30,4 % e mais de 4 nós (23,472 contra 18) durante 30 min
+  const v = { medido: 23.472, previsto: 18, desvioNos: 5.472, desvioPct: 30.4 }
+  const r = correr(av.novoEstado(), 0, 30, base({ vento: v }))
+  assert.equal(r.avisos['notifications.rota.recalcula'].message, 'Recalcula a rota: vento de 23 nós, previsto 18 (+31 %)')
+  const abaixo = { medido: 12.528, previsto: 18, desvioNos: -5.472, desvioPct: -30.4 }
+  assert.equal(correr(av.novoEstado(), 0, 30, base({ vento: abaixo })).avisos['notifications.rota.recalcula'].message, 'Recalcula a rota: vento de 13 nós, previsto 18 (−31 %)')
 })
