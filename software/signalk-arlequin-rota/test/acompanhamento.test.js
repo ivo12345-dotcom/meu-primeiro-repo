@@ -263,17 +263,17 @@ test('Tarefa 8.5: rotação do vento — onde o twd do rasto roda mais de 45° e
   assert.deepEqual(ac.lembretesDoPlano(planoV(sem)).filter(e => e.tipo === 'vento'), [])
 })
 
-test('Tarefa 8.5: chuva e visibilidade — com a visibilidade prevista no rasto, o lembrete é com < 5 km (a 1.ª hora de cada episódio) e substitui o da 3a (< 3 km); sem ela, fica o da 3a', () => {
+test('Tarefa 8.5 e auditoria I-17: visibilidade — com a visibilidade prevista no rasto, o lembrete é com < 5 km (a 1.ª hora de cada episódio) e substitui o da 3a; "Chuva e" só no episódio em que a 3a diz que chove (o rasto não tem a chuva); sem ela, fica o da 3a', () => {
   const vis = (i) => (i >= 12 && i < 15 ? 4200 : i >= 24 && i < 26 ? 2500 : 20000)
   const da3a = { t: iso(T0 + 4 * H), hora: '17:00', tipo: 'tempo', texto: 'Chuva e visibilidade 2,5 km: radar ligado' }
   const x = ac.lembretesDoPlano(planoV(rastoV({ vis }), [da3a]))
   assert.deepEqual(x.filter(e => e.tipo === 'tempo').map(e => [e.t, e.texto]), [
-    [iso(T0 + 2 * H), 'Chuva e visibilidade 4,2 km: radar ligado'],
+    [iso(T0 + 2 * H), 'Visibilidade 4,2 km: radar ligado'],
     [iso(T0 + 4 * H), 'Chuva e visibilidade 2,5 km: radar ligado']
   ])
   // nos eventos do acompanhamento: o da 3a sai (está no rasto), ficam os dois do rasto
   const r = ac.acompanhar(ac.novoEstado(), { plano: planoV(rastoV({ vis }), [da3a]), posicao: A, agora: T0 })
-  assert.equal(r.resultado.eventos.filter(e => /^Chuva/.test(e.texto)).length, 2)
+  assert.equal(r.resultado.eventos.filter(e => /^(Chuva|Visibilidade)/.test(e.texto)).length, 2)
   // sem a visibilidade no rasto: fica o da 3a
   const sem = rastoV().map(({ vis: _v, ...p }) => p)
   const k = ac.acompanhar(ac.novoEstado(), { plano: planoV(sem, [da3a]), posicao: A, agora: T0 })
@@ -342,4 +342,21 @@ test('revisão final M1 (sonda E): ida e volta — a navegar, sem posição ante
   const pos = c.deslocar(norte(A, 0.6), 90, 0.04)
   const r = ac.acompanhar(ac.novoEstado(), { plano: p, posicao: pos, agora: T0 + 8 * MIN })
   assert.ok(Math.abs(r.resultado.milhas - 0.6) < 0.05, `${r.resultado.milhas} (de ${linha.total.toFixed(2)})`)
+})
+
+test('auditoria I-17 (decisão n.º 10): o evento de visibilidade da 3a vem agora como "Visibilidade X km: radar ligado" quando não chove (F1) — com a visibilidade no rasto sai na mesma (sem lembretes a dobrar), o texto curto é "visibilidade", e o lembrete do rasto só diz "Chuva e" quando a 3a diz que chove nesse episódio; o limite é o do lib/avisos.js', () => {
+  const { VISIBILIDADE_RADAR_M } = require('../lib/avisos')
+  assert.equal(VISIBILIDADE_RADAR_M, 5000)
+  // um episódio de 4,9 km (às 2 h) e outro de 5,0 km (não conta: menos de 5 km)
+  const vis = (i) => (i >= 12 && i < 15 ? 4900 : i >= 24 && i < 26 ? 5000 : 20000)
+  const da3a = { t: iso(T0 + 2 * H), hora: '17:00', tipo: 'tempo', texto: 'Visibilidade 4,9 km: radar ligado' }
+  const x = ac.lembretesDoPlano(planoV(rastoV({ vis }), [da3a]))
+  assert.deepEqual(x.filter(e => e.tipo === 'tempo').map(e => [e.t, e.texto]), [[iso(T0 + 2 * H), 'Visibilidade 4,9 km: radar ligado']])
+  const r = ac.acompanhar(ac.novoEstado(), { plano: planoV(rastoV({ vis }), [da3a]), posicao: A, agora: T0 })
+  assert.equal(r.resultado.eventos.filter(e => e.tipo === 'tempo').length, 1, 'o da 3a sai: não fica a dobrar')
+  // sem a visibilidade no rasto, fica o da 3a, com o texto curto certo
+  const sem = rastoV().map(({ vis: _v, ...p }) => p)
+  const k = ac.acompanhar(ac.novoEstado(), { plano: planoV(sem, [da3a]), posicao: A, agora: T0 })
+  assert.deepEqual(k.resultado.eventos.filter(e => e.tipo === 'tempo').map(e => [e.texto, e.curto]), [[da3a.texto, 'visibilidade']])
+  assert.equal(ac.textoCurto({ tipo: 'tempo', texto: 'Chuva e visibilidade 2,5 km: radar ligado' }), 'chuva e visibilidade')
 })

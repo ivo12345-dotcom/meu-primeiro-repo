@@ -88,6 +88,8 @@ function textoLembrete (e, t, agora, { chegadaNoite, destino }) {
   if (e.tipo === 'vela') return `${quando}: ${e.texto}`
   if (e.tipo === 'noite' && /^pôr do sol/i.test(e.texto)) return `${quando}: pôr do sol — luzes, arnês, come antes de escurecer`
   if (e.tipo === 'tempo' && /^chuva/i.test(e.texto)) return `${quando}: chuva e pouca visibilidade — radar ligado e luzes`
+  // sem chuva, o evento da 3a diz só "Visibilidade X km" (auditoria I-17: antes este lembrete perdia-se)
+  if (e.tipo === 'tempo' && /^visibilidade/i.test(e.texto)) return `${quando}: pouca visibilidade — radar ligado e luzes`
   if (e.tipo === 'tempo' && /frente|roda/i.test(e.texto)) return `${quando}: ${e.texto}`
   if (e.tipo === 'chegada' && chegadaNoite) return `${quando}: chegada de noite a ${destino || 'destino'}`
   // os gerados do plano (Tarefa 8.5): a viragem num ponto da rota e a rotação do vento previsto

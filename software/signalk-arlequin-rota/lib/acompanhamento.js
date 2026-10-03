@@ -15,8 +15,9 @@
 // rota —, vela — rizar e largar rizo —, motor e chegada) deslizam com o atraso; os de hora fixa (noite
 // — pôr e nascer do sol —, tempo — chuva, visibilidade, frente — e os outros) ficam na hora do plano.
 // Mais os lembretes gerados do plano (lembretesDoPlano, Tarefa 8.5): a viragem (> 45° num ponto da
-// rota, de sítio), a rotação do vento previsto (> 45° em 1 h, hora fixa) e a chuva e visibilidade
-// (< 5 km, com a visibilidade prevista no rasto; sem ela, o evento da 3a, < 3 km).
+// rota, de sítio), a rotação do vento previsto (> 45° em 1 h, hora fixa) e a visibilidade (< 5 km, um
+// por episódio, com a visibilidade prevista no rasto; sem ela, o evento da 3a, também < 5 km: a mesma
+// constante do lib/avisos.js, decisão do Ivo n.º 10, auditoria I-17).
 // O deslize é o atraso arredondado ao minuto.
 // Chegada prevista agora = a chegada provável do plano (chegada.p50) + atraso; de noite ou não, pelo
 // nascer e pôr do sol no cais (lib/sol.js).
@@ -32,7 +33,7 @@ const { litrosHora } = require('./base')
 const { criarEnergia } = require('./energia')
 const { nasceresPores } = require('./sol')
 const { noitePeloSol } = require('./passagem')
-const { PADRAO: AVISOS_3A } = require('./avisos')
+const { PADRAO: AVISOS_3A, VISIBILIDADE_RADAR_M } = require('./avisos')
 
 const MIN = 60000
 const H = 3600000
@@ -50,7 +51,6 @@ const ROTACAO_INICIO_GRAUS = 5 // o início da rotação: o último ponto ainda 
 const VENTO_MIN_ROTACAO = AVISOS_3A.ventoMinRotacao
 const ROTACAO_ESPACO_MS = 3 * H
 const ROTACAO_FRENTE_MS = H
-const VIS_LEMBRETE_M = 5000 // chuva e visibilidade: < 5 km (o desenho)
 const iso = (t) => new Date(t).toISOString()
 
 // ---------- a rota e o rasto ----------
@@ -106,10 +106,14 @@ function media (amostras, campo = 'v') {
 
 // ---------- eventos ----------
 const minuscula = (s) => s.charAt(0).toLowerCase() + s.slice(1)
+// o evento de visibilidade da 3a: "Chuva e visibilidade X km: radar ligado" (com chuva) ou "Visibilidade X km:
+// radar ligado" (sem chuva: o texto desde 02/10, auditoria I-17)
+const EVENTO_VISIBILIDADE = /^(chuva|visibilidade)/i
 function textoCurto (e) {
   const t = String(e.texto || '').trim()
   if (e.tipo === 'tempo') {
     if (/^chuva/i.test(t)) return 'chuva e visibilidade'
+    if (/^visibilidade/i.test(t)) return 'visibilidade'
     if (/^passagem da frente/i.test(t)) return 'passagem da frente'
   }
   const curto = t.split(/:| \(|,/)[0].trim() || e.tipo
@@ -130,7 +134,7 @@ function deslizarEventos (eventos = [], atraso = null) {
 const difAngulo = (a, b) => Math.abs((((b - a) % 360) + 540) % 360 - 180)
 const grau = (x) => Math.round(((x % 360) + 360) % 360)
 const virgula = (x) => x.toFixed(1).replace('.', ',')
-const daChuva3a = (e) => e.tipo === 'tempo' && /^chuva/i.test(String(e.texto || ''))
+const daChuva3a = (e) => e.tipo === 'tempo' && EVENTO_VISIBILIDADE.test(String(e.texto || ''))
 // "na Linha de 5 MN", "na Ponta da …"; os outros (cabos, largos, portos, WPn) levam "no"
 const FEMININOS = /^(Linha|Ponta|Barra|Ilha|Baía|Praia|Berlenga|Foz|Enseada|Boia|Bóia)\b/i
 const comVisibilidade = (plano) => (plano.alternativa?.rasto || []).some(p => Number.isFinite(p.vis))
@@ -143,8 +147,9 @@ const comVisibilidade = (plano) => (plano.alternativa?.rasto || []).some(p => Nu
 //     em que começa a rodar (X) e até onde para de se afastar (Y) (hora fixa); só com o tws previsto de 6
 //     nós ou mais nas duas pontas (sem tws no rasto, um plano antigo, nada), no mínimo 3 h entre eles e
 //     nenhum a ±1 h de uma "Passagem da frente" (revisão final I4);
-//   tempo: com a visibilidade prevista no rasto, "Chuva e visibilidade X km: radar ligado" no 1.º ponto de
-//     cada troço com menos de 5 km (sem ela no rasto, fica o evento da 3a, com menos de 3 km).
+//   tempo: com a visibilidade prevista no rasto, "Visibilidade X km: radar ligado" no 1.º ponto de cada troço
+//     com menos de 5 km — "Chuva e visibilidade" só quando o evento da 3a desse troço diz que chove (o rasto
+//     não tem a chuva); sem ela no rasto, fica o evento da 3a, também por episódio e com menos de 5 km.
 function lembretesDoPlano (plano, rota = prepararRota(plano)) {
   const out = []
   const pts = plano.alternativa?.pontosRota || []
@@ -183,12 +188,20 @@ function lembretesDoPlano (plano, rota = prepararRota(plano)) {
     }
     j = b
   }
-  let antes = null
+  // os episódios de visibilidade < 5 km no rasto: [{ i, inicio, fim, vis }]
+  const episodios = []
   for (const [i, p] of rasto.entries()) {
-    if (!Number.isFinite(p.vis)) continue
-    const baixa = p.vis < VIS_LEMBRETE_M
-    if (baixa && !antes) out.push({ id: `c${i}`, t: iso(p.t), tipo: 'tempo', texto: `Chuva e visibilidade ${virgula(p.vis / 1000)} km: radar ligado` })
-    antes = baixa
+    if (!Number.isFinite(p.vis)) { episodios.aberto = false; continue }
+    const baixa = p.vis < VISIBILIDADE_RADAR_M
+    if (baixa && !episodios.aberto) episodios.push({ i, inicio: p.t, fim: p.t, vis: p.vis })
+    else if (baixa) episodios.at(-1).fim = p.t
+    episodios.aberto = baixa
+  }
+  // a chuva diz-a o evento da 3a do mesmo episódio (com 10 min de folga: o rasto é de 10 em 10 min)
+  const chuvas3a = (plano.alternativa?.eventos || []).filter(e => e.tipo === 'tempo' && /^chuva/i.test(String(e.texto || ''))).map(e => Date.parse(e.t)).filter(Number.isFinite)
+  for (const ep of episodios) {
+    const chove = chuvas3a.some(t => t >= ep.inicio - 10 * MIN && t <= ep.fim + 10 * MIN)
+    out.push({ id: `c${ep.i}`, t: iso(ep.inicio), tipo: 'tempo', texto: `${chove ? 'Chuva e visibilidade' : 'Visibilidade'} ${virgula(ep.vis / 1000)} km: radar ligado` })
   }
   return out
 }
