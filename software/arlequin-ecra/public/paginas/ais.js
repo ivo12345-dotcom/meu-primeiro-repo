@@ -2,7 +2,7 @@
 
 import { LIMITES_AIS } from '../lib/cpa.js'
 import { acaoCalar, dadosCalar } from '../lib/alarmes.js'
-import { tipoAis, leituraCpa, semONossoRumo, SO_DISTANCIA, SEM_O_NOSSO_RUMO } from '../lib/ais.js'
+import { tipoAis, leituraCpa, semONossoRumo, semRumoTexto, SEM_O_NOSSO_RUMO, EM_PORTO_AVISO } from '../lib/ais.js'
 import { velocidade, distancia, duracao, rumo, num, tile, esc } from './comum.js'
 
 const ESTADO = { perigo: 'PERIGO', atencao: 'atenção', seguro: 'seguro', afasta: 'afasta-se', desconhecido: '—' }
@@ -13,7 +13,7 @@ function celulasCpa (r) {
   const l = leituraCpa(r)
   if (l.tipo === 'cpa') return `<td>${distancia(l.cpa)} MN</td><td>${duracao(l.tcpa)}</td>`
   if (l.tipo === 'paralelo') return `<td>${distancia(l.cpa)} MN</td><td>—</td>`
-  if (l.tipo === 'distancia') return `<td colspan="2" class="lab">${SO_DISTANCIA}</td>`
+  if (l.tipo === 'distancia') return `<td colspan="2" class="lab">${semRumoTexto(l.semVelocidade)}</td>`
   return '<td>—</td><td>—</td>'
 }
 // e no detalhe do alvo escolhido
@@ -22,7 +22,7 @@ function textoCpa (r) {
   if (l.tipo === 'cpa') return `${distancia(l.cpa, 2)} MN · ${duracao(l.tcpa)}`
   if (l.tipo === 'paralelo') return `${distancia(l.cpa, 2)} MN · —`
   if (l.tipo === 'afasta') return 'afasta-se'
-  if (l.tipo === 'distancia') return SO_DISTANCIA
+  if (l.tipo === 'distancia') return semRumoTexto(l.semVelocidade)
   return '—'
 }
 
@@ -46,8 +46,10 @@ export default {
       : ''
     // sem o nosso COG/SOG (o GPS não o dá) não há CPA nem TCPA de nenhum alvo: diz-se numa linha, por cima da tabela
     const semRumo = semONossoRumo(ctx.alvos) ? `<div class="tile atencao" style="flex:0 0 auto;">${SEM_O_NOSSO_RUMO}</div>\n` : ''
+    // em porto (contrato C12): os parados ficam a amarelo e não apitam; diz-se porquê (uma linha, como a de cima)
+    const emPorto = ctx.emPorto ? `<div class="tile atencao" style="flex:0 0 auto;">${EM_PORTO_AVISO}</div>\n` : ''
     return `<div class="col">
-${semRumo}<div class="tile rolar" data-rolar="ais-alvos" style="flex:1;"><table class="grande"><tr><th>Nome</th><th>Tipo</th><th>Dist.</th><th>Marc.</th><th>SOG/COG</th><th>CPA</th><th>TCPA</th><th>Estado</th></tr>${linhas || '<tr><td colspan="8" class="lab">Sem alvos AIS</td></tr>'}</table></div>
+${emPorto}${semRumo}<div class="tile rolar" data-rolar="ais-alvos" style="flex:1;"><table class="grande"><tr><th>Nome</th><th>Tipo</th><th>Dist.</th><th>Marc.</th><th>SOG/COG</th><th>CPA</th><th>TCPA</th><th>Estado</th></tr>${linhas || '<tr><td colspan="8" class="lab">Sem alvos AIS</td></tr>'}</table></div>
 ${detalhe}
 <div class="g3">${tile('Alarme CPA', `&lt; ${num(LIMITES_AIS.cpa / 1852, 1)} MN`, '', 'vv')}${tile('Alarme TCPA', `&lt; ${LIMITES_AIS.tcpa / 60} min`, '', 'vv')}${tile('Alvos à vista', `${ctx.alvos.length} · ${ctx.alvos.filter(x => x.classe === 'perigo').length} em perigo`, '', 'vv')}</div>
 </div>`

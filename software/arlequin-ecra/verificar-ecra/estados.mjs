@@ -213,8 +213,17 @@ export function estados () {
   junta('ais-noite', barra({ lista: ctxAis.notificacoes }), ais.render(ctxAis), { noite: true })
   const semCog = { ...ctxAis, alvos: alvosAis({ vessels: sta.vessels.values(), eu: { position: ctxAis.v('navigation.position'), sog: 3 }, notificacoes: ctxAis.notificacoes, agora: Date.now() }) }
   junta('ais-sem-cog', barra({ lista: ctxAis.notificacoes }), ais.render(semCog))
-  // sem o nosso rumo (revisão F3, Minor 7): "sem rumo: só distância" em vez de CPA e TCPA, na AIS (com a linha que o diz) e na Carta
+  // sem o nosso rumo (revisão F3, Minor 7): "sem o nosso rumo" em vez de CPA e TCPA, na AIS (com a linha que o diz) e na Carta
   junta('carta-sem-cog', barra({ lista: ctxAis.notificacoes }), carta.render({ ...contexto(sta), alvos: semCog.alvos }))
+  // em porto (contrato C12, F3b item 5): a linha que diz porque os parados estão a amarelo, por cima da do nosso rumo, e a
+  // frase mais comprida das duas ("sem rumo de nenhum dos dois": alvos sem SOG nem COG, o nosso GPS sem rumo), na AIS e na Carta
+  const stn = storeSimulado(60)
+  for (let i = 0; i < 12; i++) aplicarDelta(stn, { context: `vessels.urn:mrn:imo:mmsi:2630001${10 + i}`, updates: [{ timestamp: new Date().toISOString(), values: [{ path: 'navigation.position', value: { latitude: 39.3 + i * 0.002, longitude: -9.45 } }, { path: '', value: { name: `PARADO ${i}` } }] }] })
+  const euSem = { position: ctxAis.v('navigation.position') }
+  const ctxPorto = { ...ctxAis, estado: {}, notificacoes: [], emPorto: true, alvos: alvosAis({ vessels: stn.vessels.values(), eu: euSem, notificacoes: [], agora: Date.now(), emPorto: true }) }
+  junta('ais-em-porto-sem-rumo', barra(), ais.render(ctxPorto))
+  junta('ais-em-porto-sem-rumo-noite', barra(), ais.render(ctxPorto), { noite: true })
+  junta('carta-em-porto-sem-rumo', barra(), carta.render({ ...contexto(stn), alvos: ctxPorto.alvos, emPorto: true }))
 
   // ---------- as outras páginas ----------
   junta('carta', barra({ lista: [AIS_NORMAL] }), carta.render(contexto(st)))

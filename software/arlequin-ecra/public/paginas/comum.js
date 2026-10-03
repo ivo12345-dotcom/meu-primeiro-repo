@@ -3,7 +3,7 @@
 import { velocidade, distancia, duracao, num, rumo, anguloBordo, graus, nos } from '../lib/formato.js'
 import { barra } from '../lib/desenho.js'
 import { esc, idade as haTempo } from '../lib/rota-texto.js'
-import { leituraCpa, SO_DISTANCIA } from '../lib/ais.js'
+import { leituraCpa, semRumoTexto } from '../lib/ais.js'
 
 const ok = (v) => typeof v === 'number' && Number.isFinite(v)
 
@@ -113,7 +113,7 @@ export function linhaAlvo (a) {
   const cpaTxt = l.tipo === 'cpa' ? `${distancia(l.cpa)} MN · ${duracao(l.tcpa)}`
     : l.tipo === 'paralelo' ? `${distancia(l.cpa)} MN · —`
       : l.tipo === 'afasta' ? 'afasta-se'
-        : l.tipo === 'distancia' ? `${distancia(a.r.distancia)} MN · ${SO_DISTANCIA}`
+        : l.tipo === 'distancia' ? `${distancia(a.r.distancia)} MN · ${semRumoTexto(l.semVelocidade)}`
           : '—'
   return `<div class="linha ${cls}"><span>${esc(a.name || a.mmsi)}</span><span>${cpaTxt}</span></div>`
 }
