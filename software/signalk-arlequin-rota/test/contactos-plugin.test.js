@@ -247,7 +247,9 @@ test('POST /plano-ativo/continuar: só "pausado" (409 nos outros); volta a ativa
   s.app.activateRoute = async () => { throw new Error('a rota já não existe') }
   const e = await chamar(s.r.post['/plano-ativo/continuar'])
   assert.equal(e.code, 502)
-  assert.equal(e.erro, 'não ativei a rota: a rota já não existe')
+  // (auditoria I-32: o erro do servidor fica no registo; ao Ivo, a frase fixa)
+  assert.equal(e.erro, 'não ativei a rota: o SignalK recusou a rota (o pormenor ficou no registo)')
+  assert.ok(s.app.erros.some(m => m === 'continuar: a rota já não existe'), JSON.stringify(s.app.erros))
   assert.equal(s.p.planoAtivo().estado, 'pausado')
   // a rota mudada nunca manda nada sozinha para terra
   assert.deepEqual(s.recebidos.filter(e => e.tipo !== 'atraso'), [])
