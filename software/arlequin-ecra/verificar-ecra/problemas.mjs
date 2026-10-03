@@ -6,7 +6,9 @@
 //     a parte de baixo dela nunca aparece) e o alvo não pode sair para os lados;
 //   - cada lista que rola na página tem uma chave data-rolar (sem ela, o desenho de 1 Hz põe-na no cimo);
 //   - nenhum filho da barra de cima sai do ecrã, e o chip do alarme fica com largura para se ler;
-//   - nenhum mosaico (nem as linhas dele) fica cortado sem estar numa lista que rola.
+//   - nenhum mosaico (nem as linhas dele) fica cortado sem estar numa lista que rola;
+//   - o rótulo de um botão cabe na caixa dele (F3b, item 10: na janela da Carta, a 430 px, o "Melhor rota" saía da caixa e o
+//     botão do lado tapava-o: "Melhor ro").
 
 const FOLGA = 1 // px (arredondamentos)
 export const CHIP_ALARME_MIN = 96 // px: a largura mínima para se ler o começo do alarme ("⚠ Água no por…")
@@ -23,6 +25,9 @@ export function problemas (d) {
       if (!todo(a.lista.vis, a.lista.caixa)) out.push({ tipo: 'lista cortada', alvo: `${a.lista.nome} (com ${nome(a)})`, detalhe: `lista ${a.lista.caixa.w}×${a.lista.caixa.h}, à vista ${a.lista.vis.w}×${a.lista.vis.h}` })
       if (a.vis.w < a.caixa.w - FOLGA && a.vis.h > 0) out.push({ tipo: 'alvo cortado de lado', alvo: nome(a), detalhe: `largura ${a.caixa.w}, à vista ${a.vis.w}` })
     }
+  }
+  for (const a of d.alvos || []) {
+    if (a.tag === 'button' && a.corte > FOLGA) out.push({ tipo: 'rótulo cortado', alvo: nome(a), detalhe: `o texto passa ${a.corte} px da caixa de ${a.caixa.w} px` })
   }
   for (const r of d.rolar || []) {
     if (!r.chave && r.scrollH > r.clientH + FOLGA) out.push({ tipo: 'lista sem data-rolar', alvo: r.nome, detalhe: `${r.scrollH} px para ${r.clientH} à vista: volta ao cimo a cada segundo` })

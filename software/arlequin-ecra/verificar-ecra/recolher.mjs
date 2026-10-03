@@ -2,8 +2,8 @@
 // usa o DOM do browser e não importa nada). Devolve os números em bruto; quem decide o que é um problema é o
 // problemas.mjs (testado no npm test).
 //   alvos: cada elemento que se toca (botões, campos, data-acao, linhas AIS), com a caixa, a parte que se
-//     vê (cortada pelos pais com overflow, pelo ecrã e, dentro da página, pelos botões de baixo) e a lista
-//     que rola onde está (se estiver numa);
+//     vê (cortada pelos pais com overflow, pelo ecrã e, dentro da página, pelos botões de baixo), os px que o
+//     rótulo passa da caixa (corte) e a lista que rola onde está (se estiver numa);
 //   rolar: cada contentor da página com overflow auto/scroll (a chave data-rolar, a caixa, a parte à vista,
 //     a altura do conteúdo);
 //   conteudo: os mosaicos e as linhas dentro deles que ficam cortados sem estarem numa lista que rola;
@@ -71,6 +71,8 @@ export function recolher (procurar = []) {
       texto: texto(el),
       caixa: r4(el.getBoundingClientRect()),
       vis: recorte(el),
+      // o rótulo mais largo do que o botão (o texto sai da caixa e o vizinho tapa-o: "Melhor ro"): px a mais, 0 se cabe
+      corte: Math.max(0, el.scrollWidth - el.clientWidth),
       lista: lista ? { nome: nomeDe(lista), caixa: r4(lista.getBoundingClientRect()), vis: recorte(lista) } : null
     })
   }
