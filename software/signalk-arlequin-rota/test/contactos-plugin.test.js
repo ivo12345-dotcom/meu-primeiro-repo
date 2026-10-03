@@ -1238,7 +1238,9 @@ test('auditoria M-21 (sonda S8): dois toques em Ativar (outra alternativa, com o
   assert.deepEqual([a.code, b.code].sort(), [200, 409])
   assert.match((a.code === 409 ? a : b).erro, /^já há uma ativação a meio/)
   assert.equal(s.recebidos.filter(e => e.tipo === 'plano').length, 1)
-  assert.equal(s.app.recursos.size, rotas + 1)
+  // uma só rota nova (e a do plano substituído apagada: auditoria M-34)
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(s.app.recursos.size, rotas)
   assert.deepEqual(pa.lerFechados(s.app.getDataDirPath()).map(x => x.indice), [0], 'só o plano antigo foi arquivado')
   // acabada a 1.ª, outra ativação já pode
   assert.equal((await chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 1 } })).code, 200)
@@ -1277,5 +1279,30 @@ test('auditoria M-25: uma resposta do porto mal formada (falhas com null, ou o e
   assert.equal(s.p.planoAtivo().contactos.fila[0].estado, 'fila')
   assert.doesNotThrow(() => s.app.emit('arlequin:plano-enviado', null))
   assert.doesNotThrow(() => s.app.emit('arlequin:plano-enviado', 'texto'))
+  s.p.stop()
+})
+
+// ---------- auditoria M-34: as rotas que deixam de ser usadas apagam-se do servidor ----------
+test('auditoria M-34: cada Ativar grava uma rota nova; a do plano substituído (e a do mesmo plano ativado outra vez) apaga-se do servidor, e a de uma ativação que falha também — já não se acumulam no OpenCPN', async () => {
+  const s = await preparar()
+  await sair(s)
+  const rota0 = s.p.planoAtivo().href.split('/').pop()
+  assert.ok(s.app.recursos.has(`routes/${rota0}`))
+  // outra alternativa: a do plano antigo sai
+  const b = await chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 1 } })
+  assert.equal(b.code, 200, b.erro)
+  await new Promise(resolve => setImmediate(resolve))
+  assert.deepEqual([...s.app.recursos.keys()], [`routes/${b.rota}`])
+  // a mesma outra vez (a rota apagada no OpenCPN): a anterior sai, fica a nova
+  const c = await chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 1 } })
+  await new Promise(resolve => setImmediate(resolve))
+  assert.deepEqual([...s.app.recursos.keys()], [`routes/${c.rota}`])
+  // uma ativação que falha não deixa a rota gravada para trás
+  const ativar = s.app.activateRoute
+  s.app.activateRoute = async () => { throw new Error('sem posição') }
+  assert.equal((await chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 0 } })).code, 502)
+  await new Promise(resolve => setImmediate(resolve))
+  assert.deepEqual([...s.app.recursos.keys()], [`routes/${c.rota}`])
+  s.app.activateRoute = ativar
   s.p.stop()
 })

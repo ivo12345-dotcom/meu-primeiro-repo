@@ -45,7 +45,8 @@ function appFalso ({ comApi = true, rotaAtiva = null } = {}) {
     app.resourcesApi = {
       setResource: async (tipo, id, dados) => { app.recursos.set(`${tipo}/${id}`, dados) },
       // como no servidor, a escrita do fornecedor não é imediata: as 2 primeiras leituras falham
-      getResource: async (tipo, id) => { if (app.leiturasFalhadas-- > 0) throw new Error('ainda não'); const r = app.recursos.get(`${tipo}/${id}`); if (!r) throw new Error('não existe'); return r }
+      getResource: async (tipo, id) => { if (app.leiturasFalhadas-- > 0) throw new Error('ainda não'); const r = app.recursos.get(`${tipo}/${id}`); if (!r) throw new Error('não existe'); return r },
+      deleteResource: async (tipo, id) => { app.recursos.delete(`${tipo}/${id}`) }
     }
     app.activateRoute = async (dest) => { app.ativacoes.push(dest) }
     app.getCourse = async () => ({ activeRoute: rotaAtiva ? { href: '/resources/routes/abc' } : null })

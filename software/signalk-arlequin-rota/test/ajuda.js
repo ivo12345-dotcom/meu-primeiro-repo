@@ -69,7 +69,8 @@ function appFalso ({ em = 'cascais' } = {}) {
   }
   app.resourcesApi = {
     setResource: async (tipo, id, dados) => { app.recursos.set(`${tipo}/${id}`, dados) },
-    getResource: async (tipo, id) => { const r = app.recursos.get(`${tipo}/${id}`); if (!r) throw new Error('não existe'); return r }
+    getResource: async (tipo, id) => { const r = app.recursos.get(`${tipo}/${id}`); if (!r) throw new Error('não existe'); return r },
+    deleteResource: async (tipo, id) => { app.recursos.delete(`${tipo}/${id}`) }
   }
   app.activateRoute = async (dest) => { app.ativacoes.push(dest); app.rotaAtiva = dest.href }
   app.getCourse = async () => ({ activeRoute: app.rotaAtiva ? { href: app.rotaAtiva } : null })
