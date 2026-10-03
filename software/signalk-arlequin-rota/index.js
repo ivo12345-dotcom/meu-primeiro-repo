@@ -1101,6 +1101,22 @@ module.exports = function (app, deps = {}) {
   // A rota direta (salto curto) não tem afastamento: diz "direta (salto curto)", nunca "null MN" — só com
   // alt.direto, como o plano (auditoria M-29: uma alternativa sem afastamento e que não é direta não diz
   // "direta"); uma variante por um canal leva a nota do canal (terra dos dois lados, por confirmar na carta).
+  // Apaga do servidor uma rota que o plugin gravou e deixou de usar (auditoria M-34: cada Ativar/Recalcular
+  // gravava uma rota nova que nunca se apagava e acumulavam no OpenCPN): a do plano substituído, a do mesmo
+  // plano ativado outra vez, e a de uma ativação que falhou. Sem a API interna, por HTTP. Um erro só vai ao
+  // registo. (A do plano terminado ou chegado fica até ao Ativar seguinte: pode ainda estar ativa no OpenCPN.)
+  async function apagarRota (href) {
+    const id = typeof href === 'string' && href.startsWith('/resources/routes/') ? href.split('/').pop() : null
+    if (!id) return
+    try {
+      if (typeof app.resourcesApi?.deleteResource === 'function') await comLimite(() => app.resourcesApi.deleteResource('routes', id))
+      else {
+        const r = await fetchFn(`http://localhost:${o?.porta || 3000}/signalk/v2/api/resources/routes/${id}`, { method: 'DELETE', signal: AbortSignal.timeout(10000) })
+        if (!r.ok) throw new Error(`o SignalK respondeu ${r.status}`)
+      }
+    } catch (e) { app.error(`não apaguei a rota antiga ${id}: ${e?.message ?? e}`) }
+  }
+
   async function ativarRota (alt, destinoNome) {
     const quando = (iso) => decisao.quando(Date.parse(iso), relogio(), 'Europe/Lisbon')
     const pts = alt.pontosRota
@@ -1123,18 +1139,20 @@ module.exports = function (app, deps = {}) {
     const destinoCurso = { href, pointIndex: pts.length > 1 ? 1 : 0 }
     if (app.resourcesApi && typeof app.resourcesApi.setResource === 'function' && typeof app.activateRoute === 'function') {
       await comLimite(() => app.resourcesApi.setResource('routes', id, dados))
-      // o setResource do servidor não espera pela escrita do fornecedor: esperar até se ler (um pedido
-      // pendurado acaba no limite de tempo e não se repete)
-      let lida = false
-      for (let i = 0; i < 30 && !lida; i++) {
-        try { lida = !!(await comLimite(() => app.resourcesApi.getResource('routes', id))) } catch (e) {
-          if (e?.pt && e.message === NAO_RESPONDEU) throw e
-          lida = false
+      try {
+        // o setResource do servidor não espera pela escrita do fornecedor: esperar até se ler (um pedido
+        // pendurado acaba no limite de tempo e não se repete)
+        let lida = false
+        for (let i = 0; i < 30 && !lida; i++) {
+          try { lida = !!(await comLimite(() => app.resourcesApi.getResource('routes', id))) } catch (e) {
+            if (e?.pt && e.message === NAO_RESPONDEU) throw e
+            lida = false
+          }
+          if (!lida) await esperar(100)
         }
-        if (!lida) await esperar(100)
-      }
-      if (!lida) throw erroPt('a rota foi gravada mas não se consegue ler de volta')
-      await comLimite(() => app.activateRoute(destinoCurso))
+        if (!lida) throw erroPt('a rota foi gravada mas não se consegue ler de volta')
+        await comLimite(() => app.activateRoute(destinoCurso))
+      } catch (e) { apagarRota(href); throw e } // a rota gravada de uma ativação que falhou não fica (M-34)
       return { rota: id, href, via: 'api interna' }
     }
     const url = `http://localhost:${o.porta || 3000}`
@@ -1143,7 +1161,7 @@ module.exports = function (app, deps = {}) {
       if (!r.ok) throw erroPt(`o SignalK respondeu ${r.status} a ${caminho}`)
     }
     await pedir(`/signalk/v2/api/resources/routes/${id}`, dados)
-    await pedir('/signalk/v2/api/vessels/self/navigation/course/activeRoute', destinoCurso)
+    try { await pedir('/signalk/v2/api/vessels/self/navigation/course/activeRoute', destinoCurso) } catch (e) { apagarRota(href); throw e }
     return { rota: id, href, via: 'http' }
   }
 
@@ -1399,6 +1417,8 @@ module.exports = function (app, deps = {}) {
           }
           gravarPlanoAtivo()
           enviarFila(agora)
+          // a rota do plano anterior (ou a anterior deste) já não se usa: sai do servidor (auditoria M-34)
+          if (anterior?.href && anterior.href !== planoAtivo.href) apagarRota(anterior.href)
           aAtivar = false // (antes da resposta: o ecrã pode pedir outra logo a seguir)
           res.json({ ok: true, ...r, alternativa: alt.id, nota: alt.nota || null, planoAtivo: { estado: planoAtivo.estado } })
         })
