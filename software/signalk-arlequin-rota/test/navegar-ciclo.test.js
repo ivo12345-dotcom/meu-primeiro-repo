@@ -304,3 +304,28 @@ test('auditoria I-16: a navegar, a correção do vento da AI recebe a tendência
     s.p.stop()
   } finally { cenarios.criarCorrecaoVento = original }
 })
+
+test('auditoria M-27: a previsão de agora não se lê do arquivo de minuto a minuto (no máximo de 10 em 10 min, ou com uma previsão nova, ou 5 MN mais longe) e só conta a dos últimos 50 h', async () => {
+  const s = await preparar()
+  s.por(s.alt.rasto[2])
+  await s.ciclo(20 * MIN)
+  await s.ciclo(0)
+  assert.equal(s.p.planoAtivo().estado, 'a navegar')
+  const pasta = path.join(s.app.dir, 'dados', 'previsoes')
+  const orig = fs.readFileSync
+  let lidas = 0
+  fs.readFileSync = (f, ...x) => { if (String(f).startsWith(pasta)) lidas++; return orig(f, ...x) }
+  try {
+    await s.ciclo()
+    const primeira = lidas
+    for (let m = 0; m < 8; m++) await s.ciclo()
+    assert.equal(lidas, primeira, 'nos 9 min seguintes não volta a ler o arquivo')
+    assert.equal(estadoDe(s.app, 'previsao'), 'normal')
+    await s.ciclo(2 * MIN)
+    assert.ok(lidas > primeira, 'passados 10 min, lê outra vez')
+  } finally { fs.readFileSync = orig }
+  // com a previsão mais recente com mais de 50 h: não serve (sem previsão)
+  await s.ciclo(51 * H)
+  assert.deepEqual(s.app.self['notifications.rota.previsao'], { state: 'alarm', method: ['visual', 'sound'], apito: 'curto', message: 'Sem previsão: confia nos instrumentos e no barómetro' })
+  s.p.stop()
+})

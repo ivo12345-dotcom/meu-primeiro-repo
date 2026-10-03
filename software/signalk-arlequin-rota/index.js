@@ -140,6 +140,11 @@ const SEGUIMENTO_MN = 0.1 // a posição na rota grava-se no plano ativo quando 
 const LEITURA_VELHA_MS = 2 * MIN // posição, SOG, vento e pressão com mais de 2 min: em falta
 const ESPERA_RUMO_MS = 10000 // a API de rumo sem resposta em 10 s: não se sabe a rota
 const BARO_GRAVAR_MS = 10 * MIN // o barometro.json no máximo de 10 em 10 min
+// a previsão de agora a navegar (auditoria M-27): lida do arquivo no máximo de 10 em 10 min (ou com uma nova,
+// ou 5 MN mais longe), e só as dos últimos 50 h (o aviso "sem previsão" cobre o resto)
+const PREVISAO_LER_MS = 10 * MIN
+const PREVISAO_LER_MN = 5
+const PREVISAO_MAX_IDADE_H = 50
 const RELOGIO_MAX_MS = 60000 // decisão do Ivo n.º 19: o relógio do Pi a mais de 60 s da hora do GPS
 const CAPACIDADE_AH_ANTIGA = 200 // o valor por omissão do esquema até 02/10 (auditoria I-13)
 const AVISO_IVO_MS = 24 * 3600000 // o aviso ao Ivo de uma mensagem que não chegou: tenta-se durante 24 h
@@ -849,10 +854,22 @@ module.exports = function (app, deps = {}) {
   }
   const numeroFresco = (caminho, agora) => { const x = fresco(caminho, agora); return Number.isFinite(x) ? x : null }
   // A previsão mais recente arquivada que cubra a posição agora: { previsao, obtida, idadeH } ou null.
+  // Auditoria M-27: antes descomprimia e lia todo o arquivo de minuto a minuto (de forma síncrona: o servidor
+  // parado), sem limite de idade. Agora guarda a leitura e só volta a ler de 10 em 10 min, quando chega uma
+  // previsão nova à pasta, ou com o barco 5 MN mais longe; e só as dos últimos 50 h. A idade é a de agora.
+  let previsaoLida = null // { chave, em, pos, r }
   function previsaoAgora (pos, agora) {
     if (!pos) return null
-    const a = prev.lerArquivo(path.join(pastaBase, 'previsoes'), { pontos: [pos], desde: agora, ate: agora, agora, maxIdadeH: Infinity })
-    return a.erro ? null : a
+    const pasta = path.join(pastaBase, 'previsoes')
+    let chave = 'sem pasta'
+    try { const nomes = fs.readdirSync(pasta); let max = ''; for (const n of nomes) if (n > max) max = n; chave = `${nomes.length} ${max}` } catch { /* sem pasta */ }
+    const k = previsaoLida
+    if (!(k && k.chave === chave && agora >= k.em && agora - k.em < PREVISAO_LER_MS && c.distanciaMn(k.pos, pos) < PREVISAO_LER_MN)) {
+      const a = prev.lerArquivo(pasta, { pontos: [pos], desde: agora, ate: agora, agora, maxIdadeH: PREVISAO_MAX_IDADE_H })
+      previsaoLida = { chave, em: agora, pos, r: a.erro ? null : a }
+    }
+    const r = previsaoLida.r
+    return r ? { ...r, idadeH: (agora - Date.parse(r.obtida)) / 3600000 } : null
   }
 
   async function passoNavegar () {
@@ -1172,6 +1189,7 @@ module.exports = function (app, deps = {}) {
     ultimo = null
     retido = null
     pressoes = lerPressoes()
+    previsaoLida = null
     dataGps = null
     desacertoAtual = null
     baroGravadoEm = null
