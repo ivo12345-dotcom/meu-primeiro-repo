@@ -42,9 +42,11 @@ test('modo noite (decisão do Ivo de 01/10: substitui o vermelho de 29/09): as m
     assert.ok(luminancia(noite[k]) < luminancia(dia[k]), `${k}: mais escuro`)
   }
   // o texto é cinzento (nada de vermelho), mais escuro do que de dia
+  // (revisão F3, Minor 11: a etiqueta --texto-2 de noite lê-se ≥ 3:1 no brilho 2, o que pede mais luminância do que
+  // a etiqueta do dia tem; fica abaixo do texto do dia — e abaixo do texto de noite, ver o teste do Minor 11)
   for (const k of ['texto', 'texto-2', 'linha']) {
     assert.ok(hsl(noite[k]).s < 0.12, `${k} cinzento: ${noite[k]}`)
-    assert.ok(luminancia(noite[k]) < luminancia(dia[k]), k)
+    assert.ok(luminancia(noite[k]) < luminancia(dia[k === 'texto-2' ? 'texto' : k]), k)
   }
   // nenhuma cor do modo noite é o vermelho antigo: o azul é azul, o ok verde, o amarelo âmbar
   assert.ok(hsl(noite.azul).h >= 195 && hsl(noite.azul).h <= 230, noite.azul)
@@ -213,6 +215,58 @@ test('auditoria I-27 (decisão do Ivo n.º 21): de noite, a correção do leme (
   }
   // o vermelho e o verde continuam a distinguir-se (BB vermelho, EB verde)
   assert.ok(difTom(hsl(noite['bb-txt']).h, hsl(noite['eb-txt']).h) > 90)
+})
+
+// ---------- revisão F3, Minor 11: o resto do texto de noite ----------
+// Como o I-27, medido no brilho por omissão (nível 2: o filter: brightness(0.5) multiplica cada componente sRGB) sobre
+// o fundo verdadeiro de cada texto: o mosaico (--tile), o cartão e o botão (--botao), a linha escolhida da AIS e o botão
+// da página aberta (--ativo), os botões coloridos (--rt, --vel e os seus "on", --segue, --perigo-fundo).
+// Antes (tokens do I-27): .perigo 1,94 e .atencao 2,27 sobre o mosaico (1,77 e 2,06 na linha escolhida da AIS), .lab
+// 1,99 (1,93 no cartão escolhido, 1,87 na linha escolhida), o texto dos botões 2,95 sobre --botao e 2,26–2,84 sobre os
+// coloridos. Cada cor mantém o tom e fica só o claro que o contraste pede (cerca de 3,1–3,4:1, não 6–7 como de dia):
+// para o texto de perigo e de atenção há tokens de texto à parte (--perigo-txt, --amarelo-txt, como os --bb-txt do
+// I-27), porque o --perigo e o --amarelo servem também de contorno, mapa e mostradores e esses ficam como estavam.
+test('revisão F3 (Minor 11): de noite, no brilho por omissão (nível 2), o texto de perigo, o de atenção, as etiquetas e o texto dos botões leem-se (≥ 3:1) sobre o fundo verdadeiro de cada um, e ficam ténues (≤ 4,5:1 sobre o mosaico, luminância à vista ≤ 0,2)', () => {
+  const k = NIVEIS[PADRAO - 1]
+  const escurecer = (hex) => `#${rgb(hex).map(x => Math.round(x * k * 255).toString(16).padStart(2, '0')).join('')}`
+  const razao = (texto, fundo) => Math.round(contraste(escurecer(noite[texto]), escurecer(noite[fundo])) * 100) / 100
+  const PARES = [
+    ['perigo-txt', ['tile', 'ativo']], // .perigo: alarmes do Motor, erros, avisos vermelhos; a linha escolhida da AIS
+    ['amarelo-txt', ['tile', 'ativo']], // .atencao e .amarelo: avisos, a pergunta do Enchi; o nome ARLEQUIN
+    ['texto-2', ['tile', 'botao', 'ativo']], // .lab e th: o mosaico, o cartão escolhido, a linha escolhida da AIS
+    ['texto', ['botao', 'ativo', 'rt', 'rt-on', 'vel', 'vel-on', 'segue', 'perigo-fundo']] // o texto de todos os botões
+  ]
+  const medido = {}
+  for (const [texto, fundos] of PARES) for (const f of fundos) medido[`${texto} / ${f}`] = razao(texto, f)
+  assert.deepEqual(medido, {
+    'perigo-txt / tile': 3.38, 'perigo-txt / ativo': 3.08,
+    'amarelo-txt / tile': 3.38, 'amarelo-txt / ativo': 3.08,
+    'texto-2 / tile': 3.33, 'texto-2 / botao': 3.24, 'texto-2 / ativo': 3.03,
+    'texto / botao': 3.7, 'texto / ativo': 3.47, 'texto / rt': 3.56, 'texto / rt-on': 3.23, 'texto / vel': 3.53, 'texto / vel-on': 3.06, 'texto / segue': 3.44, 'texto / perigo-fundo': 3.44
+  })
+  for (const [par, r] of Object.entries(medido)) assert.ok(r >= 3, `${par}: ${r}:1`)
+  // ténues: nada passa de 4,5:1 sobre o mosaico nem de 0,2 de luminância à vista (o texto do dia chega a 0,8)
+  for (const t of ['perigo-txt', 'amarelo-txt', 'texto-2', 'texto']) {
+    assert.ok(razao(t, 'tile') <= 4.5, `${t} sobre o mosaico: ${razao(t, 'tile')}:1`)
+    assert.ok(luminancia(escurecer(noite[t])) <= 0.2, `${t}: luminância à vista ${luminancia(escurecer(noite[t])).toFixed(3)}`)
+  }
+  // a etiqueta não é mais clara do que o texto
+  assert.ok(luminancia(noite['texto-2']) < luminancia(noite.texto))
+  // o mesmo tom do dia; de dia os tokens de texto são os próprios --perigo e --amarelo
+  assert.equal(dia['perigo-txt'], dia.perigo)
+  assert.equal(dia['amarelo-txt'], dia.amarelo)
+  for (const [txt, base] of [['perigo-txt', 'perigo'], ['amarelo-txt', 'amarelo']]) assert.ok(difTom(hsl(noite[txt]).h, hsl(dia[base]).h) <= 10, `${txt}: o tom do dia (${noite[txt]})`)
+  assert.ok(hsl(noite['texto-2']).s < 0.12 && hsl(noite.texto).s < 0.12, 'o texto e a etiqueta continuam cinzentos')
+  // o estilo usa-os
+  assert.match(regra('.perigo'), /color:\s*var\(--perigo-txt\)/)
+  assert.match(regra('.atencao'), /color:\s*var\(--amarelo-txt\)/)
+  assert.match(regra('.amarelo'), /color:\s*var\(--amarelo-txt\)/)
+  assert.match(regra('.nome'), /color:\s*var\(--amarelo-txt\)/)
+  assert.match(regra('.lab'), /color:\s*var\(--texto-2\)/)
+  assert.match(regra('body.noite button, body.noite .btn'), /color:\s*var\(--texto\)/)
+  // o que não é texto ficou como estava (o contorno do alarme e as zonas do mapa)
+  assert.equal(noite.perigo, '#b86c6c')
+  assert.equal(noite.amarelo, '#b08f54')
 })
 
 test('revisão final M6: um <script> clássico logo a seguir ao <body> põe o modo noite e o brilho (localStorage ou ?noite=/?brilho=) antes do primeiro desenho; um armazenamento que falha não rebenta', async () => {

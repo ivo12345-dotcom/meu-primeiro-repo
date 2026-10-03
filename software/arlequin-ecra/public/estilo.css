@@ -7,6 +7,7 @@
   --amarelo: #fac775; --azul: #85b7eb; --verde: #639922; --ok: #97c459;
   --bb: #e24b4a; --eb: #1d9e75; --rosa: #d4537e;
   --bb-txt: #e24b4a; --eb-txt: #1d9e75; /* a correção do leme (◀ 12° BB / 8° EB ▶): de dia as mesmas */
+  --perigo-txt: #f09595; --amarelo-txt: #fac775; /* o texto de perigo e o de atenção: de dia o --perigo e o --amarelo */
   --perigo: #f09595; --perigo-fundo: #a32d2d; --aviso-fundo: #8a5a00; --ativo: #185fa5;
   --rt: #3c3489; --rt-on: #534ab7; --vel: #633806; --vel-on: #ba7517;
   --mar: #10202c; --terra: #4a4a44;
@@ -19,15 +20,21 @@
    Auditoria I-27 (decisão do Ivo n.º 21, 02/10): a correção do leme (BB/EB, a instrução principal ao leme) e o
    texto leem-se no brilho por omissão (nível 2), medidos sobre o mosaico (--tile), onde está quase todo o
    texto: ≥ 3:1 (letra grande). A correção tem tokens próprios, mais claros, com o tom do dia; os arcos do
-   mostrador do vento continuam com os --bb/--eb escuros. A confirmar no barco, de noite. */
+   mostrador do vento continuam com os --bb/--eb escuros. A confirmar no barco, de noite.
+   Revisão F3, Minor 11: o resto do texto no mesmo critério (≥ 3:1 no nível 2 sobre o fundo verdadeiro de cada um,
+   e só o claro que isso pede): o texto de perigo (--perigo-txt) e o de atenção (--amarelo-txt) com tokens à parte,
+   como os --bb-txt, porque o --perigo e o --amarelo servem também de contorno, mapa e mostradores e ficam como
+   estavam; as etiquetas (--texto-2), o texto (--texto, que é também o dos botões) e o "on" do botão das Velas
+   (--vel-on, mais escuro para o texto se ler sobre ele). Medidas e limites em test/estilo.test.mjs. */
 body.noite {
   --fundo: #000; --barra: #08090b; --tile: #0e1013; --botao: #17191d; --borda: #2a2d32;
-  --texto: #b7b9bd; --texto-2: #85837c; --linha: #46453f;
+  --texto: #d6d8dc; --texto-2: #c8c6bf; --linha: #46453f;
   --amarelo: #b08f54; --azul: #5f88b3; --verde: #46701a; --ok: #6c8d40;
   --bb: #a23736; --eb: #157257; --rosa: #983c5b;
   --bb-txt: #f0a5a4; --eb-txt: #26d29b;
+  --perigo-txt: #f4b9b8; --amarelo-txt: #e3c487;
   --perigo: #b86c6c; --perigo-fundo: #561818; --aviso-fundo: #3a2600; --ativo: #0b2c4e;
-  --rt: #221d4e; --rt-on: #352f74; --vel: #3a2104; --vel-on: #70460e;
+  --rt: #221d4e; --rt-on: #352f74; --vel: #3a2104; --vel-on: #5f3a0a;
   --mar: #0a1620; --terra: #34342f;
   --segue: #073326; --espera: #3a2e00; --naorec: #4a2507; --volta: #561818; --faixa-texto: #c8cacd;
 }
@@ -50,7 +57,7 @@ html, body { margin: 0; height: 100%; background: var(--fundo); color: var(--tex
    alarme fica com 7rem no mínimo (a mensagem inteira está na página do alarme) e o botão de calar, o nome e a
    hora nunca encolhem: com uma falha, o "sem som" e um alarme de 60 letras o calar continua no ecrã. */
 #barra { display: flex; align-items: center; gap: .5rem; background: var(--barra); padding: .35rem .6rem; font-size: 1rem; min-height: calc(44px + .7rem); }
-.nome { flex: 0 0 auto; font-weight: bold; letter-spacing: .15rem; color: var(--amarelo); }
+.nome { flex: 0 0 auto; font-weight: bold; letter-spacing: .15rem; color: var(--amarelo-txt); }
 .hora { flex: 0 0 auto; }
 .chip { border-radius: .3rem; padding: .15rem .5rem; background: var(--botao); white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .chip.off { opacity: .45; }
@@ -85,13 +92,13 @@ body.noite .silenciar { color: var(--faixa-texto); outline: 2px solid var(--peri
 .g3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: .3rem; }
 .g2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: .3rem; }
 .linha { display: flex; justify-content: space-between; gap: .5rem; }
-.perigo { color: var(--perigo); font-weight: bold; }
-.atencao { color: var(--amarelo); }
+.perigo { color: var(--perigo-txt); font-weight: bold; }
+.atencao { color: var(--amarelo-txt); }
 .ok { color: var(--ok); }
 .azul { color: var(--azul); }
 .bb-txt { color: var(--bb-txt); }
 .eb-txt { color: var(--eb-txt); }
-.amarelo { color: var(--amarelo); }
+.amarelo { color: var(--amarelo-txt); }
 .centro { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .mostrador { width: 100%; height: 100%; }
 /* Painel da carta: os blocos esticam para encher a altura e os números crescem. */
