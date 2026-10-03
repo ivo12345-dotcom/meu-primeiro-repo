@@ -126,6 +126,9 @@ const SEM_DESTINATARIOS = 'não há destinatários: junta os chats em "Chats aut
 const MOTIVO_REINICIO = 'o plugin da rota foi reiniciado durante o envio: confirma com os contactos se receberam'
 const AVISO_SEM_TELEFONE = 'o teu telefone não está na configuração: o plano diz só "liga ao Ivo"'
 const eObjeto = (x) => x !== null && typeof x === 'object' && !Array.isArray(x)
+// um erro do próprio plugin, já em pt-PT: chega ao Ivo tal e qual (auditoria I-32)
+const erroPt = (msg) => Object.assign(new Error(msg), { pt: true })
+const INTERNO = 'erro interno no plugin da rota: o pormenor ficou no registo do SignalK'
 const MIN = 60000
 const CICLO_MS = 60000 // a navegar: de minuto a minuto
 const NOS = 3600 / 1852 // m/s → nós
@@ -185,6 +188,37 @@ module.exports = function (app, deps = {}) {
   const agendarCiclo = deps.agendarCiclo || ((fn, ms) => { const t = setInterval(fn, ms); t.unref?.(); return t })
   const pararCiclo = deps.pararCiclo || ((t) => clearInterval(t))
   const esperaRumoMs = deps.esperaRumoMs ?? ESPERA_RUMO_MS
+  // ---------- os erros que chegam ao Ivo (auditoria I-32) ----------
+  // Ao ecrã e ao Telegram só frases em pt-PT: o erro verdadeiro (do servidor, do Node — muitas vezes em
+  // inglês) fica no registo do SignalK (app.error). Os erros do próprio plugin (erroPt) passam tal e qual.
+  const esgotou = (e) => e?.name === 'TimeoutError' || e?.name === 'AbortError' || /aborted|timed? ?out/i.test(String(e?.message ?? ''))
+  const semLigacao = (e) => /fetch failed|sem rede|ECONN|ENOTFOUND|EAI_AGAIN|EHOSTUNREACH|ENETUNREACH|socket hang up|network/i.test(String(e?.message ?? ''))
+  // a API de recursos/rumo do servidor (ativar a rota, Continuar)
+  function motivoSignalK (e, registo) {
+    if (e?.pt) return e.message
+    const m = String(e?.message ?? e ?? '')
+    app.error(`${registo}: ${m}`)
+    if (/Unable to retrieve vessel position/i.test(m)) return 'o SignalK ainda não tem a posição do barco (sem GPS?)'
+    if (esgotou(e)) return 'o SignalK não respondeu a tempo'
+    if (semLigacao(e)) return 'sem ligação ao SignalK'
+    return 'o SignalK recusou a rota (o pormenor ficou no registo)'
+  }
+  // a previsão descarregada (os erros do lib/previsao.js com a Open-Meteo já estão em pt-PT)
+  function motivoPrevisao (e) {
+    const m = String(e?.message ?? e ?? '')
+    app.error(`previsão: ${m}`)
+    if (esgotou(e)) return 'a Open-Meteo não respondeu a tempo'
+    if (semLigacao(e)) return 'sem rede'
+    if (/Open-Meteo/.test(m)) return m
+    return 'a previsão não veio (o pormenor ficou no registo)'
+  }
+  // um erro de programação: a frase fixa, o pormenor no registo
+  function motivoInterno (e, registo) {
+    if (e?.pt) return e.message
+    app.error(`${registo}: ${e?.message ?? e}`)
+    return INTERNO
+  }
+
   const plugin = {
     id: 'signalk-arlequin-rota',
     name: 'Arlequin · Melhor rota',
@@ -488,10 +522,10 @@ module.exports = function (app, deps = {}) {
           if (!a.erro) p = prev.juntarMarDoArquivo(p, a.previsao)
         }
         return { previsao: p, obtida: p.obtida, idadeH: 0, aviso: null, texto: null }
-      } catch (e) { erroRede = e.message }
+      } catch (e) { erroRede = motivoPrevisao(e) }
     }
     const a = prev.lerArquivo(pasta, { pontos, desde, ate, agora })
-    if (a.erro) return { erro: erroRede ? `sem rede (${erroRede}) e ${a.erro}` : a.erro }
+    if (a.erro) return { erro: erroRede ? `${erroRede} e ${a.erro}` : a.erro }
     return a
   }
 
@@ -508,7 +542,11 @@ module.exports = function (app, deps = {}) {
     const href = c0?.activeRoute?.href
     if (!href) return null
     const id = href.split('/').pop()
-    const r = await app.resourcesApi?.getResource?.('routes', id)
+    let r
+    try { r = await app.resourcesApi?.getResource?.('routes', id) } catch (e) {
+      app.error(`rota ativa: ${e?.message ?? e}`)
+      throw erroPt('não consegui ler a rota ativa do SignalK (o pormenor ficou no registo)')
+    }
     const coords = r?.feature?.geometry?.coordinates
     return Array.isArray(coords) && coords.length ? coords.map(([lon, lat]) => ({ lat, lon })) : null
   }
@@ -590,7 +628,8 @@ module.exports = function (app, deps = {}) {
     try { app.emit('arlequin:plano', ct.evento(m, pedido)) } catch (e) {
       cancelar(t)
       pedidosContactos.delete(pedido)
-      falharContactos(pedido, `não foi possível enviar: ${e.message}`)
+      app.error(`mensagem para terra: ${e?.message ?? e}`)
+      falharContactos(pedido, 'não foi possível enviar: o plugin porto deu um erro (o pormenor ficou no registo)')
     }
   }
   function respostaContactos (m) {
@@ -958,7 +997,7 @@ module.exports = function (app, deps = {}) {
   async function ativarHref (href, pointIndex) {
     if (typeof app.activateRoute === 'function') return app.activateRoute({ href, pointIndex })
     const r = await fetchFn(`http://localhost:${o.porta || 3000}/signalk/v2/api/vessels/self/navigation/course/activeRoute`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ href, pointIndex }), signal: AbortSignal.timeout(10000) })
-    if (!r.ok) throw new Error(`a API de rumo respondeu ${r.status}`)
+    if (!r.ok) throw erroPt(`a API de rumo do SignalK respondeu ${r.status}`)
   }
   // O ponto da rota a seguir à posição na rota (seguimento); sem ela, o 1.
   function pontoSeguinte (p) {
@@ -994,7 +1033,7 @@ module.exports = function (app, deps = {}) {
     let destino = pedido.destino
     if (destino === 'rota-ativa') {
       const pts = await pontosRotaAtiva()
-      if (!pts) throw new Error('não há rota ativa no SignalK')
+      if (!pts) throw erroPt('não há rota ativa no SignalK')
       destino = { rotaAtiva: pts }
     }
     const costa = costaAtual()
@@ -1049,14 +1088,14 @@ module.exports = function (app, deps = {}) {
         try { lida = !!(await app.resourcesApi.getResource('routes', id)) } catch { lida = false }
         if (!lida) await esperar(100)
       }
-      if (!lida) throw new Error('a rota foi gravada mas não se consegue ler de volta')
+      if (!lida) throw erroPt('a rota foi gravada mas não se consegue ler de volta')
       await app.activateRoute(destinoCurso)
       return { rota: id, href, via: 'api interna' }
     }
     const url = `http://localhost:${o.porta || 3000}`
     const pedir = async (caminho, corpo) => {
       const r = await fetchFn(url + caminho, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo), signal: AbortSignal.timeout(10000) })
-      if (!r.ok) throw new Error(`${caminho} respondeu ${r.status}`)
+      if (!r.ok) throw erroPt(`o SignalK respondeu ${r.status} a ${caminho}`)
     }
     await pedir(`/signalk/v2/api/resources/routes/${id}`, dados)
     await pedir('/signalk/v2/api/vessels/self/navigation/course/activeRoute', destinoCurso)
@@ -1087,7 +1126,9 @@ module.exports = function (app, deps = {}) {
       costaBase = deps.costa || c.carregarCosta()
       polar = base.carregarPolar(path.resolve(o.polar || base.POLAR_PADRAO))
     } catch (e) {
-      erroArranque = `não arrancou: ${e.message}`
+      // (auditoria I-32: o que falta, em pt-PT; o pormenor no registo)
+      app.error(`arranque: ${e?.message ?? e}`)
+      erroArranque = `não arrancou: ${e?.code === 'ENOENT' && e.path ? `falta o ficheiro ${e.path}` : 'erro a ler a costa ou a polar (o pormenor ficou no registo)'}`
       costaBase = null; polar = null
       app.setPluginError?.(erroArranque)
       return
@@ -1167,7 +1208,7 @@ module.exports = function (app, deps = {}) {
       guardarTrabalho(id, { estado: 'a calcular', progresso: 0, texto: 'a começar', pedido: { destino, tripulacao, sairAgora: !!b.sairAgora }, criado: new Date(relogio()).toISOString() })
       estadoPlugin('A calcular a melhor rota…')
       executar(id, { destino, tripulacao, sairAgora: !!b.sairAgora })
-        .catch(e => { const t = trabalhos.get(id); if (t) { t.estado = 'erro'; t.erro = e && e.message ? e.message : String(e) } })
+        .catch(e => { const t = trabalhos.get(id); if (t) { t.estado = 'erro'; t.erro = motivoInterno(e, 'calcular') } })
         .finally(() => {
           aCorrer = null
           const t = trabalhos.get(id)
@@ -1215,7 +1256,10 @@ module.exports = function (app, deps = {}) {
       for (let n = 2; todos.some(d => d.id === id); n++) id = `meu-${slugDestino(nome)}-${n}`
       const lat = Math.round(p.lat * 1e5) / 1e5; const lon = Math.round(p.lon * 1e5) / 1e5
       const d = { id, nome, abrigo: b.abrigo === true, conhecido: b.conhecido, largo: [lat, lon], ...aproximacaoAvulsa(lat, lon), notas: 'acrescentado no ecrã', confirmado: false, criado: new Date(relogio()).toISOString() }
-      try { escreverAtomico(ficheiroMeus(), JSON.stringify([...meus, d], null, 1)) } catch (e) { return res.status(500).json({ ok: false, erro: `não gravei o destino: ${e.message}` }) }
+      try { escreverAtomico(ficheiroMeus(), JSON.stringify([...meus, d], null, 1)) } catch (e) {
+        app.error(`destinos: ${e?.message ?? e}`)
+        return res.status(500).json({ ok: false, erro: 'não gravei o destino: o disco recusou a escrita (o pormenor ficou no registo)' })
+      }
       res.status(201).json({ ok: true, destino: { ...d, meu: true } })
     })
 
@@ -1258,7 +1302,8 @@ module.exports = function (app, deps = {}) {
           novoTexto = plano.montarPlano({ resultado: t.resultado, indice, barco: o.barco, telefones: o.telefones, agora: relogio() })
         } catch (e) {
           if (e.status === 422) return res.status(422).json({ ok: false, erro: e.message })
-          return res.status(500).json({ ok: false, erro: `não montei o plano: ${e.message}` })
+          app.error(`plano: ${e?.message ?? e}`)
+          return res.status(500).json({ ok: false, erro: 'não montei o plano: erro interno (o pormenor ficou no registo)' })
         }
       }
       ativarRota(alt, t.resultado.destino.nome)
@@ -1306,7 +1351,7 @@ module.exports = function (app, deps = {}) {
           enviarFila(agora)
           res.json({ ok: true, ...r, alternativa: alt.id, nota: alt.nota || null, planoAtivo: { estado: planoAtivo.estado } })
         })
-        .catch(e => res.status(502).json({ ok: false, erro: `não ativei a rota: ${e.message}` }))
+        .catch(e => res.status(502).json({ ok: false, erro: `não ativei a rota: ${motivoSignalK(e, 'ativar')}` }))
         .catch(e => app.error(`ativar: ${e.message}`))
     })
 
@@ -1331,7 +1376,8 @@ module.exports = function (app, deps = {}) {
       } catch (e) {
         // 422: falta o que o plano precisa (a hora de alarme), com o motivo; 500: um erro de programação
         if (e.status === 422) return res.status(422).json({ ok: false, erro: e.message })
-        return res.status(500).json({ ok: false, erro: `não montei o plano: ${e.message}` })
+        app.error(`plano: ${e?.message ?? e}`)
+        return res.status(500).json({ ok: false, erro: 'não montei o plano: erro interno (o pormenor ficou no registo)' })
       }
       const pedido = crypto.randomUUID()
       const avisos = typeof o.telefones.ivo === 'string' && o.telefones.ivo.trim() ? [] : [AVISO_SEM_TELEFONE]
@@ -1346,7 +1392,8 @@ module.exports = function (app, deps = {}) {
         // um ouvinte que lança não derruba o pedido: fica "falhou" com o motivo
         cancelar(estado.temporizador)
         estado.estado = 'falhou'
-        estado.motivo = `não foi possível enviar: ${e.message}`
+        app.error(`plano pelo Telegram: ${e?.message ?? e}`)
+        estado.motivo = 'não foi possível enviar: o plugin porto deu um erro (o pormenor ficou no registo)'
       }
       res.status(202).json({ pedido, avisos })
     })
@@ -1391,7 +1438,7 @@ module.exports = function (app, deps = {}) {
           }
           res.json({ ok: true, estado: planoAtivo.estado })
         })
-        .catch(e => res.status(502).json({ ok: false, erro: `não ativei a rota: ${e.message}` }))
+        .catch(e => res.status(502).json({ ok: false, erro: `não ativei a rota: ${motivoSignalK(e, 'continuar')}` }))
         .catch(e => app.error(`continuar: ${e.message}`))
     })
 

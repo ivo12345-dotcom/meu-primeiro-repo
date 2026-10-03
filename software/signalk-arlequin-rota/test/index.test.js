@@ -123,7 +123,9 @@ test('antes de arrancar tudo dá 503; com a polar em falta não arranca e diz po
   assert.equal((await chamar(r.post['/destinos'], { body: {} })).code, 503)
   assert.equal((await chamar(r.post['/ativar'], { body: {} })).code, 503)
   p.start({ pasta: path.join(app.dir, 'dados'), polar: path.join(app.dir, 'nao-existe.csv') })
-  assert.match(app.erroPlugin, /^não arrancou: ENOENT/)
+  // (auditoria I-32: o que falta em pt-PT; o erro do Node no registo)
+  assert.equal(app.erroPlugin, `não arrancou: falta o ficheiro ${path.join(app.dir, 'nao-existe.csv')}`)
+  assert.ok(app.erros.some(m => /^arranque: ENOENT/.test(m)), JSON.stringify(app.erros))
   const x = await chamar(r.post['/calcular'], { body: { destino: 'peniche', tripulacao: 'so' } })
   assert.equal(x.code, 503)
   assert.match(x.erro, /não arrancou/)
@@ -174,7 +176,8 @@ test('POST /calcular: valida, 202 com o id, 409 enquanto calcula, o resultado co
   nada.p.start({ pasta: path.join(vazio.dir, 'dados') })
   const w = await esperarResultado(nada.r, (await chamar(nada.r.post['/calcular'], { body: { destino: 'peniche', tripulacao: 'so' } })).id)
   assert.equal(w.estado, 'erro')
-  assert.equal(w.erro, 'Sem previsão que cubra a rota: sem rede (sem rede) e não há previsão guardada que cubra a rota. Não calculo sem previsão.')
+  // (auditoria I-32: "sem rede", o erro do fetch fica no registo)
+  assert.equal(w.erro, 'Sem previsão que cubra a rota: sem rede e não há previsão guardada que cubra a rota. Não calculo sem previsão.')
   assert.match(vazio.estado, /^Último cálculo: Sem previsão/)
 })
 
@@ -276,7 +279,9 @@ test('POST /ativar: grava a rota (API de recursos v2) e ativa-a (API de rumo v2)
   app.activateRoute = async () => { throw new Error('Unable to retrieve vessel position') }
   const e = await chamar(r.post['/ativar'], { body: { id, alternativa: 0 } })
   assert.equal(e.code, 502)
-  assert.equal(e.erro, 'não ativei a rota: Unable to retrieve vessel position')
+  // (auditoria I-32: a frase do servidor em inglês fica no registo; ao Ivo, em pt-PT)
+  assert.equal(e.erro, 'não ativei a rota: o SignalK ainda não tem a posição do barco (sem GPS?)')
+  assert.ok(app.erros.some(m => m === 'ativar: Unable to retrieve vessel position'), JSON.stringify(app.erros))
 
   // sem a API interna: PUT para o próprio servidor
   const semApi = appFalso({ comApi: false })
@@ -584,7 +589,9 @@ test('POST /plano-telegram: sem chegada mais tarde → 422 com o motivo (nada se
   assert.equal(z.code, 202)
   const gz = await chamar(r.get['/plano-telegram/:pedido'], { params: { pedido: z.pedido } })
   assert.equal(gz.estado, 'falhou')
-  assert.equal(gz.motivo, 'não foi possível enviar: o ouvinte rebentou')
+  // (auditoria I-32: o erro do ouvinte fica no registo)
+  assert.equal(gz.motivo, 'não foi possível enviar: o plugin porto deu um erro (o pormenor ficou no registo)')
+  assert.ok(app.erros.some(m => /o ouvinte rebentou/.test(m)), JSON.stringify(app.erros))
   p.stop()
 })
 
@@ -783,4 +790,39 @@ test('auditoria M-11 (parte index.js): com o vento descarregado e o pedido do ma
   assert.equal(z.estado, 'pronto', z.erro)
   assert.ok(z.resultado.avisos.some(a => a.startsWith('Sem previsão do mar')), JSON.stringify(z.resultado.avisos))
   nada.p.stop()
+})
+
+test('auditoria I-32 (parte index.js): ao Ivo só frases em pt-PT — "sem rede" (não "fetch failed"), a API de rumo e o servidor sem o texto em inglês, um erro interno sem o JavaScript; o erro verdadeiro fica no registo do SignalK', async () => {
+  // a previsão sem rede (o Node diz "fetch failed") e sem nada guardado
+  const vazio = appFalso()
+  const nada = plugin(vazio, { fetch: async () => { throw new TypeError('fetch failed') } })
+  nada.p.start({ pasta: path.join(vazio.dir, 'dados') })
+  const w = await esperarResultado(nada.r, (await chamar(nada.r.post['/calcular'], { body: { destino: 'peniche', tripulacao: 'so' } })).id)
+  assert.equal(w.erro, 'Sem previsão que cubra a rota: sem rede e não há previsão guardada que cubra a rota. Não calculo sem previsão.')
+  assert.ok(vazio.erros.some(m => /fetch failed/.test(m)), JSON.stringify(vazio.erros))
+  // a previsão que demora: "não respondeu a tempo"
+  const lento = appFalso()
+  const l = plugin(lento, { fetch: async () => { throw Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' }) } })
+  l.p.start({ pasta: path.join(lento.dir, 'dados') })
+  const z = await esperarResultado(l.r, (await chamar(l.r.post['/calcular'], { body: { destino: 'peniche', tripulacao: 'so' } })).id)
+  assert.equal(z.erro, 'Sem previsão que cubra a rota: a Open-Meteo não respondeu a tempo e não há previsão guardada que cubra a rota. Não calculo sem previsão.')
+  // a API de rumo que rebenta com um erro de programação em inglês
+  const app = appFalso()
+  app.leiturasFalhadas = 0
+  const { p, r } = plugin(app)
+  p.start({ pasta: path.join(app.dir, 'dados') })
+  const id = (await chamar(r.post['/calcular'], { body: { destino: 'peniche', tripulacao: 'acompanhado', sairAgora: true } })).id
+  await esperarResultado(r, id)
+  app.activateRoute = async () => { throw new TypeError("Cannot read properties of undefined (reading 'href')") }
+  const e = await chamar(r.post['/ativar'], { body: { id, alternativa: 0 } })
+  assert.equal(e.code, 502)
+  assert.equal(e.erro, 'não ativei a rota: o SignalK recusou a rota (o pormenor ficou no registo)')
+  assert.ok(app.erros.some(m => /Cannot read properties/.test(m)), JSON.stringify(app.erros))
+  // a rota ativa que o servidor não consegue ler (destino "rota-ativa")
+  app.getCourse = async () => ({ activeRoute: { href: '/resources/routes/abc' } })
+  app.resourcesApi.getResource = async () => { throw new Error('Resource not found: abc') }
+  const x = await esperarResultado(r, (await chamar(r.post['/calcular'], { body: { destino: 'rota-ativa', tripulacao: 'so' } })).id)
+  assert.equal(x.erro, 'não consegui ler a rota ativa do SignalK (o pormenor ficou no registo)')
+  assert.ok(app.erros.some(m => /Resource not found/.test(m)), JSON.stringify(app.erros))
+  p.stop()
 })
