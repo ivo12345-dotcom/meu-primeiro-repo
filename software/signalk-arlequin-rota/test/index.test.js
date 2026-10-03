@@ -149,10 +149,11 @@ test('POST /calcular: valida, 202 com o id, 409 enquanto calcula, o resultado co
   const x = await esperarResultado(r, a.id)
   assert.equal(x.estado, 'pronto', x.erro)
   assert.equal(x.progresso, 1)
-  assert.ok(['nao-recomendado', 'espera'].includes(x.resultado.veredicto.tipo))
+  // (auditoria M-17: uma só resposta — a de 29/09 às 15:32, só eu, para Peniche)
+  assert.deepEqual({ tipo: x.resultado.veredicto.tipo, texto: x.resultado.veredicto.texto }, { tipo: 'espera', texto: 'Espera até amanhã às 06:30' })
   assert.equal(x.resultado.alternativas.length, 3)
   assert.deepEqual(x.resultado.previsao.idadeH, 0)
-  assert.match(app.estado, /^Última rota: /)
+  assert.equal(app.estado, 'Última rota: Espera até amanhã às 06:30')
   // pediu forecast e marine com os pontos da rota, e arquivou um ficheiro por ponto
   assert.equal(registo.length, 2)
   assert.ok(registo[0].opcoes.signal) // com tempo limite
@@ -364,7 +365,8 @@ test('M2: a descrição da rota gravada tem as horas de Lisboa (HH:MM), não o U
   const a = await chamar(r.post['/ativar'], { body: { id, alternativa: 0 } })
   assert.equal(a.code, 200, a.erro)
   const desc = app.recursos.get(`routes/${a.rota}`).description
-  assert.match(desc, /, partida às 15:32, chegada prevista (às|amanhã às) \d\d:\d\d \(hora de Lisboa\)/, desc)
+  // (auditoria M-17: uma só resposta — a alternativa de 29/09 chega amanhã às 07:19)
+  assert.ok(desc.includes(', partida às 15:32, chegada prevista amanhã às 07:19 (hora de Lisboa)'), desc)
   assert.ok(!/\d{4}-\d\d-\d\dT|\.\d{3}Z/.test(desc), desc)
 })
 

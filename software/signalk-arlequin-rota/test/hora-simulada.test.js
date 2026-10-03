@@ -65,7 +65,8 @@ test('re-revisão M-4: com o modoTeste ligado, o estado do plugin começa por "M
   assert.match(app.estado, /^MODO DE TESTE \(hora simulada, ciclo de 1 s\) · Pronto · \d+ destinos$/)
   // também depois de um cálculo
   await calcular(r, { destino: 'alges', tripulacao: 'so' })
-  assert.match(app.estado, /^MODO DE TESTE \(hora simulada, ciclo de 1 s\) · Últim[ao] /)
+  // (auditoria M-17: uma só resposta)
+  assert.equal(app.estado, 'MODO DE TESTE (hora simulada, ciclo de 1 s) · Última rota: Espera até amanhã às 09:30')
   p.stop()
   const b = appFalso()
   const q = plugin(b, deps)
