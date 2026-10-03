@@ -1227,3 +1227,19 @@ test('decisão n.º 19 (relógio): com o relógio do Pi a mais de 60 s da hora d
   assert.equal(g.relogioDesacertadoS, null)
   s.p.stop()
 })
+
+// ---------- auditoria M-21: dois toques em Ativar ----------
+test('auditoria M-21 (sonda S8): dois toques em Ativar (outra alternativa, com o plano enviado) — o 2.º dá 409 enquanto o 1.º está a meio: um só "Este plano substitui o anterior" à Mãe e uma só rota nova', async () => {
+  const s = await preparar()
+  await sair(s)
+  const rotas = s.app.recursos.size
+  const [a, b] = await Promise.all([chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 1 } }), chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 1 } })])
+  assert.deepEqual([a.code, b.code].sort(), [200, 409])
+  assert.match((a.code === 409 ? a : b).erro, /^já há uma ativação a meio/)
+  assert.equal(s.recebidos.filter(e => e.tipo === 'plano').length, 1)
+  assert.equal(s.app.recursos.size, rotas + 1)
+  assert.deepEqual(pa.lerFechados(s.app.getDataDirPath()).map(x => x.indice), [0], 'só o plano antigo foi arquivado')
+  // acabada a 1.ª, outra ativação já pode
+  assert.equal((await chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 1 } })).code, 200)
+  s.p.stop()
+})
