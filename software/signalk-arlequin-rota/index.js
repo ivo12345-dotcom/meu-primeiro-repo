@@ -630,8 +630,12 @@ module.exports = function (app, deps = {}) {
   // antena perdida, a rede a voltar). Em pausa, à espera de sair ou com o plano fechado sai da fila; sem
   // GPS fica retido (nem sai nem prende as outras) até o GPS voltar; com GPS volta a decidir-se com os
   // valores de agora (re-revisão M-2): sai da fila se deixou de valer ou se o barco parou entretanto
-  // (revisão final C1). O parcial (revisão final I3, só para quem falhou) vai igual ao que os outros
-  // receberam — a mesma ref, o mesmo texto —, mas também só com o barco a avançar.
+  // (revisão final C1) — o ciclo seguinte cria outro se for caso disso. O parcial (revisão final I3, só
+  // para quem falhou) vai igual ao que os outros receberam — a mesma ref —, mas também só com o barco a
+  // avançar e ainda atrasado: quando não pode sair fica RETIDO, como sem GPS, e volta a avaliar-se no ciclo
+  // seguinte; nunca se tira da fila por isso (revisão da F2, F2b Importante 2: um só ciclo "parado" numa
+  // curva apagava-o para sempre, sem desistência nem aviso ao Ivo). Só sai pela desistência (decisão n.º
+  // 16), por um atraso novo o substituir, ou pelo "cheguei bem"/"terminada".
   function enviarFila (agora) {
     if (!planoAtivo?.contactos) return
     // auditoria I-05 (decisão do Ivo n.º 16): de quem nunca recebe, desiste-se no fim da hora de alarme que ESSE
@@ -652,22 +656,21 @@ module.exports = function (app, deps = {}) {
     }
     // (com o relógio do Pi desacertado, o último acompanhamento já não vale: decisão n.º 19)
     const comLeitura = desacertoAtual == null && ultimo?.estado === pa.ESTADOS.NAVEGAR && !ultimo.semGps
-    let m0 = ct.proxima(planoAtivo.contactos, agora, { saltar: (m) => ct.atrasoAutomatico(m) && !comLeitura })
+    // o parcial é um atraso que os outros já receberam: vale enquanto o barco estiver atrasado (como o 1.º
+    // atraso, 30 min sobre a "mais tarde"), não pela regra do 1× por hora; e conta com a hora de alarme que
+    // os outros já receberam (o teto foi visto quando saiu). Quando não pode sair fica retido (saltar).
+    const parcialRetido = (m) => !comLeitura || !atrasoAgora(ultimo, agora, null) || retencao(ultimo, { alarme: m.alarme }, agora) != null
+    let m0 = ct.proxima(planoAtivo.contactos, agora, { saltar: (m) => ct.atrasoAutomatico(m) && (m.parcial ? parcialRetido(m) : !comLeitura) })
     if (!m0) return
-    if (ct.atrasoAutomatico(m0)) {
-      // o parcial é um atraso que os outros já receberam: vale enquanto o barco estiver atrasado (como o
-      // 1.º atraso, 30 min sobre a "mais tarde"), não pela regra do 1× por hora; e conta com a hora de
-      // alarme que os outros já receberam (o teto foi visto quando saiu)
-      const d = atrasoAgora(ultimo, agora, m0.parcial ? null : undefined)
-      if (!d || retencao(ultimo, m0.parcial ? { alarme: m0.alarme } : d, agora)) {
+    if (ct.atrasoAutomatico(m0) && !m0.parcial) {
+      const d = atrasoAgora(ultimo, agora)
+      if (!d || retencao(ultimo, d, agora)) {
         planoAtivo = { ...planoAtivo, contactos: ct.tirar(planoAtivo.contactos, m0.id) }
         gravarPlanoAtivo()
         return enviarFila(agora)
       }
-      if (!m0.parcial) {
-        planoAtivo = { ...planoAtivo, contactos: ct.atualizarAtraso(planoAtivo.contactos, m0.id, { chegada: d.chegada, alarme: d.alarme }) }
-        m0 = planoAtivo.contactos.fila.find(x => x.id === m0.id)
-      }
+      planoAtivo = { ...planoAtivo, contactos: ct.atualizarAtraso(planoAtivo.contactos, m0.id, { chegada: d.chegada, alarme: d.alarme }) }
+      m0 = planoAtivo.contactos.fila.find(x => x.id === m0.id)
     }
     const pedido = crypto.randomUUID()
     // o atraso diz "em vez de" o último alarme entregue em terra (o texto faz-se à hora de sair)
