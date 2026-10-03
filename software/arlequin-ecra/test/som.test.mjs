@@ -4,6 +4,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { lerFonte, funcao, corte } from './ajuda-fonte.mjs'
 import { criarAudio, retomar, comSom, chipSemSom } from '../public/lib/som.js'
 
 // um AudioContext falso: começa suspenso (o browser sem o toque) ou a tocar (com o autoplay)
@@ -40,12 +41,14 @@ test('auditoria K-03: suspenso (o browser ainda não deixa), retoma-se a cada ci
 })
 
 test('auditoria K-03: o app.js cria o som no arranque, tenta retomá-lo a cada ciclo e a cada toque, e a barra usa o chipSemSom', () => {
-  // o app.js é do browser (não se importa no node): confere-se o que ele chama
-  const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8')
+  // o app.js é do browser (não se importa no node): confere-se o que ele chama (revisão F3, Minor 13: pela ajuda,
+  // sem depender dos fins de linha, e cada pedaço tem de se achar — antes, com CRLF, o corte da função ia até ao
+  // fim do ficheiro e o teste passava mesmo que o ciclo deixasse de retomar o som)
+  const app = lerFonte('app.js')
   assert.match(app, /audio:\s*criarAudio\(\)/, 'no arranque, não no 1.º toque')
-  const ciclo = app.slice(app.indexOf('function ciclo'), app.indexOf('\n}\n', app.indexOf('function ciclo')))
+  const ciclo = funcao(app, 'function ciclo')
   assert.match(ciclo, /retomar\(app\.audio\)/, 'a cada ciclo')
-  const toque = app.slice(app.indexOf("addEventListener('pointerdown'"), app.indexOf('}, { capture: true })'))
+  const toque = corte(app, "addEventListener('pointerdown'", '}, { capture: true })', 'o ouvinte do pointerdown')
   assert.match(toque, /retomar\(app\.audio\)/, 'a cada toque')
   assert.match(app, /somHtml:\s*chipSemSom\(app\.audio\)/)
   assert.doesNotMatch(app, /toque para ligar o som/, 'o chip cinzento antigo saiu')

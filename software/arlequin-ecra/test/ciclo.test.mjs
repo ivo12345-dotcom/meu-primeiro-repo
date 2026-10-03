@@ -2,7 +2,7 @@
 // (página, barómetro, viagem) valida-se ao ler.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { lerFonte, funcao } from './ajuda-fonte.mjs'
 import { passoCiclo, desenharSeguro, escolherPagina, ERRO_DESENHO } from '../public/lib/ciclo.js'
 import { lerBarometro, tendencia } from '../public/lib/barometro.js'
 import { lerViagem, acumular } from '../public/lib/viagem.js'
@@ -76,11 +76,13 @@ test('auditoria I-06: o cartão da AI com um último treino sem resultados nem e
 })
 
 test('auditoria I-06: o app.js toca primeiro, desenha dentro do desenharSeguro e valida o que lê do armazenamento', () => {
-  // o app.js é do browser (não se importa no node): confere-se o que ele chama
-  const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8')
-  const ciclo = app.slice(app.indexOf('function ciclo'), app.indexOf('\n}\n', app.indexOf('function ciclo')))
+  // o app.js é do browser (não se importa no node): confere-se o que ele chama (revisão F3, Minor 13: pela ajuda,
+  // sem depender dos fins de linha, e a função tem de se achar — antes, com CRLF, o corte ia até ao fim do ficheiro)
+  const app = lerFonte('app.js')
+  const ciclo = funcao(app, 'function ciclo')
   assert.match(ciclo, /passoCiclo\(/)
-  assert.ok(ciclo.indexOf('tocar:') < ciclo.indexOf('desenhar:'), 'o som antes do desenho')
+  const tocar = ciclo.indexOf('tocar:')
+  assert.ok(tocar >= 0 && ciclo.indexOf('desenhar:') > tocar, 'o som antes do desenho')
   assert.match(app, /desenharSeguro\(\(\) => PAGINAS\[app\.pagina\]\.render\(ctx\)/)
   assert.match(app, /pagina:\s*escolherPagina\(/)
   assert.match(app, /baro:\s*lerBarometro\(/)

@@ -3,6 +3,10 @@ import assert from 'node:assert/strict'
 import { criarBarometro, registarPressao, tendencia } from '../public/lib/barometro.js'
 import { novaViagem, acumular } from '../public/lib/viagem.js'
 import { maisGrave, deveTocar, paginaDoAlarme, bipDeLigacao, chipAlarme, acaoCalar } from '../public/lib/alarmes.js'
+import { lerFonte, corte } from './ajuda-fonte.mjs'
+
+// o bloco do app.js que cala um alarme (silenciar/reconhecer); rebenta se não se achar (revisão F3, Minor 13)
+const blocoCalar = () => corte(lerFonte('app.js'), "if (acao === 'silenciar' || acao === 'reconhecer')", "if (acao === 'ir-alarme')", 'o bloco do calar do app.js')
 
 const H = 3600 * 1000
 const NO = 1852 / 3600
@@ -160,13 +164,11 @@ test('auditoria I-08: a falha do silenciar/reconhecer fica à vista na barra, cu
   assert.equal(falhaCalar(erro(undefined, 'sem ligação ao SignalK'), 'reconhecer'), 'não reconheceu: sem ligação ao SignalK')
   // (revisão F3, Important 4: sem a explicação do servidor diz quem recusou, não só o código)
   assert.equal(falhaCalar(erro(400), 'reconhecer'), 'não reconheceu: o SignalK recusou (HTTP 400)')
-  const { readFileSync } = await import('node:fs')
-  const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8')
-  const calar = app.slice(app.indexOf("if (acao === 'silenciar' || acao === 'reconhecer')"), app.indexOf("if (acao === 'ir-alarme')"))
+  const calar = blocoCalar()
   assert.ok(calar.length > 50, 'o bloco do calar no app.js')
   // os pedidos (/silence, /acknowledge e, sem id, o caminho) estão no calar() do lib/alarmes.js (testado com as URLs)
   assert.match(calar, /calar\(/)
-  assert.match(readFileSync(new URL('../public/lib/alarmes.js', import.meta.url), 'utf8'), /'acknowledge' : 'silence'/)
+  assert.match(lerFonte('lib/alarmes.js'), /'acknowledge' : 'silence'/)
   assert.doesNotMatch(calar, /\.catch\(\(\) => \{\}\)/)
   assert.match(calar, /falhaCalar\(/)
 })
@@ -266,10 +268,9 @@ test('revisão F3, Important 4: calar pelo id (API v2 do SignalK: /silence ou /a
   assert.equal(falhaCalar(erro(501), 'reconhecer'), 'não reconheceu: o SignalK não está a gerir os alarmes (as notificações estão desligadas nas definições)')
   assert.equal(falhaCalar(erro(502), 'silenciar'), 'não silenciou: o SignalK recusou (HTTP 502)')
   // o app.js usa estas funções (a barra e o botão)
-  const { readFileSync } = await import('node:fs')
-  const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8').replace(/\r/g, '')
+  const app = lerFonte('app.js')
   assert.match(app, /alarmeHtml:\s*chipAlarme\(alarmeDaBarra\(ctx\.notificacoes\)\)/)
-  const bloco = app.slice(app.indexOf("if (acao === 'silenciar' || acao === 'reconhecer')"), app.indexOf("if (acao === 'ir-alarme')"))
+  const bloco = blocoCalar()
   assert.match(bloco, /calar\(/)
   assert.match(bloco, /falhaCalar\(/)
 })
@@ -290,9 +291,8 @@ test('revisão F3, Important 4 (visto ponta a ponta): calado no servidor, o ecr�
     assert.deepEqual(await calar(porao, 'silenciar', ja), { jaCalado: true }, message)
   }
   // o app.js põe o calado no store logo a seguir ao calar
-  const { readFileSync } = await import('node:fs')
-  const app = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8').replace(/\r/g, '')
-  const bloco = app.slice(app.indexOf("if (acao === 'silenciar' || acao === 'reconhecer')"), app.indexOf("if (acao === 'ir-alarme')"))
+  const app = lerFonte('app.js')
+  const bloco = blocoCalar()
   assert.ok(bloco.indexOf('await calar(') >= 0 && bloco.indexOf('calado(') > bloco.indexOf('await calar('), 'depois do calar, o calado no store')
   assert.match(bloco, /store\.notificacoes\.set\(/)
 })
