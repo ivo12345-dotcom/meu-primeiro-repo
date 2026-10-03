@@ -289,3 +289,13 @@ test('auditoria I-02 (decisão n.º 15): terra tem um plano que não é o do pla
   assert.equal(av.alarmeTerra({ semPlano: 'outro', alarme }, alarme - 10 * MIN).message, 'Os contactos em terra têm o plano de outra alternativa, com alarme às 18:00: avisa-os')
   assert.equal(av.alarmeTerra({ semPlano: 'nenhum', alarme }, alarme).state, 'normal')
 })
+
+test('auditoria I-17: o lembrete do evento "Visibilidade X km: radar ligado" (sem chuva, o texto novo da 3a) sai 30 min antes — "pouca visibilidade — radar ligado e luzes"; com chuva, "chuva e pouca visibilidade"', () => {
+  const eventos = [
+    ev('v1', T0 + H, 'tempo', 'Visibilidade 4,0 km: radar ligado', false, 'visibilidade'),
+    ev('v2', T0 + 3 * H, 'tempo', 'Chuva e visibilidade 2,5 km: radar ligado', false, 'chuva e visibilidade')
+  ]
+  const L = (id) => `notifications.rota.lembrete.${id}`
+  assert.deepEqual(av.avaliar(av.novoEstado(), base({ eventos }), T0 + 30 * MIN).avisos[L('v1')], { state: 'alert', method: METODO, message: 'Às 16:00: pouca visibilidade — radar ligado e luzes' })
+  assert.equal(av.avaliar(av.novoEstado(), base({ eventos }), T0 + 150 * MIN).avisos[L('v2')].message, 'Às 18:00: chuva e pouca visibilidade — radar ligado e luzes')
+})
