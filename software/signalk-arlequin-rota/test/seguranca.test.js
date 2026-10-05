@@ -427,6 +427,9 @@ test('gasóleo inicial ou bateria à chegada desconhecidos: aviso vermelho (não
     assert.ok(!JSON.stringify(semGasto.avisosVermelhos).match(/NaN|null/))
   }
   assert.deepEqual(s.avaliar(base({ gasoleoInicial: null })).avisosVermelhos, ['gasóleo inicial desconhecido: confirma o depósito'])
+  // F9: o texto é uma só constante (o lib/calculo.js usa-a para não o repetir nos avisos gerais do "Sair agora"), sem litros
+  assert.equal(s.AVISO_GASOLEO_DESCONHECIDO, 'gasóleo inicial desconhecido: confirma o depósito')
+  assert.deepEqual(s.avaliar(base({ gasoleoInicial: null })).avisosVermelhos, [s.AVISO_GASOLEO_DESCONHECIDO])
   // com os dois conhecidos e bons, nenhum aviso vermelho
   assert.deepEqual(s.avaliar(base()).avisosVermelhos, [])
 })
