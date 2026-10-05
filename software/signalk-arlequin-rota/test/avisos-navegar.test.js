@@ -284,12 +284,37 @@ test('auditoria K-12: com o plano fechado e o "cheguei bem"/"viagem terminada" p
   assert.equal(av.alarmeTerra({ aberto: false, alarme, fecho: null }, alarme).state, 'normal')
 })
 
-test('auditoria I-02 (decisão n.º 15): terra tem um plano que não é o do plano ativo — sem plano ativo "ativa-o ou avisa-os", com outro plano ativo "o plano de outra alternativa"; 60 min antes, e apaga-se à hora de alarme (terra já não espera)', () => {
+test('auditoria I-02 (decisão n.º 15): terra tem um plano que não é o do plano ativo — sem plano ativo "ativa-o ou avisa-os", com outro plano ativo "o plano de outra alternativa"; 60 min antes (e à hora de alarme não se apaga: F2b Menor 4, o teste seguinte)', () => {
   const alarme = T0 + 3 * H // 18:00 em Lisboa
   assert.equal(av.alarmeTerra({ semPlano: 'nenhum', alarme }, alarme - 61 * MIN).state, 'normal')
   assert.deepEqual(av.alarmeTerra({ semPlano: 'nenhum', alarme }, alarme - 59 * MIN), { state: 'alert', method: METODO, message: 'Os contactos em terra têm um plano com alarme às 18:00 e não há plano ativo: ativa-o ou avisa-os', apito: 'curto', chave: `${iso(alarme)} sem-plano` })
   assert.equal(av.alarmeTerra({ semPlano: 'outro', alarme }, alarme - 10 * MIN).message, 'Os contactos em terra têm o plano de outra alternativa, com alarme às 18:00: avisa-os')
-  assert.equal(av.alarmeTerra({ semPlano: 'nenhum', alarme }, alarme).state, 'normal')
+  // (F2b Menor 4: antes, à hora de alarme apagava-se — "terra já não espera" — e era a hora a que os contactos
+  // começam a ligar; agora fica, com o texto de passado)
+  assert.equal(av.alarmeTerra({ semPlano: 'nenhum', alarme }, alarme).state, 'alert')
+})
+
+test('F2b Menor 4 (I-02, decisão n.º 15): o lembrete "ativa-o ou avisa-os" não se apaga à hora de alarme — é quando os contactos começam a ligar: fica, com o texto de passado (já não há "ativa-o": o cálculo é antigo) e outra chave, para o ecrã voltar a apitar; com e sem outro plano ativo; as horas de outro dia levam o dia; sem hora de alarme, normal', () => {
+  const alarme = T0 + 3 * H // 18:00 em Lisboa
+  // sem plano ativo
+  assert.deepEqual(av.alarmeTerra({ semPlano: 'nenhum', alarme }, alarme), { state: 'alert', method: METODO, message: 'Passou a hora de alarme dos contactos em terra (18:00) e não há plano ativo: avisa-os já, podem estar a ligar ao MRCC', apito: 'curto', chave: `${iso(alarme)} sem-plano passou` })
+  assert.equal(av.alarmeTerra({ semPlano: 'nenhum', alarme }, alarme + 30 * MIN).message, 'Passou a hora de alarme dos contactos em terra (18:00) e não há plano ativo: avisa-os já, podem estar a ligar ao MRCC')
+  // a chave muda com a hora (o publicar manda outro valor e o ecrã apita outra vez no momento em que terra começa a ligar)
+  assert.notEqual(av.alarmeTerra({ semPlano: 'nenhum', alarme }, alarme - MIN).chave, av.alarmeTerra({ semPlano: 'nenhum', alarme }, alarme).chave)
+  const antes = av.publicar({}, { [av.CAMINHO_ALARME_TERRA]: av.alarmeTerra({ semPlano: 'nenhum', alarme }, alarme - MIN) })
+  const depois = av.publicar(antes.publicados, { [av.CAMINHO_ALARME_TERRA]: av.alarmeTerra({ semPlano: 'nenhum', alarme }, alarme) })
+  assert.equal(depois.deltas.length, 1, 'a passagem da hora de alarme publica outra vez')
+  assert.match(depois.deltas[0].value.message, /^Passou a hora de alarme/)
+  assert.equal(av.publicar(depois.publicados, { [av.CAMINHO_ALARME_TERRA]: av.alarmeTerra({ semPlano: 'nenhum', alarme }, alarme + 5 * MIN) }).deltas.length, 0, 'depois disso não repete')
+  // com outro plano ativo
+  assert.deepEqual(av.alarmeTerra({ semPlano: 'outro', alarme }, alarme + MIN), { state: 'alert', method: METODO, message: 'Passou a hora de alarme dos contactos em terra (18:00), que têm o plano de outra alternativa: avisa-os já, podem estar a ligar ao MRCC', apito: 'curto', chave: `${iso(alarme)} outro passou` })
+  // no dia seguinte a hora leva o dia
+  assert.equal(av.alarmeTerra({ semPlano: 'nenhum', alarme }, alarme + 20 * H).message, 'Passou a hora de alarme dos contactos em terra (ter 29/09 18:00) e não há plano ativo: avisa-os já, podem estar a ligar ao MRCC')
+  // nunca "null" nem "NaN"; sem hora de alarme nada
+  assert.equal(av.alarmeTerra({ semPlano: 'nenhum', alarme: NaN }, alarme + MIN).state, 'normal')
+  for (const x of ['nenhum', 'outro']) assert.doesNotMatch(av.alarmeTerra({ semPlano: x, alarme }, alarme + MIN).message, /null|NaN|undefined/)
+  // o plano aberto e o fecho por entregar não mudam (já ficavam depois da hora)
+  assert.equal(av.alarmeTerra({ aberto: true, alarme }, alarme + 30 * MIN).message, 'Os contactos em terra ligam ao MRCC às 18:00: avisa-os ou Terminar')
 })
 
 test('auditoria I-17: o lembrete do evento "Visibilidade X km: radar ligado" (sem chuva, o texto novo da 3a) sai 30 min antes — "pouca visibilidade — radar ligado e luzes"; com chuva, "chuva e pouca visibilidade"', () => {
