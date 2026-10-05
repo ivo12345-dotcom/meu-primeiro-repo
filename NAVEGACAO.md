@@ -1561,8 +1561,11 @@ em "A navegar", mais abaixo.
   comprida ≤ 3 m com período ≥ 9 s). Nessa calma, as horas a motor contam metade, porque **a roda
   tem travão** (confirmado pelo Ivo a 29/09; a regra fica, decisão n.º 12) e dá para pausas curtas.
 - **Bateria no planeamento** (decisão n.º 4): o banco de serviço de **440 Ah** e o solar com perdas
-  (**fator 0,65**, como o simulador); o limite dos 50 % à chegada mantém-se. Sem leitura da bateria,
-  assume 80 % com o aviso vermelho "estado da bateria desconhecido: confirma a carga (assumi 80%)".
+  (**fator 0,65**, como o simulador); o limite dos 50 % à chegada mantém-se. **Sem leitura da bateria** (ou
+  com o sensor perdido) o estado é desconhecido e **nunca se assume** (decisão do Ivo de 05/10, como o
+  gasóleo): a simulação corre sem o modelo da energia, a regra dos 50 % não corre (nem exclui nem aprova), o
+  cartão diz "bateria desconhecida" em vez de "bateria mín. N%" e cada alternativa leva o aviso vermelho
+  "estado da bateria desconhecido: confirma a carga", sem percentagem.
   Uma configuração antiga com 200 Ah gravados passa a 440 **uma só vez**: o plugin grava a configuração
   com o valor novo e escreve a marca `migracoes.json` (na pasta do plugin); a partir daí, o que
   puseres — até 200 Ah, se for outro banco — fica. Se a gravação falhar (ou o servidor não a deixar

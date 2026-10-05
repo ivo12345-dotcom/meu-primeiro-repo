@@ -70,7 +70,7 @@ function cartao (ctx, alt, i, sel) {
 <div class="lab">chegada (cedo–tarde): ${margem(alt.chegada, ag)}${alt.chegadaNoite ? ' · <span class="atencao">de noite</span>' : ''}</div>
 <div>vela ${h(H.vela)} · motor ${h(H.motor)} · noite ${h(H.noite)} · leme ${h(H.leme)}</div>
 <div>vento ${comPior(M.vento, P.vento)} · rajada ${comPior(M.rajada, P.rajada)} nós · ondas ${comPior(M.ondas, P.ondas, 1)} m</div>
-<div>gasóleo ${num(G.p50, 0)} L (pior ${num(G.p90, 0)} L) · bateria mín. ${num(alt.bateriaMin, 0)}%</div>
+<div>gasóleo ${num(G.p50, 0)} L (pior ${num(G.p90, 0)} L) · ${alt.bateriaMin == null ? 'bateria desconhecida' : `bateria mín. ${num(alt.bateriaMin, 0)}%`}</div>
 ${motivos}${avisosRota}</div>`
 }
 

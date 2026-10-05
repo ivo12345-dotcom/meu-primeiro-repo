@@ -420,7 +420,7 @@ test('gasóleo inicial ou bateria à chegada desconhecidos: aviso vermelho (não
     assert.deepEqual(semGasoleo.motivos, [])
     const semBateria = s.avaliar(base({ sairAgora, pessimista: passagem({ resumo: { socFinal: null } }) }))
     assert.equal(semBateria.excluida, false)
-    assert.deepEqual(semBateria.avisosVermelhos, ['bateria à chegada desconhecida'])
+    assert.deepEqual(semBateria.avisosVermelhos, [s.AVISO_BATERIA_DESCONHECIDA])
     // o gasto do pessimista não é número: o gasóleo à chegada também é desconhecido
     const semGasto = s.avaliar(base({ sairAgora, pessimista: passagem({ resumo: { gasoleoGasto: NaN } }) }))
     assert.deepEqual(semGasto.avisosVermelhos, ['gasóleo à chegada desconhecido'])
@@ -430,6 +430,8 @@ test('gasóleo inicial ou bateria à chegada desconhecidos: aviso vermelho (não
   // F9: o texto é uma só constante (o lib/calculo.js usa-a para não o repetir nos avisos gerais do "Sair agora"), sem litros
   assert.equal(s.AVISO_GASOLEO_DESCONHECIDO, 'gasóleo inicial desconhecido: confirma o depósito')
   assert.deepEqual(s.avaliar(base({ gasoleoInicial: null })).avisosVermelhos, [s.AVISO_GASOLEO_DESCONHECIDO])
+  // 05/10: a bateria da mesma maneira (o lib/calculo.js corre a simulação sem energia: socFinal null), sem percentagem
+  assert.equal(s.AVISO_BATERIA_DESCONHECIDA, 'estado da bateria desconhecido: confirma a carga')
   // com os dois conhecidos e bons, nenhum aviso vermelho
   assert.deepEqual(s.avaliar(base()).avisosVermelhos, [])
 })

@@ -411,7 +411,11 @@ diferem, valem estas.
   registo do SignalK diz porquê. O limite dos 50 % à chegada mantém-se.
 - **I-14:** sem leitura da bateria assume 80 %, com o aviso geral "Sem estado da bateria: assumi
   80%" e, em cada alternativa, o aviso vermelho "estado da bateria desconhecido: confirma a carga
-  (assumi 80%)".
+  (assumi 80%)". **Substituído a 05/10 (decisão do Ivo, a mesma regra do gasóleo da F9):** a bateria
+  desconhecida nunca se assume — a simulação corre sem o modelo da energia, a regra dos 50 % não corre, o
+  cartão diz "bateria desconhecida" e os avisos ficam "Sem estado da bateria: confirma a carga" (geral) e
+  "estado da bateria desconhecido: confirma a carga" (vermelho, em cada alternativa); a opção
+  `socDesconhecido` saiu do esquema.
 - **Decisão n.º 11 (M-18):** a simulação conta uma viragem ou cambadela quando a proa à vela muda
   mais de **40°** num minuto (as cambadelas da simulação mudam 50° e as viragens 90°: 40 apanha as
   duas com margem; `lib/avisos.js`, `viragemGraus`). Os lembretes a navegar (3b-2) usam **45°** no

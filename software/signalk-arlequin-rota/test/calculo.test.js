@@ -165,22 +165,27 @@ test('falhas: sem GPS, sem previsão, destino desconhecido, já no destino, sem 
   assert.match((await calcular(entrada(), deps({ obterPrevisao: async () => ({ previsao: curta, obtida: curta.obtida, idadeH: 0 }) }))).erro, /^A previsão acaba às 17:32: não cobre nenhuma passagem até Peniche\.$/)
 })
 
-test('no mar (a mais de 0,5 MN de um porto): parte da posição atual; sem SoC assume e avisa, sem gasóleo diz que é desconhecido (nunca assume litros)', async () => {
+test('no mar (a mais de 0,5 MN de um porto): parte da posição atual; sem SoC nem gasóleo diz que são desconhecidos (nunca assume litros nem percentagem)', async () => {
   const r = await calcular(entrada({ instrumentos: { posicao: { lat: 38.97, lon: -9.53 } }, sairAgora: true }), deps())
   assert.equal(r.erro, undefined, r.erro)
   assert.equal(r.partida.emMar, true)
   assert.deepEqual(r.alternativas[0].rota[0], [38.97, -9.53])
-  assert.ok(r.avisos.includes('Sem estado da bateria: assumi 80%'))
+  // 05/10 (decisão do dono, como o gasóleo): a bateria sem SoC não leva percentagem assumida, só "confirma a carga"
+  assert.ok(r.avisos.includes('Sem estado da bateria: confirma a carga'), JSON.stringify(r.avisos))
   // F9 (decisão do dono: o desconhecido nunca se assume): o gasóleo sem nível não leva litros assumidos, só "confirma o depósito"
   assert.ok(r.avisos.includes('Sem nível do gasóleo: confirma o depósito'), JSON.stringify(r.avisos))
   // o gasóleo inicial desconhecido é um aviso vermelho em cada alternativa (a regra do mínimo não corre: não há número)
   for (const a of r.alternativas) assert.ok(a.avisosVermelhos.includes('gasóleo inicial desconhecido: confirma o depósito'), JSON.stringify(a.avisosVermelhos))
-  // I-14: a bateria desconhecida também (a regra dos 50 % à chegada corre com os 80 % assumidos), nunca em silêncio
-  for (const a of r.alternativas) assert.ok(a.avisosVermelhos.includes('estado da bateria desconhecido: confirma a carga (assumi 80%)'), JSON.stringify(a.avisosVermelhos))
+  // I-14, 05/10: a bateria desconhecida também é um aviso vermelho em cada alternativa (a regra dos 50 % não corre: não há
+  // número), sem percentagem e sem "bateria mín." no cartão
+  for (const a of r.alternativas) {
+    assert.ok(a.avisosVermelhos.includes('estado da bateria desconhecido: confirma a carga'), JSON.stringify(a.avisosVermelhos))
+    assert.equal(a.bateriaMin, null, 'sem uma "bateria mín." inventada')
+  }
   // em "sair agora" os avisos vermelhos da 1.ª passam aos gerais, mas o gasóleo e a bateria desconhecidos só uma vez
   assert.equal(r.avisos.filter(x => /^Sem nível do gasóleo|gasóleo inicial desconhecido/.test(x)).length, 1, JSON.stringify(r.avisos))
-  assert.equal(r.avisos.filter(x => /assumi 80%/.test(x)).length, 1, JSON.stringify(r.avisos))
-  assert.doesNotMatch(JSON.stringify(r), /assumi \d+ L/, 'nenhum litro assumido em parte nenhuma do resultado')
+  assert.equal(r.avisos.filter(x => /^Sem estado da bateria|estado da bateria desconhecido/.test(x)).length, 1, JSON.stringify(r.avisos))
+  assert.doesNotMatch(JSON.stringify(r), /assumi/, 'nada assumido em parte nenhuma do resultado')
   // com a bateria conhecida, nada disto
   const conhecida = await correr('so', entrada(), deps())
   for (const a of conhecida.alternativas) assert.ok(!a.avisosVermelhos.some(x => /estado da bateria desconhecido/.test(x)), JSON.stringify(a.avisosVermelhos))
@@ -220,6 +225,46 @@ test('F9 (decisão do dono: o desconhecido nunca se assume): sem o nível do gas
   const ks = await calcular(entrada({ tripulacao: 'acompanhado', sairAgora: true }), deps(impossivel))
   assert.ok(ks.alternativas.length >= 1)
   for (const a of ks.alternativas) assert.equal(a.excluidaSemSairAgora, true, a.id)
+})
+
+test('05/10 (decisão do dono: a bateria desconhecida também nunca se assume): sem o SoC o mínimo dos 50 % à chegada não corre com um número inventado — nem exclui, nem aprova — cada alternativa leva só o aviso vermelho "estado da bateria desconhecido: confirma a carga", sem percentagem nem "bateria mín.", e não há o aviso da reserva a meio; também em "Sair agora"', async () => {
+  const SEM_SOC = { posicao: ALGES, gasoleoL: 124 } // sem socPct
+  const impossivel = { opcoes: { seguranca: { bateriaMinPct: 101 } } } // nenhuma bateria chega a tanto
+  // controlo: com o SoC CONHECIDO (90 %) a regra corre e exclui tudo
+  const k = await calcular(entrada(), deps(impossivel))
+  assert.equal(k.alternativas.length, 0, 'controlo: com 90 % e um mínimo de 101 % a regra exclui tudo')
+  // sem SoC: nada se exclui por causa da bateria (os 80 % assumidos de antes, abaixo dos 101, excluíam tudo)
+  const r = await calcular(entrada({ instrumentos: SEM_SOC }), deps(impossivel))
+  assert.equal(r.erro, undefined, r.erro)
+  assert.ok(r.alternativas.length >= 1, `sem alternativas: ${JSON.stringify(r.veredicto)}`)
+  for (const a of r.alternativas) {
+    assert.equal(a.excluida, false, a.id)
+    assert.equal(a.excluidaSemSairAgora, false, a.id)
+    assert.ok(!a.motivos.some(m => /bateria/.test(m)), JSON.stringify(a.motivos))
+    // só o aviso vermelho da segurança (lib/seguranca.js), sem percentagem
+    assert.deepEqual(a.avisosVermelhos.filter(x => /bateria/.test(x)), ['estado da bateria desconhecido: confirma a carga'], a.id)
+    assert.equal(a.bateriaMin, null, `${a.id}: sem "bateria mín." inventada`)
+    // nem o aviso da reserva a meio da passagem (não há modelo da energia a correr com um número inventado)
+    assert.ok(!a.avisos.some(x => x.tipo === 'bateria'), JSON.stringify(a.avisos.map(x => x.texto)))
+  }
+  // com o gasóleo lido, nada neste resultado é assumido
+  assert.doesNotMatch(JSON.stringify(r), /assumi/)
+  assert.deepEqual(r.avisos.filter(x => /bateria/.test(x)), ['Sem estado da bateria: confirma a carga'])
+  // "Sair agora": continua a ser um aviso vermelho, e nunca uma exclusão levantada (não há exclusão por causa da bateria)
+  const s = await calcular(entrada({ instrumentos: SEM_SOC, tripulacao: 'acompanhado', sairAgora: true }), deps(impossivel))
+  assert.ok(s.alternativas.length >= 1)
+  for (const a of s.alternativas) {
+    assert.equal(a.excluidaSemSairAgora, false, a.id)
+    assert.ok(a.avisosVermelhos.includes('estado da bateria desconhecido: confirma a carga'), JSON.stringify(a.avisosVermelhos))
+    assert.ok(!a.motivos.some(m => /bateria/.test(m)), JSON.stringify(a.motivos))
+  }
+  assert.equal(s.avisos.filter(x => /bateria/.test(x)).length, 1, JSON.stringify(s.avisos)) // uma só vez (o geral)
+  // controlo: com o SoC conhecido o mesmo mínimo levanta-se em "Sair agora" (excluidaSemSairAgora) e há o aviso da
+  // reserva a meio — é a regra a correr
+  const ks = await calcular(entrada({ tripulacao: 'acompanhado', sairAgora: true }), deps(impossivel))
+  assert.ok(ks.alternativas.length >= 1)
+  for (const a of ks.alternativas) assert.equal(a.excluidaSemSairAgora, true, a.id)
+  assert.ok(ks.alternativas.some(a => a.avisos.some(x => x.tipo === 'bateria')), 'controlo: com o SoC conhecido o aviso da reserva existe')
 })
 
 test('F9: sem o nível do gasóleo não há o aviso "O gasóleo passa a reserva" a meio da passagem (a simulação corre com um número de trabalho, que nunca decide nem se mostra); com o nível conhecido há', async () => {

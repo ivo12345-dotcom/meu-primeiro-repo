@@ -52,6 +52,18 @@ test('avisos: rizar, pôr do sol, chuva/visibilidade (radar), rotação do vento
   assert.deepEqual(b, [])
 })
 
+test('05/10 (a bateria desconhecida também nunca se assume): sem reserva da bateria (reservaBateriaPct null: o SoC é desconhecido) nunca há o aviso da bateria; o do gasóleo não muda', () => {
+  const n = 600
+  const m = {}
+  for (let i = 500; i < n; i++) m[i] = { gasoleo: 20, soc: 0.45 }
+  const passagem = { pontos: linha(n, {}, m), eventos: [], resumo: { chegou: true } }
+  const com = avisosDaPassagem({ passagem, tripulacao: 'acompanhado' })
+  assert.ok(com.some(x => x.tipo === 'bateria'), 'controlo: com a reserva (50 %) o aviso existe')
+  const sem = avisosDaPassagem({ passagem, tripulacao: 'acompanhado', opcoes: { reservaBateriaPct: null } })
+  assert.equal(sem.some(x => x.tipo === 'bateria'), false, JSON.stringify(sem.map(x => x.texto)))
+  assert.ok(sem.some(x => x.tipo === 'gasoleo'), 'o gasóleo não muda')
+})
+
 test('F9 (o desconhecido nunca se assume): sem reserva de gasóleo (reservaGasoleoL null: o nível é desconhecido e a linha do tempo corre com um número de trabalho, que pode até ficar abaixo de zero) nunca há o aviso do gasóleo; o da bateria não muda', () => {
   const n = 600
   const m = {}

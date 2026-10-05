@@ -172,7 +172,7 @@ const CORES = { segue: 'verde', espera: 'amarelo', 'nao-recomendado': 'laranja',
 export const corVeredicto = (tipo) => CORES[tipo] || 'cinzento'
 
 // Os avisos gerais do resultado que contam como vermelhos: previsão (velha, aproximada, em falta),
-// gasóleo ou bateria assumidos.
+// gasóleo ou bateria desconhecidos (uma só vez: com o vermelho da alternativa, o geral não se repete).
 const VERMELHO_GERAL = /previs|^Sem (nível do gasóleo|estado da bateria)/i
 
 // Os avisos vermelhos de uma alternativa (índice i): os dela (segurança: limites a solo com
@@ -187,9 +187,11 @@ export function avisosVermelhos (resultado = {}, i = 0, agora = Date.now()) {
   if (alt.canal) out.push(alt.nota || `${alt.canal} por confirmar na carta`)
   for (const a of alt.avisosRota || []) if (/previs/i.test(a)) out.push(a)
   const temGasoleo = out.some(x => /gasóleo inicial desconhecido/.test(x))
+  const temBateria = out.some(x => /estado da bateria desconhecido/.test(x))
   for (const a of resultado.avisos || []) {
     if (!VERMELHO_GERAL.test(a)) continue
     if (temGasoleo && /^Sem nível do gasóleo/.test(a)) continue
+    if (temBateria && /^Sem estado da bateria/.test(a)) continue
     out.push(a)
   }
   if (i === 0) {

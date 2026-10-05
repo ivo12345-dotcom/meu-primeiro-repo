@@ -119,7 +119,8 @@
 // auditoria I-12; com a sonda do gasóleo perdida, ou sem leitura, o nível é desconhecido de verdade — nunca os
 // litros pelo consumo, nem um número assumido a decidir: no cálculo o mínimo à chegada não corre e a alternativa
 // leva o aviso vermelho "gasóleo inicial desconhecido: confirma o depósito"; a navegar, "sem leitura": F2b Menor 3,
-// F9) e a rota ativa (API de rumo v2, com um limite de 10 s: sem
+// F9; a bateria sem SoC é desconhecida da mesma maneira, sem percentagem assumida: 05/10) e a rota ativa (API de rumo
+// v2, com um limite de 10 s: sem
 // resposta não se sabe a rota e o ciclo segue); segue o plano ativo (lib/plano-ativo.js: saída, chegada
 // com progresso na rota, rota mudada, a chegada em pausa e a sugestão de outro porto), o acompanhamento
 // (lib/acompanhamento.js) com a previsão mais recente arquivada que cubra a posição (previsoes/ da
@@ -294,7 +295,6 @@ module.exports = function (app, deps = {}) {
       previsoes: { type: 'boolean', title: 'Descarregar a previsão (Open-Meteo); desligado usa só as guardadas', default: true },
       bateria: { type: 'string', title: 'ID do banco de serviço (electrical.batteries.<id>)', default: 'servico' },
       deposito: { type: 'string', title: 'Depósito de gasóleo (tanks.fuel.<id>)', default: '0' },
-      socDesconhecido: { type: 'number', title: 'SoC a assumir sem leitura da bateria (0–1)', default: 0.8 },
       // o banco de serviço de 440 Ah (bancos 2 + 3) e o solar com perdas (decisão do Ivo n.º 4, auditoria
       // I-13, contrato C5): os mesmos valores do lib/energia.js (PADRAO). Uma configuração gravada com os 200 Ah
       // do esquema antigo passa a 440 uma vez e grava-se (migrarCapacidade, F2b Menor 5); depois, o que se puser
@@ -1180,7 +1180,8 @@ module.exports = function (app, deps = {}) {
     const costa = costaAtual()
     // O nível do gasóleo desconhecido (sonda perdida ou sem leitura: inst.gasoleoL null) nunca decide nada nem se
     // assume (F2b Menor 3, decisão do dono; desenho 3a): o cálculo (lib/calculo.js) dá o aviso vermelho "gasóleo
-    // inicial desconhecido: confirma o depósito" e não corre a regra do mínimo — aqui não há nada a fazer.
+    // inicial desconhecido: confirma o depósito" e não corre a regra do mínimo — aqui não há nada a fazer. A bateria
+    // sem SoC (inst.socPct null) da mesma maneira (05/10): "estado da bateria desconhecido: confirma a carga".
     const inst = instrumentos(oo)
     const r = await calculo.calcular(
       { instrumentos: inst, destino, tripulacao: pedido.tripulacao, sairAgora: pedido.sairAgora, agora: relogio() },
@@ -1188,7 +1189,7 @@ module.exports = function (app, deps = {}) {
         costa, polar, modelos, versoes, obterPrevisao: obterPrevisaoCom(oo, pastaDados),
         opcoes: {
           afastamentoMinimo: oo.afastamentoMinimo, rpmCruzeiro: oo.rpmCruzeiro, energia: oo.energia,
-          socDesconhecido: oo.socDesconhecido, seguranca: oo.seguranca
+          seguranca: oo.seguranca
         },
         progresso: (f, texto) => { t.progresso = Math.round(f * 100) / 100; t.texto = texto },
         // o registo dos erros de programação da geometria (lib/rotas.js: log(msg, erro))
@@ -1300,7 +1301,7 @@ module.exports = function (app, deps = {}) {
   plugin.start = function (props) {
     o = {
       pasta: '~/arlequin-dados', afastamentoMinimo: seguranca.PADRAO.afastamentoMinimo, rpmCruzeiro: base.RPM_CRUZEIRO, polar: base.POLAR_PADRAO, previsoes: true,
-      bateria: 'servico', deposito: '0', socDesconhecido: 0.8, energia: {}, porta: 3000, ...props
+      bateria: 'servico', deposito: '0', energia: {}, porta: 3000, ...props
     }
     o.barco = { ...padroes(plugin.schema.properties.barco), ...(eObjeto(props?.barco) ? props.barco : {}) }
     // (a bateria de serviço: uma configuração com os 200 Ah antigos passa a 440 uma vez, em migrarCapacidade, depois

@@ -35,7 +35,9 @@
 //   - gasóleo < 40 L ou bateria < 50% à chegada, no cenário pessimista. O gasóleo inicial ou a
 //     bateria à chegada desconhecidos (não números) dão sempre um aviso vermelho, sem excluir:
 //     o lib/calculo.js passa `gasoleoInicial: null` quando o nível do gasóleo é desconhecido — a regra do
-//     mínimo não corre com um número assumido (decisão do dono, F9: o desconhecido nunca se assume).
+//     mínimo não corre com um número assumido (decisão do dono, F9: o desconhecido nunca se assume); e corre
+//     a simulação sem o modelo da energia quando o SoC é desconhecido — socFinal null, a regra dos 50 % não
+//     corre e fica só o aviso vermelho AVISO_BATERIA_DESCONHECIDA (a mesma decisão, 05/10).
 //   (lib/calculo.js trata da mesma maneira a previsão que acaba antes da chegada.)
 // "Não recomendada sozinho" (só com tripulação "so"):
 //   - vento médio > 22 nós, rajadas > 30 ou ondas > 3 m (o máximo dos 3 resumos: o vento do
@@ -86,6 +88,9 @@ const LIMITES = Object.freeze(['ventoMedioMax', 'rajadaMax', 'ondasMax', 'ventoM
 // O aviso vermelho do nível do gasóleo desconhecido (sem litros: nunca se assume um número); o lib/calculo.js usa o
 // mesmo texto para não o repetir nos avisos gerais do "Sair agora"
 const AVISO_GASOLEO_DESCONHECIDO = 'gasóleo inicial desconhecido: confirma o depósito'
+// O da bateria desconhecida (sem SoC: o lib/calculo.js simula sem energia e a bateria à chegada não é número), sem
+// percentagem assumida (decisão do dono, 05/10); o lib/calculo.js usa-o para não o repetir nos gerais do "Sair agora"
+const AVISO_BATERIA_DESCONHECIDA = 'estado da bateria desconhecido: confirma a carga'
 
 const virgula = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toFixed(d).replace('.', ',')
 const inteiro = (x) => String(Math.round(x))
@@ -279,7 +284,7 @@ function avaliar ({ alternativa, pessimista, provavel, otimista, destino, tripul
   if (!Number.isFinite(gasoleoInicial)) desconhecido.push(AVISO_GASOLEO_DESCONHECIDO)
   else if (!Number.isFinite(fica)) desconhecido.push('gasóleo à chegada desconhecido')
   else if (fica < o.gasoleoMinL) vermelho.push(`chegas com ${inteiroAbaixo(Math.max(0, fica))} L de gasóleo no pior caso (mínimo ${o.gasoleoMinL} L)`)
-  if (!Number.isFinite(r.socFinal)) desconhecido.push('bateria à chegada desconhecida')
+  if (!Number.isFinite(r.socFinal)) desconhecido.push(AVISO_BATERIA_DESCONHECIDA)
   else if (r.socFinal * 100 < o.bateriaMinPct) vermelho.push(`chegas com a bateria a ${inteiroAbaixo(Math.max(0, r.socFinal * 100))}% no pior caso (mínimo ${o.bateriaMinPct}%)`)
   if (vermelho.length) {
     // em "sair agora" a exclusão levanta-se, mas a alternativa não fica recomendada (K-06): o motivo
@@ -317,4 +322,4 @@ function avaliar ({ alternativa, pessimista, provavel, otimista, destino, tripul
   return out
 }
 
-module.exports = { PADRAO, LIMITES, CAMPOS_CRITICOS, AVISO_GASOLEO_DESCONHECIDO, emCalma, horasLemeEquivalentes, distanciaRotaCosta, minimoCosta, trocosCanal, ondasNoCanal, previsaoIncompleta, avaliar }
+module.exports = { PADRAO, LIMITES, CAMPOS_CRITICOS, AVISO_GASOLEO_DESCONHECIDO, AVISO_BATERIA_DESCONHECIDA, emCalma, horasLemeEquivalentes, distanciaRotaCosta, minimoCosta, trocosCanal, ondasNoCanal, previsaoIncompleta, avaliar }

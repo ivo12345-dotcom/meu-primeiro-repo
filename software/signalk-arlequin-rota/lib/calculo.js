@@ -15,8 +15,11 @@
 //     (gasoleoL em falta ou null: o nível do gasóleo é DESCONHECIDO e nunca se assume — decisão do dono: cada
 //     alternativa leva o aviso vermelho "gasóleo inicial desconhecido: confirma o depósito", sem litros; a regra do
 //     mínimo à chegada não corre, nem exclui nem aprova, e não há o aviso da reserva a meio da passagem; a
-//     simulação corre com um número de trabalho, GASOLEO_DE_TRABALHO_L, que nunca decide nem se mostra. A bateria
-//     desconhecida, essa, ainda se assume: socDesconhecido)
+//     simulação corre com um número de trabalho, GASOLEO_DE_TRABALHO_L, que nunca decide nem se mostra)
+//     (socPct em falta ou null: a bateria é DESCONHECIDA e também nunca se assume — a mesma decisão, 05/10: a
+//     simulação corre sem o modelo da energia, a regra dos 50 % à chegada não corre, não há o aviso da reserva a
+//     meio, o cartão fica sem "bateria mín." (bateriaMin null) e cada alternativa leva o aviso vermelho "estado da
+//     bateria desconhecido: confirma a carga", sem percentagem)
 //   destino: 'id' | { lat, lon, nome? } | { rotaAtiva: [[lat, lon] | { lat, lon }, …] },
 //   tripulacao: 'so' | 'acompanhado', sairAgora: bool, agora: ms }
 // deps: {
@@ -63,7 +66,6 @@ const PADRAO = Object.freeze({
   horasPartidas: prev.HORAS_PREVISAO, // as partidas até ao fim da previsão (48 h)
   passoPartidasH: 3,
   energia: {}, // lib/energia.js PADRAO (capacidadeAh, consumoDiaA, …)
-  socDesconhecido: 0.8, // sem SoC nos instrumentos
   passagem: {}, // lib/passagem.js PADRAO (stwMotor, …)
   // os limites de segurança que o plugin pode mudar (auditoria M-13): só as chaves de lib/seguranca.js
   // LIMITES (ventoMedioMax, rajadaMax, ondasMax, ventoMaxAcompanhado, rajadaMaxAcompanhado,
@@ -90,9 +92,10 @@ const r1 = (x) => (Number.isFinite(x) ? Math.round(x * 10) / 10 : null)
 const GASOLEO_DE_TRABALHO_L = 100
 // o aviso geral do resultado (o ecrã di-lo uma só vez, com o vermelho de cada alternativa: seguranca.AVISO_GASOLEO_DESCONHECIDO)
 const AVISO_GASOLEO_GERAL = 'Sem nível do gasóleo: confirma o depósito'
-// auditoria I-14: a bateria desconhecida nunca é assumida em silêncio (a regra dos 50 % à chegada corre com o
-// valor assumido): aviso vermelho em cada alternativa
-const avisoBateriaAssumida = (soc) => `estado da bateria desconhecido: confirma a carga (assumi ${Math.round(soc * 100)}%)`
+// A bateria desconhecida também nunca se assume (auditoria I-14, decisão do dono de 05/10): sem SoC a simulação corre
+// sem o modelo da energia (soc null em todos os pontos, socFinal e socMin null) — a segurança dá o aviso vermelho
+// seguranca.AVISO_BATERIA_DESCONHECIDA em cada alternativa, sem a regra dos 50 %; o aviso geral do resultado:
+const AVISO_BATERIA_GERAL = 'Sem estado da bateria: confirma a carga'
 
 function resolverDestino (costa, destino) {
   if (typeof destino === 'string') {
@@ -141,7 +144,8 @@ function simular (ctx, alt, partida, prop, nome) {
     velocidadeVela: k.velocidadeVela,
     consumo: k.consumo,
     noite: ctx.noite,
-    energia: criarEnergia({ ...ctx.o.energia, socInicial: ctx.soc }),
+    // sem estado da bateria não há modelo da energia (ctx.socDesconhecido): nada se simula com um SoC inventado
+    energia: ctx.socDesconhecido ? null : criarEnergia({ ...ctx.o.energia, socInicial: ctx.soc }),
     opcoes
   })
 }
@@ -219,8 +223,8 @@ function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
   const ventoMar = ventoDoMarNosRastos(ctx, alt, sims)
   if (ventoMar) { seg.excluida = true; seg.motivos = [ventoMar, ...seg.motivos] }
   // sem nível do depósito (ctx.gasoleoInicial null) a segurança não corre a regra do mínimo e dá o aviso vermelho
-  // (lib/seguranca.js, em seg.avisosVermelhos); sem estado da bateria a regra corre com o valor assumido, mas nunca
-  // em silêncio: aviso vermelho
+  // (lib/seguranca.js, em seg.avisosVermelhos); sem estado da bateria (ctx.socDesconhecido) a simulação não tem
+  // energia (socFinal null) e a segurança dá o aviso vermelho da mesma maneira, sem a regra dos 50 %
   const avisosVermelhos = [...seg.avisosVermelhos]
   if (passaDaPrevisao) {
     // a exclusão levantada pelo "Sair agora" (K-06, decisão do Ivo n.º 1): aviso vermelho e "não
@@ -231,7 +235,6 @@ function avaliarCandidato (ctx, alt, partida, prop, costaMinMn) {
     seg.naoRecomendada = true
     seg.motivos = [...seg.motivos, texto]
   }
-  if (ctx.socAssumido) avisosVermelhos.push(avisoBateriaAssumida(ctx.soc))
   // as horas equivalentes ao leme vêm só de lib/seguranca.js (a mesma regra da calma para o custo e para os limites)
   const lemeEqProvavel = seguranca.horasLemeEquivalentes(pr.pontos)
   const contraVentoH = decisao.horasContraVento(pr.pontos)
@@ -354,7 +357,7 @@ function montarAlternativa (ctx, cand, pr, desistenciaResumo, primeira = true) {
     // a reserva dos avisos é o mínimo à chegada da segurança (M-13: o mesmo número, também configurado); com o
     // nível do gasóleo desconhecido não há reserva (null): a linha do tempo corre com o número de trabalho, que nunca
     // dá um aviso (F9)
-    avisos: avisos.avisosDaPassagem({ passagem: pr, destino: ctx.destino, tripulacao: ctx.tripulacao, opcoes: { fuso: ctx.o.fuso, reservaGasoleoL: ctx.gasoleoDesconhecido ? null : ctx.limites.gasoleoMinL, reservaBateriaPct: ctx.limites.bateriaMinPct } }),
+    avisos: avisos.avisosDaPassagem({ passagem: pr, destino: ctx.destino, tripulacao: ctx.tripulacao, opcoes: { fuso: ctx.o.fuso, reservaGasoleoL: ctx.gasoleoDesconhecido ? null : ctx.limites.gasoleoMinL, reservaBateriaPct: ctx.socDesconhecido ? null : ctx.limites.bateriaMinPct } }),
     precaucoes: avisos.precaucoes({ passagem: pr, tripulacao: ctx.tripulacao, sairAgora: ctx.sairAgora, desistenciaResumo: primeira ? desistenciaResumo : null, desistenciaDaPrimeira: !primeira })
   }
   return alt
@@ -492,9 +495,11 @@ async function calcularSemRede (entrada = {}, deps = {}) {
   const obtida = Date.parse(pv.obtida || previsao.obtida)
   const cenarios = criarCenarios({ tempoBruto, modelos, polar, obtida, tendPressao3h: Number.isFinite(inst.tendPressao3h) ? inst.tendPressao3h : null })
 
-  let soc = Number.isFinite(inst.socPct) ? inst.socPct / 100 : null
-  const socAssumido = soc == null
-  if (socAssumido) { soc = o.socDesconhecido; avisosGerais.push(`Sem estado da bateria: assumi ${Math.round(soc * 100)}%`) }
+  // a bateria desconhecida (sem SoC fresco, ou o sensor perdido: inst.socPct null) nunca se assume (decisão do dono de
+  // 05/10, como o gasóleo): soc null, a simulação corre sem o modelo da energia e a segurança dá o aviso vermelho
+  const soc = Number.isFinite(inst.socPct) ? inst.socPct / 100 : null
+  const socDesconhecido = soc == null
+  if (socDesconhecido) avisosGerais.push(AVISO_BATERIA_GERAL)
   // o gasóleo desconhecido (sonda perdida ou sem leitura) nunca se assume (decisão do dono, F9): gasoleoInicial fica
   // null para a segurança, e a simulação corre com o número de trabalho
   const gasoleoInicial = Number.isFinite(inst.gasoleoL) ? inst.gasoleoL : null
@@ -503,7 +508,7 @@ async function calcularSemRede (entrada = {}, deps = {}) {
 
   // o vento previsto (a direção P50 corrigida, a mesma nos três cenários) para a regra do vento de terra
   const twd = (lat, lon, t) => cenarios.provavel.tempo(lat, lon, t).twd
-  const ctx = { o, limites: limitesSeguranca(o), agora, costa, destino, tripulacao, sairAgora, previsao, cenarios, correnteExtra, noite, soc, socAssumido, gasoleoInicial, gasoleoDesconhecido, gasoleoSimulacao: gasoleoInicial ?? GASOLEO_DE_TRABALHO_L, twd }
+  const ctx = { o, limites: limitesSeguranca(o), agora, costa, destino, tripulacao, sairAgora, previsao, cenarios, correnteExtra, noite, soc, socDesconhecido, gasoleoInicial, gasoleoDesconhecido, gasoleoSimulacao: gasoleoInicial ?? GASOLEO_DE_TRABALHO_L, twd }
   const log = typeof deps.log === 'function' ? deps.log : undefined
 
   // ---------- as alternativas ----------
@@ -606,9 +611,9 @@ async function calcularSemRede (entrada = {}, deps = {}) {
     alternativas.push(montarAlternativa(ctx, cand, rastos.get(cand) || simularProvavel(ctx, cand), desistenciaResumo, i === 0))
   }
   // em "Sair agora" os avisos vermelhos da 1.ª vão também para os gerais (o gasóleo e a bateria
-  // desconhecidos já lá estão, "Sem nível do gasóleo: confirma o depósito" e "Sem estado da bateria: assumi …%":
-  // não se repetem; o gasóleo continua a ser um aviso vermelho em cada alternativa)
-  const jaNosGerais = new Set([...(gasoleoDesconhecido ? [seguranca.AVISO_GASOLEO_DESCONHECIDO] : []), ...(socAssumido ? [avisoBateriaAssumida(soc)] : [])])
+  // desconhecidos já lá estão, "Sem nível do gasóleo: confirma o depósito" e "Sem estado da bateria: confirma a
+  // carga": não se repetem; os dois continuam a ser um aviso vermelho em cada alternativa)
+  const jaNosGerais = new Set([...(gasoleoDesconhecido ? [seguranca.AVISO_GASOLEO_DESCONHECIDO] : []), ...(socDesconhecido ? [seguranca.AVISO_BATERIA_DESCONHECIDA] : [])])
   if (sairAgora && alternativas[0]?.avisosVermelhos?.length) avisosGerais.push(...alternativas[0].avisosVermelhos.filter(x => !jaNosGerais.has(x)))
 
   // o mini-mapa (desenho 3b-1): a janela das rotas, dos rastos e dos pontos de desistência; nunca

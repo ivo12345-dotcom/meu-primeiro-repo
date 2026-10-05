@@ -90,7 +90,7 @@ test('avisos vermelhos de uma alternativa: as fugas junto à costa da desistênc
   assert.ok(!t.avisosVermelhos(FUGA, 1, AGORA).some(x => /^Fuga /.test(x)))
 })
 
-test('avisos vermelhos: o canal por confirmar (com a nota), a previsão aproximada ou velha e a bateria assumida', () => {
+test('avisos vermelhos: o canal por confirmar (com a nota), a previsão aproximada ou velha e a bateria desconhecida (uma só vez)', () => {
   const l = t.avisosVermelhos(CANAL, 0)
   assert.ok(l.includes('Canal da Berlenga: terra dos dois lados; só com ondas < 3 m — por confirmar na carta'), JSON.stringify(l))
   // auditoria I-28: a forma real do plugin — previsao.aviso é um código ('aviso' com mais de 6 h, 'grande' com
@@ -98,7 +98,7 @@ test('avisos vermelhos: o canal por confirmar (com a nota), a previsão aproxima
   const r = {
     ...CANAL,
     previsao: { ...CANAL.previsao, aviso: 'aviso' },
-    avisos: ['Previsão guardada há 9 h (sem rede)', 'Sem estado da bateria: assumi 80%', 'Sem dados do mar: a corrente de maré na barra do Tejo fica a 0'],
+    avisos: ['Previsão guardada há 9 h (sem rede)', 'Sem estado da bateria: confirma a carga', 'Sem dados do mar: a corrente de maré na barra do Tejo fica a 0'],
     alternativas: [{ ...CANAL.alternativas[0], avisosRota: ['previsão de rajadas aproximada em parte da rota (de um ponto de previsão mais longe)'] }]
   }
   const m = t.avisosVermelhos(r, 0)
@@ -107,7 +107,10 @@ test('avisos vermelhos: o canal por confirmar (com a nota), a previsão aproxima
   const velha = t.avisosVermelhos({ ...r, previsao: { ...CANAL.previsao, aviso: 'grande' }, avisos: ['Previsão velha: a mais recente guardada tem 14 h (sem rede)'] }, 0)
   assert.ok(velha.includes('Previsão velha: a mais recente guardada tem 14 h (sem rede)'))
   assert.ok(!velha.includes('grande'), 'nunca "⚠ grande"')
-  assert.ok(m.includes('Sem estado da bateria: assumi 80%'))
+  assert.ok(m.includes('Sem estado da bateria: confirma a carga'))
+  // 05/10: com o vermelho da alternativa ("estado da bateria desconhecido: confirma a carga") o geral não se repete, como o gasóleo
+  const dup = t.avisosVermelhos({ ...r, alternativas: [{ ...r.alternativas[0], avisosVermelhos: [...(r.alternativas[0].avisosVermelhos || []), 'estado da bateria desconhecido: confirma a carga'] }] }, 0)
+  assert.equal(dup.filter(x => /estado da bateria/i.test(x)).length, 1, JSON.stringify(dup))
   assert.ok(m.includes('previsão de rajadas aproximada em parte da rota (de um ponto de previsão mais longe)'))
   assert.ok(!m.includes('Sem dados do mar: a corrente de maré na barra do Tejo fica a 0'))
   assert.deepEqual(t.avisosGerais(r), ['Sem dados do mar: a corrente de maré na barra do Tejo fica a 0'])

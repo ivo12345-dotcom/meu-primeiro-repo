@@ -217,6 +217,11 @@ test('Resultado: os números do cartão (partida, chegada com a margem, milhas, 
   assert.match(html, /vento [\d,]+ \(pior [\d,]+\) · rajada [\d,]+ \(pior [\d,]+\) nós · ondas [\d,]+ m/)
   assert.match(html, /gasóleo [\d,]+ L \(pior [\d,]+ L\)/)
   assert.match(html, /bateria mín\. [\d,]+%/)
+  // 05/10: com a bateria desconhecida (bateriaMin null: o plugin não a assume) o cartão di-lo, sem um "bateria mín. —%"
+  const semBateria = { ...FUGA, alternativas: FUGA.alternativas.map(x => ({ ...x, bateriaMin: null })) }
+  const h2 = semEspacos(melhor.render(contexto({ estado: comResultado(semBateria, { selecionada: 1 }) })))
+  assert.match(h2, /bateria desconhecida/)
+  assert.doesNotMatch(h2, /bateria mín\./)
   // os avisos da rota que não são vermelhos ficam no cartão (ex.: o salto curto da rota direta)
   assert.match(melhor.render(contexto({ estado: comResultado(DIRETA) })), /<div class="lab atencao">salto curto entre portos vizinhos: rota direta junto à costa<\/div>/)
   // a 2.ª não tem os pontos de desistência (calculados para a 1.ª)

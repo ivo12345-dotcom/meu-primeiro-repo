@@ -1053,6 +1053,7 @@ test('F9 (item 1): o plugin passa ao cálculo o nível do gasóleo desconhecido 
     assert.equal(a.instrumentos.gasoleoL, null)
     assert.deepEqual(a.opcoes.seguranca, { gasoleoMinL: 55 }, 'o mínimo da configuração, tal e qual (nunca −1e9)')
     assert.equal('gasoleoDesconhecidoL' in a.opcoes, false, 'já não há um gasóleo a assumir')
+    assert.equal('socDesconhecido' in a.opcoes, false, '05/10: nem um SoC a assumir')
     // sem nenhuma leitura do gasóleo: o mesmo
     const sem = appFalso()
     delete sem.self['tanks.fuel.0.currentVolume']
@@ -1065,6 +1066,6 @@ test('F9 (item 1): o plugin passa ao cálculo o nível do gasóleo desconhecido 
     assert.deepEqual(c.opcoes.seguranca, { gasoleoMinL: 55 })
     // e o esquema da configuração já não oferece o gasóleo a assumir (o do SoC fica)
     assert.equal('gasoleoDesconhecidoL' in plugin(appFalso()).p.schema.properties, false)
-    assert.ok('socDesconhecido' in plugin(appFalso()).p.schema.properties)
+    assert.equal('socDesconhecido' in plugin(appFalso()).p.schema.properties, false, '05/10: nem o SoC a assumir')
   } finally { calculo.calcular = original }
 })
