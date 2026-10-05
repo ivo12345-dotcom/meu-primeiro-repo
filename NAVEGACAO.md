@@ -1563,7 +1563,13 @@ em "A navegar", mais abaixo.
 - **Bateria no planeamento** (decisão n.º 4): o banco de serviço de **440 Ah** e o solar com perdas
   (**fator 0,65**, como o simulador); o limite dos 50 % à chegada mantém-se. Sem leitura da bateria,
   assume 80 % com o aviso vermelho "estado da bateria desconhecido: confirma a carga (assumi 80%)".
-  Uma configuração antiga com 200 Ah gravados conta como não posta (fica 440).
+  Uma configuração antiga com 200 Ah gravados passa a 440 **uma só vez**: o plugin grava a configuração
+  com o valor novo e escreve a marca `migracoes.json` (na pasta do plugin); a partir daí, o que
+  puseres — até 200 Ah, se for outro banco — fica. Se a gravação falhar (ou o servidor não a deixar
+  fazer), fica a 440 só em memória, sem marca, e repete-se no arranque seguinte (o registo di-lo).
+- **Gasóleo no planeamento:** sem o nível do depósito (sonda perdida ou sem leitura), **nada se
+  assume**: cada alternativa leva o aviso vermelho "gasóleo inicial desconhecido: confirma o
+  depósito", sem litros, e a regra dos 40 L à chegada não corre (nem exclui, nem aprova).
 
 **O que convém saber sobre o comportamento do cálculo:**
 - A alternativa de 3 MN só existe com **vento de terra ao longo de toda a linha seguida**
@@ -1732,8 +1738,12 @@ cais logo à saída não é "cheguei bem". Um plano novo começa limpo; os 5 úl
   cabos, largos, chegada — deslizam com o atraso; o pôr do sol, a chuva e a frente ficam à hora
   prevista);
 - "chegada ~amanhã 07:58 (plano 07:38)", com "de noite" se a chegada deslizada for de noite;
-- "recursos: gasóleo à chegada ~34 L" quando há aviso, ou "recursos: sem leitura" (sem uma leitura
-  do gasóleo ou da bateria com menos de 2 min, ou com o aviso de sonda ou sensor perdido);
+- "recursos: gasóleo à chegada ~34 L" quando há aviso, e o que falta ler: "recursos: sem leitura" (os
+  dois), "recursos: gasóleo sem leitura" ou "recursos: bateria sem leitura" (sem uma leitura com menos
+  de 2 min, ou com o aviso de sonda ou sensor perdido; com a sonda do gasóleo perdida o gasóleo é
+  **desconhecido**, nunca os litros que o plugin do gasóleo continua a estimar pelo consumo). São os
+  campos novos `recursos.gasoleoSemLeitura` e `recursos.bateriaSemLeitura` do `GET /plano-ativo`
+  (`recursos.semLeitura` continua a ser "os dois");
 - "sem GPS: acompanhamento parado" (mais de 2 min sem posição) e "barómetro: sem leitura";
 - antes de sair: "plano ativo · à espera de sair";
 - com o plano enviado: "contactos em terra: alarme HH:MM" (a hora a que eles ligam ao MRCC), "mensagem
@@ -1745,7 +1755,10 @@ cais logo à saída não é "cheguei bem". Um plano novo começa limpo; os 5 úl
 **O mosaico "Contactos em terra"** (no Leme, à direita; também sem plano ativo):
 - "⚠ Relógio do Pi desacertado … — acerta a hora do Pi" (decisão n.º 19: nada sai para terra);
 - "⚠ o «cheguei bem» ainda não chegou a terra: liga-lhes (Pai, Mãe)" — com o plano já fechado e a
-  mensagem por entregar (o aviso de 60 min continua até ela chegar);
+  mensagem por entregar (o aviso de 60 min continua até ela chegar). Com a viagem seguinte já ativa
+  e o «cheguei bem» da anterior ainda por entregar, o `GET /plano-ativo` continua a trazer
+  `fechoPorEntregar`, agora com `doPlanoAnterior: true`, e a faixa do Leme di-lo: "o «cheguei bem» da
+  viagem anterior ainda não chegou a terra: liga-lhes (Mãe)";
 - "⚠ Pai não recebeu o «cheguei bem»: liga-lhe" — quando o sistema desistiu de lhe entregar
   (decisão n.º 16, abaixo);
 - "⚠ Os contactos em terra têm um plano com alarme HH:MM e não há plano ativo: ativa-o ou avisa-os"
@@ -1763,8 +1776,12 @@ cais logo à saída não é "cheguei bem". Um plano novo começa limpo; os 5 úl
   MRCC às HH:MM: avisa-os ou Terminar". Também com o plano já fechado e o «cheguei bem» (ou a
   «viagem terminada») por entregar: "O «cheguei bem» ainda não chegou a terra: os contactos ligam ao
   MRCC às HH:MM — liga-lhes". E com um plano em terra que não é o ativo (decisão n.º 15): "Os
-  contactos em terra têm um plano com alarme às HH:MM e não há plano ativo: ativa-o ou avisa-os". Só
-  no ecrã.
+  contactos em terra têm um plano com alarme às HH:MM e não há plano ativo: ativa-o ou avisa-os". Este
+  último **não se apaga à hora de alarme** (é quando eles começam a ligar): passa a "Passou a hora de
+  alarme dos contactos em terra (HH:MM) e não há plano ativo: avisa-os já, podem estar a ligar ao
+  MRCC" (com o plano de outra alternativa: "…, que têm o plano de outra alternativa: avisa-os já, …") e
+  fica até ativares o plano, ele ser fechado, ou 24 h depois da hora de alarme mais tarde (na barra de
+  cima; o mosaico "Contactos em terra" só mostra o que ainda está por passar). Só no ecrã.
 - **Come e bebe** (só com "só eu"), de 3 em 3 h desde a saída, durante 15 min. Só no ecrã.
 - **Recalcula a rota**: atraso de mais de 30 min, ou o vento medido (média de 10 min) afastado do
   previsto mais de 30 % e mais de 4 nós durante 30 min seguidos. Apaga-se com os dois normais
@@ -1975,7 +1992,10 @@ contínuo**. As regras (auditoria K-01 e I-09, decisão n.º 3, Adenda 2, contra
   conhecido, ou parado, também com a ignição desligada); sem leitura do motor deixa de se atualizar e
   o ecrã diz "sem leitura (último N L, há X min)". Sem a sonda não se calibra nem se regista o
   "Abasteci" (o ecrã diz porquê). A reserva acende a 40 L ou menos; a rota exclui uma passagem que
-  chega com menos de 40 L no pior caso.
+  chega com menos de 40 L no pior caso, mas só com o nível **conhecido**: com a sonda perdida (ou sem
+  leitura) a rota trata o gasóleo como desconhecido — não exclui, dá o aviso vermelho "gasóleo
+  inicial desconhecido: confirma o depósito" e, a navegar, a linha dos recursos diz "gasóleo sem
+  leitura" (nunca os litros que o plugin do gasóleo continua a estimar pelo consumo).
 - **Água:** o contador das pedaladas tem de chegar **pelo menos de 10 em 10 min, mesmo parado**; sem
   ele, o depósito fica "sem sensor". O nível só existe depois de um "Enchi" (ou do nível posto à mão):
   até lá o ecrã diz "nível por confirmar: carrega Enchi" e nunca o mostra cheio por omissão (decisão

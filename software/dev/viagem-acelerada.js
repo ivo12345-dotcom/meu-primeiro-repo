@@ -5,7 +5,8 @@
 //
 //   node viagem-acelerada.js [--de alges] [--para peniche] [--tripulacao so] [--porta 3000] [--fator 60]
 //        [--atraso-em 0.3] [--atraso-min 60] [--baro-em 0.5] [--baro-queda 4] [--baro-horas 2]
-//        [--gasoleo 70] [--consumo 2.5] [--soc 0.85] [--pausa <ficheiro>] [--telegram http://localhost:8081]
+//        [--pressao 1015] [--gasoleo 70] [--consumo 2.5] [--soc 0.85] [--pausa <ficheiro>]
+//        [--telegram http://localhost:8081]
 //
 // NUNCA no Pi (nem noutro SignalK que não seja o do dev): injeta posição e hora falsas, manda planos e
 // ativa rotas. O script recusa-se a correr sem a configuração de dev, lida do próprio servidor (GET
@@ -26,7 +27,8 @@
 // Depois, de segundo em segundo (com --fator 60, 1 s = 1 min da viagem), manda a posição no rasto
 // provável do plano, o SOG, o rumo, a hora (navigation.datetime), a pressão, o gasóleo e o SoC:
 //   - parado durante --atraso-min a --atraso-em da viagem (o atraso forçado);
-//   - a pressão cai --baro-queda hPa em --baro-horas a partir de --baro-em da viagem;
+//   - a pressão parte de --pressao hPa (1015) e cai --baro-queda hPa em --baro-horas a partir de --baro-em
+//     da viagem;
 //   - o gasóleo desce --consumo L/h a andar (mais do que a curva da Volvo que o plano conta).
 // Com --pausa <ficheiro>: enquanto o ficheiro existir, a hora não anda (para as capturas).
 // Se o SignalK cair (parado a meio), espera e volta a ligar; a hora da viagem não anda entretanto.
