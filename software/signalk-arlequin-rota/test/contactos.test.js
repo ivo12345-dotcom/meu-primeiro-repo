@@ -561,3 +561,15 @@ test('F2b Menor 1 (sonda p10 d): pôr na fila um aviso ao Ivo (a desistência) n
   // uma mensagem para terra continua a tirar o atraso em espera
   assert.deepEqual(ct.porNaFila(d, { tipo: 'chegada', texto: 'c', contactos: ['Mãe'], chats: ['222'] }, T0).fila.map(m => m.tipo), ['aviso', 'chegada'])
 })
+
+test('F2b Menor 9: alarmeDosContactos — a hora de alarme que os contactos de uma mensagem têm em terra (a mais cedo se forem vários; pelo chat, sem chat pelo nome); NaN sem nenhuma', () => {
+  const plano = T0 + 4 * H
+  const terra = [{ chat: '222', nome: 'Mãe', alarme: plano + 2 * H, fechado: false }, { chat: '333', nome: 'Pai', alarme: plano, fechado: false }, { chat: null, nome: 'Tio', alarme: plano + H, fechado: false }]
+  assert.equal(ct.alarmeDosContactos(terra, { contactos: ['Pai'], chats: ['333'] }), plano)
+  assert.equal(ct.alarmeDosContactos(terra, { contactos: ['Mãe'], chats: ['222'] }), plano + 2 * H)
+  assert.equal(ct.alarmeDosContactos(terra, { contactos: ['Mãe', 'Pai'], chats: ['222', '333'] }), plano, 'com vários, a do que liga primeiro')
+  assert.equal(ct.alarmeDosContactos(terra, { contactos: ['Tio'] }), plano + H)
+  assert.ok(Number.isNaN(ct.alarmeDosContactos(terra, { contactos: ['Avó'], chats: ['999'] })))
+  assert.ok(Number.isNaN(ct.alarmeDosContactos([], { contactos: ['Pai'], chats: ['333'] })))
+  assert.ok(Number.isNaN(ct.alarmeDosContactos(null, {})))
+})

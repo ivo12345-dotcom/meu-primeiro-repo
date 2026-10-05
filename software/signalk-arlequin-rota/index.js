@@ -80,7 +80,8 @@
 // tentativa daqui a 2 min; uma que falhou 3 vezes, as do plano anterior e os avisos ao Ivo nunca prendem as
 // outras: auditoria K-13). O atraso só conta quando chega a terra (decisão do Ivo de 01/10): a hora de
 // alarme de cada contacto é a do que LHE chegou (auditoria I-01), e o "em vez de" é o do último atraso
-// entregue; um atraso ainda na fila passa a ter a chegada mais recente e o texto faz-se à hora de sair.
+// entregue (o parcial, só para quem falhou, diz o dos contactos dele: F2b Menor 9); um atraso ainda na fila
+// passa a ter a chegada mais recente e o texto faz-se à hora de sair.
 // De um contacto que nunca recebe (a falha é dele: outro ou o Ivo receberam) desiste-se no fim da hora de
 // alarme dele e o Ivo é avisado pelo Telegram, só no chat dele (tipo 'aviso'; decisão do Ivo n.º 16).
 // Um plano novo (Ativar) começa limpo (decisão do Ivo de 01/10): sem as mensagens enviadas, os atrasos,
@@ -690,8 +691,9 @@ module.exports = function (app, deps = {}) {
       m0 = planoAtivo.contactos.fila.find(x => x.id === m0.id)
     }
     const pedido = crypto.randomUUID()
-    // o atraso diz "em vez de" o último alarme entregue em terra (o texto faz-se à hora de sair)
-    const texto = m0.tipo === 'atraso' && !m0.anterior && !m0.parcial && Number.isFinite(m0.chegada) ? textoAtraso(m0, agora) : null
+    // o atraso diz "em vez de" o último alarme entregue em terra (o texto faz-se à hora de sair); o parcial, o que
+    // os contactos dele tinham (F2b Menor 9)
+    const texto = m0.tipo === 'atraso' && !m0.anterior && Number.isFinite(m0.chegada) ? textoAtraso(m0, agora) : null
     planoAtivo = { ...planoAtivo, contactos: ct.marcarAEnviar(planoAtivo.contactos, m0.id, pedido, agora, texto) }
     const m = planoAtivo.contactos.fila.find(x => x.id === m0.id)
     gravarPlanoAtivo()
@@ -788,10 +790,13 @@ module.exports = function (app, deps = {}) {
     return { contactos, chats }
   }
   // O texto do atraso: "em vez de" o último alarme entregue em terra (sem nenhum, o do plano): com horas
-  // diferentes por contacto (uma entrega parcial), a mais tarde (a do último atraso que chegou).
+  // diferentes por contacto (uma entrega parcial), a mais tarde (a do último atraso que chegou). O parcial (a mesma
+  // mensagem só para quem falhou) diz a que ESSES contactos tinham, não a dos outros que já a receberam (F2b Menor 9:
+  // o Pai, que nunca recebeu os atrasos, tinha a do plano e lia "em vez de" a da Mãe).
   function textoAtraso (m, agora) {
+    const deles = m.parcial ? ct.alarmeDosContactos(terraDe(), m) : NaN
     const tarde = ct.alarmeMaisTarde(terraDe())
-    const antes = Number.isFinite(tarde) ? tarde : Date.parse(planoAtivo?.envio?.alarme)
+    const antes = Number.isFinite(deles) ? deles : Number.isFinite(tarde) ? tarde : Date.parse(planoAtivo?.envio?.alarme)
     return ct.textoAtraso({ chegada: m.chegada, alarme: m.alarme, alarmeAntes: antes, agora })
   }
   // O atraso que vale agora (decidido contra o último entregue), com o resultado do acompanhamento.
