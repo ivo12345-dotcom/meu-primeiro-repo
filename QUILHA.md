@@ -310,8 +310,9 @@ O 1K no convés e o 2K no costado estão certos como escolhas, mas ficam
 **Fundo e quilha primeiro.** Depois o piloto (segurança, navega a solo).
 Costado e convés no inverno seguinte, com o barco já a navegar no meio.
 
-(Nota de 02/10: o plano do piloto mudou depois disto — a impressão 3D saiu do plano a 10/09 e o
-piloto está por decidir; hoje não há piloto. Ver `PILOTO-AUTOMATICO.md`.)
+(Nota de 02/10: o plano do piloto mudou depois disto — a impressão 3D saiu do plano a 10/09 e, a
+02/10, o Ivo decidiu o Raymarine EV-100 Wheel, por comprar e instalar; até lá não há piloto. Ver
+`PILOTO-AUTOMATICO.md`.)
 
 Razão: o conjunto todo é mais do que um inverno para uma pessoa, e o risco
 real é o barco ficar em terra duas épocas seguidas.

@@ -27,8 +27,10 @@ construção 1976–1982, só André Mauric no projeto, 8,70 m na flutuação e 
 Há duas consequências:
 - O barco nasceu com cana, por isso **é muito provável que a cabeça da madre
   ainda tenha espiga ou quadrado para uma cana**. Isso torna a Camada A quase grátis.
-- Com 6 t, e não 4,5–5 t, convém rever a margem de um piloto de roda (o ST4000+ completo ou um
-  EV-100 Wheel: opções A e B do `PILOTO-AUTOMATICO.md`, por decidir).
+- Com 6 t, e não 4,5–5 t, a margem dos pilotos muda. O piloto decidido a 02/10 é o **Raymarine
+  EV-100 Wheel** (de roda, ref. T70152: `PILOTO-AUTOMATICO.md` §3), que a Raymarine dá até
+  **7 500 kg carregados**; o Melody carregado anda pelos **~7,2 t** (6 046 kg + 20 %): fica perto do
+  limite (rizar cedo).
 
 ## 1. O que pode avariar e a resposta a cada caso
 
@@ -71,9 +73,14 @@ encaixa no topo da madre**. Não é preciso fabricar nada, só verificar:
 
 ### Um só piloto de cana para duas avarias
 
-**Hoje não há piloto nenhum a bordo**: o ST4000+ não governa (falta a unidade de roda) e o plano
-do piloto está por decidir (`PILOTO-AUTOMATICO.md`, §3; o piloto de cana é a opção D). A única
-reserva de governo é esta cana de inox, à mão.
+**Hoje não há piloto nenhum a bordo**: o ST4000+ não governa (falta a unidade de roda). O piloto
+decidido a 02/10 é o **EV-100 Wheel**, de roda, **por comprar e instalar** (`PILOTO-AUTOMATICO.md`
+§3). Até estar montado, a única reserva de governo é esta cana de inox, à mão.
+
+**O EV-100 Wheel não governa esta cana:** trabalha na roda, e nas avarias das Camadas A e B a roda
+deixa de governar o leme. Para o barco se governar sozinho com o leme de emergência continua a ser
+preciso um **piloto de cana** (era a opção D do `PILOTO-AUTOMATICO.md`, agora histórico: não é o
+piloto do barco). Fica como ideia para quando se fizer a Camada B, não decidida.
 
 Um piloto de cana para a Camada B **pode também governar a cana da Camada A**. Se a roda ou a
 transmissão da roda avariarem, o piloto de cana liga-se à cana de inox e o barco continua a
@@ -138,8 +145,9 @@ de cerca de 25 cm.
   qualquer piloto de cana.
 - **Virada para ré, com o pino do piloto a 0,45–0,50 m da madre, funciona.**
   É o compromisso entre força e ângulo de leme.
-- **Piloto, se for esta a opção** (por decidir: `PILOTO-AUTOMATICO.md`, opção D): Raymarine
-  **EV-100 Tiller** (84 kgf, para barcos até 6 000 kg).
+- **Piloto de cana, se um dia se comprar** (a ideia acima, não decidida; o piloto do barco é o
+  EV-100 Wheel, `PILOTO-AUTOMATICO.md` §3): Raymarine **EV-100 Tiller** (84 kgf, para barcos até
+  6 000 kg).
   O ST2000+ não serve: só vai até 4 500 kg. Mesmo o EV-100 fica **no limite
   do deslocamento** (6 046 kg). Serve como recurso de emergência, a navegar
   com pano reduzido e o barco equilibrado, não para uso diário.
@@ -166,9 +174,9 @@ de cerca de 25 cm.
 - A **lâmina** fica colada e aparafusada na parte de baixo da madre. Madre e
   lâmina formam uma só peça de cerca de 13 kg, que se enfia de cima para baixo
   a partir do convés.
-- No topo leva uma **cana** com pino para um **piloto de cana** (por decidir:
-  `PILOTO-AUTOMATICO.md`, opção D). Com ele, o barco governa-se sozinho com o leme de
-  emergência. Um piloto de roda deixaria de servir quando se perde o leme principal.
+- No topo leva uma **cana** com pino para um **piloto de cana** (a ideia do §2, não decidida). Com
+  ele, o barco governa-se sozinho com o leme de emergência. Um piloto de roda — como o EV-100 Wheel
+  decidido a 02/10 (`PILOTO-AUTOMATICO.md` §3) — deixa de servir quando se perde o leme principal.
 - Com o espelho invertido, o pé do painel, junto à água, fica **mais para ré**
   do que o topo. Para a madre ficar vertical:
   - A chumaceira de baixo fica **curta e junto ao painel**. É a que leva mais
