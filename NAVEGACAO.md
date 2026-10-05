@@ -1002,7 +1002,12 @@ no ecrã e no telemóvel).
   **início e fim de viagem** (precisa do plugin `signalk-autostate`).
 - **Entradas manuais:** botões de um toque (motor, rizar, mudar vela,
   fundear, amarrar, avaria) e **notas** escritas. Mudanças de vela também
-  registadas.
+  registadas. (Hoje, no ecrã, são 8 botões: Motor ligado, Motor desligado, Rizei, Mudei de vela,
+  Fundeei, Amarrei, Avaria e Orcas.)
+- **No ecrã, com a segurança do SignalK ligada** (decisão n.º 20, contrato C3): o `signalk-logbook` só
+  aceita admin, por isso a página Diário lê e escreve pelo plugin do ecrã
+  (`/plugins/arlequin-ecra/diario`), que fala com o logbook com um token de admin posto só na
+  configuração dele (§11, "Instalar no Pi", ponto 3). O ecrã entra com a conta "read/write".
 - **Guardado no Pi** em ficheiros YAML, **um por dia**
   (`~/.signalk/plugin-config-data/signalk-logbook/AAAA-MM-DD.yml`): fáceis de
   ler, de copiar e de exportar para PDF.
@@ -1256,6 +1261,154 @@ telemóvel. Notas já discutidas:
 O código está em `software/` (que pasta é o quê e como se testa no portátil: `software/README.md`).
 Aqui fica o que cada parte faz no barco e o que é preciso no Pi.
 
+### Instalar no Pi (por esta ordem)
+
+Tudo o que é preciso no Pi, do zero, por esta ordem. O pormenor de cada parte está nas secções
+seguintes. Contas, palavras-passe e tokens (GitHub, Tailscale, Telegram, as contas do SignalK) são
+do Ivo: o Claude não trata credenciais.
+
+1. **Sistema.** OpenPlotter (Raspberry Pi OS) com o SignalK **2.33 ou mais recente** (o do dev:
+   num SignalK sem o `router.access`, as rotas dos plugins só aceitam admin) e o **Node 22 ou mais
+   recente** (`node -v`; os plugins pedem-no). Instalar o `can-utils` (`sudo apt install can-utils`).
+2. **Fuso e relógio** (decisão n.º 22): `sudo timedatectl set-timezone Europe/Lisbon`. Pôr a pilha do
+   relógio (RTC) do Pi 5 e ligar o plugin `@signalk/set-system-time`, que acerta a hora pelo GPS (ver
+   "Relógio do Pi certo", mais abaixo). O ecrã e os textos dos plugins já mostram a hora de Lisboa;
+   com o Pi também em Lisboa, os registos do sistema batem certo com eles.
+3. **Segurança do SignalK ligada, antes de pôr o barco na rede** (Admin UI → Security):
+   - uma conta **admin**, só do Ivo (para o Admin UI);
+   - uma conta **"read/write"** para o ecrã da roda — **nunca admin** (decisão n.º 20). No browser
+     do ecrã, entrar uma vez com ela e marcar "Remember me"; em Security → Settings, o prazo da sessão
+     tem de ser longo (ou "NEVER"): quando a sessão acaba, o ecrã diz "sem permissão (entra no
+     SignalK)" e deixa de gravar;
+   - um **token de admin** para o diário (o `signalk-logbook` só aceita admin), por exemplo
+     `signalk-generate-token -u <o utilizador admin> -e 1y -s ~/.signalk/security.json` (vem com o
+     SignalK). O token vai **só** para a configuração dos plugins, no servidor: o do ecrã (campo
+     `token`, para a página Diário) e, se ligares "Escrever no diário", os da energia, do gasóleo e da
+     água. **Nunca no browser do ecrã.** Quando caducar, o Diário diz "o diário (signalk-logbook)
+     recusou o token de admin da configuração do plugin do ecrã: põe um token novo";
+   - as rotas e os níveis de cada plugin estão no quadro "Permissões", a seguir a esta lista.
+4. **Plugins da comunidade** (Appstore do SignalK), ligados em Plugin Config:
+   - `@signalk/resources-provider` — sem ele, o Ativar dá 502 "não ativei a rota: …";
+   - `@signalk/course-provider` — calcula o rumo e a distância ao próximo ponto
+     (`navigation.course.calcValues`); sem ele o Leme fica em "Rota ativada · à espera do rumo do
+     SignalK";
+   - `@meri-imperiumi/signalk-logbook` — o diário de bordo;
+   - `signalk-derived-data` — dia/noite, vento real, corrente e a **proa verdadeira** (ponto 10);
+   - `signalk-victron-ble` — o SmartShunt e os dois MPPT (ponto 9);
+   - `@signalk/set-system-time` — a hora pelo GPS (ponto 2).
+5. **O código:** clonar o repositório (`https://github.com/ivo12345-dotcom/meu-primeiro-repo.git`,
+   ramo `claude/piloto-automatico-cwnr0f`) para `~/arlequin`. Os plugins leem ficheiros uns dos outros
+   por caminho relativo (a polar do ecrã, os destinos da rota, o pacote Python da AI): ficam sempre
+   dentro do repositório, nunca copiados à parte.
+6. **Os plugins do Arlequin:** na pasta `~/.signalk`, um `npm install <pasta>` para cada um (fica um
+   atalho para a pasta do repositório): `~/arlequin/software/arlequin-ecra`,
+   `…/signalk-arlequin-energia`, `…/signalk-arlequin-ais`, `…/signalk-arlequin-gasoleo`,
+   `…/signalk-arlequin-agua`, `…/signalk-arlequin-j1939`, `…/signalk-arlequin-caixanegra`,
+   `…/signalk-arlequin-ia`, `…/signalk-arlequin-rota` e `…/signalk-arlequin-porto`. **Nunca o
+   `arlequin-simulador`** (finge o barco). Reiniciar o SignalK. O plugin da rota carrega a AI por
+   caminho relativo desde 02/10: já não precisa de um `npm install` dentro da pasta dele (esse só serve
+   para correr os testes).
+7. **O Python da AI** (venv com as versões fixas): ver "AI a bordo", mais abaixo; na configuração do
+   plugin da AI, `python` = o Python do venv e, só se o plugin estiver fora do repositório, `pastaIa`.
+8. **A configuração de cada plugin** (Plugin Config):
+   - **Melhor rota** (`signalk-arlequin-rota`): `telefones.ivo` (o teu telemóvel) e o `barco` (cor do
+     casco, MMSI, indicativo). O **`modoTeste` fica SEMPRE desligado** (é o padrão; sem ele a
+     `horaSimulada` e o `cicloSegundos` não contam e o ciclo a navegar é de 60 s). **Nunca copiar a
+     pasta `software/dev/config/plugin-config-data` para o Pi:** lá o `modoTeste` está ligado, de
+     propósito, para os scripts do dev. Os limites de segurança (`seguranca`) e a bateria (`energia`:
+     440 Ah, fator solar 0,65) ficam como vêm;
+   - **Porto:** o token do bot, os chats e os contactos (ponto 12);
+   - **Ecrã:** os comandos que arrumam as janelas e o modo noite do OpenCPN (afinam-se na montagem) e
+     o `token` do diário (ponto 3);
+   - **J1939:** fonte `candump`, interface `can1` (ponto 11); o mapa dos alarmes do MDI depois da
+     descoberta ("Motor (J1939)", mais abaixo);
+   - **Água:** as capacidades reais dos dois depósitos (vêm a 80 L cada: por confirmar no barco);
+   - **Gasóleo:** capacidade 200 L; a tabela faz-se no ecrã (Motor → Calibrar);
+   - **Caixa negra:** a pasta `~/arlequin-dados` e os portos extra das saídas (por omissão a
+     Ericeira); **AIS:** os portos extra do "em porto" (também a Ericeira);
+   - **Energia:** os IDs `servico`, `motor` e `main` ficam como vêm (ponto 9).
+9. **Victron (Bluetooth):** no SmartShunt, a entrada auxiliar em "starter battery". No
+   `signalk-victron-ble`, os IDs **`servico`** (o SmartShunt), **`motor`** (a bateria auxiliar),
+   **`mppt1`** (o MPPT de BB) e **`mppt2`** (o de EB). O ecrã, o porto e a caixa negra leem estes nomes
+   fixos: com outros, o ecrã mostra "—" (auditoria I-36).
+10. **A proa verdadeira** (auditoria I-11): no `signalk-derived-data`, ligar o cálculo da proa
+    verdadeira (`headingTrue`, a partir da magnética do ST4000+/ST50 e da declinação) e confirmar que
+    há `navigation.magneticVariation` (do GPS na frase RMC, da PGN 127258 ou do próprio
+    derived-data). O ecrã e a caixa negra usam a verdadeira, ou a magnética mais a declinação; sem
+    nenhuma, o Leme e o Recolher velas ficam com "—" e a caixa negra não marca linhas estáveis (a AI
+    não aprende). Testar no porto.
+11. **O motor (`can1`):** dar ao adaptador USB–CAN um **nome fixo**, `can1` (o `can0` é a NMEA 2000
+    da MacArthur), e pô-lo a subir sozinho no arranque, a 250 kbit/s e **só a escutar** — por exemplo
+    com o systemd-networkd: um `.link` (`[Match] Driver=gs_usb`, `[Link] Name=can1`) e um `.network`
+    (`[Match] Name=can1`, `[CAN] BitRate=250K` e `ListenOnly=yes`). Hoje sobe à mão (`software/README.md`)
+    e, depois de cada arranque, o J1939 ficava sem tramas. Confirmar depois de reiniciar o Pi:
+    `ip -details link show can1` (UP, `listen-only`, 250000) e `candump can1` com a ignição ligada. Se
+    a `can1` subir depois do SignalK, aparece uns segundos "Sem leitura do motor (J1939)" a cada
+    arranque (o plugin religa o `candump` de 5 em 5 s).
+12. **Telegram** (plugin porto): o Ivo cria o bot no @BotFather e cola o token em `telegramToken`.
+    Manda uma mensagem ao bot: o estado do plugin mostra o número do teu chat; junta-o em **Chats
+    autorizados** (`chatIds`). Quem só recebe o plano de navegação entra pelos **Contactos do plano**
+    (/start + código: "Juntar contactos do plano", mais abaixo). Opcionais: `batimentoUrl`
+    (healthchecks.io, de 5 em 5 min) e `comandoFoto` (a câmara).
+13. **Tailscale** (para copiar os dados para o portátil): os passos em "Caixa negra e Tailscale".
+14. **O ecrã da roda** (Chromium em modo quiosque), no arranque do ambiente gráfico:
+    `chromium-browser --kiosk --autoplay-policy=no-user-gesture-required http://localhost:3000/arlequin-ecra/`
+    (ou `chromium`, conforme a versão). **Sem o `--autoplay-policy=no-user-gesture-required`, depois de
+    cada arranque o ecrã fica mudo até alguém lhe tocar** (auditoria K-03) e a barra mostra "🔇 SEM SOM:
+    toca no ecrã". **O Pi 5 não tem saída de som de 3,5 mm:** o som sai pelo HDMI (se o ecrã tiver
+    altifalante) ou por uma placa de som USB. Besouros independentes do browser: melhoria por decidir.
+15. **Sensores:**
+    - o ADS1115 do gasóleo, pela app I2C do OpenPlotter: A0 → `tanks.fuel.0.senderVoltage` e A1 →
+      `tanks.fuel.0.supplyVoltage`, **as duas pelo menos de 60 em 60 s** (mais velhas, o plugin conta
+      a sonda como perdida);
+    - o contador das pedaladas da água (ESP32 com SensESP, ou o GPIO do Pi): `tanks.freshWater.0.pedaladas`
+      e `tanks.freshWater.1.pedaladas`, **pelo menos de 10 em 10 min, mesmo parado** (sem ele há
+      10 min, o depósito fica "sem sensor");
+    - os sensores do barco parado, 0/1: `sensors.porao.agua`, `sensors.porao.bomba`, `sensors.fumo`,
+      `sensors.gasoleo.liquido`, `sensors.gaiuta.aberta`, `sensors.movimento`;
+    - o barómetro (BME280) em `environment.outside.pressure`, que o ecrã e a rota leem.
+16. **Verificações finais, no porto:**
+    - o estado do plugin da rota, em Plugin Config, **não** começa por "MODO DE TESTE";
+    - reiniciar o Pi sem tocar no ecrã: um alarme de ensaio tem de apitar sem o chip "SEM SOM";
+    - `cd ~/arlequin/software/arlequin-ecra && npm run verificar-ecra` no Chromium do próprio Pi (a
+      letra de lá é mais larga): 0 problemas. Sai com 1 se um botão ou uma lista ficar cortada e com 2
+      se não achar o browser (aí, `CHROME=/usr/bin/chromium`);
+    - a proa no Leme (sem "—") e o rumo a seguir depois de Ativar uma rota;
+    - ao arrancar o motor, o ecrã passa a "a trabalhar" (o J1939 "a receber"): ver o ponto cego em
+      "Motor (J1939)";
+    - `/estado` no Telegram e um "Enviar plano" de ensaio para um contacto do plano;
+    - a hora do Pi igual à do GPS (sem o aviso "Relógio do Pi desacertado");
+    - as cadências do ponto 15: com a sonda do gasóleo desligada aparece "Sonda do gasóleo sem
+      leitura…" (ao fim de ~6 min); com o ESP32 parado, a água fica "sem sensor" ao fim de 10 min.
+
+### Permissões (segurança do SignalK)
+
+Todas as rotas dos plugins do Arlequin têm nível (`router.access`, auditoria K-11 e decisão n.º 20):
+as leituras (GET) pedem uma sessão iniciada (qualquer conta) e as escritas (POST) uma conta
+"read/write" ou admin. Assim a conta "read/write" do ecrã chega para tudo.
+
+| Plugin (`/plugins/<id>`) | Leituras (`readonly`) | Escritas (`readwrite`) |
+|---|---|---|
+| Ecrã (`arlequin-ecra`) | `GET /janela`, `/diario/:dia` | `POST /janela`, `/diario` |
+| Melhor rota (`signalk-arlequin-rota`) | `GET /destinos`, `/resultado/:id`, `/plano-telegram/:pedido`, `/plano-ativo` | `POST /calcular`, `/destinos`, `/ativar`, `/plano-telegram`, `/plano-ativo/terminar`, `/plano-ativo/continuar`, `/plano-ativo/estou-bem`, `/plano-ativo/chegada` |
+| Porto (`signalk-arlequin-porto`) | — | `POST /largar` |
+| Caixa negra (`signalk-arlequin-caixanegra`) | `GET /estado`, `/ficheiros`, `/velas` | `POST /velas` |
+| AI (`signalk-arlequin-ia`) | `GET /ia` | `POST /treinar`, `/voltar` |
+| Energia (`signalk-arlequin-energia`) | `GET /sessoes` | — |
+| Gasóleo (`signalk-arlequin-gasoleo`) | `GET /estado`, `/calibracao` | `POST /calibrar`, `/abastecimento`, `/calibracao/iniciar`, `/adicionar`, `/desfazer`, `/cancelar`, `/terminar`, `/importar` |
+| Água (`signalk-arlequin-agua`) | `GET /estado` | `POST /encher`, `/nivel`, `/calibrar-bomba/iniciar`, `/cancelar`, `/terminar` |
+| J1939 (`signalk-arlequin-j1939`) | `GET /diagnostico`, `/consumo`, `/pagina` | — |
+| AIS (`signalk-arlequin-ais`) | — (sem rotas) | — |
+
+- O `signalk-logbook` (de terceiros) só aceita admin nas rotas dele: por isso o ecrã nunca o chama
+  diretamente. A página Diário lê e escreve pelo plugin do ecrã, que fala com o logbook com o token
+  de admin da configuração dele (contrato C3).
+- O ecrã também cala ou reconhece alarmes pela API do SignalK (`POST
+  /signalk/v2/api/notifications/<id>/silence` ou `/acknowledge`; num SignalK sem a gestão das
+  notificações, o `PUT` do `method`): a conta "read/write" chega.
+- Sem o `router.access` (um SignalK antigo), as rotas destes plugins só aceitam admin: atualizar o
+  SignalK em vez de dar admin ao ecrã.
+
 ### Caminhos próprios do Arlequin (fora da norma SignalK)
 
 Quase tudo usa os caminhos normalizados do SignalK. Estes não existem na norma: foram criados para
@@ -1269,9 +1422,12 @@ o Arlequin.
 | `tanks.fuel.0.senderVoltage`, `tanks.fuel.0.supplyVoltage` | V (a sonda e a alimentação do medidor) | a app I2C do OpenPlotter (ADS1115, A0 e A1) | plugin do gasóleo (caminhos configuráveis) |
 | `tanks.freshWater.N.pedaladas` | contador acumulado das pedaladas da bomba de pé | o contador dos sensores reed dos pedais: um ESP32 (SensESP) ou o GPIO do Pi | plugin da água (caminho configurável) |
 | `propulsion.main.fuel.rateOrigem` | `medido` (PGN 65266 do MDI) ou `estimado` (curva da Volvo) | plugin J1939 | caixa negra (coluna `consumoMedido`) |
+| `propulsion.main.ligacao` | `a-receber`, `calado` (ignição desligada) ou `sem-ligacao` (contrato C11) | plugin J1939 | ecrã, porto, gasóleo |
+| `navigation.arlequin.emPorto` | verdadeiro a menos de 0,5 MN de um porto conhecido e abaixo de 4 nós (contrato C12) | plugin AIS | ecrã (página AIS) |
 
 As notificações também têm nomes próprios (`notifications.arlequin.*`, `notifications.rota.*`), o
-que a norma permite.
+que a norma permite, e dois campos a mais no valor: `apito` (`'continuo'` ou `'curto'`, contrato C1)
+e `acao` (`'largar'` no alarme "o barco saiu do lugar", contrato C10).
 
 ### Caixa negra e Tailscale (dados para o Claude analisar)
 
@@ -1289,9 +1445,20 @@ que a norma permite.
   80 % ou mais (falta copiar e confirmar no portátil), avisa no ecrã: "copia os dados para o
   portátil".
 - **Aos 95 %**, se o disco continuar aí depois de apagar tudo o que já foi confirmado, pára o
-  `bruto/` (a tabela continua) e dá o alarme, que vai também para o Telegram. O bruto volta a
-  gravar quando o disco desce abaixo dos 90 %.
+  `bruto/` (a tabela continua) e dá o alarme (com o apito curto: decisão n.º 2), que vai também para
+  o Telegram. O bruto volta a gravar quando o disco desce abaixo dos 90 %.
 - Nunca apaga nada que não esteja no portátil.
+
+**As saídas** (decisão n.º 25): uma saída começa quando o barco fica a mais de 0,5 MN de um porto e
+acaba parado 10 min a menos de 0,5 MN de outro. Os portos são os destinos da rota
+(`software/signalk-arlequin-rota/dados/destinos.json`, que a caixa negra só lê) mais os extras da
+caixa negra (opção `portos`, por omissão a Ericeira). Os destinos que acrescentas no ecrã não contam.
+Sem o ficheiro da rota, o estado do plugin diz "SEM OS PORTOS DA ROTA" e só contam os extras.
+
+**A proa da tabela** é a verdadeira, ou a magnética mais a declinação (`navigation.magneticVariation`,
+válida 1 h); sem nenhuma, as linhas não ficam "estáveis" e a AI não aprende ("Instalar no Pi",
+ponto 10). Um `velas.json` ou `saida-em-curso.json` ilegível fica à parte (`.ilegivel-<hora>`) e o
+plugin começa do zero, com o erro no registo.
 
 **Tailscale: feito pelo Ivo, uma vez** (o Claude não trata contas nem palavras-passe):
 1. Criar a conta em tailscale.com (entrar com Google ou Microsoft).
@@ -1305,7 +1472,9 @@ que a norma permite.
 **Relógio do Pi certo** (uma vez): os nomes dos ficheiros e a junção dos dados com as previsões e as saídas dependem da hora do Pi. A bordo não há Internet para a acertar e, sem pilha, o Pi arranca com a hora errada.
 - Pôr a **pilha do relógio (RTC) do Pi 5** (a oficial, recarregável, na ficha "BAT").
 - E acertar a hora pelo GPS: plugin **`@signalk/set-system-time`** no SignalK (ou o equivalente do OpenPlotter).
-- Se mesmo assim a hora do GPS e a do Pi diferirem mais de 1 min, o ecrã avisa "Relógio do Pi desacertado" (só no ecrã, não vai para o Telegram).
+- E pôr o Pi em Lisboa: `sudo timedatectl set-timezone Europe/Lisbon` (decisão n.º 22).
+- Se mesmo assim a hora do GPS e a do Pi diferirem mais de 1 min, a caixa negra avisa no ecrã "Relógio do Pi desacertado N min — os dados ficam com a hora errada" (só no ecrã, não vai para o Telegram).
+- **E o plugin da rota pára o que vai para terra** (decisão n.º 19): com a hora do Pi a mais de 60 s da do GPS, recusa o "Enviar plano" (e o Ativar que mandaria o plano para terra), pára o acompanhamento a navegar e as mensagens para os contactos, e avisa "Relógio do Pi desacertado N min da hora do GPS: o acompanhamento e as mensagens para terra estão parados — acerta a hora do Pi". Este aviso aparece no ecrã (também no Leme, no mosaico "Contactos em terra") e vai para o teu Telegram: uma hora de alarme calculada com o relógio errado chegava errada aos contactos.
 
 **Copiar os dados** (sempre que estiveres a bordo com rede):
 
@@ -1319,7 +1488,7 @@ node software/ferramentas/sincronizar/sincronizar.mjs --host pi@arlequin
 
 ### AI a bordo (plugin `signalk-arlequin-ia` + pacote `software/arlequin-ia`)
 
-- **Instalar no Pi** (uma vez):
+- **Instalar no Pi** (uma vez; a ordem completa está em "Instalar no Pi", no início desta secção):
   - **Onde ficam as coisas:** o repositório clonado no Pi (por exemplo em `~/arlequin`) e os plugins instalados a partir dele, no `~/.signalk`, com `npm install <caminho>` (dependência `file:`) ou com um atalho (symlink) para a pasta do plugin. Assim o plugin `signalk-arlequin-ia` encontra o pacote Python em `../arlequin-ia` e o ecrã a polar em `arlequin-ecra/public/`, ao lado.
   - Se copiares o plugin para outro sítio, põe na configuração do plugin **`pastaIa`** = a pasta `software/arlequin-ia` do repositório. Sem isso, o plugin diz "não encontro o pacote arlequin-ia em …: configura pastaIa" e não treina (o arquivo da previsão continua).
   - O ambiente do Python:
@@ -1340,6 +1509,8 @@ node software/ferramentas/sincronizar/sincronizar.mjs --host pi@arlequin
   - O simulador nunca ensina.
 - **Quando começa a valer:** precisa de pelo menos 5 h de navegação estável e 2 saídas. Até lá o ecrã diz "a aprender" e usa-se a polar de origem. O 1.º modelo da velocidade pode precisar de **umas 8 h de vela variada** (ventos e ângulos diferentes) até errar menos do que a polar e entrar em uso. A última saída serve de teste; se tiver menos de 1 h, junta-se a anterior.
 - **No ecrã:** no Diário, o cartão "AI" mostra a versão em uso, o que aprendeu e o estado da previsão ("previsão: última HH:MM" ou "sem rede"). Tem "Treinar agora" e, quando há uma versão anterior que esteve em uso, "Voltar atrás", se um modelo novo te parecer pior.
+- **Treinar no portátil** (decisão n.º 26): na pasta `software/arlequin-ia`, `python -m arlequin_ia treinar --dados <a pasta dos dados>` faz versões **`pNNNN`** (as do Pi são `vNNNN`), que nunca ficam em uso sozinhas. Para pôr uma no barco: `node software/ferramentas/sincronizar/sincronizar.mjs --por-no-barco velocidade/p0001` — mostra o modelo e só copia se escreveres o nome da versão; só pelo ssh (Tailscale), nunca pela pen, e recusa enquanto a AI estiver a treinar no Pi. No ecrã fica o "Voltar atrás".
+- **Previsões antigas** (auditoria K-05): até 02/10 a previsão pedia a célula de terra (junto à costa, ~40 % menos vento). Os modelos do vento e da velocidade treinados com essas previsões ficam desviados: se o Pi já tiver algum, o mais seguro é tirar o `atual` desse modelo (`~/arlequin-dados/modelos/<nome>/atual`; volta a polar e a previsão em bruto) até haver saídas com a previsão nova (por decidir pelo Ivo).
 
 **Velas:** na página **Velas** do ecrã, toca no estado da grande e da genoa sempre que mudares. A AI precisa disto para aprender, e o ecrã lembra-te se o vento mudar muito.
 
@@ -1357,23 +1528,14 @@ em "A navegar", mais abaixo.
   "Espera até às HH:MM" / "Não recomendado sozinho" / "Volta ou abriga-te em X"), o **"Sair agora
   mesmo assim"** (inclui as não recomendadas, para quando o Ivo quer sair na mesma) e os
   **pontos de desistência** ao longo da rota.
-- **No Pi:** ativar o plugin `@signalk/resources-provider` no SignalK. Sem ele, o `/ativar` dá
-  502 "não ativei a rota: …" — não há onde gravar a rota nem ativá-la.
-- **No Pi: instalar e ativar o plugin `@signalk/course-provider`** (Appstore do SignalK, ou
-  `npm install @signalk/course-provider` na pasta `~/.signalk`, e ligá-lo em Plugin Config). É ele
-  que calcula o rumo e a distância ao próximo ponto (`navigation.course.calcValues`): sem ele, o
-  Leme não tem rumo e fica em "Rota ativada · à espera do rumo do SignalK".
-- **No Pi: ligar a segurança do SignalK** (Security, com utilizador e palavra-passe) e criar
-  um utilizador **"read/write"** para o ecrã da roda (iniciar sessão com ele no browser do ecrã).
-  Sem segurança, qualquer aparelho na rede do barco pode mandar planos aos contactos ou ativar
-  rotas. O plugin da rota regista as rotas com níveis (`router.access` do SignalK 2.33):
-  - as leituras (`GET /destinos`, `/resultado`, `/plano-telegram/:pedido`) pedem uma sessão
-    iniciada (qualquer utilizador);
-  - as escritas (`POST /calcular`, `/destinos`, `/ativar`, `/plano-telegram`) pedem um utilizador
-    "read/write" ou admin.
-
-  Num SignalK antigo, sem o `router.access`, as rotas dos plugins só aceitam um utilizador
-  **admin** (também os GET): aí o ecrã precisa de uma sessão de admin, ou atualiza-se o SignalK.
+- **No Pi:** o `@signalk/resources-provider` (sem ele, o `/ativar` dá 502 "não ativei a rota: …"),
+  o `@signalk/course-provider` (sem ele, o Leme fica em "Rota ativada · à espera do rumo do SignalK")
+  e a **segurança do SignalK ligada** (sem ela, qualquer aparelho na rede do barco pode mandar planos
+  aos contactos ou ativar rotas): "Instalar no Pi", pontos 3 e 4. As rotas do plugin e os níveis
+  (GET com uma sessão; POST com a conta "read/write" do ecrã, nunca admin) estão no quadro
+  "Permissões".
+- **O modo de teste fica SEMPRE desligado no Pi** (`modoTeste: false`, o padrão): ver "Em casa
+  (dev)", no fim desta secção.
 - **Caminho da polar:** `software/arlequin-ecra/public/polar-arlequin.csv`, do próprio
   repositório.
 - **Zonas e portos: estão por confirmar.** Antes de confiar no cálculo, o Ivo tem de ver na
@@ -1395,13 +1557,25 @@ em "A navegar", mais abaixo.
   `dados/canais.json`, pondo `"confirmado": true` no que já foi visto na carta.
 - **Regra da calma para as horas ao leme:** vento < 10 nós **e** (ondas < 2 m, **ou** ondulação
   comprida ≤ 3 m com período ≥ 9 s). Nessa calma, as horas a motor contam metade, porque **a roda
-  tem travão** (confirmado pelo Ivo a 29/09) e dá para pausas curtas.
+  tem travão** (confirmado pelo Ivo a 29/09; a regra fica, decisão n.º 12) e dá para pausas curtas.
+- **Bateria no planeamento** (decisão n.º 4): o banco de serviço de **440 Ah** e o solar com perdas
+  (**fator 0,65**, como o simulador); o limite dos 50 % à chegada mantém-se. Sem leitura da bateria,
+  assume 80 % com o aviso vermelho "estado da bateria desconhecido: confirma a carga (assumi 80%)".
+  Uma configuração antiga com 200 Ah gravados conta como não posta (fica 440).
 
 **O que convém saber sobre o comportamento do cálculo:**
 - A alternativa de 3 MN só existe com **vento de terra ao longo de toda a linha seguida**
   (verificado à hora estimada de passagem, e voltado a verificar-se nos rastos dos 3 cenários
-  simulados); perto da costa (< 3 MN), a rota direta segue a mesma regra. Sem vento de terra,
-  essa alternativa **nunca aparece, nem no "Sair agora mesmo assim"** (é uma exclusão dura).
+  simulados), **também nas ligações ao largo de partida e de chegada** (decisão n.º 7); perto da
+  costa (< 3 MN), a rota direta segue a mesma regra. Sem vento de terra, essa alternativa **nunca
+  aparece, nem no "Sair agora mesmo assim"** (é uma exclusão dura).
+- **Rotas longas** (decisão n.º 5): uma passagem pode ir até ao fim da previsão (48 h), e as rotas
+  longas atalham as baías por cordas que respeitam o afastamento e as zonas a evitar.
+- **A corrente de maré do Tejo** (até 1,8 nó) só conta na barra e no estuário (a leste de 9°24' W,
+  entre 38°36' e 38°43' N), sem a entrada da marina de Cascais (decisão n.º 8). No resto da costa,
+  a corrente é a da previsão.
+- A previsão pede a célula de mar da Open-Meteo (`cell_selection=sea`): até 02/10 vinha a de terra,
+  com ~40 % menos vento junto à costa (auditoria K-05).
 - Entre dois portos vizinhos com um **salto curto**, há uma só alternativa "direta", junto à
   costa, com a distância real à terra (nunca "a null MN" nos nomes).
 - Se o barco já estiver dentro da aproximação de um porto (por exemplo, no canal do Tejo), a
@@ -1426,6 +1600,13 @@ em "A navegar", mais abaixo.
   otimista".
 - "Sair agora mesmo assim" pode mostrar uma passagem que acaba depois do fim da previsão — fica
   na mesma, com aviso vermelho, porque o Ivo pediu para sair mesmo assim.
+- **"Sair agora" com as exclusões levantadas** (decisão n.º 1): gasóleo < 40 L ou bateria < 50 % à
+  chegada, previsão em falta ou previsão a acabar antes da chegada não escondem a alternativa — fica
+  a laranja, "Não recomendado…", com "Se saíres mesmo assim…" (no mar, "Se continuares mesmo
+  assim…") e os avisos vermelhos, e continua a poder ativar-se.
+- **"Volta ou abriga-te em X"** (decisão n.º 9): só no mar; o abrigo é o mais perto medido ao porto,
+  e pode ser o próprio destino; avalia os afastamentos de 3, 5 e 8 MN, a rota direta e o canal, à vela
+  e só a motor. Não aparece quando partir agora para o destino é recomendado.
 - **Limites de segurança.** Com "só eu": "Não recomendado sozinho" acima de 22 nós de vento
   médio, 30 de rajada ou 3 m de ondas, mais de 8 h equivalentes ao leme, ou chegada de noite a um
   porto que não conheces. Com "acompanhado" (decisão do Ivo de 01/10, "limites mais largos"):
@@ -1433,7 +1614,9 @@ em "A navegar", mais abaixo.
   estes, a alternativa fica, com um aviso vermelho "acima dos limites a solo: …" (as 8 h ao leme e
   a chegada de noite só contam com "só eu"). Os limites contam no pior dos **3 cenários** (o
   otimista, mais lento, pode apanhar uma frente que os outros não apanham), e o vento do pior caso
-  nunca fica abaixo do previsto, mesmo que a AI tenha aprendido que a previsão exagera.
+  nunca fica abaixo do previsto, mesmo que a AI tenha aprendido que a previsão exagera. Estes
+  limites (e os 40 L, os 50 % e as 8 h) são configuráveis no esquema `seguranca` do plugin: os
+  números acima são os de origem, e só se mudam com razão.
 - **Destinos acrescentados por ti** (`POST /destinos`: posição atual ou coordenadas, com nome):
   servem de destino e de partida (por exemplo, fundeado lá); só contam como **abrigo** para os
   pontos de desistência se os marcares assim (por omissão não). Os gravados antes de 01/10 são
@@ -1479,10 +1662,16 @@ estado, de dia e de noite, em `docs/capturas-3b1/`.
     Ligado mas sem resposta em 30 s: "o plugin porto não respondeu (está ligado? tem o token?)".
   - Sem a chegada mais tarde não há hora de alarme e o plano não vai. Um cálculo antigo também
     não: com a hora de alarme já passada ou a partida há mais de 1 h, "este cálculo é antigo: … —
-    calcula outra vez antes de enviar o plano".
+    calcula outra vez antes de enviar o plano". Com a hora do Pi a mais de 60 s da do GPS também
+    não ("o relógio do Pi está desacertado N min da hora do GPS: a hora de alarme sairia errada —
+    acerta a hora antes de enviar o plano"; decisão n.º 19).
   - Escolher outro cartão a meio do envio não o perde: o estado diz "(plano da N.ª alternativa)".
 - **Ativar esta rota:** grava e ativa a rota no SignalK (o OpenCPN mostra-a) e a página passa ao
-  Leme. **Sair agora mesmo assim** recalcula só para partir já.
+  Leme. Como o envio, recusa um cálculo antigo ("este cálculo é antigo: … — calcula outra vez antes
+  de ativar"; decisão n.º 13), menos ao voltar a ativar a alternativa do plano aberto (a rota apagada
+  no OpenCPN a meio da viagem). Com o relógio do Pi desacertado, o Ativar que mandaria o plano para
+  terra também é recusado (decisão n.º 19). Um 2.º toque a meio dá "já há uma ativação a meio: espera
+  um momento". **Sair agora mesmo assim** recalcula só para partir já.
 
 **Hora de alarme do plano:** a chegada mais tarde (o pior dos 3 cenários) + 2 h. O texto diz a
 quem o recebe para ligar ao Ivo e, se ele não atender, ao MRCC Lisboa (+351 214 401 919, 24 h, ou
@@ -1540,12 +1729,24 @@ cais logo à saída não é "cheguei bem". Um plano novo começa limpo; os 5 úl
   cabos, largos, chegada — deslizam com o atraso; o pôr do sol, a chuva e a frente ficam à hora
   prevista);
 - "chegada ~amanhã 07:58 (plano 07:38)", com "de noite" se a chegada deslizada for de noite;
-- "recursos: gasóleo à chegada ~34 L" quando há aviso, ou "recursos: sem leitura";
+- "recursos: gasóleo à chegada ~34 L" quando há aviso, ou "recursos: sem leitura" (sem uma leitura
+  do gasóleo ou da bateria com menos de 2 min, ou com o aviso de sonda ou sensor perdido);
 - "sem GPS: acompanhamento parado" (mais de 2 min sem posição) e "barómetro: sem leitura";
 - antes de sair: "plano ativo · à espera de sair";
 - com o plano enviado: "contactos em terra: alarme HH:MM" (a hora a que eles ligam ao MRCC), "mensagem
   para terra por enviar (sem rede)" quando uma já falhou, "não chegou a X (a tentar outra vez)" e, na
-  caixa da pausa, "em pausa: os atrasos não seguem para terra".
+  caixa da pausa, "em pausa: os atrasos não seguem para terra". Quando os contactos têm horas de
+  alarme diferentes (um recebeu um atraso e outro não), a de cada um: "Pai: alarme 18:32 · Mãe:
+  alarme 20:32" (decisão n.º 14: cada contacto tem a sua, e o aviso de 60 min conta pela mais cedo).
+
+**O mosaico "Contactos em terra"** (no Leme, à direita; também sem plano ativo):
+- "⚠ Relógio do Pi desacertado … — acerta a hora do Pi" (decisão n.º 19: nada sai para terra);
+- "⚠ o «cheguei bem» ainda não chegou a terra: liga-lhes (Pai, Mãe)" — com o plano já fechado e a
+  mensagem por entregar (o aviso de 60 min continua até ela chegar);
+- "⚠ Pai não recebeu o «cheguei bem»: liga-lhe" — quando o sistema desistiu de lhe entregar
+  (decisão n.º 16, abaixo);
+- "⚠ Os contactos em terra têm um plano com alarme HH:MM e não há plano ativo: ativa-o ou avisa-os"
+  (ou "… têm o plano de outra alternativa …: avisa-os") — decisão n.º 15.
 
 **O que o sistema avisa** (na barra de cima, com o apito curto; nenhum muda a rota):
 - **Lembretes**, 30 min antes: rizar ou largar rizo, a frente, chuva e visibilidade abaixo de 5 km
@@ -1554,26 +1755,40 @@ cais logo à saída não é "cheguei bem". Um plano novo começa limpo; os 5 úl
   Raso"; num troço a motor, "mudar de rumo no Cabo Raso") e a **rotação do vento** previsto de mais
   de 45° em 1 h ("rotação do vento de 350° para 50°"; com vento previsto de 6 nós ou mais, no mínimo
   3 h entre elas e nenhuma perto de uma frente, que já diz para onde roda). Só no ecrã.
-- **A hora de alarme em terra**, 60 min antes, com o plano aberto (também à espera de sair e em
-  pausa): "Os contactos em terra ligam ao MRCC às HH:MM: avisa-os ou Terminar". Só no ecrã.
+- **A hora de alarme em terra**, 60 min antes da **mais cedo** que algum contacto tenha (decisão
+  n.º 14), com o plano aberto (também à espera de sair e em pausa): "Os contactos em terra ligam ao
+  MRCC às HH:MM: avisa-os ou Terminar". Também com o plano já fechado e o «cheguei bem» (ou a
+  «viagem terminada») por entregar: "O «cheguei bem» ainda não chegou a terra: os contactos ligam ao
+  MRCC às HH:MM — liga-lhes". E com um plano em terra que não é o ativo (decisão n.º 15): "Os
+  contactos em terra têm um plano com alarme às HH:MM e não há plano ativo: ativa-o ou avisa-os". Só
+  no ecrã.
 - **Come e bebe** (só com "só eu"), de 3 em 3 h desde a saída, durante 15 min. Só no ecrã.
 - **Recalcula a rota**: atraso de mais de 30 min, ou o vento medido (média de 10 min) afastado do
   previsto mais de 30 % e mais de 4 nós durante 30 min seguidos. Apaga-se com os dois normais
   durante 10 min. Vai também para o teu Telegram.
 - **Recursos**: gasóleo à chegada abaixo de 40 L ou bateria abaixo de 50 % (pelas horas de motor
   que faltam no plano, a 2100 rpm, e o balanço da bateria). Vai também para o teu Telegram.
-- **Previsão velha**: com mais de 6 h, aviso no ecrã; com mais de 12 h (ou sem previsão nenhuma),
-  alarme com o apito curto, "confia nos instrumentos e no barómetro", e vai para o teu Telegram.
+- **Previsão velha**: com mais de 6 h, aviso no ecrã; com mais de 12 h (ou sem previsão nenhuma,
+  ou só com uma de mais de 50 h), alarme com o apito curto, "confia nos instrumentos e no
+  barómetro", e vai para o teu Telegram.
 - **Barómetro**: queda de mais de 3 hPa em 3 h, "o tempo pode piorar antes do previsto"; apaga-se
   com a queda em 3 h até 2 hPa. Vai também para o teu Telegram.
+- **Relógio do Pi desacertado** (decisão n.º 19): com a hora do Pi a mais de 60 s da do GPS, o
+  acompanhamento e as mensagens para terra param até a acertares. Vai também para o teu Telegram.
 - O teu Telegram recebe o "✓ Resolvido" quando passam, uma só vez (o plugin porto guarda o que já
-  te mandou em `encaminhador.json`: um reinício do plugin não repete os avisos nem o "Resolvido";
-  depois de desligar o Pi, um aviso ainda ativo volta a chegar uma vez — mais vale repetido do que
-  perdido).
-  O apito contínuo fica só para o AIS.
+  te mandou em `encaminhador.json`: um reinício do plugin não repete os avisos nem o "Resolvido").
+  Se o Telegram não aceitar, o porto insiste até entregar (decisão n.º 17), com "(atrasado N min)".
+  Todos os avisos da rota têm o **apito curto**; o contínuo é só para o perigo imediato (ver "Alarmes
+  e apito", mais abaixo).
+
+**Não desligues o quadro antes do «cheguei bem», ou carrega em Terminar** (decisão n.º 18). O
+«cheguei bem» só sai depois de 5 min parado no cais e com o Pi ligado: com o quadro desligado antes
+disso, os contactos ficam com a hora de alarme e ligam ao MRCC. Com pressa, carrega em **Terminar**
+(os contactos recebem "viagem terminada, estou bem") e só depois desliga.
 
 **O que os contactos em terra recebem** (só se o plano lhes foi enviado; vão também para o teu chat):
-- "Cheguei bem a Peniche às 10:24. Obrigado!" à chegada (uma vez);
+- "Cheguei bem a Peniche qua 30/09 às 10:24. Obrigado!" à chegada (uma vez; as mensagens de fecho
+  levam sempre o dia);
 - "Ainda a navegar, tudo bem. Nova chegada prevista ~HH:MM. Nova hora de alarme: HH:MM (em vez de
   HH:MM)." quando a chegada prevista passa **30 min ou mais** da "mais tarde" do plano (decisão do
   Ivo de 01/10: uns minutos não preocupam ninguém em terra); depois, no máximo 1× por hora
@@ -1585,15 +1800,22 @@ cais logo à saída não é "cheguei bem". Um plano novo começa limpo; os 5 úl
   (se estiveres incapacitado, ligam ao MRCC à hora certa). O Leme diz então "A hora de alarme em terra
   é HH:MM e não foi adiada (barco parado / limite de 3 h). Se estás bem, carrega Estou bem.": o botão
   **Estou bem** manda um atraso com a estimativa de agora, e o limite passa a 3 h sobre essa hora;
-- "Viagem terminada / mudança de planos: estou bem, em <posição> às HH:MM." ao Terminar;
+- "Viagem terminada / mudança de planos: estou bem, em <posição> às HH:MM." ao Terminar (sem uma
+  posição fresca do GPS, a última conhecida, com a hora dela);
 - o plano novo, com "Este plano substitui o anterior", ao Recalcular → Ativar, e também ao Ativar
   outra alternativa (ou outro cálculo) quando eles têm o plano de outra (o Resultado avisa: "os
   contactos em terra têm o plano da 1.ª alternativa (alarme HH:MM): ao Ativar, segue o novo").
 - Um contacto que não a recebeu (bloqueou o bot, um erro do Telegram) recebe-a outra vez, igual e com
-  a mesma referência, de 2 em 2 min, até chegar.
+  a mesma referência, de 2 em 2 min. **Se a falha é dele** (os outros ou tu receberam), o sistema
+  desiste no fim da hora de alarme desse contacto e avisa-te pelo Telegram: "X não recebeu … e já
+  passou a hora de alarme (…): desisti de o entregar. Liga-lhe." (decisão n.º 16; o Leme mostra-o no
+  mosaico "Contactos em terra"). Sem rede nunca desiste: o «cheguei bem» ainda serve quando a rede
+  voltar.
 - Nada mais: os lembretes, os avisos e a rota mudada nunca vão para terra. Sem rede (ou sem o
   plugin porto), as mensagens ficam em fila e voltam a tentar de 2 em 2 min (no teu chat só a 1.ª
-  vez). Um atraso que fica na fila sai com os valores da hora a que sai, e já não sai se entretanto
+  vez); uma que falhou várias vezes não prende as outras. Um atraso automático só sai **com o plano
+  "a navegar" e com GPS**: em pausa, à espera de sair ou com o plano fechado sai da fila; sem GPS fica
+  retido (auditoria K-02). Sai com os valores da hora a que sai, e já não sai se entretanto
   recuperaste.
 - Cada mensagem acaba com uma referência curta ("ref. A3"), a mesma em todas as tentativas: depois
   de um reinício a meio de um envio a mensagem volta a sair (perder um atraso é pior do que o contacto
@@ -1622,8 +1844,134 @@ depósito e relógio, a 60× (1 s = 1 min). Injeta posição e hora falsas, mand
 do simulador desligado, do porto ligado ao Telegram falso (só com o contacto falso do dev, o 222) e,
 no plugin da rota, de `modoTeste: true` com `horaSimulada: true` e `cicloSegundos: 1`. O script lê a
 configuração do servidor e recusa-se a correr sem ela (no Pi, com a segurança do SignalK ligada, nem a
-consegue ler). As opções de teste estão **desligadas por omissão**: `modoTeste` é `false` e, sem ele,
-`horaSimulada` e `cicloSegundos` não contam (no barco, o ciclo é sempre de 60 s); no fim do teste,
-desliga o `modoTeste`. Com ele ligado, o estado do plugin no Plugin Config começa por "MODO DE TESTE
-(hora simulada, ciclo de 1 s)", para nunca passar despercebido no barco. Ctrl-C a meio termina o plano, desativa a rota e repõe a hora. Com
+consegue ler). As opções de teste estão **desligadas por omissão no plugin**: `modoTeste` é `false` e,
+sem ele, `horaSimulada` e `cicloSegundos` não contam (no barco, o ciclo é sempre de 60 s). **Na
+configuração do dev o `modoTeste` fica ligado** (`software/dev/config/plugin-config-data/signalk-arlequin-rota.json`):
+é a marca de dev que as guardas dos scripts pedem. **No Pi está sempre desligado, e essa pasta nunca
+se copia para o Pi.** No fim da viagem acelerada desliga-se a `horaSimulada` e o `cicloSegundos` volta
+a 60. Com o `modoTeste` ligado, o estado do plugin no Plugin Config começa por "MODO DE TESTE (…)", para
+nunca passar despercebido no barco. Ctrl-C a meio termina o plano, desativa a rota e repõe a hora. Com
 `--pausa <ficheiro>`, a hora pára enquanto o ficheiro existir.
+
+O `npm run testar-rota` (põe o barco em Algés, calcula até Peniche e ativa) tem a mesma guarda quando
+põe o barco num sítio ou ativa (`--em`, `--ativar`). Os dois scripts marcam o que injetam como dados
+simulados (fonte `arlequin-simulador.…`): a caixa negra grava essas linhas com `simulado = 1`, e o
+simulado nunca ensina a AI. As tabelas do dev de 30/09 e 01/10, com dados falsos marcados como reais,
+foram mudadas para `software/dev/arlequin-dados/_dados-falsos-arquivo/`, que o treino não lê
+(decisão n.º 27; não se apagaram).
+
+### Alarmes e apito (todos os plugins)
+
+Decisão do Ivo n.º 2 (02/10) e contrato C1. O ecrã toca o **apito contínuo** (um bip em cada
+segundo, até calar) só quando o alarme tem `apito: 'continuo'` (ou é uma emergência sem o campo); tudo
+o resto com som dá o **apito curto** (um bip quando o alarme chega).
+
+| Som | Alarmes |
+|---|---|
+| **Contínuo** — só o perigo imediato | colisão AIS; fumo; água no porão; bomba de porão (mais de 3 min seguidos, ou o 5.º arranque numa hora); fuga de gasóleo (o líquido debaixo do depósito, ou o depósito a descer mais de 5 L em 12 h com o motor parado); motor a sobreaquecer (95 °C ou mais) |
+| **Curto** | serviço abaixo de 50 %, bateria do motor fraca, disco a 95 %, "o barco saiu do lugar", intrusão, todos os avisos da rota, gasóleo na reserva, consumo anormal, alternador que não carrega, água a acabar, "Sem leitura do motor (J1939)", e os avisos de 55 % e 85 % da bateria (de noite e com o barco parado, estes só no ecrã) |
+| **Sem som** (só no ecrã) | sonda do gasóleo perdida, SmartShunt calado, relógio da caixa negra, lembrete das velas, disco a 80 % |
+
+- **Calar:** no chip da barra, "silenciar" (ou "reconhecer": uma emergência só se reconhece). Um
+  alarme calado continua calado se o plugin dele reiniciar e o repuser em menos de 3 min com a mesma
+  mensagem (não vale para a emergência).
+- **Fumo reconhecido** (Adenda 2): o contínuo pára, o alarme fica vermelho e repete um bip curto de 2
+  em 2 min enquanto houver fumo; se o fumo passar e voltar, apita contínuo outra vez.
+- **Telegram:** seguem as mudanças de estado de todos os alarmes e avisos dos plugins, menos os só do
+  ecrã — os lembretes e o "come e bebe" da rota, a hora de alarme em terra, o lembrete das velas, o
+  relógio da caixa negra e todos os de sonda, sensor ou ligação perdidos (`.sondaPerdida`,
+  `.sensorPerdido`, `.semLigacao`). O disco e a previsão velha só seguem em alarme.
+- **Sem som no Pi?** O kiosk do Chromium precisa do `--autoplay-policy=no-user-gesture-required`, e o
+  Pi 5 não tem saída de 3,5 mm ("Instalar no Pi", ponto 14).
+
+### Barco parado e Telegram (plugin `signalk-arlequin-porto`)
+
+- **O que vigia** (os sensores do ponto 15 de "Instalar no Pi"): fumo, água no porão, a bomba de
+  porão, líquido debaixo do depósito de gasóleo, intrusão com o alarme armado (a gaiuta ou movimento;
+  vai com uma fotografia) e "o barco saiu do lugar" (mais de 30 m do ponto de amarração; limpa a 24 m).
+  O sistema só avisa: o detetor de fumo e a bomba de porão continuam com a sirene e o flutuador deles.
+- **O ponto de amarração** (decisão n.º 24 e Adenda 2):
+  - grava-se sozinho com o barco parado 30 min (menos de 0,3 nó e o motor parado), **só junto a um
+    porto ou fundeadouro conhecido** — a menos de 1 km da aproximação de um destino da rota, ou de um
+    sítio da opção `lugares` (por omissão a Ericeira). No mar nunca se grava sozinho; o `/amarrar`
+    grava-o onde estiveres;
+  - apaga-se sozinho só com o **motor a trabalhar**, o barco a **mais de 1 nó** e o alarme de
+    intrusão **desarmado** (largaste de propósito);
+  - **sem motor** (ou sem leitura do motor) **nunca se apaga sozinho**: carrega em **"Larguei (sou
+    eu)"** no alarme do ecrã, ou manda `/largar` no Telegram. Uma âncora a garrar ou uma amarra
+    partida nunca se dão por resolvidas por o barco andar depressa;
+  - **armado, nunca se apaga sozinho, nem a motor**: é tratado como roubo.
+- **Comandos** (só dos Chats autorizados): `/estado` (baterias, solar, depósitos, cabine, alarmes),
+  `/foto`, `/posicao`, `/armar`, `/desarmar`, `/amarrar`, `/largar`; `/ajuda` (ou qualquer outro
+  texto) dá a lista. Desarmado e sem movimento a bordo há 12 h, o bot pergunta se queres armar.
+- **O que segue para o teu Telegram:** ver "Alarmes e apito". Um caminho segue no máximo de 10 em 10
+  min enquanto oscilar (um alarme que volta dentro dos 10 min fica à espera e segue depois: não se
+  perde), e o "✓ Resolvido" quando passa. Com o barco amarrado, os alarmes AIS não seguem.
+- **A fila** (decisão n.º 17): o porto insiste até o Telegram aceitar (recuo até 1 min) e a mensagem
+  leva "(atrasado N min)"; os alarmes passam à frente; uma mensagem que o Telegram recusa sempre sai ao
+  fim de 3 recusas, com um aviso para ti. A fila guarda no máximo 100 mensagens (cortam primeiro as
+  oscilações e os casos já resolvidos).
+- **Reinícios** (nota do SignalK 2.33): ao parar um plugin, o servidor apaga da árvore os valores
+  dele. Os plugins repõem os seus alarmes ao arrancar; o porto não repete um alarme que volta ativo em
+  2 min nem perde o "✓ Resolvido" (se não voltar em 2 min, sai o "Resolvido").
+- Se o `porto.json` ficar ilegível, o porto começa desarmado e sem ponto de amarração e avisa-te uma
+  vez ("⚠️ Perdi o estado do porto (porto.json ilegível): … Arma-o outra vez com /armar.").
+
+### Motor (J1939): o estado da ligação
+
+O plugin J1939 publica `propulsion.main.ligacao` (contrato C11):
+- **a receber** — chegam tramas do MDI: o ecrã mostra "a trabalhar" (com rotações) ou "motor
+  desligado" (rotações a 0);
+- **calado** — sem tramas há mais de 5 s, com a interface de pé: é a **ignição desligada**. Os valores
+  do motor ficam "—", os alarmes que vêm dos dados do motor (sobreaquecimento, alternador, mapa do
+  MDI) limpam, e o ecrã mostra "motor desligado" e conta o tempo como vela;
+- **sem ligação** — o adaptador USB–CAN solto, a interface em baixo (ou em *bus-off*) ou o `candump`
+  parado: "sem leitura do motor" no ecrã e o aviso "Sem leitura do motor (J1939): <motivo>" (apito
+  curto, só no ecrã). O plugin religa o `candump` de 5 em 5 s.
+
+**O ponto cego:** o Pi só escuta. Um fio CAN solto entre o adaptador e o MDI, com a interface de pé,
+parece a ignição desligada: com o motor a trabalhar, o ecrã diria "motor desligado" e um
+sobreaquecimento limparia. **Ao arrancar o motor, confirma que o ecrã passa a "a trabalhar".** Um
+bitrate errado ou erros no barramento também dão "calado": vê-se com `ip -details link show can1`.
+
+**Os alarmes do MDI** (PGN 65417) descobrem-se no barco: abrir
+`http://<pi>:3000/plugins/signalk-arlequin-j1939/pagina`, ligar a ignição com o motor parado (acendem
+os alarmes de óleo e de carga), ligar o motor e ver que bits mudam; pôr esse mapa (byte, bit →
+alarme) na configuração do plugin. O consumo é estimado pela curva da Volvo (2100 rpm → 1,45 L/h),
+calibrável pelo fator.
+
+### AIS: quando apita
+
+O plugin AIS usa o mesmo cálculo do ecrã: **perigo** com CPA < 0,5 MN e TCPA < 20 min, com o **apito
+contínuo**. As regras (auditoria K-01 e I-09, decisão n.º 3, Adenda 2, contrato C12):
+- **Parado** é menos de 0,5 nó, mesmo com rumo. Dois barcos parados nunca são colisão; **um alvo que
+  se mexe dá sempre alarme**.
+- **Sem velocidade** (do alvo ou a nossa): primeiro tira-a do rasto (30 s de posições; um navio a 12
+  nós de proa sem o nosso SOG dá ~14 min de aviso); sem rasto, a regra da distância: a menos de 0,5 MN
+  e a aproximar-se. **Muito perto** (menos de 0,05 MN, ~90 m), um alvo que vem para nós pelas posições
+  dele dá alarme mesmo abaixo de 0,5 nó (um barco a garrar), também amarrados e em porto.
+- **Amarrado** (o nosso barco abaixo de 0,5 nó durante 5 min): os alvos parados não apitam. Sai do
+  "amarrado" com 1 min seguido a 0,5 nó ou mais: bornear à âncora a 0,6–0,9 nó mais de 1 min também o
+  faz sair (o erro fica para o lado do alarme).
+- **Em porto** (a menos de 0,5 MN do cais de um porto conhecido — os 15 destinos da rota e os extras da
+  configuração, por omissão a Ericeira — e o nosso barco abaixo de 4 nós; muda ao fim de 30 s): os
+  alvos parados aparecem **a amarelo e não apitam** ("Em porto: os alvos parados aparecem a amarelo e
+  não apitam", na página AIS). **O custo, aceite pelo Ivo:** dentro dessa zona, um navio parado no
+  nosso caminho não apita, só fica a amarelo. Um alvo em movimento apita sempre.
+- Um alarme só limpa com 30 s seguidos sem perigo. Sem a nossa posição há 10 s, o vigia não julga (os
+  alarmes ativos ficam). O ecrã diz de quem é o rumo que falta: "sem rumo do alvo", "sem o nosso
+  rumo", "sem rumo de nenhum dos dois".
+
+### Gasóleo e água
+
+- **Gasóleo:** a app I2C tem de mandar as duas tensões da sonda **pelo menos de 60 em 60 s**; sem elas
+  há 5 min, o aviso "Sonda do gasóleo sem leitura há mais de 5 min …" (só no ecrã). Sem a sonda, o
+  nível continua pelo consumo do motor enquanto se sabe o que o motor faz (a trabalhar com o consumo
+  conhecido, ou parado, também com a ignição desligada); sem leitura do motor deixa de se atualizar e
+  o ecrã diz "sem leitura (último N L, há X min)". Sem a sonda não se calibra nem se regista o
+  "Abasteci" (o ecrã diz porquê). A reserva acende a 40 L ou menos; a rota exclui uma passagem que
+  chega com menos de 40 L no pior caso.
+- **Água:** o contador das pedaladas tem de chegar **pelo menos de 10 em 10 min, mesmo parado**; sem
+  ele, o depósito fica "sem sensor". O nível só existe depois de um "Enchi" (ou do nível posto à mão):
+  até lá o ecrã diz "nível por confirmar: carrega Enchi" e nunca o mostra cheio por omissão (decisão
+  n.º 23). Os depósitos: 2 × 80 L no plugin, por confirmar no barco.
