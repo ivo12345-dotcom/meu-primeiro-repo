@@ -398,8 +398,16 @@ module.exports = function (app, deps = {}) {
     const d = desacertoRelogio(agora)
     return Number.isFinite(d) && Math.abs(d) > RELOGIO_MAX_MS ? d : null
   }
-  const minutosDesacerto = (d) => `${Math.max(1, Math.round(Math.abs(d) / MIN))} min`
-  const recusaRelogio = (d) => `o relógio do Pi está desacertado ${minutosDesacerto(d)} da hora do GPS: a hora de alarme sairia errada — acerta a hora antes de enviar o plano`
+  // O desacerto como o Ivo o acerta (F2b Menor 8: 90 s diziam "2 min", arredondados ao minuto): "45 s", "1 min 30 s",
+  // "5 min", "2 h 5 min" (a partir de 1 h sem os segundos)
+  function duracaoDesacerto (d) {
+    const s = Math.round(Math.abs(d) / 1000)
+    if (s < 60) return `${s} s`
+    const m = Math.floor(s / 60)
+    if (m < 60) return s % 60 ? `${m} min ${s % 60} s` : `${m} min`
+    return m % 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m / 60} h`
+  }
+  const recusaRelogio = (d) => `o relógio do Pi está desacertado ${duracaoDesacerto(d)} da hora do GPS: a hora de alarme sairia errada — acerta a hora antes de enviar o plano`
   // O estado do plugin (Plugin Config); com o modoTeste ligado, à frente (re-revisão M-4): "MODO DE TESTE
   // (hora simulada, ciclo de 1 s) · …", para nunca passar despercebido no barco
   let modoTesteTexto = ''
@@ -950,7 +958,7 @@ module.exports = function (app, deps = {}) {
     // decisão n.º 19: com o relógio do Pi desacertado o ciclo não corre (os avisos ficam como estão)
     desacertoAtual = relogioErrado(agora)
     if (desacertoAtual != null) {
-      publicarAvisos({ ...avisosPublicados, [`${av.PREFIXO}.relogio`]: { state: 'warn', method: [...av.METODO], message: `Relógio do Pi desacertado ${minutosDesacerto(desacertoAtual)} da hora do GPS: o acompanhamento e as mensagens para terra estão parados — acerta a hora do Pi` } })
+      publicarAvisos({ ...avisosPublicados, [`${av.PREFIXO}.relogio`]: { state: 'warn', method: [...av.METODO], message: `Relógio do Pi desacertado ${duracaoDesacerto(desacertoAtual)} da hora do GPS: o acompanhamento e as mensagens para terra estão parados — acerta a hora do Pi` } })
       return
     }
     const hPa = numeroFresco('environment.outside.pressure', agora)
