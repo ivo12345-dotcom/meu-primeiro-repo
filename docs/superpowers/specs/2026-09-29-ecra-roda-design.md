@@ -147,3 +147,53 @@ O que mudou depois deste desenho; o resto mantém-se.
   `arlequin-simulador/lib/navegacao.js`).
 - **Piloto automático:** continua a não haver. Decidido a 02/10: Raymarine EV-100 Wheel, por comprar e
   instalar (`PILOTO-AUTOMATICO.md` §3); a ligação ao ecrã fica para depois de montado.
+
+## Notas de implementação (auditoria, 02–03/10)
+
+O que a auditoria mudou no ecrã (frentes F3, F3c e F3b; as decisões do Ivo numeradas como na lista
+da auditoria). Verificado no código a 05/10. Onde o texto acima e estas notas diferem, valem estas.
+
+- **Apito** (decisão n.º 2, contrato C1; substitui o 1.º ponto de "Alarmes"): o ecrã toca o apito
+  **contínuo** (um bip de 0,4 s a 1000 Hz em cada segundo) só se a notificação tem som, não está
+  calada nem reconhecida, e (`apito: 'continuo'`, ou sem o campo `apito` e no estado `emergency`).
+  Tudo o resto com som dá o **apito curto** (um bip de 0,35 s a 660 Hz quando a notificação muda).
+  Hoje o contínuo é a colisão AIS, o fumo, a água no porão, a bomba de porão, a fuga de gasóleo e o
+  sobreaquecimento do motor.
+- **Fumo reconhecido** (Adenda 2): o contínuo pára, o alarme fica vermelho e repete um bip curto de
+  2 em 2 min (o 1.º 2 min depois de o ecrã o ver reconhecido) enquanto houver fumo; se passar e
+  voltar, apita contínuo outra vez.
+- **Calado depois de um reinício** (nota do SignalK 2.33): um alarme que o Ivo calou continua calado
+  se o plugin que o publica reiniciar e o repuser em menos de 3 min com a mesma mensagem (não vale
+  para a emergência). Fica só na memória do ecrã.
+- **"Larguei (sou eu)"** (contrato C10): o alarme "o barco saiu do lugar" (com `acao: 'largar'`) leva
+  este botão, que chama `POST /plugins/signalk-arlequin-porto/largar` e apaga o ponto de amarração.
+- **Som ao arrancar** (K-03): o `AudioContext` nasce logo ao arrancar e tenta `resume()` em cada
+  ciclo e em cada toque; o chip "🔇 SEM SOM: toca no ecrã" só aparece com o som parado. No Pi o kiosk
+  do Chromium tem de arrancar com `--autoplay-policy=no-user-gesture-required` (sem a opção o ecrã
+  fica mudo até ao 1.º toque).
+- **Proa** (I-11; o caminho "`headingTrue` (ou `headingMagnetic`)" da tabela): `headingTrue`, ou
+  `headingMagnetic` + `magneticVariation` (as duas), com "(mag.)" à vista; sem declinação, "—".
+- **Diário** (contrato C3, decisão n.º 20; substitui o ponto "Diário" das Páginas): o ecrã lê e
+  escreve pelo plugin do ecrã, `GET /plugins/arlequin-ecra/diario/:dia` e `POST
+  /plugins/arlequin-ecra/diario`; o plugin fala com o `signalk-logbook` com um token de admin posto
+  só na configuração dele. O ecrã entra com uma conta "read/write", nunca admin. 8 botões de um toque
+  (com "Orcas").
+- **Toque e letra** (I-26): todos os alvos de toque com 44 px no mínimo, também no LAFVIN de
+  1024×600; a letra de base nunca abaixo de 14 px (`font-size: max(14px, 2vh)`).
+- **Noite** (decisão n.º 21, I-27): as cores da correção BB/EB e as etiquetas clarearam para se lerem
+  no brilho 2 (≥ 3:1, a confirmar no barco, de noite).
+- **Motor** (contrato C11, I-23): três estados — "a trabalhar", "motor desligado" (rotações a 0 ou a
+  ignição desligada, `propulsion.main.ligacao` = `calado`; conta como vela) e "sem leitura do motor"
+  (`sem-ligacao`, uma ligação com mais de 20 s, ou sem rotações).
+- **AIS** (contrato C12): com `navigation.arlequin.emPorto` (com menos de 30 s), a linha "Em porto: os
+  alvos parados aparecem a amarelo e não apitam"; o alvo com alarme do plugin fica "perigo" e à
+  frente; "sem rumo do alvo", "sem o nosso rumo", "sem rumo de nenhum dos dois".
+- **Gasóleo e água:** com o nível de mais de 2 min, "sem leitura (último N L, há X min)"; o consumo de
+  cruzeiro do ecrã é 1,45 L/h (2100 rpm, como a rota); a água diz "sem sensor", "nível por
+  confirmar: carrega Enchi" ou "sem nível" e nunca aparece cheia por omissão (decisão n.º 23).
+- **Horas de Lisboa** em todas as páginas, qualquer que seja o fuso do Pi (decisão n.º 22).
+- **Erros:** uma exceção a desenhar uma página já não cala os alarmes (I-06); sem caixas
+  `confirm()` do browser, que paravam o ciclo (I-10); os erros em pt-PT (I-32).
+- **Verificador** (`npm run verificar-ecra`, F3c/F3b): desenha 74 estados num Chromium a 1024×600 e
+  falha se um alvo de toque ou uma lista ficar cortada; corre-se também no Chromium do Pi (a letra de
+  lá é outra).

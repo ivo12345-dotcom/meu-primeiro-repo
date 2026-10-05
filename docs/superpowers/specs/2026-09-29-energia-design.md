@@ -123,4 +123,32 @@ Meshtastic (só após validação), besouro por GPIO (hardware), J1939 do motor
   Peniche mostrou o aviso ao largar; commit `8d961f4`, `lib/regras.js`).
 - **Horas de motor sem duplicados:** a regra está no desenho do J1939 ("Horas de motor sem
   duplicados"): o contador deste plugin só se publica se nenhuma outra fonte tiver publicado
-  `propulsion.main.runTime` nos últimos 5 min.
+  `propulsion.main.runTime` nos últimos 5 min. (*Nota de 05/10: mudou na auditoria — ver abaixo.*)
+
+## Notas de implementação (auditoria, 02–03/10)
+
+O que a auditoria mudou (frentes F6 e F6b; as decisões do Ivo numeradas como na lista da
+auditoria). Verificado no código a 05/10. Onde o texto acima e estas notas diferem, valem estas.
+
+- **Apito** (decisão n.º 2, contrato C1; substitui o "contínuo até OK" da tabela): `servicoCritico` e
+  `motorFraca` são `alarm` com `apito: 'curto'` — o ecrã dá o apito curto; o contínuo fica para o
+  perigo imediato. Os `warn` continuam como na tabela (e só no ecrã de noite e parado).
+- **Horas de motor:** o contador deste plugin só se publica se nenhuma outra fonte (o J1939, as
+  horas do MDI) tiver publicado `propulsion.main.runTime` desde que o servidor arrancou; nos
+  primeiros 30 s espera. Com a ignição desligada o J1939 deixa de as republicar, mas continuam a ser
+  as horas certas. O contador grava-se de minuto a minuto com o motor a trabalhar (`runtime.json`):
+  um corte de energia já não as perde (M-65).
+- **O relógio dos dados** (M-60): segue só a hora do SoC do SmartShunt (no simulador acelerado, o
+  tempo simulado); outra fonte noutro relógio (no dev, o J1939 em hora real; um GPS com outra hora)
+  já não o faz saltar. No dev, os cenários acelerados já não precisam do J1939 desligado.
+- **Dados velhos** (M-65): sem SoC durante 5 min (desde o arranque ou o último SoC), as regras do
+  SoC não se julgam e fica o aviso `sensorPerdido` ("Sem dados do SmartShunt há mais de 5 min", só
+  no ecrã); a sessão de carga só conta a corrente e o SoC recentes (2 min e 5 min) e diz "—" sem
+  eles; uma falha curta das rotações (até 2 min) não parte a sessão.
+- **Reinício** (nota do SignalK 2.33): os alarmes ativos ficam em `alarmes-ativos.json` e voltam a
+  publicar-se ao arrancar (até 10 min depois); o `stop()` põe-nos a normal.
+- **Permissões** (K-11, contrato C2): `GET /plugins/signalk-arlequin-energia/sessoes` com
+  `router.access('readonly')`.
+- **Diário:** com a segurança ligada, o `signalk-logbook` só aceita admin: escrever as cargas no
+  diário pede um token de admin no campo `token` da configuração deste plugin (fica só aqui, nunca
+  no ecrã).
