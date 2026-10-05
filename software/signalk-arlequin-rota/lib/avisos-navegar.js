@@ -28,6 +28,10 @@
 //   Telegram (a lista dos avisos para o Telegram é decisão do Ivo). alarmeTerra({ aberto, alarme (ms), fecho:
 //   null | 'chegada' | 'terminado', semPlano: null | 'nenhum' | 'outro' }, agora).
 //
+// notifications.rota.relogio        warn   (publicado pelo index.js, decisão n.º 19) o relógio do Pi a mais de 60 s da
+//   hora do GPS: o acompanhamento e as mensagens para terra estão parados. Segue para o Telegram do Ivo (o plugin
+//   porto não o tem na lista do que nunca vai, ao contrário do alarmeTerra): aceite, revisão da F2, F2b Menor 7.
+//
 // avaliar(estado, entrada, agora) → { estado, avisos: { caminho: { state, method, message, apito?, chave? } } }
 //   entrada: { navegar, tripulacao, saida (ms), destino (nome), semGps, atrasoMin, vento: { medido,
 //   previsto, desvioNos, desvioPct } | null, previsaoIdadeH | null (sem previsão), barometro: [{ t, hPa }],

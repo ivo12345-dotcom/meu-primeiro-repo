@@ -16,14 +16,17 @@
 //        → { ok, rota, href, via, alternativa, nota, planoAtivo: { estado } } (nota: a do canal, se a
 //        rota passar por um). Cria ou substitui o plano ativo (desenho 3b-2, lib/plano-ativo.js),
 //        gravado em plano-ativo.json na pasta do plugin, com o envio do plano se já foi enviado. 422 com
-//        um cálculo antigo (a partida há mais de 1 h ou a hora de alarme já passada; a alternativa do plano
-//        aberto ativada outra vez continua: decisão do Ivo n.º 13) e quando o plano novo seguiria para terra
+//        um cálculo antigo (a partida há mais de 1 h ou a hora de alarme já passada — conta POR ALTERNATIVA,
+//        a partida e a hora de alarme dessa, como no envio do plano: uma alternativa com a partida mais tarde
+//        ativa-se com 200 mesmo que outra do mesmo cálculo já seja antiga; a alternativa do plano aberto
+//        ativada outra vez continua: decisão do Ivo n.º 13) e quando o plano novo seguiria para terra
 //        com o relógio do Pi desacertado (decisão n.º 19); 409 com outro Ativar a meio (auditoria M-21); 502
 //        se a API do servidor falhar. A rota do plano substituído apaga-se do servidor (auditoria M-34).
 //   POST /plano-telegram { id, alternativa } → 202 { pedido, avisos: [texto] } (404 cálculo ou
 //        alternativa desconhecidos; 409 se o cálculo não estiver pronto; 422 sem a chegada mais
 //        tarde (não há hora de alarme), com um cálculo antigo (a hora de alarme já passou, ou a
-//        partida foi há mais de 1 h) ou com o relógio do Pi a mais de 60 s da hora do GPS (decisão n.º 19);
+//        partida foi há mais de 1 h; por alternativa, como no Ativar) ou com o relógio do Pi a mais de 60 s da
+//        hora do GPS (decisão n.º 19);
 //        503 sem eventos no servidor ou sem o plugin porto a ouvir)
 //   GET  /plano-telegram/:pedido → { estado: 'a enviar' | 'enviado' | 'falhou', entregues: [nome],
 //        contactos: [nome], falhas: [{ nome, erro }], avisos: [texto], criado (a hora do pedido), motivo? }
@@ -121,7 +124,10 @@
 // (lib/acompanhamento.js) com a previsão mais recente arquivada que cubra a posição (previsoes/ da
 // pasta dos dados; lida de 10 em 10 min e só as dos últimos 50 h: auditoria M-27), e publica os avisos
 // (lib/avisos-navegar.js) em notifications.rota.* por delta, só
-// nas mudanças. Com o relógio do Pi a mais de 60 s da hora do GPS o ciclo não corre (decisão n.º 19). As
+// nas mudanças. Com o relógio do Pi a mais de 60 s da hora do GPS o ciclo não corre (decisão n.º 19) e o aviso
+// notifications.rota.relogio (warn, sem apito) SEGUE para o Telegram do Ivo — o plugin porto não o tem na lista do
+// que nunca vai, ao contrário do alarmeTerra —: aceite (revisão da F2, F2b Menor 7), o relógio errado pára as
+// mensagens para terra e o Ivo tem de o saber também longe do ecrã. As
 // amostras da pressão (de minuto a minuto, 3 h) ficam em memória e em barometro.json
 // só com um plano aberto, no máximo de 10 em 10 min (e no stop); a posição na rota fica no plano ativo
 // (seguimento), para um reinício não a perder. A tendência do barómetro em 3 h vai à AI do vento (I-16).
