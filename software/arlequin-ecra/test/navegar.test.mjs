@@ -642,3 +642,77 @@ test('revisão final I3: a mensagem que não chegou a um contacto (o parcial na 
     assert.ok(!t.includes('sem rede'), 'chegou aos outros: não é falta de rede')
   }
 })
+
+// ---------- F9 item 3: o que o plugin da rota diz de novo no GET /plano-ativo (F2b Menor 3 e Menor 6) ----------
+// As formas REAIS que o plugin devolve, gravadas a correr os testes do próprio plugin (software/signalk-arlequin-rota/
+// test/contactos-plugin.test.js, "F2b Menor 3" e "F2b Menor 6": o mesmo código, não escritas à mão):
+//   recursos com tudo lido; com a sonda do gasóleo perdida (o gasóleo desconhecido, a bateria lida);
+//   fechoPorEntregar quando se ativa a viagem seguinte com o «cheguei bem» da anterior por entregar (doPlanoAnterior: true).
+const REC_LIDOS = { gasoleoChegadaL: 120, bateriaChegadaPct: 100, semLeitura: false, gasoleoSemLeitura: false, bateriaSemLeitura: false, aviso: null }
+const REC_GASOLEO_SEM_LEITURA = { gasoleoChegadaL: null, bateriaChegadaPct: 100, semLeitura: false, gasoleoSemLeitura: true, bateriaSemLeitura: false, aviso: null }
+const FECHO_DA_VIAGEM_ANTERIOR = { tipo: 'chegada', contactos: ['Mãe'], tentativas: 2, erro: 'o plugin porto está desligado: liga-o em Plugin Config', doPlanoAnterior: true }
+
+test('F9 (item 3, F2b Menor 3): a faixa diz qual dos recursos não tem leitura — "recursos: gasóleo sem leitura" (a sonda do gasóleo perdida) ou "recursos: bateria sem leitura"; os dois, o "recursos: sem leitura" de sempre; um aviso dos recursos nunca esconde o que falta ler; com tudo lido, nada; de dia e de noite, sem null/NaN', async () => {
+  const faixa = async (recursos, noite) => {
+    const html = melhor.render(await leme({ ...PLANO, recursos }, { noite }))
+    limpo(html, JSON.stringify(recursos))
+    return texto(html)
+  }
+  for (const noite of [false, true]) {
+    // a forma real com a sonda perdida: só o gasóleo
+    let t = await faixa(REC_GASOLEO_SEM_LEITURA, noite)
+    assert.match(t, /recursos: gasóleo sem leitura/)
+    assert.doesNotMatch(t, /recursos: sem leitura|bateria sem leitura/)
+    // a bateria sem leitura (a mesma forma, com os papéis trocados)
+    t = await faixa({ ...REC_GASOLEO_SEM_LEITURA, gasoleoChegadaL: 80, bateriaChegadaPct: null, gasoleoSemLeitura: false, bateriaSemLeitura: true }, noite)
+    assert.match(t, /recursos: bateria sem leitura/)
+    assert.doesNotMatch(t, /gasóleo sem leitura|recursos: sem leitura/)
+    // os dois: o de sempre (um só texto, sem repetir qual)
+    t = await faixa({ gasoleoChegadaL: null, bateriaChegadaPct: null, semLeitura: true, gasoleoSemLeitura: true, bateriaSemLeitura: true, aviso: null }, noite)
+    assert.match(t, /recursos: sem leitura/)
+    assert.doesNotMatch(t, /gasóleo sem leitura|bateria sem leitura/)
+    // um aviso dos recursos (a bateria a 40 %) com o gasóleo sem leitura: as duas linhas
+    t = await faixa({ gasoleoChegadaL: null, bateriaChegadaPct: 40, semLeitura: false, gasoleoSemLeitura: true, bateriaSemLeitura: false, aviso: 'Recursos: bateria à chegada ~40%' }, noite)
+    assert.match(t, /recursos: bateria à chegada ~40%/)
+    assert.match(t, /recursos: gasóleo sem leitura/)
+    // tudo lido (a forma real): nada
+    assert.doesNotMatch(await faixa(REC_LIDOS, noite), /sem leitura/)
+  }
+  // um plugin de antes (só o semLeitura dos dois): fica o texto de sempre
+  assert.match(await faixa({ gasoleoChegadaL: null, bateriaChegadaPct: null, semLeitura: true, aviso: null }), /recursos: sem leitura/)
+  assert.doesNotMatch(await faixa({ gasoleoChegadaL: 80, bateriaChegadaPct: 90, semLeitura: false, aviso: null }), /sem leitura/)
+})
+
+test('F9 (item 3, F2b Menor 6): com a viagem seguinte aberta e o «cheguei bem» da viagem ANTERIOR por entregar (fechoPorEntregar.doPlanoAnterior), o Leme di-lo — "o «cheguei bem» da viagem anterior ainda não chegou a terra: liga-lhes (Mãe)" — na faixa e na caixa da pausa, mesmo sem o plano novo ter ido a terra; o deste plano (doPlanoAnterior false) e um plugin de antes não dizem "anterior"', async () => {
+  const frase = 'o «cheguei bem» da viagem anterior ainda não chegou a terra: liga-lhes (Mãe)'
+  for (const noite of [false, true]) {
+    // a viagem 2 acabada de ativar: o plano novo ainda não foi a terra (envio null) e já navega, ou à espera de sair
+    for (const estado of ['a navegar', 'à espera de sair']) {
+      const html = melhor.render(await leme({ ...PLANO, estado, envio: null, fechoPorEntregar: FECHO_DA_VIAGEM_ANTERIOR }, { noite }))
+      limpo(html, `anterior ${estado}`)
+      const t = texto(html)
+      assert.ok(t.includes(frase), t)
+      assert.ok(html.indexOf('da viagem anterior') < html.indexOf('Rumo a seguir'), 'na faixa, por cima do rumo')
+      assert.doesNotMatch(t, /liga-o em Plugin Config|o plugin porto/, 'o erro técnico não vai para o ecrã')
+    }
+    // com o plano novo já entregue a terra (envio): a linha fica, ao lado das de terra
+    const t1 = texto(melhor.render(await leme({ ...PLANO, fechoPorEntregar: FECHO_DA_VIAGEM_ANTERIOR }, { noite })))
+    assert.ok(t1.includes(frase) && t1.includes('contactos em terra: alarme'), t1)
+    // em pausa, a caixa vermelha também
+    const pausa = melhor.render(await leme({ ...PLANO, estado: 'pausado', pausadoDe: 'a navegar', fechoPorEntregar: FECHO_DA_VIAGEM_ANTERIOR }, { noite }))
+    limpo(pausa, 'anterior em pausa')
+    assert.ok(texto(pausa).includes(frase), texto(pausa))
+  }
+  // a «viagem terminada» da viagem anterior
+  assert.ok(texto(melhor.render(await leme({ ...PLANO, fechoPorEntregar: { ...FECHO_DA_VIAGEM_ANTERIOR, tipo: 'terminado' } }))).includes('a «viagem terminada» da viagem anterior ainda não chegou a terra: liga-lhes (Mãe)'))
+  // vários contactos
+  assert.ok(texto(melhor.render(await leme({ ...PLANO, fechoPorEntregar: { ...FECHO_DA_VIAGEM_ANTERIOR, contactos: ['Pai', 'Mãe'] } }))).includes('da viagem anterior ainda não chegou a terra: liga-lhes (Pai, Mãe)'))
+  // o deste plano (false), um plugin de antes (sem o campo) e sem fecho por entregar: nunca "anterior"
+  for (const f of [{ ...FECHO_DA_VIAGEM_ANTERIOR, doPlanoAnterior: false }, { tipo: 'chegada', contactos: ['Mãe'], tentativas: 1, erro: null }, null]) {
+    assert.doesNotMatch(texto(melhor.render(await leme({ ...PLANO, fechoPorEntregar: f }))), /da viagem anterior/)
+  }
+  // os nomes passam pelo esc
+  const html = melhor.render(await leme({ ...PLANO, fechoPorEntregar: { ...FECHO_DA_VIAGEM_ANTERIOR, contactos: ['<i>Mãe</i>'] } }))
+  assert.match(html, /da viagem anterior ainda não chegou a terra: liga-lhes \(&lt;i&gt;Mãe&lt;\/i&gt;\)/)
+  assert.doesNotMatch(html, /<i>Mãe<\/i>/)
+})
