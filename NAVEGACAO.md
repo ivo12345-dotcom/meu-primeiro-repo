@@ -1881,7 +1881,7 @@ o resto com som dá o **apito curto** (um bip quando o alarme chega).
   ecrã — os lembretes e o "come e bebe" da rota, a hora de alarme em terra, o lembrete das velas, o
   relógio da caixa negra e todos os de sonda, sensor ou ligação perdidos (`.sondaPerdida`,
   `.sensorPerdido`, `.semLigacao`). O disco e a previsão velha só seguem em alarme.
-- **Sem som no Pi?** O kiosk do Chromium precisa do `--autoplay-policy=no-user-gesture-required`, e o
+- **Sem som no Pi?** O Chromium em modo quiosque precisa do `--autoplay-policy=no-user-gesture-required`, e o
   Pi 5 não tem saída de 3,5 mm ("Instalar no Pi", ponto 14).
 
 ### Barco parado e Telegram (plugin `signalk-arlequin-porto`)

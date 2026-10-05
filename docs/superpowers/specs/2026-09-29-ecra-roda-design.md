@@ -168,7 +168,7 @@ da auditoria). Verificado no código a 05/10. Onde o texto acima e estas notas d
 - **"Larguei (sou eu)"** (contrato C10): o alarme "o barco saiu do lugar" (com `acao: 'largar'`) leva
   este botão, que chama `POST /plugins/signalk-arlequin-porto/largar` e apaga o ponto de amarração.
 - **Som ao arrancar** (K-03): o `AudioContext` nasce logo ao arrancar e tenta `resume()` em cada
-  ciclo e em cada toque; o chip "🔇 SEM SOM: toca no ecrã" só aparece com o som parado. No Pi o kiosk
+  ciclo e em cada toque; o chip "🔇 SEM SOM: toca no ecrã" só aparece com o som parado. No Pi o modo quiosque
   do Chromium tem de arrancar com `--autoplay-policy=no-user-gesture-required` (sem a opção o ecrã
   fica mudo até ao 1.º toque).
 - **Proa** (I-11; o caminho "`headingTrue` (ou `headingMagnetic`)" da tabela): `headingTrue`, ou
