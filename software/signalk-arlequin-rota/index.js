@@ -45,7 +45,9 @@
 //        enviadaEm, contactos, falhas: [{ nome, erro }] }] (parcial: a mesma mensagem só para os contactos que
 //        falharam, revisão final I3; os avisos ao Ivo não entram, não são para terra),
 //        atrasoRetido: { motivo: 'parado' | 'limite', alarme (a hora de alarme que terra tem) } | null,
-//        fechoPorEntregar: { tipo: 'chegada' | 'terminado', contactos, tentativas, erro } | null (auditoria K-12),
+//        fechoPorEntregar: { tipo: 'chegada' | 'terminado', contactos, tentativas, erro, doPlanoAnterior } | null
+//        (auditoria K-12; doPlanoAnterior: true quando é o da viagem anterior, ainda por entregar depois de ativar a
+//        viagem seguinte — F2b Menor 6; o deste plano, quando existe, passa à frente),
 //        envioEmTerra: { idCalculo, indice, contactos, alarme } | null (o plano que os contactos em terra têm
 //        quando não é este: decisão n.º 15), relogioDesacertadoS: número | null (decisão n.º 19),
 //        desistencias: [{ tipo, ref, contactos, em, alarme }] (auditoria I-05, decisão n.º 16) }
@@ -857,13 +859,18 @@ module.exports = function (app, deps = {}) {
     if (!Number.isFinite(hora) || agora - hora > LEITURA_VELHA_MS) return null
     return x.value
   }
-  // O "cheguei bem"/"viagem terminada" deste plano ainda por entregar a terra (auditoria K-12): { tipo,
-  // contactos (a quem falta), tentativas, erro } ou null.
-  function fechoPorEntregar (p = planoAtivo) {
-    const pendentes = (p?.contactos?.fila || []).filter(m => (m.tipo === 'chegada' || m.tipo === 'terminado') && !m.anterior)
+  // O "cheguei bem"/"viagem terminada" ainda por entregar a terra (auditoria K-12): { tipo, contactos (a quem
+  // falta), tentativas, erro, doPlanoAnterior } ou null. Os deste plano primeiro; sem nenhum, os do plano anterior
+  // (F2b Menor 6: ao ativar a viagem 2 com o «cheguei bem» da viagem 1 por entregar, o campo passava a null e o
+  // Leme voltava ao texto genérico), com doPlanoAnterior: true. { anterior: false }: só os deste plano (o aviso de
+  // terra: o alarme da viagem anterior está no plano novo, que herda as horas de alarme dos contactos).
+  function fechoPorEntregar (p = planoAtivo, { anterior = true } = {}) {
+    const fecho = (p?.contactos?.fila || []).filter(m => m.tipo === 'chegada' || m.tipo === 'terminado')
+    const deste = fecho.filter(m => !m.anterior)
+    const pendentes = deste.length ? deste : anterior ? fecho : []
     if (!pendentes.length) return null
     const contactos = [...new Set(pendentes.flatMap(m => m.contactos || []))]
-    return { tipo: pendentes[0].tipo, contactos, tentativas: Math.max(...pendentes.map(m => m.tentativas || 0)), erro: pendentes.find(m => m.erro)?.erro ?? null }
+    return { tipo: pendentes[0].tipo, contactos, tentativas: Math.max(...pendentes.map(m => m.tentativas || 0)), erro: pendentes.find(m => m.erro)?.erro ?? null, doPlanoAnterior: !deste.length }
   }
   // O aviso da hora de alarme em terra (revisão final I2): com o plano aberto e enviado a contactos em
   // terra; e com o plano fechado enquanto o "cheguei bem"/"terminada" não chega a terra (auditoria K-12).
@@ -872,7 +879,7 @@ module.exports = function (app, deps = {}) {
   function avisoTerra (agora) {
     const p = planoAtivo
     const comEnvio = !!p?.envio?.contactos?.length
-    const fecho = comEnvio && !pa.aberto(p) ? fechoPorEntregar(p) : null
+    const fecho = comEnvio && !pa.aberto(p) ? fechoPorEntregar(p, { anterior: false }) : null
     const doPlano = av.alarmeTerra({ aberto: comEnvio && pa.aberto(p), alarme: alarmeEmTerra(), fecho: fecho?.tipo ?? null }, agora)
     // (F2b Menor 4: o lembrete do plano que terra tem sem ser o ativo fica depois da hora de alarme, até 24 h
     // depois da mais tarde; o campo envioEmTerra do GET continua a contar só o que está por passar)
