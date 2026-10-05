@@ -162,10 +162,10 @@ const cenarios = require('./lib/cenarios')
 const energiaPlano = require('./lib/energia')
 const seguranca = require('./lib/seguranca')
 const { slug } = require('./lib/slug')
-// os modelos da AI pelo caminho relativo (auditoria I-37), como o lib/base.js faz com a polar: instalado com
-// "npm install <pasta>" (o npm 11 só liga a pasta e não instala as dependências dela), o pacote
-// signalk-arlequin-ia não está no node_modules da rota. (O lib/cenarios.js ainda o pede pelo nome: ver o
-// relatório da F2.)
+// os modelos da AI pelo caminho relativo (auditoria I-37), como o lib/base.js faz com a polar e, desde 03/10, o
+// lib/cenarios.js: instalado com "npm install <pasta>" (o npm 11 só liga a pasta e não instala as dependências
+// dela), o pacote signalk-arlequin-ia não está no node_modules da rota. (Só os testes da rota o pedem ainda pelo
+// nome: o npm install na pasta da rota continua a ser preciso para eles, não para o plugin.)
 const modelosJs = require(path.join(__dirname, '..', 'signalk-arlequin-ia', 'lib', 'modelos'))
 
 const MAX_TRABALHOS = 20
@@ -221,7 +221,7 @@ const TITULOS_LIMITES = Object.freeze({
   ondasMaxAcompanhado: 'Ondas máximas, acompanhado (m)',
   gasoleoMinL: 'Gasóleo mínimo à chegada, no pior caso (L)',
   bateriaMinPct: 'Bateria mínima à chegada, no pior caso (%)',
-  lemeMaxH: 'Horas seguidas ao leme, só eu (máximo)'
+  lemeMaxH: 'Horas equivalentes ao leme na passagem toda, só eu (máximo; o motor em calma conta metade)'
 })
 // os limites postos na configuração: só as chaves de LIMITES e só números (o resto fica no padrão)
 const limitesPostos = (x) => Object.fromEntries(seguranca.LIMITES.filter(k => Number.isFinite(x?.[k])).map(k => [k, x[k]]))
