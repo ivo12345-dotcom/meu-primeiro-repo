@@ -1,0 +1,5 @@
+[
+  { "nome": "05b-motor-ligado-dia", "url": "http://localhost:3000/arlequin-ecra/?pagina=motor&noite=0", "esperar": 5000,
+    "passos": [ { "ate": "document.body.innerText.includes('a trabalhar')", "maxMs": 1700000, "depois": 20000 } ] },
+  { "nome": "01b-carta-motor-dia", "url": "http://localhost:3000/arlequin-ecra/?demo&pagina=carta&noite=0", "esperar": 8000 }
+]

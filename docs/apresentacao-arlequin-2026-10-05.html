@@ -1,0 +1,736 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<title>ARLEQUIN · sistema de bordo · apresentação técnica</title>
+<style>
+@page { size: A4 landscape; margin: 10mm; }
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10.5pt; line-height: 1.38; color: #1b2430; margin: 0; }
+section.pag { page-break-after: always; break-after: page; position: relative; padding-top: 2px; }
+section.pag:last-child { page-break-after: auto; }
+.cab { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #0b3d5c; padding-bottom: 3px; margin-bottom: 8px; }
+.cab h1 { font-size: 18pt; color: #0b3d5c; margin: 0; font-weight: 600; }
+.cab .meta { font-size: 8.5pt; color: #5a6b7a; }
+.simples { background: #eaf3f9; border-left: 4px solid #2a7fb8; padding: 6px 10px; margin: 0 0 9px; font-size: 10.5pt; }
+.simples b { color: #0b3d5c; }
+.duas { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.tres { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.c58 { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; }
+h2 { font-size: 11.5pt; color: #0b3d5c; margin: 6px 0 4px; }
+h3 { font-size: 10.5pt; color: #0b3d5c; margin: 5px 0 2px; }
+p { margin: 3px 0 5px; }
+ul { margin: 2px 0 5px; padding-left: 17px; }
+li { margin: 1px 0; }
+table { border-collapse: collapse; width: 100%; font-size: 9pt; margin: 3px 0 6px; }
+th, td { border: 1px solid #c9d6e0; padding: 3px 5px; vertical-align: top; text-align: left; }
+th { background: #e8f0f6; font-weight: 600; }
+td.n { text-align: right; white-space: nowrap; }
+.tag { display: inline-block; font-size: 8pt; padding: 0 5px; border-radius: 3px; white-space: nowrap; font-weight: 600; }
+.ja { background: #e6e2f5; color: #3b2d7a; }
+.inst { background: #dff3e8; color: #185a35; }
+.dep { background: #f1efe6; color: #6b5b2a; }
+.grelha { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+figure { margin: 0; }
+figure img { width: 100%; display: block; border: 1px solid #8a9aa8; border-radius: 3px; }
+figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
+.grande img { width: 100%; }
+.nota { font-size: 8.5pt; color: #5a6b7a; }
+.capa { height: 700px; display: flex; flex-direction: column; justify-content: center; border: none; }
+.capa .t1 { font-size: 40pt; font-weight: 700; color: #0b3d5c; letter-spacing: 2px; margin: 0; }
+.capa .t2 { font-size: 20pt; color: #1b2430; margin: 8px 0 0; }
+.capa .t3 { font-size: 13pt; color: #3d4a57; margin: 24px 0 0; }
+.capa .t4 { font-size: 11pt; color: #5a6b7a; margin: 40px 0 0; }
+.fluxo { display: grid; grid-template-columns: 1fr 24px 1fr 24px 1fr 24px 1fr; align-items: stretch; gap: 4px; margin: 6px 0 8px; }
+.fluxo .cx { border: 1.5px solid #0b3d5c; border-radius: 6px; padding: 5px 7px; font-size: 9pt; background: #f7fafc; }
+.fluxo .cx b { display: block; color: #0b3d5c; font-size: 9.5pt; margin-bottom: 2px; }
+.fluxo .seta { display: flex; align-items: center; justify-content: center; font-size: 18pt; color: #2a7fb8; }
+.pilares { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 6px 0; }
+.pilar { border: 1.5px solid #0b3d5c; border-radius: 8px; padding: 8px 10px; background: #f7fafc; }
+.pilar b { display: block; color: #0b3d5c; font-size: 12pt; margin-bottom: 3px; }
+.kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 6px 0 8px; }
+.kpi div { border: 1.5px solid #0b3d5c; border-radius: 8px; padding: 6px 8px; text-align: center; background: #f7fafc; }
+.kpi .v { font-size: 20pt; font-weight: 700; color: #0b3d5c; display: block; line-height: 1.1; }
+.kpi .l { font-size: 8.5pt; color: #3d4a57; }
+.vermelho { color: #a3261e; font-weight: 600; }
+.cinza { color: #5a6b7a; }
+.lista2 { columns: 2; column-gap: 18px; }
+.lista2 li { break-inside: avoid; }
+#material ul, #material h3 { font-size: 9.3pt; }
+#material h3 { margin-top: 3px; }
+</style>
+</head>
+<body>
+
+<!-- 1 CAPA -->
+<section class="pag" id="capa">
+  <div class="capa">
+    <p class="t1">ARLEQUIN</p>
+    <p class="t2">Sistema de navegação, vigilância e apoio à decisão para um veleiro navegado a solo</p>
+    <p class="t3">Jeanneau Melody 34 · Peniche · Raspberry Pi 5 + SignalK + OpenCPN + 10 plugins próprios</p>
+    <p class="t4">Documento técnico de apresentação · 5 de outubro de 2026 · estado: software completo e testado no portátil, instalação a bordo a seguir<br>
+    Sem custos neste documento: só o material, marcado como <span class="tag ja">já a bordo</span> ou <span class="tag inst">a instalar</span>.</p>
+  </div>
+</section>
+
+<!-- 2 EM RESUMO -->
+<section class="pag" id="resumo">
+  <div class="cab"><h1>1. Em resumo: o que é e o que não é</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> um computador pequeno, no barco, junta tudo o que os instrumentos dizem num só ecrã na roda, vigia o barco quando o Ivo dorme ou está em terra, e ajuda a decidir quando sair e por onde, sem nunca decidir por ele.</div>
+  <div class="pilares">
+    <div class="pilar"><b>Ver tudo num ecrã</b>Vento, proa, velocidade, fundo, AIS, motor, gasóleo, água e energia, ao lado da carta oficial do Instituto Hidrográfico, num ecrã tátil na roda de leme. Um segundo ecrã na mesa de navegação, visível da cama.</div>
+    <div class="pilar"><b>Vigiar e avisar</b>Colisão AIS, fumo, água no porão, fuga de gasóleo, bateria, motor, intrusão, barco a garrar. Apito a bordo e mensagens Telegram em terra, com uma fila que insiste até entregar.</div>
+    <div class="pilar"><b>Decidir melhor</b>A melhor rota: 3 alternativas com veredicto, hora de chegada em 3 cenários, pontos de desistência, plano enviado a quem fica em terra, acompanhamento a navegar. Uma AI que aprende o barco com os dados reais.</div>
+  </div>
+  <div class="duas">
+    <div>
+      <h2>O que o sistema faz</h2>
+      <ul>
+        <li>Lê 9 aparelhos já a bordo e 12 sensores novos, em 7 protocolos diferentes, e põe tudo numa só árvore de dados (SignalK).</li>
+        <li>Mostra 8 páginas no ecrã da roda, de dia e de noite, com letra mínima de 14 px e alvos de toque de 44 px (mãos molhadas, luvas).</li>
+        <li>Calcula a melhor rota entre 15 portos da costa continental com a previsão Open-Meteo, a polar do barco e as correções da AI.</li>
+        <li>Envia o plano de navegação a contactos em terra com uma hora de alarme: se o barco não chegar, eles ligam ao MRCC Lisboa.</li>
+        <li>Grava tudo numa caixa negra desde o primeiro dia e treina os modelos da AI a bordo, sozinho, depois de cada saída.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>O que o sistema não faz (de propósito)</h2>
+      <ul>
+        <li><b>Não governa o barco.</b> O piloto automático decidido (Raymarine EV-100 de roda) ainda está por instalar; até lá o cálculo da rota conta sempre com o Ivo ao leme.</li>
+        <li><b>Não liga o motor nem mete mudanças.</b> O Pi só escuta a rede do motor (CAN em modo de escuta): nunca escreve nela.</li>
+        <li><b>Não muda a rota sozinho.</b> Avisa, propõe "Recalcular", e espera por um toque.</li>
+        <li><b>Não substitui a eletrónica de segurança.</b> O detetor de fumo, a bomba de porão, o VHF, o AIS e o Navtex continuam a funcionar sem o Pi.</li>
+        <li><b>É uma ajuda à decisão.</b> A previsão pode falhar; a decisão de sair é sempre do skipper. Está escrito no ecrã e nos documentos.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 3 O BARCO -->
+<section class="pag" id="barco">
+  <div class="cab"><h1>2. O barco e o problema de navegar a solo</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> a solo, uma pessoa faz tudo ao mesmo tempo: governar, vigiar, decidir, dormir. O sistema foi desenhado para fazer a parte da vigilância e preparar a parte da decisão.</div>
+  <div class="c58">
+    <div>
+      <h2>Arlequin · Jeanneau Melody 34</h2>
+      <table>
+        <tr><th>Projeto e série</th><td>André Mauric e Gilles Vaton · Jeanneau, 1974–1982, 607 unidades (ano do casco por confirmar nos papéis)</td></tr>
+        <tr><th>Dimensões</th><td>10,55 m fora a fora · 10,25 m de casco · 8,70 m na flutuação · boca 3,38 m · calado 1,90 m</td></tr>
+        <tr><th>Deslocamento</th><td>~6 t leve (2 900 kg de lastro em ferro fundido) · ~7,2 t carregado (estimativa)</td></tr>
+        <tr><th>Mastreação</th><td>Sloop de topo, mastro pousado no convés de 14,20 m · I = 14,17 m · P = 12,92 m · J = 4,51 m · E = 3,63 m</td></tr>
+        <tr><th>Governo</th><td>Roda de leme com travão · leme semi-suspenso num patilhão · cana de inox de emergência</td></tr>
+        <tr><th>Motor</th><td>Volvo Penta D1-20B (diesel mecânico com caixa MDI que fala J1939) · depósito de gasóleo de 200 L em inox</td></tr>
+        <tr><th>Água e energia</th><td>2 depósitos flexíveis de água doce · 3 bancos de baterias de 2 × 110 Ah (1 motor, 2 serviço = 440 Ah)</td></tr>
+        <tr><th>Base</th><td>Peniche · navegação costeira na costa continental, sobretudo a solo</td></tr>
+      </table>
+      <h2>O que já existia a bordo</h2>
+      <p>AIS transponder classe B com GPS (em-trak B330), anemómetro, log e sonda NASA Clipper, radar JRC 1000, plotter Garmin GPSMAP 421, VHF Navicom RT750 com DSC, Navtex NASA, bússolas Autohelm ST50 e Raytheon ST4000+ (o piloto antigo sem a unidade de roda: só dá a proa). Cada um fala a sua língua e nenhum falava com os outros.</p>
+    </div>
+    <div>
+      <h2>Os quatro problemas que o sistema ataca</h2>
+      <table>
+        <tr><th>Problema</th><th>Resposta do sistema</th></tr>
+        <tr><td>Instrumentos espalhados, cada um com o seu ecrã e protocolo</td><td>Um só ecrã tátil na roda com tudo por cima da carta; um segundo na mesa de navegação</td></tr>
+        <tr><td>A solo não se vigia o AIS, o motor e a bateria enquanto se dorme</td><td>Alarmes com apito, regras de colisão com histerese, besouros e Telegram</td></tr>
+        <tr><td>O barco fica semanas sozinho em Peniche, com o Ivo em Lisboa</td><td>Vigilância no porto: fumo, porão, gasóleo, intrusão, deriva; comandos por Telegram pelo router 4G</td></tr>
+        <tr><td>Decidir quando sair e por onde é a decisão mais difícil a solo</td><td>Melhor rota com limites de segurança, plano para terra com hora de alarme e acompanhamento a navegar</td></tr>
+      </table>
+      <h2>Regras de desenho que nunca se quebram</h2>
+      <ul>
+        <li><b>Reserva obrigatória:</b> o plotter, o VHF, o AIS e o Navtex funcionam sem o Pi; a Navionics no telemóvel tem GPS e cartas próprias.</li>
+        <li><b>Nada de credenciais no código:</b> tokens e contas são só do Ivo; um teste falha se um token verdadeiro entrar no repositório.</li>
+        <li><b>O erro fica do lado do alarme:</b> um dado desconhecido nunca conta como "calmo" nem como "seguro".</li>
+        <li><b>Tudo testado antes de ir para o barco</b> (secção 18).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 4 ARQUITETURA -->
+<section class="pag" id="arquitetura">
+  <div class="cab"><h1>3. Arquitetura: o que liga a quê</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> uma placa de interfaces traduz todas as línguas dos instrumentos; um Raspberry Pi junta tudo, desenha a carta e o painel, e dois ecrãs mostram o resultado.</div>
+  <div class="c58">
+    <figure class="grande"><img src="../esquema-arlequin.svg" alt="Esquema de ligações" style="max-height: 560px; width: auto; margin: 0 auto;"><figcaption>Esquema de ligações (28/09/2026). Verde: novo; lilás: já a bordo; tracejado: futuro (o EV-100 de roda fica decidido, por instalar). O radar e o Navtex ficam autónomos.</figcaption></figure>
+    <div>
+      <h2>O cérebro</h2>
+      <table>
+        <tr><th>Computador</th><td>Raspberry Pi 5, 8 GB, SSD NVMe de 256 GB por baixo (base Pimoroni), dissipador ativo, alimentado a 12 V pelo módulo da HAT com fusível de 5 A</td></tr>
+        <tr><th>Interfaces</th><td>MacArthur HAT (OpenMarine): NMEA 2000, 2 entradas e 2 saídas NMEA 0183, SeaTalk1 (só entrada), I²C, módulo 12→5 V</td></tr>
+        <tr><th>Sistema</th><td>OpenPlotter (Raspberry Pi OS) · SignalK 2.33 · Node 22 · OpenCPN com cartas oeSENC "Portugal" do IH (o-charts) · Chromium em modo quiosque</td></tr>
+        <tr><th>Rede do motor</th><td>Adaptador USB–CAN isolado (gs_usb, SocketCAN) na cablagem do MDI, a 250 kbit/s e só a escutar. Nunca na NMEA 2000</td></tr>
+        <tr><th>Fora do barco</th><td>Router 4G (Telegram, previsões); Tailscale para copiar os dados para o portátil; Wi-Fi para o telemóvel (Navionics, diário)</td></tr>
+      </table>
+      <h2>Os ecrãs</h2>
+      <ul>
+        <li><b>Ecrã 1, na roda:</b> 7" HDMI tátil (1024×600) na fase de testes; 10" SailProof de 1 500 nits e IP65 na fase definitiva. Suporte e pala impressos em ASA, a pala fecha como tampa.</li>
+        <li><b>Ecrã 2, na mesa de navegação:</b> o 7", virado para a porta da cabine de popa: vê-se da cama.</li>
+      </ul>
+      <p><b>Porque não um plotter comercial:</b> nenhum lê SeaTalk1, NMEA 0183 a 4 800 baud, J1939 e sensores I²C ao mesmo tempo, nem deixa escrever as regras de alarme e a melhor rota do próprio barco. O Pi faz de ponte para um Axiom no futuro.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 5 PROTOCOLOS E FLUXO -->
+<section class="pag" id="fluxo">
+  <div class="cab"><h1>4. Protocolos e fluxo de dados</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> os dados entram por sete caminhos diferentes, ficam todos com o mesmo nome e o mesmo formato, e a partir daí qualquer parte do sistema os pode usar.</div>
+  <div class="fluxo">
+    <div class="cx"><b>Fontes</b>AIS + GPS · vento · log · sonda · bússolas · motor · gasóleo · água · barómetro · inclinação · baterias e solar · sensores do porto</div>
+    <div class="seta">→</div>
+    <div class="cx"><b>Entradas</b>MacArthur HAT (N2K, 0183, SeaTalk1, I²C) · USB–CAN · ESP32 por Wi-Fi · Bluetooth (Victron) · GPIO</div>
+    <div class="seta">→</div>
+    <div class="cx"><b>SignalK</b>Uma árvore de dados com nomes normalizados (ex.: <i>navigation.position</i>, <i>propulsion.main.revolutions</i>, <i>tanks.fuel.0.currentLevel</i>) e notificações com níveis</div>
+    <div class="seta">→</div>
+    <div class="cx"><b>Saídas</b>Ecrã da roda e da mesa · OpenCPN · alarmes e apito · Telegram em terra · caixa negra · AI · NMEA 0183 para o radar, o VHF e o telemóvel</div>
+  </div>
+  <table>
+    <tr><th style="width:17%">Protocolo</th><th style="width:33%">Quem o usa a bordo</th><th>Como entra ou sai do Pi</th></tr>
+    <tr><td>NMEA 0183 (4 800 baud)</td><td>Anemómetro e log NASA (MWV, VHW/VLW); radar JRC e VHF (recebem posição e proa)</td><td>2 entradas e 2 saídas RS-422 da MacArthur; a sonda pela 3.ª entrada (adaptador USB–0183 ou ESP32)</td></tr>
+    <tr><td>NMEA 0183 (38 400 baud) / NMEA 2000</td><td>AIS em-trak B330 (alvos AIS, GPS, Wi-Fi); futuro EV-100 (SeaTalkNG = NMEA 2000); GPSMAP 421</td><td>Porta N2K da MacArthur numa mini-rede com 2 terminadores e alimentação própria a 12 V</td></tr>
+    <tr><td>SeaTalk1</td><td>ST4000+ (painel e bússola fluxgate) e ST50 Compass</td><td>Entrada SeaTalk1 da MacArthur (só leitura): proa magnética</td></tr>
+    <tr><td>J1939 sobre CAN (250 kbit/s)</td><td>Caixa MDI do Volvo D1-20B: rotações, horas, temperatura da água, tensão, caudal quando o motor o mede, alarmes do MDI (PGN 65417)</td><td>USB–CAN isolado junto ao motor, <b>listen-only</b>; derivação soldada de ≤ 50 cm; interface <i>can1</i> fixa no arranque</td></tr>
+    <tr><td>I²C e 1-Wire</td><td>ADS1115 (sonda do gasóleo), BME280 (barómetro), ICM-20948 (inclinação), DS18B20 (frigorífico)</td><td>Conector I²C/Qwiic da MacArthur e GPIO do Pi; a app I2C do OpenPlotter publica as tensões</td></tr>
+    <tr><td>Bluetooth</td><td>Victron SmartShunt e 2 MPPT SmartSolar</td><td>Plugin <i>signalk-victron-ble</i> com IDs fixos (servico, motor, mppt1, mppt2)</td></tr>
+    <tr><td>Wi-Fi e contactos secos</td><td>ESP32 com SensESP (pedaladas das bombas de água, sensores do porto); câmara opcional</td><td>Por Wi-Fi para o SignalK, ou diretamente no GPIO do Pi; os sensores do porto são 0/1</td></tr>
+    <tr><td>HTTP/HTTPS e Telegram</td><td>Open-Meteo (previsão e mar, célula de mar, 48 h); bot Telegram; healthchecks opcional</td><td>Router 4G; sem rede o sistema continua com a última previsão arquivada e põe as mensagens em fila</td></tr>
+  </table>
+  <p class="nota">Dois cuidados elétricos escritos no desenho: as saídas 0183 e a N2K da MacArthur não são isoladas (o Pi e os instrumentos partilham o mesmo negativo no quadro) e a rede do motor nunca se mistura com a NMEA 2000.</p>
+</section>
+
+<!-- 6 SENSORES I -->
+<section class="pag" id="sensores1">
+  <div class="cab"><h1>5. Sensores e fontes de dados (I): o que já está a bordo</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> quase toda a eletrónica que o barco já tinha passa a alimentar o sistema; só se compra o que faltava medir.</div>
+  <table>
+    <tr><th style="width:17%">Aparelho</th><th style="width:19%">O que mede</th><th style="width:20%">Como liga</th><th>O que o sistema faz com isso</th><th style="width:9%">Estado</th></tr>
+    <tr><td>em-trak B330 (AIS classe B, transponder)</td><td>Alvos AIS (posição, rumo, velocidade, nome) e a nossa posição GPS</td><td>NMEA 2000 (também 0183 a 38 400, USB e Wi-Fi)</td><td>Lista de alvos por perigo com CPA/TCPA; alarme de colisão no ecrã e no servidor; posição para tudo o resto; "em porto"</td><td><span class="tag ja">já a bordo</span></td></tr>
+    <tr><td>NASA Clipper Wind</td><td>Vento aparente (ângulo e velocidade)</td><td>NMEA 0183 IN 1 (V2 envia MWV; a Mk1 precisa do cabo NMEA da NASA)</td><td>Vento real com a proa, VMG, % da polar, laylines; a AI compara com a previsão</td><td><span class="tag ja">já a bordo</span></td></tr>
+    <tr><td>NASA Clipper Log</td><td>Velocidade e distância na água</td><td>NMEA 0183 IN 2 (VHW/VLW), ou I²C pelo ESP32 se for a versão antiga</td><td>Corrente e abatimento (com o GPS), desempenho contra a polar, horas ao leme</td><td><span class="tag ja">já a bordo</span></td></tr>
+    <tr><td>NASA Clipper Depth</td><td>Profundidade</td><td>3.ª entrada 0183 (adaptador USB) ou I²C pelo ESP32</td><td>Fundo e tendência no ecrã; alarme de pouca água é uma melhoria por decidir</td><td><span class="tag ja">já a bordo</span></td></tr>
+    <tr><td>Raytheon ST4000+ (painel e fluxgate) e Autohelm ST50</td><td>Proa magnética (duas fontes)</td><td>SeaTalk1 IN</td><td>Proa verdadeira com a declinação; vento real; rumo a seguir no Leme; a caixa negra só marca linhas estáveis com proa</td><td><span class="tag ja">já a bordo</span></td></tr>
+    <tr><td>Garmin GPSMAP 421</td><td>GPS de reserva, plotter</td><td>NMEA 0183 ou NMEA 2000</td><td>Segundo ecrã de carta e GPS de reserva se o B330 falhar</td><td><span class="tag ja">já a bordo</span></td></tr>
+    <tr><td>Volvo Penta D1-20B (caixa MDI)</td><td>Rotações, horas, temperatura da água, tensão do alternador, caudal (se o motor o der), alarmes do MDI</td><td>J1939 em CAN, pelo adaptador USB–CAN <span class="tag inst">a instalar</span></td><td>Página Motor, consumo estimado pela curva da Volvo (calibrável), sobreaquecimento ≥ 95 °C, alternador sem carga, estado da ligação (a receber / calado / sem ligação)</td><td><span class="tag ja">motor já a bordo</span></td></tr>
+    <tr><td>Sonda do gasóleo (boia com resistência, no depósito de 200 L)</td><td>Nível de gasóleo</td><td>Em paralelo com o medidor do painel, pelo ADS1115 <span class="tag inst">a instalar</span></td><td>Litros, autonomia em horas e milhas, reserva ≤ 40 L, fuga (> 5 L em 12 h parado), consumo anormal, calibração por pontos no ecrã</td><td><span class="tag ja">sonda já a bordo</span></td></tr>
+    <tr><td>Baterias AGM (3 bancos) e alternador 115 A</td><td>Tensão, corrente e estado de carga (pelo SmartShunt)</td><td>Bluetooth (Victron) <span class="tag inst">a instalar</span></td><td>Avisos 55 % / 85 %, alarme &lt; 50 %, bateria do motor &lt; 12,2 V, cargas pelo motor no diário, planeamento da rota (440 Ah)</td><td><span class="tag ja">baterias já a bordo</span></td></tr>
+  </table>
+  <p class="nota">Aparelhos que só recebem dados do sistema: o radar JRC 1000 (posição e proa pela saída 0183, fica autónomo no ecrã dele) e o VHF RT750 (posição para o DSC). Autónomo sem dados: o Navtex NASA. O radar e a sonda de pesca TotalScan ficaram de fora até o sistema estar validado.</p>
+</section>
+
+<!-- 7 SENSORES II -->
+<section class="pag" id="sensores2">
+  <div class="cab"><h1>6. Sensores e fontes de dados (II): o que se instala de novo</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> doze sensores baratos e pequenos acrescentam o que ninguém media: a atmosfera, a inclinação, o gasóleo, a água, a energia, o fumo, o porão e quem entra no barco.</div>
+  <table style="font-size: 8.4pt;">
+    <tr><th style="width:19%">Sensor</th><th style="width:18%">O que mede</th><th style="width:19%">Como liga</th><th>O que o sistema faz com isso</th><th style="width:9%">Estado</th></tr>
+    <tr><td>Barómetro BME280 (DFRobot Gravity)</td><td>Pressão atmosférica, temperatura e humidade</td><td>I²C da MacArthur, montado fora da caixa do Pi</td><td>Tendência de 3 h no ecrã e no diário de hora a hora; aviso "queda &gt; 3 hPa em 3 h: o tempo pode piorar antes do previsto" a navegar</td><td><span class="tag inst">a instalar</span></td></tr>
+    <tr><td>Inclinação ICM-20948 (9 eixos, Qwiic)</td><td>Adorno e caimento</td><td>I²C/Qwiic da MacArthur, rígido e alinhado com o eixo do barco</td><td>Abatimento (K × adorno / velocidade², K calibrado no Arlequin); adorno na página Instrumentos</td><td><span class="tag inst">a instalar</span></td></tr>
+    <tr><td>ADS1115 (conversor analógico–digital)</td><td>Tensão da sonda do gasóleo e da alimentação do medidor</td><td>I²C, dois divisores 47 kΩ / 10 kΩ; o medidor do painel continua a funcionar</td><td>Nível pela tabela de calibração (pontos no ecrã; mais pontos perto do vazio); sonda perdida ao fim de 5 min sem leitura</td><td><span class="tag inst">a instalar</span></td></tr>
+    <tr><td>3 reed switches + ímanes (pedais das bombas de água doce)</td><td>Pedaladas de cada bomba de pé (cozinha e WC)</td><td>ESP32 com SensESP por Wi-Fi, ou GPIO do Pi; contador acumulado de 10 em 10 min</td><td>Litros gastos por depósito (bomba calibrada com uma jarra de 1 L), "Enchi", aviso a 20 %, dias que faltam ao ritmo dos últimos dias</td><td><span class="tag inst">a instalar</span></td></tr>
+    <tr><td>Victron SmartShunt 500 A + 2 MPPT SmartSolar 100/30</td><td>Corrente, tensão e carga do serviço; produção de cada painel; bateria do motor pela entrada auxiliar</td><td>Bluetooth (plugin signalk-victron-ble)</td><td>Página Motor (serviço, painéis BB/EB, bateria do motor), alarmes de energia, balanço no planeamento da rota</td><td><span class="tag inst">a instalar</span></td></tr>
+    <tr><td>Detetor de fumo com saída de relé</td><td>Fumo a bordo</td><td>Contacto 0/1 (ESP32 ou GPIO), caminho <i>sensors.fumo</i></td><td>Emergência: apito contínuo; reconhecido, bip de 2 em 2 min enquanto houver fumo; Telegram com fotografia se houver câmara</td><td><span class="tag inst">a instalar</span></td></tr>
+    <tr><td>Flutuador de porão e contacto da bomba de porão</td><td>Água no porão; bomba a trabalhar</td><td>Contactos 0/1 (<i>sensors.porao.agua</i>, <i>sensors.porao.bomba</i>)</td><td>Água no porão: contínuo; bomba mais de 3 min seguidos ou 5.º arranque numa hora: contínuo</td><td><span class="tag inst">a instalar</span></td></tr>
+    <tr><td>Sensor de líquido debaixo do depósito de gasóleo</td><td>Gasóleo a correr para o porão</td><td>Contacto 0/1 (<i>sensors.gasoleo.liquido</i>), no ponto mais baixo</td><td>Fuga de gasóleo: apito contínuo e Telegram</td><td><span class="tag inst">a instalar</span></td></tr>
+    <tr><td>Contacto magnético da gaiuta e sensor de movimento (PIR)</td><td>Gaiuta aberta; movimento a bordo</td><td>Contactos 0/1 (<i>sensors.gaiuta.aberta</i>, <i>sensors.movimento</i>)</td><td>Intrusão com o alarme armado (Telegram, com fotografia); sem movimento há 12 h o bot pergunta se quer armar</td><td><span class="tag inst">a instalar</span></td></tr>
+    <tr><td>DS18B20 estanque (frigorífico)</td><td>Temperatura do frigorífico</td><td>1-Wire num GPIO; vários sensores no mesmo fio (casa do motor, cabine)</td><td>Temperatura da cabine na página Instrumentos; alarme se o frigorífico aquecer</td><td><span class="tag inst">a instalar</span></td></tr>
+    <tr><td>Câmara (opcional) e sensor de rumo EV-1 (vem com o EV-100)</td><td>Fotografia da cabine; proa giroscópica rápida</td><td>Comando configurável (ex.: rpicam-still); NMEA 2000</td><td>A foto vai com a intrusão e o /foto; o EV-1 passa a proa principal quando o piloto estiver montado (o ST4000+ fica de reserva)</td><td><span class="tag dep">opcional / com o piloto</span></td></tr>
+  </table>
+  <p class="nota">Regra comum: cada sensor tem uma cadência mínima e, se se cala, o sistema diz-o ("sonda perdida", "sem sensor", "sem leitura do motor") em vez de mostrar o último valor como se fosse atual.</p>
+</section>
+
+<!-- 8 SOFTWARE -->
+<section class="pag" id="software">
+  <div class="cab"><h1>7. O software: dez plugins próprios no SignalK</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> cada função é um programa pequeno e independente, com os seus testes; se um falhar, os outros continuam, e o SignalK e o OpenCPN nunca dependem deles.</div>
+  <table>
+    <tr><th style="width:18%">Plugin</th><th>O que faz</th><th style="width:10%">Testes</th></tr>
+    <tr><td>arlequin-ecra</td><td>O ecrã da roda (8 páginas + Noite), em HTML/JS sem dependências; arruma as janelas do OpenCPN e leva o Diário ao <i>signalk-logbook</i> com um token guardado só no servidor. Um verificador desenha os 74 estados num Chromium a 1024×600 e falha se algo ficar cortado.</td><td class="n">325</td></tr>
+    <tr><td>signalk-arlequin-rota</td><td>A melhor rota: o cálculo (3a), o plano para terra pelo Telegram (3b-1) e o acompanhamento a navegar (3b-2), de minuto a minuto, com o plano gravado em disco (sobrevive a reinícios).</td><td class="n">471</td></tr>
+    <tr><td>signalk-arlequin-porto</td><td>Barco parado e Telegram: fumo, porão, bomba, fuga, intrusão, deriva do ponto de amarração; comandos /estado, /foto, /posicao, /armar, /desarmar, /amarrar, /largar; fila persistente que insiste até entregar.</td><td class="n">144</td></tr>
+    <tr><td>signalk-arlequin-ais</td><td>Alarme de colisão no servidor (o mesmo cálculo CPA/TCPA do ecrã), com as regras de parado, amarrado e em porto.</td><td class="n">49</td></tr>
+    <tr><td>signalk-arlequin-j1939</td><td>O motor pelo J1939 do MDI: descodifica as PGN, estima o consumo, publica o estado da ligação, descobre os bits dos alarmes do MDI numa página própria.</td><td class="n">62</td></tr>
+    <tr><td>signalk-arlequin-gasoleo</td><td>Gasóleo pela sonda original: calibração por pontos, reserva, fuga, consumo anormal, abastecimentos, nível pelo consumo quando a sonda falha.</td><td class="n">60</td></tr>
+    <tr><td>signalk-arlequin-agua</td><td>Água doce pelas pedaladas das bombas de pé: Enchi, calibrar a bomba, aviso a 20 %, dias que faltam.</td><td class="n">23</td></tr>
+    <tr><td>signalk-arlequin-energia</td><td>Alarmes das baterias AGM (55 / 85 / 50 %, bateria do motor) e as cargas pelo motor registadas no diário.</td><td class="n">56</td></tr>
+    <tr><td>signalk-arlequin-caixanegra</td><td>Grava tudo desde o 1.º dia (bruto por hora, tabela de 10 em 10 s, saídas, previsões); gere o disco; fecha as saídas nos portos.</td><td class="n">73</td></tr>
+    <tr><td>signalk-arlequin-ia + arlequin-ia (Python)</td><td>Arquivo das previsões, treino automático dos modelos (LightGBM) depois de cada saída, o cartão da AI no Diário, versões com "Voltar atrás".</td><td class="n">41 + 65</td></tr>
+    <tr><td class="cinza">arlequin-simulador (só no portátil)</td><td class="cinza">Finge o barco inteiro: navegação, vento, AIS, motor J1939, baterias, sol. Nunca vai para o Pi; o que injeta fica marcado como simulado e nunca ensina a AI.</td><td class="n cinza">27</td></tr>
+  </table>
+  <div class="duas">
+    <div>
+      <h2>Como está escrito</h2>
+      <ul>
+        <li>Node.js 22, CommonJS, sem frameworks; testes com o <i>node:test</i>; Python 3 com LightGBM, pandas e numpy em versões fixas.</li>
+        <li>Todos os textos em português de Portugal; horas sempre de Lisboa.</li>
+        <li>Cada rota HTTP dos plugins tem nível de acesso: leituras com sessão, escritas com conta "read/write"; o ecrã nunca é administrador.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Plugins da comunidade que se usam</h2>
+      <ul>
+        <li><i>signalk-logbook</i> (diário em YAML por dia), <i>signalk-derived-data</i> (vento real, corrente, proa verdadeira, dia/noite), <i>signalk-victron-ble</i>, <i>resources-provider</i> e <i>course-provider</i> (rota ativa e rumo a seguir), <i>set-system-time</i> (hora pelo GPS).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 9 ECRÃ -->
+<section class="pag" id="ecra">
+  <div class="cab"><h1>8. O ecrã da roda</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> oito páginas, um botão para cada, letras grandes, e um modo de noite que escurece tudo sem mudar as cores. As outras páginas: Viagem (próximo ponto, chegada, XTE, VMG, resumo), Diário (entradas do dia, 8 botões de um toque, notas, o cartão da AI), Melhor rota e Velas.</div>
+  <div class="grelha" style="gap: 4px 12px;">
+    <figure><img src="img-apresentacao/01-carta-dia.png" alt="Carta" style="max-height: 236px; width: auto; margin: 0 auto;"><figcaption><b>Carta:</b> o OpenCPN ocupa 58 % do ecrã no Pi; ao lado, vento, proa, COG/SOG, fundo, velocidade, % da polar, próximo ponto, os 2 alvos AIS mais perigosos, motor e gasóleo. Na barra, o alarme de colisão com "silenciar".</figcaption></figure>
+    <figure><img src="img-apresentacao/02-instr-dia.png" alt="Instrumentos" style="max-height: 236px; width: auto; margin: 0 auto;"><figcaption><b>Instrumentos:</b> vento aparente e real, VMG, a polar com o alvo e o real, desempenho, proa e fundo, adorno e abatimento, barómetro com tendência, corrente, cabine.</figcaption></figure>
+    <figure><img src="img-apresentacao/03-ais-dia.png" alt="AIS" style="max-height: 236px; width: auto; margin: 0 auto;"><figcaption><b>AIS:</b> todos os alvos por perigo com distância, marcação, SOG/COG, CPA e TCPA; tocar num alvo abre o detalhe com "Silenciar". Limites: CPA &lt; 0,5 MN e TCPA &lt; 20 min.</figcaption></figure>
+    <figure><img src="img-apresentacao/05-motor-dia.png" alt="Motor" style="max-height: 236px; width: auto; margin: 0 auto;"><figcaption><b>Motor:</b> "a trabalhar" a 2 100 rpm, temperatura, óleo, alternador, horas, consumo (1,5 L/h · 0,26 L/MN); gasóleo com Abasteci e Calibrar; água doce com Enchi; energia (serviço 440 Ah a carregar, painéis, bateria do motor, últimas cargas).</figcaption></figure>
+  </div>
+  <p class="nota">Capturas de 05/10/2026 do código final, com o simulador do portátil a fazer de barco (Peniche → Nazaré).</p>
+</section>
+
+<!-- 10 ALARMES -->
+<section class="pag" id="alarmes">
+  <div class="cab"><h1>9. Alarmes: uma só regra para todos os plugins</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> só o perigo imediato apita sem parar; o resto dá um bip e fica escrito; o que é grave segue também para o telemóvel.</div>
+  <div class="c58">
+    <div>
+      <table>
+        <tr><th style="width:22%">Som</th><th>Alarmes</th></tr>
+        <tr><td class="vermelho">Contínuo (um bip por segundo até calar)</td><td>Colisão AIS · fumo · água no porão · bomba de porão (&gt; 3 min seguidos ou 5.º arranque numa hora) · fuga de gasóleo (líquido debaixo do depósito, ou &gt; 5 L em 12 h com o motor parado) · motor a sobreaquecer (≥ 95 °C)</td></tr>
+        <tr><td><b>Curto</b> (um bip quando chega)</td><td>Serviço &lt; 50 % · bateria do motor fraca · disco a 95 % · "o barco saiu do lugar" · intrusão · todos os avisos da rota · gasóleo na reserva (≤ 40 L) · consumo anormal · alternador sem carga · água a acabar (20 %) · sem leitura do motor · avisos de 55 % e 85 % da bateria</td></tr>
+        <tr><td class="cinza">Sem som (só no ecrã)</td><td>Sonda do gasóleo perdida · SmartShunt calado · relógio da caixa negra · lembrete das velas · disco a 80 %</td></tr>
+      </table>
+      <h2>Regras finas</h2>
+      <ul>
+        <li><b>Calar:</b> "silenciar" na barra; uma emergência só se "reconhece". Um alarme calado continua calado se o plugin reiniciar e o repuser em menos de 3 min com a mesma mensagem (menos as emergências).</li>
+        <li><b>Fumo reconhecido:</b> o contínuo pára, fica vermelho e repete um bip curto de 2 em 2 min enquanto houver fumo; se passar e voltar, contínuo outra vez.</li>
+        <li><b>De noite, com o barco parado,</b> os avisos de 55 % e 85 % ficam só no ecrã.</li>
+        <li><b>O som nasce no arranque:</b> o Chromium do Pi arranca com o autoplay permitido; se o browser o suspender, a barra mostra "SEM SOM: toca no ecrã".</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Colisão AIS: as regras que evitam falsos alarmes e falsos silêncios</h2>
+      <ul>
+        <li><b>Perigo</b> = CPA &lt; 0,5 MN e TCPA &lt; 20 min; limpa só com 30 s seguidos sem perigo (histerese).</li>
+        <li><b>Parado</b> é &lt; 0,5 nó. Dois barcos parados nunca são colisão; um alvo que se mexe dá sempre alarme.</li>
+        <li><b>Sem velocidade</b> (do alvo ou a nossa): tira-a do rasto de 30 s de posições; um navio a 12 nós de proa dá ~14 min de aviso em vez de 2.</li>
+        <li><b>Muito perto</b> (&lt; 0,05 MN, ~90 m): um alvo que vem para nós alarma mesmo abaixo de 0,5 nó (um barco a garrar), também amarrados.</li>
+        <li><b>Amarrado</b> (nós abaixo de 0,5 nó durante 5 min): os alvos parados não apitam; bornear à âncora mais de 1 min a 0,6 nó tira-nos do "amarrado" (o erro fica do lado do alarme).</li>
+        <li><b>Em porto</b> (&lt; 0,5 MN do cais de um porto conhecido e &lt; 4 nós): os alvos parados ficam a amarelo sem som. Custo aceite: um navio parado no caminho dentro do porto não apita.</li>
+        <li>Sem a nossa posição há 10 s, o vigia não julga e os alarmes ativos ficam.</li>
+      </ul>
+      <h2>Onde chegam</h2>
+      <p>Ecrã da roda e da mesa (com o apito pelo HDMI ou por uma placa de som USB) · Telegram do Ivo com "✓ Resolvido" quando passam · besouros de 12 V por GPIO no poço e na cabine, a melhoria n.º 1 da lista por decidir.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 11 PORTO -->
+<section class="pag" id="porto">
+  <div class="cab"><h1>10. Barco parado: vigilância e Telegram</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> com o barco em Peniche e o Ivo em Lisboa, o telemóvel recebe o que se passa a bordo e pode armar o alarme, pedir uma fotografia ou a posição.</div>
+  <div class="duas">
+    <div>
+      <h2>O que vigia</h2>
+      <ul>
+        <li>Fumo, água no porão, bomba de porão a trabalhar de mais, líquido debaixo do depósito de gasóleo.</li>
+        <li>Intrusão com o alarme armado: gaiuta aberta ou movimento, com fotografia se houver câmara.</li>
+        <li><b>"O barco saiu do lugar":</b> mais de 30 m do ponto de amarração (limpa a 24 m).</li>
+        <li>Energia (pelo SmartShunt), disco da caixa negra, previsão velha a navegar.</li>
+      </ul>
+      <h2>O ponto de amarração (as regras que evitam enganos)</h2>
+      <ul>
+        <li>Grava-se sozinho com o barco parado 30 min, <b>só junto a um porto ou fundeadouro conhecido</b> (a menos de 1 km); no mar nunca. /amarrar grava-o onde se estiver.</li>
+        <li>Apaga-se sozinho só com o <b>motor a trabalhar, mais de 1 nó e o alarme desarmado</b> (largou de propósito).</li>
+        <li><b>Sem motor nunca se apaga sozinho:</b> "Larguei (sou eu)" no ecrã ou /largar. Uma âncora a garrar nunca se dá por resolvida só porque o barco anda depressa.</li>
+        <li><b>Armado, nunca se apaga sozinho, nem a motor:</b> é tratado como roubo.</li>
+      </ul>
+      <h2>Comandos (só dos chats autorizados)</h2>
+      <p>/estado (baterias, solar, depósitos, cabine, alarmes) · /foto · /posicao · /armar · /desarmar · /amarrar · /largar · /ajuda. Desarmado e sem movimento há 12 h, o bot pergunta se quer armar.</p>
+    </div>
+    <div>
+      <h2>Entregar mesmo com rede má</h2>
+      <ul>
+        <li>A fila fica em disco (<i>encaminhador.json</i>): um reinício não perde nada nem repete avisos.</li>
+        <li>O porto insiste até o Telegram aceitar, com recuo até 1 min, e a mensagem leva "(atrasado N min)"; os alarmes passam à frente das outras mensagens.</li>
+        <li>Distingue erros permanentes (bloqueou o bot) de transitórios (sem rede); uma mensagem recusada 3 vezes sai com aviso para o Ivo.</li>
+        <li>Um caminho que oscila segue no máximo de 10 em 10 min, sem se perder; a fila guarda 100 mensagens.</li>
+        <li>Mensagens com referência curta ("ref. A3"): quem recebe vê que é a mesma depois de um reinício a meio.</li>
+      </ul>
+      <h2>Quem fala com o barco</h2>
+      <table>
+        <tr><th>Lista</th><th>O que pode</th></tr>
+        <tr><td>Chats autorizados (o Ivo)</td><td>Tudo: comandos, alarmes, avisos da rota, "✓ Resolvido"</td></tr>
+        <tr><td>Contactos do plano (família, amigos)</td><td>Só recebem os planos de navegação e as mensagens de chegada e atraso; entram por /start + código que o Ivo confirma; as mensagens deles são ignoradas</td></tr>
+      </table>
+      <p class="nota">O sistema só avisa: o detetor de fumo e a bomba de porão mantêm a sirene e o flutuador próprios. O router 4G é a via garantida; o Meshtastic (rádio LoRa) fica para depois de o sistema estar validado.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 12 MELHOR ROTA CÁLCULO -->
+<section class="pag" id="rota">
+  <div class="cab"><h1>11. Melhor rota (I): o cálculo</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> o sistema experimenta dezenas de maneiras de fazer a viagem, com a previsão do tempo em três versões, e mostra as três melhores com um veredicto claro.</div>
+  <div class="c58">
+    <div>
+      <h2>Entradas</h2>
+      <ul>
+        <li><b>Previsão Open-Meteo</b> (vento a 10 m, rajadas, ondas, período e direção; célula de mar; 48 h), um ficheiro por ponto da rota, arquivado para a AI.</li>
+        <li><b>A costa</b> gerada dos polígonos de terra do OpenStreetMap: linhas a 3, 5 e 8 MN; 15 portos de Viana a Olhão com aproximações; zonas a evitar (separadores de tráfego, Cachopos); o Canal da Berlenga.</li>
+        <li><b>A polar</b> do Arlequin (estimada, até a AI a substituir) e a curva de consumo da Volvo (2 100 rpm → 1,45 L/h).</li>
+        <li><b>A corrente de maré do Tejo</b> (até 1,8 nó) na barra e no estuário; no resto da costa, a corrente da previsão.</li>
+        <li>O gasóleo e a bateria atuais (440 Ah, solar com fator 0,65), a tripulação ("só eu" ou "2 ou mais").</li>
+      </ul>
+      <h2>Método</h2>
+      <ul>
+        <li>Alternativas = afastamento (3, 5 ou 8 MN, rota direta, canal) × hora de partida (agora e as próximas) × vela ou só motor. Na captura ao lado: 84 alternativas avaliadas em menos de um minuto.</li>
+        <li>Cada alternativa é simulada em <b>3 cenários</b> (pessimista, provável, otimista) sobre a previsão; os limites contam no pior dos três.</li>
+        <li>A linha de 3 MN só existe com vento de terra ao longo de toda a linha; o Canal da Berlenga só com ondas &lt; 3 m nos 3 cenários.</li>
+        <li>Horas ao leme: a motor em calma (vento &lt; 10 nós e ondas &lt; 2 m, ou ondulação comprida até 3 m) contam metade, porque a roda tem travão.</li>
+        <li>Desconhecido nunca conta como calmo: previsão em falta exclui a alternativa (menos no "Sair agora", com aviso vermelho).</li>
+      </ul>
+    </div>
+    <div>
+      <figure><img src="img-apresentacao/10-melhor-resultado-dia.png" alt="Resultado"><figcaption>Resultado de Peniche para a Nazaré (05/10/2026): veredicto "Segue", 3 cartões com as horas dos 3 cenários, os avisos vermelhos (aqui, o canal por confirmar na carta e as fugas a sotavento), a linha do tempo com "come e bebe" e as precauções.</figcaption></figure>
+      <h2>Limites de segurança (configuráveis)</h2>
+      <table>
+        <tr><th></th><th>Só eu</th><th>2 ou mais</th></tr>
+        <tr><td>Vento médio / rajada</td><td>22 / 30 nós</td><td>28 / 35 nós</td></tr>
+        <tr><td>Ondas</td><td>3 m</td><td>4 m</td></tr>
+        <tr><td>Horas equivalentes ao leme</td><td>8 h</td><td>—</td></tr>
+        <tr><td>Chegada de noite a porto desconhecido</td><td>não recomendado</td><td>—</td></tr>
+        <tr><td>Gasóleo / bateria à chegada</td><td colspan="2">≥ 40 L e ≥ 50 % no pior caso; senão laranja "Não recomendado"</td></tr>
+      </table>
+      <p class="nota">Veredictos: verde "Segue" · amarelo "Espera até às HH:MM" · laranja "Não recomendado" · vermelho "Volta ou abriga-te em X" (só no mar). "Sair agora mesmo assim" mostra também o que não é recomendado, com os avisos. Os pontos de desistência (fugas para o porto mais perto) aparecem sempre.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 13 MELHOR ROTA MAPA E PLANO -->
+<section class="pag" id="plano">
+  <div class="cab"><h1>12. Melhor rota (II): o mapa e o plano para terra</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> antes de sair, o plano vai por Telegram a quem fica em terra, com uma hora a partir da qual devem ligar ao Ivo e, se ele não atender, ao salvamento marítimo.</div>
+  <div class="c58">
+    <div>
+      <figure><img src="img-apresentacao/11-melhor-mapa-dia.png" alt="Mapa"><figcaption>O mini-mapa das 3 alternativas: cinzento tracejado a motor, azul à vela, mais escuro de noite; triângulos nos avisos; bolinhas nos pontos de desistência (verdes com fuga limpa, vermelhas sem nenhuma); tracejado vermelho nas zonas a evitar.</figcaption></figure>
+      <h2>O fluxo no ecrã</h2>
+      <p>Pedir (destino do mais perto para o mais longe, tripulação) → A calcular (barra de progresso) → Resultado → Mapa → <b>Enviar plano</b> → <b>Ativar esta rota</b> (a rota passa ao SignalK e ao OpenCPN) → Leme. Um cálculo antigo (partida há mais de 1 h ou hora de alarme passada) é recusado ao enviar e ao ativar: "calcula outra vez".</p>
+    </div>
+    <div>
+      <h2>O plano de navegação (texto + ficheiro GPX)</h2>
+      <ul>
+        <li>Barco (nome, modelo, cor do casco, MMSI, indicativo), origem, destino, hora de saída, a rota escolhida e a chegada nos 3 cenários.</li>
+        <li><b>Hora de alarme</b> = chegada mais tarde + 2 h. "Se até às HH:MM não tiveres notícias, liga ao Ivo; se não atender, ao MRCC Lisboa (+351 214 401 919, 24 h) ou 112."</li>
+        <li>Com pelo menos um contacto do plano a receber: "enviado ✓ a N contactos em terra" e a precaução "Plano deixado a alguém em terra" fica marcada. Só com o chat do Ivo: aviso a amarelo, porque ninguém em terra tem a hora de alarme.</li>
+        <li>Quem falhou vem com o motivo ("bloqueou o bot", "sem ligação ao Telegram"); o porto continua a tentar.</li>
+      </ul>
+      <h2>Guardas que impedem um plano errado</h2>
+      <ul>
+        <li>Sem a chegada mais tarde não há hora de alarme e o plano não vai.</li>
+        <li><b>Relógio do Pi a mais de 60 s do GPS:</b> o plano não sai, a rota não se ativa, e o aviso vai para o Leme e para o Telegram. Uma hora de alarme calculada com o relógio errado chegava errada aos contactos.</li>
+        <li>Escolher outro cartão a meio do envio não o perde: o estado diz de que alternativa é o plano em terra; ao ativar outra, o novo plano segue sozinho com "Este plano substitui o anterior".</li>
+        <li>Com a segurança do SignalK ligada, só a conta do ecrã (ou o admin) pode enviar planos ou ativar rotas; nenhum aparelho na rede do barco o consegue fazer.</li>
+      </ul>
+      <h2>Contactos do plano</h2>
+      <p>A pessoa manda /start ao bot e recebe um código; o Ivo junta nome + código na configuração. Ninguém entra sozinho. Esses contactos recebem os planos, o "cheguei bem", os atrasos e a "viagem terminada", e nada mais.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 14 A NAVEGAR -->
+<section class="pag" id="navegar">
+  <div class="cab"><h1>13. Melhor rota (III): a navegar</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> durante a viagem o sistema lembra o que vem a seguir, avisa quando a realidade se afasta do plano e mantém quem está em terra informado, sem nunca fingir que está tudo bem.</div>
+  <div class="c58">
+    <div>
+      <figure><img src="img-apresentacao/leme-a-navegar-ensaio.png" alt="Leme a navegar"><figcaption>O Leme num estado de ensaio com todos os avisos ao mesmo tempo (capturado pelo verificador do ecrã, código final): a faixa com o próximo evento, o atraso, a chegada deslizada, os recursos, os contactos em terra, o botão "Estou bem", os avisos da rota, o rumo a seguir e a correção de 11° para bombordo.</figcaption></figure>
+      <h2>O plano ativo</h2>
+      <p>Corre no Pi de minuto a minuto, com o ecrã desligado e depois de um reinício (<i>plano-ativo.json</i>). "À espera de sair" até o barco se afastar 0,5 MN ou andar 2 nós durante 5 min; "chegou" a menos de 0,3 MN do cais, parado 5 min, depois de metade da rota feita. <b>Nunca muda a rota sozinho.</b></p>
+    </div>
+    <div>
+      <h2>O que avisa (apito curto, só no ecrã salvo indicação)</h2>
+      <ul>
+        <li><b>Lembretes 30 min antes:</b> rizar ou largar rizo, frente, chuva e visibilidade &lt; 5 km, pôr do sol ("luzes, arnês, come antes de escurecer"), chegada de noite, virar/cambar onde o rumo muda mais de 45°, rotação do vento &gt; 45° em 1 h.</li>
+        <li><b>Come e bebe</b> de 3 em 3 h (só a solo).</li>
+        <li><b>Recalcula a rota</b> (também Telegram): atraso &gt; 30 min, ou vento medido 30 % e 4 nós acima do previsto durante 30 min.</li>
+        <li><b>Recursos</b> (também Telegram): gasóleo à chegada &lt; 40 L ou bateria &lt; 50 %, pelas horas de motor que faltam.</li>
+        <li><b>Previsão velha:</b> aviso às 6 h; alarme às 12 h, "confia nos instrumentos e no barómetro".</li>
+        <li><b>Barómetro</b> &gt; 3 hPa em 3 h e <b>relógio desacertado</b> (também Telegram).</li>
+        <li><b>Hora de alarme em terra</b> 60 min antes: "os contactos ligam ao MRCC às HH:MM: avisa-os ou Terminar".</li>
+      </ul>
+      <h2>O que os contactos recebem</h2>
+      <ul>
+        <li>"Cheguei bem a Peniche qua 30/09 às 10:24." à chegada (uma vez).</li>
+        <li>"Ainda a navegar, tudo bem. Nova hora de alarme: HH:MM." só com 30 min ou mais de atraso sobre a chegada mais tarde, <b>só com o barco a avançar</b> (1 MN na última hora, a andar, a menos de 2 MN da rota) e <b>nunca mais de 3 h</b> sobre a hora do plano sem um "Estou bem" do Ivo. Parado ou à deriva não sai nada: se o Ivo estiver incapacitado, ligam ao MRCC à hora certa.</li>
+        <li>"Viagem terminada, estou bem, em &lt;posição&gt;." ao Terminar. Um contacto que não recebe é reentregue de 2 em 2 min; o Ivo é avisado se o sistema desistir.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 15 AI E CAIXA NEGRA -->
+<section class="pag" id="ia">
+  <div class="cab"><h1>14. Caixa negra e AI a bordo</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> o barco grava tudo o que lhe acontece e, depois de cada saída, aprende sozinho a sua velocidade real e o quanto a previsão do vento se engana nesta costa.</div>
+  <div class="duas">
+    <div>
+      <h2>Caixa negra (<i>~/arlequin-dados</i>)</h2>
+      <ul>
+        <li><b>bruto/</b>: todas as mensagens, 1 ficheiro por hora · <b>tabela/</b>: 1 linha de 10 em 10 s com posição, proa, vento, velocidade, velas, motor · <b>saidas/</b>: o resumo de cada saída (de porto a porto) · <b>previsoes/</b>: o que a Open-Meteo disse na altura.</li>
+        <li><b>Disco:</b> aos 80 % apaga do bruto só o que o portátil já confirmou ter copiado; aos 95 % pára o bruto, mantém a tabela e alarma. Nunca apaga o que não está no portátil.</li>
+        <li><b>Hora certa:</b> pilha do relógio no Pi 5, hora pelo GPS, fuso de Lisboa; a caixa negra avisa se o relógio e o GPS diferirem mais de 1 min.</li>
+        <li><b>Cópia:</b> por Tailscale (ssh) quando há rede, ou por pen; o portátil guarda em <i>Documents\Veleiro\arlequin-dados</i>.</li>
+        <li><b>Diário de bordo</b> (signalk-logbook): entradas automáticas de hora a hora, motor ligado/desligado, alarmes, cargas pelo motor, velas; 8 botões de um toque e notas; um ficheiro YAML por dia, fácil de exportar.</li>
+      </ul>
+      <h2>A página Velas</h2>
+      <p>O Ivo marca a grande (inteira, 1 ou 2 rizos, arriada) e a genoa (%). A AI só aprende velocidade à vela com as velas marcadas; sem piloto, a página guia o recolher velas passo a passo, tudo registado no diário.</p>
+    </div>
+    <div>
+      <h2>O que a AI aprende (LightGBM, treino no Pi)</h2>
+      <table>
+        <tr><th style="width:28%">Modelo</th><th>Aprende</th><th style="width:30%">Para quê</th></tr>
+        <tr><td>Velocidade</td><td>A velocidade real do Arlequin com o Ivo ao leme, só à vela, por vento e ângulo</td><td>Substitui a polar estimada no cálculo da rota quando errar menos do que ela</td></tr>
+        <tr><td>Vento (força e direção)</td><td>Em quanto a previsão falha nesta costa</td><td>Corrige os 3 cenários; o pior caso nunca fica abaixo do previsto</td></tr>
+        <tr><td>Consumo</td><td>O gasóleo real, só quando o motor dá o caudal medido</td><td>Autonomia e recursos à chegada</td></tr>
+      </table>
+      <ul>
+        <li>Treina sozinho, com prioridade baixa, 1 h depois de o barco parar; a última saída serve de teste; um modelo só entra em uso se melhorar.</li>
+        <li>Precisa de pelo menos 5 h de navegação estável e 2 saídas; o modelo da velocidade pode precisar de ~8 h de vela variada. Até lá o ecrã diz "a aprender" e usa a polar.</li>
+        <li>Versões <i>vNNNN</i> no Pi e <i>pNNNN</i> treinadas no portátil (só vão para o barco por cópia confirmada); "Voltar atrás" no ecrã.</li>
+        <li>O simulador nunca ensina: tudo o que injeta fica marcado como simulado.</li>
+        <li><b>Estado honesto:</b> ainda não há dados reais do barco; a AI começa a aprender nas primeiras saídas.</li>
+      </ul>
+      <figure><img src="img-apresentacao/07-diario-dia.png" alt="Diário" style="max-height: 150px; width: auto;"><figcaption>A página Diário com o cartão da AI ("a aprender", "Treinar agora").</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<!-- 16 ENERGIA -->
+<section class="pag" id="energia">
+  <div class="cab"><h1>15. Energia</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> dois painéis solares num teto sobre a roda, um controlador por painel e um contador de energia no banco de serviço; o Pi lê tudo e diz quando ligar e desligar o motor para carregar.</div>
+  <div class="c58">
+    <figure class="grande"><img src="../energia-arlequin.svg" alt="Esquema de energia" style="max-height: 560px; width: auto; margin: 0 auto;"><figcaption>Esquema de energia (28/09/2026): strings independentes, um MPPT por painel, fusível de 40 A à saída de cada um, SmartShunt no negativo do serviço.</figcaption></figure>
+    <div>
+      <h2>Consumo do próprio sistema</h2>
+      <table>
+        <tr><th>Carga</th><th class="n">W</th><th class="n">Ah / 24 h</th></tr>
+        <tr><td>Pi 5 + HAT + SSD</td><td class="n">~7</td><td class="n">14</td></tr>
+        <tr><td>Ecrã 7" (fase 1) / 10" SailProof no brilho máximo (fase 2)</td><td class="n">~5 / ~19</td><td class="n">10 / ~38</td></tr>
+        <tr><td>Router 4G</td><td class="n">~3</td><td class="n">6</td></tr>
+      </table>
+      <h2>Balanço estimado (confirma-se com o SmartShunt)</h2>
+      <table>
+        <tr><th>Situação</th><th>Saldo por dia</th></tr>
+        <tr><td>Porto, inverno, Pi sempre ligado (~27 Ah/dia)</td><td>positivo; ~8 dias de autonomia sem sol com 220 Ah úteis</td></tr>
+        <tr><td>A navegar sem piloto, primavera a outono (~120 Ah/dia)</td><td>positivo</td></tr>
+        <tr><td>A navegar com o EV-100 no verão (~185 Ah/dia)</td><td>perto do equilíbrio</td></tr>
+        <tr><td>A navegar com o EV-100 fora do verão</td><td>negativo: ~2 h de motor por dia (40–60 Ah por hora)</td></tr>
+      </table>
+      <h2>Os alarmes da energia</h2>
+      <ul>
+        <li>Serviço a 55 % com o motor parado: "liga o motor para carregar" (repete de 30 em 30 min); a 85 % com o motor ligado: "já podes desligar".</li>
+        <li>Serviço &lt; 50 % e bateria do motor &lt; 12,2 V: alarme com apito curto. SmartShunt calado 5 min: aviso.</li>
+        <li>Cada carga pelo motor fica no diário com as horas e os Ah; a rota planeia com 440 Ah e o solar com fator 0,65.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 17 PILOTO -->
+<section class="pag" id="piloto">
+  <div class="cab"><h1>16. Piloto automático: Raymarine EV-100 de roda (decidido, a instalar)</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> o barco ainda não tem piloto; o escolhido monta-se na roda, traz a sua própria bússola e, depois de montado, liga-se à rede do Pi para seguir as rotas calculadas.</div>
+  <div class="duas">
+    <div>
+      <h2>O que se instala</h2>
+      <table>
+        <tr><th>Peça do pack T70152</th><th>Função</th></tr>
+        <tr><td>Comando p70s</td><td>Standby, auto, ±1°, ±10°, modo track; mostra também o vento, o AIS e o fundo que o Pi põe na rede</td></tr>
+        <tr><td>Sensor de rumo EV-1</td><td>Bússola giroscópica rápida; passa a proa principal do sistema (o ST4000+ fica de reserva)</td></tr>
+        <tr><td>Unidade de controlo ACU-100</td><td>Alimenta e comanda o motor da roda</td></tr>
+        <tr><td>Unidade de roda</td><td>O motor que vai na roda de leme</td></tr>
+        <tr><td>Cabos SeaTalkNG</td><td>SeaTalkNG = NMEA 2000: liga à porta N2K da MacArthur com um adaptador DeviceNet</td></tr>
+      </table>
+      <h2>Porquê este</h2>
+      <ul>
+        <li>Regra do Ivo (27/09): o piloto tem de ser de roda; os atuadores abaixo do convés ficaram excluídos.</li>
+        <li>Completa o que já existe: a rede NMEA 2000 que o AIS já usa e que o Axiom usará no futuro.</li>
+        <li>Alternativas analisadas e postas de lado: completar o ST4000+ em 2.ª mão (marginal para 6 t), EV-200 com atuador Type 1 (abaixo do convés), NKE Gyropilot (abaixo do convés), piloto de vento (complementa, não substitui).</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Limitação escrita e assumida</h2>
+      <p>A Raymarine dá o EV-100 de roda para barcos até <b>7 500 kg carregados</b>. O Arlequin carregado anda pelos <b>~7,2 t</b>: fica perto do limite. Na prática: rizar cedo e navegar com o barco equilibrado (pouco leme); com vento forte, mar de popa ou o barco desequilibrado, contar com o leme à mão; não carregar o barco mais do que o necessário (200 L de gasóleo são ~170 kg a ré).</p>
+      <h2>O que muda no sistema quando estiver montado</h2>
+      <ul>
+        <li>O Pi lê o estado do piloto e a proa do EV-1 e manda-lhe a rota ativa (modo track): a melhor rota passa a ser seguida pelo piloto.</li>
+        <li>Revê-se a regra das 8 h equivalentes ao leme do cálculo da rota (hoje conta sempre com o Ivo a governar).</li>
+        <li>O "Recolher velas" passa a automático: aproado ao vento com desvio configurável, motor a dar seguimento, alarme se o motor parar.</li>
+        <li>O chip "Piloto" da barra de cima passa de "manual" ao estado real.</li>
+        <li>Energia: 2–4 A em média, já contados no balanço.</li>
+      </ul>
+      <h2>Até lá</h2>
+      <p>Não há piloto: governa-se à mão e a única reserva de governo é a cana de inox de emergência. O ST4000+ a bordo não governa (falta-lhe a unidade de roda) e serve só de bússola.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 18 MATERIAL -->
+<section class="pag" id="material">
+  <div class="cab"><h1>17. Material, sem custos</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> à esquerda o que o barco já tem e entra no sistema; à direita o que se compra ou se faz.</div>
+  <div class="duas">
+    <div>
+      <h2><span class="tag ja">já a bordo</span> e aproveitado</h2>
+      <ul class="lista2" style="columns: 1;">
+        <li>AIS transponder classe B em-trak B330 (com GPS e Wi-Fi)</li>
+        <li>Anemómetro NASA Clipper Wind</li>
+        <li>Log NASA Clipper Log</li>
+        <li>Sonda NASA Clipper Depth</li>
+        <li>Bússola repetidora Autohelm ST50 Compass (SeaTalk1)</li>
+        <li>Painel, bússola fluxgate e motor do Raytheon ST4000+ (sem a unidade de roda: só proa)</li>
+        <li>Plotter Garmin GPSMAP 421 (GPS de reserva)</li>
+        <li>VHF Navicom RT750 com DSC classe D</li>
+        <li>Radar JRC 1000 (autónomo; recebe posição e proa)</li>
+        <li>Navtex NASA Target Navtex Pro (autónomo)</li>
+        <li>Motor Volvo Penta D1-20B com caixa MDI (J1939) e alternador 115 A</li>
+        <li>Depósito de gasóleo de 200 L em inox com sonda de boia e o desenho do medidor do dono anterior</li>
+        <li>2 depósitos flexíveis de água doce e 2 bombas de pé</li>
+        <li>3 bancos de baterias de 2 × 110 Ah (AGM, a confirmar na etiqueta)</li>
+        <li>Frigorífico a compressor</li>
+        <li>Cana de inox de emergência</li>
+        <li>Lowrance HDS-9 Live solta com transdutor TotalScan (opção futura para o ecrã da roda; por agora de fora)</li>
+      </ul>
+    </div>
+    <div>
+      <h2><span class="tag inst">a instalar</span>: comprar ou fazer</h2>
+      <div class="tres" style="gap: 8px;">
+        <div>
+          <h3>Cérebro e ecrã</h3>
+          <ul>
+            <li>Raspberry Pi 5 8 GB + dissipador ativo</li>
+            <li>Base NVMe Pimoroni + SSD NVMe 256 GB</li>
+            <li>MacArthur HAT + módulo 12→5 V</li>
+            <li>Ecrã 7" HDMI tátil (testes) → SailProof STS10 10" (definitivo)</li>
+            <li>Cabos micro-HDMI e USB até à roda</li>
+            <li>Cartas o-charts Portugal + chave USB</li>
+            <li>Suporte, pala e caixa do Pi impressos em ASA</li>
+            <li>Porta-fusível e fusível de 5 A; cabo estanhado</li>
+            <li>Hub USB alimentado</li>
+            <li>Pilha do relógio do Pi 5</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Sensores e redes</h3>
+          <ul>
+            <li>USB–CAN isolado InnoMaker + terminal DB9, fita vulcanizada</li>
+            <li>ADS1115 + divisores (gasóleo)</li>
+            <li>Barómetro BME280</li>
+            <li>IMU ICM-20948 (inclinação)</li>
+            <li>DS18B20 estanque (frigorífico)</li>
+            <li>3 reed switches + ESP32 (água)</li>
+            <li>Detetor de fumo com relé, flutuador e contacto da bomba de porão, sensor de líquido, contacto da gaiuta, PIR; ESP32 ou GPIO</li>
+            <li>2 besouros piezo 12 V + transístores</li>
+            <li>Mini-rede NMEA 2000: T, 2 terminadores, alimentação a 12 V, cabo para o B330</li>
+            <li>Adaptador USB–0183 ou ESP32 para a sonda</li>
+            <li>Router 4G; câmara (opcional)</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Energia e governo</h3>
+          <ul>
+            <li>2 painéis solares de 305 W</li>
+            <li>2 MPPT Victron SmartSolar 100/30</li>
+            <li>Victron SmartShunt 500 A</li>
+            <li>2 fusíveis de 40 A, cabos 6 mm², MC4</li>
+            <li>Estrutura inox do teto sobre a roda</li>
+            <li>VSR ou carregador de manutenção da bateria do motor</li>
+            <li>Luzes de navegação LED homologadas (se as atuais não forem LED)</li>
+            <li><b>Raymarine EV-100 de roda (T70152):</b> p70s, EV-1, ACU-100, unidade de roda, cabos SeaTalkNG; adaptador SeaTalkNG–DeviceNet</li>
+          </ul>
+          <h3>Mais tarde</h3>
+          <ul>
+            <li>Plotter Raymarine Axiom (fase 3)</li>
+            <li>Meshtastic (depois de validado)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 19 VALIDAÇÃO -->
+<section class="pag" id="validacao">
+  <div class="cab"><h1>18. Como se sabe que funciona: validação</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> antes de ir para o barco, o sistema foi posto a navegar milhares de vezes num barco fingido, medido num ecrã verdadeiro e revisto de uma ponta à outra por oito revisores independentes.</div>
+  <div class="kpi">
+    <div><span class="v">1 467</span><span class="l">testes automáticos (1 371 em Node, 96 em Python), todos verdes a 05/10</span></div>
+    <div><span class="v">74</span><span class="l">estados do ecrã medidos num Chromium a 1024×600, de dia e de noite, 0 problemas</span></div>
+    <div><span class="v">168</span><span class="l">achados da auditoria total de 02/10 (13 críticos, 48 importantes, 86 menores, 21 incoerências), todos corrigidos</span></div>
+    <div><span class="v">&gt; 240</span><span class="l">commits de correção revistos por um segundo revisor, com rondas de re-revisão</span></div>
+  </div>
+  <div class="duas">
+    <div>
+      <h2>Que testes são</h2>
+      <ul>
+        <li><b>Unitários e de regras:</b> cada limite, cada alarme, cada mensagem para terra, cada caso de sensor calado, rede má ou reinício a meio.</li>
+        <li><b>A passagem de referência</b> Algés → Peniche, simulada ponto a ponto (871 pontos) sobre previsões gravadas, com a chegada de referência fixada: qualquer mudança no cálculo que mexa na chegada faz o teste falhar.</li>
+        <li><b>A viagem acelerada</b> (60×) com o plano enviado, os atrasos, o "cheguei bem" e um reinício do servidor a meio, contra um Telegram falso que regista o que recebeu.</li>
+        <li><b>O simulador</b> do barco inteiro (navegação, vento, AIS com um alvo em rota de colisão, motor J1939, baterias, sol) corre no portátil com os mesmos plugins do Pi: as capturas deste documento vêm daí.</li>
+        <li><b>Testes de segurança:</b> um token do Telegram ou um JWT verdadeiro no repositório faz a suite falhar; os scripts de teste recusam-se a correr fora do portátil.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>A auditoria de 02/10</h2>
+      <p>Oito revisores leram ~50 000 linhas de código (27 000 de testes) e 14 000 de documentação: cálculo da rota, antes de sair e a navegar, ecrã, porto, caixa negra e AI, sensores e AIS, documentos, invariantes transversais, e um só para "o que podia ser melhor". Os erros estavam nos casos que ninguém tinha testado: alvo AIS fundeado sem alarme, "tudo bem" enviado com o barco parado, ecrã mudo depois do arranque, previsão da célula de terra, rotas de administrador com a segurança ligada, mensagens perdidas numa falha de rede de segundos. Tudo foi corrigido em 9 frentes, cada uma revista por um revisor independente.</p>
+      <h2>O que só se valida no barco</h2>
+      <ul>
+        <li>A leitura real de cada aparelho (versões dos NASA, bits dos alarmes do MDI, resistência da sonda do gasóleo).</li>
+        <li>O som pelo HDMI, a sessão do ecrã com a segurança ligada, a letra do Chromium do Pi (o verificador corre também lá).</li>
+        <li>As zonas e portos na carta oficial (marcados "por confirmar" até o Ivo os ver).</li>
+        <li>Um ensaio do plano de navegação com um contacto de verdade, no porto, antes da primeira saída.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 20 LIMITAÇÕES E PRÓXIMOS PASSOS -->
+<section class="pag" id="fim">
+  <div class="cab"><h1>19. Limitações, o que falta e os próximos passos</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> o software está pronto; o que falta é montá-lo no barco, ligar os sensores e confirmar na água tudo o que foi confirmado no portátil.</div>
+  <div class="duas">
+    <div>
+      <h2>Limitações que ficam escritas</h2>
+      <ul>
+        <li>Sem piloto automático até o EV-100 estar montado; com ele, o barco carregado anda perto do limite de 7 500 kg.</li>
+        <li>O som dos alarmes depende do browser e da saída HDMI: besouros por GPIO são a melhoria n.º 1 por decidir.</li>
+        <li>Dentro de um porto, um navio parado no caminho não apita (só amarelo).</li>
+        <li>Um fio CAN solto parece "ignição desligada": ao arrancar o motor confirma-se "a trabalhar" no ecrã.</li>
+        <li>A previsão é a Open-Meteo, sem rede fica a última arquivada (até 48 h); a AI ainda não tem dados reais.</li>
+        <li>As zonas e os portos do cálculo estão por confirmar na carta pelo Ivo.</li>
+        <li>O radar JRC 1000 e a sonda TotalScan ficam fora do ecrã único até o sistema estar validado.</li>
+      </ul>
+      <h2>Melhorias já identificadas, por decidir</h2>
+      <p class="nota">Besouros por GPIO · aviso de sensores calados na barra · alarme de pouca água · botão homem-ao-mar e balizas AIS SART/MOB · prova de vida e vigia a solo · ensaio com os contactos e SMS de reserva · supervisão (reinício automático do SignalK e do Chromium) · instalação num só script e cópia offline · modo "Fundear" com alarme de garrar · ponte NMEA 2000 e regras do piloto quando vier.</p>
+    </div>
+    <div>
+      <h2>Próximos passos</h2>
+      <ol>
+        <li>Montar o Pi, a HAT, o SSD e o ecrã de testes em casa; instalar pela ordem escrita no NAVEGACAO (16 passos: sistema, fuso e relógio, segurança do SignalK, plugins, Victron, proa verdadeira, can1, Telegram, Tailscale, quiosque, sensores, verificações).</li>
+        <li>Instalar a bordo: Pi na mesa de navegação, cabo até à roda, derivação CAN soldada no MDI, ADS1115 na sonda, reed switches nos pedais, sensores do porto, barómetro fora da caixa.</li>
+        <li>Ensaios no porto: cada aparelho a ler, a proa sem "—", o motor "a trabalhar", um alarme de ensaio a apitar sem tocar no ecrã, /estado no Telegram, um plano de ensaio a um contacto.</li>
+        <li>Primeira saída curta com tudo ligado (Peniche → Berlenga ou Nazaré); a AI começa a aprender.</li>
+        <li>Solar e SmartShunt (teto sobre a roda); confirmar o balanço com dados reais.</li>
+        <li>Comprar e montar o EV-100 de roda; depois ligá-lo à rede do Pi e rever a regra das 8 h ao leme.</li>
+        <li>Mais tarde: ecrã definitivo de 10", Axiom, Meshtastic, radar.</li>
+      </ol>
+      <h2>Onde está tudo</h2>
+      <p>Repositório git com o código, os testes, os desenhos (specs), os planos, os relatórios da auditoria e os documentos do barco (NAVEGACAO, PILOTO-AUTOMATICO, LEME-EMERGENCIA, CABOS, MASTREACAO, QUILHA). Ramo <i>claude/piloto-automatico-cwnr0f</i>, por agora só no portátil do Ivo.</p>
+      <p class="nota">Este documento não tem preços. A lista de compras com preços e lojas existe à parte (lista-compras-arlequin.pdf). As estimativas de energia e de peso são isso mesmo: estimativas, a confirmar com o SmartShunt e com o barco na água.</p>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
