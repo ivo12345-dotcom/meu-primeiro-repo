@@ -1340,8 +1340,9 @@ do Ivo: o Claude não trata credenciais.
 11. **O motor (`can1`):** dar ao adaptador USB–CAN um **nome fixo**, `can1` (o `can0` é a NMEA 2000
     da MacArthur), e pô-lo a subir sozinho no arranque, a 250 kbit/s e **só a escutar** — por exemplo
     com o systemd-networkd: um `.link` (`[Match] Driver=gs_usb`, `[Link] Name=can1`) e um `.network`
-    (`[Match] Name=can1`, `[CAN] BitRate=250K` e `ListenOnly=yes`). Hoje sobe à mão (`software/README.md`)
-    e, depois de cada arranque, o J1939 ficava sem tramas. Confirmar depois de reiniciar o Pi:
+    (`[Match] Name=can1`, `[CAN] BitRate=250K` e `ListenOnly=yes`). Até aqui só se subia à mão
+    (`software/README.md`, "Motor pelo J1939"), e depois de cada arranque do Pi o J1939 ficava sem
+    tramas. Confirmar depois de reiniciar o Pi:
     `ip -details link show can1` (UP, `listen-only`, 250000) e `candump can1` com a ignição ligada. Se
     a `can1` subir depois do SignalK, aparece uns segundos "Sem leitura do motor (J1939)" a cada
     arranque (o plugin religa o `candump` de 5 em 5 s).
@@ -1405,7 +1406,8 @@ as leituras (GET) pedem uma sessão iniciada (qualquer conta) e as escritas (POS
   de admin da configuração dele (contrato C3).
 - O ecrã também cala ou reconhece alarmes pela API do SignalK (`POST
   /signalk/v2/api/notifications/<id>/silence` ou `/acknowledge`; num SignalK sem a gestão das
-  notificações, o `PUT` do `method`): a conta "read/write" chega.
+  notificações, o `PUT` do `method`): a conta "read/write" deve chegar (a confirmar no Pi, com a
+  segurança ligada: ainda não foi ensaiado assim).
 - Sem o `router.access` (um SignalK antigo), as rotas destes plugins só aceitam admin: atualizar o
   SignalK em vez de dar admin ao ecrã.
 
