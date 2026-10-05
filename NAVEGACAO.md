@@ -1669,7 +1669,8 @@ estado, de dia e de noite, em `docs/capturas-3b1/`.
 - **Ativar esta rota:** grava e ativa a rota no SignalK (o OpenCPN mostra-a) e a página passa ao
   Leme. Como o envio, recusa um cálculo antigo ("este cálculo é antigo: … — calcula outra vez antes
   de ativar"; decisão n.º 13), menos ao voltar a ativar a alternativa do plano aberto (a rota apagada
-  no OpenCPN a meio da viagem). Com o relógio do Pi desacertado, o Ativar que mandaria o plano para
+  no OpenCPN a meio da viagem). O "antigo" conta por alternativa, como no envio: outra alternativa
+  do mesmo cálculo, com a partida mais tarde, ainda se ativa. Com o relógio do Pi desacertado, o Ativar que mandaria o plano para
   terra também é recusado (decisão n.º 19). Um 2.º toque a meio dá "já há uma ativação a meio: espera
   um momento". **Sair agora mesmo assim** recalcula só para partir já.
 
@@ -1826,7 +1827,8 @@ disso, os contactos ficam com a hora de alarme e ligam ao MRCC. Com pressa, carr
   Resultado, onde **Ativar** substitui o plano (se o plano antigo tinha sido enviado, o novo segue
   sozinho para os mesmos contactos). A navegar (ou em pausa no mar) só conta a partida imediata e,
   se continuar não for recomendado, diz "Volta ou abriga-te em X"; à espera de sair, todas as
-  partidas. Um cálculo antigo é recusado e o plano antigo fica.
+  partidas. Um cálculo antigo é recusado e o plano antigo fica. A rota do plano substituído apaga-se
+  do SignalK (a de um plano terminado ou chegado fica até ao Ativar seguinte).
 - **Terminar** (pede confirmação: "Terminar o plano? Os contactos em terra recebem 'viagem
   terminada, estou bem'"): fecha o plano e os avisos.
 - Com o plano ativo, o Leme fica limpo: só o **Recalcular** (sai o "Novo cálculo" e o texto do OpenCPN).
@@ -1927,7 +1929,8 @@ O plugin J1939 publica `propulsion.main.ligacao` (contrato C11):
   MDI) limpam, e o ecrã mostra "motor desligado" e conta o tempo como vela;
 - **sem ligação** — o adaptador USB–CAN solto, a interface em baixo (ou parada por erros no barramento) ou o `candump`
   parado: "sem leitura do motor" no ecrã e o aviso "Sem leitura do motor (J1939): <motivo>" (apito
-  curto, só no ecrã). O plugin religa o `candump` de 5 em 5 s.
+  curto, só no ecrã). O plugin religa o `candump` de 5 em 5 s. No ecrã, um estado da ligação com
+  mais de 20 s (o plugin J1939 parado) também conta como "sem leitura do motor".
 
 **O ponto cego:** o Pi só escuta. Um fio CAN solto entre o adaptador e o MDI, com a interface de pé,
 parece a ignição desligada: com o motor a trabalhar, o ecrã diria "motor desligado" e um
