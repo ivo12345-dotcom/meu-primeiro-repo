@@ -10,10 +10,14 @@ Continua o desenho geral `docs/superpowers/specs/2026-09-29-melhor-rota-ia-desig
 > Tejo e os destinos acrescentados pelo Ivo. O resto está nas "Notas de implementação (30/09)", no
 > fim: onde o texto e as notas diferem, valem as notas. O ecrã, os avisos durante a viagem e o
 > acompanhamento ficaram nos desenhos 3b-1 e 3b-2 (01/10).
+>
+> **Auditoria de 02/10:** as mudanças que a auditoria trouxe ao cálculo (decisões do Ivo n.º 1, 4,
+> 5, 7, 8, 9, 10, 11 e 12, e as correções de código) estão nas "Notas de implementação (auditoria,
+> 02–03/10)", no fim. Os números velhos ficam riscados no próprio sítio.
 
 A Parte 3 foi dividida em duas:
 - **3a, o cálculo** (este documento);
-- **3b, o ecrã e os avisos**: a página "Melhor rota" nova, o mapa, os avisos durante a viagem, o acompanhamento de 30 em 30 min, as precauções e o plano por Telegram. Terá desenho e plano próprios, e só começa depois de a 3a estar validada.
+- **3b, o ecrã e os avisos**: a página "Melhor rota" nova, o mapa, os avisos durante a viagem, o acompanhamento de 30 em 30 min (na 3b-2 ficou de minuto a minuto), as precauções e o plano por Telegram. Terá desenho e plano próprios, e só começa depois de a 3a estar validada.
 
 ## Objetivo
 
@@ -122,7 +126,7 @@ Para cada afastamento d ∈ {3, 5, 8} MN:
 ## Maré na barra do Tejo (`lib/mare.js`)
 
 - **Preia-mares de Cascais:** os máximos locais da série `sea_level_height_msl` no ponto de Cascais (38,69 N; 9,42 W), com uma interpolação parabólica à volta do máximo horário.
-- **Corrente na barra** (só na barra e no estuário do Tejo: a caixa 38,60–38,72 N, 9,42–9,00 W — a leste de 9°25' W, os Cachopos, o Bugio e o rio até Lisboa; no resto da costa é 0): o modelo do `simular.mjs`, com a preia-mar calculada em vez da hora fixa. Corrente máxima de 1,8 nó, vazante para 250°, enchente para 70°, estofo 45 min depois da preia-mar. (Até à revisão final, só se limitava a longitude: a corrente fictícia aplicava-se de Viana ao Algarve. ~~O `simular.mjs` de 29/09 guarda a sua caixa de sempre, a leste de 9°25' W sem limite de latitude, para o resultado de referência não mudar.~~ Desde 01/10 (commit `cded545`) o `simular.mjs` usa a mesma caixa do plugin — a antiga punha a corrente da barra à chegada a Peniche — e o resultado de referência de 29/09 foi regravado: chegada às 05:01 UTC em vez das 05:00, 61,33 MN.)
+- **Corrente na barra** (só na barra e no estuário do Tejo: a caixa 38,60–38,72 N, ~~9,42~~ **9,40**–9,00 W — a leste de 9°25' W, os Cachopos, o Bugio e o rio até Lisboa, sem a entrada da marina de Cascais desde 02/10, decisão n.º 8; no resto da costa é 0): o modelo do `simular.mjs`, com a preia-mar calculada em vez da hora fixa. Corrente máxima de 1,8 nó, vazante para 250°, enchente para 70°, estofo 45 min depois da preia-mar. (Até à revisão final, só se limitava a longitude: a corrente fictícia aplicava-se de Viana ao Algarve. ~~O `simular.mjs` de 29/09 guarda a sua caixa de sempre, a leste de 9°25' W sem limite de latitude, para o resultado de referência não mudar.~~ Desde 01/10 (commit `cded545`) o `simular.mjs` usa a mesma caixa do plugin — a antiga punha a corrente da barra à chegada a Peniche — e o resultado de referência de 29/09 foi regravado: chegada às 05:01 UTC em vez das 05:00, 61,33 MN. A 03/10 foi regravado outra vez, com a caixa da decisão n.º 8: chegada às **05:03 UTC**, 61,35 MN.)
 - **Ao largo:** a corrente da Open-Meteo.
 
 ## Simulação (`lib/passagem.js`)
@@ -145,9 +149,9 @@ Para cada afastamento d ∈ {3, 5, 8} MN:
 - **Energia (`lib/energia.js`):**
   - parte do SoC atual;
   - consumo de serviço de 4,5 A de dia e 6 A de noite;
-  - solar = radiação × área × rendimento (2 × 305 W, 1,65 m² cada, 20%);
+  - solar = radiação × área × rendimento (2 × 305 W, 1,65 m² cada, 20%) **× 0,65 de perdas** (`fatorSolar`, desde 02/10: decisão n.º 4);
   - alternador a 45 A com o motor ligado;
-  - banco de serviço de 200 Ah.
+  - banco de serviço de ~~200 Ah~~ **440 Ah** (os bancos 2 + 3 do barco; decisão n.º 4, 02/10).
   - Todos os valores são configuráveis no plugin.
 - **Saída:** a linha do tempo (posição, vento, velocidade, motor, rizos, noite, SoC, gasóleo), os eventos (rizar, chuva, noite, motor, cambadela, chegada) e os totais.
 
@@ -160,7 +164,7 @@ Para cada afastamento d ∈ {3, 5, 8} MN:
   - vento médio > 22 nós, rajadas > 30 ou ondas > 3 m, no **máximo dos 3 cenários** (o vento do pessimista é o P90; o máximo só acrescenta os momentos que os rastos do provável e do otimista apanham — revisão final: os cenários não são monótonos na hora, e o otimista, mais lento, pode apanhar a frente);
   - mais de 8 h equivalentes ao leme (o motor em calma, com vento < 10 nós e (ondas < 2 m, ou ondas ≤ 3 m com período ≥ 9 s — ondulação comprida), conta metade; regra do Ivo, 30/09);
   - chegada de noite a um porto com `conhecido: false`.
-- **"Não recomendado" com "acompanhado"** (decisão do Ivo de 01/10, "limites mais largos"): vento médio > 28 nós, rajadas > 35 ou ondas > 4 m, no máximo dos 3 cenários (configuráveis: `ventoMaxAcompanhado`, `rajadaMaxAcompanhado`, `ondasMaxAcompanhado`). Entre os limites de "só eu" (22/30/3) e estes, a alternativa fica recomendada, com um **aviso vermelho** "acima dos limites a solo: …". As 8 h ao leme e a chegada de noite a um porto desconhecido ficam só para "só eu". (Até aqui, com "acompanhado" não havia limite nenhum: um temporal podia dar "Segue".)
+- **"Não recomendado" com "acompanhado"** (decisão do Ivo de 01/10, "limites mais largos"): vento médio > 28 nós, rajadas > 35 ou ondas > 4 m, no máximo dos 3 cenários (configuráveis: `ventoMaxAcompanhado`, `rajadaMaxAcompanhado`, `ondasMaxAcompanhado`; até 02/10 só no código, desde então no esquema `seguranca` do plugin: ver as notas da auditoria, M-13). Entre os limites de "só eu" (22/30/3) e estes, a alternativa fica recomendada, com um **aviso vermelho** "acima dos limites a solo: …". As 8 h ao leme e a chegada de noite a um porto desconhecido ficam só para "só eu". (Até aqui, com "acompanhado" não havia limite nenhum: um temporal podia dar "Segue".)
 - **O pior caso nunca abaixo da previsão** (revisão final, 01/10): o vento e a rajada do cenário pessimista, que decidem estes limites, são os previstos em bruto × a razão P90 do modelo `ventoForca`, mas essa razão nunca fica abaixo de 1 — um modelo que aprendeu "a previsão exagera" não pode baixar o pior caso abaixo do previsto (`lib/cenarios.js`, `ventoRazaoMin`). O P50, o P10 e a polar ficam com a razão do modelo.
 
 ## Decisão (`lib/decisao.js`)
@@ -360,3 +364,83 @@ nos commits do ramo `prototipo-3a`.
   previsão real de 29/09: foi substituído por "a melhor parte a 30/09" — com só eu, a melhor
   alternativa não parte antes de 30/09 (hora de Lisboa); os limites e os pesos não foram mexidos
   por causa disto (`test/calculo.test.js`).
+
+## Notas de implementação (auditoria, 02–03/10)
+
+O que a auditoria de 02/10 mudou no cálculo (frentes F1 e F2; as decisões do Ivo estão numeradas
+como na lista da auditoria). Verificado no código a 05/10. Onde o texto acima e estas notas
+diferem, valem estas.
+
+**Previsão e maré:**
+- **K-05:** os dois pedidos à Open-Meteo (forecast e marine) levam `cell_selection=sea`
+  (`lib/previsao.js`). A omissão da Open-Meteo (`land`) dava, junto à costa, o vento da célula de
+  terra (~40 % mais fraco). As previsões arquivadas antes de 02/10 têm esse vento.
+- **Decisão n.º 5 (I-19):** as passagens podem ir até ao fim da previsão (48 h: `HORAS_PREVISAO`,
+  `lib/previsao.js`), e as rotas longas atalham as baías por cordas que ficam a pelo menos
+  d − 0,1 MN da terra e fora das zonas, quando poupam ≥ 1 MN e ≥ 5 % (cordas até 60 MN,
+  `lib/rotas.js`).
+- **M-09:** um valor em falta num ponto da previsão só se vai buscar ao ponto seguinte até 15 MN
+  (`LIMITE_APROXIMADO_MN`); mais longe, conta "sem dados".
+- **M-11:** se o pedido do mar falhar e o do vento não, as ondas vêm da previsão guardada mais
+  recente que as tenha, com o aviso "Ondas da previsão guardada há N h (o pedido do mar falhou)".
+- **Decisão n.º 8 (M-12):** a caixa da maré do Tejo acaba a oeste em 9,40 W (era 9,42 W e apanhava
+  a entrada da marina de Cascais). O `simular.mjs` usa a caixa do plugin e o resultado de
+  referência de 29/09 foi regravado a 03/10 (chegada 05:01 → 05:03 UTC).
+- **I-16:** a correção do vento pela AI só se aplica com a previsão a ≤ 12 h de idade no ponto
+  (`IDADE_MAX_TREINO_H`, `lib/cenarios.js`: a AI só aprendeu com previsões de 0–12 h); além disso o
+  vento fica ±10 % e a nota da AI di-lo. O cálculo passa à AI a tendência do barómetro em 3 h
+  (`tendPressao3h`).
+
+**Rotas e segurança:**
+- **Decisão n.º 7 (M-04):** na alternativa de 3 MN, a regra do vento de terra vale também nas
+  ligações ao largo de partida e de chegada (amostras de 2 em 2 MN onde a costa fica a menos de
+  3 MN), como na rota direta.
+- **M-13:** os limites são mesmo configuráveis: o esquema `seguranca` do plugin aceita as 9 chaves
+  de `seguranca.LIMITES` (`ventoMedioMax` 22, `rajadaMax` 30, `ondasMax` 3,
+  `ventoMaxAcompanhado` 28, `rajadaMaxAcompanhado` 35, `ondasMaxAcompanhado` 4, `gasoleoMinL` 40,
+  `bateriaMinPct` 50, `lemeMaxH` 8), e só números. A calma, as distâncias à costa e os 3 MN do
+  vento de terra ficam fixos.
+- **M-03:** um destino sem o campo `conhecido` conta como desconhecido.
+- **Decisão n.º 12:** a regra "o motor em calma conta metade" fica, porque a roda tem travão (o
+  porquê está escrito no `lib/seguranca.js`).
+
+**Simulação e energia:**
+- **Decisão n.º 4 (I-13, contrato C5):** banco de serviço de **440 Ah** (os bancos 2 + 3) e o solar
+  com perdas, **fator 0,65** (`fatorSolar`), como o simulador; os dois estão no esquema do plugin.
+  Uma configuração gravada com o antigo `capacidadeAh: 200` conta como não posta (fica 440) e o
+  registo do SignalK diz porquê. O limite dos 50 % à chegada mantém-se.
+- **I-14:** sem leitura da bateria assume 80 %, com o aviso geral "Sem estado da bateria: assumi
+  80%" e, em cada alternativa, o aviso vermelho "estado da bateria desconhecido: confirma a carga
+  (assumi 80%)".
+- **Decisão n.º 11 (M-18):** a simulação conta uma viragem ou cambadela quando a proa à vela muda
+  mais de **40°** num minuto (as cambadelas da simulação mudam 50° e as viragens 90°: 40 apanha as
+  duas com margem; `lib/avisos.js`, `viragemGraus`). Os lembretes a navegar (3b-2) usam **45°** no
+  rumo da rota em cada ponto (a geometria, sem os bordos; `lib/acompanhamento.js`,
+  `VIRAGEM_GRAUS`). São diferentes de propósito.
+- **Decisão n.º 10 (I-17):** a visibilidade que pede o radar é **5 km** nos três sítios (os avisos e
+  as precauções, o evento da linha do tempo e os lembretes a navegar), numa só constante
+  (`VISIBILIDADE_RADAR_M`, `lib/avisos.js`); a chuva conta a partir de 0,5 mm/h.
+
+**Decisão e textos:**
+- **Decisão n.º 1 (K-06):** em "Sair agora", uma alternativa que de outro modo ficaria excluída
+  (gasóleo < 40 L ou bateria < 50 % à chegada no pessimista, previsão sem vento, rajada ou ondas,
+  previsão a acabar antes da chegada) fica "Não recomendado…" (a laranja no ecrã), com "Se saíres
+  mesmo assim…" (no mar, "Se continuares mesmo assim…") e os avisos vermelhos
+  (`excluidaSemSairAgora`), e continua a poder ativar-se. As exclusões duras ficam: terra, zonas,
+  mínimo à costa, vento de terra nos rastos, ondas no canal e não chegar em 48 h.
+- **M-05:** a previsão em falta deixa de baratear o custo: a rajada e as ondas desconhecidas contam
+  como os limites a solo (30 nós, 3 m) e o vento desconhecido como contra o vento (só pesa em "Sair
+  agora", porque fora dele essas alternativas ficam excluídas).
+- **Decisão n.º 9 (M-14):** o "Volta ou abriga-te em X" procura o abrigo mais perto medido ao porto
+  (o fim da aproximação), que pode ser o próprio destino; avalia os afastamentos de 3, 5 e 8 MN, a
+  rota direta e o canal, nas duas propulsões (vela com motor e só motor), e fica a melhor
+  recomendada (senão a mais barata).
+- **I-15:** no mar, o "Volta ou abriga-te" já não aparece quando a partida de agora é recomendada;
+  e nunca a frase vazia "Agora: .".
+- **I-18:** o "amanhã" dos textos conta pelo dia de Lisboa (certo à volta da mudança de hora).
+- **I-32:** os erros para o Ivo vêm em pt-PT ("Erro interno no cálculo da rota: o pormenor ficou no
+  registo do SignalK."); o erro verdadeiro vai para o registo.
+- **M-01, M-02:** nunca "vento até -Infinity nós"; com ondas desconhecidas, "Fica o mar (sem
+  previsão de ondas)".
+- **M-19:** os nomes dos sítios levam a preposição certa ("à Nazaré", "ao Cabo Raso", "às
+  Berlengas", "em Peniche"): `sitio` em `lib/costa.js`; o ecrã usa a mesma tabela.
