@@ -748,6 +748,14 @@ test('auditoria M-13 (parte index.js): os limites de segurança do desenho 3a ("
   } finally { calculo.calcular = original }
 })
 
+test('F9 (item 2): o título da opção lemeMaxH diz o que a regra mede — as horas EQUIVALENTES ao leme da passagem toda (o motor em calma conta metade; lib/seguranca.js horasLemeEquivalentes), não "horas seguidas"', () => {
+  const titulo = plugin(appFalso()).p.schema.properties.seguranca.properties.lemeMaxH.title
+  assert.match(titulo, /equivalentes/, titulo)
+  assert.match(titulo, /passagem toda/, titulo)
+  assert.match(titulo, /só eu/, titulo)
+  assert.doesNotMatch(titulo, /seguidas/, titulo)
+})
+
 test('auditoria I-16 (parte index.js): a tendência do barómetro em 3 h (as amostras de minuto a minuto que o plugin guarda) chega ao cálculo; sem 3 h de amostras, null', async () => {
   const calculo = require('../lib/calculo')
   const original = calculo.calcular
@@ -840,6 +848,10 @@ test('auditoria I-37 (o require): o index.js carrega os modelos da AI por um cam
   assert.ok(fs.existsSync(caminho), caminho)
   // o mesmo módulo que o lib/cenarios.js usa (o resolvido pelo node_modules aponta para a mesma pasta)
   assert.equal(require.resolve(caminho), fs.realpathSync(require.resolve('signalk-arlequin-ia/lib/modelos')))
+  // o lib/cenarios.js também o carrega por um caminho relativo (o comentário do index.js di-lo; F9 item 2)
+  const cenarios = fs.readFileSync(path.join(__dirname, '..', 'lib', 'cenarios.js'), 'utf8')
+  assert.doesNotMatch(cenarios, /require\(['"]signalk-arlequin-ia/)
+  assert.match(cenarios, /require\(path\.join\(__dirname, '\.\.', '\.\.', 'signalk-arlequin-ia', 'lib', 'modelos'\)\)/)
 })
 
 test('auditoria M-24: os pedidos à API do servidor têm o mesmo limite de tempo da API de rumo — um pendurado já não deixa o /calcular (409) nem o Ativar presos até reiniciar', async () => {
