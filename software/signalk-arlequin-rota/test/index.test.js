@@ -988,3 +988,34 @@ test('F2b Menor 5 (auditoria I-13, decisão n.º 4): os 200 Ah do valor por omis
     pl3.p.stop()
   } finally { calculo.calcular = original }
 })
+
+test('F2b Menor 3 (auditoria I-12): com a sonda do gasóleo perdida o nível é DESCONHECIDO e nunca decide nada — nem os litros assumidos: o mínimo à chegada não corre com um número inventado (desconhecido nunca exclui, só avisa: desenho 3a) e cada alternativa leva o aviso vermelho "gasóleo inicial desconhecido: confirma o depósito"; com o nível conhecido o mínimo corre (o da configuração)', async () => {
+  const SONDA = 'notifications.tanks.fuel.0.sondaPerdida'
+  const calcular = async (app, props) => {
+    const pl = plugin(app)
+    pl.p.start({ pasta: path.join(app.dir, 'dados'), ...props })
+    const r = (await esperarResultado(pl.r, (await chamar(pl.r.post['/calcular'], { body: { destino: 'cascais', tripulacao: 'so' } })).id)).resultado
+    pl.p.stop()
+    return r
+  }
+  const gasoleoDeMenos = (a) => JSON.stringify(a).includes('de gasóleo no pior caso')
+  // a sonda perdida (o plugin do gasóleo continua a publicar litros pelo consumo, frescos) e 30 L assumidos, abaixo do
+  // mínimo de 40 L: antes, o 30 L inventado excluía todas as alternativas
+  const app = appFalso()
+  app.self[SONDA] = { state: 'warn', method: ['visual'], message: 'Sonda do gasóleo sem leitura há mais de 5 min' }
+  const r = await calcular(app, { gasoleoDesconhecidoL: 30 })
+  assert.ok(r.alternativas.length >= 1, `sem alternativas: ${JSON.stringify(r.veredicto)}`)
+  for (const a of r.alternativas) {
+    assert.ok(a.avisosVermelhos.some(x => /^gasóleo inicial desconhecido: confirma o depósito/.test(x)), JSON.stringify(a.avisosVermelhos))
+    assert.equal(gasoleoDeMenos(a), false, 'nenhuma regra do gasóleo com um número inventado')
+  }
+  // a sonda de volta e o nível conhecido (45 L) com um mínimo de 60 L: a regra corre e exclui
+  const conhecido = appFalso()
+  conhecido.self['tanks.fuel.0.currentVolume'] = 0.045
+  const k = await calcular(conhecido, { seguranca: { gasoleoMinL: 60 } })
+  assert.equal(k.alternativas.length, 0, 'com o nível conhecido o mínimo da configuração corre')
+  // e o nível conhecido e suficiente: sem aviso nenhum de gasóleo
+  const certo = await calcular(appFalso(), { gasoleoDesconhecidoL: 30 })
+  assert.ok(certo.alternativas.length >= 1)
+  for (const a of certo.alternativas) assert.equal(a.avisosVermelhos.some(x => /gasóleo/.test(x)), false)
+})

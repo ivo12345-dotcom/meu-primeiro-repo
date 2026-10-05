@@ -1704,3 +1704,34 @@ test('F2b Menor 8 (decisão n.º 19): o desacerto do relógio do Pi diz-se com a
   assert.equal((await chamar(s.r.get['/plano-ativo'])).relogioDesacertadoS, 90)
   s.p.stop()
 })
+
+test('F2b Menor 3 (auditoria I-12): a navegar com a sonda do gasóleo perdida o gasóleo à chegada é desconhecido — os litros frescos pelo consumo não entram (nem um aviso de recursos com eles) e o GET diz gasoleoSemLeitura (a bateria, que tem leitura, não); com a sonda de volta, a regra dos 40 L corre', async () => {
+  const s = await preparar()
+  await sair(s)
+  const REC = 'notifications.rota.recursos'
+  for (let k = 3; k < 6; k++) { s.por(s.alt.rasto[k]); await s.ciclo() }
+  let g = await chamar(s.r.get['/plano-ativo'])
+  assert.ok(Number.isFinite(g.recursos.gasoleoChegadaL) && Number.isFinite(g.recursos.bateriaChegadaPct))
+  assert.deepEqual([g.recursos.gasoleoSemLeitura, g.recursos.bateriaSemLeitura], [false, false])
+  // a sonda perdida, e o plugin do gasóleo a publicar 30 L pelo consumo (frescos): abaixo do mínimo de 40 L
+  s.app.self['notifications.tanks.fuel.0.sondaPerdida'] = { state: 'warn', method: ['visual'], message: 'Sonda do gasóleo sem leitura há mais de 5 min' }
+  s.app.self['tanks.fuel.0.currentVolume'] = 0.030
+  s.por(s.alt.rasto[6]); await s.ciclo()
+  g = await chamar(s.r.get['/plano-ativo'])
+  assert.equal(g.recursos.gasoleoChegadaL, null, 'os litros pelo consumo não contam')
+  assert.equal(g.recursos.gasoleoSemLeitura, true)
+  assert.equal(g.recursos.bateriaSemLeitura, false)
+  assert.ok(Number.isFinite(g.recursos.bateriaChegadaPct))
+  assert.equal(g.recursos.semLeitura, false, 'só os dois sem leitura')
+  assert.equal(g.recursos.aviso, null)
+  assert.equal(s.app.self[REC]?.state ?? 'normal', 'normal', 'nenhum aviso de recursos com um nível que não se sabe')
+  // a sonda de volta: os 30 L medidos contam e a regra corre
+  s.app.self['notifications.tanks.fuel.0.sondaPerdida'] = { state: 'normal', method: [], message: 'Normal' }
+  s.por(s.alt.rasto[7]); await s.ciclo()
+  g = await chamar(s.r.get['/plano-ativo'])
+  assert.ok(g.recursos.gasoleoChegadaL < 30, `${g.recursos.gasoleoChegadaL}`)
+  assert.equal(g.recursos.gasoleoSemLeitura, false)
+  assert.equal(s.app.self[REC].state, 'warn')
+  assert.match(s.app.self[REC].message, /gasóleo à chegada ~\d+ L/)
+  s.p.stop()
+})
