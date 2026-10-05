@@ -12,8 +12,8 @@ Notas, desenhos e software do veleiro Arlequin, que navega sobretudo a solo.
 
 ## Notas do barco
 
-- [`PILOTO-AUTOMATICO.md`](PILOTO-AUTOMATICO.md) — o piloto automático: hoje não há, e o plano
-  está por decidir (as opções lado a lado).
+- [`PILOTO-AUTOMATICO.md`](PILOTO-AUTOMATICO.md) — o piloto automático: decidido a 02/10 o Raymarine
+  EV-100 Wheel, por comprar e instalar (hoje ainda não há piloto); as outras opções ficam como histórico.
 - [`LEME-EMERGENCIA.md`](LEME-EMERGENCIA.md) — o leme de emergência: a cana, o leme de painel e o
   governo com drogue.
 - [`MASTREACAO.md`](MASTREACAO.md) — a mastreação fixa.

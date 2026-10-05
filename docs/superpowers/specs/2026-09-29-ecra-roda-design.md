@@ -145,4 +145,5 @@ O que mudou depois deste desenho; o resto mantém-se.
 - **Simulador `navegar-demo`:** o vento real é de 14 nós de **020°** (a rota até à Nazaré fica
   contra o vento) e a rota tem **4 WP** (Sul Carvoeiro, Carvoeiro, Baleal e Nazaré:
   `arlequin-simulador/lib/navegacao.js`).
-- **Piloto automático:** continua a não haver; está por decidir (`PILOTO-AUTOMATICO.md`).
+- **Piloto automático:** continua a não haver. Decidido a 02/10: Raymarine EV-100 Wheel, por comprar e
+  instalar (`PILOTO-AUTOMATICO.md` §3); a ligação ao ecrã fica para depois de montado.
