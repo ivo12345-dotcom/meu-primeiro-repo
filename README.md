@@ -23,9 +23,14 @@ Notas, desenhos e software do veleiro Arlequin, que navega sobretudo a solo.
 
 ## Desenhos e outros documentos
 
-- `docs/superpowers/specs/` — os desenhos aprovados pelo Ivo, cada um com a data;
-  `docs/superpowers/plans/` — os planos de implementação.
-- `docs/` — a lista de compras, a folha de calibração do gasóleo e as capturas do ecrã.
+- `docs/superpowers/specs/` — os desenhos aprovados pelo Ivo, cada um com a data e, no fim, as
+  "Notas de implementação" (o que mudou depois, incluindo a auditoria de 02–03/10: onde diferem do
+  texto, valem as notas); `docs/superpowers/plans/` — os planos de implementação.
+- `docs/` — a lista de compras, a folha de calibração do gasóleo, as capturas do ecrã e os PDF dos
+  desenhos da melhor rota "Antes de sair" (`melhor-rota-3b1-antes-de-sair.pdf`) e "A navegar"
+  (`melhor-rota-3b2-a-navegar.pdf`), refeitos a 05/10 a partir dos desenhos corrigidos.
 - Na raiz: a planta, o esquema de ligações e o esquema de energia (`*-arlequin.svg` e `.pdf`), a
-  maqueta do ecrã de 28/09, a polar estimada (uma cópia; o código usa a do ecrã) e os PDF da lista
-  de compras, da folha de calibração e da proposta da melhor rota de 29/09.
+  maqueta do ecrã de 28/09 (histórico), a polar estimada (uma cópia; o código usa a do ecrã) e os PDF
+  da lista de compras, da folha de calibração e da proposta da melhor rota de 29/09
+  (`melhor-rota-ia-explicado.pdf`: histórico, com o aviso no topo; os números que valem estão no
+  `NAVEGACAO.md`).
