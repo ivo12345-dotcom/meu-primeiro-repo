@@ -85,3 +85,36 @@ abastecimento simulado no diário.
   deitar e com a leitura estável durante 20 s; onde a boia não mexe, guarda-se só o intervalo.
   Também se importa a folha do multímetro (`docs/folha-calibracao-gasoleo.html`)
   (`lib/calibracao.js`, `POST /calibracao/*`).
+
+## Notas de implementação (auditoria, 02–03/10)
+
+O que a auditoria mudou (frentes F6 e F6b; as decisões do Ivo numeradas como na lista da
+auditoria). Verificado no código a 05/10. Onde o texto acima e estas notas diferem, valem estas.
+
+- **Sonda perdida** (I-12): as duas tensões (sonda e alimentação) só contam com ≤ 60 s de idade, por
+  isso a app I2C do OpenPlotter tem de as mandar **pelo menos de 60 em 60 s**. Sem elas há 5 min
+  (cerca de 6 min depois da última leitura): `notifications.tanks.fuel.0.sondaPerdida` (`warn`, só
+  no ecrã: "Sonda do gasóleo sem leitura há mais de 5 min (ADS1115, app I2C do OpenPlotter): …");
+  limpa logo que as tensões voltam.
+- **Sem sonda, o nível continua pelo consumo** enquanto o motor está acompanhado: a trabalhar
+  (rotações frescas, ≤ 10 s) e com o consumo conhecido, ou parado com certeza (rotações frescas ou
+  a ignição desligada, `propulsion.main.ligacao` = `calado`). Sem leitura do motor (sem J1939, ou
+  `sem-ligacao`) deixa de publicar o nível, e o ecrã diz "sem leitura (último N L, há X min)". A fuga,
+  o consumo anormal e o abastecimento precisam da sonda.
+- **Calibrar sem sonda** é recusado logo: o `POST /calibrar` e o `POST /abastecimento` respondem
+  503 "sem leitura da sonda do gasóleo (ADS1115, app I2C do OpenPlotter): não gravei nada; tenta
+  outra vez quando a sonda voltar"; com a sonda a ler e sem tabela, o "Calibrar" continua aceite (é
+  o 1.º passo da calibração).
+- **Reserva** (M-51): o alarme acende a ≤ 40 L (este plugin e o ecrã); a rota exclui uma passagem
+  que chega com < 40 L no pior caso. Uma passagem que chega com exatamente 40 L passa na rota e
+  acende a reserva à chegada.
+- **Apito** (decisão n.º 2, contrato C1): a `fuga` é `alarm` com `apito: 'continuo'` (perigo
+  imediato); a `reserva` e o `consumoAnormal` são `warn` com som (apito curto no ecrã); a
+  `sondaPerdida` é só visual.
+- **Reinício** (nota do SignalK 2.33): os alarmes ativos (reserva, fuga com a janela de 12 h,
+  consumo anormal, sonda perdida) ficam em `alarmes-ativos.json` e voltam ao arrancar (até 10 min
+  depois).
+- **Permissões** (K-11, contrato C2): GET `/estado` e `/calibracao` com `router.access('readonly')`;
+  os POST (`/calibrar`, `/abastecimento`, `/calibracao/*`) com `router.access('readwrite')`.
+- **Diário:** com a segurança ligada, o `signalk-logbook` só aceita admin: os abastecimentos só vão
+  ao diário com um token de admin no campo `token` deste plugin (fica só aqui, nunca no ecrã).
