@@ -286,7 +286,9 @@ module.exports = function (app, deps = {}) {
       socDesconhecido: { type: 'number', title: 'SoC a assumir sem leitura da bateria (0–1)', default: 0.8 },
       gasoleoDesconhecidoL: { type: 'number', title: 'Gasóleo a assumir sem leitura do depósito (L)', default: 100 },
       // o banco de serviço de 440 Ah (bancos 2 + 3) e o solar com perdas (decisão do Ivo n.º 4, auditoria
-      // I-13, contrato C5): os mesmos valores do lib/energia.js (PADRAO)
+      // I-13, contrato C5): os mesmos valores do lib/energia.js (PADRAO). Uma configuração gravada com os 200 Ah
+      // do esquema antigo passa a 440 uma vez e grava-se (migrarCapacidade, F2b Menor 5); depois, o que se puser
+      // fica
       energia: {
         type: 'object',
         title: 'Bateria de serviço (planeamento)',
@@ -1246,21 +1248,43 @@ module.exports = function (app, deps = {}) {
     return { rota: id, href, via: 'http' }
   }
 
+  // A bateria de serviço (auditoria I-13, decisão do Ivo n.º 4; revisão da F2, F2b Menor 5): uma configuração gravada no
+  // Admin UI com o esquema antigo tem os 200 Ah que eram o valor por omissão escritos. Passam a 440 UMA vez: em
+  // memória, com o registo a dizê-lo, e a configuração é gravada com o valor novo (a API de opções do servidor,
+  // sem reiniciar o plugin); só depois de gravada se escreve a marca (migracoes.json, na pasta do plugin) de que já
+  // se fez — a partir daí um valor posto à mão fica, até outros 200 Ah. Se a gravação falha, ou o servidor não tem a
+  // API, fica a 440 só em memória, sem marca, e repete-se no arranque seguinte.
+  const MIGRACOES = 'migracoes.json'
+  function migrarCapacidade (props) {
+    if (o.energia.capacidadeAh !== CAPACIDADE_AH_ANTIGA) return
+    let feitas = {}
+    try { feitas = JSON.parse(fs.readFileSync(path.join(dirPlugin, MIGRACOES), 'utf8')) } catch { /* ainda nenhuma */ }
+    if (eObjeto(feitas) && feitas.capacidadeAh440) return // já se fez: os 200 Ah de agora são de propósito
+    const nova = energiaPlano.PADRAO.capacidadeAh
+    o.energia.capacidadeAh = nova
+    const aviso = `energia.capacidadeAh = ${CAPACIDADE_AH_ANTIGA} na configuração era o valor por omissão antigo: passa a ${nova} Ah (o banco de serviço, decisão n.º 4)`
+    if (typeof app.savePluginOptions !== 'function') {
+      app.error(`${aviso}; este servidor não deixa gravar a configuração do plugin, por isso repete-se em cada arranque até a gravares no Plugin Config`)
+      return
+    }
+    const base0 = eObjeto(props) ? props : {}
+    app.savePluginOptions({ ...base0, energia: { ...(eObjeto(base0.energia) ? base0.energia : {}), capacidadeAh: nova } }, (err) => {
+      if (err) { app.error(`${aviso}; não consegui gravar a configuração (${err?.message ?? err}): repete-se no próximo arranque`); return }
+      try { escreverAtomico(path.join(dirPlugin, MIGRACOES), JSON.stringify({ ...(eObjeto(feitas) ? feitas : {}), capacidadeAh440: new Date(relogioBase()).toISOString() })) } catch (e) { app.error(`não gravei a marca da migração da capacidade: ${e?.message ?? e}`) }
+      app.error(`${aviso}; a configuração foi gravada com o valor novo`)
+    })
+  }
+
   plugin.start = function (props) {
     o = {
       pasta: '~/arlequin-dados', afastamentoMinimo: seguranca.PADRAO.afastamentoMinimo, rpmCruzeiro: base.RPM_CRUZEIRO, polar: base.POLAR_PADRAO, previsoes: true,
       bateria: 'servico', deposito: '0', socDesconhecido: 0.8, gasoleoDesconhecidoL: 100, energia: {}, porta: 3000, ...props
     }
     o.barco = { ...padroes(plugin.schema.properties.barco), ...(eObjeto(props?.barco) ? props.barco : {}) }
-    // A bateria de serviço (auditoria I-13): uma configuração gravada no Admin UI com o esquema antigo tem os
-    // 200 Ah que eram o valor por omissão escritos — contam como não postos (fica o banco de 440 Ah, decisão
-    // do Ivo n.º 4), e o registo di-lo
+    // (a bateria de serviço: uma configuração com os 200 Ah antigos passa a 440 uma vez, em migrarCapacidade, depois
+    // de a pasta do plugin existir)
     o.energia = eObjeto(props?.energia) ? { ...props.energia } : {}
     o.seguranca = limitesPostos(props?.seguranca)
-    if (o.energia.capacidadeAh === CAPACIDADE_AH_ANTIGA) {
-      delete o.energia.capacidadeAh
-      app.error(`energia.capacidadeAh = ${CAPACIDADE_AH_ANTIGA} na configuração (o valor por omissão antigo) não conta: o banco de serviço tem ${energiaPlano.PADRAO.capacidadeAh} Ah (decisão n.º 4); grava a configuração do plugin para o tirar`)
-    }
     o.telefones = { ...padroes(plugin.schema.properties.telefones), ...(eObjeto(props?.telefones) ? props.telefones : {}) }
     pastaBase = path.resolve(o.pasta.startsWith('~') ? path.join(os.homedir(), o.pasta.slice(1)) : o.pasta)
     dirPlugin = app.getDataDirPath()
@@ -1277,6 +1301,7 @@ module.exports = function (app, deps = {}) {
       app.setPluginError?.(erroArranque)
       return
     }
+    migrarCapacidade(props)
     const lido = pa.ler(dirPlugin)
     planoAtivo = lido.plano
     if (lido.erro) app.error(lido.erro)
