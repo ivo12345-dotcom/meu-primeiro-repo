@@ -8,10 +8,10 @@
 // leste da marina de Cascais (9°25' W; decisão do Ivo n.º 8, auditoria M-12: a corrente fictícia é
 // a da barra, não a da baía de Cascais; até 02/10 era 9,42 W e apanhava a entrada da marina por
 // 0,003°). Fora dela (o resto da costa, de Caminha a VRSA) é 0: ao largo vale a corrente da
-// Open-Meteo. O simular.mjs (Algés → Peniche, o resultado de referência de 29/09) usa esta caixa
-// desde 01/10 (até aí, tudo a leste de 9°25' W, sem limite de latitude; a referência foi regravada,
-// chegada 05:00 → 05:01) e, desde 02/10, passa à mão o limite oeste com que foi gravada
-// (lonMin −9,42), para não mudar (auditoria D-01).
+// Open-Meteo. O simular.mjs (Algés → Peniche, o resultado de referência de 29/09) usa esta mesma
+// caixa, sem nada passado à mão, desde 03/10: a referência foi regravada com ela (chegada 05:03;
+// era 05:01 com o limite oeste antigo de 9,42 W, e 05:00 até 01/10, quando a corrente se aplicava
+// a tudo a leste de 9°25' W sem limite de latitude) (auditoria D-01, M-12).
 
 const MIN = 60000
 const H = 3600000

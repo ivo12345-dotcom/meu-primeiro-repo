@@ -22,7 +22,8 @@
 // estar em nenhuma das listas recebe o código para dar ao Ivo (uma vez por hora) e não fica autorizado.
 // O estado do encaminhador dos alarmes fica em encaminhador.json (escrita atómica): um reinício do plugin
 // não repete os avisos ativos nem o "✓ Resolvido"; depois de um reinício do servidor (a árvore das
-// notificações vem vazia), um aviso ainda ativo volta a seguir uma vez (lib/mensagens.js).
+// notificações vem vazia), um aviso ainda ativo que volte nos 2 min seguintes também não se repete;
+// só volta a seguir se reaparecer mais tarde (lib/mensagens.js, nota do SignalK 2.33).
 // As mensagens dos alarmes vão para o Telegram por uma fila, gravada no mesmo encaminhador.json
 // (auditoria K-09, decisão n.º 17; lib/fila.js e lib/entrega.js): uma que o Telegram não aceitou fica lá
 // e tenta-se outra vez, com recuo até 1 min, até ser entregue a pelo menos um chat autorizado; chega com

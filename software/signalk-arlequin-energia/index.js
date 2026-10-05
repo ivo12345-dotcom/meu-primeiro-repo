@@ -122,7 +122,7 @@ module.exports = function (app) {
       app.setPluginStatus(textoSessao(s.fechada))
       registar(s.fechada, {
         ficheiro: ficheiroSessoes,
-        logbookUrl: opcoes.logbook ? opcoes.logbookUrl : null,
+        logbookUrl: opcoes.logbook ? (opcoes.logbookUrl || 'http://localhost:3000/plugins/signalk-logbook/logs') : null,
         token: opcoes.token
       }).then(r => { if (r.erro) app.error(r.erro) }, e => app.error(e.message))
     }

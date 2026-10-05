@@ -29,7 +29,8 @@ const { criarAtivos } = require('./lib/ativos')
 //     normal ou o MDI calado (ignição desligada).
 // O estado da ligação (contrato C11; como se distingue a ignição desligada de uma leitura perdida está
 // em lib/ligacao.js): propulsion.main.ligacao = 'a-receber' | 'calado' | 'sem-ligacao', publicado a cada
-// segundo (nos primeiros 5 s sem tramas ainda não se sabe e não se publica).
+// segundo (com a interface de pé e o candump vivo, nos primeiros 5 s sem tramas ainda não se sabe e
+// não se publica; com a interface em baixo publica-se 'sem-ligacao' logo).
 //   - 'calado' (a ignição desligada): os valores a null, o consumo estimado 0, o estado "stopped" e os
 //     alarmes que vêm dos dados do motor (sobreaquecimento, alternador, mapa do MDI) voltam a normal;
 //   - 'sem-ligacao' (a interface em baixo ou o candump a falhar): os valores a null, o consumo estimado e
