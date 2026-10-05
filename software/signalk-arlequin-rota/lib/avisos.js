@@ -11,7 +11,9 @@
 //   cambar / virar                           (linha do tempo: a proa à vela muda > 40° num minuto;
 //                                             as manobras a menos de 2 h umas das outras juntam-se)
 //   chegada de noite                         (o último ponto)
-//   gasóleo / bateria a caminho da reserva   (a linha do tempo passa a reserva antes do destino)
+//   gasóleo / bateria a caminho da reserva   (a linha do tempo passa a reserva antes do destino; sem reserva do
+//                                             gasóleo — reservaGasoleoL null: o nível é desconhecido e a linha do
+//                                             tempo tem um número de trabalho — nunca há o do gasóleo)
 //   só eu: come e bebe de 3 em 3 h           (desenho geral, "Avisos")
 //
 // precaucoes: a tabela "Precauções" do desenho geral (2026-09-29), por alternativa.
@@ -57,7 +59,8 @@ const virgula = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toFixed(d).rep
 const rumo3 = (x) => String(Math.round(norm(x)) % 360).padStart(3, '0')
 const numero = (x) => String(x).replace('.', ',')
 
-// passagem: { pontos, eventos, resumo }; destino: { nome, conhecido }; tripulacao; gasoleoInicial (L).
+// passagem: { pontos, eventos, resumo }; destino: { nome, conhecido }; tripulacao; opcoes (PADRAO; reservaGasoleoL: L, ou
+// null sem nível do gasóleo conhecido: então não há o aviso do gasóleo).
 // → [{ t (ISO), hora, tipo, texto, antecedenciaMin }] por ordem.
 function avisosDaPassagem ({ passagem, destino = null, tripulacao = 'so', opcoes = {} }) {
   const o = { ...PADRAO, ...opcoes }
@@ -128,7 +131,8 @@ function avisosDaPassagem ({ passagem, destino = null, tripulacao = 'so', opcoes
   }
 
   // gasóleo e bateria a caminho da reserva
-  const pGas = pontos.find(p => p.gasoleo != null && p.gasoleo < o.reservaGasoleoL)
+  // (sem reserva — o nível do gasóleo é desconhecido e p.gasoleo é só o número de trabalho da simulação — não há aviso)
+  const pGas = Number.isFinite(o.reservaGasoleoL) ? pontos.find(p => p.gasoleo != null && p.gasoleo < o.reservaGasoleoL) : undefined
   if (pGas && pGas !== ult) add(pGas.t, 'gasoleo', `O gasóleo passa a reserva (${o.reservaGasoleoL} L) antes do destino: poupa o motor`)
   const pBat = pontos.find(p => p.soc != null && p.soc * 100 < o.reservaBateriaPct)
   if (pBat && pBat !== ult) add(pBat.t, 'bateria', `A bateria passa os ${o.reservaBateriaPct}% antes do destino: desliga o que não precisas ou liga o motor`)

@@ -52,6 +52,18 @@ test('avisos: rizar, pôr do sol, chuva/visibilidade (radar), rotação do vento
   assert.deepEqual(b, [])
 })
 
+test('F9 (o desconhecido nunca se assume): sem reserva de gasóleo (reservaGasoleoL null: o nível é desconhecido e a linha do tempo corre com um número de trabalho, que pode até ficar abaixo de zero) nunca há o aviso do gasóleo; o da bateria não muda', () => {
+  const n = 600
+  const m = {}
+  for (let i = 500; i < n; i++) m[i] = { gasoleo: -5, soc: 0.45 }
+  const passagem = { pontos: linha(n, {}, m), eventos: [], resumo: { chegou: true } }
+  const com = avisosDaPassagem({ passagem, tripulacao: 'acompanhado' })
+  assert.ok(com.some(x => x.tipo === 'gasoleo'), 'controlo: com a reserva (40 L) o aviso existe')
+  const sem = avisosDaPassagem({ passagem, tripulacao: 'acompanhado', opcoes: { reservaGasoleoL: null } })
+  assert.equal(sem.some(x => x.tipo === 'gasoleo'), false, JSON.stringify(sem.map(x => x.texto)))
+  assert.ok(sem.some(x => x.tipo === 'bateria'), 'a bateria não muda')
+})
+
 test('M-03: chegada de noite a um destino sem o campo "conhecido": "um porto que não conheces"', () => {
   const pontos = linha(60, { noite: true })
   for (const destino of [{ nome: 'Peniche' }, { nome: 'Peniche', conhecido: false }]) {

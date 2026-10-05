@@ -165,24 +165,71 @@ test('falhas: sem GPS, sem previsão, destino desconhecido, já no destino, sem 
   assert.match((await calcular(entrada(), deps({ obterPrevisao: async () => ({ previsao: curta, obtida: curta.obtida, idadeH: 0 }) }))).erro, /^A previsão acaba às 17:32: não cobre nenhuma passagem até Peniche\.$/)
 })
 
-test('no mar (a mais de 0,5 MN de um porto): parte da posição atual; sem SoC nem gasóleo assume e avisa', async () => {
+test('no mar (a mais de 0,5 MN de um porto): parte da posição atual; sem SoC assume e avisa, sem gasóleo diz que é desconhecido (nunca assume litros)', async () => {
   const r = await calcular(entrada({ instrumentos: { posicao: { lat: 38.97, lon: -9.53 } }, sairAgora: true }), deps())
   assert.equal(r.erro, undefined, r.erro)
   assert.equal(r.partida.emMar, true)
   assert.deepEqual(r.alternativas[0].rota[0], [38.97, -9.53])
   assert.ok(r.avisos.includes('Sem estado da bateria: assumi 80%'))
-  assert.ok(r.avisos.includes('Sem nível do gasóleo: assumi 100 L'))
-  // o gasóleo inicial desconhecido é um aviso vermelho em cada alternativa (a regra corre com os 100 L assumidos)
-  for (const a of r.alternativas) assert.ok(a.avisosVermelhos.includes('gasóleo inicial desconhecido: confirma o depósito (assumi 100 L)'), JSON.stringify(a.avisosVermelhos))
+  // F9 (decisão do dono: o desconhecido nunca se assume): o gasóleo sem nível não leva litros assumidos, só "confirma o depósito"
+  assert.ok(r.avisos.includes('Sem nível do gasóleo: confirma o depósito'), JSON.stringify(r.avisos))
+  // o gasóleo inicial desconhecido é um aviso vermelho em cada alternativa (a regra do mínimo não corre: não há número)
+  for (const a of r.alternativas) assert.ok(a.avisosVermelhos.includes('gasóleo inicial desconhecido: confirma o depósito'), JSON.stringify(a.avisosVermelhos))
   // I-14: a bateria desconhecida também (a regra dos 50 % à chegada corre com os 80 % assumidos), nunca em silêncio
   for (const a of r.alternativas) assert.ok(a.avisosVermelhos.includes('estado da bateria desconhecido: confirma a carga (assumi 80%)'), JSON.stringify(a.avisosVermelhos))
-  // em "sair agora" os avisos vermelhos da 1.ª passam aos gerais, mas o gasóleo e a bateria assumidos só uma vez
-  assert.equal(r.avisos.filter(x => /assumi 100 L/.test(x)).length, 1, JSON.stringify(r.avisos))
+  // em "sair agora" os avisos vermelhos da 1.ª passam aos gerais, mas o gasóleo e a bateria desconhecidos só uma vez
+  assert.equal(r.avisos.filter(x => /^Sem nível do gasóleo|gasóleo inicial desconhecido/.test(x)).length, 1, JSON.stringify(r.avisos))
   assert.equal(r.avisos.filter(x => /assumi 80%/.test(x)).length, 1, JSON.stringify(r.avisos))
+  assert.doesNotMatch(JSON.stringify(r), /assumi \d+ L/, 'nenhum litro assumido em parte nenhuma do resultado')
   // com a bateria conhecida, nada disto
   const conhecida = await correr('so', entrada(), deps())
   for (const a of conhecida.alternativas) assert.ok(!a.avisosVermelhos.some(x => /estado da bateria desconhecido/.test(x)), JSON.stringify(a.avisosVermelhos))
   assert.equal(r.desistenciaResumo.includes('Algés'), false) // sem porto de partida: volta ao abrigo mais perto
+})
+
+test('F9 (decisão do dono: o desconhecido nunca se assume): sem o nível do gasóleo o mínimo à chegada não corre com um número inventado — nem exclui, nem aprova — e cada alternativa leva só o aviso vermelho, sem litros, também em "Sair agora"', async () => {
+  const SEM_NIVEL = { posicao: ALGES, socPct: 90 } // sem gasoleoL
+  const impossivel = { opcoes: { seguranca: { gasoleoMinL: 1000 } } } // nenhum depósito chega a tanto
+  // controlo: com o nível CONHECIDO (124 L) a regra corre e exclui tudo
+  const k = await calcular(entrada(), deps(impossivel))
+  assert.equal(k.alternativas.length, 0, 'controlo: com 124 L e um mínimo de 1000 L a regra exclui tudo')
+  // sem nível: nada se exclui por causa do gasóleo (os 100 L assumidos, abaixo dos 1000, excluíam tudo)
+  const r = await calcular(entrada({ instrumentos: SEM_NIVEL }), deps(impossivel))
+  assert.equal(r.erro, undefined, r.erro)
+  assert.ok(r.alternativas.length >= 1, `sem alternativas: ${JSON.stringify(r.veredicto)}`)
+  for (const a of r.alternativas) {
+    assert.equal(a.excluida, false, a.id)
+    assert.equal(a.excluidaSemSairAgora, false, a.id)
+    assert.ok(!a.motivos.some(m => /gasóleo/.test(m)), JSON.stringify(a.motivos))
+    // só o aviso vermelho da segurança (lib/seguranca.js), sem litros
+    assert.deepEqual(a.avisosVermelhos.filter(x => /gasóleo/.test(x)), ['gasóleo inicial desconhecido: confirma o depósito'], a.id)
+  }
+  // com a bateria lida, nada neste resultado é assumido
+  assert.doesNotMatch(JSON.stringify(r), /assumi/)
+  assert.deepEqual(r.avisos.filter(x => /gasóleo/.test(x)), ['Sem nível do gasóleo: confirma o depósito'])
+  // "Sair agora": continua a ser um aviso vermelho, e nunca uma exclusão levantada (não há exclusão por causa do gasóleo)
+  const s = await calcular(entrada({ instrumentos: SEM_NIVEL, tripulacao: 'acompanhado', sairAgora: true }), deps(impossivel))
+  assert.ok(s.alternativas.length >= 1)
+  for (const a of s.alternativas) {
+    assert.equal(a.excluidaSemSairAgora, false, a.id)
+    assert.ok(a.avisosVermelhos.includes('gasóleo inicial desconhecido: confirma o depósito'), JSON.stringify(a.avisosVermelhos))
+    assert.ok(!a.motivos.some(m => /gasóleo/.test(m)), JSON.stringify(a.motivos))
+  }
+  assert.equal(s.avisos.filter(x => /gasóleo/.test(x)).length, 1, JSON.stringify(s.avisos)) // uma só vez (o geral)
+  // controlo: com o nível conhecido o mesmo mínimo levanta-se em "Sair agora" (excluidaSemSairAgora) — é a regra a correr
+  const ks = await calcular(entrada({ tripulacao: 'acompanhado', sairAgora: true }), deps(impossivel))
+  assert.ok(ks.alternativas.length >= 1)
+  for (const a of ks.alternativas) assert.equal(a.excluidaSemSairAgora, true, a.id)
+})
+
+test('F9: sem o nível do gasóleo não há o aviso "O gasóleo passa a reserva" a meio da passagem (a simulação corre com um número de trabalho, que nunca decide nem se mostra); com o nível conhecido há', async () => {
+  const reserva = { opcoes: { seguranca: { gasoleoMinL: 120 } } } // como o teste M-13 (124 L conhecidos): o número de trabalho (100 L) começava logo abaixo
+  const sairAgora = { tripulacao: 'acompanhado', sairAgora: true }
+  const sem = await calcular(entrada({ ...sairAgora, instrumentos: { posicao: ALGES, socPct: 90 } }), deps(reserva))
+  assert.ok(sem.alternativas.length >= 1)
+  for (const a of sem.alternativas) assert.ok(!a.avisos.some(x => x.tipo === 'gasoleo'), JSON.stringify(a.avisos.map(x => x.texto)))
+  const conhecido = await calcular(entrada(sairAgora), deps(reserva))
+  assert.ok(conhecido.alternativas.some(a => a.avisos.some(x => x.tipo === 'gasoleo')), 'controlo: com o nível conhecido o aviso existe')
 })
 
 test('alternativas pelo rotas.gerarAlternativas em cada partida (hora da partida, vento previsto e o registo): Peniche → Nazaré tem a variante pelo Canal da Berlenga', async () => {

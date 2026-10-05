@@ -116,9 +116,10 @@
 // A navegar (desenho 3b-2): um ciclo de minuto a minuto (setInterval) lê do SignalK a posição, o SOG, o
 // vento real e a pressão (cada um com a hora: mais de 2 min, ou sem hora legível, conta como em falta;
 // sem posição é "sem GPS"), o gasóleo e o SoC (também só frescos e sem o aviso de sonda/sensor perdido:
-// auditoria I-12; com a sonda do gasóleo perdida o nível é desconhecido de verdade — nunca os litros pelo
-// consumo, nem um número assumido a decidir: no cálculo o mínimo à chegada não corre e a alternativa leva o aviso
-// vermelho "gasóleo inicial desconhecido: confirma o depósito"; a navegar, "sem leitura": F2b Menor 3) e a rota ativa (API de rumo v2, com um limite de 10 s: sem
+// auditoria I-12; com a sonda do gasóleo perdida, ou sem leitura, o nível é desconhecido de verdade — nunca os
+// litros pelo consumo, nem um número assumido a decidir: no cálculo o mínimo à chegada não corre e a alternativa
+// leva o aviso vermelho "gasóleo inicial desconhecido: confirma o depósito"; a navegar, "sem leitura": F2b Menor 3,
+// F9) e a rota ativa (API de rumo v2, com um limite de 10 s: sem
 // resposta não se sabe a rota e o ciclo segue); segue o plano ativo (lib/plano-ativo.js: saída, chegada
 // com progresso na rota, rota mudada, a chegada em pausa e a sugestão de outro porto), o acompanhamento
 // (lib/acompanhamento.js) com a previsão mais recente arquivada que cubra a posição (previsoes/ da
@@ -197,9 +198,6 @@ const AVISO_IVO_MS = 24 * 3600000 // o aviso ao Ivo de uma mensagem que não che
 // O lembrete "avisa-os" de um plano entregue a terra e nunca ativado fica até tanto depois da hora de alarme
 // mais tarde (F2b Menor 4): sem um "Avisei-os" no servidor, é o limite para não ficar para sempre
 const SEM_PLANO_DEPOIS_MS = 24 * 3600000
-// O "mínimo de gasóleo à chegada" quando o nível é desconhecido (sonda perdida): um valor que nenhuma passagem
-// atinge — a regra e o evento da reserva do lib/calculo.js não correm (F2b Menor 3)
-const SEM_MINIMO_GASOLEO_L = -1e9
 // a escrita atómica (com o fsync do ficheiro e da pasta, onde o sistema deixa): uma só, a do lib/previsao.js
 const { escreverAtomico } = prev
 
@@ -297,7 +295,6 @@ module.exports = function (app, deps = {}) {
       bateria: { type: 'string', title: 'ID do banco de serviço (electrical.batteries.<id>)', default: 'servico' },
       deposito: { type: 'string', title: 'Depósito de gasóleo (tanks.fuel.<id>)', default: '0' },
       socDesconhecido: { type: 'number', title: 'SoC a assumir sem leitura da bateria (0–1)', default: 0.8 },
-      gasoleoDesconhecidoL: { type: 'number', title: 'Gasóleo a assumir sem leitura do depósito (L)', default: 100 },
       // o banco de serviço de 440 Ah (bancos 2 + 3) e o solar com perdas (decisão do Ivo n.º 4, auditoria
       // I-13, contrato C5): os mesmos valores do lib/energia.js (PADRAO). Uma configuração gravada com os 200 Ah
       // do esquema antigo passa a 440 uma vez e grava-se (migrarCapacidade, F2b Menor 5); depois, o que se puser
@@ -566,8 +563,9 @@ module.exports = function (app, deps = {}) {
   // valor fica na árvore). Fora disso são desconhecidos (falha segura): o cálculo leva o aviso vermelho em cada
   // alternativa, e a navegar fica "recursos: sem leitura". Com a sonda perdida o nível é desconhecido DE VERDADE
   // (revisão da F2, F2b Menor 3, decisão do Ivo): nunca se usam os litros pelo consumo (podiam ser mais otimistas
-  // do que a realidade) nem se decide com um número assumido — ver gasoleoSemMinimo em executar. A capacidade do
-  // depósito é da configuração do plugin e não envelhece. (A rota não lê as rotações do motor.)
+  // do que a realidade) nem se decide com um número assumido — gasoleoL null, e o lib/calculo.js trata do
+  // desconhecido (F9). A capacidade do depósito é da configuração do plugin e não envelhece. (A rota não lê as
+  // rotações do motor.)
   const avisoAtivo = (caminho) => { const st = app.getSelfPath?.(caminho)?.value?.state; return typeof st === 'string' && st !== 'normal' }
   const sondaPerdida = (oo = o) => avisoAtivo(`notifications.tanks.fuel.${oo.deposito}.sondaPerdida`)
   function instrumentos (oo = o, agora = relogio()) {
@@ -1180,19 +1178,17 @@ module.exports = function (app, deps = {}) {
       destino = { rotaAtiva: pts }
     }
     const costa = costaAtual()
+    // O nível do gasóleo desconhecido (sonda perdida ou sem leitura: inst.gasoleoL null) nunca decide nada nem se
+    // assume (F2b Menor 3, decisão do dono; desenho 3a): o cálculo (lib/calculo.js) dá o aviso vermelho "gasóleo
+    // inicial desconhecido: confirma o depósito" e não corre a regra do mínimo — aqui não há nada a fazer.
     const inst = instrumentos(oo)
-    // Com a sonda perdida o nível é desconhecido e nunca decide nada (F2b Menor 3; desenho 3a: o gasóleo
-    // desconhecido nunca exclui, só dá o aviso vermelho "gasóleo inicial desconhecido: confirma o depósito"). O
-    // cálculo precisa de um número para simular (gasoleoDesconhecidoL) e continua a pô-lo no aviso, mas a regra
-    // do mínimo à chegada (e o evento da reserva) não corre com ele: sem mínimo (SEM_MINIMO_GASOLEO_L).
-    const limites = sondaPerdida(oo) ? { ...oo.seguranca, gasoleoMinL: SEM_MINIMO_GASOLEO_L } : oo.seguranca
     const r = await calculo.calcular(
       { instrumentos: inst, destino, tripulacao: pedido.tripulacao, sairAgora: pedido.sairAgora, agora: relogio() },
       {
         costa, polar, modelos, versoes, obterPrevisao: obterPrevisaoCom(oo, pastaDados),
         opcoes: {
           afastamentoMinimo: oo.afastamentoMinimo, rpmCruzeiro: oo.rpmCruzeiro, energia: oo.energia,
-          socDesconhecido: oo.socDesconhecido, gasoleoDesconhecidoL: oo.gasoleoDesconhecidoL, seguranca: limites
+          socDesconhecido: oo.socDesconhecido, seguranca: oo.seguranca
         },
         progresso: (f, texto) => { t.progresso = Math.round(f * 100) / 100; t.texto = texto },
         // o registo dos erros de programação da geometria (lib/rotas.js: log(msg, erro))
@@ -1304,7 +1300,7 @@ module.exports = function (app, deps = {}) {
   plugin.start = function (props) {
     o = {
       pasta: '~/arlequin-dados', afastamentoMinimo: seguranca.PADRAO.afastamentoMinimo, rpmCruzeiro: base.RPM_CRUZEIRO, polar: base.POLAR_PADRAO, previsoes: true,
-      bateria: 'servico', deposito: '0', socDesconhecido: 0.8, gasoleoDesconhecidoL: 100, energia: {}, porta: 3000, ...props
+      bateria: 'servico', deposito: '0', socDesconhecido: 0.8, energia: {}, porta: 3000, ...props
     }
     o.barco = { ...padroes(plugin.schema.properties.barco), ...(eObjeto(props?.barco) ? props.barco : {}) }
     // (a bateria de serviço: uma configuração com os 200 Ah antigos passa a 440 uma vez, em migrarCapacidade, depois

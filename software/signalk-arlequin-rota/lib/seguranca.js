@@ -33,7 +33,9 @@
 //     campos sem dados, e os `aproximado` (vieram de um ponto de previsão mais longe), só dão um
 //     aviso (avisos[]);
 //   - gasóleo < 40 L ou bateria < 50% à chegada, no cenário pessimista. O gasóleo inicial ou a
-//     bateria à chegada desconhecidos (não números) dão sempre um aviso vermelho, sem excluir.
+//     bateria à chegada desconhecidos (não números) dão sempre um aviso vermelho, sem excluir:
+//     o lib/calculo.js passa `gasoleoInicial: null` quando o nível do gasóleo é desconhecido — a regra do
+//     mínimo não corre com um número assumido (decisão do dono, F9: o desconhecido nunca se assume).
 //   (lib/calculo.js trata da mesma maneira a previsão que acaba antes da chegada.)
 // "Não recomendada sozinho" (só com tripulação "so"):
 //   - vento médio > 22 nós, rajadas > 30 ou ondas > 3 m (o máximo dos 3 resumos: o vento do
@@ -80,6 +82,10 @@ const PADRAO = Object.freeze({
 // leme. A calma, as distâncias à costa e os 3 MN do vento de terra não: mexem com a geometria e com
 // a regra do motor em calma (o afastamento mínimo tem a sua opção, afastamentoMinimo).
 const LIMITES = Object.freeze(['ventoMedioMax', 'rajadaMax', 'ondasMax', 'ventoMaxAcompanhado', 'rajadaMaxAcompanhado', 'ondasMaxAcompanhado', 'gasoleoMinL', 'bateriaMinPct', 'lemeMaxH'])
+
+// O aviso vermelho do nível do gasóleo desconhecido (sem litros: nunca se assume um número); o lib/calculo.js usa o
+// mesmo texto para não o repetir nos avisos gerais do "Sair agora"
+const AVISO_GASOLEO_DESCONHECIDO = 'gasóleo inicial desconhecido: confirma o depósito'
 
 const virgula = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toFixed(d).replace('.', ',')
 const inteiro = (x) => String(Math.round(x))
@@ -204,7 +210,8 @@ function minimoCosta (afastamento, opcoes = {}) {
 //   pessimista, provavel, otimista: { resumo, pontos } de simularPassagem (o provável e o otimista para o
 //     canal, a previsão sem dados, os limites e a chegada de noite; o gasóleo, a bateria e o leme são do pessimista)
 //   destino: { nome, conhecido }; tripulacao: 'so' | 'acompanhado'; sairAgora: bool
-//   gasoleoInicial (L); costa (para a distância à terra; opcional se costaMinMn vier dado)
+//   gasoleoInicial (L; null ou não número: desconhecido — aviso vermelho, sem a regra do mínimo); costa (para a
+//   distância à terra; opcional se costaMinMn vier dado)
 //   costaMinMn: a distância já medida (a geometria de 5 e 8 MN é a mesma em todas as partidas)
 // → { excluida, excluidaSemSairAgora, naoRecomendada, motivos[], avisosVermelhos[], avisos[], horasLemeEq, costaMinMn, chegadaNoite }
 //   (avisos: linhas de aviso que não excluem, ex.: a previsão aproximada; excluidaSemSairAgora: em
@@ -269,7 +276,7 @@ function avaliar ({ alternativa, pessimista, provavel, otimista, destino, tripul
   // (desconhecidos: aviso vermelho sempre, que não exclui — o Ivo confirma-os a bordo)
   const desconhecido = []
   const fica = gasoleoInicial - r.gasoleoGasto
-  if (!Number.isFinite(gasoleoInicial)) desconhecido.push('gasóleo inicial desconhecido: confirma o depósito')
+  if (!Number.isFinite(gasoleoInicial)) desconhecido.push(AVISO_GASOLEO_DESCONHECIDO)
   else if (!Number.isFinite(fica)) desconhecido.push('gasóleo à chegada desconhecido')
   else if (fica < o.gasoleoMinL) vermelho.push(`chegas com ${inteiroAbaixo(Math.max(0, fica))} L de gasóleo no pior caso (mínimo ${o.gasoleoMinL} L)`)
   if (!Number.isFinite(r.socFinal)) desconhecido.push('bateria à chegada desconhecida')
@@ -310,4 +317,4 @@ function avaliar ({ alternativa, pessimista, provavel, otimista, destino, tripul
   return out
 }
 
-module.exports = { PADRAO, LIMITES, CAMPOS_CRITICOS, emCalma, horasLemeEquivalentes, distanciaRotaCosta, minimoCosta, trocosCanal, ondasNoCanal, previsaoIncompleta, avaliar }
+module.exports = { PADRAO, LIMITES, CAMPOS_CRITICOS, AVISO_GASOLEO_DESCONHECIDO, emCalma, horasLemeEquivalentes, distanciaRotaCosta, minimoCosta, trocosCanal, ondasNoCanal, previsaoIncompleta, avaliar }

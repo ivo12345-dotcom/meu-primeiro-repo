@@ -989,7 +989,7 @@ test('F2b Menor 5 (auditoria I-13, decisão n.º 4): os 200 Ah do valor por omis
   } finally { calculo.calcular = original }
 })
 
-test('F2b Menor 3 (auditoria I-12): com a sonda do gasóleo perdida o nível é DESCONHECIDO e nunca decide nada — nem os litros assumidos: o mínimo à chegada não corre com um número inventado (desconhecido nunca exclui, só avisa: desenho 3a) e cada alternativa leva o aviso vermelho "gasóleo inicial desconhecido: confirma o depósito"; com o nível conhecido o mínimo corre (o da configuração)', async () => {
+test('F2b Menor 3 (auditoria I-12), F9: com a sonda do gasóleo perdida o nível é DESCONHECIDO e nunca decide nada — nem os litros assumidos: o mínimo à chegada não corre com um número inventado (desconhecido nunca exclui, só avisa: desenho 3a) e cada alternativa leva o aviso vermelho "gasóleo inicial desconhecido: confirma o depósito"; com o nível conhecido o mínimo corre (o da configuração)', async () => {
   const SONDA = 'notifications.tanks.fuel.0.sondaPerdida'
   const calcular = async (app, props) => {
     const pl = plugin(app)
@@ -999,23 +999,60 @@ test('F2b Menor 3 (auditoria I-12): com a sonda do gasóleo perdida o nível é 
     return r
   }
   const gasoleoDeMenos = (a) => JSON.stringify(a).includes('de gasóleo no pior caso')
-  // a sonda perdida (o plugin do gasóleo continua a publicar litros pelo consumo, frescos) e 30 L assumidos, abaixo do
-  // mínimo de 40 L: antes, o 30 L inventado excluía todas as alternativas
+  // a sonda perdida (o plugin do gasóleo continua a publicar litros pelo consumo, frescos) e um mínimo de 1000 L
+  // (nenhum depósito chega): um número assumido (os 100 L de trabalho) excluía todas as alternativas
   const app = appFalso()
   app.self[SONDA] = { state: 'warn', method: ['visual'], message: 'Sonda do gasóleo sem leitura há mais de 5 min' }
-  const r = await calcular(app, { gasoleoDesconhecidoL: 30 })
+  const r = await calcular(app, { seguranca: { gasoleoMinL: 1000 } })
   assert.ok(r.alternativas.length >= 1, `sem alternativas: ${JSON.stringify(r.veredicto)}`)
   for (const a of r.alternativas) {
-    assert.ok(a.avisosVermelhos.some(x => /^gasóleo inicial desconhecido: confirma o depósito/.test(x)), JSON.stringify(a.avisosVermelhos))
+    assert.ok(a.avisosVermelhos.some(x => /^gasóleo inicial desconhecido: confirma o depósito$/.test(x)), JSON.stringify(a.avisosVermelhos))
     assert.equal(gasoleoDeMenos(a), false, 'nenhuma regra do gasóleo com um número inventado')
   }
+  assert.doesNotMatch(JSON.stringify(r), /assumi \d+ L/, 'nenhum litro assumido em parte nenhuma')
   // a sonda de volta e o nível conhecido (45 L) com um mínimo de 60 L: a regra corre e exclui
   const conhecido = appFalso()
   conhecido.self['tanks.fuel.0.currentVolume'] = 0.045
   const k = await calcular(conhecido, { seguranca: { gasoleoMinL: 60 } })
   assert.equal(k.alternativas.length, 0, 'com o nível conhecido o mínimo da configuração corre')
   // e o nível conhecido e suficiente: sem aviso nenhum de gasóleo
-  const certo = await calcular(appFalso(), { gasoleoDesconhecidoL: 30 })
+  const certo = await calcular(appFalso(), {})
   assert.ok(certo.alternativas.length >= 1)
   for (const a of certo.alternativas) assert.equal(a.avisosVermelhos.some(x => /gasóleo/.test(x)), false)
+})
+
+test('F9 (item 1): o plugin passa ao cálculo o nível do gasóleo desconhecido (null) e os limites da configuração tal e qual — sem o remendo do mínimo de −1e9 (com a sonda perdida ou sem leitura) nem a opção "gasóleo a assumir": o cálculo trata do desconhecido', async () => {
+  const calculo = require('../lib/calculo')
+  const original = calculo.calcular
+  const vistos = []
+  calculo.calcular = async (entrada, deps) => { vistos.push({ instrumentos: entrada.instrumentos, opcoes: deps.opcoes }); return { veredicto: { tipo: 'segue', texto: 'Segue', porque: [] }, destino: { id: 'peniche', nome: 'Peniche' }, alternativas: [] } }
+  const calc = async (app, props) => {
+    const pl = plugin(app)
+    pl.p.start({ pasta: path.join(app.dir, 'dados'), ...props })
+    await esperarResultado(pl.r, (await chamar(pl.r.post['/calcular'], { body: { destino: 'peniche', tripulacao: 'so' } })).id)
+    pl.p.stop()
+    return vistos.at(-1)
+  }
+  try {
+    // a sonda perdida (os litros pelo consumo continuam na árvore, frescos): o nível é desconhecido
+    const perdida = appFalso()
+    perdida.self['notifications.tanks.fuel.0.sondaPerdida'] = { state: 'warn', method: ['visual'], message: 'Sonda do gasóleo sem leitura há mais de 5 min' }
+    const a = await calc(perdida, { seguranca: { gasoleoMinL: 55 } })
+    assert.equal(a.instrumentos.gasoleoL, null)
+    assert.deepEqual(a.opcoes.seguranca, { gasoleoMinL: 55 }, 'o mínimo da configuração, tal e qual (nunca −1e9)')
+    assert.equal('gasoleoDesconhecidoL' in a.opcoes, false, 'já não há um gasóleo a assumir')
+    // sem nenhuma leitura do gasóleo: o mesmo
+    const sem = appFalso()
+    delete sem.self['tanks.fuel.0.currentVolume']
+    const b = await calc(sem, { seguranca: { gasoleoMinL: 55 } })
+    assert.equal(b.instrumentos.gasoleoL, null)
+    assert.deepEqual(b.opcoes.seguranca, { gasoleoMinL: 55 })
+    // com a leitura: o nível e o mesmo mínimo
+    const c = await calc(appFalso(), { seguranca: { gasoleoMinL: 55 } })
+    assert.equal(c.instrumentos.gasoleoL, 124)
+    assert.deepEqual(c.opcoes.seguranca, { gasoleoMinL: 55 })
+    // e o esquema da configuração já não oferece o gasóleo a assumir (o do SoC fica)
+    assert.equal('gasoleoDesconhecidoL' in plugin(appFalso()).p.schema.properties, false)
+    assert.ok('socDesconhecido' in plugin(appFalso()).p.schema.properties)
+  } finally { calculo.calcular = original }
 })
