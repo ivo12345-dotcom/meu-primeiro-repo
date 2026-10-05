@@ -683,7 +683,7 @@ test('F9 (item 3, F2b Menor 3): a faixa diz qual dos recursos não tem leitura �
   assert.doesNotMatch(await faixa({ gasoleoChegadaL: 80, bateriaChegadaPct: 90, semLeitura: false, aviso: null }), /sem leitura/)
 })
 
-test('F9 (item 3, F2b Menor 6): com a viagem seguinte aberta e o «cheguei bem» da viagem ANTERIOR por entregar (fechoPorEntregar.doPlanoAnterior), o Leme di-lo — "o «cheguei bem» da viagem anterior ainda não chegou a terra: liga-lhes (Mãe)" — na faixa e na caixa da pausa, mesmo sem o plano novo ter ido a terra; o deste plano (doPlanoAnterior false) e um plugin de antes não dizem "anterior"', async () => {
+test('F9 (item 3, F2b Menor 6): com a viagem seguinte aberta e o «cheguei bem» da viagem ANTERIOR por entregar (fechoPorEntregar.doPlanoAnterior), o Leme di-lo — "o «cheguei bem» da viagem anterior ainda não chegou a terra: liga-lhes (Mãe)" — no mosaico "Contactos em terra", uma só vez no ecrã (não na faixa), também em pausa, mesmo sem o plano novo ter ido a terra; o deste plano (doPlanoAnterior false) e um plugin de antes não dizem "anterior"', async () => {
   const frase = 'o «cheguei bem» da viagem anterior ainda não chegou a terra: liga-lhes (Mãe)'
   for (const noite of [false, true]) {
     // a viagem 2 acabada de ativar: o plano novo ainda não foi a terra (envio null) e já navega, ou à espera de sair
@@ -692,16 +692,17 @@ test('F9 (item 3, F2b Menor 6): com a viagem seguinte aberta e o «cheguei bem»
       limpo(html, `anterior ${estado}`)
       const t = texto(html)
       assert.ok(t.includes(frase), t)
-      assert.ok(html.indexOf('da viagem anterior') < html.indexOf('Rumo a seguir'), 'na faixa, por cima do rumo')
+      assert.match(html, /class="[^"]*avisos-terra/, 'no mosaico "Contactos em terra"')
+      assert.equal(t.split('da viagem anterior').length - 1, 1, 'uma só vez no ecrã (o mosaico, não a faixa)')
       assert.doesNotMatch(t, /liga-o em Plugin Config|o plugin porto/, 'o erro técnico não vai para o ecrã')
     }
     // com o plano novo já entregue a terra (envio): a linha fica, ao lado das de terra
     const t1 = texto(melhor.render(await leme({ ...PLANO, fechoPorEntregar: FECHO_DA_VIAGEM_ANTERIOR }, { noite })))
     assert.ok(t1.includes(frase) && t1.includes('contactos em terra: alarme'), t1)
-    // em pausa, a caixa vermelha também
+    // em pausa, o mosaico fica (uma só vez)
     const pausa = melhor.render(await leme({ ...PLANO, estado: 'pausado', pausadoDe: 'a navegar', fechoPorEntregar: FECHO_DA_VIAGEM_ANTERIOR }, { noite }))
     limpo(pausa, 'anterior em pausa')
-    assert.ok(texto(pausa).includes(frase), texto(pausa))
+    assert.equal(texto(pausa).split(frase).length - 1, 1, texto(pausa))
   }
   // a «viagem terminada» da viagem anterior
   assert.ok(texto(melhor.render(await leme({ ...PLANO, fechoPorEntregar: { ...FECHO_DA_VIAGEM_ANTERIOR, tipo: 'terminado' } }))).includes('a «viagem terminada» da viagem anterior ainda não chegou a terra: liga-lhes (Mãe)'))

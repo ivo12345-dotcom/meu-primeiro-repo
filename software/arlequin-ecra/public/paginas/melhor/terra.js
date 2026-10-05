@@ -84,7 +84,8 @@ function linhas (ctx) {
   const f = d.fechoPorEntregar
   if (f && (f.tipo === 'chegada' || f.tipo === 'terminado')) {
     const quem = nomesDe(f.contactos).map(esc)
-    out.push(['atencao', `⚠ ${f.tipo === 'chegada' ? 'o «cheguei bem»' : 'a «viagem terminada»'} ainda não chegou a terra: liga-lhes${quem.length ? ` (${quem.join(', ')})` : ''}`])
+    // com a viagem seguinte já aberta, o fecho por entregar é o da viagem ANTERIOR (doPlanoAnterior, F9): diz-se de quem é
+    out.push(['atencao', `⚠ ${f.tipo === 'chegada' ? 'o «cheguei bem»' : 'a «viagem terminada»'}${f.doPlanoAnterior === true ? ' da viagem anterior' : ''} ainda não chegou a terra: liga-lhes${quem.length ? ` (${quem.join(', ')})` : ''}`])
   }
   out.push(...linhasDesistencias(d, t))
   const u = d.envioEmTerra

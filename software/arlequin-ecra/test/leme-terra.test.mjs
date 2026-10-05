@@ -132,6 +132,12 @@ test('K-12: com o plano fechado (chegado, terminado) e o "cheguei bem" ou a "via
   for (const valores of [ROTA_ATIVA, {}]) assert.doesNotMatch(texto(render(await pagina({ ...FECHADO, fechoPorEntregar: null }, { valores }))), /ainda não chegou a terra/)
   // um contacto só
   assert.ok(texto(render(await pagina({ ...FECHADO, fechoPorEntregar: { tipo: 'chegada', contactos: ['Pai'], tentativas: 1, erro: null } }, { valores: {} }))).includes('liga-lhes (Pai)'))
+  // o da viagem ANTERIOR, com a viagem seguinte aberta (doPlanoAnterior, F9): o mosaico diz de quem é
+  for (const [tipo, frase] of [['chegada', 'o «cheguei bem» da viagem anterior ainda não chegou a terra: liga-lhes (Pai)'], ['terminado', 'a «viagem terminada» da viagem anterior ainda não chegou a terra: liga-lhes (Pai)']]) {
+    const html = render(await pagina({ ...PLANO, fechoPorEntregar: { tipo, contactos: ['Pai'], tentativas: 2, erro: 'sem rede', doPlanoAnterior: true } }, { valores: ROTA_ATIVA }))
+    assert.ok(texto(html).includes(frase), texto(html))
+    assert.match(html, /class="[^"]*avisos-terra/)
+  }
 })
 
 // ---------- I-02: o plano enviado e nunca ativado ----------

@@ -20,11 +20,9 @@
 //     da pausa, "mensagem para terra por enviar (sem rede)" (uma na fila que já falhou), "não chegou a X
 //     (a tentar outra vez)" (o parcial) e, em pausa, "em pausa: os atrasos não seguem para terra"; a hora de
 //     alarme da faixa é a MAIS CEDO que algum contacto tem (envio.alarme, decisão n.º 14) e, com horas
-//     diferentes, "Pai: alarme HH:MM · Mãe: alarme HH:MM" (envio.porContacto, I-01, F3b); com a viagem seguinte
-//     aberta, o «cheguei bem» da viagem anterior que ainda não chegou a terra (fechoPorEntregar.doPlanoAnterior,
-//     F9): "o «cheguei bem» da viagem anterior ainda não chegou a terra: liga-lhes (Pai)";
+//     diferentes, "Pai: alarme HH:MM · Mãe: alarme HH:MM" (envio.porContacto, I-01, F3b);
 //   o que pede uma ação em relação a terra — o relógio do Pi desacertado, o «cheguei bem» por entregar com o plano
-//     já fechado (K-12), a quem se desistiu de entregar (I-05) e o plano que terra tem sem ser o ativo (I-02) —
+//     já fechado (K-12) ou o da viagem anterior com a seguinte aberta (fechoPorEntregar.doPlanoAnterior, F9), a quem se desistiu de entregar (I-05) e o plano que terra tem sem ser o ativo (I-02) —
 //     vai num mosaico à parte, "Contactos em terra" (terra.js), também no Pedir; o 404 do GET /plano-ativo traz
 //     o envioEmTerra e o relógio (estado.semPlano);
 //   o atraso retido (revisão final C1, decisão do Ivo de 02/10): "A hora de alarme em terra é HH:MM e não
@@ -169,14 +167,8 @@ function linhasFaixa (ctx, p) {
 function linhasTerra (p, t, { pausa = false, simples = false } = {}) {
   const cor = (classe, x) => (simples ? x : `<span class="${classe}">${x}</span>`)
   const out = []
-  // O «cheguei bem» (ou a «viagem terminada») da viagem ANTERIOR que ainda não chegou a terra, com a viagem seguinte
-  // aberta (F9, F2b Menor 6: fechoPorEntregar.doPlanoAnterior): diz-se de quem é, mesmo que o plano novo ainda não
-  // tenha ido a terra (sem envio). O deste plano, já fechado, é o do mosaico "Contactos em terra" (terra.js).
-  const fecho = p.fechoPorEntregar
-  if (fecho?.doPlanoAnterior === true && (fecho.tipo === 'chegada' || fecho.tipo === 'terminado')) {
-    const quem = (Array.isArray(fecho.contactos) ? fecho.contactos : []).filter(n => typeof n === 'string' && n.trim()).map(n => esc(n.trim()))
-    out.push(cor('atencao', `⚠ ${fecho.tipo === 'chegada' ? 'o «cheguei bem»' : 'a «viagem terminada»'} da viagem anterior ainda não chegou a terra: liga-lhes${quem.length ? ` (${quem.join(', ')})` : ''}`))
-  }
+  // O «cheguei bem» (ou a «viagem terminada») da viagem ANTERIOR por entregar, com a viagem seguinte aberta
+  // (fechoPorEntregar.doPlanoAnterior, F9), diz-se no mosaico "Contactos em terra" (terra.js), não aqui: uma só vez no ecrã.
   if (!p.envio?.contactos?.length) return out
   const alarme = Date.parse(p.envio.alarme)
   // a hora a que terra liga ao MRCC é a que o Ivo tem de saber sempre (F3b item 1): no tamanho da faixa, não a cinzento miúdo

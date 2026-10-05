@@ -1476,7 +1476,7 @@ plugin começa do zero, com o erro no registo.
 - E acertar a hora pelo GPS: plugin **`@signalk/set-system-time`** no SignalK (ou o equivalente do OpenPlotter).
 - E pôr o Pi em Lisboa: `sudo timedatectl set-timezone Europe/Lisbon` (decisão n.º 22).
 - Se mesmo assim a hora do GPS e a do Pi diferirem mais de 1 min, a caixa negra avisa no ecrã "Relógio do Pi desacertado N min — os dados ficam com a hora errada" (só no ecrã, não vai para o Telegram).
-- **E o plugin da rota pára o que vai para terra** (decisão n.º 19): com a hora do Pi a mais de 60 s da do GPS, recusa o "Enviar plano" (e o Ativar que mandaria o plano para terra), pára o acompanhamento a navegar e as mensagens para os contactos, e avisa "Relógio do Pi desacertado N min da hora do GPS: o acompanhamento e as mensagens para terra estão parados — acerta a hora do Pi". Este aviso aparece no ecrã (também no Leme, no mosaico "Contactos em terra") e vai para o teu Telegram: uma hora de alarme calculada com o relógio errado chegava errada aos contactos.
+- **E o plugin da rota pára o que vai para terra** (decisão n.º 19): com a hora do Pi a mais de 60 s da do GPS, recusa o "Enviar plano" (e o Ativar que mandaria o plano para terra), pára o acompanhamento a navegar e as mensagens para os contactos, e avisa "Relógio do Pi desacertado 1 min 30 s da hora do GPS: o acompanhamento e as mensagens para terra estão parados — acerta a hora do Pi" (o desacerto em segundos, minutos ou horas, conforme o tamanho). Este aviso aparece no ecrã (também no Leme, no mosaico "Contactos em terra") e vai para o teu Telegram: uma hora de alarme calculada com o relógio errado chegava errada aos contactos.
 
 **Copiar os dados** (sempre que estiveres a bordo com rede):
 
@@ -1671,7 +1671,7 @@ estado, de dia e de noite, em `docs/capturas-3b1/`.
   - Sem a chegada mais tarde não há hora de alarme e o plano não vai. Um cálculo antigo também
     não: com a hora de alarme já passada ou a partida há mais de 1 h, "este cálculo é antigo: … —
     calcula outra vez antes de enviar o plano". Com a hora do Pi a mais de 60 s da do GPS também
-    não ("o relógio do Pi está desacertado N min da hora do GPS: a hora de alarme sairia errada —
+    não ("o relógio do Pi está desacertado 1 min 30 s da hora do GPS: a hora de alarme sairia errada —
     acerta a hora antes de enviar o plano"; decisão n.º 19).
   - Escolher outro cartão a meio do envio não o perde: o estado diz "(plano da N.ª alternativa)".
 - **Ativar esta rota:** grava e ativa a rota no SignalK (o OpenCPN mostra-a) e a página passa ao
@@ -1813,7 +1813,8 @@ disso, os contactos ficam com a hora de alarme e ligam ao MRCC. Com pressa, carr
   HH:MM)." quando a chegada prevista passa **30 min ou mais** da "mais tarde" do plano (decisão do
   Ivo de 01/10: uns minutos não preocupam ninguém em terra); depois, no máximo 1× por hora
   e só se a chegada escorregar mais 15 min. A nova hora de alarme é a chegada prevista + 2 h, e só
-  conta quando chega a terra (o "em vez de" é sempre a última que eles receberam). **Só sai com o
+  conta quando chega a terra (o "em vez de" é a última hora de alarme que esse contacto recebeu: no reenvio
+  a quem falhou, a dele). **Só sai com o
   barco a avançar** (decisão do Ivo de 02/10, "só a avançar + teto de 3 h"): pelo menos 1 MN na rota
   na última hora, a andar agora e a menos de 2 MN da rota; e **nunca empurra sozinho a hora de alarme
   mais de 3 h** sobre a do plano. Parado ou à deriva não sai nada: fica a hora de alarme que eles têm
