@@ -1677,3 +1677,30 @@ test('F2b Menor 6 (K-12, sonda p04 c): ao ativar a viagem 2 com o «cheguei bem�
   assert.equal((await chamar(s.r.get['/plano-ativo'])).fechoPorEntregar, null)
   s.p.stop()
 })
+
+// ---------- revisão da F2 (F2b), Menor 8: o desacerto do relógio com a precisão com que se acerta ----------
+test('F2b Menor 8 (decisão n.º 19): o desacerto do relógio do Pi diz-se com a precisão com que se acerta — 90 s é "1 min 30 s", nunca "2 min"; abaixo de 1 min em segundos, de horas em horas; no 422 do envio e no aviso do ciclo; 60 s exatos ainda passam', async () => {
+  const s = await preparar({ enviar: false })
+  const RELOGIO = 'notifications.rota.relogio'
+  const erro = (texto) => `o relógio do Pi está desacertado ${texto} da hora do GPS: a hora de alarme sairia errada — acerta a hora antes de enviar o plano`
+  // (cada leitura com uma hora diferente conta como nova: o desvio é o de agora)
+  const envio = async (atrasoMs) => {
+    s.app.self['navigation.datetime'] = new Date(s.agora() - atrasoMs).toISOString()
+    return chamar(s.r.post['/plano-telegram'], { body: { id: s.id, alternativa: 0 } })
+  }
+  const casos = [[90 * 1000, '1 min 30 s'], [61 * 1000, '1 min 1 s'], [119 * 1000, '1 min 59 s'], [120 * 1000, '2 min'], [150 * 1000, '2 min 30 s'], [5 * MIN, '5 min'], [-90 * 1000, '1 min 30 s'], [62 * MIN + 5000, '1 h 2 min'], [2 * H, '2 h']]
+  for (const [atraso, texto] of casos) {
+    const x = await envio(atraso)
+    assert.equal(x.code, 422, `${atraso} ms`)
+    assert.equal(x.erro, erro(texto), `${atraso} ms`)
+  }
+  // 60 s exatos ainda passam (a regra é "a mais de 60 s")
+  assert.equal((await envio(60 * 1000)).code, 202)
+  // o aviso do ciclo e o campo do GET: 90 s
+  s.app.self['navigation.datetime'] = new Date(s.agora() - 90 * 1000).toISOString()
+  await chamar(s.r.post['/plano-telegram'], { body: { id: s.id, alternativa: 0 } })
+  await s.ciclo(0)
+  assert.equal(s.app.self[RELOGIO].message, 'Relógio do Pi desacertado 1 min 30 s da hora do GPS: o acompanhamento e as mensagens para terra estão parados — acerta a hora do Pi')
+  assert.equal((await chamar(s.r.get['/plano-ativo'])).relogioDesacertadoS, 90)
+  s.p.stop()
+})
