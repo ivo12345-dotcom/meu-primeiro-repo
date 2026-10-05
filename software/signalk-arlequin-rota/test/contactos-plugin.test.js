@@ -1735,3 +1735,23 @@ test('F2b Menor 3 (auditoria I-12): a navegar com a sonda do gasóleo perdida o 
   assert.match(s.app.self[REC].message, /gasóleo à chegada ~\d+ L/)
   s.p.stop()
 })
+
+// ---------- revisão da F2 (F2b), nota: o "cálculo antigo" conta por alternativa ----------
+test('F2b nota (decisão n.º 13): o 422 de "cálculo antigo" conta POR ALTERNATIVA, como no envio do plano — com a partida da 1.ª já há mais de 1 h, a 1.ª dá 422 e a 2.ª, do mesmo cálculo, com a partida mais tarde, ativa-se e envia-se com 200/202', async () => {
+  const s = await preparar({ enviar: false, alternativa: 2 })
+  // 2 h depois da partida da 1.ª alternativa (a 2.ª só parte daí a horas)
+  s.acertar(Date.parse(s.resultado.alternativas[0].partida) + 2 * H)
+  assert.ok(Date.parse(s.resultado.alternativas[1].partida) > s.agora(), 'a 2.ª ainda não partiu')
+  const velha = await chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 0 } })
+  assert.equal(velha.code, 422)
+  assert.match(velha.erro, /^este cálculo é antigo: a partida já foi \(.+\) — calcula outra vez antes de ativar$/)
+  const envioVelho = await chamar(s.r.post['/plano-telegram'], { body: { id: s.id, alternativa: 0 } })
+  assert.equal(envioVelho.code, 422)
+  assert.match(envioVelho.erro, /^este cálculo é antigo: a partida já foi \(.+\) — calcula outra vez antes de enviar o plano$/)
+  // a 2.ª alternativa do mesmo cálculo não é antiga
+  assert.equal((await chamar(s.r.post['/plano-telegram'], { body: { id: s.id, alternativa: 1 } })).code, 202)
+  const nova = await chamar(s.r.post['/ativar'], { body: { id: s.id, alternativa: 1 } })
+  assert.equal(nova.code, 200, nova.erro)
+  assert.equal(plano(s).indice, 1)
+  s.p.stop()
+})

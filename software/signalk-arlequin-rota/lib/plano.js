@@ -149,7 +149,8 @@ function excecoes (desistencia, volta, agora, fuso) {
 }
 
 // Um cálculo antigo (guardado no plugin e no ecrã): a hora de alarme já passada, ou a partida há mais de
-// 1 h. → o motivo (para o 422) ou null. O envio do plano e o Ativar de um plano novo recusam-no (decisão
+// 1 h — da ALTERNATIVA que se envia ou ativa (cada uma tem a sua partida e a sua hora de alarme: uma com a
+// partida mais tarde ainda não é antiga quando outra do mesmo cálculo já é). → o motivo (para o 422) ou null. O envio do plano e o Ativar de um plano novo recusam-no (decisão
 // do Ivo n.º 13, auditoria I-03: ativar um cálculo antigo dava logo um atraso enorme e um "recalcula").
 function calculoAntigo (alt, agora, { antesDe = 'enviar o plano', fuso = FUSO } = {}) {
   const alarme = horaAlarme(alt)
