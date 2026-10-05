@@ -22,26 +22,28 @@ Navegação sobretudo **a solo**. Isto obriga a manter uma reserva (ver §6).
 Este é o quadro de referência: as outras notas (`PILOTO-AUTOMATICO.md`, `LEME-EMERGENCIA.md`,
 `CABOS.md`, `MASTREACAO.md`) remetem para aqui. Fontes: a **ficha técnica** do Melody (versão GTE,
 sailboat-data.com/fr, especificação de 1982), guardada em `Documents\Veleiro\brochura`, e o
-quadro do `LEME-EMERGENCIA.md` (27/09, Wikipedia e sailboatdata). Onde as fontes não batem, ficam
-os dois valores.
+quadro do `LEME-EMERGENCIA.md` (27/09, Wikipedia e sailboatdata); as medidas do plano vélico
+(I, P, J, E) vêm do sailboatdata e da Wikipedia (02/10). Onde as fontes não batem, ficam os dois
+valores.
 
 | | |
 |---|---|
 | Barco | **Arlequin**, Jeanneau Melody ("Melody 34"), sloop de topo |
-| Projeto | **André Mauric** (ficha técnica); a Wikipedia e o sailboatdata juntam Gilles Vaton. As primeiras notas (07/09, `PILOTO-AUTOMATICO.md`) diziam "Briand, anos 80", sem fonte. Por confirmar pelo Ivo |
-| Construção | Jeanneau, **1976–1982** na ficha (1974–1982 no sailboatdata), 607 unidades. O ano do Arlequin está por confirmar pelo Ivo |
+| Projeto | **André Mauric e Gilles Vaton** (Wikipedia e sailboatdata; a ficha técnica só dá Mauric). As primeiras notas (07/09, `PILOTO-AUTOMATICO.md`) diziam "Briand, anos 80", sem fonte |
+| Construção | Jeanneau, **1974–1982** (Wikipedia e sailboatdata; 1976–1982 na ficha), 607 unidades. **O ano do casco do Arlequin: por confirmar nos papéis do barco** |
 | Comprimento | **10,55 m** fora a fora e **10,25 m** de casco; **8,70 m** na flutuação (8,69 m no sailboatdata). As notas de 07/09 diziam ~10,4 m |
 | Boca / calado | **3,38 m** / **1,90 m** |
-| Deslocamento / lastro | **~6 t**: 6000 kg (deslocamento leve, ficha) ou 6 046 kg (sailboatdata) / **2 900 kg** em ferro fundido. As notas de 07/09 diziam 4,5–5 t |
-| Mastreação | Mastro pousado no convés, com **14,20 m** de comprimento (ficha), e **um só par de cruzetas**; a mastreação fixa tem **12 anos** (`MASTREACAO.md`). O `CABOS.md` conta "~13 m acima do convés": por confirmar pelo Ivo (muda o comprimento das drizas) |
+| Deslocamento / lastro | **~6 t**: 6000 kg (deslocamento leve, ficha) ou 6 046 kg (sailboatdata) / **2 900 kg** em ferro fundido. **Carregado, ~7,2 t** (6 046 kg + 20 %: a conta do piloto, `PILOTO-AUTOMATICO.md` §3). As notas de 07/09 diziam 4,5–5 t |
+| Mastreação | Mastro pousado no convés, com **14,20 m** de comprimento (ficha), e **um só par de cruzetas**; a mastreação fixa tem **12 anos** (`MASTREACAO.md`) |
+| Plano vélico | **I = 14,17 m**, **P = 12,92 m**, **J = 4,51 m**, **E = 3,63 m** (sailboatdata e Wikipedia, 02/10). Com o I de 14,17 m, as drizas sobem a **~14,2 m acima do convés**, e não aos ~13 m que o `CABOS.md` contava: as drizas da lista (25, 28 e 30 m) ficam provavelmente curtas (a regra do `CABOS.md` dá ~30–31 m). **Medir as velhas antes de encomendar** |
 | Leme | Semi-suspenso, num patilhão (*skeg*) que protege a parte de cima da lâmina |
 | Popa | Espelho invertido (o painel inclina-se para vante) |
 | Governo | **Roda de leme, com travão** (Ivo, 29/09). O barco nasceu com cana (a ficha diz "barre franche"); a cana de inox de emergência encaixa no topo da madre (`LEME-EMERGENCIA.md`, Camada A) |
 | Piloto automático | **Ainda não há.** Decidido a 02/10: **Raymarine EV-100 Wheel** (de roda, ref. T70152), **por comprar e instalar** (`PILOTO-AUTOMATICO.md` §3). Limite do fabricante: 7 500 kg carregado; o Arlequin carregado anda pelos ~7,2 t (6 046 kg + 20 %): perto do limite, rizar cedo. O ST4000+ não governa (falta a unidade de roda) e só dá a proa |
 | Motor | **Volvo Penta D1-20B** (de origem: Yanmar 2QM) |
 | Gasóleo | **200 L**, depósito de inox que parece ter sido prolongado para trás (de origem: 90 L) |
-| Água doce | 2 depósitos flexíveis, debaixo dos beliches da sala (de origem: 180 L ao todo); a capacidade de cada um está por medir (§8b, ponto 11) |
-| Baterias | 3 bancos × 2 × 110 Ah, seladas, provavelmente AGM: banco 1 = motor; bancos 2+3 = serviço, **440 Ah** (§5b) |
+| Água doce | 2 depósitos flexíveis, debaixo dos beliches da sala. De origem: **180 L** ao todo (ficha; 48 galões, ~182 L, na Wikipedia e no sailboatdata). O plugin da água assume **2 × 80 L** (configurável). A capacidade de cada depósito: **por confirmar no barco** (§8b, ponto 11) |
+| Baterias | 3 bancos × 2 × 110 Ah, seladas, provavelmente AGM: banco 1 = motor; bancos 2+3 = serviço, **440 Ah** (§5b). A melhor rota planeia com estes **440 Ah** e o solar com perdas (**fator 0,65**), como o simulador (decisão n.º 4) |
 
 ## 1. Decisões tomadas
 
