@@ -9,7 +9,9 @@
 //              (em vez de HH:MM)." quando a chegada prevista agora passa 30 min ou mais da "mais tarde"
 //              do plano (chegada.p90; decisão do Ivo de 01/10); a nova hora de alarme é a chegada
 //              prevista + 2 h; depois, no máximo 1× por hora e só se a chegada voltar a escorregar mais
-//              de 15 min (decidirAtraso); e só com as guardas da decisão do Ivo de 02/10 (retencaoAtraso)
+//              de 15 min (decidirAtraso); e só com as guardas da decisão do Ivo de 02/10 (retencaoAtraso); o "em vez
+//              de" é a hora de alarme que tinha quem recebe: o parcial para quem falhou diz a dos contactos dele
+//              (alarmeDosContactos), não a dos outros que já receberam o atraso (F2b Menor 9)
 //   terminado  "Viagem terminada / mudança de planos: estou bem, em <graus e minutos> qua 30/09 às HH:MM."
 //   plano      o plano novo (texto + GPX da 3b-1) com a linha "Este plano substitui o anterior."
 //   aviso      só ao chat do Ivo (sem contactos): "Pai não recebeu o «cheguei bem» (ref. A5) e já passou a
@@ -235,6 +237,13 @@ function desistePorDe (terra, { contactos = [], chats = [] } = {}) {
   return { desistePor, desisteEm: l.length ? Math.max(...l) : NaN }
 }
 const desistePorValido = (x) => (x !== null && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).filter(([, t]) => valido(t))) : {})
+// A hora de alarme que tinham os contactos de uma mensagem ({ contactos, chats }), a de hoje em terra: a mais cedo
+// delas (o "em vez de" do parcial de um atraso, F2b Menor 9: o texto diz a hora que ESSES contactos tinham, não a
+// dos outros que já receberam o atraso; com horas diferentes, a do que liga primeiro) ou NaN sem nenhuma.
+function alarmeDosContactos (terra, msg) {
+  const horas = Object.values(desistePorDe(terra, msg).desistePor)
+  return horas.length ? Math.min(...horas) : NaN
+}
 
 // ---------- a fila ----------
 // letra: a letra das referências deste plano ("ref. A3"); o plano seguinte passa à seguinte (Z → A)
@@ -476,4 +485,4 @@ function evento (msg, pedido, contactos = msg.contactos || [], chats = msg.chats
   }
 }
 
-module.exports = { SUBSTITUI, REPETIR_MS, ATRASO_ESCORREGA_MS, ATRASO_MARGEM_MS, TETO_MS, PROGRESSO_MN_H, DIST_ROTA_MAX_MN, juntarMarca, progressoNaHora, retencaoAtraso, grausMinutos, textoChegada, textoAtraso, textoTerminado, textoSubstitui, textoDesisti, desistir, decidirAtraso, terraInicial, terraEntregue, alarmeMaisCedo, alarmeMaisTarde, desistePorDe, novaFila, porNaFila, herdar, atualizarAtraso, tirar, tirarSe, atrasoAutomatico, proxima, marcarAEnviar, falhou, resposta, aoArrancar, evento }
+module.exports = { SUBSTITUI, REPETIR_MS, ATRASO_ESCORREGA_MS, ATRASO_MARGEM_MS, TETO_MS, PROGRESSO_MN_H, DIST_ROTA_MAX_MN, juntarMarca, progressoNaHora, retencaoAtraso, grausMinutos, textoChegada, textoAtraso, textoTerminado, textoSubstitui, textoDesisti, desistir, decidirAtraso, terraInicial, terraEntregue, alarmeMaisCedo, alarmeMaisTarde, desistePorDe, alarmeDosContactos, novaFila, porNaFila, herdar, atualizarAtraso, tirar, tirarSe, atrasoAutomatico, proxima, marcarAEnviar, falhou, resposta, aoArrancar, evento }

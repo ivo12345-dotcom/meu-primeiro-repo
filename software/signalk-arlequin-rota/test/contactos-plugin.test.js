@@ -1608,3 +1608,37 @@ test('F2b Menor 2 (decisão n.º 19): o relógio do Pi contra a hora do GPS cont
   assert.equal(s.app.self[RELOGIO].state, 'warn')
   s.p.stop()
 })
+
+// ---------- revisão da F2 (F2b), Menor 9: o "em vez de" do parcial de um atraso ----------
+test('F2b Menor 9: o parcial de um atraso (a mesma mensagem só para quem falhou) diz "em vez de" a hora de alarme que ESSE contacto tinha — o Pai, que nunca recebeu os atrasos, tinha a do plano e não a da Mãe; o resto do texto (chegada e nova hora de alarme) e a ref são os mesmos', async () => {
+  const s = await preparar({ contactos: [['Mãe', '222'], ['Pai', '333']] })
+  await sair(s)
+  s.porto.resposta = paiBloqueado
+  const anda = devagar(s, 0.4)
+  const daMae = () => atrasosDe(s).filter(e => e.chats.includes('222'))
+  const doPai = () => atrasosDe(s).filter(e => e.chats.length === 1 && e.chats[0] === '333')
+  for (let m = 0; m < 400 && daMae().length < 2; m++) await anda()
+  assert.equal(daMae().length, 2, 'a Mãe recebeu dois atrasos, o Pai nenhum')
+  const g = await chamar(s.r.get['/plano-ativo'])
+  const alarmePai = Date.parse(g.envio.porContacto.find(x => x.nome === 'Pai').alarme)
+  assert.equal(alarmePai, Date.parse(g.envio.alarmePlano), 'o Pai tem a hora de alarme do plano')
+  const [a1, a2] = plano(s).contactos.enviadas.filter(m => m.tipo === 'atraso')
+  assert.ok(a1.alarme > alarmePai && a2.alarme > a1.alarme, 'a Mãe tem horas de alarme cada vez mais tarde')
+  // o 2.º atraso à Mãe diz "em vez de" o 1.º; os parciais do Pai (cada tentativa) dizem "em vez de" o do plano
+  const fim = (e) => e.texto.split('\n')[0]
+  assert.ok(fim(daMae()[1]).endsWith(`(em vez de ${horaLisboa(a1.alarme, s.agora())}).`), fim(daMae()[1]))
+  // o Pai desbloqueia: o parcial sai só para ele, com o "em vez de" dele
+  s.porto.resposta = (e) => ({ pedido: e.pedido, entregues: [...(e.tentativa ? [] : ['chat 111']), ...e.contactos], contactos: e.contactos, chats: e.chats, falhas: [] })
+  for (let m = 0; m < 6 && !plano(s).contactos.enviadas.some(x => x.tipo === 'atraso' && x.parcial); m++) await anda()
+  assert.ok(doPai().length >= 2, `tentativas ao Pai: ${doPai().length}`)
+  for (const e of doPai()) {
+    assert.ok(fim(e).endsWith(`(em vez de ${horaLisboa(alarmePai, s.agora())}).`), fim(e))
+    assert.ok(!fim(e).includes(`em vez de ${horaLisboa(a1.alarme, s.agora())}`), 'não a da Mãe')
+  }
+  const semEmVezDe = (e) => fim(e).replace(/ \(em vez de [^)]*\)\.$/, '')
+  assert.equal(semEmVezDe(doPai().at(-1)), semEmVezDe(daMae()[1]), 'a chegada e a nova hora de alarme são as mesmas')
+  assert.equal(doPai().at(-1).texto.split('\n').at(-1), daMae()[1].texto.split('\n').at(-1), 'a mesma ref')
+  // e já com o atraso entregue, a hora do Pai passa a ser a nova
+  assert.equal(Date.parse((await chamar(s.r.get['/plano-ativo'])).envio.porContacto.find(x => x.nome === 'Pai').alarme), a2.alarme)
+  s.p.stop()
+})
