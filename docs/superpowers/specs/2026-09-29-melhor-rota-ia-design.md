@@ -107,6 +107,15 @@ Plugin SignalK. Grava **desde o primeiro dia** em `~/arlequin-dados/`:
   - a **saída** não usa o motor: começa quando o barco fica a mais de 0,5 MN do porto mais perto da lista da caixa negra e acaba quando volta a um porto da lista e fica parado (< 0,5 nó) 10 min (`caixanegra/lib/saidas.js`);
   - a **tabela** tem 25 colunas, sem a previsão (que se junta no treino): `t, lat, lon, proa, cog, sog, stw, tws, twa, twd, aws, awa, rajada, adorno, caimento, pressao, rpm, litrosHora, grandeRizos, genoaPct, profundidade, soc, simulado, estavel, consumoMedido`;
   - a pasta `previsoes/` é escrita pelos dois plugins: o da AI de hora a hora a navegar (de 3 em 3 h parado), com um ponto, e o da rota com um ficheiro por ponto da rota, sempre que descarrega a previsão para um cálculo.
+- **Auditoria (02–03/10, frente F5; verificado no código a 05/10):**
+  - **os portos das saídas** (decisão n.º 25, contrato C4) são os destinos da rota (`signalk-arlequin-rota/dados/destinos.json`, que a caixa negra só lê) mais os extras da opção `portos` (por omissão a Ericeira); os destinos acrescentados no ecrã não contam; sem o ficheiro da rota, "SEM OS PORTOS DA ROTA" no estado;
+  - **a proa** (I-11) é a verdadeira, ou a magnética mais a declinação (válida 1 h); sem nenhuma não há proa, e a linha não fica "estável" (a velocidade não aprende);
+  - **o alarme do disco a 95 %** leva `apito: 'curto'` (decisão n.º 2); o aviso dos 80 % continua só visual;
+  - **reinício** (nota do SignalK 2.33): o `stop()` põe as notificações a normal e o arranque retoma o disco, o relógio e as velas a partir da árvore;
+  - **um `velas.json` ou `saida-em-curso.json` ilegível** fica à parte (`.ilegivel-<hora>`) e o plugin começa do zero (M-55);
+  - **os `*.tmp` nunca se copiam**, e um bruto que o Pi recomeçou confirma-se pelo hash da cópia guardada ao lado (`.N`) (M-57);
+  - **os dados simulados** são os da fonte `arlequin-simulador` ou que começam por `arlequin-simulador.` (os scripts do dev marcam-se assim, contrato C9);
+  - as rotas têm nível (`GET /estado`, `/ficheiros`, `/velas` com `readonly`; `POST /velas` com `readwrite`, K-11) e as horas do estado são as de Lisboa (decisão n.º 22).
 
 ## Parte 2: AI (`software/arlequin-ia/`, Python)
 
@@ -167,7 +176,7 @@ Todos são LightGBM com **regressão por quantis: P10, P50 e P90** (pessimista, 
 
 - **Plugin próprio `signalk-arlequin-ia`** (em vez de ficar no plugin da rota, que ainda não existe). Faz o disparo do treino, o `/ia`, o cartão no Diário e o avaliador JS em `lib/modelos.js`, que a Parte 3 vai reutilizar.
 - **Previsão arquivada já agora** pelo plugin da AI, em `previsoes/`, de hora a hora a navegar e de 3 em 3 h parado. A Parte 3 passa a ler daqui.
-- **Balanço medido pela IMU:** desvio padrão do adorno e do caimento em 2 min, calculado no treino a partir da tabela. Entra nos modelos da velocidade e do consumo, ao lado da onda prevista.
+- **Balanço medido pela IMU:** desvio padrão do adorno e do caimento em 2 min, calculado no treino a partir da tabela. Entra nos modelos da velocidade e do consumo, ao lado da onda prevista. (*Substituído a 30/09: continua a calcular-se, mas não entra em nenhum modelo — ver a caixa no topo desta Parte.*)
 - **O vento são dois modelos:** `ventoForca` (razão medido/previsto) e `ventoDirecao` (diferença medido − previsto).
 - **Detalhes do treino:**
   - "última saída" = a mais recente em `saidas/`, e são precisas 2;
@@ -175,6 +184,13 @@ Todos são LightGBM com **regressão por quantis: P10, P50 e P90** (pessimista, 
   - se for aceite, volta a treinar com todos os dados antes de guardar;
   - o ficheiro leva também o texto nativo do LightGBM, para o Python comparar versões.
 - **Disparo automático:** parado há 1 h com uma saída nova desde o último treino.
+- **Auditoria (02–03/10, frente F5; verificado no código a 05/10):**
+  - **previsão da AI com a célula de mar** (K-05): o forecast e o marine pedem `cell_selection=sea`. As previsões arquivadas antes de 02/10 têm, junto à costa, o vento da célula de terra (~40 % mais fraco): os modelos do vento e da velocidade treinados com elas ficam desviados (o que fazer com eles é do Ivo);
+  - **treino no portátil** (decisão n.º 26): sem `--barco` (à mão, no portátil) as versões são `pNNNN`, nunca ficam em uso sozinhas e o registo vai para `registo-portatil.json`; o plugin treina com `--barco` (`vNNNN`). Uma `pNNNN` só vai para o barco por cópia confirmada (`sincronizar.mjs --por-no-barco <modelo>/<pNNNN>`, só pelo ssh); com ela em uso, o "Voltar atrás" vai para a última `vNNNN` que esteve em uso; a sincronização confere o `atual` pelo sha256;
+  - **dados falsos do dev** (decisão n.º 27): as tabelas de 30/09 e 01/10 foram mudadas para `software/dev/arlequin-dados/_dados-falsos-arquivo/`, que o treino não lê;
+  - **o dia danificado** (`.danificado-*`) e a cópia do Pi guardada no portátil (`.N`) também entram no treino; os repetidos tiram-se pela hora (I-34);
+  - o motivo de cada modelo diz com que origem se comparou (a polar, a previsão em bruto, a curva da Volvo) (M-56); há fixtures dos quatro modelos para o avaliador JS (M-58);
+  - as rotas têm nível (`GET /ia` com `readonly`; `POST /treinar` e `/voltar` com `readwrite`, K-11).
 
 ## Parte 3: Melhor rota: cálculo (`software/signalk-arlequin-rota/`)
 
