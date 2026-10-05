@@ -1925,14 +1925,14 @@ O plugin J1939 publica `propulsion.main.ligacao` (contrato C11):
 - **calado** — sem tramas há mais de 5 s, com a interface de pé: é a **ignição desligada**. Os valores
   do motor ficam "—", os alarmes que vêm dos dados do motor (sobreaquecimento, alternador, mapa do
   MDI) limpam, e o ecrã mostra "motor desligado" e conta o tempo como vela;
-- **sem ligação** — o adaptador USB–CAN solto, a interface em baixo (ou em *bus-off*) ou o `candump`
+- **sem ligação** — o adaptador USB–CAN solto, a interface em baixo (ou parada por erros no barramento) ou o `candump`
   parado: "sem leitura do motor" no ecrã e o aviso "Sem leitura do motor (J1939): <motivo>" (apito
   curto, só no ecrã). O plugin religa o `candump` de 5 em 5 s.
 
 **O ponto cego:** o Pi só escuta. Um fio CAN solto entre o adaptador e o MDI, com a interface de pé,
 parece a ignição desligada: com o motor a trabalhar, o ecrã diria "motor desligado" e um
-sobreaquecimento limparia. **Ao arrancar o motor, confirma que o ecrã passa a "a trabalhar".** Um
-bitrate errado ou erros no barramento também dão "calado": vê-se com `ip -details link show can1`.
+sobreaquecimento limparia. **Ao arrancar o motor, confirma que o ecrã passa a "a trabalhar".** Uma
+velocidade do barramento errada ou erros no barramento também dão "calado": vê-se com `ip -details link show can1`.
 
 **Os alarmes do MDI** (PGN 65417) descobrem-se no barco: abrir
 `http://<pi>:3000/plugins/signalk-arlequin-j1939/pagina`, ligar a ignição com o motor parado (acendem

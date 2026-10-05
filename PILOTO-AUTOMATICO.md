@@ -90,7 +90,7 @@ náutica nova.
 **Nota de segurança** (escrita a 07/09, quando se julgava que era um sistema de cinta à volta da
 roda): um piloto de roda fica por fora do governo — se falhar, perde-se o piloto mas não o governo
 do barco. **Vale também para o EV-100:** depois de montado, confirmar que, com o piloto desengatado
-(em *standby*), a roda roda livre e o travão da roda funciona como antes.
+(a tecla "standby" do p70s), a roda roda livre e o travão da roda funciona como antes.
 
 ## 3. Piloto automático: decidido a 02/10 — Raymarine EV-100 Wheel (T70152)
 
