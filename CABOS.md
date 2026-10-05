@@ -8,9 +8,11 @@ Trabalho de inverno, independente do casco. Ver também `QUILHA.md`,
 - **Enrolador de genoa**: sim
 - **Rizos levados ao poço**: sim
 - **Spi**: sim
-- Sloop de topo, mastro ~13 m acima do convés, retranca ~4 m (a ficha técnica do Melody dá
-  14,20 m de comprimento do mastro: ver o quadro "Dados do barco" do `NAVEGACAO.md`, §0b; por
-  confirmar pelo Ivo, porque muda o comprimento das drizas)
+- Sloop de topo. **Plano vélico (sailboatdata e Wikipedia, 02/10): I = 14,17 m, P = 12,92 m,
+  J = 4,51 m, E = 3,63 m.** As drizas sobem a **~14,2 m acima do convés** (o I), e não aos ~13 m
+  que estas notas contavam; a retranca leva uma esteira de 3,63 m (o E; as notas diziam ~4 m de
+  retranca). O mastro tem 14,20 m de comprimento (ficha técnica). Quadro completo: "Dados do barco"
+  do `NAVEGACAO.md`, §0b.
 
 ## ⚠️ A regra que evita subir ao mastro
 
@@ -26,9 +28,9 @@ metro a mais. Diâmetro com paquímetro — não confiar no que "parece".
 
 | Cabo | Metros | Diâmetro |
 |---|---|---|
-| Driza da maior | 25 (por confirmar: ver a nota abaixo) | 10 mm |
-| Driza da genoa | 28 | 10 mm |
-| Driza do spi | 30 | 10 mm |
+| Driza da maior | 25 — provavelmente curta (~30–31 m: ver a nota abaixo) | 10 mm |
+| Driza da genoa | 28 — provavelmente curta (~30–31 m) | 10 mm |
+| Driza do spi | 30 — no limite (~30–31 m) | 10 mm |
 | Escotas de genoa (2) | 32 | 12 mm |
 | Escotas de spi (2) | 40 | 10 mm |
 | Escota da maior | 25 | 10–12 mm |
@@ -41,11 +43,11 @@ metro a mais. Diâmetro com paquímetro — não confiar no que "parece".
 
 **Total: ~280 m.** Mais ~36 m se o spi for simétrico e levar braços.
 
-**Drizas: por confirmar pelo Ivo.** Pela regra deste documento (driza = 2 × altura a que sobe +
-2 a 3 m), com o mastro a ~13 m a driza da maior dá **28–29 m**, e não 25 m (a da genoa, 28 m,
-cumpre-a). Com os 14,20 m de mastro da ficha técnica, a regra dá ~30–31 m para as três drizas do
-topo (maior, genoa e spi). Medir as drizas velhas antes de encomendar ("o cabo velho é o molde");
-o total sobe na mesma medida.
+**Drizas: medir as velhas antes de encomendar.** Pela regra deste documento (driza = 2 × altura a
+que sobe + 2 a 3 m), com as drizas a subir ~14,2 m (I = 14,17 m) dá **~30–31 m** para as três
+drizas do topo (maior, genoa e spi): as da lista (25, 28 e 30 m) ficam provavelmente curtas, e
+eram contas feitas com o mastro a ~13 m (que davam 28–29 m). Medir as drizas velhas antes de
+encomendar ("o cabo velho é o molde"); o total sobe na mesma medida (mais ~7–10 m nas três).
 
 **Custo: €900–1400.** O equipamento de spi sozinho leva €250–400. As drizas
 e os rizos, em Dyneema, são a fatia cara; o resto é poliéster.
