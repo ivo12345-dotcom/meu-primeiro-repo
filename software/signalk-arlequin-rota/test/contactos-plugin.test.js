@@ -1642,3 +1642,38 @@ test('F2b Menor 9: o parcial de um atraso (a mesma mensagem só para quem falhou
   assert.equal(Date.parse((await chamar(s.r.get['/plano-ativo'])).envio.porContacto.find(x => x.nome === 'Pai').alarme), a2.alarme)
   s.p.stop()
 })
+
+// ---------- revisão da F2 (F2b), Menor 6: o fecho da viagem anterior por entregar ----------
+test('F2b Menor 6 (K-12, sonda p04 c): ao ativar a viagem 2 com o «cheguei bem» da viagem 1 por entregar, o GET continua a dizer fechoPorEntregar — com doPlanoAnterior: true, para o Leme dizer que o da viagem anterior ainda não chegou; o da viagem 2 passa à frente quando existir; entregue, null; o aviso de terra não muda (é o do plano aberto)', async () => {
+  const s = await preparar()
+  await sair(s)
+  const ouvintes = s.app.listeners('arlequin:plano')
+  s.app.removeAllListeners('arlequin:plano') // sem rede na marina
+  await chegar(s)
+  let g = await chamar(s.r.get['/plano-ativo'])
+  const f1 = g.fechoPorEntregar
+  assert.deepEqual({ tipo: f1.tipo, contactos: f1.contactos, doPlanoAnterior: f1.doPlanoAnterior }, { tipo: 'chegada', contactos: ['Mãe'], doPlanoAnterior: false }, 'do plano que fechou: o deste plano')
+  const alarme1 = Date.parse(g.envio.alarme)
+  s.acertar(alarme1 - 30 * MIN); await s.ciclo(0)
+  // a viagem 2 (outro cálculo), ativada com o «cheguei bem» da viagem 1 ainda por entregar
+  const { id } = await calcular(s.r, { destino: 'cascais', tripulacao: 'so' })
+  const a = await chamar(s.r.post['/ativar'], { body: { id, alternativa: 0 } })
+  assert.equal(a.code, 200, a.erro)
+  g = await chamar(s.r.get['/plano-ativo'])
+  assert.deepEqual(g.filaContactos.map(m => m.tipo).sort(), ['chegada', 'plano'], 'a fila tem o «cheguei bem» antigo e o plano novo')
+  assert.deepEqual({ tipo: g.fechoPorEntregar?.tipo, contactos: g.fechoPorEntregar?.contactos, doPlanoAnterior: g.fechoPorEntregar?.doPlanoAnterior }, { tipo: 'chegada', contactos: ['Mãe'], doPlanoAnterior: true }, 'o da viagem anterior continua a aparecer')
+  assert.ok(g.fechoPorEntregar.tentativas >= 1 && typeof g.fechoPorEntregar.erro === 'string')
+  // o aviso de terra é o do plano aberto (a hora de alarme da Mãe, a de antes), não o do fecho
+  await s.ciclo(0)
+  assert.equal(s.app.self[ALARME_TERRA].message, `Os contactos em terra ligam ao MRCC ${asHoras(alarme1, s.agora())}: avisa-os ou Terminar`)
+  // a «viagem terminada» da viagem 2 por entregar passa à frente do «cheguei bem» da viagem 1
+  assert.equal((await chamar(s.r.post['/plano-ativo/terminar'])).code, 200)
+  g = await chamar(s.r.get['/plano-ativo'])
+  assert.deepEqual({ tipo: g.fechoPorEntregar.tipo, doPlanoAnterior: g.fechoPorEntregar.doPlanoAnterior }, { tipo: 'terminado', doPlanoAnterior: false })
+  // a rede volta: tudo chega e o campo desaparece
+  for (const f of ouvintes) s.app.on('arlequin:plano', f)
+  for (let m = 0; m < 8; m++) await s.ciclo(2 * MIN)
+  assert.ok(s.recebidos.some(e => e.tipo === 'chegada'), 'o «cheguei bem» da viagem 1 chegou')
+  assert.equal((await chamar(s.r.get['/plano-ativo'])).fechoPorEntregar, null)
+  s.p.stop()
+})
