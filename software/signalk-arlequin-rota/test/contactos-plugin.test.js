@@ -1166,10 +1166,64 @@ test('auditoria I-02 (sonda S9, decisão n.º 15): o plano entregue à Mãe e nu
   assert.equal(s.app.self[ALARME_TERRA].state, 'alert')
   assert.equal(s.app.self[ALARME_TERRA].apito, 'curto')
   assert.equal(s.app.self[ALARME_TERRA].message, `Os contactos em terra têm um plano com alarme ${asHoras(alarme, s.agora())} e não há plano ativo: ativa-o ou avisa-os`)
-  // passada a hora de alarme, terra já não espera: o aviso apaga-se
+  // passada a hora de alarme o aviso NÃO se apaga (F2b Menor 4: é quando terra começa a ligar): fica, com o texto de
+  // passado; o campo envioEmTerra do GET continua a contar só o que está por passar
   s.acertar(alarme + MIN); await s.p.cicloNavegar()
-  assert.equal(s.app.self[ALARME_TERRA].state, 'normal')
+  assert.equal(s.app.self[ALARME_TERRA].state, 'alert')
+  assert.equal(s.app.self[ALARME_TERRA].message, `Passou a hora de alarme dos contactos em terra (${horaLisboa(alarme, s.agora())}) e não há plano ativo: avisa-os já, podem estar a ligar ao MRCC`)
   assert.equal((await chamar(s.r.get['/plano-ativo'])).envioEmTerra, null)
+  s.p.stop()
+})
+
+test('F2b Menor 4 (I-02, decisão n.º 15): o plano entregue à Mãe e nunca ativado — o lembrete fica depois da hora de alarme (ao passar, publica o texto de passado e o ecrã apita outra vez), sobrevive a um reinício e só se apaga 24 h depois da hora de alarme mais tarde; o GET diz envioEmTerra só enquanto a hora está por passar', async () => {
+  const s = await enviarSem()
+  const alarme = plano_.horaAlarme(s.resultado.alternativas[0])
+  const deltas = () => s.app.deltas.flatMap(d => d.updates.flatMap(u => u.values)).filter(v => v.path === ALARME_TERRA).map(v => `${v.value.state}|${v.value.apito ?? ''}|${v.value.message}`)
+  const passou = (agora) => `Passou a hora de alarme dos contactos em terra (${horaLisboa(alarme, agora)}) e não há plano ativo: avisa-os já, podem estar a ligar ao MRCC`
+  s.acertar(alarme - 30 * MIN); await s.p.cicloNavegar()
+  assert.deepEqual(deltas(), [`alert|curto|Os contactos em terra têm um plano com alarme ${asHoras(alarme, s.agora())} e não há plano ativo: ativa-o ou avisa-os`])
+  // chega a hora de alarme: outro valor publicado (o ecrã apita outra vez), com o texto de passado
+  s.acertar(alarme); await s.p.cicloNavegar()
+  assert.equal(deltas().length, 2)
+  assert.equal(deltas()[1], `alert|curto|${passou(s.agora())}`)
+  assert.equal((await chamar(s.r.get['/plano-ativo'])).envioEmTerra, null, 'o GET conta só o que está por passar')
+  // minutos e horas depois: fica, sem repetir
+  for (const depois of [MIN, 10 * MIN, 3 * H, 23 * H]) { s.acertar(alarme + depois); await s.p.cicloNavegar() }
+  assert.equal(s.app.self[ALARME_TERRA].state, 'alert')
+  assert.equal(deltas().length, 2, 'não se repete a cada ciclo')
+  // o plugin reinicia (o servidor apaga os valores do plugin ao parar): volta no 1.º ciclo
+  s.p.stop()
+  delete s.app.self[ALARME_TERRA]
+  const q = plugin(s.app, { agendarCiclo: () => 1, pararCiclo: () => {}, agendar: () => 1, cancelar: () => {} })
+  q.acertar(s.agora())
+  q.p.start({ pasta: path.join(s.app.dir, 'dados') })
+  q.avancar(MIN); await q.p.cicloNavegar()
+  assert.equal(s.app.self[ALARME_TERRA].state, 'alert')
+  assert.equal(s.app.self[ALARME_TERRA].message, passou(q.agora()))
+  // 24 h depois da hora de alarme mais tarde, deixa de interessar
+  q.acertar(alarme + 24 * H - MIN); await q.p.cicloNavegar()
+  assert.equal(s.app.self[ALARME_TERRA].state, 'alert', 'falta 1 min')
+  q.acertar(alarme + 24 * H); await q.p.cicloNavegar()
+  assert.equal(s.app.self[ALARME_TERRA].state, 'normal')
+  q.p.stop()
+})
+
+test('F2b Menor 4: o lembrete de passado de outro plano não tapa o do plano aberto — o plano ativo é o da 2.ª alternativa (alarme 20:14) e terra tem o da 1.ª (alarme 13:57, já passou): a 60 min da hora de alarme do plano ativo o aviso é o dele; quando o plano ativo fecha, volta o de passado', async () => {
+  const s = await preparar({ alternativa: 1 })
+  assert.equal((await chamar(s.r.post['/plano-telegram'], { body: { id: s.id, alternativa: 0 } })).code, 202)
+  const alarmeA = plano_.horaAlarme(s.resultado.alternativas[1])
+  const alarmeB = plano_.horaAlarme(s.resultado.alternativas[0])
+  assert.ok(alarmeB + 5 * H < alarmeA, 'o de outra alternativa passa bem antes do ativo')
+  // a hora de B já passou: o de passado (o plano ativo ainda vem longe)
+  s.acertar(alarmeB + 5 * MIN); await s.ciclo(0)
+  assert.equal(s.app.self[ALARME_TERRA].message, `Passou a hora de alarme dos contactos em terra (${horaLisboa(alarmeB, s.agora())}), que têm o plano de outra alternativa: avisa-os já, podem estar a ligar ao MRCC`)
+  // 30 min antes da hora do plano ativo: o aviso é o dele (a hora de B já foi vista e continua a passar a de A)
+  s.acertar(alarmeA - 30 * MIN); await s.ciclo(0)
+  assert.equal(s.app.self[ALARME_TERRA].message, `Os contactos em terra ligam ao MRCC ${asHoras(alarmeA, s.agora())}: avisa-os ou Terminar`)
+  // Terminar o plano ativo: já não há plano aberto, volta o lembrete do plano que terra tem sem ser o ativo
+  assert.equal((await chamar(s.r.post['/plano-ativo/terminar'])).code, 200)
+  await s.ciclo(0)
+  assert.match(s.app.self[ALARME_TERRA].message, /^Passou a hora de alarme dos contactos em terra \(.*\) e não há plano ativo: avisa-os já/)
   s.p.stop()
 })
 

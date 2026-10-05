@@ -88,7 +88,11 @@
 // saiu. O plano substituído vai para planos-fechados.json (os 5 mais recentes).
 // O aviso notifications.rota.alarmeTerra (60 min antes da hora de alarme mais cedo que terra tem) vale com
 // o plano aberto, com o plano fechado enquanto o "cheguei bem" não chega a terra (auditoria K-12), e quando
-// terra tem um plano que não é o ativo (decisão n.º 15).
+// terra tem um plano que não é o ativo (decisão n.º 15). Este último NÃO se apaga à hora de alarme (revisão da F2,
+// F2b Menor 4: é quando terra começa a ligar): passa a "Passou a hora de alarme dos contactos em terra (HH:MM) …
+// avisa-os já" (outra chave: o ecrã volta a apitar) e fica até o plano ser ativado ou fechado, ou 24 h depois da
+// hora de alarme mais tarde (sem um "Avisei-os" no servidor, o "reconhecer" é do ecrã). Se o aviso do plano aberto
+// e este coincidirem (um só caminho), o do plano aberto tem prioridade sobre um já passado.
 //
 // O plano (desenho 3b-1): monta o texto e o GPX (lib/plano.js) e emite no servidor o evento
 // 'arlequin:plano' { pedido, texto, gpx, nomeFicheiro }; o plugin porto (que tem o bot do Telegram)
@@ -177,6 +181,9 @@ const PREVISAO_MAX_IDADE_H = 50
 const RELOGIO_MAX_MS = 60000 // decisão do Ivo n.º 19: o relógio do Pi a mais de 60 s da hora do GPS
 const CAPACIDADE_AH_ANTIGA = 200 // o valor por omissão do esquema até 02/10 (auditoria I-13)
 const AVISO_IVO_MS = 24 * 3600000 // o aviso ao Ivo de uma mensagem que não chegou: tenta-se durante 24 h
+// O lembrete "avisa-os" de um plano entregue a terra e nunca ativado fica até tanto depois da hora de alarme
+// mais tarde (F2b Menor 4): sem um "Avisei-os" no servidor, é o limite para não ficar para sempre
+const SEM_PLANO_DEPOIS_MS = 24 * 3600000
 // a escrita atómica (com o fsync do ficheiro e da pasta, onde o sistema deixa): uma só, a do lib/previsao.js
 const { escreverAtomico } = prev
 
@@ -420,10 +427,11 @@ module.exports = function (app, deps = {}) {
     gravarUltimoEnvio({ idCalculo: p.idCalculo, indice: p.indice, contactos: [...p.envio.contactos], chats: [...(p.envio.chats || [])], alarme: new Date(tarde).toISOString(), alarmeMaisCedo: new Date(ct.alarmeMaisCedo(terra)).toISOString(), enviadoEm: p.envio.enviadoEm ?? null, fechado: false })
   }
   // O último entregue em terra que ainda conta: com contactos, sem "cheguei bem"/"terminada" e com a hora de
-  // alarme por passar; senão null.
-  function envioEmTerra (agora) {
+  // alarme por passar; senão null. depois (ms): até quanto depois da hora de alarme mais tarde ainda conta
+  // (o lembrete "avisa-os" de um plano nunca ativado, F2b Menor 4; por omissão 0: só o que está por passar).
+  function envioEmTerra (agora, { depois = 0 } = {}) {
     const x = lerUltimoEnvio()
-    if (!x || x.fechado || !x.contactos.length || !(Date.parse(x.alarme) > agora)) return null
+    if (!x || x.fechado || !x.contactos.length || !(Date.parse(x.alarme) + depois > agora)) return null
     return x
   }
   function gravarPlanoAtivo () {
@@ -861,18 +869,24 @@ module.exports = function (app, deps = {}) {
     const comEnvio = !!p?.envio?.contactos?.length
     const fecho = comEnvio && !pa.aberto(p) ? fechoPorEntregar(p) : null
     const doPlano = av.alarmeTerra({ aberto: comEnvio && pa.aberto(p), alarme: alarmeEmTerra(), fecho: fecho?.tipo ?? null }, agora)
-    const u = terraSemPlano(agora)
+    // (F2b Menor 4: o lembrete do plano que terra tem sem ser o ativo fica depois da hora de alarme, até 24 h
+    // depois da mais tarde; o campo envioEmTerra do GET continua a contar só o que está por passar)
+    const u = terraSemPlano(agora, { depois: SEM_PLANO_DEPOIS_MS })
     const alarmeOutro = u ? alarmeCedoDe(u) : NaN
     const doOutro = u ? av.alarmeTerra({ semPlano: pa.aberto(p) ? 'outro' : 'nenhum', alarme: alarmeOutro }, agora) : null
-    const escolhido = doOutro && doOutro.state !== 'normal' && (doPlano.state === 'normal' || alarmeOutro < alarmeEmTerra()) ? doOutro : doPlano
-    return { [av.CAMINHO_ALARME_TERRA]: escolhido }
+    // Os dois nunca ao mesmo tempo (um só caminho): o que está para vir mais cedo; mas um lembrete de passado
+    // (a hora de alarme dos contactos já passou) só aparece quando o do plano aberto não tem nada a dizer — o
+    // do plano aberto (a 60 min da hora dele, ou já passada) tem sempre prioridade sobre ele
+    const outroPassou = alarmeOutro <= agora
+    const outroGanha = !!doOutro && doOutro.state !== 'normal' && (doPlano.state === 'normal' || (!outroPassou && alarmeOutro < alarmeEmTerra()))
+    return { [av.CAMINHO_ALARME_TERRA]: outroGanha ? doOutro : doPlano }
   }
   // A hora de alarme mais cedo de um último envio (ms); sem ela, ou ilegível (um ficheiro antigo ou estragado),
   // a alarme (a que o envioEmTerra já validou)
   const alarmeCedoDe = (u) => { const t = Date.parse(u?.alarmeMaisCedo); return Number.isFinite(t) ? t : Date.parse(u?.alarme) }
   // O plano que os contactos em terra têm (ultimo-envio.json, ainda a contar) quando não é o do plano ativo.
-  function terraSemPlano (agora) {
-    const u = envioEmTerra(agora)
+  function terraSemPlano (agora, opcoes) {
+    const u = envioEmTerra(agora, opcoes)
     if (!u || (planoAtivo && u.idCalculo === planoAtivo.idCalculo && u.indice === planoAtivo.indice)) return null
     return u
   }
