@@ -56,7 +56,7 @@ Data: 05/10/2026. Ramo `claude/piloto-automatico-cwnr0f`, só no portátil (sem 
 | 29 | PDFs refeitos a partir dos documentos corrigidos; a página "explicado" de 29/09 ficou marcada como histórico |
 | 30 | README da raiz passou a um índice do projeto |
 | — | Uma configuração antiga com 200 Ah é trocada por 440 Ah uma única vez (fica registado em `migracoes.json`) |
-| — | Gasóleo desconhecido no cálculo (sonda perdida ou leitura velha): só o aviso vermelho "gasóleo inicial desconhecido: confirma o depósito", sem litros assumidos; a bateria desconhecida continua a assumir 80 % com aviso vermelho (podes pedir a mesma regra para a bateria) |
+| — | Gasóleo desconhecido no cálculo (sonda perdida ou leitura velha): só o aviso vermelho "gasóleo inicial desconhecido: confirma o depósito", sem litros assumidos. **A bateria desconhecida igual (pediste-o a 05/10):** sem os 80 % assumidos, a regra dos 50 % não corre, o cartão diz "bateria desconhecida" e fica o aviso vermelho "estado da bateria desconhecido: confirma a carga" |
 | — | O "silenciar" de um alarme sobrevive 3 min ao reinício de um plugin (o fumo fica de fora: volta a apitar) |
 | — | Mensagens para terra muito atrasadas dizem "(atrasado mais de 7 dias)" em vez de contar para sempre |
 

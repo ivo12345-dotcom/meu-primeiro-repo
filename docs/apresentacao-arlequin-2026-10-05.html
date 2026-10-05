@@ -245,7 +245,7 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
   <table>
     <tr><th style="width:18%">Plugin</th><th>O que faz</th><th style="width:10%">Testes</th></tr>
     <tr><td>arlequin-ecra</td><td>O ecrã da roda (8 páginas + Noite), em HTML/JS sem dependências; arruma as janelas do OpenCPN e leva o Diário ao <i>signalk-logbook</i> com um token guardado só no servidor. Um verificador desenha os 74 estados num Chromium a 1024×600 e falha se algo ficar cortado.</td><td class="n">325</td></tr>
-    <tr><td>signalk-arlequin-rota</td><td>A melhor rota: o cálculo (3a), o plano para terra pelo Telegram (3b-1) e o acompanhamento a navegar (3b-2), de minuto a minuto, com o plano gravado em disco (sobrevive a reinícios).</td><td class="n">471</td></tr>
+    <tr><td>signalk-arlequin-rota</td><td>A melhor rota: o cálculo (3a), o plano para terra pelo Telegram (3b-1) e o acompanhamento a navegar (3b-2), de minuto a minuto, com o plano gravado em disco (sobrevive a reinícios).</td><td class="n">473</td></tr>
     <tr><td>signalk-arlequin-porto</td><td>Barco parado e Telegram: fumo, porão, bomba, fuga, intrusão, deriva do ponto de amarração; comandos /estado, /foto, /posicao, /armar, /desarmar, /amarrar, /largar; fila persistente que insiste até entregar.</td><td class="n">144</td></tr>
     <tr><td>signalk-arlequin-ais</td><td>Alarme de colisão no servidor (o mesmo cálculo CPA/TCPA do ecrã), com as regras de parado, amarrado e em porto.</td><td class="n">49</td></tr>
     <tr><td>signalk-arlequin-j1939</td><td>O motor pelo J1939 do MDI: descodifica as PGN, estima o consumo, publica o estado da ligação, descobre os bits dos alarmes do MDI numa página própria.</td><td class="n">62</td></tr>
@@ -665,7 +665,7 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
   <div class="cab"><h1>18. Como se sabe que funciona: validação</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
   <div class="simples"><b>Em palavras simples:</b> antes de ir para o barco, o sistema foi posto a navegar milhares de vezes num barco fingido, medido num ecrã verdadeiro e revisto de uma ponta à outra por oito revisores independentes.</div>
   <div class="kpi">
-    <div><span class="v">1 467</span><span class="l">testes automáticos (1 371 em Node, 96 em Python), todos verdes a 05/10</span></div>
+    <div><span class="v">1 469</span><span class="l">testes automáticos (1 373 em Node, 96 em Python), todos verdes a 05/10</span></div>
     <div><span class="v">74</span><span class="l">estados do ecrã medidos num Chromium a 1024×600, de dia e de noite, 0 problemas</span></div>
     <div><span class="v">168</span><span class="l">achados da auditoria total de 02/10 (13 críticos, 48 importantes, 86 menores, 21 incoerências), todos corrigidos</span></div>
     <div><span class="v">&gt; 240</span><span class="l">commits de correção revistos por um segundo revisor, com rondas de re-revisão</span></div>
