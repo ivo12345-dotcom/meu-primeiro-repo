@@ -1,9 +1,10 @@
 // Melhor rota a navegar (desenho 3b-2): o plano ativo no Leme. O plugin da rota segue a viagem
 // (GET /plano-ativo, lido de 10 em 10 s); aqui só se mostra e se pede:
 //   a faixa por cima do rumo: "próximo: rizar às 22:50 (daqui a 25 min) · +20 min sobre o plano",
-//     "chegada ~amanhã 07:58 (plano 07:38)", "recursos: gasóleo à chegada ~34 L" (quando há aviso) ou
-//     "recursos: sem leitura", "sem GPS: acompanhamento parado", "barómetro: sem leitura"; antes de
-//     sair, "plano ativo · à espera de sair";
+//     "chegada ~amanhã 07:58 (plano 07:38)", "recursos: gasóleo à chegada ~34 L" (quando há aviso) e o que
+//     falta ler — "recursos: sem leitura" (os dois), "recursos: gasóleo sem leitura" (a sonda perdida) ou
+//     "recursos: bateria sem leitura" (recursos.gasoleoSemLeitura / bateriaSemLeitura, F9) —, "sem GPS:
+//     acompanhamento parado", "barómetro: sem leitura"; antes de sair, "plano ativo · à espera de sair";
 //   Recalcular (um cálculo novo de onde estás para o mesmo destino e tripulação: o Resultado da 3b-1,
 //     onde Ativar substitui o plano; a navegar ou em pausa no mar só a partida imediata, sairAgora:
 //     true, e o plugin mantém o "Volta ou abriga-te em X" — decisão do Ivo de 01/10; à espera de sair,
@@ -19,7 +20,9 @@
 //     da pausa, "mensagem para terra por enviar (sem rede)" (uma na fila que já falhou), "não chegou a X
 //     (a tentar outra vez)" (o parcial) e, em pausa, "em pausa: os atrasos não seguem para terra"; a hora de
 //     alarme da faixa é a MAIS CEDO que algum contacto tem (envio.alarme, decisão n.º 14) e, com horas
-//     diferentes, "Pai: alarme HH:MM · Mãe: alarme HH:MM" (envio.porContacto, I-01, F3b);
+//     diferentes, "Pai: alarme HH:MM · Mãe: alarme HH:MM" (envio.porContacto, I-01, F3b); com a viagem seguinte
+//     aberta, o «cheguei bem» da viagem anterior que ainda não chegou a terra (fechoPorEntregar.doPlanoAnterior,
+//     F9): "o «cheguei bem» da viagem anterior ainda não chegou a terra: liga-lhes (Pai)";
 //   o que pede uma ação em relação a terra — o relógio do Pi desacertado, o «cheguei bem» por entregar com o plano
 //     já fechado (K-12), a quem se desistiu de entregar (I-05) e o plano que terra tem sem ser o ativo (I-02) —
 //     vai num mosaico à parte, "Contactos em terra" (terra.js), também no Pedir; o 404 do GET /plano-ativo traz
@@ -116,6 +119,20 @@ function atrasoTexto (a) {
   return `${a > 0 ? '+' : '−'}${Math.abs(a)} min sobre o plano`
 }
 
+// Que recurso não tem leitura (F9, F2b Menor 3): o plugin diz qual — recursos.gasoleoSemLeitura (com a sonda do
+// gasóleo perdida o gasóleo é desconhecido, nunca os litros pelo consumo) e recursos.bateriaSemLeitura —, e
+// semLeitura continua a ser "os dois". Falha segura: o que o plugin não diz de um deles (um plugin de antes só
+// trazia o semLeitura) não se inventa. → '' (tudo lido), 'sem leitura' (os dois), 'gasóleo sem leitura' ou
+// 'bateria sem leitura'.
+function recursosSemLeitura (r) {
+  const gasoleo = r.gasoleoSemLeitura === true
+  const bateria = r.bateriaSemLeitura === true
+  if (r.semLeitura === true || (gasoleo && bateria)) return 'sem leitura'
+  if (gasoleo) return 'gasóleo sem leitura'
+  if (bateria) return 'bateria sem leitura'
+  return ''
+}
+
 function linhasFaixa (ctx, p) {
   const t = horaPlugin(ctx, p)
   const linhas = []
@@ -138,7 +155,9 @@ function linhasFaixa (ctx, p) {
   }
   const r = p.recursos || {}
   if (r.aviso) linhas.push(`<span class="atencao">recursos: ${esc(String(r.aviso).replace(/^Recursos:\s*/, ''))}</span>`)
-  else if (r.semLeitura) linhas.push('<span class="lab">recursos: sem leitura</span>')
+  // o que falta ler diz-se sempre, ao lado do aviso do que se leu: um aviso nunca esconde um recurso desconhecido
+  const sem = recursosSemLeitura(r)
+  if (sem) linhas.push(`<span class="lab">recursos: ${sem}</span>`)
   if (p.semGps) linhas.push('<span class="perigo">sem GPS: acompanhamento parado</span>')
   if (p.barometro?.semLeitura) linhas.push('<span class="lab">barómetro: sem leitura</span>')
   return [...linhas, ...linhasTerra(p, t)]
@@ -148,9 +167,17 @@ function linhasFaixa (ctx, p) {
 // mensagem que não chegou a alguém (o parcial), a que está por enviar e, em pausa, que os atrasos param.
 // simples: sem as cores (dentro da caixa vermelha da pausa).
 function linhasTerra (p, t, { pausa = false, simples = false } = {}) {
-  if (!p.envio?.contactos?.length) return []
   const cor = (classe, x) => (simples ? x : `<span class="${classe}">${x}</span>`)
   const out = []
+  // O «cheguei bem» (ou a «viagem terminada») da viagem ANTERIOR que ainda não chegou a terra, com a viagem seguinte
+  // aberta (F9, F2b Menor 6: fechoPorEntregar.doPlanoAnterior): diz-se de quem é, mesmo que o plano novo ainda não
+  // tenha ido a terra (sem envio). O deste plano, já fechado, é o do mosaico "Contactos em terra" (terra.js).
+  const fecho = p.fechoPorEntregar
+  if (fecho?.doPlanoAnterior === true && (fecho.tipo === 'chegada' || fecho.tipo === 'terminado')) {
+    const quem = (Array.isArray(fecho.contactos) ? fecho.contactos : []).filter(n => typeof n === 'string' && n.trim()).map(n => esc(n.trim()))
+    out.push(cor('atencao', `⚠ ${fecho.tipo === 'chegada' ? 'o «cheguei bem»' : 'a «viagem terminada»'} da viagem anterior ainda não chegou a terra: liga-lhes${quem.length ? ` (${quem.join(', ')})` : ''}`))
+  }
+  if (!p.envio?.contactos?.length) return out
   const alarme = Date.parse(p.envio.alarme)
   // a hora a que terra liga ao MRCC é a que o Ivo tem de saber sempre (F3b item 1): no tamanho da faixa, não a cinzento miúdo
   if (ok(alarme)) out.push(`contactos em terra: alarme <b>${horaLisboa(alarme, t)}</b>`)
