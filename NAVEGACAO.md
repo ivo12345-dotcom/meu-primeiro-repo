@@ -826,35 +826,39 @@ no brilho máximo, §5), e o LAFVIN passa para a mesa.
   LED, o Ivo troca-as. As contas assumem LED (~2 Ah por noite em vez de ~25).
   Ao trocar, escolher luzes **homologadas (COLREG)** para barcos até 12 m.
 
-## 5c. Solar 2 × 305 W cruzado com o balanço (28/09)
+## 5c. Solar 2 × 625 W cruzado com o balanço (06/10; até aqui 2 × 305 W)
 
-Produção = 610 W × horas de sol útil × 0,55–0,75 (perdas, painel deitado,
+**Decisão do Ivo de 06/10: 2 painéis de 625 W** (1 250 W no total) em vez dos 2 × 305 W de 28/09. O
+resto do desenho fica: um MPPT por painel (agora 100/50), SmartShunt, perfil AGM, banco de serviço de
+440 Ah (§8b, ponto 16, o que muda).
+
+Produção = 1 250 W × horas de sol útil × 0,55–0,75 (perdas, painel deitado,
 sombras de radome/retranca/velas) ÷ 13 V. Sol útil: inverno 2,7 h,
 primavera/outono 5,0 h, verão 6,5 h.
 
 | Situação | Produz (Ah/dia) | Gasta (Ah/dia) | Saldo |
 |---|---|---|---|
-| Porto, inverno (Pi sempre ligado) | 70–95 | 27 | **+43 a +68** |
-| Porto, inverno, com frigorífico | 70–95 | ~62 | **+8 a +33** |
-| A navegar, verão, sem piloto | 168–229 | ~120–130 | **+38 a +109** |
-| A navegar, verão, com EV-100 | 168–229 | ~185–200 | **−32 a +44** |
-| A navegar, primavera/outono, sem piloto | 129–176 | ~120 | **+9 a +56** |
-| A navegar, primavera/outono, com EV-100 | 129–176 | ~185 | **−56 a −9** |
-| A navegar, inverno, sem piloto | 70–95 | ~120 | **−50 a −25** |
-| A navegar, inverno, com EV-100 | 70–95 | ~185 | **−115 a −90** |
+| Porto, inverno (Pi sempre ligado) | 143–195 | 27 | **+116 a +168** |
+| Porto, inverno, com frigorífico | 143–195 | ~62 | **+81 a +133** |
+| A navegar, verão, sem piloto | 344–469 | ~120–130 | **+214 a +349** |
+| A navegar, verão, com EV-100 | 344–469 | ~185–200 | **+144 a +284** |
+| A navegar, primavera/outono, sem piloto | 264–361 | ~120 | **+144 a +241** |
+| A navegar, primavera/outono, com EV-100 | 264–361 | ~185 | **+79 a +176** |
+| A navegar, inverno, sem piloto | 143–195 | ~120 | **+23 a +75** |
+| A navegar, inverno, com EV-100 | 143–195 | ~185 | **−42 a +10** |
 
-**Conclusões:**
-- **No porto** o barco fica autónomo o ano todo, mesmo com o frigorífico.
-- **A navegar sem piloto:** autónomo da primavera ao outono.
-- **Com o EV-100 no verão:** fica perto do equilíbrio; num dia de sombra
-  falta pouco, e a janela de ~150 Ah aguenta uns dias.
-- **Com o EV-100 fora do verão, e no inverno em geral:** falta energia. Uma
-  hora de motor dá mais ~40–60 Ah (estimativa, depende do separador e da
-  aceitação das AGM); no inverno com piloto são ~2 h de motor por dia.
-- **AGM:** o sol raramente as leva aos 100%. Uma carga completa no cais de vez
-  em quando (por exemplo uma vez por mês) prolonga-lhes a vida.
-- Estas contas são estimativas. Os valores reais vêm do SmartShunt ao fim de
-  algumas semanas.
+**Conclusões (com 2 × 625 W):**
+- **No porto e a navegar sem piloto:** autónomo o ano todo, com folga.
+- **Com o EV-100:** autónomo da primavera ao outono; **no inverno fica no equilíbrio** (um dia escuro
+  com o piloto pede ~1 h de motor, em vez das ~2 h por dia que os 2 × 305 W pediam).
+- **O limite passa a ser a bateria, não o sol:** 440 Ah de AGM aceitam ~0,2–0,3 C (90–130 A) e, acima
+  dos ~85 %, pouco; a meio de um dia de verão os painéis ficam a "sobrar". Os MPPT (perfil AGM) tratam
+  disso, sem mal nenhum.
+- **AGM:** o sol leva-as aos 100 % mais vezes do que com 610 W, mas a carga completa no cais de vez
+  em quando continua a fazer-lhes bem.
+- Estas contas são estimativas. Os valores reais vêm do SmartShunt ao fim de algumas semanas. (Os
+  números de 28/09, com 2 × 305 W: 70–95 Ah/dia no inverno e 168–229 no verão; no inverno com o
+  EV-100 faltavam 90–115 Ah por dia.)
 
 ### Aerogerador (analisado 28/09; retirado do plano pelo Ivo)
 
@@ -1169,21 +1173,32 @@ funcionar também ali:
     paralelo = 440 Ah). **Bateria do motor:** manter carregada por **VSR/ACR
     bidirecional** ou **carregador de manutenção** (echo charger), conforme o
     separador que já existir. Fusível à saída de cada MPPT; ambos em perfil AGM.
-    **Escolhido (28/09): opção B, 2 × 305 W** (610 W no total) em teto por cima
-    da roda. Cada painel tem um **MPPT SmartSolar 100/30** (com 305 W a 12 V dá
-    ~23 A; o 75/15 cortava a 15 A e o 100/20 a 20 A). Fusível de **40 A** à saída
-    de cada MPPT, junto às baterias. Preço do MPPT 100/30 (29/09): **€129,95** na
-    [SVB](https://www.svb24.pt/pt/victron-controlador-de-carga-solar-smartsolar-mppt-100-30.html). Cabo de 6 mm² do MPPT às baterias (troço
-    curto) e 4–6 mm² com MC4 do painel ao MPPT. Confirmar que o Voc a frio do
-    painel escolhido fica abaixo de 100 V. Produção estimada: ~168–229 Ah/dia
-    no verão e ~70–95 Ah/dia no inverno (o quadro do §5c; aqui dizia ~150–180 e ~60–80).
-    **Painel candidato (29/09):** Victron BlueSolar 305W-20V mono
-    (SPM043052002): 1658 × 1002 × 35 mm, 19 kg; Vmp 32,5 V, Imp 9,38 A, Voc
-    39,7 V, Isc 10,27 A. Com o MPPT 100/30: Voc a 0 °C ≈ 43 V (< 100 V),
-    ~22,6 A a 12 V (< 30 A), Isc < 35 A. Dois lado a lado = 2,0 m (través) ×
-    1,66 m (proa-popa), 38 kg. Preço €199–268 conforme a loja. Alternativas se
-    não couber: 2 × 215 W (1580 × 705 mm, 11,7 kg) ou 2 × 185 W (1485 × 668 mm,
-    11 kg, chegam MPPT 75/15). **Fecha-se com as fotos e medidas (Ivo, 30/09).**
+    **Escolhido (28/09): opção B, em teto por cima da roda, com 2 × 305 W. A 06/10 o Ivo passou
+    para 2 × 625 W** (1 250 W no total: "vamos pôr 2 painéis de 625 W"). O que muda com 625 W:
+    - **Painel:** classe 625 W, 66 células de 210 mm, tipo N (TOPCon), ex.: Trina Vertex N 625
+      (2382 × 1134 × 30 mm, 30 kg; Voc 49,9 V, Isc 15,9 A, Vmp 41,7 V, Imp 15,0 A; 23,1 %); JA, Jinko e
+      Canadian equivalentes (32–33 kg, Voc 48,6–49,3 V, Isc 16,1 A). Preços vistos a 06/10 em lojas de
+      Espanha: €110–136 cada; em Portugal, por confirmar.
+    - **MPPT: SmartSolar 100/50, um por painel** (700 W a 12 V, Voc máx. 100 V, Isc máx. 60 A): com
+      625 W a 12 V dá até ~48 A; o 100/30 cortava a 30 A. Voc a −5 °C ≈ 53 V (< 100 V). **Nunca os
+      dois painéis em série** (≈ 100 V, no limite): strings independentes, como já estava. Preço na
+      SVB (06/10): €169,95 cada.
+    - **Fusível de 63 A** (MIDI ou ANL) à saída de cada MPPT, junto às baterias; cabo de **16 mm²** do
+      MPPT às baterias (troço curto) e 6 mm² com MC4 do painel ao MPPT.
+    - **Carga:** até ~95 A nas AGM de 440 Ah (≈ 0,22 C), dentro do que aceitam (0,2–0,3 C); perfil AGM
+      nos dois MPPT.
+    - **Tamanho e peso:** dois painéis lado a lado = **2,27 × 2,38 m** (5,4 m²) e **60–65 kg** só de
+      painéis (eram 2,0 × 1,66 m e 38 kg). O teto passa a ter ~2,3 m de proa-popa: a proposta "D
+      ajustada" (abaixo) tinha 1,65 m e **tem de ser redesenhada** (mais para ré do arco, senão chega
+      à retranca: confirmar com as medidas do arco e com a posição do fim da retranca). Com 5,4 m² a
+      ~2,5 m acima do convés, o vento carrega a sério (uns 1–2 kN com 40 nós): estrutura em tubo de
+      inox de 32 mm ou mais, com escoras, de serralheiro; e mais ~65 kg lá em cima (o balanço
+      sente-se um pouco).
+    - **Produção:** ~143–195 Ah/dia no inverno e ~344–469 no verão (§5c): o barco fica autónomo o ano
+      todo sem piloto e, com o EV-100, só no inverno fica no equilíbrio.
+    **Fecha-se com as fotos e medidas do arco (Ivo, por fazer desde 30/09): com 625 W as medidas
+    mandam ainda mais.** (O candidato de 29/09, Victron BlueSolar 305W-20V, 1658 × 1002 × 35 mm,
+    19 kg, Voc 39,7 V, com MPPT 100/30 e fusível de 40 A, fica como registo.)
     **Estrutura do teto (29/09):** o arco inclina-se para ré e o topo passa pouco
     do espelho. Opções desenhadas: A pernas nas braçolas; B consola (não); C
     escoras; D centrada no arco (0,83/0,83 m, radar num poste +40 cm); E toda
@@ -1219,7 +1234,7 @@ Garmin é fraco. No Pi, acrescentar à lista um **altifalante ou besouro forte**
 Pi: alarmes e comandos pelo **Telegram**, com o router Teltonika **RUT241** (desenho
 `docs/superpowers/specs/2026-09-29-porto-design.md`); o Meshtastic fica para depois de o sistema
 estar validado. A base é o próprio Pi, com o SmartShunt lido por Bluetooth, e não o Victron Cerbo
-GX. O solar decidido é de **2 × 305 W** (§8b, ponto 16) e, com 220 Ah úteis e ~27 Ah/dia, o barco
+GX. O solar decidido é de **2 × 625 W** (06/10; §8b, ponto 16) e, com 220 Ah úteis e ~27 Ah/dia, o barco
 aguenta **~8 dias** sem carregar (§5b). O texto abaixo é o de 28/09.
 
 ### Atualização de 28/09: decisões para a monitorização no porto

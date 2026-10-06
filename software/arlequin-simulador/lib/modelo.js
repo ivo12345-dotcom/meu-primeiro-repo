@@ -7,7 +7,7 @@ const H = 3600 * 1000
 const PADRAO = Object.freeze({
   capacidadeAh: 440, // bancos 2+3 AGM
   socInicial: 0.9,
-  paineisW: [305, 305],
+  paineisW: [625, 625], // decisão do Ivo de 06/10 (até aí 2 × 305 W)
   fatorSolar: 0.65, // perdas, painel deitado, sombras (0,55–0,75)
   horasSolPico: 5.0, // sol útil por dia: inverno 2,7 · primavera 5,0 · verão 6,5
   nascer: 7.5, // hora local

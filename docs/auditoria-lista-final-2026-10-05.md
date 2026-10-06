@@ -21,6 +21,7 @@ Data: 05/10/2026. Ramo `claude/piloto-automatico-cwnr0f`, só no portátil (sem 
 | Banco de serviço | 440 Ah (o sol com perdas, fator 0,65) |
 | Portos conhecidos | só Peniche, Cascais e Algés |
 | Piloto automático | **Raymarine EV-100 de roda (T70152)**, por comprar e instalar; até lá não há piloto nem reserva de governo além da cana de emergência |
+| Solar (06/10) | **2 painéis de 625 W** em vez de 2 × 305 W: MPPT 100/50 por painel, fusíveis de 63 A, cabo de 16 mm²; o teto passa a ~2,3 × 2,4 m e ~65 kg de painéis e tem de ser redesenhado com as medidas do arco; o barco fica autónomo o ano todo sem piloto e, com o EV-100, só no inverno fica no equilíbrio |
 | Largar do porto | sem o motor a trabalhar, o alarme "o barco saiu do lugar" só se apaga com "Larguei" (ecrã ou Telegram); com o alarme armado nunca se apaga sozinho |
 | Bomba de porão a trabalhar muito | apito contínuo (conta como água no porão) |
 | Fumo depois de "reconhecer" | bip curto de 2 em 2 minutos enquanto houver fumo; se passar e voltar, contínuo outra vez |
@@ -64,7 +65,7 @@ Data: 05/10/2026. Ramo `claude/piloto-automatico-cwnr0f`, só no portátil (sem 
 
 **Na carta (desde a 3a):** os Cachopos e o canal da Barra Norte/Carcavelos; a entrada e o enfiamento de Algés; os pontões interiores de Cascais e Lagos; a linha do Canal da Berlenga; todos os portos e zonas marcados `confirmado:false`.
 
-**Dados do barco:** o ano do casco (papéis ou número do casco); a capacidade de cada depósito de água (o plugin assume 2 × 80 L; de origem 182 L); o comprimento do cabo do ecrã da roda; o preço do painel de 305 W (há dois na lista); o peso real carregado (estimativa 7,2 t).
+**Dados do barco:** o ano do casco (papéis ou número do casco); a capacidade de cada depósito de água (o plugin assume 2 × 80 L; de origem 182 L); o comprimento do cabo do ecrã da roda; o painel de 625 W (modelo e preço em Portugal) e as medidas do arco para o teto novo; o peso real carregado (estimativa 7,2 t).
 
 **Antes de comprar:**
 - **drizas:** mede as velhas — com o mastro de 14,17 m a regra dá ~30–31 m, e a lista tinha 25, 28 e 30 m;

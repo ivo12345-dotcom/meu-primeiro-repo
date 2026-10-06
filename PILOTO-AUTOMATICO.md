@@ -223,8 +223,9 @@ Wheel decidido vai até 7 500 kg carregado, mas também fica perto do limite (§
 ## 6. Considerações a solo (não esquecer)
 
 - **Orçamento elétrico:** um piloto de roda gasta em média 2–4 A: numa travessia de 24 h são
-  50–100 Ah só de piloto. O solar decidido, 2 × 305 W (`NAVEGACAO.md` §5c), já conta com isto: com
-  o EV-100, no verão fica perto do equilíbrio; fora do verão falta energia e é preciso o motor.
+  50–100 Ah só de piloto. O solar decidido, 2 × 625 W (06/10; `NAVEGACAO.md` §5c), já conta com isto: com
+  o EV-100 fica autónomo da primavera ao outono; no inverno fica no equilíbrio (um dia escuro pede ~1 h
+  de motor).
 - **Comando remoto sem fios** é dos acessórios com melhor retorno para quem
   navega sozinho — corrige rumo a partir da proa.
 - **Segurança:** com o piloto ligado, se cair à água o barco continua sem

@@ -30,10 +30,10 @@ test('a navegar, sem sol nem motor: gasta perto dos ~120 Ah do balanço (com fri
   assert.ok(gasto > 105 && gasto < 135, `gasto ${gasto}`)
 })
 
-test('solar 2×305 W num dia de verão produz 150–230 Ah', () => {
+test('solar 2×625 W (06/10) num dia de verão produz 300–480 Ah (com os 2×305 W de antes eram 150–230)', () => {
   const { leituras } = dia({}, { socInicial: 0.5, nascer: 6.5, por: 21, horasSolPico: 6.5 })
   const ahSol = leituras.reduce((a, l) => a + (l.pv[0] + l.pv[1]) / 13.5 / 60, 0)
-  assert.ok(ahSol > 150 && ahSol < 230, `sol ${ahSol}`)
+  assert.ok(ahSol > 300 && ahSol < 480, `sol ${ahSol}`)
 })
 
 test('dia e noite seguem o nascer e o pôr do sol', () => {

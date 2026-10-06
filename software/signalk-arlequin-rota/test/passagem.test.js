@@ -17,7 +17,8 @@ const SW = path.join(__dirname, '..', '..')
 const gz = (f) => JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(FIXTURES, f))))
 
 // ---------- o simular.mjs de 29/09 (resultado de referência gravado com o código antigo a 29/09 e ----------
-// ---------- regravado a 01/10 (maré só na caixa da barra: chegada 05:00 → 05:01) e a 03/10 (caixa a oeste até 9,40 W, M-12: 05:01 → 05:03) ----------
+// ---------- regravado a 01/10 (maré só na caixa da barra: chegada 05:00 → 05:01), a 03/10 (caixa a oeste até 9,40 W, M-12: 05:01 → 05:03) ----------
+// ---------- e a 06/10 (solar 2 × 625 W em vez de 2 × 305 W: só o soc dos pontos, socMin e socFinal mudaram; a chegada ficou 05:03) ----------
 
 test('reproduz o simular.mjs de 29/09 (Algés → Peniche, partida 15:32): resumo e linha do tempo iguais', async () => {
   const { simular, parsePartida, ROTA, COSTA } = await import('file://' + path.join(SW, 'ferramentas', 'passagem', 'simular.mjs').replace(/\\/g, '/'))

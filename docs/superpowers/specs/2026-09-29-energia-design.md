@@ -95,7 +95,8 @@ toca nas notificações que tragam `sound` no `method`.
 - 440 Ah AGM, carga inicial configurável.
 - Consumos por hora a partir do balanço do §5b: base no porto ~1,1 A, a
   navegar ~5 A, radar e luzes à noite.
-- Sol: 2 × 305 W, curva em sino entre o nascer e o pôr do sol, fator 0,55–0,75.
+- Sol: 2 × 305 W, curva em sino entre o nascer e o pôr do sol, fator 0,55–0,75. **(06/10: 2 × 625 W,
+  `paineisW: [625, 625]`, decisão do Ivo.)**
 - Aceitação AGM: a corrente de carga cai acima de 80%.
 - Alternador: 60 A com o motor ligado.
 - Guião de cenário: lista de passos (`{horas, navegar, motor, noite}`) e fator

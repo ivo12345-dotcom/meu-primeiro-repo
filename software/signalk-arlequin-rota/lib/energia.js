@@ -22,9 +22,9 @@ const PADRAO = Object.freeze({
   socInicial: 1,
   consumoDiaA: 4.5,
   consumoNoiteA: 6,
-  paineis: 2, // 2 × 305 W
-  areaPainelM2: 1.65,
-  rendimento: 0.2,
+  paineis: 2, // 2 × 625 W (decisão do Ivo de 06/10; até aí 2 × 305 W, 1,65 m² a 20 %)
+  areaPainelM2: 2.7, // 2382 × 1134 mm
+  rendimento: 0.23, // 625 W / 2,7 m² a 1000 W/m²
   fatorSolar: 0.65, // perdas (0,55–0,75)
   tensaoV: 12.7,
   alternadorA: 45

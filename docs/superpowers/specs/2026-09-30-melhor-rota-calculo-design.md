@@ -149,7 +149,7 @@ Para cada afastamento d ∈ {3, 5, 8} MN:
 - **Energia (`lib/energia.js`):**
   - parte do SoC atual;
   - consumo de serviço de 4,5 A de dia e 6 A de noite;
-  - solar = radiação × área × rendimento (2 × 305 W, 1,65 m² cada, 20%) **× 0,65 de perdas** (`fatorSolar`, desde 02/10: decisão n.º 4);
+  - solar = radiação × área × rendimento (2 × 625 W, 2,7 m² cada, 23 %, desde 06/10; até aí 2 × 305 W, 1,65 m² a 20 %) **× 0,65 de perdas** (`fatorSolar`, desde 02/10: decisão n.º 4);
   - alternador a 45 A com o motor ligado;
   - banco de serviço de ~~200 Ah~~ **440 Ah** (os bancos 2 + 3 do barco; decisão n.º 4, 02/10).
   - Todos os valores são configuráveis no plugin.

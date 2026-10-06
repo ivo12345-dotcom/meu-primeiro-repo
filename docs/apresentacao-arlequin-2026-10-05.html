@@ -227,7 +227,7 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
     <tr><td>Inclinação ICM-20948 (9 eixos, Qwiic)</td><td>Adorno e caimento</td><td>I²C/Qwiic da MacArthur, rígido e alinhado com o eixo do barco</td><td>Abatimento (K × adorno / velocidade², K calibrado no Arlequin); adorno na página Instrumentos</td><td><span class="tag inst">a instalar</span></td></tr>
     <tr><td>ADS1115 (conversor analógico–digital)</td><td>Tensão da sonda do gasóleo e da alimentação do medidor</td><td>I²C, dois divisores 47 kΩ / 10 kΩ; o medidor do painel continua a funcionar</td><td>Nível pela tabela de calibração (pontos no ecrã; mais pontos perto do vazio); sonda perdida ao fim de 5 min sem leitura</td><td><span class="tag inst">a instalar</span></td></tr>
     <tr><td>3 reed switches + ímanes (pedais das bombas de água doce)</td><td>Pedaladas de cada bomba de pé (cozinha e WC)</td><td>ESP32 com SensESP por Wi-Fi, ou GPIO do Pi; contador acumulado de 10 em 10 min</td><td>Litros gastos por depósito (bomba calibrada com uma jarra de 1 L), "Enchi", aviso a 20 %, dias que faltam ao ritmo dos últimos dias</td><td><span class="tag inst">a instalar</span></td></tr>
-    <tr><td>Victron SmartShunt 500 A + 2 MPPT SmartSolar 100/30</td><td>Corrente, tensão e carga do serviço; produção de cada painel; bateria do motor pela entrada auxiliar</td><td>Bluetooth (plugin signalk-victron-ble)</td><td>Página Motor (serviço, painéis BB/EB, bateria do motor), alarmes de energia, balanço no planeamento da rota</td><td><span class="tag inst">a instalar</span></td></tr>
+    <tr><td>Victron SmartShunt 500 A + 2 MPPT SmartSolar 100/50</td><td>Corrente, tensão e carga do serviço; produção de cada painel; bateria do motor pela entrada auxiliar</td><td>Bluetooth (plugin signalk-victron-ble)</td><td>Página Motor (serviço, painéis BB/EB, bateria do motor), alarmes de energia, balanço no planeamento da rota</td><td><span class="tag inst">a instalar</span></td></tr>
     <tr><td>Detetor de fumo com saída de relé</td><td>Fumo a bordo</td><td>Contacto 0/1 (ESP32 ou GPIO), caminho <i>sensors.fumo</i></td><td>Emergência: apito contínuo; reconhecido, bip de 2 em 2 min enquanto houver fumo; Telegram com fotografia se houver câmara</td><td><span class="tag inst">a instalar</span></td></tr>
     <tr><td>Flutuador de porão e contacto da bomba de porão</td><td>Água no porão; bomba a trabalhar</td><td>Contactos 0/1 (<i>sensors.porao.agua</i>, <i>sensors.porao.bomba</i>)</td><td>Água no porão: contínuo; bomba mais de 3 min seguidos ou 5.º arranque numa hora: contínuo</td><td><span class="tag inst">a instalar</span></td></tr>
     <tr><td>Sensor de líquido debaixo do depósito de gasóleo</td><td>Gasóleo a correr para o porão</td><td>Contacto 0/1 (<i>sensors.gasoleo.liquido</i>), no ponto mais baixo</td><td>Fuga de gasóleo: apito contínuo e Telegram</td><td><span class="tag inst">a instalar</span></td></tr>
@@ -508,9 +508,9 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
 <!-- 16 ENERGIA -->
 <section class="pag" id="energia">
   <div class="cab"><h1>15. Energia</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
-  <div class="simples"><b>Em palavras simples:</b> dois painéis solares num teto sobre a roda, um controlador por painel e um contador de energia no banco de serviço; o Pi lê tudo e diz quando ligar e desligar o motor para carregar.</div>
+  <div class="simples"><b>Em palavras simples:</b> dois painéis solares de 625 W num teto sobre a roda, um controlador por painel e um contador de energia no banco de serviço; o Pi lê tudo e diz quando ligar e desligar o motor para carregar.</div>
   <div class="c58">
-    <figure class="grande"><img src="../energia-arlequin.svg" alt="Esquema de energia" style="max-height: 560px; width: auto; margin: 0 auto;"><figcaption>Esquema de energia (28/09/2026): strings independentes, um MPPT por painel, fusível de 40 A à saída de cada um, SmartShunt no negativo do serviço.</figcaption></figure>
+    <figure class="grande"><img src="../energia-arlequin.svg" alt="Esquema de energia" style="max-height: 560px; width: auto; margin: 0 auto;"><figcaption>Esquema de energia (2 × 625 W, decisão de 06/10): strings independentes, um MPPT 100/50 por painel, fusível de 63 A à saída de cada um, SmartShunt no negativo do serviço.</figcaption></figure>
     <div>
       <h2>Consumo do próprio sistema</h2>
       <table>
@@ -522,10 +522,10 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
       <h2>Balanço estimado (confirma-se com o SmartShunt)</h2>
       <table>
         <tr><th>Situação</th><th>Saldo por dia</th></tr>
-        <tr><td>Porto, inverno, Pi sempre ligado (~27 Ah/dia)</td><td>positivo; ~8 dias de autonomia sem sol com 220 Ah úteis</td></tr>
-        <tr><td>A navegar sem piloto, primavera a outono (~120 Ah/dia)</td><td>positivo</td></tr>
-        <tr><td>A navegar com o EV-100 no verão (~185 Ah/dia)</td><td>perto do equilíbrio</td></tr>
-        <tr><td>A navegar com o EV-100 fora do verão</td><td>negativo: ~2 h de motor por dia (40–60 Ah por hora)</td></tr>
+        <tr><td>Porto, inverno, Pi sempre ligado (~27 Ah/dia)</td><td>positivo (+116 a +168 Ah/dia); ~8 dias de autonomia sem sol com 220 Ah úteis</td></tr>
+        <tr><td>A navegar sem piloto, o ano todo (~120 Ah/dia)</td><td>positivo (no inverno, +23 a +75 Ah/dia)</td></tr>
+        <tr><td>A navegar com o EV-100, primavera a outono (~185 Ah/dia)</td><td>positivo (+79 a +284 Ah/dia)</td></tr>
+        <tr><td>A navegar com o EV-100 no inverno</td><td>no equilíbrio (−42 a +10 Ah/dia): um dia escuro pede ~1 h de motor</td></tr>
       </table>
       <h2>Os alarmes da energia</h2>
       <ul>
@@ -640,10 +640,10 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
         <div>
           <h3>Energia e governo</h3>
           <ul>
-            <li>2 painéis solares de 305 W</li>
-            <li>2 MPPT Victron SmartSolar 100/30</li>
+            <li>2 painéis solares de 625 W (2,38 × 1,13 m, ~30 kg cada)</li>
+            <li>2 MPPT Victron SmartSolar 100/50</li>
             <li>Victron SmartShunt 500 A</li>
-            <li>2 fusíveis de 40 A, cabos 6 mm², MC4</li>
+            <li>2 fusíveis de 63 A, cabos 16 mm², MC4</li>
             <li>Estrutura inox do teto sobre a roda</li>
             <li>VSR ou carregador de manutenção da bateria do motor</li>
             <li>Luzes de navegação LED homologadas (se as atuais não forem LED)</li>
