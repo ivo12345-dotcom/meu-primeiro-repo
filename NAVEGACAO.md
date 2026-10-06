@@ -782,6 +782,18 @@ quando se fizer o sistema elétrico. Hoje o barco tem baterias separadas
 
 **Baterias:** 3 bancos × 2 × 110 Ah, seladas, **provavelmente AGM** (a
 confirmar na etiqueta). Banco 1 = motor; bancos 2+3 = **serviço 440 Ah**.
+
+**Plano decidido a 06/10 (Ivo):** primeiro **testar as 6 baterias** (§8b, ponto 15). Se estiverem boas,
+compra-se **só uma bateria de arranque nova** (Exide Dual AGM EP800, 95 Ah / 850 A, €142 na innpo.pt; ou
+Varta LA95) para o motor, e as 6 passam a **3 bancos de 2 em paralelo = 660 Ah de serviço** (útil 330 Ah;
+janela prática 50→85 % ≈ 231 Ah: ~12 dias no porto sem sol, ~5,5 dias no pior caso de inverno com o
+EV-100 antes de ligar o motor). Precisa de barramentos, um fusível por banco (MEGA ou Class T,
+150–200 A), cabos de 35–50 mm² iguais, o SmartShunt a 660 Ah e o separador revisto (o alternador no
+serviço, a de arranque mantida por VSR ou carregador de manutenção). Com AGM a viver entre 50 e 85 % no
+inverno, uma carga completa no cais uma vez por mês. O sistema passa a 660 Ah quando o teste confirmar
+(plugin da rota, simulador, rótulo do ecrã). Se as 6 estiverem fracas: 7 AGM novas de 110 Ah ou
+lítio no serviço (2 × 200 Ah LiFePO4 com um Orion XS 12/12-50 a proteger o alternador) — a decidir
+nessa altura. O aerogerador ficou de fora (§5c).
 - AGM: não descer abaixo de **50%** → **~220 Ah úteis**. Na prática, a
   carregar pelo motor ou pelo sol, as AGM demoram muito a encher acima de
   ~85%, por isso a janela real entre cargas é **~150 Ah** (50→85%).
@@ -1176,6 +1188,15 @@ funcionar também ali:
 15. **Baterias (3 bancos × 2 × 110 Ah, seladas: 1 motor, 2 serviço):** foto da
     etiqueta de uma bateria de cada banco (AGM/gel/SLA, data), dos comutadores,
     do que divide a carga do alternador (díodos/VSR/DC-DC) e do carregador de cais.
+    **Teste das 6 baterias (06/10, antes de comprar):** (a) carregar tudo a 100 % no cais e deixar em
+    repouso 12 h sem cargas nem carregador; (b) separar os pares (tirar a ponte entre as duas de cada
+    banco) e medir cada uma: AGM a 12,8–12,9 V = cheia; 12,5 V ≈ 75 %; 12,2 V ≈ 50 %; abaixo de
+    12,0 V, ou uma com mais de 0,2 V de diferença das outras, está má; (c) teste de capacidade a pelo
+    menos uma de cada banco: descarregar com uma carga conhecida (uns 10 A: luzes e frigorífico, ou uma
+    resistência) até 12,0 V em repouso e contar os Ah (SmartShunt, ou horas × amperes): abaixo de ~70 %
+    dos 110 Ah, substituir; (d) ver inchaços, terminais corroídos e, depois de uma carga, se alguma aquece
+    mais do que as outras (célula má). Fotografar a etiqueta (tipo e data de fabrico): AGM com mais de
+    6–7 anos raramente passa no teste.
 16. **Painéis solares (decidido 28/09): no arco de popa, ao lado do radar, a
     fazer também de teto/sombra por cima da roda, sem chegar à retranca.**
     Fotos do arco (de trás e de lado) e medidas: largura útil de cada lado do

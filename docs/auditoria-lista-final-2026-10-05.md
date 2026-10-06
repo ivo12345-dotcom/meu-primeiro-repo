@@ -65,7 +65,7 @@ Data: 05/10/2026. Ramo `claude/piloto-automatico-cwnr0f`, só no portátil (sem 
 
 **Na carta (desde a 3a):** os Cachopos e o canal da Barra Norte/Carcavelos; a entrada e o enfiamento de Algés; os pontões interiores de Cascais e Lagos; a linha do Canal da Berlenga; todos os portos e zonas marcados `confirmado:false`.
 
-**Dados do barco:** o ano do casco (papéis ou número do casco); a capacidade de cada depósito de água (o plugin assume 2 × 80 L; de origem 182 L); o comprimento do cabo do ecrã da roda; as medidas do arco e do fim da retranca para o teto dos painéis de 625 W (2,27 × 2,47 m); o peso real carregado (estimativa 7,2 t).
+**Dados do barco:** o teste das 6 baterias (06/10: se boas, só a de arranque nova e 660 Ah de serviço; procedimento no NAVEGACAO §8b, ponto 15); o ano do casco (papéis ou número do casco); a capacidade de cada depósito de água (o plugin assume 2 × 80 L; de origem 182 L); o comprimento do cabo do ecrã da roda; as medidas do arco e do fim da retranca para o teto dos painéis de 625 W (2,27 × 2,47 m); o peso real carregado (estimativa 7,2 t).
 
 **Antes de comprar:**
 - **drizas:** mede as velhas — com o mastro de 14,17 m a regra dá ~30–31 m, e a lista tinha 25, 28 e 30 m;
