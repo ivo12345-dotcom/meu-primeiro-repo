@@ -879,7 +879,27 @@ resistência de descarga (os MPPT Victron não servem para vento).
 **Recomendação (a decisão é do Ivo):** por agora não comprar. Só ajuda no caso "inverno com EV-100".
 Traz peso e ruído à popa, faz sombra aos painéis e o arco já tem o radar e os
 painéis. Deixar previsto no arco um ponto de fixação e a passagem do cabo.
-Decidir depois de uma época de dados do SmartShunt.
+Decidir depois de uma época de dados do SmartShunt.
+
+**VEVOR FT-800 "800 W 12 V" (o Ivo pensou nele a 06/10, €169,99 com portes):** rotor de 1,336 m
+(1,40 m²), 5 pás de nylon, 8,5 kg, arranque a 2,5 m/s, "800 W" só a 12 m/s, controlador híbrido PWM
+com travão, sem mastro. A conta do vento não deixa chegar aos 800 W: ½ × 1,225 × 1,40 m² × 12³ ×
+Cp — a 12 m/s, com um Cp de 0,30–0,35 (bom para uma máquina destas), dá **~450–520 W**; os 800 W
+pediam o limite de Betz. O que rende por dia (Rayleigh, Cp 0,25, antes das perdas do controlador):
+**~25 Ah/dia a 3,5 m/s (marina abrigada), ~60 a 4,5 m/s, ~100 a 5,5 m/s (ao largo no inverno)**, e
+nada abaixo de ~3,5 m/s mesmo a rodar. Contra, neste barco: o arco de popa já leva o radar e o teto
+de 2,27 × 2,47 m dos painéis (sombra, turbulência, peso lá em cima: precisava de um mastro próprio
+na alheta, 2,5–3 m com estais, com as pás acima das cabeças); barulho e vibração de uma máquina
+barata **mesmo por cima da cabine de popa onde o Ivo dorme** (e marinas que não as aceitam);
+controlador sem perfil AGM a sério, sem dados para o Pi, travão por curto-circuito; corpo de
+alumínio fundido ao sal; 20 % de avaliações de 1 estrela. A favor: com os 2 × 625 W o único buraco é
+o inverno com o EV-100 (−42 a +10 Ah/dia, §5c), que um aerogerador cobre à noite e com mau tempo —
+mas 1 h de motor por dia escuro (~1 L) faz o mesmo sem comprar nada. **Recomendação (06/10, a
+decisão é do Ivo): não comprar este; se vier a querer vento, uma máquina náutica (Silentwind 400+,
+Rutland 1200) num mastro próprio na alheta, depois do solar montado e de uma época de dados do
+SmartShunt.** Se quiser mesmo experimentar o VEVOR: mastro próprio (nunca no arco), fusível de 30 A
+dele até ao banco de serviço, a resistência de descarga do controlador montada, travá-lo com vento
+forte e à noite na marina, e contar com 20–60 Ah/dia, não com 800 W.
 
 ### Carregar com o motor no inverno (28/09)
 
