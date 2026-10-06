@@ -933,6 +933,26 @@ forte e à noite na marina, e contar com 20–60 Ah/dia, não com 800 W.
   a partir do SmartShunt, com as horas de motor e os Ah carregados a irem
   para o diário.
 
+**Alternador de reserva e alternador mais potente (pedido do Ivo, 06/10).** O D1-20 traz um alternador de
+**115 A** (tipo Mitsubishi A3TR0091, regulador interno) com **correia poly-V de 6 nervuras** (polia de
+62 mm): a correia aguenta 150–170 A, ao contrário de uma correia em V simples (~70–100 A).
+- **Reserva:** um alternador de 115 A de substituição, com a mesma montagem e o mesmo D+ para o MDI:
+  €201,64–239,95 na SVB (A3TR0091ZT+). Levar também uma correia de reserva. Com os 2 × 625 W de solar o
+  alternador deixa de ser a única carga, mas a solo a reserva continua a fazer sentido (noites de
+  inverno, motor por horas).
+- **Mais potente:** Mastervolt Alpha Compact 14/140 VP (140 A, montagem Volvo Penta) com o regulador
+  externo **Alpha Pro III** (€327,69 na SVB; sensor de temperatura da bateria, perfis AGM e lítio,
+  compensação da queda nos cabos), ou Balmar série 6 de 120–150 A com MC-614. **Confirmar com a Mastervolt
+  ou o concessionário que o suporte do D1-20 recebe o VP** (a Volvo vende kits de montagem para o D2-55;
+  para o D1-20 confirmar o kit e a polia). Conta: 140 A × 14,4 V ≈ 2 kW ≈ 4 cv dos 20 do motor, só acima de
+  ~1 500 rpm. **O ganho real com AGM vem do regulador externo**, que mantém os 14,4 V de absorção (o interno
+  baixa com a temperatura): o de 115 A entrega na prática 60–80 A seguidos, o 14/140 com Alpha Pro
+  120–130 A com o banco abaixo de ~70 %. Com lítio no futuro o regulador externo é obrigatório (limite de
+  corrente e temperatura do alternador). Preço do conjunto: ~€1 500–2 000 (a cotar).
+- **Montagem lógica:** o novo vai para o motor e **o de 115 A de origem fica a bordo como reserva** (já
+  se sabe que encaixa). Ligar o D+ (lâmpada) do novo ao MDI, para o alarme "não carrega" e a tensão do
+  alternador (PGN 65271, que o ecrã mostra) continuarem certos.
+
 ## 6. Reserva (obrigatória a solo)
 
 Com tudo num ecrã só, esse ecrã passa a ser um ponto único de falha.
