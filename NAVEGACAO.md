@@ -952,6 +952,10 @@ forte e à noite na marina, e contar com 20–60 Ah/dia, não com 800 W.
 - **Montagem lógica:** o novo vai para o motor e **o de 115 A de origem fica a bordo como reserva** (já
   se sabe que encaixa). Ligar o D+ (lâmpada) do novo ao MDI, para o alarme "não carrega" e a tensão do
   alternador (PGN 65271, que o ecrã mostra) continuarem certos.
+- **Decisão do Ivo (06/10): o alternador potente fica de fora ("muito caro").** Fica o de 115 A de
+  origem, que com 1 250 W de solar e 660 Ah chega; compra-se **só a reserva** (115 A de substituição,
+  €201,64 na SVB) e uma correia de reserva. (Se um dia for para lítio, volta-se a este ponto: o
+  regulador externo passa a ser obrigatório.)
 
 ## 6. Reserva (obrigatória a solo)
 
