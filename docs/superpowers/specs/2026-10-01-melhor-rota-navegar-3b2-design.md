@@ -320,3 +320,10 @@ traz `relogioDesacertadoS`, e o Leme mostra o aviso no mosaico "Contactos em ter
   `index.js` do plugin.
 - **Reinício (nota do SignalK 2.33):** ao parar o plugin, o servidor apaga os valores dele; os
   avisos da rota voltam no 1.º ciclo (até 60 s depois do arranque) e o porto não os repete por isso.
+- **06/10 (demonstração ao vivo no portátil):** o ponto seguinte da rota ativa não avançava — a API de rumo v2
+  do SignalK não o faz sozinha, o `course-provider` só calcula para o `nextPoint` que lá está e o OpenCPN
+  não o avança pela rede — e o "Rumo a seguir" do Leme ficava preso ao WP1. O plugin passa a projetar o barco
+  na rota ativa (`lib/acompanhamento.js` `pontoASeguir`: janela que nunca recua, 5 MN à frente, círculo de
+  chegada 0,1 MN, só a andar, só a menos de 2 MN da rota) e, quando passa um ponto, volta a ativar a rota com
+  o `pointIndex` seguinte (`app.activateRoute`, a API interna). Testes: `acompanhamento.test.js` e
+  `navegar-ciclo.test.js`.

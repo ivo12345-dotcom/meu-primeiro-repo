@@ -635,6 +635,35 @@ module.exports = function (app, deps = {}) {
     return Promise.race([Promise.resolve().then(fn), limite]).finally(() => clearTimeout(t))
   }
 
+  // O ponto seguinte da rota ativa (06/10, achado na demonstração ao vivo). A API de rumo v2 do SignalK não avança o
+  // pointIndex sozinha, e o OpenCPN também não o faz pela rede: o "Rumo a seguir" do Leme (o course-provider calcula
+  // para o nextPoint) ficava preso ao WP1 a viagem toda. Com o plano aberto (e não em pausa: a rota ativa é a dele),
+  // quando o barco passa um ponto (lib/acompanhamento.js pontoASeguir) o plugin volta a ativar a rota com o
+  // pointIndex novo pela API interna (app.activateRoute: não pede sessão, ao contrário de um PUT por HTTP com a
+  // segurança ligada). O barco projeta-se na própria rota ativa (os pontos como estão no SignalK), numa janela que
+  // nunca recua e só vai 5 MN à frente: uma rota que volta atrás não salta, e um reinício a meio apanha-se em
+  // poucos ciclos. Os pontos da rota leem-se uma vez por href. Sem a API interna (um SignalK antigo) não avança.
+  let pontosDaRota = null // { href, pontos }
+  async function avancarPontoDaRota ({ posicao, sogNos, href }) {
+    if (!posicao || !href || typeof app.getCourse !== 'function' || typeof app.activateRoute !== 'function') return
+    let c0
+    try { c0 = await curso() } catch { return }
+    const ar = c0?.activeRoute
+    if (!ar || ar.href !== href || ar.reverse === true || !Number.isFinite(ar.pointIndex)) return
+    if (pontosDaRota?.href !== href) {
+      let pts = null
+      try { pts = await pontosRotaAtiva() } catch { pts = null }
+      if (!pts) return
+      pontosDaRota = { href, pontos: pts }
+    }
+    const novo = ac.pontoASeguir({ pontos: pontosDaRota.pontos, indice: ar.pointIndex, posicao, sogNos })
+    if (!(novo > ar.pointIndex)) return
+    try {
+      await comLimite(() => app.activateRoute({ href, pointIndex: novo }))
+      app.debug?.(`rota ativa: o ponto a seguir passa de ${ar.pointIndex} para ${novo}`)
+    } catch (e) { app.error(`rota ativa: não avancei o ponto a seguir (${ar.pointIndex} → ${novo}): ${e?.message ?? e}`) }
+  }
+
   // O fim da rota ativa no SignalK (API de rumo v2), para o destino 'rota-ativa'.
   async function pontosRotaAtiva () {
     const c0 = typeof app.getCourse === 'function' ? await curso() : null
@@ -1010,6 +1039,8 @@ module.exports = function (app, deps = {}) {
       publicarAvisos(avisoTerra(agora))
       return
     }
+    // o ponto seguinte da rota ativa (a API de rumo não o avança sozinha): avancarPontoDaRota
+    await avancarPontoDaRota(leitura)
     const ins = instrumentos()
     const pv = previsaoAgora(leitura.posicao || ultimaPosicao || planoAtivo.partida, agora)
     const tempo = pv ? prev.criarTempo(pv.previsao) : null

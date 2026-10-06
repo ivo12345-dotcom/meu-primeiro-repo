@@ -465,3 +465,27 @@ test('F2b Importante 3: sem saltos falsos — numa ida e volta com as pernas a 0
   assert.ok(salto && cc.out.indexOf(salto) === 2, `${cc.out.findIndex(x => x.r.saltoRota)}`)
   assert.ok(salto.r.milhas > 5, `${salto.r.milhas}`)
 })
+
+test('06/10 (demonstração ao vivo): pontoASeguir — o barco projetado na própria rota ativa: o ponto a seguir é o primeiro ainda a mais de 0,1 MN à frente; parado não avança; longe da rota não; nunca passa do último nem recua; a janela à frente (5 MN) apanha um reinício a meio em poucos ciclos', () => {
+  // uma rota para norte: 4 pontos de 1 MN em 1 MN
+  const pts = [0, 1, 2, 3].map(i => ({ lat: 38.7 + i / 60, lon: -9.5 }))
+  const em = (mn, lado = 0) => ({ lat: 38.7 + mn / 60, lon: -9.5 - lado / 47 }) // mn para norte do cais; lado MN para oeste
+  const seguir = (pos, indice = 1, sogNos = 5) => ac.pontoASeguir({ pontos: pts, indice, posicao: pos, sogNos })
+  assert.equal(seguir(em(0), 1, 0), 1, 'no cais, parado: fica no WP1')
+  assert.equal(seguir(em(0.5)), 1, 'a meio do 1.º troço: WP1')
+  assert.equal(seguir(em(0.95)), 2, 'a 0,05 MN do WP1 (o círculo de chegada): WP2')
+  assert.equal(seguir(em(1.2)), 2, 'passou o WP1 (0,2 MN para lá): WP2')
+  assert.equal(seguir(em(2.5)), 3, 'passou o WP1 e o WP2 de uma vez (um reinício a meio): WP3')
+  assert.equal(seguir(em(4.5)), 3, 'passou tudo: o último, e nunca mais')
+  assert.equal(seguir(em(1.2), 1, 0.3), 1, 'passou o WP1 mas parado (à deriva): fica')
+  assert.equal(seguir(em(1.2, 3)), 1, '3 MN ao lado da rota: não salta')
+  assert.equal(seguir(em(0.5), 2), 2, 'nunca recua')
+  assert.equal(seguir(null), 1, 'sem posição: fica')
+  assert.equal(ac.pontoASeguir({ pontos: [pts[0]], indice: 0, posicao: em(3), sogNos: 5 }), 0, 'uma rota de um ponto: fica')
+  // a janela à frente: 12 MN para lá do WP1 numa rota comprida, a partir do índice 1, avança até onde a janela chega (5 MN)
+  const longa = Array.from({ length: 20 }, (_, i) => ({ lat: 38.7 + i / 60, lon: -9.5 }))
+  const i1 = ac.pontoASeguir({ pontos: longa, indice: 1, posicao: { lat: 38.7 + 13 / 60, lon: -9.5 }, sogNos: 5 })
+  assert.ok(i1 > 1 && i1 <= 7, `apanha aos poucos: ${i1}`)
+  const i2 = ac.pontoASeguir({ pontos: longa, indice: i1, posicao: { lat: 38.7 + 13 / 60, lon: -9.5 }, sogNos: 5 })
+  assert.ok(i2 > i1, 'e continua no ciclo seguinte')
+})

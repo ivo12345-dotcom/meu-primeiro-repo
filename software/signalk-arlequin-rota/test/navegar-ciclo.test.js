@@ -7,6 +7,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const pa = require('../lib/plano-ativo')
+const c = require('../lib/costa')
 const prev = require('../lib/previsao')
 const { appFalso, plugin, chamar, calcular, fetchFalso, H } = require('./ajuda')
 
@@ -327,5 +328,45 @@ test('auditoria M-27: a previsão de agora não se lê do arquivo de minuto a mi
   // com a previsão mais recente com mais de 50 h: não serve (sem previsão)
   await s.ciclo(51 * H)
   assert.deepEqual(s.app.self['notifications.rota.previsao'], { state: 'alarm', method: ['visual', 'sound'], apito: 'curto', message: 'Sem previsão: confia nos instrumentos e no barómetro' })
+  s.p.stop()
+})
+
+test('06/10 (demonstração ao vivo): com o plano aberto e a sua rota ativa, quando o barco passa um ponto da rota o plugin avança o ponto a seguir na API de rumo (app.activateRoute com o pointIndex novo, a API interna: sem sessão); no cais, parado, não; com outra rota ativa, não', async () => {
+  const s = await preparar()
+  const pts = (await s.app.resourcesApi.getResource('routes', s.app.rotaAtiva.split('/').pop())).feature.geometry.coordinates.map(([lon, lat]) => ({ lat, lon }))
+  assert.ok(pts.length >= 4, `a rota tem ${pts.length} pontos`)
+  // a API de rumo do falso passa a devolver o pointIndex da última ativação (como o servidor)
+  s.app.getCourse = async () => ({ activeRoute: { href: s.app.rotaAtiva, pointIndex: s.app.ativacoes.at(-1)?.pointIndex ?? 1, pointTotal: pts.length } })
+  const n = s.app.ativacoes.length
+  await s.ciclo(0)
+  assert.equal(s.app.ativacoes.length, n, 'no cais, parado: nada')
+  // 0,2 MN para lá de um ponto cujo troço seguinte tem pelo menos 0,6 MN (os primeiros, no cais, estão a dezenas
+  // de metros uns dos outros), a 5 nós: o ponto a seguir passa a ser o seguinte
+  // a mais de 1,5 MN do cais (o plano só projeta as milhas depois de sair: 0,5 MN em duas leituras)
+  let acum = 0; const acums = pts.map((q, i) => (acum += i ? c.distanciaMn(pts[i - 1], q) : 0))
+  const k = pts.findIndex((q, i) => i >= 2 && i < pts.length - 1 && acums[i] >= 1.5 && c.distanciaMn(q, pts[i + 1]) >= 0.6)
+  assert.ok(k >= 2, 'há um troço de 0,6 MN ou mais')
+  // (0,2 MN para lá, no sentido do troço seguinte: a rota pode ter pontos repetidos, e o troço anterior ser nulo)
+  const f = 0.2 / c.distanciaMn(pts[k], pts[k + 1])
+  const pos = { lat: pts[k].lat + (pts[k + 1].lat - pts[k].lat) * f, lon: pts[k].lon + (pts[k + 1].lon - pts[k].lon) * f }
+  s.por(pos, 5)
+  // alguns ciclos (a janela à frente, 5 MN por ciclo, apanha o salto do teste): o ponto a seguir chega ao seguinte
+  // ao sítio onde o barco está, sem nunca recuar
+  await s.ciclo(50 * MIN)
+  for (let m = 0; m < 4; m++) await s.ciclo()
+  const indices = s.app.ativacoes.slice(n).map(x => x.pointIndex)
+  assert.ok(indices.length >= 1, `avançou o ponto (estado ${s.p.planoAtivo().estado})`)
+  for (let j = 1; j < indices.length; j++) assert.ok(indices[j] > indices[j - 1], `nunca recua: ${indices}`)
+  const ult = s.app.ativacoes.at(-1)
+  assert.equal(ult.href, s.app.rotaAtiva)
+  assert.equal(ult.pointIndex, k + 1, JSON.stringify({ k, indices }))
+  // o mesmo sítio outra vez: já está no ponto certo, não volta a ativar
+  const n2 = s.app.ativacoes.length
+  await s.ciclo()
+  assert.equal(s.app.ativacoes.length, n2, 'sem mudança não há nova ativação')
+  // outra rota ativa (não é a do plano): nada
+  s.app.rotaAtiva = '/resources/routes/outra'
+  await s.ciclo()
+  assert.equal(s.app.ativacoes.length, n2)
   s.p.stop()
 })

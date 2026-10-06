@@ -367,4 +367,32 @@ function acompanhar (estado0, entrada) {
   }
 }
 
-module.exports = { PADRAO, SITIO, VENTO_MIN_ROTACAO, prepararRota, lembretesDoPlano, projetar, juntarAFrente, horaNoPlano, atrasoMin, juntarAmostra, media, textoCurto, deslizarEventos, proximoEvento, chegadaDeNoite, recursos, desvioVento, novoEstado, acompanhar }
+// O ponto da rota a seguir (06/10, achado na demonstração ao vivo): a API de rumo v2 do SignalK não avança o
+// pointIndex sozinha (o course-provider só calcula para o nextPoint que lá está, e o OpenCPN não o faz pela
+// rede), por isso o "Rumo a seguir" do Leme ficava preso ao WP1 a viagem toda. Com os pontos da rota ativa
+// ([{ lat, lon }], como estão no SignalK), o índice atual e a posição: projeta-se o barco na própria rota,
+// numa janela que nunca recua (de recuoMn antes do ponto anterior) e só vai avancoMn à frente do ponto atual
+// (uma rota que volta atrás não salta para a perna de volta; depois de um reinício a meio apanha-se em
+// poucos ciclos). O ponto a seguir é o primeiro, daí para a frente, que ainda está a mais de pertoMn à
+// frente da projeção (a menos disso conta como chegado: o círculo de chegada). Parado (sogNos < andaNos: no
+// cais, ao lado do WP1) não avança; longe da rota (a projeção a mais de longeMn) também não; nunca passa do
+// último ponto nem recua. → o índice (o mesmo se nada mudou).
+const PONTO = Object.freeze({ andaNos: 1, pertoMn: 0.1, recuoMn: 0.5, avancoMn: 5, longeMn: 2 })
+function pontoASeguir ({ pontos, indice, posicao, sogNos }, opcoes = {}) {
+  const o = { ...PONTO, ...opcoes }
+  if (!Array.isArray(pontos) || pontos.length < 2 || !posicao || !Number.isFinite(posicao.lat) || !Number.isFinite(posicao.lon) || !Number.isFinite(indice)) return indice
+  const i0 = Math.max(0, Math.min(Math.floor(indice), pontos.length - 1))
+  if (!(Number.isFinite(sogNos) && sogNos >= o.andaNos)) return i0
+  const linha = c.prepararLinha(pontos)
+  const de = Math.max(0, linha.s[Math.max(0, i0 - 1)] - o.recuoMn)
+  const ate = Math.min(linha.total, linha.s[i0] + o.avancoMn)
+  // a projeção na janela decide o ponto; a projeção no resto da rota à frente só diz se o barco está perto da rota
+  // (depois de um reinício a meio, a janela fica atrás do barco: a sua projeção está longe dele, a da rota não)
+  const q = c.projetar(linha, posicao, { de, ate })
+  const qRota = ate < linha.total ? c.projetar(linha, posicao, { de, ate: linha.total }) : q
+  if (!q || !Number.isFinite(q.s) || Math.min(q.dist, qRota?.dist ?? Infinity) > o.longeMn) return i0
+  for (let i = i0; i < pontos.length; i++) if (linha.s[i] > q.s + o.pertoMn) return i
+  return pontos.length - 1
+}
+
+module.exports = { PADRAO, SITIO, VENTO_MIN_ROTACAO, PONTO, pontoASeguir, prepararRota, lembretesDoPlano, projetar, juntarAFrente, horaNoPlano, atrasoMin, juntarAmostra, media, textoCurto, deslizarEventos, proximoEvento, chegadaDeNoite, recursos, desvioVento, novoEstado, acompanhar }

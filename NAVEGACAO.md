@@ -1736,6 +1736,14 @@ cais (a contar da partida) e voltado: numa ida e volta, ou com o destino colado 
 cais logo à saída não é "cheguei bem". Um plano novo começa limpo; os 5 últimos ficam em
 `planos-fechados.json`.
 
+**O ponto seguinte da rota ativa** (06/10, achado na demonstração ao vivo no portátil): a API de rumo do
+SignalK não avança o ponto sozinha (nem o OpenCPN o faz pela rede), e o "Rumo a seguir" do Leme ficava
+preso ao WP1 a viagem toda. Com o plano aberto e a sua rota ativa, o plugin projeta o barco na própria rota
+e, quando passa um ponto (ou chega a 0,1 MN dele, a andar a 1 nó ou mais), ativa a rota outra vez com o
+ponto seguinte, pela API interna do servidor (não pede sessão). Nunca recua; numa rota que volta atrás não
+salta para a perna de volta (uma janela de 5 MN à frente); depois de um reinício a meio apanha-se em
+poucos ciclos; parado no cais, ao lado do WP1, não avança; a mais de 2 MN da rota também não.
+
 **A faixa no Leme**, por cima do rumo:
 - "próximo: rizar às 22:50 (daqui a 25 min) · +20 min sobre o plano" (os eventos de sítio — rizar,
   cabos, largos, chegada — deslizam com o atraso; o pôr do sol, a chuva e a frente ficam à hora
