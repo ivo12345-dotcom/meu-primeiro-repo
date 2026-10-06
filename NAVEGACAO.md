@@ -1175,25 +1175,31 @@ funcionar também ali:
     separador que já existir. Fusível à saída de cada MPPT; ambos em perfil AGM.
     **Escolhido (28/09): opção B, em teto por cima da roda, com 2 × 305 W. A 06/10 o Ivo passou
     para 2 × 625 W** (1 250 W no total: "vamos pôr 2 painéis de 625 W"). O que muda com 625 W:
-    - **Painel:** classe 625 W, 66 células de 210 mm, tipo N (TOPCon), ex.: Trina Vertex N 625
-      (2382 × 1134 × 30 mm, 30 kg; Voc 49,9 V, Isc 15,9 A, Vmp 41,7 V, Imp 15,0 A; 23,1 %); JA, Jinko e
-      Canadian equivalentes (32–33 kg, Voc 48,6–49,3 V, Isc 16,1 A). Preços vistos a 06/10 em lojas de
-      Espanha: €110–136 cada; em Portugal, por confirmar.
+    - **Painel (escolhido pelo Ivo a 06/10, "os painéis são estes"): Yingli PANDA 3.0 Pro 625 W**,
+      tipo YL625CF78 e/2, n-type TOPCon **bifacial** (vidro duplo 2 + 2 mm), 156 meias-células
+      (6 × 26), **2465 × 1134 × 30 mm, 35,0 kg** (a Leroy Merlin diz 32 kg líquidos); Voc **55,72 V**,
+      Isc 14,28 A, Vmpp 46,13 V, Impp 13,55 A; 22,4 %; βVoc −0,24 %/°C (a −5 °C, Voc ≈ 59,7 V); fusível
+      em série máx. 30 A; cabos de 4 mm² com ±1,2 m; carga de vento no tardoz 2400 Pa; garantia do
+      produto 12 anos. **Leroy Merlin: €93,44 cada** (ref. 73554725), entrega ao domicílio €34,99 em
+      3 dias úteis: os dois ≈ €222 com a entrega. (A ficha de referência de 06/10 era a Trina Vertex N
+      625: 2382 × 1134 mm, 30 kg, Voc 49,9 V — o Yingli é 8 cm mais comprido, 5 kg mais pesado e tem
+      mais 6 V de Voc; nada disto muda o MPPT.)
     - **MPPT: SmartSolar 100/50, um por painel** (700 W a 12 V, Voc máx. 100 V, Isc máx. 60 A): com
-      625 W a 12 V dá até ~48 A; o 100/30 cortava a 30 A. Voc a −5 °C ≈ 53 V (< 100 V). **Nunca os
-      dois painéis em série** (≈ 100 V, no limite): strings independentes, como já estava. Preço na
-      SVB (06/10): €169,95 cada.
+      625 W a 12 V dá até ~48 A; o 100/30 cortava a 30 A. Voc a −5 °C ≈ 60 V (< 100 V). **Nunca os
+      dois painéis em série** (≈ 111 V, acima dos 100 V do MPPT): strings independentes, como já
+      estava. Preço na SVB (06/10): €169,95 cada.
     - **Fusível de 63 A** (MIDI ou ANL) à saída de cada MPPT, junto às baterias; cabo de **16 mm²** do
       MPPT às baterias (troço curto) e 6 mm² com MC4 do painel ao MPPT.
     - **Carga:** até ~95 A nas AGM de 440 Ah (≈ 0,22 C), dentro do que aceitam (0,2–0,3 C); perfil AGM
       nos dois MPPT.
-    - **Tamanho e peso:** dois painéis lado a lado = **2,27 × 2,38 m** (5,4 m²) e **60–65 kg** só de
-      painéis (eram 2,0 × 1,66 m e 38 kg). O teto passa a ter ~2,3 m de proa-popa: a proposta "D
+    - **Tamanho e peso:** dois painéis lado a lado = **2,27 × 2,47 m** (5,6 m²) e **64–70 kg** só de
+      painéis (eram 2,0 × 1,66 m e 38 kg). O teto passa a ter ~2,5 m de proa-popa: a proposta "D
       ajustada" (abaixo) tinha 1,65 m e **tem de ser redesenhada** (mais para ré do arco, senão chega
-      à retranca: confirmar com as medidas do arco e com a posição do fim da retranca). Com 5,4 m² a
+      à retranca: confirmar com as medidas do arco e com a posição do fim da retranca). Com 5,6 m² a
       ~2,5 m acima do convés, o vento carrega a sério (uns 1–2 kN com 40 nós): estrutura em tubo de
-      inox de 32 mm ou mais, com escoras, de serralheiro; e mais ~65 kg lá em cima (o balanço
-      sente-se um pouco).
+      inox de 32 mm ou mais, com escoras, de serralheiro; e mais ~70 kg lá em cima (o balanço
+      sente-se um pouco). Bifacial: num teto aberto por baixo, a face de trás ainda apanha alguma luz
+      refletida (um pouco mais de produção; não entra nas contas).
     - **Produção:** ~143–195 Ah/dia no inverno e ~344–469 no verão (§5c): o barco fica autónomo o ano
       todo sem piloto e, com o EV-100, só no inverno fica no equilíbrio.
     **Fecha-se com as fotos e medidas do arco (Ivo, por fazer desde 30/09): com 625 W as medidas

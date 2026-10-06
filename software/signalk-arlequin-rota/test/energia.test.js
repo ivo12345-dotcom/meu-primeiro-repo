@@ -16,9 +16,9 @@ function correr (e, estado, min, ctx) {
 
 // Decisão do Ivo n.º 4 (auditoria I-13, 02/10): o banco de serviço é o de 440 Ah (bancos 2 + 3, o do
 // SmartShunt, cujo SoC a rota recebe) e o solar entra com perdas (fator 0,65, como o simulador).
-test('valores do barco (decisão n.º 4; solar 2 × 625 W desde 06/10): 440 Ah, 4,5 A de dia, 6 A de noite, 2 × 2,7 m² a 23% × 0,65 de perdas, 12,7 V, alternador 45 A', () => {
-  assert.deepEqual({ ...PADRAO }, { capacidadeAh: 440, socInicial: 1, consumoDiaA: 4.5, consumoNoiteA: 6, paineis: 2, areaPainelM2: 2.7, rendimento: 0.23, fatorSolar: 0.65, tensaoV: 12.7, alternadorA: 45 })
-  quase(solarA(PADRAO, 1000), 1000 * 5.4 * 0.23 * 0.65 / 12.7) // ~64 A ao sol a pino (sem perdas eram ~98 A; com os 2 × 305 W de antes, ~34 A)
+test('valores do barco (decisão n.º 4; solar 2 × 625 W Yingli desde 06/10): 440 Ah, 4,5 A de dia, 6 A de noite, 2 × 2,8 m² a 22,4% × 0,65 de perdas, 12,7 V, alternador 45 A', () => {
+  assert.deepEqual({ ...PADRAO }, { capacidadeAh: 440, socInicial: 1, consumoDiaA: 4.5, consumoNoiteA: 6, paineis: 2, areaPainelM2: 2.8, rendimento: 0.224, fatorSolar: 0.65, tensaoV: 12.7, alternadorA: 45 })
+  quase(solarA(PADRAO, 1000), 1000 * 5.6 * 0.224 * 0.65 / 12.7) // ~64 A ao sol a pino (sem perdas eram ~99 A; com os 2 × 305 W de antes, ~34 A)
   assert.equal(solarA(PADRAO, null), 0)
   assert.equal(solarA(PADRAO, -5), 0)
   // a mesma coisa que o simulador (arlequin-simulador/lib/modelo.js): 440 Ah e fatorSolar 0,65
@@ -52,13 +52,13 @@ test('solar pela radiação (com as perdas) e alternador com o motor; fica entre
   const e = criarEnergia()
   const s = e.inicio(0, 0.5)
   const r = e.passo(s, { dtMs: H, motor: false, noite: false, w: { radiacao: 500 } })
-  quase(r.solar, 500 * 5.4 * 0.23 * 0.65 / 12.7) // 2 × 625 W (06/10): 2 × 2,7 m² a 23 %
+  quase(r.solar, 500 * 5.6 * 0.224 * 0.65 / 12.7) // 2 × 625 W Yingli (06/10): 2 × 2,8 m² a 22,4 %
   quase(r.estado.ah, 220 + r.solar - 4.5)
   quase(e.passo(s, { dtMs: H, motor: true, noite: true, radiacao: 0 }).estado.ah, 220 + 45 - 6)
   assert.equal(correr(e, e.inicio(0, 0.99), 600, { motor: true, noite: false }).soc, 1)
   assert.equal(correr(criarEnergia({ capacidadeAh: 10 }), { ah: 0.05 }, 60, { motor: false, noite: true }).soc, 0)
   // sem perdas (fatorSolar 1) é o de antes
-  quase(solarA({ ...PADRAO, fatorSolar: 1 }, 500), 500 * 5.4 * 0.23 / 12.7)
+  quase(solarA({ ...PADRAO, fatorSolar: 1 }, 500), 500 * 5.6 * 0.224 / 12.7)
 })
 
 test('tudo configurável (e os null ficam no valor por omissão)', () => {
