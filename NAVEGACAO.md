@@ -900,6 +900,7 @@ Rutland 1200) num mastro próprio na alheta, depois do solar montado e de uma é
 SmartShunt.** Se quiser mesmo experimentar o VEVOR: mastro próprio (nunca no arco), fusível de 30 A
 dele até ao banco de serviço, a resistência de descarga do controlador montada, travá-lo com vento
 forte e à noite na marina, e contar com 20–60 Ah/dia, não com 800 W.
+**Decisão do Ivo (06/10): o aerogerador fica de fora.**
 
 ### Carregar com o motor no inverno (28/09)
 
