@@ -1197,6 +1197,10 @@ funcionar também ali:
     dos 110 Ah, substituir; (d) ver inchaços, terminais corroídos e, depois de uma carga, se alguma aquece
     mais do que as outras (célula má). Fotografar a etiqueta (tipo e data de fabrico): AGM com mais de
     6–7 anos raramente passa no teste.
+    **Fotos na próxima ida (Ivo, 06/10):** o carregador de cais (marca, modelo, amperes, se tem perfil AGM/lítio),
+    as 6 baterias (etiquetas, data, bornes, como estão ligadas e presas), o **inversor** (marca, potência, se é
+    inversor-carregador tipo MultiPlus e a que banco está ligado: ainda não estava no inventário), os
+    comutadores e o separador de carga, os fusíveis e o quadro, e tudo o mais que lá esteja ligado às baterias.
 16. **Painéis solares (decidido 28/09): no arco de popa, ao lado do radar, a
     fazer também de teto/sombra por cima da roda, sem chegar à retranca.**
     Fotos do arco (de trás e de lado) e medidas: largura útil de cada lado do
