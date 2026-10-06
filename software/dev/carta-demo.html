@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<title>ARLEQUIN · carta ao vivo (portátil)</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #0b1420; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; }
+  #tudo { display: flex; height: 100%; }
+  #carta { width: 58%; height: 100%; position: relative; }
+  #painel { width: 42%; height: 100%; border: 0; background: #000; }
+  body.inteiro #carta { display: none; }
+  body.inteiro #painel { width: 100%; }
+  #info { position: absolute; left: 8px; top: 8px; z-index: 1000; background: rgba(10, 20, 32, 0.88); color: #e8eef4; padding: 6px 9px; border-radius: 6px; font-size: 13px; line-height: 1.35; min-width: 220px; }
+  #info b { color: #ffd166; }
+  #botoes { position: absolute; right: 8px; top: 8px; z-index: 1000; display: flex; gap: 6px; }
+  #botoes button, #alternar { background: #1b2a3a; color: #e8eef4; border: 1px solid #3a5068; border-radius: 6px; padding: 6px 10px; font-size: 13px; cursor: pointer; }
+  #alternar { position: absolute; right: 8px; bottom: 8px; z-index: 1000; }
+  .barco { width: 0; height: 0; }
+  .barco svg { overflow: visible; }
+  .ais-nome { background: rgba(10, 20, 32, 0.8); color: #fff; border: 0; border-radius: 4px; padding: 1px 5px; font-size: 11px; white-space: nowrap; box-shadow: none; }
+  .leaflet-container { background: #0e2235; }
+</style>
+</head>
+<body>
+<div id="tudo">
+  <div id="carta">
+    <div id="info">a ligar ao SignalK…</div>
+    <div id="botoes"><button id="seguir">seguir o barco: sim</button><button id="rota">ver a rota toda</button></div>
+    <button id="alternar">painel inteiro</button>
+  </div>
+  <iframe id="painel" src="http://localhost:3000/arlequin-ecra/" title="painel do Arlequin"></iframe>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const SK = 'http://localhost:3000'
+const map = L.map('carta', { zoomControl: true }).setView([38.9, -9.4], 10)
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap' }).addTo(map)
+L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenSeaMap' }).addTo(map)
+const rotaLinha = L.polyline([], { color: '#4aa3ff', weight: 3, opacity: 0.9 }).addTo(map)
+const pontosRota = L.layerGroup().addTo(map)
+const rasto = L.polyline([], { color: '#ffd166', weight: 2, opacity: 0.8 }).addTo(map)
+const aisGrupo = L.layerGroup().addTo(map)
+const barcoIcone = (graus) => L.divIcon({ className: 'barco', iconSize: [0, 0], html: `<svg width="30" height="30" viewBox="-15 -15 30 30" style="transform: translate(-15px,-15px) rotate(${graus}deg)"><polygon points="0,-13 8,11 0,6 -8,11" fill="#ff5a5a" stroke="#fff" stroke-width="1.5"/></svg>` })
+const barco = L.marker([38.695, -9.2344], { icon: barcoIcone(0), zIndexOffset: 1000 }).addTo(map)
+let seguir = true
+let rotaHref = null
+let arrastou = false
+map.on('dragstart', () => { seguir = false; document.getElementById('seguir').textContent = 'seguir o barco: não' })
+document.getElementById('seguir').onclick = () => { seguir = !seguir; document.getElementById('seguir').textContent = `seguir o barco: ${seguir ? 'sim' : 'não'}` }
+document.getElementById('rota').onclick = () => { seguir = false; document.getElementById('seguir').textContent = 'seguir o barco: não'; if (rotaLinha.getLatLngs().length) map.fitBounds(rotaLinha.getBounds().pad(0.15)) }
+document.getElementById('alternar').onclick = () => { document.body.classList.toggle('inteiro'); document.getElementById('alternar').textContent = document.body.classList.contains('inteiro') ? 'carta + painel' : 'painel inteiro'; setTimeout(() => map.invalidateSize(), 50) }
+
+const v = (o, p) => p.split('.').reduce((x, k) => (x == null ? undefined : x[k]), o)?.value
+const hora = (iso) => (iso ? new Intl.DateTimeFormat('pt-PT', { timeZone: 'Europe/Lisbon', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso)) : '—')
+const graus = (rad) => (Number.isFinite(rad) ? Math.round(((rad * 180 / Math.PI) % 360 + 360) % 360) : null)
+const nos = (ms) => (Number.isFinite(ms) ? (ms * 3600 / 1852).toFixed(1) : '—')
+
+async function rota () {
+  try {
+    const c = await (await fetch(`${SK}/signalk/v2/api/vessels/self/navigation/course`)).json()
+    const href = c?.activeRoute?.href || null
+    if (href !== rotaHref) {
+      rotaHref = href
+      rotaLinha.setLatLngs([]); pontosRota.clearLayers()
+      if (href) {
+        const r = await (await fetch(`${SK}/signalk/v2/api${href}`)).json()
+        const coords = r?.feature?.geometry?.coordinates || []
+        const latlngs = coords.map(([lon, lat]) => [lat, lon])
+        rotaLinha.setLatLngs(latlngs)
+        latlngs.forEach((ll, i) => { if (i === 0 || i === latlngs.length - 1 || i % 8 === 0) L.circleMarker(ll, { radius: 3, color: '#4aa3ff', fillColor: '#0b1420', fillOpacity: 1 }).addTo(pontosRota) })
+        if (latlngs.length) { map.fitBounds(rotaLinha.getBounds().pad(0.15)); seguir = true; document.getElementById('seguir').textContent = 'seguir o barco: sim' }
+        document.getElementById('info').dataset.rota = r?.name || ''
+      } else document.getElementById('info').dataset.rota = ''
+    }
+    return c
+  } catch { return null }
+}
+
+async function passo () {
+  try {
+    const self = await (await fetch(`${SK}/signalk/v1/api/vessels/self`)).json()
+    const pos = v(self, 'navigation.position')
+    const cog = graus(v(self, 'navigation.courseOverGroundTrue'))
+    const sog = nos(v(self, 'navigation.speedOverGround'))
+    const t = v(self, 'navigation.datetime')
+    const c = await rota()
+    if (pos && Number.isFinite(pos.latitude)) {
+      const ll = [pos.latitude, pos.longitude]
+      barco.setLatLng(ll); barco.setIcon(barcoIcone(cog ?? 0))
+      const ult = rasto.getLatLngs().at(-1)
+      if (!ult || Math.abs(ult.lat - ll[0]) > 1e-5 || Math.abs(ult.lng - ll[1]) > 1e-5) rasto.addLatLng(ll)
+      if (seguir && !map.getBounds().pad(-0.3).contains(ll)) map.panTo(ll)
+    }
+    // os outros navios (AIS)
+    const todos = await (await fetch(`${SK}/signalk/v1/api/vessels`)).json()
+    aisGrupo.clearLayers()
+    let nAis = 0
+    for (const [id, nav] of Object.entries(todos || {})) {
+      if (id === (self?.uuid || '').replace('urn:mrn:signalk:uuid:', '') || id.includes('signalk:uuid')) continue
+      const p = v(nav, 'navigation.position')
+      if (!p || !Number.isFinite(p.latitude)) continue
+      nAis++
+      const nome = nav?.name || id.replace('urn:mrn:imo:mmsi:', 'MMSI ')
+      const cg = v(nav, 'navigation.courseOverGroundTrue')
+      const sg = v(nav, 'navigation.speedOverGround')
+      const m = L.circleMarker([p.latitude, p.longitude], { radius: 6, color: '#fff', fillColor: '#2ecc71', fillOpacity: 0.95, weight: 1.5 }).addTo(aisGrupo)
+      m.bindTooltip(`${nome} · ${nos(sg)} nós · ${graus(cg) ?? '—'}°`, { permanent: true, direction: 'right', className: 'ais-nome', offset: [8, 0] })
+      if (Number.isFinite(cg) && Number.isFinite(sg)) { // o vetor de 10 min
+        const d = sg * 600 / 111320
+        L.polyline([[p.latitude, p.longitude], [p.latitude + d * Math.cos(cg), p.longitude + d * Math.sin(cg) / Math.cos(p.latitude * Math.PI / 180)]], { color: '#2ecc71', weight: 2 }).addTo(aisGrupo)
+      }
+    }
+    const info = document.getElementById('info')
+    info.innerHTML = `<b>ARLEQUIN</b> · hora da viagem <b>${hora(t)}</b><br>posição ${pos ? `${pos.latitude.toFixed(4)}, ${pos.longitude.toFixed(4)}` : '—'}<br>COG ${cog ?? '—'}° · SOG ${sog} nós · AIS: ${nAis} navio(s)<br>${info.dataset.rota ? `rota ativa: ${info.dataset.rota}` : 'sem rota ativa'}${c?.nextPoint?.name ? ` · próximo ${c.nextPoint.name}` : ''}`
+  } catch (e) {
+    document.getElementById('info').textContent = `sem ligação ao SignalK (${e.message})`
+  }
+}
+passo(); setInterval(passo, 2000)
+</script>
+</body>
+</html>

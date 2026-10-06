@@ -6,7 +6,7 @@
 //   node viagem-acelerada.js [--de alges] [--para peniche] [--tripulacao so] [--porta 3000] [--fator 60]
 //        [--atraso-em 0.3] [--atraso-min 60] [--baro-em 0.5] [--baro-queda 4] [--baro-horas 2]
 //        [--pressao 1015] [--gasoleo 70] [--consumo 2.5] [--soc 0.85] [--pausa <ficheiro>]
-//        [--telegram http://localhost:8081]
+//        [--telegram http://localhost:8081] [--hora 2026-10-07T16:00]
 //
 // NUNCA no Pi (nem noutro SignalK que não seja o do dev): injeta posição e hora falsas, manda planos e
 // ativa rotas. O script recusa-se a correr sem a configuração de dev, lida do próprio servidor (GET
@@ -29,7 +29,13 @@
 //   - parado durante --atraso-min a --atraso-em da viagem (o atraso forçado);
 //   - a pressão parte de --pressao hPa (1015) e cai --baro-queda hPa em --baro-horas a partir de --baro-em
 //     da viagem;
-//   - o gasóleo desce --consumo L/h a andar (mais do que a curva da Volvo que o plano conta).
+//   - o gasóleo desce --consumo L/h a andar (mais do que a curva da Volvo que o plano conta);
+//   - os instrumentos coerentes com o rasto do plano (05/10, a demonstração ao vivo com todas as páginas): o
+//     vento real previsto e o aparente, a velocidade na água, o fundo, o motor (ligação a-receber; rotações só
+//     nos troços a motor), as baterias e o solar (de noite a 0), a cabine e o adorno à vela; e um pesqueiro AIS
+//     (MARIA JOÃO) que cruza a proa a meio da viagem a ~0,25 MN — o alarme de colisão uns 20 min antes.
+// --hora: a hora simulada de partida (ISO local, ex.: 2026-10-07T16:00) em vez de agora, para planear "amanhã";
+//   a previsão é a de agora (a Open-Meteo dá 48 h a partir da hora real), por isso só serve até ~1 dia à frente.
 // Com --pausa <ficheiro>: enquanto o ficheiro existir, a hora não anda (para as capturas).
 // Se o SignalK cair (parado a meio), espera e volta a ligar; a hora da viagem não anda entretanto.
 // Escreve a linha do tempo (hora da viagem, estado do plano, avisos notifications.rota.*) e, no fim,
@@ -95,6 +101,97 @@ function criarCenario ({ t0, duracaoMs, atrasoEm = 0.3, atrasoMin = 60, baroEm =
     return { tPlano, parado, pressaoHpa: pressao - queda, gasoleoL: gasoleo - consumo * andouH }
   }
 }
+
+// ---------- os instrumentos ao longo do rasto (05/10: a demonstração ao vivo com todas as páginas) ----------
+// Um ponto a dx (leste) e dy (norte) metros de outro.
+const mover = (p, dx, dy) => ({ lat: p.lat + dy / 111320, lon: p.lon + dx / (111320 * Math.cos(p.lat * GRAU)) })
+const normalizar = (ang) => { while (ang > Math.PI) ang -= 2 * Math.PI; while (ang < -Math.PI) ang += 2 * Math.PI; return ang }
+
+// O vento aparente a partir do real: twdGraus de onde vem o vento, twsNos, o barco a sogNos no rumo cogRad.
+// → { nos, anguloRad } (o ângulo relativo à proa, −π..π, positivo a estibordo).
+function ventoAparente ({ twdGraus, twsNos, sogNos, cogRad }) {
+  const d = twdGraus * GRAU
+  // o ar desloca-se para onde o vento vai (de onde vem + 180°); x para leste, y para norte; menos o andamento
+  const ax = -twsNos * Math.sin(d) - sogNos * Math.sin(cogRad)
+  const ay = -twsNos * Math.cos(d) - sogNos * Math.cos(cogRad)
+  const nos = Math.hypot(ax, ay)
+  const de = nos < 1e-9 ? cogRad : Math.atan2(-ax, -ay) // de onde vem o aparente
+  return { nos, anguloRad: normalizar(de - cogRad) }
+}
+
+// O ponto do rasto em vigor à hora do plano (o último com t ≤ tPlano; antes do 1.º, o 1.º).
+function pontoDoRasto (rasto, tPlano) {
+  let p = rasto[0]
+  for (const q of rasto) { if (Date.parse(q.t) <= tPlano) p = q; else break }
+  return p
+}
+
+// Os valores dos instrumentos que o ecrã mostra, coerentes com o rasto do plano: o vento real do plano (o
+// previsto) e o aparente, a velocidade na água (= SOG, sem corrente), o fundo, o motor (ligação 'a-receber' e
+// as rotações só nos troços a motor; parado, desligado), as baterias e o solar (de noite a 0), a cabine e o
+// adorno à vela (para sotavento). Unidades do SignalK (m/s, rad, K, Pa, m³/s, V, A, W).
+function instrumentosNoRasto ({ rasto, tPlano, pos, parado }) {
+  const r = pontoDoRasto(rasto, tPlano) || {}
+  const motor = !parado && !!r.motor
+  const noite = !!r.noite
+  const tws = Number.isFinite(r.tws) ? r.tws : 10
+  const twd = Number.isFinite(r.twd) ? r.twd : 350
+  const sog = parado ? 0 : pos.sogNos
+  const ap = ventoAparente({ twdGraus: twd, twsNos: tws, sogNos: sog, cogRad: pos.cog })
+  const twa = normalizar(twd * GRAU - pos.cog)
+  const aVela = !motor && sog > 0.5
+  const fundo = 32 + 18 * (0.5 + 0.5 * Math.sin(tPlano / (2 * H)))
+  return [
+    { path: 'environment.wind.speedTrue', value: tws * NO },
+    { path: 'environment.wind.directionTrue', value: twd * GRAU },
+    { path: 'environment.wind.angleTrueWater', value: twa },
+    { path: 'environment.wind.speedApparent', value: ap.nos * NO },
+    { path: 'environment.wind.angleApparent', value: ap.anguloRad },
+    { path: 'navigation.speedThroughWater', value: sog * NO },
+    { path: 'environment.depth.belowTransducer', value: Math.round(fundo * 10) / 10 },
+    { path: 'navigation.attitude', value: { roll: aVela ? (twa >= 0 ? -1 : 1) * 12 * GRAU : 0, pitch: 0, yaw: null } },
+    { path: 'environment.inside.temperature', value: 294.2 },
+    { path: 'propulsion.main.ligacao', value: 'a-receber' },
+    { path: 'propulsion.main.revolutions', value: motor ? 2100 / 60 : 0 },
+    { path: 'propulsion.main.temperature', value: motor ? 355.15 : null },
+    { path: 'propulsion.main.oilPressure', value: motor ? 350000 : 0 },
+    { path: 'propulsion.main.alternatorVoltage', value: motor ? 14.2 : 0 },
+    { path: 'propulsion.main.fuel.rate', value: motor ? 1.45e-3 / 3600 : 0 },
+    { path: 'electrical.batteries.servico.voltage', value: motor ? 13.9 : 12.7 },
+    { path: 'electrical.batteries.servico.current', value: motor ? 35 : noite ? -4.5 : -1.5 },
+    { path: 'electrical.batteries.motor.voltage', value: motor ? 14.1 : 12.7 },
+    { path: 'electrical.solar.mppt1.panelPower', value: noite ? 0 : 110 },
+    { path: 'electrical.solar.mppt2.panelPower', value: noite ? 0 : 105 }
+  ]
+}
+
+// Um alvo AIS de demonstração: um pesqueiro que cruza a nossa proa a meio da viagem (em = a fração da viagem),
+// a 6 nós, de bombordo para estibordo, e passa ~0,25 MN à nossa frente (o alarme de colisão uns 20 min
+// antes). Existe de 1 h antes a 1 h depois. → { mmsi, nome, tipo, position, sog (m/s), cog (rad) } ou null.
+function alvoAis ({ rasto, tPlano, t0, duracaoMs, em = 0.5 }) {
+  const tc = t0 + em * duracaoMs
+  if (tPlano < tc - H || tPlano > tc + H) return null
+  const nos = posicaoNoRasto(rasto, tc)
+  const cruz = nos.cog + Math.PI / 2 // perpendicular ao nosso rumo (de bombordo para estibordo)
+  const frente = 0.25 * 1852
+  const dt = (tPlano - tc) / 1000
+  const v = 6 * NO
+  const dx = frente * Math.sin(nos.cog) + v * dt * Math.sin(cruz)
+  const dy = frente * Math.cos(nos.cog) + v * dt * Math.cos(cruz)
+  return { mmsi: '263000002', nome: 'MARIA JOÃO', tipo: { id: 30, name: 'Pesca' }, position: mover(nos, dx, dy), sog: v, cog: normalizar(cruz) < 0 ? normalizar(cruz) + 2 * Math.PI : normalizar(cruz) }
+}
+
+// O delta de um alvo AIS (o contexto é o do navio; a mesma fonte simulada).
+const deltaAlvo = (t, a) => ({
+  context: `vessels.urn:mrn:imo:mmsi:${a.mmsi}`,
+  updates: [{ $source: FONTE, timestamp: new Date(t).toISOString(), values: [
+    { path: '', value: { name: a.nome, mmsi: a.mmsi } },
+    { path: 'navigation.position', value: { latitude: a.position.lat, longitude: a.position.lon } },
+    { path: 'navigation.speedOverGround', value: a.sog },
+    { path: 'navigation.courseOverGroundTrue', value: a.cog },
+    { path: 'design.aisShipType', value: a.tipo }
+  ] }]
+})
 
 // ---------- a viagem ----------
 const args = process.argv.slice(2)
@@ -179,7 +276,10 @@ async function main () {
   const [lat0, lon0] = de.aproximacao.at(-1)
   const gasoleo0 = num('gasoleo', 70)
   const soc = num('soc', 0.85)
-  let t = Date.now()
+  // --hora: a hora simulada de partida (ISO local), em vez de agora (para planear "amanhã às 16:00")
+  const horaInicio = arg('hora', null)
+  let t = horaInicio ? Date.parse(horaInicio) : Date.now()
+  if (!Number.isFinite(t)) throw new Error(`--hora inválida: ${horaInicio} (ex.: 2026-10-07T16:00)`)
   tAtual = t
   const estadoBase = (tt, p, extra = []) => [
     { path: 'navigation.position', value: { latitude: p.lat, longitude: p.lon } },
@@ -190,7 +290,9 @@ async function main () {
     { path: 'electrical.batteries.servico.capacity.stateOfCharge', value: soc },
     ...extra
   ]
-  enviar(t, estadoBase(t, { lat: lat0, lon: lon0, sogNos: 0, cog: 0 }, [{ path: 'tanks.fuel.0.currentVolume', value: gasoleo0 / 1000 }, { path: 'environment.outside.pressure', value: num('pressao', 1015) * 100 }]))
+  const noCais = { lat: lat0, lon: lon0, sogNos: 0, cog: 0 }
+  enviar(t, estadoBase(t, noCais, [{ path: 'tanks.fuel.0.currentVolume', value: gasoleo0 / 1000 }, { path: 'environment.outside.pressure', value: num('pressao', 1015) * 100 },
+    ...instrumentosNoRasto({ rasto: [{ t: new Date(t).toISOString(), motor: false, noite: false, tws: 8, twd: 350 }], tPlano: t, pos: noCais, parado: true })]))
   await new Promise(resolve => setTimeout(resolve, 1500))
   log(t, `no cais de ${de.nome} (${lat0}, ${lon0}), ${gasoleo0} L, SoC ${soc * 100}%`)
 
@@ -234,6 +336,7 @@ async function main () {
   t = Math.max(t, t0)
   let ultimoResumo = 0
   let paradoAntes = false
+  let alvoAntes = false
   let fimEm = null
   for (;;) {
     const emPausa = pausa && fs.existsSync(pausa)
@@ -243,8 +346,13 @@ async function main () {
     tAtual = t
     const ok = enviar(t, estadoBase(t, pos, [
       { path: 'environment.outside.pressure', value: e.pressaoHpa * 100 },
-      { path: 'tanks.fuel.0.currentVolume', value: e.gasoleoL / 1000 }
+      { path: 'tanks.fuel.0.currentVolume', value: e.gasoleoL / 1000 },
+      ...instrumentosNoRasto({ rasto, tPlano: e.tPlano, pos, parado: e.parado })
     ]))
+    // o pesqueiro que cruza a proa a meio da viagem (alarme de colisão AIS)
+    const alvo = alvoAis({ rasto, tPlano: e.tPlano, t0, duracaoMs })
+    if (ok && alvo) ws.send(JSON.stringify(deltaAlvo(t, alvo)))
+    if (!!alvo !== alvoAntes) { log(t, alvo ? `AIS: ${alvo.nome} à vista (cruza a proa a ~0,25 MN daqui a 1 h)` : 'AIS: o pesqueiro saiu de alcance'); alvoAntes = !!alvo }
     if (e.parado !== paradoAntes) { log(t, e.parado ? `ATRASO FORÇADO: parado ${num('atraso-min', 60)} min` : 'a andar outra vez'); paradoAntes = e.parado }
     if (ok && t - ultimoResumo >= 30 * MIN) {
       ultimoResumo = t
@@ -286,4 +394,4 @@ if (require.main === module) {
   })
 }
 
-module.exports = { posicaoNoRasto, criarCenario, verificarDev, limpar, FALSOS, FONTE, deltaViagem }
+module.exports = { posicaoNoRasto, criarCenario, verificarDev, limpar, FALSOS, FONTE, deltaViagem, ventoAparente, instrumentosNoRasto, alvoAis, deltaAlvo }

@@ -67,7 +67,14 @@ Config. Já aponta para o Telegram falso, só com os chats falsos do dev.
   relógio, manda planos e ativa rotas). Precisa do servidor e do Telegram falso a correr, do simulador
   desligado, do porto ligado ao Telegram falso e, no plugin da rota, de `modoTeste`,
   `horaSimulada: true` e `cicloSegundos: 1` (no fim, desligar a `horaSimulada` e o `cicloSegundos`
-  volta a 60). Recusa-se a correr sem isso.
+  volta a 60). Recusa-se a correr sem isso. Com `--hora 2026-10-07T16:00` parte a essa hora simulada (para
+  planear "amanhã"; a previsão é a de agora, 48 h a partir da hora real); desde 06/10 injeta também o vento real
+  previsto e o aparente, a velocidade na água, o fundo, o motor, as baterias e o solar coerentes com o plano, e um
+  pesqueiro AIS que cruza a proa a meio da viagem (o alarme de colisão).
+- **A carta ao vivo do portátil** (não há OpenCPN no dev): `carta-demo.html` nesta pasta, servido por HTTP
+  (`python -m http.server 8090` em `software/dev`, depois `http://localhost:8090/carta-demo.html`): um mapa
+  (OpenStreetMap + OpenSeaMap) com o barco, a rota ativa, o rasto e os navios AIS, e o painel do ecrã ao lado
+  como no Pi (58 % / 42 %, com um botão para o painel inteiro). Lê a API do SignalK de 2 em 2 s.
 - `npm run testar-rota` — põe o barco em Algés, calcula até Peniche e ativa; com `--em` ou `--ativar`
   tem a mesma guarda.
 - Os dois marcam o que injetam como simulado (fonte `arlequin-simulador.…`): a caixa negra grava essas
