@@ -68,14 +68,14 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
     <p class="t1">ARLEQUIN</p>
     <p class="t2">Sistema de navegação, vigilância e apoio à decisão para um veleiro navegado a solo</p>
     <p class="t3">Jeanneau Melody 34 · Peniche · Raspberry Pi 5 + SignalK + OpenCPN + 10 plugins próprios</p>
-    <p class="t4">Documento técnico de apresentação · 5 de outubro de 2026 · estado: software completo e testado no portátil, instalação a bordo a seguir<br>
+    <p class="t4">Documento técnico de apresentação · 6 de outubro de 2026 · estado: software completo e testado no portátil, instalação a bordo a seguir<br>
     Sem custos neste documento: só o material, marcado como <span class="tag ja">já a bordo</span> ou <span class="tag inst">a instalar</span>.</p>
   </div>
 </section>
 
 <!-- 2 EM RESUMO -->
 <section class="pag" id="resumo">
-  <div class="cab"><h1>1. Em resumo: o que é e o que não é</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="cab"><h1>1. Em resumo: o que é e o que não é</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
   <div class="simples"><b>Em palavras simples:</b> um computador pequeno, no barco, junta tudo o que os instrumentos dizem num só ecrã na roda, vigia o barco quando o Ivo dorme ou está em terra, e ajuda a decidir quando sair e por onde, sem nunca decidir por ele.</div>
   <div class="pilares">
     <div class="pilar"><b>Ver tudo num ecrã</b>Vento, proa, velocidade, fundo, AIS, motor, gasóleo, água e energia, ao lado da carta oficial do Instituto Hidrográfico, num ecrã tátil na roda de leme. Um segundo ecrã na mesa de navegação, visível da cama.</div>
@@ -108,7 +108,7 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
 
 <!-- 3 O BARCO -->
 <section class="pag" id="barco">
-  <div class="cab"><h1>2. O barco e o problema de navegar a solo</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="cab"><h1>2. O barco e o problema de navegar a solo</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
   <div class="simples"><b>Em palavras simples:</b> a solo, uma pessoa faz tudo ao mesmo tempo: governar, vigiar, decidir, dormir. O sistema foi desenhado para fazer a parte da vigilância e preparar a parte da decisão.</div>
   <div class="c58">
     <div>
@@ -148,7 +148,7 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
 
 <!-- 4 ARQUITETURA -->
 <section class="pag" id="arquitetura">
-  <div class="cab"><h1>3. Arquitetura: o que liga a quê</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="cab"><h1>3. Arquitetura: o que liga a quê</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
   <div class="simples"><b>Em palavras simples:</b> uma placa de interfaces traduz todas as línguas dos instrumentos; um Raspberry Pi junta tudo, desenha a carta e o painel, e dois ecrãs mostram o resultado.</div>
   <div class="c58">
     <figure class="grande"><img src="../esquema-arlequin.svg" alt="Esquema de ligações" style="max-height: 560px; width: auto; margin: 0 auto;"><figcaption>Esquema de ligações (28/09/2026). Verde: novo; lilás: já a bordo; tracejado: futuro (o EV-100 de roda fica decidido, por instalar). O radar e o Navtex ficam autónomos.</figcaption></figure>
@@ -173,7 +173,7 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
 
 <!-- 5 PROTOCOLOS E FLUXO -->
 <section class="pag" id="fluxo">
-  <div class="cab"><h1>4. Protocolos e fluxo de dados</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="cab"><h1>4. Protocolos e fluxo de dados</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
   <div class="simples"><b>Em palavras simples:</b> os dados entram por sete caminhos diferentes, ficam todos com o mesmo nome e o mesmo formato, e a partir daí qualquer parte do sistema os pode usar.</div>
   <div class="fluxo">
     <div class="cx"><b>Fontes</b>AIS + GPS · vento · log · sonda · bússolas · motor · gasóleo · água · barómetro · inclinação · baterias e solar · sensores do porto</div>
@@ -200,7 +200,7 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
 
 <!-- 6 SENSORES I -->
 <section class="pag" id="sensores1">
-  <div class="cab"><h1>5. Sensores e fontes de dados (I): o que já está a bordo</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="cab"><h1>5. Sensores e fontes de dados (I): o que já está a bordo</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
   <div class="simples"><b>Em palavras simples:</b> quase toda a eletrónica que o barco já tinha passa a alimentar o sistema; só se compra o que faltava medir.</div>
   <table>
     <tr><th style="width:17%">Aparelho</th><th style="width:19%">O que mede</th><th style="width:20%">Como liga</th><th>O que o sistema faz com isso</th><th style="width:9%">Estado</th></tr>
@@ -219,7 +219,7 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
 
 <!-- 7 SENSORES II -->
 <section class="pag" id="sensores2">
-  <div class="cab"><h1>6. Sensores e fontes de dados (II): o que se instala de novo</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="cab"><h1>6. Sensores e fontes de dados (II): o que se instala de novo</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
   <div class="simples"><b>Em palavras simples:</b> doze sensores baratos e pequenos acrescentam o que ninguém media: a atmosfera, a inclinação, o gasóleo, a água, a energia, o fumo, o porão e quem entra no barco.</div>
   <table style="font-size: 8.4pt;">
     <tr><th style="width:19%">Sensor</th><th style="width:18%">O que mede</th><th style="width:19%">Como liga</th><th>O que o sistema faz com isso</th><th style="width:9%">Estado</th></tr>
@@ -240,12 +240,12 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
 
 <!-- 8 SOFTWARE -->
 <section class="pag" id="software">
-  <div class="cab"><h1>7. O software: dez plugins próprios no SignalK</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="cab"><h1>7. O software: dez plugins próprios no SignalK</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
   <div class="simples"><b>Em palavras simples:</b> cada função é um programa pequeno e independente, com os seus testes; se um falhar, os outros continuam, e o SignalK e o OpenCPN nunca dependem deles.</div>
   <table>
     <tr><th style="width:18%">Plugin</th><th>O que faz</th><th style="width:10%">Testes</th></tr>
     <tr><td>arlequin-ecra</td><td>O ecrã da roda (8 páginas + Noite), em HTML/JS sem dependências; arruma as janelas do OpenCPN e leva o Diário ao <i>signalk-logbook</i> com um token guardado só no servidor. Um verificador desenha os 74 estados num Chromium a 1024×600 e falha se algo ficar cortado.</td><td class="n">325</td></tr>
-    <tr><td>signalk-arlequin-rota</td><td>A melhor rota: o cálculo (3a), o plano para terra pelo Telegram (3b-1) e o acompanhamento a navegar (3b-2), de minuto a minuto, com o plano gravado em disco (sobrevive a reinícios).</td><td class="n">473</td></tr>
+    <tr><td>signalk-arlequin-rota</td><td>A melhor rota: o cálculo (3a), o plano para terra pelo Telegram (3b-1) e o acompanhamento a navegar (3b-2), de minuto a minuto, com o plano gravado em disco (sobrevive a reinícios) e o ponto seguinte da rota ativa a avançar sozinho (06/10).</td><td class="n">475</td></tr>
     <tr><td>signalk-arlequin-porto</td><td>Barco parado e Telegram: fumo, porão, bomba, fuga, intrusão, deriva do ponto de amarração; comandos /estado, /foto, /posicao, /armar, /desarmar, /amarrar, /largar; fila persistente que insiste até entregar.</td><td class="n">144</td></tr>
     <tr><td>signalk-arlequin-ais</td><td>Alarme de colisão no servidor (o mesmo cálculo CPA/TCPA do ecrã), com as regras de parado, amarrado e em porto.</td><td class="n">49</td></tr>
     <tr><td>signalk-arlequin-j1939</td><td>O motor pelo J1939 do MDI: descodifica as PGN, estima o consumo, publica o estado da ligação, descobre os bits dos alarmes do MDI numa página própria.</td><td class="n">62</td></tr>
@@ -253,7 +253,7 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
     <tr><td>signalk-arlequin-agua</td><td>Água doce pelas pedaladas das bombas de pé: Enchi, calibrar a bomba, aviso a 20 %, dias que faltam.</td><td class="n">23</td></tr>
     <tr><td>signalk-arlequin-energia</td><td>Alarmes das baterias AGM (55 / 85 / 50 %, bateria do motor) e as cargas pelo motor registadas no diário.</td><td class="n">56</td></tr>
     <tr><td>signalk-arlequin-caixanegra</td><td>Grava tudo desde o 1.º dia (bruto por hora, tabela de 10 em 10 s, saídas, previsões); gere o disco; fecha as saídas nos portos.</td><td class="n">73</td></tr>
-    <tr><td>signalk-arlequin-ia + arlequin-ia (Python)</td><td>Arquivo das previsões, treino automático dos modelos (LightGBM) depois de cada saída, o cartão da AI no Diário, versões com "Voltar atrás".</td><td class="n">41 + 65</td></tr>
+    <tr><td>signalk-arlequin-ia + arlequin-ia (Python)</td><td>Arquivo das previsões, treino automático dos 4 modelos (LightGBM por quantis: velocidade à vela, força e direção do vento, consumo) depois de cada saída, as previsões em JavaScript para a rota, o cartão da AI no Diário, versões com "Voltar atrás". Páginas 15 e 16.</td><td class="n">41 + 65</td></tr>
     <tr><td class="cinza">arlequin-simulador (só no portátil)</td><td class="cinza">Finge o barco inteiro: navegação, vento, AIS, motor J1939, baterias, sol. Nunca vai para o Pi; o que injeta fica marcado como simulado e nunca ensina a AI.</td><td class="n cinza">27</td></tr>
   </table>
   <div class="duas">
@@ -276,7 +276,7 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
 
 <!-- 9 ECRÃ -->
 <section class="pag" id="ecra">
-  <div class="cab"><h1>8. O ecrã da roda</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="cab"><h1>8. O ecrã da roda</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
   <div class="simples"><b>Em palavras simples:</b> oito páginas, um botão para cada, letras grandes, e um modo de noite que escurece tudo sem mudar as cores. As outras páginas: Viagem (próximo ponto, chegada, XTE, VMG, resumo), Diário (entradas do dia, 8 botões de um toque, notas, o cartão da AI), Melhor rota e Velas.</div>
   <div class="grelha" style="gap: 4px 12px;">
     <figure><img src="img-apresentacao/01-carta-dia.png" alt="Carta" style="max-height: 236px; width: auto; margin: 0 auto;"><figcaption><b>Carta:</b> o OpenCPN ocupa 58 % do ecrã no Pi; ao lado, vento, proa, COG/SOG, fundo, velocidade, % da polar, próximo ponto, os 2 alvos AIS mais perigosos, motor e gasóleo. Na barra, o alarme de colisão com "silenciar".</figcaption></figure>
@@ -289,7 +289,7 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
 
 <!-- 10 ALARMES -->
 <section class="pag" id="alarmes">
-  <div class="cab"><h1>9. Alarmes: uma só regra para todos os plugins</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="cab"><h1>9. Alarmes: uma só regra para todos os plugins</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
   <div class="simples"><b>Em palavras simples:</b> só o perigo imediato apita sem parar; o resto dá um bip e fica escrito; o que é grave segue também para o telemóvel.</div>
   <div class="c58">
     <div>
@@ -326,7 +326,7 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
 
 <!-- 11 PORTO -->
 <section class="pag" id="porto">
-  <div class="cab"><h1>10. Barco parado: vigilância e Telegram</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="cab"><h1>10. Barco parado: vigilância e Telegram</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
   <div class="simples"><b>Em palavras simples:</b> com o barco em Peniche e o Ivo em Lisboa, o telemóvel recebe o que se passa a bordo e pode armar o alarme, pedir uma fotografia ou a posição.</div>
   <div class="duas">
     <div>
@@ -369,7 +369,7 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
 
 <!-- 12 MELHOR ROTA CÁLCULO -->
 <section class="pag" id="rota">
-  <div class="cab"><h1>11. Melhor rota (I): o cálculo</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="cab"><h1>11. Melhor rota (I): o cálculo</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
   <div class="simples"><b>Em palavras simples:</b> o sistema experimenta dezenas de maneiras de fazer a viagem, com a previsão do tempo em três versões, e mostra as três melhores com um veredicto claro.</div>
   <div class="c58">
     <div>
@@ -408,7 +408,7 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
 
 <!-- 13 MELHOR ROTA MAPA E PLANO -->
 <section class="pag" id="plano">
-  <div class="cab"><h1>12. Melhor rota (II): o mapa e o plano para terra</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="cab"><h1>12. Melhor rota (II): o mapa e o plano para terra</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
   <div class="simples"><b>Em palavras simples:</b> antes de sair, o plano vai por Telegram a quem fica em terra, com uma hora a partir da qual devem ligar ao Ivo e, se ele não atender, ao salvamento marítimo.</div>
   <div class="c58">
     <div>
@@ -439,7 +439,7 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
 
 <!-- 14 A NAVEGAR -->
 <section class="pag" id="navegar">
-  <div class="cab"><h1>13. Melhor rota (III): a navegar</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="cab"><h1>13. Melhor rota (III): a navegar</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
   <div class="simples"><b>Em palavras simples:</b> durante a viagem o sistema lembra o que vem a seguir, avisa quando a realidade se afasta do plano e mantém quem está em terra informado, sem nunca fingir que está tudo bem.</div>
   <div class="c58">
     <div>
@@ -468,46 +468,169 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
   </div>
 </section>
 
-<!-- 15 AI E CAIXA NEGRA -->
-<section class="pag" id="ia">
-  <div class="cab"><h1>14. Caixa negra e AI a bordo</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
-  <div class="simples"><b>Em palavras simples:</b> o barco grava tudo o que lhe acontece e, depois de cada saída, aprende sozinho a sua velocidade real e o quanto a previsão do vento se engana nesta costa.</div>
+<!-- 15 CAIXA NEGRA -->
+<section class="pag" id="caixanegra">
+  <div class="cab"><h1>14. Caixa negra: o que grava e porquê</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> desde o primeiro dia o barco escreve tudo o que lhe acontece, de 10 em 10 segundos, e separa o que é "navegação a sério" do resto: é dessa memória que a AI aprende.</div>
   <div class="duas">
     <div>
-      <h2>Caixa negra (<i>~/arlequin-dados</i>)</h2>
+      <h2>Quatro pastas em <i>~/arlequin-dados</i></h2>
+      <table>
+        <tr><th style="width:17%">Pasta</th><th>O que tem</th></tr>
+        <tr><td>bruto/</td><td>Todas as mensagens do SignalK, um ficheiro comprimido por hora. É a cópia integral: serve para reanalisar o que quer que seja, mais tarde.</td></tr>
+        <tr><td>tabela/</td><td>Uma linha de 10 em 10 s com 25 colunas: hora, posição, proa, COG, SOG, velocidade na água, vento real e aparente (força, ângulo, direção), rajada, adorno, caimento, pressão, rotações, litros/hora, grande (rizos), genoa (%), profundidade, bateria, e três marcas: <b>simulado</b>, <b>estável</b> e <b>consumo medido</b>.</td></tr>
+        <tr><td>saidas/</td><td>Uma saída começa a mais de 0,5 MN de um porto conhecido e acaba parada 10 min a menos de 0,5 MN de outro: milhas (só a andar), horas à vela e a motor, gasóleo e bateria no início e no fim.</td></tr>
+        <tr><td>previsoes/</td><td>O que a Open-Meteo dizia na altura: o plugin da AI guarda a previsão para a posição do barco (de hora a hora a navegar, de 3 em 3 h parado) e o da rota guarda um ficheiro por ponto de cada cálculo.</td></tr>
+      </table>
+      <h2>As três marcas que decidem o que ensina</h2>
       <ul>
-        <li><b>bruto/</b>: todas as mensagens, 1 ficheiro por hora · <b>tabela/</b>: 1 linha de 10 em 10 s com posição, proa, vento, velocidade, velas, motor · <b>saidas/</b>: o resumo de cada saída (de porto a porto) · <b>previsoes/</b>: o que a Open-Meteo disse na altura.</li>
-        <li><b>Disco:</b> aos 80 % apaga do bruto só o que o portátil já confirmou ter copiado; aos 95 % pára o bruto, mantém a tabela e alarma. Nunca apaga o que não está no portátil.</li>
-        <li><b>Hora certa:</b> pilha do relógio no Pi 5, hora pelo GPS, fuso de Lisboa; a caixa negra avisa se o relógio e o GPS diferirem mais de 1 min.</li>
-        <li><b>Cópia:</b> por Tailscale (ssh) quando há rede, ou por pen; o portátil guarda em <i>Documents\Veleiro\arlequin-dados</i>.</li>
-        <li><b>Diário de bordo</b> (signalk-logbook): entradas automáticas de hora a hora, motor ligado/desligado, alarmes, cargas pelo motor, velas; 8 botões de um toque e notas; um ficheiro YAML por dia, fácil de exportar.</li>
+        <li><b>Estável:</b> 2 minutos seguidos com a proa a variar menos de 10°, mais de 1 nó na água, longe dos portos, com proa, velocidade e vento válidos. Só estas linhas entram no treino da velocidade; a rajada é o máximo dessa janela.</li>
+        <li><b>Simulado:</b> tudo o que vem do simulador ou dos scripts de teste (fonte <i>arlequin-simulador.*</i>) fica marcado e nunca ensina a AI.</li>
+        <li><b>Consumo medido:</b> 1 quando o caudal vem do motor (PGN 65266), 0 quando é a estimativa pela curva da Volvo. A AI do consumo só aprende com o medido: aprender da estimativa seria aprender a própria curva.</li>
       </ul>
-      <h2>A página Velas</h2>
-      <p>O Ivo marca a grande (inteira, 1 ou 2 rizos, arriada) e a genoa (%). A AI só aprende velocidade à vela com as velas marcadas; sem piloto, a página guia o recolher velas passo a passo, tudo registado no diário.</p>
     </div>
     <div>
-      <h2>O que a AI aprende (LightGBM, treino no Pi)</h2>
-      <table>
-        <tr><th style="width:28%">Modelo</th><th>Aprende</th><th style="width:30%">Para quê</th></tr>
-        <tr><td>Velocidade</td><td>A velocidade real do Arlequin com o Ivo ao leme, só à vela, por vento e ângulo</td><td>Substitui a polar estimada no cálculo da rota quando errar menos do que ela</td></tr>
-        <tr><td>Vento (força e direção)</td><td>Em quanto a previsão falha nesta costa</td><td>Corrige os 3 cenários; o pior caso nunca fica abaixo do previsto</td></tr>
-        <tr><td>Consumo</td><td>O gasóleo real, só quando o motor dá o caudal medido</td><td>Autonomia e recursos à chegada</td></tr>
-      </table>
+      <h2>Regras de funcionamento</h2>
       <ul>
-        <li>Treina sozinho, com prioridade baixa, 1 h depois de o barco parar; a última saída serve de teste; um modelo só entra em uso se melhorar.</li>
-        <li>Precisa de pelo menos 5 h de navegação estável e 2 saídas; o modelo da velocidade pode precisar de ~8 h de vela variada. Até lá o ecrã diz "a aprender" e usa a polar.</li>
-        <li>Versões <i>vNNNN</i> no Pi e <i>pNNNN</i> treinadas no portátil (só vão para o barco por cópia confirmada); "Voltar atrás" no ecrã.</li>
-        <li>O simulador nunca ensina: tudo o que injeta fica marcado como simulado.</li>
-        <li><b>Estado honesto:</b> ainda não há dados reais do barco; a AI começa a aprender nas primeiras saídas.</li>
+        <li><b>Proa verdadeira obrigatória:</b> a tabela usa a proa verdadeira, ou a magnética mais a declinação (válida 1 h); sem nenhuma, as linhas não ficam estáveis e a AI não aprende. É o ponto 10 da instalação no Pi.</li>
+        <li><b>Disco:</b> aos 80 % apaga do bruto só o que o portátil já confirmou ter copiado, do mais antigo para o mais recente; aos 95 % pára o bruto, mantém a tabela e dá alarme. Nunca apaga o que não está no portátil.</li>
+        <li><b>Relógio:</b> os nomes dos ficheiros e a junção com as previsões dependem da hora do Pi; se a hora do GPS e a do Pi diferirem mais de 60 s, aviso no ecrã (e o plugin da rota pára o que vai para terra).</li>
+        <li><b>Velas:</b> o estado da grande e da genoa marcado na página Velas fica gravado e entra em cada linha; o ecrã lembra se o vento mudar muito e as velas ficarem na mesma.</li>
+        <li><b>Ficheiros estragados</b> (um corte de luz a meio): ficam à parte, com o erro no registo, e o plugin recomeça do zero; o treino lê o resto na mesma.</li>
       </ul>
-      <figure><img src="img-apresentacao/07-diario-dia.png" alt="Diário" style="max-height: 150px; width: auto;"><figcaption>A página Diário com o cartão da AI ("a aprender", "Treinar agora").</figcaption></figure>
+      <h2>Para fora do barco</h2>
+      <ul>
+        <li><b>Sincronizar:</b> por Tailscale/ssh (copia e confirma ao Pi, que pode então libertar espaço) ou por pen (só copia). Os dados ficam em <i>Documents\Veleiro\arlequin-dados</i> no portátil.</li>
+        <li><b>Diário de bordo</b> (signalk-logbook): um ficheiro YAML por dia com as entradas automáticas (de hora a hora, motor, alarmes, cargas, velas) e as de um toque; abre no telemóvel e exporta-se.</li>
+        <li>Tudo o que a AI treina no Pi tem versão (<i>vNNNN</i>) e registo; o portátil pode treinar versões <i>pNNNN</i> com os mesmos dados.</li>
+      </ul>
     </div>
   </div>
 </section>
 
+<!-- 16 AI I -->
+<section class="pag" id="ia1">
+  <div class="cab"><h1>15. AI a bordo (I): os quatro modelos e como aprendem</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> a AI não inventa nada: compara o que a previsão dizia com o que o barco fez de verdade, e corrige quatro coisas: a velocidade à vela, a força e a direção do vento previsto, e o gasóleo a motor.</div>
+  <table style="font-size: 8.2pt;">
+    <tr><th style="width:11%">Modelo</th><th style="width:19%">O que aprende (alvo)</th><th style="width:31%">Variáveis de entrada</th><th style="width:21%">Linhas que ensinam</th><th>Com que se compara</th></tr>
+    <tr><td><b>velocidade</b></td><td>A velocidade na água à vela (nós), com o Ivo ao leme</td><td>Vento previsto <b>em bruto</b> (força, rajada, ângulo rumo–direção), ondas previstas (altura, período, ângulo relativo), rizos e genoa (%)</td><td>Só à vela, estáveis e em horas com previsão arquivada</td><td>A polar de origem com a mesma previsão em bruto</td></tr>
+    <tr><td><b>ventoForca</b></td><td>A razão vento medido / vento previsto</td><td>Célula de 0,1°, força e direção previstas, hora do dia (UTC), idade da previsão (0–12 h), tendência do barómetro (3 h)</td><td>Linhas com vento medido e previsão</td><td>A previsão tal e qual (razão 1)</td></tr>
+    <tr><td><b>ventoDirecao</b></td><td>A diferença direção medida − prevista (graus)</td><td>As mesmas do ventoForca</td><td>Idem</td><td>A previsão tal e qual (0°)</td></tr>
+    <tr><td><b>consumo</b></td><td>Litros por hora a motor</td><td>Rotações, ondas previstas e o seu ângulo relativo</td><td>Só com o caudal <b>medido</b> pelo motor (PGN 65266), motor a trabalhar</td><td>A curva de consumo da Volvo Penta</td></tr>
+  </table>
+  <div class="duas" style="font-size: 9.6pt;">
+    <div>
+      <h2>Como se treina (Python, LightGBM)</h2>
+      <ul>
+        <li>Três modelos por quantis para cada alvo, <b>P10, P50 e P90</b>: não um número, uma banda. 200 rondas, 15 folhas, mínimo 40 linhas por folha, determinístico (o mesmo dado dá o mesmo modelo).</li>
+        <li>Precisa de <b>5 h</b> de linhas úteis; abaixo disso, "poucos dados". As sessões são as saídas da caixa negra.</li>
+        <li><b>Teste com a última saída</b> (juntando as anteriores até o teste ter 1 h): o modelo novo só é <b>aceite</b> se errar menos (erro médio absoluto) do que o modelo em uso, ou, no primeiro, do que a origem: a polar, a previsão em bruto ou a curva da Volvo.</li>
+        <li>Aceite, treina-se de novo com todas as linhas e grava-se como versão <i>vNNNN</i>; <i>atual</i> aponta para ela e tudo fica em <i>registo.json</i>.</li>
+        <li><b>Peso por célula</b> de 2 nós × 15°: onde o barco nunca navegou, a AI devolve a polar. Por isso o 1.º modelo da velocidade pode pedir ~8 h de vela variada.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Quando e onde corre</h2>
+      <ul>
+        <li><b>Sozinho, no porto:</b> barco parado (menos de 0,5 nó, motor parado) há 1 h e uma saída terminada depois do último treino. Corre em Python com prioridade baixa; demora minutos.</li>
+        <li><b>À mão:</b> "Treinar agora" no cartão da AI do Diário; "Voltar atrás" repõe a versão anterior que esteve em uso, se um modelo novo parecer pior ao leme.</li>
+        <li><b>No portátil:</b> versões <i>pNNNN</i> com os mesmos dados; só vão para o barco por cópia confirmada.</li>
+        <li><b>A navegação nunca depende do Python:</b> as previsões dos modelos fazem-se em JavaScript (as árvores lidas do JSON), dentro do plugin da rota. Se o Python faltar, continua a polar e a previsão em bruto.</li>
+      </ul>
+      <h2>O que o Ivo vê</h2>
+      <ul>
+        <li>No Diário, o cartão "AI · o que o barco aprendeu": por modelo, "a aprender" ou a versão, as horas e uma frase ("a previsão exagera o vento em 15 %"); a previsão arquivada; o último treino.</li>
+        <li>No resultado da rota: "AI: a aprender" ou "AI: vNNNN", ao lado da idade da previsão.</li>
+        <li><b>Estado a 06/10:</b> ainda não há dados reais do Arlequin; os modelos existem, estão testados com dados sintéticos de resposta conhecida, e começam a aprender nas primeiras saídas.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 17 AI II -->
+<section class="pag" id="ia2">
+  <div class="cab"><h1>16. AI a bordo (II): como entra nas decisões da rota</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> cada rota é simulada três vezes, num mundo pessimista, num provável e num otimista; a AI diz quanto a previsão costuma enganar-se e quanto o barco anda de verdade, e o pior caso nunca fica mais bonito do que a previsão.</div>
+  <div class="duas">
+    <div>
+      <h2>Os três cenários</h2>
+      <table>
+        <tr><th>Cenário</th><th>Velocidade à vela</th><th>Vento que decide</th><th>Gasóleo</th></tr>
+        <tr><td>Pessimista</td><td>P10</td><td>P90 (razão nunca abaixo de 1)</td><td>P90</td></tr>
+        <tr><td>Provável</td><td>P50</td><td>P50</td><td>P50</td></tr>
+        <tr><td>Otimista</td><td>P90</td><td>P10</td><td>P10</td></tr>
+      </table>
+      <ul>
+        <li><b>O vento que decide</b> (rizar, motor abaixo de 7 nós, limites de segurança, máximos do cartão) é a previsão em bruto multiplicada pela razão do quantil do modelo ventoForca; a direção é a corrigida pelo ventoDirecao; a rajada leva a mesma razão.</li>
+        <li><b>No pessimista a razão nunca fica abaixo de 1:</b> um modelo que aprendeu "a previsão exagera" não pode pôr o pior caso abaixo do vento previsto, que é o que decide os limites a solo.</li>
+        <li><b>A polar lê-se no quantil contrário:</b> no pessimista, a polar no vento P10. Senão o pessimista andava mais depressa, porque mais vento dá mais velocidade na polar.</li>
+        <li><b>A velocidade à vela</b> é o modelo com a previsão em bruto e as velas que a simulação decidiu (os limiares de rizos), no quantil do cenário, tendo a polar corrigida como base; a motor, a curva de consumo da Volvo ou o modelo do consumo.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Salvaguardas escritas no código</h2>
+      <ul>
+        <li><b>Sem modelo</b> (ou "a aprender"): vento ±10 % entre os cenários, direção tal e qual, polar e curva da Volvo. O resultado diz "AI: a aprender".</li>
+        <li><b>Só dentro do que treinou:</b> a AI do vento aprendeu com previsões de 0 a 12 h de idade; para pontos da rota cuja previsão tem mais de 12 h (partidas até 48 h), fica o ±10 % e a nota "previsão além do treino".</li>
+        <li><b>A correção nunca entra duas vezes:</b> o modelo da velocidade recebe a previsão em bruto (aprendeu "com esta previsão andaste X"); a correção do vento serve à polar e às regras.</li>
+        <li><b>Desconhecido nunca é calmo:</b> sem previsão num troço, a velocidade e as regras ficam sem valor, não a zero; a alternativa é excluída (ou fica vermelha em "Sair agora").</li>
+        <li><b>Célula de mar:</b> desde 02/10 a previsão pede a célula de mar da Open-Meteo (a de terra subestimava o vento ~40 % junto à costa); modelos treinados antes disso devem sair de uso.</li>
+        <li><b>O simulado nunca ensina</b>, e a tendência do barómetro à partida entra no modelo como entrou no treino.</li>
+      </ul>
+      <h2>O que muda à medida que a AI aprende</h2>
+      <p>As horas de chegada dos três cenários aproximam-se da realidade do Arlequin e do Ivo (não de uma polar genérica), os limites de segurança passam a contar com o vento que costuma haver nesta costa e não só com o previsto, e a autonomia a motor passa a ser a do motor real. A decisão continua a ser do skipper: a AI muda os números, não o veredicto.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 18 INTERAÇÕES -->
+<section class="pag" id="interacoes">
+  <div class="cab"><h1>17. Como os sistemas interagem</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> ninguém fala diretamente com ninguém: cada plugin lê e escreve na árvore de dados do SignalK, e são esses nomes e regras partilhadas que mantêm tudo coerente.</div>
+  <div class="fluxo" style="grid-template-columns: 1fr 24px 1.2fr 24px 1fr 24px 1fr;">
+    <div class="cx"><b>Sensores e aparelhos</b>AIS/GPS · vento · log · sonda · bússolas · motor (CAN) · gasóleo (ADS1115) · água (reed) · barómetro · IMU · Victron · sensores do porto · simulador (só no portátil)</div>
+    <div class="seta">→</div>
+    <div class="cx"><b>SignalK: a árvore</b>navigation.* · environment.* · propulsion.main.* · tanks.* · electrical.* · sensors.* · recursos (rotas) e API de rumo · notifications.arlequin.* e notifications.rota.* (com <i>apito</i> e <i>acao</i>)</div>
+    <div class="seta">→</div>
+    <div class="cx"><b>Plugins</b>AIS · J1939 · gasóleo · água · energia · caixa negra · AI · rota · porto · ecrã: cada um lê o que precisa, publica o seu e levanta notificações</div>
+    <div class="seta">→</div>
+    <div class="cx"><b>Saídas</b>ecrã (barra, páginas, apito) · OpenCPN (rota ativa) · Telegram (porto encaminha) · disco (caixa negra, planos, filas) · NMEA 0183 para o radar, o VHF e o telemóvel</div>
+  </div>
+  <table style="font-size: 8.6pt;">
+    <tr><th style="width:12%">Plugin</th><th style="width:34%">Lê</th><th style="width:30%">Publica</th><th>Fala com</th></tr>
+    <tr><td>AIS</td><td>vessels.* (alvos), a nossa posição e SOG, os portos da rota</td><td>notifications.arlequin.ais.* (perigo, contínuo); navigation.arlequin.emPorto (C12)</td><td>ecrã (lista, barra), porto (não encaminha amarrado)</td></tr>
+    <tr><td>J1939</td><td>candump da can1 (MDI)</td><td>propulsion.main.* (rotações, horas, temperatura, tensão, caudal medido ou estimado), propulsion.main.ligacao (C11), alarmes do MDI</td><td>ecrã (Motor), gasóleo (consumo), energia (cargas pelo motor), porto (largar com motor), caixa negra, AI (consumo medido)</td></tr>
+    <tr><td>Gasóleo</td><td>tanks.fuel.0.senderVoltage / supplyVoltage (ADS1115), rotações</td><td>tanks.fuel.0.currentVolume/currentLevel, reserva, fuga, consumo anormal, sonda perdida</td><td>ecrã (Motor), rota (recursos), caixa negra</td></tr>
+    <tr><td>Água</td><td>tanks.freshWater.N.pedaladas</td><td>níveis, dias que faltam, "sem sensor", aviso 20 %</td><td>ecrã (Motor)</td></tr>
+    <tr><td>Energia</td><td>electrical.batteries.servico/motor, MPPT (victron-ble), rotações, dia/noite</td><td>avisos 55/85 %, alarmes 50 % e bateria do motor, cargas no diário</td><td>ecrã, porto (Telegram), diário</td></tr>
+    <tr><td>Caixa negra</td><td>tudo (bruto); posição, proa, vento, velocidades, velas, motor, bateria (tabela); portos da rota</td><td>saídas, velas (sails.*), avisos de disco, relógio e velas</td><td>AI (dados), rota (lê as velas), ecrã (Velas)</td></tr>
+    <tr><td>AI</td><td>a tabela, as saídas e as previsões arquivadas; posição e rotações (disparo)</td><td>previsoes/ (arquivo), modelos/vNNNN e registo; /ia para o cartão</td><td>rota (modelos em uso, em JS), ecrã (Diário)</td></tr>
+    <tr><td>Rota</td><td>posição, SOG, vento, pressão, gasóleo, SoC (frescos), rota ativa (API de rumo), previsão (rede ou arquivo), polar, modelos da AI, velas</td><td>rotas (recursos) e rota ativa (ponto seguinte), notifications.rota.*, plano-ativo.json, mensagens para terra (via porto)</td><td>OpenCPN, ecrã (Melhor rota, Leme), porto (Telegram), caixa negra (previsões), AI</td></tr>
+    <tr><td>Porto</td><td>sensors.* (fumo, porão, bomba, líquido, gaiuta, movimento), posição, motor, todas as notificações</td><td>notifications.arlequin.porto.* (com acao 'largar', C10), fila encaminhador.json, porto.json</td><td>Telegram (alarmes, comandos, planos, "cheguei bem"), ecrã (barra, "Larguei")</td></tr>
+    <tr><td>Ecrã</td><td>a árvore inteira (WebSocket), as rotas REST dos plugins, as notificações</td><td>janelas do OpenCPN e modo noite; silenciar/reconhecer; diário (com token só no servidor, C3)</td><td>o Ivo</td></tr>
+  </table>
+  <p class="nota">Os contratos entre plugins estão escritos e testados: C1 (campo <i>apito</i>: contínuo só no perigo imediato), C3 (o diário só pelo plugin do ecrã), C9 (fonte <i>arlequin-simulador.*</i> = simulado), C10 (<i>acao: 'largar'</i>), C11 (<i>propulsion.main.ligacao</i>), C12 (<i>navigation.arlequin.emPorto</i>), e a decisão n.º 19 (relógio do Pi a mais de 60 s do GPS pára o que vai para terra). Nomes fixos: os IDs Victron <i>servico</i>, <i>motor</i>, <i>mppt1</i>, <i>mppt2</i>; os 15 destinos da rota são os portos de todos.</p>
+</section>
+
+<!-- 19 UM DIA -->
+<section class="pag" id="dia">
+  <div class="cab"><h1>18. Um dia típico, do cais ao cais: quem faz o quê</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
+  <div class="simples"><b>Em palavras simples:</b> antes de sair o sistema planeia e avisa quem fica em terra; a navegar vigia de minuto a minuto; à chegada diz "cheguei bem"; no porto guarda o barco e, uma hora depois, aprende com a viagem.</div>
+  <table style="font-size: 8.7pt;">
+    <tr><th style="width:15%">Momento</th><th>O que acontece, e que parte do sistema o faz</th></tr>
+    <tr><td><b>No cais, a planear</b></td><td>O Ivo escolhe o destino e a tripulação na página Melhor rota. O plugin da <b>rota</b> descarrega a previsão (ou usa a arquivada), gera as alternativas (afastamento × hora de partida × vela/motor), pede à <b>AI</b> as correções e a velocidade, simula cada uma nos 3 cenários (~84 alternativas em menos de um minuto), aplica os limites de segurança e devolve as 3 melhores, o veredicto, os pontos de desistência e o mini-mapa. <b>Enviar plano</b>: o plano (texto + GPX, hora de alarme = chegada mais tarde + 2 h) vai pelo <b>porto</b> ao Telegram dos contactos. <b>Ativar</b>: a rota fica no SignalK (recursos + API de rumo) e o OpenCPN mostra-a; o plano fica em disco.</td></tr>
+    <tr><td><b>A largar</b></td><td>Com o motor a trabalhar e mais de 1 nó (ou "Larguei"), o <b>porto</b> apaga o ponto de amarração. A menos de 0,5 MN do cais o <b>AIS</b> está "em porto" (alvos parados sem som). A mais de 0,5 MN a <b>caixa negra</b> abre uma saída e a <b>rota</b> passa o plano a "a navegar".</td></tr>
+    <tr><td><b>A navegar, de minuto a minuto</b></td><td>A <b>rota</b> lê a posição, o SOG, o vento, a pressão, o gasóleo e a bateria (só frescos), projeta o barco na rota, calcula o atraso contra o plano, desliza os eventos, estima a chegada e os recursos, levanta os avisos (lembretes 30 min, come e bebe, recalcula, recursos, previsão velha, barómetro, relógio), avança o ponto seguinte da rota ativa e decide as mensagens para terra (atraso ≥ 30 min, só a avançar, teto de 3 h). O <b>AIS</b> vigia CPA/TCPA; o <b>J1939</b>, o <b>gasóleo</b>, a <b>água</b> e a <b>energia</b> publicam os seus valores e alarmes; a <b>AI</b> arquiva a previsão de hora a hora; a <b>caixa negra</b> grava o bruto e a tabela e marca o estável; o <b>ecrã</b> mostra tudo e toca o apito (C1); o <b>porto</b> encaminha as mudanças de estado para o Telegram do Ivo, com fila e reenvio.</td></tr>
+    <tr><td><b>À chegada</b></td><td>A menos de 0,3 MN do cais, parado 5 min, com metade da rota feita: a <b>rota</b> fecha o plano e manda "Cheguei bem a X" aos contactos (reenviado até chegar; aviso 60 min antes da hora de alarme se não chegou). A <b>caixa negra</b> fecha a saída (milhas, horas, gasóleo, bateria). O <b>porto</b>, 30 min parado junto a um porto conhecido, grava o ponto de amarração. A <b>energia</b> regista as cargas pelo motor no diário.</td></tr>
+    <tr><td><b>No porto</b></td><td>O <b>porto</b> vigia fumo, porão, bomba, fuga, intrusão (armado) e deriva, responde aos comandos no Telegram e insiste até entregar. O <b>AIS</b> fica em modo porto. A <b>energia</b> dá os avisos de 55/85 % e, de noite, só no ecrã. A <b>caixa negra</b> trata do disco. Uma hora depois de o barco parar, a <b>AI</b> treina com a saída nova; se o modelo errar menos, entra em uso e o cartão do Diário di-lo.</td></tr>
+    <tr><td><b>Em casa</b></td><td>Pelo Tailscale, <i>sincronizar</i> copia os dados para o portátil e confirma-os ao Pi. No portátil podem treinar-se versões <i>pNNNN</i> e correr as viagens simuladas; só vão para o barco por cópia confirmada.</td></tr>
+  </table>
+</section>
+
 <!-- 16 ENERGIA -->
 <section class="pag" id="energia">
-  <div class="cab"><h1>15. Energia</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="cab"><h1>19. Energia</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
   <div class="simples"><b>Em palavras simples:</b> dois painéis solares de 625 W num teto sobre a roda, um controlador por painel e um contador de energia no banco de serviço; o Pi lê tudo e diz quando ligar e desligar o motor para carregar.</div>
   <div class="c58">
     <figure class="grande"><img src="../energia-arlequin.svg" alt="Esquema de energia" style="max-height: 560px; width: auto; margin: 0 auto;"><figcaption>Esquema de energia (2 × 625 W, decisão de 06/10): strings independentes, um MPPT 100/50 por painel, fusível de 63 A à saída de cada um, SmartShunt no negativo do serviço.</figcaption></figure>
@@ -539,7 +662,7 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
 
 <!-- 17 PILOTO -->
 <section class="pag" id="piloto">
-  <div class="cab"><h1>16. Piloto automático: Raymarine EV-100 de roda (decidido, a instalar)</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="cab"><h1>20. Piloto automático: Raymarine EV-100 de roda (decidido, a instalar)</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
   <div class="simples"><b>Em palavras simples:</b> o barco ainda não tem piloto; o escolhido monta-se na roda, traz a sua própria bússola e, depois de montado, liga-se à rede do Pi para seguir as rotas calculadas.</div>
   <div class="duas">
     <div>
@@ -578,7 +701,7 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
 
 <!-- 18 MATERIAL -->
 <section class="pag" id="material">
-  <div class="cab"><h1>17. Material, sem custos</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="cab"><h1>21. Material, sem custos</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
   <div class="simples"><b>Em palavras simples:</b> à esquerda o que o barco já tem e entra no sistema; à direita o que se compra ou se faz.</div>
   <div class="duas">
     <div>
@@ -662,13 +785,13 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
 
 <!-- 19 VALIDAÇÃO -->
 <section class="pag" id="validacao">
-  <div class="cab"><h1>18. Como se sabe que funciona: validação</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="cab"><h1>22. Como se sabe que funciona: validação</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
   <div class="simples"><b>Em palavras simples:</b> antes de ir para o barco, o sistema foi posto a navegar milhares de vezes num barco fingido, medido num ecrã verdadeiro e revisto de uma ponta à outra por oito revisores independentes.</div>
   <div class="kpi">
-    <div><span class="v">1 469</span><span class="l">testes automáticos (1 373 em Node, 96 em Python), todos verdes a 05/10</span></div>
+    <div><span class="v">1 471</span><span class="l">testes automáticos (1 375 em Node, 96 em Python), todos verdes a 06/10</span></div>
     <div><span class="v">74</span><span class="l">estados do ecrã medidos num Chromium a 1024×600, de dia e de noite, 0 problemas</span></div>
     <div><span class="v">168</span><span class="l">achados da auditoria total de 02/10 (13 críticos, 48 importantes, 86 menores, 21 incoerências), todos corrigidos</span></div>
-    <div><span class="v">&gt; 240</span><span class="l">commits de correção revistos por um segundo revisor, com rondas de re-revisão</span></div>
+    <div><span class="v">&gt; 250</span><span class="l">commits de correção revistos por um segundo revisor, com rondas de re-revisão; demonstração ao vivo a 06/10</span></div>
   </div>
   <div class="duas">
     <div>
@@ -697,7 +820,7 @@ figcaption { font-size: 8.5pt; color: #3d4a57; margin-top: 2px; }
 
 <!-- 20 LIMITAÇÕES E PRÓXIMOS PASSOS -->
 <section class="pag" id="fim">
-  <div class="cab"><h1>19. Limitações, o que falta e os próximos passos</h1><span class="meta">ARLEQUIN · apresentação técnica · 05/10/2026</span></div>
+  <div class="cab"><h1>23. Limitações, o que falta e os próximos passos</h1><span class="meta">ARLEQUIN · apresentação técnica · 06/10/2026</span></div>
   <div class="simples"><b>Em palavras simples:</b> o software está pronto; o que falta é montá-lo no barco, ligar os sensores e confirmar na água tudo o que foi confirmado no portátil.</div>
   <div class="duas">
     <div>
