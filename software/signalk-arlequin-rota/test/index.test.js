@@ -690,7 +690,7 @@ test('auditoria I-12: o gasóleo e o SoC só contam com leitura fresca (≤ 2 mi
   } finally { calculo.calcular = original }
 })
 
-test('auditoria I-13 (decisão n.º 4, contrato C5): o esquema dá o banco de serviço de 440 Ah e o fator solar 0,65; uma configuração gravada com o valor por omissão antigo (200 Ah) conta como não posta (fica 440) e o registo diz porquê; outro valor fica', async () => {
+test('auditoria I-13 (decisão n.º 4, contrato C5): o esquema dá o banco de serviço de 192 Ah e o fator solar 0,65; uma configuração gravada com o valor por omissão antigo (200 Ah) conta como não posta (fica 192) e o registo diz porquê; outro valor fica', async () => {
   const calculo = require('../lib/calculo')
   const energia = require('../lib/energia')
   const original = calculo.calcular
@@ -700,7 +700,7 @@ test('auditoria I-13 (decisão n.º 4, contrato C5): o esquema dá o banco de se
     const app = appFalso()
     const pl = plugin(app)
     const e = pl.p.schema.properties.energia.properties
-    assert.equal(e.capacidadeAh.default, 440)
+    assert.equal(e.capacidadeAh.default, 192)
     assert.equal(e.fatorSolar.default, 0.65)
     assert.equal(e.capacidadeAh.default, energia.PADRAO.capacidadeAh)
     assert.equal(e.fatorSolar.default, energia.PADRAO.fatorSolar)
@@ -708,13 +708,18 @@ test('auditoria I-13 (decisão n.º 4, contrato C5): o esquema dá o banco de se
     // a configuração antiga do Admin UI (todos os campos escritos, com os 200 Ah de antes)
     pl.p.start({ pasta: path.join(app.dir, 'dados'), energia: { capacidadeAh: 200, consumoDiaA: 4.5, consumoNoiteA: 6, paineis: 2, areaPainelM2: 1.65, rendimento: 0.2, alternadorA: 45 } })
     const x = await calc()
-    // (F2b Menor 5: os 200 Ah antigos passam a 440 explícitos — e gravados na configuração, ver o teste a seguir —
+    // (F2b Menor 5: os 200 Ah antigos passam a 192 explícitos — e gravados na configuração, ver o teste a seguir —
     // em vez de se apagarem da cópia em memória)
-    assert.equal(x.capacidadeAh, 440, 'os 200 Ah antigos passam ao banco de serviço (o padrão do lib/energia.js)')
-    assert.equal(energia.criarEnergia(x).config.capacidadeAh, 440)
+    assert.equal(x.capacidadeAh, 192, 'os 200 Ah antigos passam ao banco de serviço (o padrão do lib/energia.js)')
+    assert.equal(energia.criarEnergia(x).config.capacidadeAh, 192)
     assert.equal(energia.criarEnergia(x).config.fatorSolar, 0.65)
     assert.equal(x.consumoNoiteA, 6)
-    assert.ok(app.erros.some(m => /capacidadeAh.*200.*440 Ah/.test(m)), JSON.stringify(app.erros))
+    assert.ok(app.erros.some(m => /capacidadeAh.*200.*192 Ah/.test(m)), JSON.stringify(app.erros))
+    pl.p.stop()
+    // o valor por omissão seguinte (440 Ah, decisão n.º 4 de 02/10) também passa ao banco real de 08/10
+    pl.p.start({ pasta: path.join(app.dir, 'dados'), energia: { capacidadeAh: 440 } })
+    assert.equal((await calc()).capacidadeAh, 192, 'os 440 Ah de 02/10 passam ao banco real')
+    assert.ok(app.erros.some(m => /capacidadeAh = 440.*192 Ah/.test(m)), JSON.stringify(app.erros))
     pl.p.stop()
     // um banco posto à mão com outro valor fica
     pl.p.start({ pasta: path.join(app.dir, 'dados'), energia: { capacidadeAh: 300, fatorSolar: 0.5 } })
@@ -933,7 +938,7 @@ test('auditoria M-20 (parte index.js): a rotação de cruzeiro e o afastamento m
   } finally { calculo.calcular = original }
 })
 
-test('F2b Menor 5 (auditoria I-13, decisão n.º 4): os 200 Ah do valor por omissão antigo passam a 440 UMA vez — em memória, com o registo a dizê-lo, e a configuração é gravada com o valor novo (app.savePluginOptions, o resto igual) para um valor posto depois à mão se manter, até outros 200 Ah; se a gravação falha, ou o servidor não tem a API, repete-se no arranque seguinte (nada de marca)', async () => {
+test('F2b Menor 5 (auditoria I-13, decisão n.º 4): os 200 Ah do valor por omissão antigo passam a 192 UMA vez — em memória, com o registo a dizê-lo, e a configuração é gravada com o valor novo (app.savePluginOptions, o resto igual) para um valor posto depois à mão se manter, até outros 200 Ah; se a gravação falha, ou o servidor não tem a API, repete-se no arranque seguinte (nada de marca)', async () => {
   const calculo = require('../lib/calculo')
   const original = calculo.calcular
   const opcoes = []
@@ -949,15 +954,15 @@ test('F2b Menor 5 (auditoria I-13, decisão n.º 4): os 200 Ah do valor por omis
     const pl = plugin(app)
     const antiga = antigaDe(app)
     pl.p.start(antiga)
-    assert.equal((await calc(pl)).capacidadeAh, 440)
-    assert.deepEqual(gravadas, [{ ...antiga, energia: { ...antiga.energia, capacidadeAh: 440 } }], 'gravada com o valor novo e o resto como estava')
+    assert.equal((await calc(pl)).capacidadeAh, 192)
+    assert.deepEqual(gravadas, [{ ...antiga, energia: { ...antiga.energia, capacidadeAh: 192 } }], 'gravada com o valor novo e o resto como estava')
     assert.equal(antiga.energia.capacidadeAh, 200, 'a configuração recebida não se mexe')
-    assert.ok(app.erros.some(m => /capacidadeAh.*200.*440 Ah.*gravada/.test(m)), JSON.stringify(app.erros))
+    assert.ok(app.erros.some(m => /capacidadeAh.*200.*192 Ah.*gravada/.test(m)), JSON.stringify(app.erros))
     assert.ok(fs.existsSync(marca(app)), 'a marca de que já se fez')
     pl.p.stop()
     // o arranque seguinte, com a configuração gravada: nada a fazer
     pl.p.start(gravadas[0])
-    assert.equal((await calc(pl)).capacidadeAh, 440)
+    assert.equal((await calc(pl)).capacidadeAh, 192)
     assert.equal(gravadas.length, 1)
     pl.p.stop()
     // o Ivo põe 200 Ah de propósito (outro banco): fica, e não se grava nada
@@ -968,35 +973,35 @@ test('F2b Menor 5 (auditoria I-13, decisão n.º 4): os 200 Ah do valor por omis
     assert.equal(app.erros.length, erros, 'sem registo nem gravação')
     pl.p.stop()
 
-    // b) a gravação falha: fica a 440 em memória, o registo diz porquê e repete-se no arranque seguinte (sem a marca)
+    // b) a gravação falha: fica a 192 em memória, o registo diz porquê e repete-se no arranque seguinte (sem a marca)
     const app2 = appFalso()
     const tentativas = []
     let falha = true
     app2.savePluginOptions = (cfg, cb) => { tentativas.push(cfg); cb(falha ? new Error('disco cheio') : null) }
     const pl2 = plugin(app2)
     pl2.p.start(antigaDe(app2))
-    assert.equal((await calc(pl2)).capacidadeAh, 440)
+    assert.equal((await calc(pl2)).capacidadeAh, 192)
     assert.equal(tentativas.length, 1)
-    assert.ok(app2.erros.some(m => /capacidadeAh.*200.*440 Ah.*disco cheio/.test(m)), JSON.stringify(app2.erros))
+    assert.ok(app2.erros.some(m => /capacidadeAh.*200.*192 Ah.*disco cheio/.test(m)), JSON.stringify(app2.erros))
     assert.equal(fs.existsSync(marca(app2)), false)
     pl2.p.stop()
     falha = false
     pl2.p.start(antigaDe(app2))
-    assert.equal((await calc(pl2)).capacidadeAh, 440)
+    assert.equal((await calc(pl2)).capacidadeAh, 192)
     assert.equal(tentativas.length, 2, 'tenta outra vez')
     assert.ok(fs.existsSync(marca(app2)))
     pl2.p.stop()
 
-    // c) um servidor sem a API: 440 em memória, o registo di-lo, nada fica gravado e repete-se em cada arranque
+    // c) um servidor sem a API: 192 em memória, o registo di-lo, nada fica gravado e repete-se em cada arranque
     const app3 = appFalso()
     const pl3 = plugin(app3)
     pl3.p.start(antigaDe(app3))
-    assert.equal((await calc(pl3)).capacidadeAh, 440)
-    assert.ok(app3.erros.some(m => /capacidadeAh.*200.*440 Ah/.test(m) && /não deixa gravar/.test(m)), JSON.stringify(app3.erros))
+    assert.equal((await calc(pl3)).capacidadeAh, 192)
+    assert.ok(app3.erros.some(m => /capacidadeAh.*200.*192 Ah/.test(m) && /não deixa gravar/.test(m)), JSON.stringify(app3.erros))
     assert.equal(fs.existsSync(marca(app3)), false)
     pl3.p.stop()
     pl3.p.start(antigaDe(app3))
-    assert.equal((await calc(pl3)).capacidadeAh, 440)
+    assert.equal((await calc(pl3)).capacidadeAh, 192)
     pl3.p.stop()
   } finally { calculo.calcular = original }
 })

@@ -14,24 +14,27 @@ function correr (e, estado, min, ctx) {
   return r
 }
 
-// Decisão do Ivo n.º 4 (auditoria I-13, 02/10): o banco de serviço é o de 440 Ah (bancos 2 + 3, o do
-// SmartShunt, cujo SoC a rota recebe) e o solar entra com perdas (fator 0,65, como o simulador).
-test('valores do barco (decisão n.º 4; solar 2 × 625 W Yingli desde 06/10): 440 Ah, 4,5 A de dia, 6 A de noite, 2 × 2,8 m² a 22,4% × 0,65 de perdas, 12,7 V, alternador 45 A', () => {
-  assert.deepEqual({ ...PADRAO }, { capacidadeAh: 440, socInicial: 1, consumoDiaA: 4.5, consumoNoiteA: 6, paineis: 2, areaPainelM2: 2.8, rendimento: 0.224, fatorSolar: 0.65, tensaoV: 12.7, alternadorA: 45 })
+// Decisão do Ivo de 08/10 (depois das fotos): o banco de serviço é o par Tudor TK960 AGM, 2 × 96 Ah = 192 Ah
+// (576 quando as 4 novas entrarem; até 08/10 contava-se 440, decisão n.º 4) e o solar entra com perdas
+// (fator 0,65, como o simulador).
+test('valores do barco (08/10; solar 2 × 625 W Yingli desde 06/10): 192 Ah, 4,5 A de dia, 6 A de noite, 2 × 2,8 m² a 22,4% × 0,65 de perdas, 12,7 V, alternador 45 A', () => {
+  assert.deepEqual({ ...PADRAO }, { capacidadeAh: 192, socInicial: 1, consumoDiaA: 4.5, consumoNoiteA: 6, paineis: 2, areaPainelM2: 2.8, rendimento: 0.224, fatorSolar: 0.65, tensaoV: 12.7, alternadorA: 45 })
   quase(solarA(PADRAO, 1000), 1000 * 5.6 * 0.224 * 0.65 / 12.7) // ~64 A ao sol a pino (sem perdas eram ~99 A; com os 2 × 305 W de antes, ~34 A)
   assert.equal(solarA(PADRAO, null), 0)
   assert.equal(solarA(PADRAO, -5), 0)
-  // a mesma coisa que o simulador (arlequin-simulador/lib/modelo.js): 440 Ah e fatorSolar 0,65
+  // a mesma coisa que o simulador (arlequin-simulador/lib/modelo.js): 192 Ah e fatorSolar 0,65
   const sim = require('../../arlequin-simulador/lib/modelo').PADRAO
   assert.equal(PADRAO.capacidadeAh, sim.capacidadeAh)
   assert.equal(PADRAO.fatorSolar, sim.fatorSolar)
 })
 
-test('a sonda da auditoria (E-I2): uma noite de 12 h a navegar desde 80 % chega a ~64 % (com 200 Ah dava 44 % e excluía)', () => {
+test('a sonda da auditoria (E-I2): uma noite de 12 h a navegar desde 80 % chega a 42,5 % com os 192 Ah reais (com 440 dava 63,6 %; com 576, as 4 novas, dá 67,5 %)', () => {
   const e = criarEnergia({ socInicial: 0.8 })
   const r = correr(e, e.inicio(0), 12 * 60, { motor: false, noite: true })
-  quase(r.soc, (352 - 72) / 440, 1e-9) // 63,6 %, como o simulador e o NAVEGACAO
-  assert.ok(r.soc * 100 >= 50)
+  quase(r.soc, (153.6 - 72) / 192, 1e-9) // 42,5 %: abaixo dos 50 % da regra; é a consequência do banco pequeno até as 4 novas entrarem
+  assert.ok(r.soc * 100 < 50)
+  const grande = criarEnergia({ socInicial: 0.8, capacidadeAh: 576 })
+  quase(correr(grande, grande.inicio(0), 12 * 60, { motor: false, noite: true }).soc, (460.8 - 72) / 576, 1e-9) // 67,5 % com as 4 novas
   // com o banco antigo (só se passado à mão) a mesma noite dava 44 %
   const velho = criarEnergia({ socInicial: 0.8, capacidadeAh: 200 })
   quase(correr(velho, velho.inicio(0), 12 * 60, { motor: false, noite: true }).soc, 0.44, 1e-9)
@@ -40,11 +43,11 @@ test('a sonda da auditoria (E-I2): uma noite de 12 h a navegar desde 80 % chega 
 test('sem sol nem motor: 4,5 Ah por hora de dia e 6 de noite, de minuto a minuto', () => {
   const e = criarEnergia({ socInicial: 0.8 })
   const s0 = e.inicio(0)
-  assert.equal(s0.ah, 352)
-  quase(correr(e, s0, 60, { motor: false, noite: false, w: { radiacao: 0 } }).estado.ah, 347.5, 1e-6)
+  quase(s0.ah, 153.6, 1e-9)
+  quase(correr(e, s0, 60, { motor: false, noite: false, w: { radiacao: 0 } }).estado.ah, 149.1, 1e-6)
   const noite = correr(e, s0, 120, { motor: false, noite: true, w: { radiacao: 400 } }) // de noite o solar não conta
-  quase(noite.estado.ah, 340, 1e-6)
-  quase(noite.soc, 340 / 440, 1e-9)
+  quase(noite.estado.ah, 141.6, 1e-6)
+  quase(noite.soc, 141.6 / 192, 1e-9)
   assert.equal(noite.estado.t, 120 * MIN)
 })
 
@@ -53,8 +56,8 @@ test('solar pela radiação (com as perdas) e alternador com o motor; fica entre
   const s = e.inicio(0, 0.5)
   const r = e.passo(s, { dtMs: H, motor: false, noite: false, w: { radiacao: 500 } })
   quase(r.solar, 500 * 5.6 * 0.224 * 0.65 / 12.7) // 2 × 625 W Yingli (06/10): 2 × 2,8 m² a 22,4 %
-  quase(r.estado.ah, 220 + r.solar - 4.5)
-  quase(e.passo(s, { dtMs: H, motor: true, noite: true, radiacao: 0 }).estado.ah, 220 + 45 - 6)
+  quase(r.estado.ah, 96 + r.solar - 4.5)
+  quase(e.passo(s, { dtMs: H, motor: true, noite: true, radiacao: 0 }).estado.ah, 96 + 45 - 6)
   assert.equal(correr(e, e.inicio(0, 0.99), 600, { motor: true, noite: false }).soc, 1)
   assert.equal(correr(criarEnergia({ capacidadeAh: 10 }), { ah: 0.05 }, 60, { motor: false, noite: true }).soc, 0)
   // sem perdas (fatorSolar 1) é o de antes

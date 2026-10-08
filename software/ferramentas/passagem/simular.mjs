@@ -286,7 +286,7 @@ const PREIA_MAR = new Date('2026-09-29T16:37:00+01:00').getTime()
 const mareTejo = criarMareTejo([{ t: PREIA_MAR }])
 
 // ---------- simulação ----------
-// Energia: o modelo do simulador (bancos de 440 Ah, frigorífico) com os alarmes do plugin da energia.
+// Energia: o modelo do simulador (banco de serviço de 192 Ah desde 08/10, frigorífico) com os alarmes do plugin da energia.
 // As horas do sol vêm do texto da Open-Meteo (hora de Lisboa) e o instante inicial do
 // modelo passa por paraModeloEnergia (ver acima): o mesmo resultado em qualquer fuso.
 function energiaSimulador (met) {

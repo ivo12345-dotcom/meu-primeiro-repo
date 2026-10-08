@@ -20,13 +20,13 @@ function dia (passo, opcoes = {}) {
 
 test('no porto, sem sol: gasta ~27 Ah por dia', () => {
   const { m } = dia({}, { fatorSolar: 0, socInicial: 0.8 })
-  const gasto = 440 * 0.8 - m.ah
+  const gasto = 192 * 0.8 - m.ah
   assert.ok(Math.abs(gasto - 26.4) < 0.5, `gasto ${gasto}`)
 })
 
 test('a navegar, sem sol nem motor: gasta perto dos ~120 Ah do balanço (com frigorífico)', () => {
   const { m } = dia({ navegar: true, frigorifico: true }, { fatorSolar: 0, socInicial: 0.9 })
-  const gasto = 440 * 0.9 - m.ah
+  const gasto = 192 * 0.9 - m.ah
   assert.ok(gasto > 105 && gasto < 135, `gasto ${gasto}`)
 })
 
@@ -60,7 +60,8 @@ test('AGM: acima de 80% a corrente de carga cai', () => {
   assert.ok(r.leitura.corrente < PADRAO.alternadorA - PADRAO.consumoPortoA - 10)
   m = criarModelo({ fatorSolar: 0, socInicial: 0.6 }, MEIA_NOITE)
   const r2 = avancar(m, MIN, { motor: true })
-  assert.ok(Math.abs(r2.leitura.corrente - (PADRAO.alternadorA - PADRAO.consumoPortoA)) < 0.01)
+  // a 60 % o banco aceita 0,25 C: com os 192 Ah reais (08/10) são 48 A, menos do que os 60 A do alternador
+  assert.ok(Math.abs(r2.leitura.corrente - (Math.min(PADRAO.alternadorA, 0.25 * PADRAO.capacidadeAh) - PADRAO.consumoPortoA)) < 0.01)
 })
 
 // Auditoria M-69: o motor do simulador cruza às rotações de cruzeiro da rota (2100 rpm).

@@ -5,7 +5,7 @@
 const H = 3600 * 1000
 
 const PADRAO = Object.freeze({
-  capacidadeAh: 440, // bancos 2+3 AGM
+  capacidadeAh: 192, // 2 × Tudor TK960 AGM 96 Ah (08/10); 576 quando as 4 novas entrarem
   socInicial: 0.9,
   paineisW: [625, 625], // decisão do Ivo de 06/10 (até aí 2 × 305 W)
   fatorSolar: 0.65, // perdas, painel deitado, sombras (0,55–0,75)

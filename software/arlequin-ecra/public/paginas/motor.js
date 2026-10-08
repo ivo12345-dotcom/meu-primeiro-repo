@@ -9,6 +9,10 @@ import { motivo } from '../lib/erros.js'
 import { diaHoraLisboa } from '../lib/rota-texto.js'
 import { porGravidade, COR_GRAVIDADE } from '../lib/alarmes.js'
 
+// 2 × Tudor TK960 AGM 96 Ah (decisão do Ivo de 08/10); passa a 576 quando as 4 novas entrarem (o mesmo número está em
+// signalk-arlequin-rota/lib/energia.js e em arlequin-simulador/lib/modelo.js).
+const CAPACIDADE_SERVICO_AH = 192
+
 function buscarSessoes (ctx) {
   if (ctx.estado.aBuscar || Date.now() - (ctx.estado.sessoesEm || 0) < 30000) return
   ctx.estado.aBuscar = true
@@ -225,7 +229,7 @@ ${tileAlarmes}
   ${ctx.estado.msgGas ? `<div class="${ctx.estado.msgGasErro ? 'perigo' : 'ok'}">${esc(ctx.estado.msgGas)}</div>` : ''}</div>
 </div>
 <div class="col estica rolar" data-rolar="motor-dir">
-<div class="tile"><div class="linha"><span class="lab">Serviço · 440 Ah AGM</span><span class="vv">${ok(soc) ? num(Math.floor(soc * 100 + 1e-9), 0) + ' %' : '—'}</span></div>${barra(soc, corSoc)}
+<div class="tile"><div class="linha"><span class="lab">Serviço · ${CAPACIDADE_SERVICO_AH} Ah AGM</span><span class="vv">${ok(soc) ? num(Math.floor(soc * 100 + 1e-9), 0) + ' %' : '—'}</span></div>${barra(soc, corSoc)}
   <div class="linha" style="margin-top:.3rem;"><span>${ok(i) ? (i >= 0 ? `<span class="ok">a carregar ${num(i, 1)} A</span>` : `a gastar ${num(-i, 1)} A`) : '—'}</span><span>${ok(vs) ? num(vs, 2) + ' V' : '—'}</span></div></div>
 <div class="g2">
   ${tile('Painéis (2 × 625 W)', ok(pv1) || ok(pv2) ? `${num((pv1 || 0) + (pv2 || 0), 0)} W` : '—', `<div class="lab">BB ${num(pv1, 0)} W · EB ${num(pv2, 0)} W</div>`, 'vv')}

@@ -43,7 +43,7 @@ valores.
 | Motor | **Volvo Penta D1-20B** (de origem: Yanmar 2QM) |
 | Gasóleo | **200 L**, depósito de inox que parece ter sido prolongado para trás (de origem: 90 L) |
 | Água doce | 2 depósitos flexíveis, debaixo dos beliches da sala. De origem: **180 L** ao todo (ficha; 48 galões, ~182 L, na Wikipedia e no sailboatdata). O plugin da água assume **2 × 80 L** (configurável). A capacidade de cada depósito: **por confirmar no barco** (§8b, ponto 11) |
-| Baterias | 3 bancos × 2 × 110 Ah, seladas, provavelmente AGM: banco 1 = motor; bancos 2+3 = serviço, **440 Ah** (§5b). A melhor rota planeia com estes **440 Ah** e o solar com perdas (**fator 0,65**), como o simulador (decisão n.º 4) |
+| Baterias | **Decisão de 08/10 (depois das fotos):** serviço = 2 × Tudor TK960 AGM 96 Ah em paralelo = **192 Ah** (caixa sob o piso); arranque = 1 × Tudor TG1101 110 Ah; as outras 3 saem. Entram **4 AGM novas iguais às TK960** → serviço **576 Ah** (6 × 96). A melhor rota planeia com os **192 Ah** reais (576 na configuração do plugin quando as novas entrarem) e o solar com perdas (**fator 0,65**), como o simulador (§5b) |
 
 ## 1. Decisões tomadas
 
@@ -780,23 +780,29 @@ quando se fizer o sistema elétrico. Hoje o barco tem baterias separadas
 
 ## 5b. Balanço de energia com as baterias AGM (estimativa, 28/09)
 
-**Baterias:** 3 bancos × 2 × 110 Ah, seladas, **provavelmente AGM** (a
-confirmar na etiqueta). Banco 1 = motor; bancos 2+3 = **serviço 440 Ah**.
+**Baterias (fotos de 08/10, §8b ponto 15):** serviço = **2 × Tudor TK960 AGM 96 Ah = 192 Ah**; arranque = 1 × Tudor
+TG1101 110 Ah; as outras 3 (TG1101, EFB, TL652) saem. **Decisão do Ivo de 08/10: entram 4 AGM novas iguais às TK960 →
+serviço 6 × 96 = 576 Ah.** (Até 08/10 contava-se com 3 bancos × 2 × 110 Ah = 440 Ah de serviço.)
 
-**Plano decidido a 06/10 (Ivo):** primeiro **testar as 6 baterias** (§8b, ponto 15). Se estiverem boas,
-compra-se **só uma bateria de arranque nova** (Exide Dual AGM EP800, 95 Ah / 850 A, €142 na innpo.pt; ou
-Varta LA95) para o motor, e as 6 passam a **3 bancos de 2 em paralelo = 660 Ah de serviço** (útil 330 Ah;
-janela prática 50→85 % ≈ 231 Ah: ~12 dias no porto sem sol, ~5,5 dias no pior caso de inverno com o
-EV-100 antes de ligar o motor). Precisa de barramentos, um fusível por banco (MEGA ou Class T,
-150–200 A), cabos de 35–50 mm² iguais, o SmartShunt a 660 Ah e o separador revisto (o alternador no
-serviço, a de arranque mantida por VSR ou carregador de manutenção). Com AGM a viver entre 50 e 85 % no
-inverno, uma carga completa no cais uma vez por mês. O sistema passa a 660 Ah quando o teste confirmar
-(plugin da rota, simulador, rótulo do ecrã). Se as 6 estiverem fracas: 7 AGM novas de 110 Ah ou
-lítio no serviço (2 × 200 Ah LiFePO4 com um Orion XS 12/12-50 a proteger o alternador) — a decidir
-nessa altura. O aerogerador ficou de fora (§5c).
-- AGM: não descer abaixo de **50%** → **~220 Ah úteis**. Na prática, a
+**Plano decidido a 08/10 (Ivo, depois das fotos; substitui o de 06/10):** ficam as **2 Tudor TK960 AGM** (serviço) e
+**1 Tudor TG1101** (motor); as outras 3 (a 2.ª TG1101, a EFB e a TL652) saem do barco. Compram-se **4 AGM novas iguais às
+TK960** (Tudor TK960 ou Exide EK960, 96 Ah, 850 A, caixa L05) e o serviço passa a **6 × 96 Ah = 576 Ah** em paralelo
+(útil 288 Ah; janela prática 50→85 % ≈ 202 Ah: ~7,5 dias no porto sem sol, ~1,1 dia no pior caso de inverno com o
+EV-100 antes de ligar o motor). Até as novas entrarem são **192 Ah** (útil 96 Ah; janela ≈ 67 Ah: ~2,5 dias no porto, ~9 h
+no pior caso de inverno com o EV-100: o motor ou o cais entram em jogo todos os dias de inverno). **Antes de ligar as
+novas em paralelo com as 2 TK960, o teste das 2** (§8b, ponto 15): se estiverem abaixo de ~80 % da capacidade, vão para o
+guincho da âncora e o serviço fica 4 × 96 = 384 Ah. Precisa de barramentos, fusível principal do banco (Class T ou MEGA
+de 250 A) e um por ramal, cabos de 35–50 mm² iguais entre baterias, o SmartShunt configurado à capacidade, o separador
+a díodos PF 270 substituído por um VSR (Cyrix-ct 120 A: o alternador carrega a bateria de arranque e o VSR liga o serviço
+quando há carga) e o carregador de cais com perfil AGM (14,4 / 13,8 V). O guincho da âncora passa a ser alimentado pela
+bateria de arranque (o motor trabalha quando se fundeia). Com AGM a viver entre 50 e 85 % no inverno, uma carga
+completa no cais uma vez por mês. O sistema (plugin da rota, simulador, rótulo do ecrã) conta **192 Ah desde 08/10** e
+passa a 576 na configuração do plugin quando as novas entrarem. Lítio mais tarde, se se quiser: 2 × 200 Ah LiFePO4 com
+um Orion XS 12/12-50 (§8b, ponto 15). O aerogerador ficou de fora (§5c). **O esquema para o eletricista está em
+`docs/esquema-eletrico-eletricista.md` / `.pdf` e em `esquema-eletrico-arlequin.svg`.**
+- AGM: não descer abaixo de **50%** → **~96 Ah úteis** com os 192 Ah de hoje (**~288 Ah** com os 576). Na prática, a
   carregar pelo motor ou pelo sol, as AGM demoram muito a encher acima de
-  ~85%, por isso a janela real entre cargas é **~150 Ah** (50→85%).
+  ~85%, por isso a janela real entre cargas é **~67 Ah** hoje (**~202 Ah** com as 4 novas), 50→85%.
 
 **Consumos estimados por dia (a confirmar com o monitor de bateria):**
 
@@ -826,8 +832,8 @@ tempo: na fase 1 não há ecrã 2 (menos ~6 Ah); na fase 2 a roda leva o STS10, 
 no brilho máximo, §5), e o LAFVIN passa para a mesa.
 
 **O que isto quer dizer:**
-- **No porto:** 220 Ah úteis ÷ 27 Ah/dia ≈ **8 dias** sem carregar.
-- **A navegar:** com o EV-100, gasta-se **quase toda a janela útil num dia**.
+- **No porto:** 96 Ah úteis ÷ 27 Ah/dia ≈ **3,5 dias** sem carregar com os 192 Ah de hoje (288 ÷ 27 ≈ **10 dias** com os 576).
+- **A navegar:** com o EV-100 (~185 Ah/dia) os 192 Ah de hoje **não chegam a um dia** sem sol nem motor; com os 576 gasta-se quase toda a janela útil num dia.
   É preciso carregar todos os dias (motor e/ou solar).
 - **Solar necessário** (Portugal, perdas ~25%):
   - Porto, no inverno (~2,7 h de sol útil): **~150–200 W**.
@@ -842,7 +848,7 @@ no brilho máximo, §5), e o LAFVIN passa para a mesa.
 
 **Decisão do Ivo de 06/10: 2 painéis de 625 W** (1 250 W no total) em vez dos 2 × 305 W de 28/09. O
 resto do desenho fica: um MPPT por painel (agora 100/50), SmartShunt, perfil AGM, banco de serviço de
-440 Ah (§8b, ponto 16, o que muda).
+192 Ah hoje e 576 Ah com as 4 novas (decisão de 08/10; §8b, ponto 16, o que muda).
 
 Produção = 1 250 W × horas de sol útil × 0,55–0,75 (perdas, painel deitado,
 sombras de radome/retranca/velas) ÷ 13 V. Sol útil: inverno 2,7 h,
@@ -863,7 +869,7 @@ primavera/outono 5,0 h, verão 6,5 h.
 - **No porto e a navegar sem piloto:** autónomo o ano todo, com folga.
 - **Com o EV-100:** autónomo da primavera ao outono; **no inverno fica no equilíbrio** (um dia escuro
   com o piloto pede ~1 h de motor, em vez das ~2 h por dia que os 2 × 305 W pediam).
-- **O limite passa a ser a bateria, não o sol:** 440 Ah de AGM aceitam ~0,2–0,3 C (90–130 A) e, acima
+- **O limite passa a ser a bateria, não o sol:** 576 Ah de AGM aceitam ~0,2–0,3 C (115–170 A); os 192 Ah de hoje só 40–60 A, por isso até as 4 novas entrarem cada MPPT leva limite de corrente (~30 A) e, acima
   dos ~85 %, pouco; a meio de um dia de verão os painéis ficam a "sobrar". Os MPPT (perfil AGM) tratam
   disso, sem mal nenhum.
 - **AGM:** o sol leva-as aos 100 % mais vezes do que com 610 W, mas a carga completa no cais de vez
@@ -1258,11 +1264,11 @@ funcionar também ali:
     por cima do PF 270, do Invac (modelo e amperes) e o valor do fusível ANL; (4) com o carregador desligado, medir
     a tensão de cada bateria (e outra vez 12 h depois, pela regra acima); (5) ver onde liga o inversor e se tem
     fusível.
-    **Consequência para o plano (08/10):** o banco de serviço real é, ao que tudo indica, o par AGM = **192 Ah**, não
-    os 440 Ah que o `signalk-arlequin-rota`, o simulador e o rótulo do ecrã contam; passam a 192 Ah assim que o Ivo
-    confirmar o cabo SERVICE. O plano "3 bancos × 2 × 110 Ah" cai, porque só há um par igual. Caminho: serviço = par
-    AGM (mais 2 AGM iguais, ou lítio, mais tarde), arranque = 1 × TG1101 (850 A chega e sobra para o D1-20),
-    guincho da âncora = TL652 ou a EFB, a outra TG1101 fica de reserva ou sai do barco (28 kg).
+    **Decisão do Ivo (08/10, ao ver o inventário): ficam as 2 TK960 AGM (serviço, 192 Ah) e 1 TG1101 (arranque); as
+    outras 3 saem; entram 4 AGM novas iguais às TK960 → serviço 576 Ah.** O `signalk-arlequin-rota`, o simulador e o
+    rótulo do ecrã passaram a 192 Ah a 08/10 (o campo `energia.capacidadeAh` do plugin passa a 576 quando as novas
+    entrarem; uma configuração gravada com os 200 ou 440 Ah antigos migra sozinha para 192 uma vez). O guincho da
+    âncora passa a ser alimentado pela bateria de arranque. Esquema para o eletricista: `docs/esquema-eletrico-eletricista.md`.
 16. **Painéis solares (decidido 28/09): no arco de popa, ao lado do radar, a
     fazer também de teto/sombra por cima da roda, sem chegar à retranca.**
     Fotos do arco (de trás e de lado) e medidas: largura útil de cada lado do
@@ -1277,8 +1283,8 @@ funcionar também ali:
     suporte; **opção B** 2×305 W em teto ≈ €660–860 + estrutura inox
     (€300–600, a cotar). Painéis de 305 W precisam de MPPT 100/20 ou 100/30.
     **Ligação:** strings independentes, **um MPPT por painel** (sombra/avaria
-    não afeta o outro), ambos para o **banco de serviço** (bancos 2+3 sempre em
-    paralelo = 440 Ah). **Bateria do motor:** manter carregada por **VSR/ACR
+    não afeta o outro), ambos para o **banco de serviço** (as AGM sempre em
+    paralelo: 192 Ah hoje, 576 Ah com as 4 novas). **Bateria do motor:** manter carregada por **VSR/ACR
     bidirecional** ou **carregador de manutenção** (echo charger), conforme o
     separador que já existir. Fusível à saída de cada MPPT; ambos em perfil AGM.
     **Escolhido (28/09): opção B, em teto por cima da roda, com 2 × 305 W. A 06/10 o Ivo passou
@@ -1298,7 +1304,7 @@ funcionar também ali:
       estava. Preço na SVB (06/10): €169,95 cada.
     - **Fusível de 63 A** (MIDI ou ANL) à saída de cada MPPT, junto às baterias; cabo de **16 mm²** do
       MPPT às baterias (troço curto) e 6 mm² com MC4 do painel ao MPPT.
-    - **Carga:** até ~95 A nas AGM de 440 Ah (≈ 0,22 C), dentro do que aceitam (0,2–0,3 C); perfil AGM
+    - **Carga:** até ~95 A: nas AGM de 576 Ah (≈ 0,17 C) à vontade; nos 192 Ah de hoje seria 0,5 C, por isso cada MPPT leva limite de ~30 A até as 4 novas entrarem; perfil AGM
       nos dois MPPT.
     - **Tamanho e peso:** dois painéis lado a lado = **2,27 × 2,47 m** (5,6 m²) e **64–70 kg** só de
       painéis (eram 2,0 × 1,66 m e 38 kg). O teto passa a ter ~2,5 m de proa-popa: a proposta "D
@@ -1445,7 +1451,7 @@ do Ivo: o Claude não trata credenciais.
      `horaSimulada` e o `cicloSegundos` não contam e o ciclo a navegar é de 60 s). **Nunca copiar a
      pasta `software/dev/config/plugin-config-data` para o Pi:** lá o `modoTeste` está ligado, de
      propósito, para os scripts do dev. Os limites de segurança (`seguranca`) e a bateria (`energia`:
-     440 Ah, fator solar 0,65) ficam como vêm;
+     192 Ah, fator solar 0,65; pôr 576 quando as 4 novas entrarem) ficam como vêm;
    - **Porto:** o token do bot, os chats e os contactos (ponto 12);
    - **Ecrã:** os comandos que arrumam as janelas e o modo noite do OpenCPN (afinam-se na montagem) e
      o `token` do diário (ponto 3);
@@ -1689,16 +1695,16 @@ em "A navegar", mais abaixo.
 - **Regra da calma para as horas ao leme:** vento < 10 nós **e** (ondas < 2 m, **ou** ondulação
   comprida ≤ 3 m com período ≥ 9 s). Nessa calma, as horas a motor contam metade, porque **a roda
   tem travão** (confirmado pelo Ivo a 29/09; a regra fica, decisão n.º 12) e dá para pausas curtas.
-- **Bateria no planeamento** (decisão n.º 4): o banco de serviço de **440 Ah** e o solar com perdas
+- **Bateria no planeamento** (decisão n.º 4; capacidade real desde 08/10): o banco de serviço de **192 Ah** (576 com as 4 novas) e o solar com perdas
   (**fator 0,65**, como o simulador); o limite dos 50 % à chegada mantém-se. **Sem leitura da bateria** (ou
   com o sensor perdido) o estado é desconhecido e **nunca se assume** (decisão do Ivo de 05/10, como o
   gasóleo): a simulação corre sem o modelo da energia, a regra dos 50 % não corre (nem exclui nem aprova), o
   cartão diz "bateria desconhecida" em vez de "bateria mín. N%" e cada alternativa leva o aviso vermelho
   "estado da bateria desconhecido: confirma a carga", sem percentagem.
-  Uma configuração antiga com 200 Ah gravados passa a 440 **uma só vez**: o plugin grava a configuração
+  Uma configuração antiga com 200 ou 440 Ah gravados passa a 192 **uma só vez**: o plugin grava a configuração
   com o valor novo e escreve a marca `migracoes.json` (na pasta do plugin); a partir daí, o que
   puseres — até 200 Ah, se for outro banco — fica. Se a gravação falhar (ou o servidor não a deixar
-  fazer), fica a 440 só em memória, sem marca, e repete-se no arranque seguinte (o registo di-lo).
+  fazer), fica a 192 só em memória, sem marca, e repete-se no arranque seguinte (o registo di-lo).
 - **Gasóleo no planeamento:** sem o nível do depósito (sonda perdida ou sem leitura), **nada se
   assume**: cada alternativa leva o aviso vermelho "gasóleo inicial desconhecido: confirma o
   depósito", sem litros, e a regra dos 40 L à chegada não corre (nem exclui, nem aprova).
