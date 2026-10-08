@@ -1230,7 +1230,7 @@ funcionar também ali:
     **Visto nas fotos de 08/10/2026 (Ivo a bordo):**
     - **Baterias (6, e não "6 × 110 Ah seladas"):** na caixa de madeira sob o piso, **2 × Tudor TK960 AGM 96 Ah**
       850 A (L05 353×175×190, Exide; AGM de start-stop automóvel) com ponte entre si (par = 192 Ah); no compartimento
-      branco, **2 × Tudor Start PRO TG1101 110 Ah** (ácido livre, de arranque; uma delas parece **deitada de lado**) e
+      branco, **2 × Tudor Start PRO TG1101 110 Ah** (ácido livre, de arranque; as duas de pé, confirmado pelo Ivo a 08/10) e
       **1 × Tudor High-Tech EFB "carbon boost 2.0" (TA100x, ~100 Ah)**; junto à caixa do molinete, **1 × Tudor TL652
       Technica 65 Ah** 650 A (LB3, ácido livre). Total nominal ≈ 577 Ah em quatro químicas/formatos diferentes: **só o
       par AGM pode fazer banco de serviço**; as de arranque e a EFB não aguentam ciclos profundos.
@@ -1253,7 +1253,7 @@ funcionar também ali:
     - **Instalação:** terminais com fita isoladora em vez de manga termorretrátil, ramais sem fusível nos bornes,
       óxido nos terminais, vários cabos no mesmo borne, caixa forrada a espuma; as baterias de ácido livre gaseiam e
       precisam de ventilação.
-    **A fazer já, a bordo:** (1) pôr de pé a TG1101 deitada (ácido livre verte pelos respiros); (2) seguir os cabos
+    **A fazer já, a bordo:** (1) confirmar que as de ácido livre têm os respiros livres e ventilação; (2) seguir os cabos
     SERVICE, MOT e VHF do PF 270 até às baterias e anotar que bateria alimenta o quê; (3) ler as placas do módulo
     por cima do PF 270, do Invac (modelo e amperes) e o valor do fusível ANL; (4) com o carregador desligado, medir
     a tensão de cada bateria (e outra vez 12 h depois, pela regra acima); (5) ver onde liga o inversor e se tem
