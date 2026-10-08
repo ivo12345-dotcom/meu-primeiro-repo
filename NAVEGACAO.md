@@ -891,8 +891,10 @@ resistência de descarga (os MPPT Victron não servem para vento).
 **Recomendação (a decisão é do Ivo):** por agora não comprar. Só ajuda no caso "inverno com EV-100".
 Traz peso e ruído à popa, faz sombra aos painéis e o arco já tem o radar e os
 painéis. Deixar previsto no arco um ponto de fixação e a passagem do cabo.
-Decidir depois de uma época de dados do SmartShunt.
-
+Decidir depois de uma época de dados do SmartShunt.
+
+
+
 **VEVOR FT-800 "800 W 12 V" (o Ivo pensou nele a 06/10, €169,99 com portes):** rotor de 1,336 m
 (1,40 m²), 5 pás de nylon, 8,5 kg, arranque a 2,5 m/s, "800 W" só a 12 m/s, controlador híbrido PWM
 com travão, sem mastro. A conta do vento não deixa chegar aos 800 W: ½ × 1,225 × 1,40 m² × 12³ ×
@@ -1225,6 +1227,42 @@ funcionar também ali:
     as 6 baterias (etiquetas, data, bornes, como estão ligadas e presas), o **inversor** (marca, potência, se é
     inversor-carregador tipo MultiPlus e a que banco está ligado: ainda não estava no inventário), os
     comutadores e o separador de carga, os fusíveis e o quadro, e tudo o mais que lá esteja ligado às baterias.
+    **Visto nas fotos de 08/10/2026 (Ivo a bordo):**
+    - **Baterias (6, e não "6 × 110 Ah seladas"):** na caixa de madeira sob o piso, **2 × Tudor TK960 AGM 96 Ah**
+      850 A (L05 353×175×190, Exide; AGM de start-stop automóvel) com ponte entre si (par = 192 Ah); no compartimento
+      branco, **2 × Tudor Start PRO TG1101 110 Ah** (ácido livre, de arranque; uma delas parece **deitada de lado**) e
+      **1 × Tudor High-Tech EFB "carbon boost 2.0" (TA100x, ~100 Ah)**; junto à caixa do molinete, **1 × Tudor TL652
+      Technica 65 Ah** 650 A (LB3, ácido livre). Total nominal ≈ 577 Ah em quatro químicas/formatos diferentes: **só o
+      par AGM pode fazer banco de serviço**; as de arranque e a EFB não aguentam ciclos profundos.
+    - **Separador de carga: Power-first PF 270x** (répartiteur a díodos: 120 A, 50 V, 2 entradas IN1/IN2, 3 saídas
+      BAT1/BAT2/BAT3). BAT2 está sem cabo. Cabos etiquetados SERVICE, MOT, VHF e ACTE(?); por cima há um módulo com
+      dissipador e 3 bornes por identificar. Díodos = queda de 0,7 a 1 V: com o regulador interno do D1-20 (14,2 V)
+      as AGM nunca passam dos ~13,4 V, ou seja, **subcarga crónica** (explica baterias cansadas). Substituir por um
+      VSR (Victron Cyrix-ct 12/24-120, ~€65) ou pelo DC-DC Orion XS já previsto para lítio.
+    - **Carregador de cais: Navicom "Invac Duovolt"** (switch-mode, amperímetro analógico 0–30 A, duas saídas, anos
+      90). Sem perfil AGM/lítio conhecido: confirmar a placa; candidato a substituição (Victron Blue Smart IP22
+      12/30 com 3 saídas, ~€280) quando houver verba.
+    - **Inversor: LTC Power INV-12600, 600 W de onda modificada** 12→230 V, preso com abraçadeiras de nylon. Não é
+      inversor-carregador. Serve para ferramentas e carregadores simples; não para motores nem eletrónica sensível.
+      Confirmar o fusível (60–80 A junto à bateria) e a que banco está ligado.
+    - **Molinete: Lofrans Control Box CB120012** (12 V, motores de 700/1000/1200 W), caixa preta "12V S/N 19036819"
+      (recetor do comando sem fios, 5 fios) e porta-fusível ANL no positivo (ler o valor; 1 000 W pede 100–150 A).
+    - **Comutadores:** na caixa das baterias, um corta-corrente de chave vermelha amovível (lado) e, na frente, um
+      corta-corrente "OFF" e um seletor branco redondo (1/2/ambas?). Um disjuntor branco de 2 polos ("N") é o do
+      cais a 230 V.
+    - **Instalação:** terminais com fita isoladora em vez de manga termorretrátil, ramais sem fusível nos bornes,
+      óxido nos terminais, vários cabos no mesmo borne, caixa forrada a espuma; as baterias de ácido livre gaseiam e
+      precisam de ventilação.
+    **A fazer já, a bordo:** (1) pôr de pé a TG1101 deitada (ácido livre verte pelos respiros); (2) seguir os cabos
+    SERVICE, MOT e VHF do PF 270 até às baterias e anotar que bateria alimenta o quê; (3) ler as placas do módulo
+    por cima do PF 270, do Invac (modelo e amperes) e o valor do fusível ANL; (4) com o carregador desligado, medir
+    a tensão de cada bateria (e outra vez 12 h depois, pela regra acima); (5) ver onde liga o inversor e se tem
+    fusível.
+    **Consequência para o plano (08/10):** o banco de serviço real é, ao que tudo indica, o par AGM = **192 Ah**, não
+    os 440 Ah que o `signalk-arlequin-rota`, o simulador e o rótulo do ecrã contam; passam a 192 Ah assim que o Ivo
+    confirmar o cabo SERVICE. O plano "3 bancos × 2 × 110 Ah" cai, porque só há um par igual. Caminho: serviço = par
+    AGM (mais 2 AGM iguais, ou lítio, mais tarde), arranque = 1 × TG1101 (850 A chega e sobra para o D1-20),
+    molinete = TL652 ou a EFB, a outra TG1101 fica de reserva ou sai do barco (28 kg).
 16. **Painéis solares (decidido 28/09): no arco de popa, ao lado do radar, a
     fazer também de teto/sombra por cima da roda, sem chegar à retranca.**
     Fotos do arco (de trás e de lado) e medidas: largura útil de cada lado do
