@@ -1,0 +1,292 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1587" height="1123" viewBox="0 0 1587 1123">
+
+<style>
+ text { font-family: Arial, Helvetica, sans-serif; fill: #1f1f1f; }
+ .tit { font-size: 22px; font-weight: bold; }
+ .sub { font-size: 11.5px; fill: #555; }
+ .th { font-size: 12.5px; font-weight: bold; }
+ .ts { font-size: 10.5px; }
+ .tx { font-size: 9.5px; fill: #333; }
+ .lab { font-size: 9.5px; fill: #8a1c1c; font-weight: bold; }
+ .labn { font-size: 9.5px; fill: #222; font-weight: bold; }
+ .pos { stroke: #c0392b; stroke-width: 2.2; fill: none; }
+ .posf { stroke: #c0392b; stroke-width: 2.2; fill: none; stroke-dasharray: 7 5; }
+ .neg { stroke: #222; stroke-width: 2.2; fill: none; }
+ .halo { stroke: #fff; stroke-width: 7; fill: none; }
+ .ac { stroke: #7a5a00; stroke-width: 2; fill: none; stroke-dasharray: 3 3; }
+ .dc { stroke: #0b6e4f; stroke-width: 2; fill: none; }
+ .dados { stroke: #2c5aa0; stroke-width: 1.4; fill: none; stroke-dasharray: 2 3; }
+ .caixa { fill: #fff; stroke: #444; stroke-width: 1.2; }
+ .fonte { fill: #e8f5ee; stroke: #0b6e4f; stroke-width: 1.4; }
+ .bat { fill: #efe9f7; stroke: #5b3f8c; stroke-width: 1.4; }
+ .batf { fill: #f7f4fb; stroke: #5b3f8c; stroke-width: 1.4; stroke-dasharray: 6 4; }
+ .prot { fill: #fff3e0; stroke: #b36b00; stroke-width: 1.4; }
+ .bus { fill: #c0392b; stroke: none; }
+ .busn { fill: #222; stroke: none; }
+ .carga { fill: #e8eef9; stroke: #2c5aa0; stroke-width: 1.4; }
+ .nota { fill: #fffbe6; stroke: #c9a400; stroke-width: 1; }
+ .sai { fill: #f3f3f3; stroke: #999; stroke-width: 1; stroke-dasharray: 4 3; }
+</style>
+
+<rect width="1587" height="1123" fill="#fff"/>
+<text x="30" y="36" class="tit" text-anchor="start">ARLEQUIN (Jeanneau Melody 34) · Esquema elétrico unifilar 12 V CC + 230 V CA · para o eletricista</text>
+<text x="30" y="56" class="sub" text-anchor="start">Versão 1 · 08/10/2026 · decisão do Ivo: serviço = 2 × Tudor TK960 AGM 96 Ah agora, + 4 AGM iguais (576 Ah); arranque = 1 × Tudor TG1101 110 Ah; separador a díodos PF 270 substituído por VSR;</text>
+<text x="30" y="71" class="sub" text-anchor="start">alternador 115 A; 2 × 625 W solar com 2 × MPPT 100/50; SmartShunt no serviço. Comprimentos de cabo a medir a bordo (tabela no caderno). Normas: ISO 10133 (CC), ISO 13297 (CA), ABYC E-11. Lê-se da esquerda para a direita.</text>
+<rect x="40" y="100" width="240" height="78" rx="6" class="fonte"/>
+<text x="160.0" y="117" class="th" text-anchor="middle">Painel solar 1 · Yingli PANDA 3.0 Pro 625 W</text>
+<text x="48" y="133" class="tx" text-anchor="start">Voc 55,7 V · Isc 14,3 A · bifacial · no teto do arco</text>
+<text x="48" y="146" class="tx" text-anchor="start">cabo solar 6 mm² com fichas MC4 · passa-cabos estanque</text>
+<text x="48" y="159" class="tx" text-anchor="start">seccionador CC 2P 32 A antes do MPPT (recomendado)</text>
+<rect x="40" y="200" width="240" height="78" rx="6" class="fonte"/>
+<text x="160.0" y="217" class="th" text-anchor="middle">Painel solar 2 · Yingli PANDA 3.0 Pro 625 W</text>
+<text x="48" y="233" class="tx" text-anchor="start">igual ao painel 1 · NUNCA em série com o 1</text>
+<text x="48" y="246" class="tx" text-anchor="start">(2 × 55,7 V > 100 V do MPPT) · cada painel no seu MPPT</text>
+<text x="48" y="259" class="tx" text-anchor="start">mesmo seccionador e passa-cabos</text>
+<rect x="40" y="330" width="240" height="92" rx="6" class="fonte"/>
+<text x="160.0" y="347" class="th" text-anchor="middle">Carregador de cais · Navicom Invac Duovolt</text>
+<text x="48" y="363" class="tx" text-anchor="start">~30 A · 2 saídas · anos 90 · confirmar perfil AGM na placa</text>
+<text x="48" y="376" class="tx" text-anchor="start">saída 1 → barramento + do banco de serviço (fusível 40 A)</text>
+<text x="48" y="389" class="tx" text-anchor="start">saída 2 → bateria de arranque (fusível 40 A)</text>
+<text x="48" y="402" class="tx" text-anchor="start">a substituir por Blue Smart IP22 12/30 (3) quando houver verba</text>
+<rect x="40" y="460" width="240" height="92" rx="6" class="fonte"/>
+<text x="160.0" y="477" class="th" text-anchor="middle">Tomada de cais 230 V · 16 A</text>
+<text x="48" y="493" class="tx" text-anchor="start">cabo de cais 3G2,5 · tomada estanque</text>
+<text x="48" y="506" class="tx" text-anchor="start">disjuntor diferencial 2P 16 A / 30 mA (o branco "N"; confirmar)</text>
+<text x="48" y="519" class="tx" text-anchor="start">terra do cais à massa do barco · isolador galvânico (recomendado)</text>
+<text x="48" y="532" class="tx" text-anchor="start">2–3 tomadas de 230 V a jusante, separadas da tomada do inversor</text>
+<rect x="40" y="580" width="240" height="100" rx="6" class="fonte"/>
+<text x="160.0" y="597" class="th" text-anchor="middle">Motor Volvo Penta D1-20 · alternador 115 A / 14 V</text>
+<text x="48" y="613" class="tx" text-anchor="start">alternador: regulador interno 14,2 V · correia poly-V 6 nervuras</text>
+<text x="48" y="626" class="tx" text-anchor="start">B+ → bateria de arranque · cabo 35 mm² · fusível MEGA 150 A</text>
+<text x="48" y="639" class="tx" text-anchor="start">D+ fica ligado ao painel MDI (luz de carga), como está</text>
+<text x="48" y="652" class="tx" text-anchor="start">motor de arranque + MDI: cabo existente 35–50 mm² (ver terminais)</text>
+<text x="48" y="665" class="tx" text-anchor="start">negativo: bloco do motor = massa comum do barco</text>
+<rect x="360" y="100" width="230" height="78" rx="6" class="carga"/>
+<text x="475.0" y="117" class="th" text-anchor="middle">MPPT 1 · Victron SmartSolar 100/50</text>
+<text x="368" y="133" class="tx" text-anchor="start">perfil AGM: absorção 14,4 V · flutuação 13,8 V</text>
+<text x="368" y="146" class="tx" text-anchor="start">limite de corrente 30 A até as 4 novas entrarem</text>
+<text x="368" y="159" class="tx" text-anchor="start">saída 16 mm² · Bluetooth → Pi</text>
+<rect x="360" y="200" width="230" height="78" rx="6" class="carga"/>
+<text x="475.0" y="217" class="th" text-anchor="middle">MPPT 2 · Victron SmartSolar 100/50</text>
+<text x="368" y="233" class="tx" text-anchor="start">mesmas regulações do MPPT 1</text>
+<text x="368" y="246" class="tx" text-anchor="start">rede VE.Smart entre os dois e o SmartShunt (sincroniza)</text>
+<text x="368" y="259" class="tx" text-anchor="start">saída 16 mm² · Bluetooth → Pi</text>
+<rect x="360" y="440" width="230" height="76" rx="6" class="carga"/>
+<text x="475.0" y="457" class="th" text-anchor="middle">VSR · Victron Cyrix-ct 12/24-120</text>
+<text x="368" y="473" class="tx" text-anchor="start">liga os bancos quando um deles está a carregar</text>
+<text x="368" y="486" class="tx" text-anchor="start">(> 13,0 V por 2 min) · desliga a &lt; 12,8 V · nos dois sentidos</text>
+<text x="368" y="499" class="tx" text-anchor="start">substitui o répartiteur a díodos PF 270 · fio de massa ao barramento −</text>
+<rect x="360" y="552" width="230" height="76" rx="6" class="bat"/>
+<text x="475.0" y="569" class="th" text-anchor="middle">Bateria de arranque · Tudor TG1101</text>
+<text x="368" y="585" class="tx" text-anchor="start">12 V · 110 Ah · 850 A (EN) · ácido livre, de pé, ventilada</text>
+<text x="368" y="598" class="tx" text-anchor="start">no compartimento branco, presa com cinta</text>
+<text x="368" y="611" class="tx" text-anchor="start">liga só: motor, MDI, guincho, VSR, carregador (saída 2)</text>
+<rect x="360" y="690" width="230" height="90" rx="6" class="carga"/>
+<text x="475.0" y="707" class="th" text-anchor="middle">Guincho da âncora · Lofrans</text>
+<text x="368" y="723" class="tx" text-anchor="start">caixa de relés CB120012 (12 V, 700–1200 W) + motor</text>
+<text x="368" y="736" class="tx" text-anchor="start">recetor do comando sem fios "12V" (fusível 5 A)</text>
+<text x="368" y="749" class="tx" text-anchor="start">alimentado pela bateria de ARRANQUE</text>
+<text x="368" y="762" class="tx" text-anchor="start">cabo 35 mm² (50 mm² se ida+volta > 12 m) · corte ao alcance do leme</text>
+<rect x="680" y="100" width="330" height="360" rx="6" class="bat"/>
+<text x="845" y="118" class="th" text-anchor="middle">Banco de serviço · AGM · sempre em paralelo</text>
+<text x="845" y="133" class="tx" text-anchor="middle">hoje 2 × 96 Ah = 192 Ah · com as 4 novas 6 × 96 Ah = 576 Ah</text>
+<rect x="695" y="145" width="95" height="100" rx="4" class="bat"/>
+<text x="742" y="163" class="th" text-anchor="middle">B1</text>
+<text x="742" y="179" class="tx" text-anchor="middle">Tudor TK960</text>
+<text x="742" y="192" class="tx" text-anchor="middle">AGM 96 Ah</text>
+<text x="742" y="205" class="tx" text-anchor="middle">existente</text>
+<text x="742" y="225" class="lab" text-anchor="middle">fusível 150 A</text>
+<text x="742" y="237" class="tx" text-anchor="middle">no borne +</text>
+<rect x="800" y="145" width="95" height="100" rx="4" class="bat"/>
+<text x="847" y="163" class="th" text-anchor="middle">B2</text>
+<text x="847" y="179" class="tx" text-anchor="middle">Tudor TK960</text>
+<text x="847" y="192" class="tx" text-anchor="middle">AGM 96 Ah</text>
+<text x="847" y="205" class="tx" text-anchor="middle">existente</text>
+<text x="847" y="225" class="lab" text-anchor="middle">fusível 150 A</text>
+<text x="847" y="237" class="tx" text-anchor="middle">no borne +</text>
+<rect x="905" y="145" width="95" height="100" rx="4" class="batf"/>
+<text x="952" y="163" class="th" text-anchor="middle">B3</text>
+<text x="952" y="179" class="tx" text-anchor="middle">AGM 96 Ah</text>
+<text x="952" y="192" class="tx" text-anchor="middle">igual às TK960</text>
+<text x="952" y="205" class="tx" text-anchor="middle">A COMPRAR</text>
+<text x="952" y="225" class="lab" text-anchor="middle">fusível 150 A</text>
+<text x="952" y="237" class="tx" text-anchor="middle">no borne +</text>
+<rect x="695" y="263" width="95" height="100" rx="4" class="batf"/>
+<text x="742" y="281" class="th" text-anchor="middle">B4</text>
+<text x="742" y="297" class="tx" text-anchor="middle">AGM 96 Ah</text>
+<text x="742" y="310" class="tx" text-anchor="middle">igual às TK960</text>
+<text x="742" y="323" class="tx" text-anchor="middle">A COMPRAR</text>
+<text x="742" y="343" class="lab" text-anchor="middle">fusível 150 A</text>
+<text x="742" y="355" class="tx" text-anchor="middle">no borne +</text>
+<rect x="800" y="263" width="95" height="100" rx="4" class="batf"/>
+<text x="847" y="281" class="th" text-anchor="middle">B5</text>
+<text x="847" y="297" class="tx" text-anchor="middle">AGM 96 Ah</text>
+<text x="847" y="310" class="tx" text-anchor="middle">igual às TK960</text>
+<text x="847" y="323" class="tx" text-anchor="middle">A COMPRAR</text>
+<text x="847" y="343" class="lab" text-anchor="middle">fusível 150 A</text>
+<text x="847" y="355" class="tx" text-anchor="middle">no borne +</text>
+<rect x="905" y="263" width="95" height="100" rx="4" class="batf"/>
+<text x="952" y="281" class="th" text-anchor="middle">B6</text>
+<text x="952" y="297" class="tx" text-anchor="middle">AGM 96 Ah</text>
+<text x="952" y="310" class="tx" text-anchor="middle">igual às TK960</text>
+<text x="952" y="323" class="tx" text-anchor="middle">A COMPRAR</text>
+<text x="952" y="343" class="lab" text-anchor="middle">fusível 150 A</text>
+<text x="952" y="355" class="tx" text-anchor="middle">no borne +</text>
+<text x="690" y="392.0" class="tx" text-anchor="start">cada bateria com fusível MEGA 150 A no borne + e cabos de</text>
+<text x="690" y="404.5" class="tx" text-anchor="start">50 mm² DO MESMO comprimento até aos barramentos; caixa de</text>
+<text x="690" y="417.0" class="tx" text-anchor="start">madeira sob o piso (hoje) + 2.ª caixa igual para as 4 novas;</text>
+<text x="690" y="429.5" class="tx" text-anchor="start">cintas, tampas nos bornes, ventilação. ANTES de ligar as 4 novas</text>
+<text x="690" y="442.0" class="tx" text-anchor="start">em paralelo: teste das 2 atuais (NAVEGACAO §8b ponto 15)</text>
+<rect x="680" y="500" width="330" height="16" rx="3" class="bus"/>
+<text x="845" y="494" class="labn" text-anchor="middle">barramento + do BANCO · 250 A · (cargas ligam aqui: carrega com o barco fechado)</text>
+<rect x="831" y="534" width="28" height="12" class="prot" rx="2"/>
+<text x="845" y="530" class="lab" text-anchor="middle">fusível principal Class T (ou MEGA) 250 A · cabo 50 mm²</text>
+<circle cx="833" cy="580" r="3" fill="#222"/><circle cx="857" cy="580" r="3" fill="#222"/><line x1="835" y1="580" x2="854" y2="569" stroke="#222" stroke-width="2.2"/>
+<text x="845" y="596" class="labn" text-anchor="middle">corta-corrente de serviço ON/OFF 300 A (substitui o seletor branco)</text>
+<rect x="680" y="625" width="330" height="16" rx="3" class="bus"/>
+<text x="845" y="619" class="labn" text-anchor="middle">barramento + de DISTRIBUIÇÃO · 250 A · (consumidores saem daqui)</text>
+<rect x="735" y="668" width="220" height="62" rx="6" class="carga"/>
+<text x="845" y="686" class="th" text-anchor="middle">Victron SmartShunt 500 A</text>
+<text x="845" y="700" class="tx" text-anchor="middle">no NEGATIVO do serviço: lado "battery" só às baterias;</text>
+<text x="845" y="712" class="tx" text-anchor="middle">lado "load" a TUDO o resto (cargas, MPPT, carregador, VSR, massa)</text>
+<text x="845" y="724" class="tx" text-anchor="middle">capacidade 192 Ah (576 com as novas) · Bluetooth → Pi</text>
+<rect x="680" y="768" width="330" height="16" rx="3" class="busn"/>
+<text x="845" y="762" class="labn" text-anchor="middle">barramento − de distribuição (massa do serviço) · 250 A</text>
+<text x="690" y="800" class="tx" text-anchor="start">massa comum: barramento − ↔ negativo de arranque ↔ bloco do motor (35 mm²)</text>
+<polyline points="845,460 845,500" class="pos"/>
+<text x="880" y="480" class="lab" text-anchor="start">+ 50 mm²</text>
+<polyline points="845,516 845,526" class="pos"/>
+<polyline points="845,554 845,568" class="pos"/>
+<polyline points="845,592 845,625" class="pos"/>
+<polyline points="700,460 700,698 735,698" class="neg"/>
+<text x="706" y="562" class="labn" text-anchor="start">− 50 mm²</text>
+<polyline points="955,730 955,768" class="neg"/>
+<polyline points="280,139 360,139" class="dc"/>
+<text x="320" y="133" class="lab" text-anchor="middle">6 mm² MC4</text>
+<polyline points="280,239 360,239" class="dc"/>
+<text x="320" y="233" class="lab" text-anchor="middle">6 mm² MC4</text>
+<polyline points="590,139 640,139 640,508 680,508" class="pos"/>
+<rect x="598" y="133" width="28" height="12" class="prot" rx="2"/>
+<text x="612" y="129" class="lab" text-anchor="middle">63 A · 16 mm²</text>
+<polyline points="590,239 630,239 630,508" class="pos"/>
+<rect x="596" y="233" width="28" height="12" class="prot" rx="2"/>
+<text x="610" y="229" class="lab" text-anchor="middle">63 A · 16 mm²</text>
+<polyline points="280,350 630,350" class="posf"/>
+<rect x="436" y="344" width="28" height="12" class="prot" rx="2"/>
+<text x="450" y="340" class="lab" text-anchor="middle">40 A · 10 mm²</text>
+<circle cx="630" cy="350" r="4" fill="#c0392b"/>
+<text x="622" y="366" class="tx" text-anchor="end">junção: a saída 1 do carregador junta-se</text>
+<text x="622" y="378" class="tx" text-anchor="end">ao cabo do MPPT 2 até ao barramento</text>
+<polyline points="280,400 335,400 335,580 360,580" class="posf"/>
+<rect x="329" y="476" width="12" height="28" class="prot" rx="2"/>
+<text x="325" y="494" class="lab" text-anchor="end">40 A</text>
+<polyline points="160,460 160,422" class="ac"/>
+<text x="170" y="445" class="labn" text-anchor="start">230 V · 3G2,5</text>
+<polyline points="475,516 475,552" class="pos"/>
+<rect x="469" y="520" width="12" height="28" class="prot" rx="2"/>
+<text x="485" y="538" class="lab" text-anchor="start">100 A · 16 mm²</text>
+<polyline points="590,478 660,478 660,508 680,508" class="pos"/>
+<rect x="611" y="472" width="28" height="12" class="prot" rx="2"/>
+<text x="625" y="468" class="lab" text-anchor="middle">100 A · 16 mm²</text>
+<polyline points="280,596 360,596" class="pos"/>
+<rect x="326" y="590" width="28" height="12" class="prot" rx="2"/>
+<text x="340" y="615" class="lab" text-anchor="middle">150 A · 35 mm²</text>
+<polyline points="280,660 340,660 340,620 360,620" class="pos"/>
+<circle cx="288" cy="660" r="3" fill="#222"/><circle cx="312" cy="660" r="3" fill="#222"/><line x1="290" y1="660" x2="309" y2="649" stroke="#222" stroke-width="2.2"/>
+<text x="230" y="688" class="labn" text-anchor="start">corta-corrente de arranque</text>
+<text x="230" y="700" class="labn" text-anchor="start">(o de chave vermelha, 300 A) · 35–50 mm²</text>
+<polyline points="520,628 520,690" class="pos"/>
+<rect x="514" y="645" width="12" height="28" class="prot" rx="2"/>
+<text x="530" y="663" class="lab" text-anchor="start">ANL 100–125 A · 35 mm²</text>
+<polyline points="590,610 655,610 655,776 680,776" class="halo"/>
+<polyline points="590,610 655,610 655,776 680,776" class="neg"/>
+<text x="648" y="644" class="labn" text-anchor="end">− 35 mm² (bloco do motor)</text>
+<rect x="1090" y="100" width="460" height="300" rx="6" class="carga"/>
+<text x="1320.0" y="117" class="th" text-anchor="middle">Quadro de distribuição 12 V (o existente, revisto)</text>
+<text x="1098" y="133" class="tx" text-anchor="start">alimentação do barramento + de distribuição: 16 mm² · fusível MEGA 100 A (25 mm² + 150 A se > 4 m)</text>
+<text x="1098" y="146" class="tx" text-anchor="start">cada circuito com disjuntor ou fusível próprio, cabo estanhado, etiquetado:</text>
+<text x="1098" y="159" class="tx" text-anchor="start">• Navegação/Pi: Pi 5 + MacArthur HAT (módulo 12→5 V) · 5 A · ecrã da roda pelo Pi</text>
+<text x="1098" y="172" class="tx" text-anchor="start">• Instrumentos: NASA (vento, log, sonda), ST50, ST4000+ (SeaTalk1) · 5 A</text>
+<text x="1098" y="185" class="tx" text-anchor="start">• AIS B330 (3 A) · VHF RT750 (10 A) · Navtex · Meshtastic · router 4G (3 A)</text>
+<text x="1098" y="198" class="tx" text-anchor="start">• Radar JRC 1000 (10 A) — em pausa, deixar o circuito</text>
+<text x="1098" y="211" class="tx" text-anchor="start">• Luzes de navegação LED (5 A) · luzes interiores (10 A) · tomadas USB/12 V (10 A)</text>
+<text x="1098" y="224" class="tx" text-anchor="start">• Bomba de água doce (10 A) · frigorífico a compressor (15 A, cabo 4 mm²)</text>
+<text x="1098" y="237" class="tx" text-anchor="start">• Piloto EV-100 (ACU-100): disjuntor dedicado 10 A (confirmar no manual) · cabo 2,5 mm²</text>
+<text x="1098" y="250" class="tx" text-anchor="start">• Besouros de alarme (1 A) · sensores (ADS1115 gasóleo, barómetro, IMU) pelo Pi</text>
+<text x="1098" y="263" class="tx" text-anchor="start">• reserva: 4 circuitos livres</text>
+<text x="1098" y="276" class="tx" text-anchor="start">negativo de cada circuito ao barramento − (nunca "massa" pelo casco): o Pi e os instrumentos com o MESMO negativo</text>
+<text x="1098" y="289" class="tx" text-anchor="start">medir cada circuito com a pinça depois de pronto e registar no caderno</text>
+<rect x="1090" y="430" width="220" height="92" rx="6" class="carga"/>
+<text x="1200.0" y="447" class="th" text-anchor="middle">Piloto Raymarine EV-100 Wheel</text>
+<text x="1098" y="463" class="tx" text-anchor="start">ACU-100 no circuito dedicado do quadro (10 A)</text>
+<text x="1098" y="476" class="tx" text-anchor="start">o ACU-100 alimenta a rede SeaTalkNG (EV-1, p70s)</text>
+<text x="1098" y="489" class="tx" text-anchor="start">SeaTalkNG ↔ NMEA 2000 do Pi (cabo de ligação)</text>
+<text x="1098" y="502" class="tx" text-anchor="start">unidade de roda ligada ao ACU-100</text>
+<rect x="1330" y="430" width="220" height="92" rx="6" class="carga"/>
+<text x="1440.0" y="447" class="th" text-anchor="middle">Inversor LTC INV-12600 · 600 W</text>
+<text x="1338" y="463" class="tx" text-anchor="start">onda modificada · só ferramentas e carregadores simples</text>
+<text x="1338" y="476" class="tx" text-anchor="start">do barramento + de distribuição: cabo 16 mm², ≤ 2 m</text>
+<text x="1338" y="489" class="tx" text-anchor="start">fusível ANL 80 A a ≤ 180 mm do barramento</text>
+<text x="1338" y="502" class="tx" text-anchor="start">tomada 230 V própria, NUNCA ligada à rede do cais</text>
+<rect x="1090" y="640" width="220" height="70" rx="6" class="carga"/>
+<text x="1200.0" y="657" class="th" text-anchor="middle">Bomba de porão + boia</text>
+<text x="1098" y="673" class="tx" text-anchor="start">direta do barramento + do BANCO (fusível 10 A):</text>
+<text x="1098" y="686" class="tx" text-anchor="start">funciona com o corta-corrente desligado</text>
+<text x="1098" y="699" class="tx" text-anchor="start">interruptor manual/auto no quadro</text>
+<rect x="1330" y="640" width="220" height="70" rx="6" class="caixa"/>
+<text x="1440.0" y="657" class="th" text-anchor="middle">Dados (azul tracejado)</text>
+<text x="1338" y="673" class="tx" text-anchor="start">MPPT e SmartShunt → Pi por Bluetooth</text>
+<text x="1338" y="686" class="tx" text-anchor="start">EV-100 ↔ Pi por NMEA 2000 (SeaTalkNG)</text>
+<text x="1338" y="699" class="tx" text-anchor="start">motor → Pi por CAN J1939 (cabo em Y do MDI)</text>
+<rect x="1090" y="740" width="460" height="100" rx="6" class="sai"/>
+<text x="1320.0" y="757" class="th" text-anchor="middle">SAI DO BARCO (retirar, etiquetar, entregar ao Ivo)</text>
+<text x="1098" y="773" class="tx" text-anchor="start">• Separador a díodos Power-first PF 270 (e o módulo com dissipador por cima, se for parte dele)</text>
+<text x="1098" y="786" class="tx" text-anchor="start">• 2.ª Tudor Start PRO TG1101 110 Ah · Tudor High-Tech EFB ~100 Ah · Tudor TL652 65 Ah</text>
+<text x="1098" y="799" class="tx" text-anchor="start">• seletor branco redondo da caixa das baterias (substituído pelo corta-corrente ON/OFF de 300 A)</text>
+<text x="1098" y="812" class="tx" text-anchor="start">• toda a fita isoladora nos terminais; os ramais sem fusível ligados diretamente aos bornes</text>
+<polyline points="1010,631 1030,631 1030,130 1090,130" class="pos"/>
+<rect x="1024" y="546" width="12" height="28" class="prot" rx="2"/>
+<text x="1020" y="564" class="lab" text-anchor="end">MEGA 100 A · 16 mm²</text>
+<polyline points="1200,400 1200,430" class="pos"/>
+<rect x="1194" y="401" width="12" height="28" class="prot" rx="2"/>
+<text x="1210" y="419" class="lab" text-anchor="start">10 A</text>
+<polyline points="1010,637 1440,637 1440,522" class="halo"/>
+<polyline points="1010,637 1440,637 1440,522" class="pos"/>
+<rect x="1266" y="631" width="28" height="12" class="prot" rx="2"/>
+<text x="1280" y="627" class="lab" text-anchor="middle">ANL 80 A · 16 mm²</text>
+<polyline points="1010,508 1050,508 1050,675 1090,675" class="halo"/>
+<polyline points="1010,508 1050,508 1050,675 1090,675" class="pos"/>
+<rect x="1044" y="634" width="12" height="28" class="prot" rx="2"/>
+<text x="1040" y="652" class="lab" text-anchor="end">10 A</text>
+<polyline points="1010,776 1075,776 1075,380 1090,380" class="halo"/>
+<polyline points="1010,776 1075,776 1075,380 1090,380" class="neg"/>
+<text x="1082" y="600" class="labn" text-anchor="start">− 16 mm²</text>
+<polyline points="475,178 475,200" class="dados"/>
+<rect x="40" y="880" width="620" height="125" rx="6" class="nota"/>
+<text x="52" y="898" class="th" text-anchor="start">Regras de execução (ISO 10133 / ABYC E-11)</text>
+<text x="52" y="914.0" class="tx" text-anchor="start">cores: vermelho = positivo 12 V · preto = negativo · tracejado vermelho = carregador de cais · verde = CC dos painéis</text>
+<text x="52" y="926.5" class="tx" text-anchor="start">   castanho tracejado = 230 V · azul tracejado = dados</text>
+<text x="52" y="939.0" class="tx" text-anchor="start">fusível ou disjuntor em TODO o ramal positivo, a ≤ 180 mm (7") da bateria ou do barramento; no máximo 4 terminais por perno</text>
+<text x="52" y="951.5" class="tx" text-anchor="start">cabo náutico estanhado multifilar, 105 °C; terminais cravados com alicate adequado + manga termorretrátil com cola; etiquetas nas 2 pontas</text>
+<text x="52" y="964.0" class="tx" text-anchor="start">queda de tensão ≤ 3 % nos circuitos críticos (navegação, piloto, VHF, carga) e ≤ 10 % nos outros (tabela de secções no caderno)</text>
+<text x="52" y="976.5" class="tx" text-anchor="start">baterias presas com cintas; caixas ventiladas; bornes e barramentos com tampa; as de ácido livre de pé e com os respiros livres</text>
+<text x="52" y="989.0" class="tx" text-anchor="start">negativo único: barramento − ↔ negativo de arranque ↔ bloco do motor; sem retornos pelo casco; instrumentos com o mesmo negativo do Pi</text>
+<rect x="680" y="880" width="330" height="125" rx="6" class="nota"/>
+<text x="692" y="898" class="th" text-anchor="start">Regulações</text>
+<text x="692" y="914.0" class="tx" text-anchor="start">MPPT (os dois): AGM, absorção 14,4 V, flutuação 13,8 V,</text>
+<text x="692" y="926.5" class="tx" text-anchor="start">  equalização desligada; corrente máx. 30 A cada enquanto 192 Ah</text>
+<text x="692" y="939.0" class="tx" text-anchor="start">  (50 A com 576 Ah); temperatura pelo sensor do shunt (VE.Smart)</text>
+<text x="692" y="951.5" class="tx" text-anchor="start">SmartShunt: 192 Ah (576 depois), carregado a 13,2 V, cauda 4 %,</text>
+<text x="692" y="964.0" class="tx" text-anchor="start">  Peukert 1,15, eficiência 95 %</text>
+<text x="692" y="976.5" class="tx" text-anchor="start">Cyrix-ct: automático (liga 13,0 V/2 min, desliga 12,8 V)</text>
+<text x="692" y="989.0" class="tx" text-anchor="start">carregador de cais: perfil AGM 14,4/13,8 V (confirmar na placa)</text>
+<rect x="1090" y="880" width="460" height="125" rx="6" class="nota"/>
+<text x="1102" y="898" class="th" text-anchor="start">Ordem de trabalho sugerida</text>
+<text x="1102" y="914" class="tx" text-anchor="start">1. Desligar o cais e os corta-correntes; fotografar e etiquetar tudo antes de desmontar.</text>
+<text x="1102" y="927" class="tx" text-anchor="start">2. Retirar as 3 baterias e o PF 270. 3. Barramentos, fusível principal, SmartShunt, corta-corrente</text>
+<text x="1102" y="940" class="tx" text-anchor="start">   de serviço; refazer os cabos das 2 TK960 (50 mm², iguais). 4. Cyrix entre arranque e serviço.</text>
+<text x="1102" y="953" class="tx" text-anchor="start">5. Guincho e inversor com os seus fusíveis. 6. Quadro: alimentação nova, negativos ao barramento,</text>
+<text x="1102" y="966" class="tx" text-anchor="start">   circuitos do Pi e do EV-100. 7. MPPT e painéis. 8. Carregador de cais (saídas e fusíveis).</text>
+<text x="1102" y="979" class="tx" text-anchor="start">9. Ensaios de receção (caderno §12) com o Ivo presente; fotografias finais para o registo.</text>
+<text x="30" y="1109" class="sub" text-anchor="start">Gerado por software/ferramentas/esquema-eletrico/gerar.py · caderno em docs/esquema-eletrico-eletricista.pdf · fotos do inventário em docs/img-eletrico/ · NAVEGACAO.md §5b, §5c, §8b ponto 15</text>
+</svg>
