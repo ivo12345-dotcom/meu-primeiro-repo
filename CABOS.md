@@ -91,6 +91,9 @@ e os rizos, em Dyneema, são a fatia cara; o resto é poliéster.
 
 ## Compra faseada (recomendado)
 
+**Fase 1 real (decisão do Ivo, 14/10; compra a 15/10):** driza da maior, 2 rizos, amantilho, 2 escotas de genoa, cabo do boom jack (contra) e escota da maior. O resto (driza da genoa, driza do spi, enrolador, carregadeira, cunningham, escotas de spi) fica com mensageiro no sítio, para ir trocando. Medidas em `CABOS-medicoes-2026-10-14.md`.
+
+
 Com o orçamento já esticado no casco, não comprar tudo de uma vez:
 
 1. **Drizas e rizos** — função e segurança

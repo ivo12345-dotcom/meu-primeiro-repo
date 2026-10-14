@@ -1,5 +1,7 @@
 # Cordame de manobra — folha de medições (14/10/2026, cabos velhos retirados com mensageiros)
 
+**Decisão do Ivo (14/10): trocam-se agora** a driza da maior, os 2 rizos, o amantilho, as 2 escotas de genoa, o cabo do boom jack (contra) e a escota da maior. **Ficam com guia (mensageiro) no sítio para trocar mais tarde:** driza da genoa, driza do spi, cabo do enrolador, carregadeira da retranca, cunningham, escotas de spi.
+
 Regra: o cabo velho é o molde; medir esticado no cais, diâmetro com paquímetro; encomendar com +0,5 m. Mensageiro em TODAS as drizas e rizos antes de largar. Ver `CABOS.md` (lista, materiais, regras).
 
 | Cabo | Medido (m) | Ø velho (mm) | Mordente / tambor (gama Ø) | Estado da roldana / saída | Comprar (m) | Ø novo | Material | Cor |
