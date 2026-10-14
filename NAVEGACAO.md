@@ -463,23 +463,24 @@ por volta), cruzado com os alarmes do AIS e, quando houver, a zona de guarda do 
 fio de segurança; a app pode mostrar a imagem no telemóvel na mesa de cartas. O que a Rattler não faz e a SEA.AI
 faz: vigiar sozinha e alarmar.
 
-**Ideia do Ivo (14/10): "se montar uma câmara boa da Hik no mastro, dá para depois fazermos nós o nosso sistema?"**
-Dá, como assistente, não como SEA.AI: a parte cara deles não é a câmara, é o modelo treinado com 18 milhões de
-imagens no mar. Com uma Hikvision bi-espectro (térmica 256×192 + ótica 4 MP, por exemplo DS-2TD2628-3/QA: 50° × 37°
-térmica, 84° ótica, PoE ~8,5 W e 20 W com desembaciador, 1,55 kg, IP66, RTSP) no topo do mastro, cabo Cat 6 pelo
-mastro e injetor PoE 12→48 V, o Pi 5 lê o fluxo RTSP, um YOLO pequeno corre a 5–8 fps na CPU ou a 25–35 fps com o
-AI HAT Hailo-8L (~€70), e as deteções entram no Signal K como notificações (alarme no ecrã e no Telegram, como tudo
-o resto). Limites honestos: de noite só a térmica vê, e 256×192 a 50° dá 1–2 píxeis para uma pessoa a 100 m: boias e
-pessoas até ~50–100 m, barcos até 0,3–0,8 MN, contra 80/350/900 m do SEA.AI 320; o mastro mexe (ondulação,
-adornamento: a horizonte tem de ser seguida com o IMU), as ondas, as aves e os reflexos dão falsos alarmes sem
-seguimento no tempo; não há modelo público bom para o mar (SeaDronesSee é de drones sobre pessoas; Singapore
-Maritime é só barcos), por isso o modelo treina-se com as nossas imagens, como a AI do barco já faz com a polar.
-Peso no topo: 1,5–2 kg a 14 m (notar na estabilidade; alternativa: nos vaus, a ~5 m, horizonte a 4,7 MN em vez de
-7,8). Consumo 8–20 W: 15–40 Ah por dia de vigia (com os 576 Ah, bem; com 192, pesa). Salitre: a caixa não é náutica,
-lavar com água doce e proteger (Lanocote). **Plano por fases, se o Ivo avançar:** (0) uma câmara ótica barata
-(~€100) no mastro a gravar na caixa negra: dataset da nossa costa e medida real dos alcances de dia; (1) térmica
-bi-espectro (€800–1 000) + Hailo (€70) + alarmes no Signal K; (2) seguimento, horizonte com o IMU, treino com as
-nossas imagens. Custo total €1 000–1 300 e muitos fins de semana de software. Não substitui a vigia nem o AIS/radar.
+**Ideia do Ivo (14/10): "se montar uma câmara boa da Hik no mastro, dá para depois fazermos nós o nosso sistema?"
+Decisão do Ivo (14/10): a térmica (Rattler V2) fica SÓ para uso de mão, fora do sistema; a câmara do mastro é ótica.**
+Dá, como assistente de dia e crepúsculo (o equivalente ao SEA.AI Lite), não como vigia noturno: a parte cara da
+SEA.AI não é a câmara, é o modelo treinado com 18 milhões de imagens no mar. Câmara: uma Hikvision ColorVu de
+4 ou 8 MP com lente de 2,8 mm (~110° × 60°, PoE 6–9 W, ~0,5 kg, IP67, RTSP, €150–300), no topo do mastro ou nos vaus,
+virada para a proa; cabo Cat 6 pelo mastro e injetor PoE 12→48 V. O Pi 5 lê o fluxo RTSP, um YOLO pequeno corre a
+5–8 fps na CPU ou a 25–35 fps com o AI HAT Hailo-8L (~€70), e as deteções entram no Signal K como notificações
+(alarme no ecrã e no Telegram, como tudo o resto); a caixa negra guarda as imagens para treinar. Alcances de dia
+com 8 MP a 110° (ordem de grandeza, a medir): boia ou pessoa 50–80 m, RIB ~300 m, veleiro ~800 m. **De noite só
+vê luzes** (barcos iluminados, faróis, boias luminosas); objetos sem luz, não: a noite continua a ser a Rattler na
+mão, o AIS e o radar. Limites: o mastro mexe (ondulação, adornamento: a linha do horizonte segue-se com o IMU da
+lista), ondas, aves e reflexos dão falsos alarmes sem seguimento no tempo; não há modelo público bom para o mar
+(SeaDronesSee é de drones sobre pessoas; Singapore Maritime só barcos), por isso treina-se com as nossas imagens,
+como a AI do barco já faz com a polar. Consumo 6–9 W: 15–20 Ah por dia de vigia. Salitre: lavar com água doce e
+proteger as roscas (Lanocote). **Plano por fases, se o Ivo avançar:** (0) a câmara a gravar na caixa negra durante
+umas saídas: dataset da nossa costa e medida real dos alcances; (1) Hailo + YOLO + alarmes no Signal K; (2)
+seguimento, horizonte com o IMU, treino com as nossas imagens. Custo €250–400 de material e muitos fins de semana
+de software. Não substitui a vigia nem o AIS/radar.
 
 ## 4. Lista de material
 
