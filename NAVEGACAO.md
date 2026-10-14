@@ -440,6 +440,23 @@ plotter atual. **É a foto mais importante da lista.**
 Se o radar for suportado e se quiser vê-lo sobreposto, considerar o Pi 5 de
 **8 GB** em vez de 4 GB. O radar é o que mais puxa pela máquina.
 
+### SEA.AI Watchkeeper (link do Ivo, 14/10): vigia por câmara com AI
+
+Câmara de cor 4K (130° × 65°) no topo do mastro, com térmica opcional, e uma unidade de processamento que
+classifica o que flutua (navio, barco, bote, boia, contentor, baleia, pessoa) e alarma; não substitui o AIS nem o
+radar, não vê terra nem rochas. Ficha oficial 2026 (sailing, sem IVA): **Lite** (só cor, dia e crepúsculo) €4 490;
+**320** (térmica 320×256, 34°) €8 290; **640** €17 990; **1024** €24 990. Alcances (Lite/320/640/1024): boia ou pessoa
+65/80/100/170 m; bote ou RIB 350/350/460/750 m; veleiro ou lancha 900/900/1 200/2 000 m. **Subscrição obrigatória:**
+€490/ano (Lite) ou **€1 490/ano com térmica** (3 anos €4 023; vitalícia €5 588). Unidade de mastro 935 g, cabos de
+30 m na versão de vela, 12–36 V, **até 26 W (~2 A: ~50 Ah por noite de vigia)**. Mostra as deteções na app
+(iOS/Android) e em MFD compatíveis (Garmin OneHelm, Furuno TimeZero, Raymarine/B&G); **não se encontrou saída NMEA
+2000 nem Signal K de alvos**, por isso não entraria no OpenCPN do Pi. Nenhum teste independente encontrado (só
+artigos de lançamento). **Opinião (14/10): não agora.** A noite a solo é o caso de uso certo, mas o modelo que
+serve à noite é o 320 (€8 290 + €1 490/ano), gasta 50 Ah por noite num banco de 192 Ah e não fala com o sistema do
+barco; antes disso vêm as baterias, o solar, o EV-100 e o AIS. Se um dia houver verba: o Sailing 320 é o mínimo
+útil; o Lite não resolve o problema da noite. Alternativa barata para a vigia a solo: monóculo térmico de mão
+(€500–1 500) + zonas de guarda do AIS e do radar.
+
 ## 4. Lista de material
 
 Preços pesquisados a 28/09/2026. O "c/IVA" das lojas que mostram preço sem
