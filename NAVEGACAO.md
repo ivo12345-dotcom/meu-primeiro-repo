@@ -199,6 +199,12 @@ se este aceitar 4 800 baud (confirmar no manual).
   (a porta N2K da MacArthur não alimenta o barramento; o B330 precisa dele
   alimentado). Um kit inicial N2K resolve tudo, e é a mesma rede que depois
   recebe o piloto EV-100 Wheel (decidido a 02/10, SeaTalkNG) e o Axiom.
+- **Atualização de 14/10:** o EV-100 Wheel (comprado a 14/10) traz o kit de
+  cabos R70160 — ligador de 5 vias, 2 T, espinha de 5 m, 2 terminadores, cabo
+  de alimentação de 0,4 m e 1 derivação de 0,4 m. **Essa espinha SeaTalkng é a
+  rede do barco**: o B330 e a MacArthur entram nela com um cabo A06045 cada
+  (SeaTalkng → DeviceNet fêmea, €51,63 na SVB). O kit N2K micro-C deixa de ser
+  preciso. Lista da fase 1 com links validados: `docs/lista-fase1-links.pdf`.
 
 **Dados do motor: DECIDIDO pô-los na rede (28/09).** O YDEG-04 põe no NMEA 2000,
 a partir do EVC: rotações, temperatura da água, pressão do óleo, horas,
@@ -608,7 +614,8 @@ um cabo adaptador SeaTalkNG ↔ DeviceNet. Ganha-se:
 - O **p70s** passa a mostrar também o vento, o AIS e a profundidade que o Pi
   põe na rede.
 - A rede NMEA 2000 (backbone, T, terminadores) monta-se nesta fase e fica
-  pronta para o Axiom.
+  pronta para o Axiom. (14/10: é a espinha SeaTalkng do kit R70160 do EV-100,
+  com 2 × A06045 para o Pi e o B330; o Axiom pede mais um T, A06028.)
 
 Fontes: [OpenCPN wiki, pilotos](https://opencpn.org/wiki/dokuwiki/doku.php?id=opencpn%3Amanual_basic%3Aset_options%3Aconnections%3Aautopilot),
 [Yacht Devices, pilotos Raymarine](https://www.yachtd.com/news/raymarine_autopilot_support.html),
@@ -745,8 +752,9 @@ nem a data. Se avançar, **substitui o SailProof** como ecrã da roda.
 - **O Axiom só mostra radares Raymarine** (Quantum, Cyclone, Magnum e alguns
   digitais antigos). O radar atual tem de ser identificado primeiro. (Foi: é um JRC Radar 1000,
   que o Axiom não mostra; fica no ecrã dele, §2b.)
-- A acrescentar nessa altura: rede NMEA 2000 (cabo de backbone, T,
-  terminadores, cabo DeviceNet micro) e o cartão de cartas Navionics.
+- A acrescentar nessa altura: o cartão de cartas Navionics e um T SeaTalkng
+  (A06028) para o Axiom — a rede já existe desde a fase 1 (espinha SeaTalkng
+  do EV-100, 14/10).
 - **Nada do que se compra agora se perde.** A porta NMEA 2000 da MacArthur é o
   que liga o Axiom.
 

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<title>ARLEQUIN · Fase 1 — lista de compras com links</title>
+<style>
+@page { size: A4 portrait; margin: 14mm 12mm 14mm 12mm; }
+* { box-sizing: border-box; }
+body { font-family: Arial, Helvetica, sans-serif; color: #1f1f1f; font-size: 9.6pt; margin: 0; }
+header { border-bottom: 1px solid #bbb; padding-bottom: 6px; margin-bottom: 10px; }
+h1 { font-size: 15pt; margin: 0; }
+.sub { color: #555; font-size: 9.5pt; margin-top: 3px; }
+h2 { font-size: 11.5pt; margin: 14px 0 5px; padding: 4px 8px; border-radius: 4px; }
+h2.nav { background: #E1F5EE; color: #085041; }
+h2.mot { background: #EEEDFE; color: #3C3489; }
+h2.sol { background: #FAEEDA; color: #633806; }
+h2.tot { background: #F1EFE8; color: #2C2C2A; }
+table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+tr { page-break-inside: avoid; }
+th { text-align: left; font-size: 8.5pt; color: #555; font-weight: normal; border-bottom: 1px solid #999; padding: 3px 5px; }
+td { padding: 3.5px 5px; border-bottom: 1px solid #e3e1da; vertical-align: top; }
+td.n { width: 22px; color: #777; }
+td.p { white-space: nowrap; text-align: right; width: 95px; }
+td.l { width: 120px; }
+th.p { text-align: right; }
+a { color: #185FA5; text-decoration: none; }
+.nota { color: #555; font-size: 8.5pt; }
+tr.soma td { font-weight: bold; border-top: 1px solid #999; border-bottom: none; }
+.caixa { border: 1px solid #ddd; border-radius: 5px; padding: 6px 9px; margin-top: 10px; font-size: 8.8pt; color: #333; }
+.caixa b { color: #1f1f1f; }
+footer { margin-top: 12px; color: #777; font-size: 8pt; border-top: 1px solid #ddd; padding-top: 5px; }
+</style>
+<style>@page { margin: 10mm 11mm 10mm 11mm; } body { font-size: 9.2pt; } td { padding: 3px 5px; }</style>
+</head>
+<body>
+<header>
+  <h1>ARLEQUIN · Fase 1 — lista de compras com links</h1>
+  <div class="sub">Navegação (Pi, ecrã, sensores) + motor J1939 + água doce · links e preços validados a 14/10/2026 (com IVA, sem portes) · carregar no nome da loja abre a página do artigo</div>
+</header>
+
+<h2 class="nav">1. Navegação — Pi, ecrã, sensores e ligações · €746,35</h2>
+<table>
+<tr><th>#</th><th>Peça</th><th>Loja (link)</th><th class="p">Preço</th></tr>
+<tr><td class="n">1</td><td>Raspberry Pi 5 <b>8 GB</b></td><td class="l"><a href="https://www.amazon.es/dp/B0CK2FCG1K">Amazon.es</a></td><td class="p">€205,96</td></tr>
+<tr><td class="n">2</td><td>Dissipador ativo oficial (SC1148)</td><td class="l"><a href="https://www.botnroll.com/en/accessories/5018-raspberry-pi-5-official-active-cooler-sc1148.html">Botnroll</a></td><td class="p">€5,90</td></tr>
+<tr><td class="n">3</td><td>Pimoroni NVMe Base (fica por baixo do Pi)</td><td class="l"><a href="https://raspberrypi.dk/en/product/pimoroni-nvme-base-for-raspberry-pi-5/">RaspberryPi.dk</a></td><td class="p">€19,93</td></tr>
+<tr><td class="n">4</td><td>SSD NVMe M.2 2280 — <b>PNY CS1030 250 GB</b> (PCIe 3.0) <span class="nota">o Gigabyte 256 GB da PcComponentes (€34,33) está esgotado sem data e os SSD subiram muito em 2026 (NV3 500 GB a €107 na PcComponentes); mais barato mas de marca menos conhecida: <a href="https://www.amazon.es/dp/B0FLJMQMV1">Ediloca 256 GB, €49,24</a></span></td><td class="l"><a href="https://www.amazon.es/dp/B08W31HYVC">Amazon.es</a></td><td class="p">€59,93</td></tr>
+<tr><td class="n">5</td><td>MacArthur HAT <span class="nota">(€62,00 sem IVA; em stock; só envia às segundas e terças)</span></td><td class="l"><a href="https://shop.openmarine.net/home/23-macarthur-hat.html">OpenMarine</a></td><td class="p">€76,26</td></tr>
+<tr><td class="n">6</td><td>Módulo de alimentação 12→5 V da HAT (desliga o Pi com segurança quando se corta o corta-corrente) <span class="nota">(€23,00 sem IVA; em stock)</span></td><td class="l"><a href="https://shop.openmarine.net/home/24-power-module-for-macarthur-hat.html">OpenMarine</a></td><td class="p">€28,29</td></tr>
+<tr><td class="n">7</td><td>Ecrã de testes LAFVIN 7" HDMI tátil, 1024×600</td><td class="l"><a href="https://www.amazon.es/dp/B0BVW7J1J8">Amazon.es</a></td><td class="p">€48,78</td></tr>
+<tr><td class="n">7b</td><td>Cabos até à roda: micro-HDMI → HDMI 5 m (KabelDirekt) + extensão USB 2.0 <b>ativa</b> 5 m (UGREEN, para o toque do ecrã)</td><td class="l"><a href="https://www.amazon.es/dp/B006L76CQ2">Amazon.es (HDMI)</a><br><a href="https://www.amazon.es/dp/B00B2HP2UI">Amazon.es (USB)</a></td><td class="p">€11,27 + €12,79 = €24,06</td></tr>
+<tr><td class="n">8</td><td>Cartas o-charts Portugal (continente, Açores, Madeira; edição 2026/1-3 de 05/10/2026, 5 instalações) <span class="nota">(€16,00 sem IVA)</span></td><td class="l"><a href="https://o-charts.org/shop/en/oesenc/79-portugal.html">o-charts</a></td><td class="p">€19,68</td></tr>
+<tr><td class="n">9</td><td>Chave USB da licença o-charts <span class="nota">(€19,00 sem IVA)</span></td><td class="l"><a href="https://o-charts.org/shop/en/hardware/38-usb-key-dongle.html">o-charts</a></td><td class="p">€23,37</td></tr>
+<tr><td class="n">10</td><td>ASA preto 1 kg, eSUN (suporte e pala do ecrã) <span class="nota">a EVOLT está sem ASA preto (eSUN ASA+ esgotado); alternativa em Portugal: <a href="https://evolt.pt/produto/asa-polylite-1kg-black-polymaker/">PolyLite ASA preto Polymaker, EVOLT, €34,95</a></span></td><td class="l"><a href="https://www.amazon.es/dp/B0CQRBBDLG">Amazon.es</a></td><td class="p">€20,32</td></tr>
+<tr><td class="n">11</td><td>Porta-fusível em linha ATO IP55 + fusível 5 A (alimentação do Pi)</td><td class="l"><a href="https://www.svb24.pt/pt/seatec-porta-fusiveis-em-linha-ato.html">SVB</a></td><td class="p">€4,08</td></tr>
+<tr><td class="n">12</td><td class="nota">Motor → Pi: está na secção 2 (M1–M4). A numeração é a do NAVEGACAO.md, §4</td><td class="l"></td><td class="p nota">—</td></tr>
+<tr><td class="n">13</td><td>ADS1115 (I²C) — nível do gasóleo (sonda + alimentação do medidor) + kit de resistências 1/4 W de 52 valores <span class="nota">o kit traz os 47 kΩ / 10 kΩ dos 2 divisores, os 4,7 kΩ do DS18B20 (17) e a resistência de base do transístor (15); a Botnroll não tem 47 kΩ</span></td><td class="l"><a href="https://www.botnroll.com/en/i2c-spi/3669-adc-4-channel-16bit-i2c-module-ads1115-with-gain-amplifier.html">Botnroll (ADS1115)</a><br><a href="https://www.amazon.es/dp/B0FP51H3ML">Amazon.es (resistências)</a></td><td class="p">€8,50 + €12,19 = €20,69</td></tr>
+<tr><td class="n">14</td><td>Barómetro BME280 DFRobot Gravity (fora da caixa do Pi)</td><td class="l"><a href="https://www.botnroll.com/en/temperature/5336-gravity-i2c-bme280-environmental-sensor-dfrobot-sen0236.html">Botnroll</a></td><td class="p">€23,80</td></tr>
+<tr><td class="n">15</td><td>2 besouros ativos 12 V, 95 dB (poço + cabine), €1,80 cada + transístor NPN 2N2222A <span class="nota">(no lugar do BC337, que a Botnroll não tem; o 2N2222A aguenta 600 mA, de sobra para o besouro)</span></td><td class="l"><a href="https://www.botnroll.com/en/sounders/861-buzzer-piezoelectrico.html">Botnroll (besouro ×2)</a><br><a href="https://www.botnroll.com/en/semiconductors/2152--2n2222-transistor-.html">Botnroll (2N2222A)</a></td><td class="p">€3,60 + €0,15 = €3,75</td></tr>
+<tr><td class="n">16</td><td>Sensor de inclinação ICM-20948 (abatimento), módulo I²C/SPI <span class="nota">o SparkFun da RS Online está indisponível sem data; o módulo da OpenMarine feito para a HAT (€10 sem IVA) está <a href="https://shop.openmarine.net/home/30-icm-20948-imu-module-soldered-pins.html">esgotado</a> — se voltar, é o mais simples de montar</span></td><td class="l"><a href="https://www.amazon.es/dp/B0HG5QGN3K">Amazon.es</a></td><td class="p">€23,15</td></tr>
+<tr><td class="n">17</td><td>Sensor DS18B20 estanque 2 m (frigorífico) <span class="nota">(a resistência de 4,7 kΩ vem do kit do 13)</span></td><td class="l"><a href="https://www.botnroll.com/en/temperature/429-sensor-de-temperatura-a-prova-de-agua-ds18b20-09m-.html">Botnroll</a></td><td class="p">€4,65</td></tr>
+<tr><td class="n">18</td><td><b>Rede NMEA 2000: não comprar.</b> A espinha vem no kit de cabos R70160 do EV-100 Wheel já comprado (ligador de 5 vias, 2 T, espinha de 5 m, 2 terminadores, cabo de alimentação de 0,4 m com fusível e 1 derivação de 0,4 m): é a rede SeaTalkng do barco, e o Pi e o AIS entram nela com o cabo do ponto 20 <span class="nota">confirmar o conteúdo na caixa quando chegar (até 20/11). Só se quiseres uma rede própria micro-C: <a href="https://www.svb24.pt/pt/nmea2000-kit-de-iniciacao-micro-c.html">kit NMEA 2000 da SVB, €138,45</a></span></td><td class="l">kit do EV-100</td><td class="p">€0</td></tr>
+<tr><td class="n">19</td><td>Adaptador USB → RS-422/485 <b>isolado</b> Waveshare (FT232RL, isolamento de alimentação e sinal), para a sonda NASA <span class="nota">(a MacArthur só tem 2 entradas 0183; o Digital Yacht NMEA–USB da Nautiradar, €67,99, não indica isolamento)</span></td><td class="l"><a href="https://www.amazon.es/dp/B0BTBR71PC">Amazon.es</a></td><td class="p">€30,49</td></tr>
+<tr><td class="n">20</td><td><b>2 × cabo Raymarine A06045</b> (SeaTalkng → DeviceNet fêmea, 0,4 m): um liga a MacArthur e o outro o AIS B330 à espinha do EV-100, €51,63 cada <span class="nota">em stock na SVB. Se o AIS ficar a mais de 40 cm do T, junta-se um <a href="https://www.svb24.pt/pt/raymarine-cabo-de-linha-seatalkng.html">cabo de derivação SeaTalkng (desde €39,23)</a></span></td><td class="l"><a href="https://www.svb24.pt/pt/raymarine-cabo-adaptador-seatalk-ng-para-nmea-2000-femea.html">SVB (×2)</a></td><td class="p">€103,26</td></tr>
+<tr class="soma"><td></td><td>Subtotal</td><td></td><td class="p">€746,35</td></tr>
+</table>
+
+<h2 class="mot">2. Motor · J1939 do D1-20B (ligação direta à cablagem) · €68,67</h2>
+<table>
+<tr><th>#</th><th>Peça</th><th>Loja (link)</th><th class="p">Preço</th></tr>
+<tr><td class="n">M1</td><td>Adaptador <b>USB–CAN isolado</b> InnoMaker USB2CAN (SocketCAN nativo, ficha micro-USB) — <b>jumper 120 Ω desligado</b></td><td class="l"><a href="https://www.amazon.es/dp/B0956NV6CM">Amazon.es</a></td><td class="p">€37,02</td></tr>
+<tr><td class="n">M2</td><td>Terminal DB9 fêmea → parafusos, 2 unidades (pino 7 CAN-H, 2 CAN-L, 3 massa)</td><td class="l"><a href="https://www.amazon.es/dp/B08153D2F1">Amazon.es</a></td><td class="p">€12,19</td></tr>
+<tr><td class="n">M3</td><td>Cabo USB-A → micro-USB 3 m, Amazon Basics com trança dupla (do InnoMaker até ao Pi)</td><td class="l"><a href="https://www.amazon.es/dp/B074VN744Q">Amazon.es</a></td><td class="p">€7,47</td></tr>
+<tr><td class="n">M4</td><td>Fita autovulcanizável TEKKA 10 m × 19 mm (1 kV) + fita isoladora 3M Temflex 1500 (19 mm × 20 m) + 100 abraçadeiras pretas 200 × 3,6 mm</td><td class="l"><a href="https://www.amazon.es/dp/B07BMYYKY4">Amazon.es (vulcanizável)</a><br><a href="https://www.amazon.es/dp/B012WJ3QCK">Amazon.es (PVC)</a><br><a href="https://www.amazon.es/dp/B0GSDKCCQW">Amazon.es (abraçadeiras)</a></td><td class="p">€6,30 + €1,94 + €3,75 = €11,99</td></tr>
+<tr class="soma"><td></td><td>Subtotal</td><td></td><td class="p">€68,67</td></tr>
+</table>
+<div class="caixa"><b>Não comprar:</b> o kit de rede NMEA 2000 micro-C (a espinha SeaTalkng vem no kit de cabos do EV-100 Wheel, ponto 18) nem o Waveshare USB-CAN-A (não é SocketCAN). As fichas Deutsch e o cabo CAN de 10 m deixaram de ser precisos: o InnoMaker fica junto ao motor, com uma derivação soldada ≤ 50 cm, e daí vai o cabo USB (M3) até ao Pi. Plano B se a escuta falhar: YDEG-04N (~€263,52).</div>
+
+<h2 class="mot">3. Água doce · bombas de pé · €23,31</h2>
+<table>
+<tr><th>#</th><th>Peça</th><th>Loja (link)</th><th class="p">Preço</th></tr>
+<tr><td class="n">A1</td><td>3 sensores magnéticos (reed) MC-38 com cabo — 1 por pedal de água doce + 1 de reserva <span class="nota">(a bomba de água do mar não leva)</span></td><td class="l"><a href="https://www.amazon.es/dp/B093LBSDH1">Amazon.es</a></td><td class="p">€7,06</td></tr>
+<tr><td class="n">A2</td><td>ESP32 DevKitC WROOM-32U com antena externa <span class="nota">(só se os pedais ficarem longe do Pi)</span></td><td class="l"><a href="https://www.amazon.es/dp/B0H1WQCMJ1">Amazon.es</a></td><td class="p">€16,25</td></tr>
+<tr class="soma"><td></td><td>Subtotal</td><td></td><td class="p">€23,31</td></tr>
+</table>
+
+<h2 class="tot">Total da fase 1 · €838,33 + portes</h2>
+<table>
+<tr><th>Loja</th><th>Pontos</th><th class="p">Subtotal</th></tr>
+<tr><td><a href="https://www.amazon.es">Amazon.es</a> <span class="nota">todos em stock a 14/10; com Prime os portes saem grátis</span></td><td>1, 4, 7, 7b, 10, 13, 16, 19, M1, M2, M3, M4, A1, A2</td><td class="p">€516,86</td></tr>
+<tr><td><a href="https://www.svb24.pt">SVB</a> <span class="nota">em stock a 14/10; portes para Portugal à parte</span></td><td>11, 20</td><td class="p">€107,34</td></tr>
+<tr><td><a href="https://shop.openmarine.net">OpenMarine</a> <span class="nota">preços sem IVA no site (IVA à taxa portuguesa no checkout); só envia às segundas e terças</span></td><td>5, 6</td><td class="p">€104,55</td></tr>
+<tr><td><a href="https://www.botnroll.com">Botnroll</a> <span class="nota">loja portuguesa (Vila Nova de Gaia); 5 artigos numa só encomenda</span></td><td>2, 13, 14, 15, 17</td><td class="p">€46,60</td></tr>
+<tr><td><a href="https://o-charts.org/shop/en/">o-charts</a> <span class="nota">preços sem IVA no site; depois da compra há passos no manual para obter a transferência</span></td><td>8, 9</td><td class="p">€43,05</td></tr>
+<tr><td><a href="https://raspberrypi.dk/en/">RaspberryPi.dk</a> <span class="nota">envia da Dinamarca; a base NVMe estava em stock a 14/10</span></td><td>3</td><td class="p">€19,93</td></tr>
+<tr class="soma"><td>Total (sem portes)</td><td></td><td class="p">€838,33</td></tr>
+</table>
+
+<div class="caixa"><b>Como ligar a rede (ponto 18 e 20):</b> o EV-100 Wheel traz o kit R70160 — ligador de 5 vias (3 derivações: EV-1, ACU-100 e p70s), espinha de 5 m, 2 T e 2 terminadores. O ligador fica no poço, a espinha de 5 m vai até à mesa de cartas e aí os 2 T recebem o Pi (MacArthur) e o AIS B330, cada um com um A06045. A rede é alimentada pelo cabo de alimentação do kit (o ACU-100 não alimenta a espinha). Fica sem derivação livre: o Axiom, mais tarde, pede mais um T (A06028).</div>
+
+<div class="caixa"><b>Fora desta lista:</b> o alternador de reserva (M5, €201,64, opcional), o ecrã definitivo SailProof 10" (só depois dos testes com o 7"), o piloto EV-100 Wheel (já comprado a 14/10, chega até 20/11) e toda a fase 2 (solar, baterias e material elétrico: lista completa em lista-compras-arlequin.pdf).</div>
+
+<footer>Preços lidos nas páginas das lojas a 14/10/2026; podem mudar — confirmar antes de encomendar. Detalhe e decisões: NAVEGACAO.md no repositório (ramo claude/piloto-automatico-cwnr0f).</footer>
+</body>
+</html>
