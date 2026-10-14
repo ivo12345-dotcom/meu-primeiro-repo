@@ -3,8 +3,7 @@
 Notas de trabalho. Continuação de uma conversa anterior — lê este ficheiro
 todo antes de responder para recuperares o contexto.
 
-> **Decidido a 02/10/2026: Raymarine EV-100 de roda (Wheel), ref. T70152 — por comprar e
-> instalar.** Palavras do Ivo: "Já decidi, é este que vou comprar." **Enquanto não estiver comprado
+> **Decidido a 02/10/2026: Raymarine EV-100 de roda (Wheel), ref. T70152 — comprado a 14/10/2026, chega até 20/11/2026; por instalar.** Palavras do Ivo: "Já decidi, é este que vou comprar." **Enquanto não estiver montado
 > e montado, continua a não haver piloto automático:** o ST4000+ que está a bordo **não governa**
 > (falta a unidade de roda, §4) e só dá a proa (bússola fluxgate). A única reserva de governo é a
 > **cana de emergência** (`LEME-EMERGENCIA.md`, Camada A). A decisão está no §3; as outras opções
@@ -95,7 +94,7 @@ do barco. **Vale também para o EV-100:** depois de montado, confirmar que, com 
 ## 3. Piloto automático: decidido a 02/10 — Raymarine EV-100 Wheel (T70152)
 
 **Decisão do Ivo (02/10/2026):** "Já decidi, é este que vou comprar." O piloto do Arlequin é o
-**Raymarine EV-100 de roda (Wheel), ref. T70152**. **Estado: por comprar e instalar.**
+**Raymarine EV-100 de roda (Wheel), ref. T70152**. **Estado: comprado a 14/10/2026, chega até 20/11/2026; por instalar (o Ivo comprou-o a 14/10; chega até 20/11/2026).**
 
 **O que vem no pack T70152:** o comando **p70s**, o sensor de rumo **EV-1**, a unidade de controlo
 **ACU-100**, a **unidade de roda** (o motor que vai na roda) e os **cabos SeaTalkNG**.

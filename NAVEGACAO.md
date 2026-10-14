@@ -9,7 +9,7 @@ aparelho ficam por fechar até haver fotos (ver §8).
 Toda a eletrónica de bordo num **só ecrã tátil na roda de leme**, com os dados
 **sobrepostos a uma carta náutica** (tipo Navionics): AIS, vento,
 profundidade, radar e rota enviada ao piloto (quando houver piloto: o EV-100 Wheel está decidido
-mas ainda por comprar e instalar, ver §1).
+mas ainda comprado a 14/10/2026, chega até 20/11/2026; por instalar, ver §1).
 
 A eletrónica que existe a bordo: **anemómetro, plotter, radar, VHF, AIS,
 Navtex** e o piloto **ST4000+** (SeaTalk1). Das marcas e modelos ainda não se
@@ -39,7 +39,7 @@ valores.
 | Leme | Semi-suspenso, num patilhão (*skeg*) que protege a parte de cima da lâmina |
 | Popa | Espelho invertido (o painel inclina-se para vante) |
 | Governo | **Roda de leme, com travão** (Ivo, 29/09). O barco nasceu com cana (a ficha diz "barre franche"); a cana de inox de emergência encaixa no topo da madre (`LEME-EMERGENCIA.md`, Camada A) |
-| Piloto automático | **Ainda não há.** Decidido a 02/10: **Raymarine EV-100 Wheel** (de roda, ref. T70152), **por comprar e instalar** (`PILOTO-AUTOMATICO.md` §3). Limite do fabricante: 7 500 kg carregado; o Arlequin carregado anda pelos ~7,2 t (6 046 kg + 20 %): perto do limite, rizar cedo. O ST4000+ não governa (falta a unidade de roda) e só dá a proa |
+| Piloto automático | **Ainda não há.** Decidido a 02/10: **Raymarine EV-100 Wheel** (de roda, ref. T70152), **comprado a 14/10/2026, chega até 20/11/2026; por instalar** (`PILOTO-AUTOMATICO.md` §3). Limite do fabricante: 7 500 kg carregado; o Arlequin carregado anda pelos ~7,2 t (6 046 kg + 20 %): perto do limite, rizar cedo. O ST4000+ não governa (falta a unidade de roda) e só dá a proa |
 | Motor | **Volvo Penta D1-20B** (de origem: Yanmar 2QM) |
 | Gasóleo | **200 L**, depósito de inox que parece ter sido prolongado para trás (de origem: 90 L) |
 | Água doce | 2 depósitos flexíveis, debaixo dos beliches da sala. De origem: **180 L** ao todo (ficha; 48 galões, ~182 L, na Wikipedia e no sailboatdata). O plugin da água assume **2 × 80 L** (configurável). A capacidade de cada depósito: **por confirmar no barco** (§8b, ponto 11) |
@@ -57,7 +57,7 @@ valores.
 | Ecrã (fase 1, testes) | **LAFVIN 7" HDMI, tátil** (€48,78) | Barato, HDMI + USB como o definitivo. Serve para provar o sistema |
 | Ecrã (fase 2, definitivo) | **SailProof STS10, 10"** (€499) | Só se a fase 1 correr bem. 1500 nits, IP65, toque com água e luvas |
 | Suporte | **Impresso em ASA**, com pala e tampa | O PETG degrada-se ao sol. O ASA foi feito para o exterior |
-| Piloto automático | **Raymarine EV-100 Wheel (T70152)**, decidido pelo Ivo a 02/10: **por comprar e instalar**. Até lá **não há piloto**: o ST4000+ não governa (falta a unidade de roda) e só dá a proa | Tem de ser de roda (regra do Ivo de 27/09; o atuador abaixo do convés ficou excluído). Pormenores e limitação (7 500 kg carregado) no `PILOTO-AUTOMATICO.md` §3. Até estar montado, a única reserva de governo é a cana de emergência (§6) |
+| Piloto automático | **Raymarine EV-100 Wheel (T70152)**, decidido pelo Ivo a 02/10: **comprado a 14/10/2026, chega até 20/11/2026; por instalar**. Até lá **não há piloto**: o ST4000+ não governa (falta a unidade de roda) e só dá a proa | Tem de ser de roda (regra do Ivo de 27/09; o atuador abaixo do convés ficou excluído). Pormenores e limitação (7 500 kg carregado) no `PILOTO-AUTOMATICO.md` §3. Até estar montado, a única reserva de governo é a cana de emergência (§6) |
 
 ### Porque é que a Navionics não é o ecrã principal
 
@@ -381,7 +381,7 @@ Fontes: [em-trak B330, manual](https://alphatronmarine.com/files/secured/docuwar
 **Decisão de 28/09 (Ivo):** o ST4000+ **não governa** (falta a unidade de roda) e o
 EV-100 **não vem para já**. Do piloto **só se lê a proa** (a bússola) pelo
 SeaTalk1. Não se liga nada à entrada NMEA dele. O que está abaixo sobre a rota para o ST4000+ fica
-como registo. (A 02/10 o Ivo decidiu o piloto: **Raymarine EV-100 Wheel**, por comprar e instalar,
+como registo. (A 02/10 o Ivo decidiu o piloto: **Raymarine EV-100 Wheel**, comprado a 14/10/2026, chega até 20/11/2026; por instalar,
 `PILOTO-AUTOMATICO.md` §3. Esse recebe a rota pela NMEA 2000, "Fase 2b" no §4.)
 
 | Aparelho | O que diz a documentação | Consequência |
@@ -867,7 +867,7 @@ um Orion XS 12/12-50 (§8b, ponto 15). O aerogerador ficou de fora (§5c). **O e
 | **Total** | **~120 Ah (sem piloto) · ~185 Ah (com EV-100)** | **~27 Ah** |
 
 "Com EV-100", aqui e no §5c, quer dizer com o piloto decidido a 02/10, o EV-100 Wheel (2–4 A). Hoje
-ainda não há piloto: está por comprar e instalar (`PILOTO-AUTOMATICO.md` §3).
+ainda não há piloto: está comprado a 14/10/2026, chega até 20/11/2026; por instalar (`PILOTO-AUTOMATICO.md` §3).
 
 As duas linhas dos ecrãs juntam o LAFVIN na roda e um 2.º ecrã na mesa, o que não acontece ao mesmo
 tempo: na fase 1 não há ecrã 2 (menos ~6 Ah); na fase 2 a roda leva o STS10, que gasta mais (~19 W
@@ -1077,7 +1077,7 @@ pressão, **estado do piloto**, **alarme AIS**.
 
 **Dependências:** seguir a rota em track, mandar a melhor rota ao piloto e um Recolher velas
 automático precisam de um **piloto automático**, que **ainda não há** (o EV-100 Wheel está decidido
-mas por comprar e instalar: `PILOTO-AUTOMATICO.md` §3); hoje o Recolher velas faz-se à mão, guiado
+mas comprado a 14/10/2026, chega até 20/11/2026; por instalar: `PILOTO-AUTOMATICO.md` §3); hoje o Recolher velas faz-se à mão, guiado
 pela página Velas. O
 abatimento precisa do **sensor de inclinação**; a polar começa **estimada** e aprende-se a navegar.
 
