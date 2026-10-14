@@ -1,0 +1,40 @@
+{
+ "intro": {
+  "sobre": "ARLEQUIN · Jeanneau Melody 34 · Peniche",
+  "titulo": "O ecrã da roda, a funcionar",
+  "subtitulo": "Raspberry Pi 5 + Signal K + OpenCPN + 10 plugins próprios. Aqui no portátil, com o barco simulado a navegar de Peniche para a Nazaré.",
+  "pontos": ["Oito páginas e o modo noite, todas com botões de um toque, para luvas e para a solo", "O que cada página mostra e o que cada botão faz", "No fim: a polar do barco, e como vai ficando fidedigna com a AI a bordo"],
+  "rodape": "Gravado a 14/10/2026 · tudo o que se vê é software real a correr; o que ainda não está no barco está assinalado"
+ },
+ "polar-1": {
+  "sobre": "A POLAR · 1 de 4",
+  "titulo": "O que é a polar e a que está a bordo hoje",
+  "subtitulo": "A polar diz quantos nós o barco anda para cada vento e cada ângulo. É a base do planeamento da rota e do «% da polar» dos instrumentos.",
+  "pontos": ["**Hoje é estimada:** reduzida de um certificado ORC de um barco maior (×0,85), limite 7,3 nós, bolina a 42°", "Nunca foi medida no Arlequin: serve para arrancar, não para confiar", "Está num ficheiro simples (CSV) que o ecrã, a rota e a AI leem"],
+  "imagem": "docs/video/polar-estimada.png"
+ },
+ "polar-2": {
+  "sobre": "A POLAR · 2 de 4",
+  "titulo": "Onde nasce a polar verdadeira: a caixa negra",
+  "subtitulo": "Desde o primeiro dia o barco escreve tudo o que lhe acontece, de 10 em 10 segundos.",
+  "pontos": ["25 colunas por linha: posição, proa, COG, SOG, velocidade na água, vento real e aparente, rajada, adorno, pressão, rotações, grande (rizos) e genoa (%)", "**Marca «estável»:** 2 minutos com a proa a variar menos de 10°, mais de 1 nó na água, longe dos portos; só estas linhas ensinam", "**Marca «simulado»:** tudo o que vem do simulador ou dos ensaios fica de fora; a AI nunca aprende com o que não é o barco", "A página Velas é o que diz à AI com que velas o barco andou"]
+ },
+ "polar-3": {
+  "sobre": "A POLAR · 3 de 4",
+  "titulo": "Como a AI aprende a polar, e como se protege",
+  "subtitulo": "Sozinho no porto (parado, motor desligado, 1 h depois da última saída) o Pi treina em Python, com prioridade baixa.",
+  "pontos": ["Modelo da velocidade à vela: aprende a velocidade real para cada vento, ângulo, rizos e genoa; dá três respostas: P10, P50 e P90", "**Só entra em uso se errar menos do que a polar de origem** na última saída; senão fica arquivado", "Precisa de 5 h de navegação estável e 2 saídas; o 1.º modelo pode pedir umas 8 h de vela variada", "Cada treino fica numa versão (v0001, v0002…) com registo; «Treinar agora» e «Voltar atrás» no Diário", "Fora do que treinou (vento, ângulo) devolve a polar de origem: nunca inventa"]
+ },
+ "polar-4": {
+  "sobre": "A POLAR · 4 de 4",
+  "titulo": "O que muda à medida que a polar fica fidedigna",
+  "subtitulo": "A melhor rota passa a usar a velocidade aprendida em vez da estimada, nos três cenários.",
+  "pontos": ["**Pessimista:** velocidade P10, vento P90 (nunca abaixo do previsto), gasóleo P90", "**Provável:** P50 em tudo · **Otimista:** velocidade P90, vento P10", "Nos instrumentos, o «% da polar» passa a comparar com o barco real; a bolina de 42° também se corrige quando as linhas provarem outra coisa", "No Diário vê-se «AI: a aprender», o que aprendeu, a versão e as horas que faltam", "A decisão continua a ser do skipper: a AI muda os números, não o veredicto"]
+ },
+ "estado": {
+  "sobre": "ESTADO A 14/10/2026",
+  "titulo": "O que já funciona e o que vem a seguir",
+  "pontos": ["**Software:** as 8 páginas, alarmes, melhor rota, leme a navegar, caixa negra, AI, porto e Telegram: feito e testado (1 471 testes)", "**A bordo:** AIS, VHF, instrumentos NASA e ST50, motor D1-20; piloto EV-100 comprado, chega até 20/11", "**A instalar:** Pi 5 e MacArthur HAT, ecrã da roda, 2 painéis de 625 W com MPPT, SmartShunt, 4 baterias AGM novas, esquema elétrico já entregue ao eletricista", "**A polar:** começa estimada; fica fidedigna a navegar, saída a saída"],
+  "rodape": "Repositório: github.com/ivo12345-dotcom/meu-primeiro-repo · ramo claude/piloto-automatico-cwnr0f"
+ }
+}

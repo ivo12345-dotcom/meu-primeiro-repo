@@ -21,3 +21,7 @@ software/dev/arlequin-dados/
 # Python
 __pycache__/
 .pytest_cache/
+
+# vídeos da demonstração (pesados): ficam fora do git, só as ferramentas e os cartões
+docs/video/*.mp4
+docs/video/*.srt
