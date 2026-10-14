@@ -20,7 +20,9 @@ Regra: o cabo velho é o molde; medir esticado no cais, diâmetro com paquímetr
 | Cunningham | | | | | | 6–8 | poliéster | |
 | Escotas de spi (2) — fase 3 | | | | | | 10 | poliéster | |
 
-Esperado pelas contas (I = 14,17 m): drizas do topo ~30–31 m cada; escotas de genoa ~1,5 × 10,3 m ≈ 16 m cada (a lista antiga dizia 32 m para as duas); escota da maior = voltas da talha × 3,63 m + rabicho.
+**Ivo (14/10): quer comandar tudo a partir da roda do leme → cabos mais compridos.** Contas com I = 14,17 m, E = 3,63 m, pé do mastro → mordentes junto à roda ≈ 5,5 m (≈ 3 m se os mordentes ficarem à escotilha) e 3 m de rabicho para o winch (medir o caminho real com um cordel hoje): driza da maior 2 × 14,2 + 5,5 + 3 ≈ **37 m**; rizo 1 ≈ 2 × 3,63 + 2 × 1,5 + 2 + 5,5 + 3 ≈ **21 m**, rizo 2 ≈ **24 m** (rizo de linha única; se for de duas linhas, menos); amantilho, se for cabo corrido do topo do mastro à ponta da retranca e levado à ré: 13,4 + 14,2 + 5,5 + 2 ≈ **35 m** (se for arame com talha na retranca, só a talha); boom jack (contra) com a talha 4:1 e o cabo à ré ≈ **12 m**; escotas de genoa 2 × **18 m**; escota da maior **25 m** (voltas da talha × 3,63 + rabicho). Total ≈ 190 m. Ferragens se não existirem: organizador de convés de 4 roldanas, 2 blocos de pé de mastro, mordente quádruplo 8–12 mm (Spinlock XTS ou Lewmar D1), winch self-tailing 30–40 junto à roda, chapas de reforço e vedante.
+
+Esperado pelas contas (I = 14,17 m), para cabos ao mastro/à escotilha: drizas do topo ~30–31 m cada; escotas de genoa ~1,5 × 10,3 m ≈ 16 m cada (a lista antiga dizia 32 m para as duas); escota da maior = voltas da talha × 3,63 m + rabicho.
 
 Notas do dia (roldanas do topo, caixas de saída, mordentes, mensageiros deixados, o que falta):
 
