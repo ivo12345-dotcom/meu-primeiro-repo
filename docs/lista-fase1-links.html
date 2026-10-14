@@ -35,7 +35,7 @@ footer { margin-top: 12px; color: #777; font-size: 8pt; border-top: 1px solid #d
 <body>
 <header>
   <h1>ARLEQUIN · Fase 1 — lista de compras com links</h1>
-  <div class="sub">Navegação (Pi, ecrã, sensores) + motor J1939 + água doce · links e preços validados a 14/10/2026 (com IVA, sem portes) · carregar no nome da loja abre a página do artigo</div>
+  <div class="sub">Navegação (Pi, ecrã, sensores) + motor J1939 + água doce · links e preços validados a 14/10/2026 (com IVA, sem portes) · artigos da Amazon já no cesto da conta do Ivo (15/10) · carregar no nome da loja abre a página do artigo</div>
 </header>
 
 <h2 class="nav">1. Navegação — Pi, ecrã, sensores e ligações · €746,35</h2>
@@ -65,35 +65,35 @@ footer { margin-top: 12px; color: #777; font-size: 8pt; border-top: 1px solid #d
 <tr class="soma"><td></td><td>Subtotal</td><td></td><td class="p">€746,35</td></tr>
 </table>
 
-<h2 class="mot">2. Motor · J1939 do D1-20B (ligação direta à cablagem) · €68,67</h2>
+<h2 class="mot">2. Motor · J1939 do D1-20B (ligação direta à cablagem) · €65,66</h2>
 <table>
 <tr><th>#</th><th>Peça</th><th>Loja (link)</th><th class="p">Preço</th></tr>
 <tr><td class="n">M1</td><td>Adaptador <b>USB–CAN isolado</b> InnoMaker USB2CAN (SocketCAN nativo, ficha micro-USB) — <b>jumper 120 Ω desligado</b></td><td class="l"><a href="https://www.amazon.es/dp/B0956NV6CM">Amazon.es</a></td><td class="p">€37,02</td></tr>
 <tr><td class="n">M2</td><td>Terminal DB9 fêmea → parafusos, 2 unidades (pino 7 CAN-H, 2 CAN-L, 3 massa)</td><td class="l"><a href="https://www.amazon.es/dp/B08153D2F1">Amazon.es</a></td><td class="p">€12,19</td></tr>
 <tr><td class="n">M3</td><td>Cabo USB-A → micro-USB 3 m, Amazon Basics com trança dupla (do InnoMaker até ao Pi)</td><td class="l"><a href="https://www.amazon.es/dp/B074VN744Q">Amazon.es</a></td><td class="p">€7,47</td></tr>
-<tr><td class="n">M4</td><td>Fita autovulcanizável TEKKA 10 m × 19 mm (1 kV) + fita isoladora 3M Temflex 1500 (19 mm × 20 m) + 100 abraçadeiras pretas 200 × 3,6 mm</td><td class="l"><a href="https://www.amazon.es/dp/B07BMYYKY4">Amazon.es (vulcanizável)</a><br><a href="https://www.amazon.es/dp/B012WJ3QCK">Amazon.es (PVC)</a><br><a href="https://www.amazon.es/dp/B0GSDKCCQW">Amazon.es (abraçadeiras)</a></td><td class="p">€6,30 + €1,94 + €3,75 = €11,99</td></tr>
-<tr class="soma"><td></td><td>Subtotal</td><td></td><td class="p">€68,67</td></tr>
+<tr><td class="n">M4</td><td>Fita autovulcanizável Cofan 25 m × 19 mm + fita isoladora 3M Temflex 1500 (19 mm × 20 m) + 100 abraçadeiras pretas 200 × 3,6 mm <span class="nota">(a TEKKA de 10 m ficou indisponível a 15/10; a Cofan é mais longa e mais barata)</span></td><td class="l"><a href="https://www.amazon.es/dp/B00L1C9SCM">Amazon.es (vulcanizável)</a><br><a href="https://www.amazon.es/dp/B012WJ3QCK">Amazon.es (PVC)</a><br><a href="https://www.amazon.es/dp/B0GSDKCCQW">Amazon.es (abraçadeiras)</a></td><td class="p">€3,29 + €1,94 + €3,75 = €8,98</td></tr>
+<tr class="soma"><td></td><td>Subtotal</td><td></td><td class="p">€65,66</td></tr>
 </table>
 <div class="caixa"><b>Não comprar:</b> o kit de rede NMEA 2000 micro-C (a espinha SeaTalkng vem no kit de cabos do EV-100 Wheel, ponto 18) nem o Waveshare USB-CAN-A (não é SocketCAN). As fichas Deutsch e o cabo CAN de 10 m deixaram de ser precisos: o InnoMaker fica junto ao motor, com uma derivação soldada ≤ 50 cm, e daí vai o cabo USB (M3) até ao Pi. Plano B se a escuta falhar: YDEG-04N (~€263,52).</div>
 
-<h2 class="mot">3. Água doce · bombas de pé · €23,31</h2>
+<h2 class="mot">3. Água doce · bombas de pé · €28,17</h2>
 <table>
 <tr><th>#</th><th>Peça</th><th>Loja (link)</th><th class="p">Preço</th></tr>
 <tr><td class="n">A1</td><td>3 sensores magnéticos (reed) MC-38 com cabo — 1 por pedal de água doce + 1 de reserva <span class="nota">(a bomba de água do mar não leva)</span></td><td class="l"><a href="https://www.amazon.es/dp/B093LBSDH1">Amazon.es</a></td><td class="p">€7,06</td></tr>
-<tr><td class="n">A2</td><td>ESP32 DevKitC WROOM-32U com antena externa <span class="nota">(só se os pedais ficarem longe do Pi)</span></td><td class="l"><a href="https://www.amazon.es/dp/B0H1WQCMJ1">Amazon.es</a></td><td class="p">€16,25</td></tr>
-<tr class="soma"><td></td><td>Subtotal</td><td></td><td class="p">€23,31</td></tr>
+<tr><td class="n">A2</td><td>ESP32 DevKitC V4 USB-C com módulo WROOM-32U e antena externa (MMMO) <span class="nota">(só se os pedais ficarem longe do Pi; o anterior ficou indisponível a 15/10)</span></td><td class="l"><a href="https://www.amazon.es/dp/B0CXVMSD2F">Amazon.es</a></td><td class="p">€21,11</td></tr>
+<tr class="soma"><td></td><td>Subtotal</td><td></td><td class="p">€28,17</td></tr>
 </table>
 
-<h2 class="tot">Total da fase 1 · €838,33 + portes</h2>
+<h2 class="tot">Total da fase 1 · €840,18 + portes</h2>
 <table>
 <tr><th>Loja</th><th>Pontos</th><th class="p">Subtotal</th></tr>
-<tr><td><a href="https://www.amazon.es">Amazon.es</a> <span class="nota">todos em stock a 14/10; com Prime os portes saem grátis</span></td><td>1, 4, 7, 7b, 10, 13, 16, 19, M1, M2, M3, M4, A1, A2</td><td class="p">€516,86</td></tr>
+<tr><td><a href="https://www.amazon.es">Amazon.es</a> <span class="nota">todos em stock a 14/10; com Prime os portes saem grátis</span></td><td>1, 4, 7, 7b, 10, 13, 16, 19, M1, M2, M3, M4, A1, A2</td><td class="p">€518,71</td></tr>
 <tr><td><a href="https://www.svb24.pt">SVB</a> <span class="nota">em stock a 14/10; portes para Portugal à parte</span></td><td>11, 20</td><td class="p">€107,34</td></tr>
 <tr><td><a href="https://shop.openmarine.net">OpenMarine</a> <span class="nota">preços sem IVA no site (IVA à taxa portuguesa no checkout); só envia às segundas e terças</span></td><td>5, 6</td><td class="p">€104,55</td></tr>
 <tr><td><a href="https://www.botnroll.com">Botnroll</a> <span class="nota">loja portuguesa (Vila Nova de Gaia); 5 artigos numa só encomenda</span></td><td>2, 13, 14, 15, 17</td><td class="p">€46,60</td></tr>
 <tr><td><a href="https://o-charts.org/shop/en/">o-charts</a> <span class="nota">preços sem IVA no site; depois da compra há passos no manual para obter a transferência</span></td><td>8, 9</td><td class="p">€43,05</td></tr>
 <tr><td><a href="https://raspberrypi.dk/en/">RaspberryPi.dk</a> <span class="nota">envia da Dinamarca; a base NVMe estava em stock a 14/10</span></td><td>3</td><td class="p">€19,93</td></tr>
-<tr class="soma"><td>Total (sem portes)</td><td></td><td class="p">€838,33</td></tr>
+<tr class="soma"><td>Total (sem portes)</td><td></td><td class="p">€840,18</td></tr>
 </table>
 
 <div class="caixa"><b>Como ligar a rede (ponto 18 e 20):</b> o EV-100 Wheel traz o kit R70160 — ligador de 5 vias (3 derivações: EV-1, ACU-100 e p70s), espinha de 5 m, 2 T e 2 terminadores. O ligador fica no poço, a espinha de 5 m vai até à mesa de cartas e aí os 2 T recebem o Pi (MacArthur) e o AIS B330, cada um com um A06045. A rede é alimentada pelo cabo de alimentação do kit (o ACU-100 não alimenta a espinha). Fica sem derivação livre: o Axiom, mais tarde, pede mais um T (A06028).</div>
