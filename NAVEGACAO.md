@@ -454,8 +454,14 @@ radar, não vê terra nem rochas. Ficha oficial 2026 (sailing, sem IVA): **Lite*
 artigos de lançamento). **Opinião (14/10): não agora.** A noite a solo é o caso de uso certo, mas o modelo que
 serve à noite é o 320 (€8 290 + €1 490/ano), gasta 50 Ah por noite num banco de 192 Ah e não fala com o sistema do
 barco; antes disso vêm as baterias, o solar, o EV-100 e o AIS. Se um dia houver verba: o Sailing 320 é o mínimo
-útil; o Lite não resolve o problema da noite. Alternativa barata para a vigia a solo: monóculo térmico de mão
-(€500–1 500) + zonas de guarda do AIS e do radar.
+útil; o Lite não resolve o problema da noite. **Para a vigia a solo o Ivo já tem térmica (14/10): a mira AGM Rattler V2**
+(12 µm, 50 Hz, Wi-Fi com a app AGM Connect, 2 × 18650 para 9–11,5 h ou alimentação externa USB-C 5 V/2 A, IP67,
+~0,5 kg; alcance de deteção AGM para um alvo de 1,8 m: 870 m (19-256) a 2 400 m (50-640); campo de visão estreito,
+7° a 12,5°). Usa-se de mão como monóculo: varrimento do horizonte de 15 em 15 min na ampliação mínima (uns 2 min
+por volta), cruzado com os alarmes do AIS e, quando houver, a zona de guarda do radar; tirar o favo anti-BB no mar
+(tapa ~40 % da lente), passar a lente por água doce no fim; suporte Picatinny de libertação rápida junto à roda e
+fio de segurança; a app pode mostrar a imagem no telemóvel na mesa de cartas. O que a Rattler não faz e a SEA.AI
+faz: vigiar sozinha e alarmar.
 
 ## 4. Lista de material
 
