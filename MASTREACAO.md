@@ -156,3 +156,27 @@ Aos 12 anos, **uma inspeção de mastreador continua a valer os €100–200** �
 não como veredicto, mas como **linha de base**: fica-se a saber o estado
 real, há um documento se o seguro perguntar, e sabe-se quantos anos restam
 antes de pensar nisto a sério.
+
+## Configuração de origem (ficha Jeanneau, especificação de 1982, versão GTE)
+
+Fonte: a ficha técnica guardada em `Documents\Veleirorochura` (sailboat-data.com/fr, 20/01/2016),
+confirmada em boat-specs.com; os diâmetros do cabo vêm do fórum Hisse-et-Oh (gréeur Technique
+Gréement, 2015) e de donos. Pedido do Ivo a 22/10/2026.
+
+| | |
+|---|---|
+| Armação | **Sloop de topo**, mastro **pousado no convés**, mastro e retranca em **alumínio**, cordame fixo **monotoron 1×19**, **um andar de cruzetas, sem ângulo (0°)** |
+| Mastro | **14,20 m** de comprimento; topo a **15,87 m** acima da linha de água |
+| Triângulos | **I 14,15 · J 4,50 · P 12,90 · E 3,65 m** (sailboatdata EN: 14,17 / 4,51 / 12,92 / 3,63) → retranca ≈ 3,65 m de esteira |
+| Velas de origem | Ao perto **75 m²**: grande **25** + genoa **50** (≈ 157 % do triângulo de proa, 31,8 m²); solent (*inter*) **33**; foque **21**; tormentim **9**; spi simétrico **100** (portante 125 m²) |
+| Cabos (origem) | **8 mm** em tudo (brandais altos, baixos e estais), só o **babystay a 7 mm**; alguns barcos (ex.: mastro de 1981, 9 cabos) saíram com **estai e estai de popa a 10 mm**. O Arlequin tem cordame de 12 anos, não o de origem: **medir com paquímetro** |
+| Leme / barra | Semi-suspenso, **cana** de origem (a roda do Arlequin é montagem posterior) |
+| Rácios | Lastro 48 % (2 900 kg em ferro fundido / 6 000 kg); IOR 27,5 pés; HN 18,5 |
+
+**Pontos fracos de origem conhecidos (vários donos no Hisse-et-Oh):**
+1. **Os capelagens dos brandais baixos no mastro**: são rasgos (lumières) onde encaixam os terminais em T; com a idade fissuram e o terminal salta → vários Melody desmastrearam assim. **Ver os rasgos à lupa quando se subir ao mastro.**
+2. **A chapa do estai de proa**: feita em varão redondo de inox soldado, sofre com o enrolador (não previsto no projeto). O gancho pelicano e o olhal do estai interior já estão na lista deste ficheiro; juntar a chapa do estai.
+3. **Suportes de cruzetas em inox pesados**: um dono encontrou um fissurado.
+4. Um mastro completo (com cordame e radar) pesou **450 kg** numa balança; é um perfil pesado ("poste da EDF"), e alguns barcos de regata saíram com perfil ainda maior e rebitado a meio.
+
+**O que as fontes não dão** (só medindo no barco ou na chapa do fabricante no pé do mastro/ponteiras da retranca): secção do mastro e da retranca, comprimento das cruzetas, marca dos espares.
