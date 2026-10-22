@@ -36,6 +36,7 @@ valores.
 | Deslocamento / lastro | **~6 t**: 6000 kg (deslocamento leve, ficha) ou 6 046 kg (sailboatdata) / **2 900 kg** em ferro fundido. **Carregado, ~7,2 t** (6 046 kg + 20 %: a conta do piloto, `PILOTO-AUTOMATICO.md` §3). As notas de 07/09 diziam 4,5–5 t |
 | Mastreação | Mastro pousado no convés, com **14,20 m** de comprimento (ficha), e **um só par de cruzetas**; a mastreação fixa tem **12 anos** (`MASTREACAO.md`) |
 | Plano vélico | **I = 14,17 m**, **P = 12,92 m**, **J = 4,51 m**, **E = 3,63 m** (sailboatdata e Wikipedia, 02/10). Com o I de 14,17 m, as drizas sobem a **~14,2 m acima do convés**, e não aos ~13 m que o `CABOS.md` contava: as drizas da lista (25, 28 e 30 m) ficam provavelmente curtas (a regra do `CABOS.md` dá ~30–31 m). **Medir as velhas antes de encomendar** |
+| Grande do Arlequin | **12,32 m de guinda × 3,55 m de esteira, com 3 rizos** (medida do Ivo, 22/10/2026). É 58 cm mais curta de guinda e 10 cm de esteira do que a de origem (P 12,90 × E 3,65): ≈ 21,9 m² de triângulo, ≈ 23–24 m² com a rabeira, contra 25 m² de origem. O sistema regista 0, 1, 2 ou 3 rizos; o planeador mete o 3.º rizo acima de 28 nós (rajadas 34) |
 | Leme | Semi-suspenso, num patilhão (*skeg*) que protege a parte de cima da lâmina |
 | Popa | Espelho invertido (o painel inclina-se para vante) |
 | Governo | **Roda de leme, com travão** (Ivo, 29/09). O barco nasceu com cana (a ficha diz "barre franche"); a cana de inox de emergência encaixa no topo da madre (`LEME-EMERGENCIA.md`, Camada A) |
@@ -1603,7 +1604,7 @@ o Arlequin.
 
 | Caminho | Valor | Quem publica | Quem lê |
 |---|---|---|---|
-| `sails.grande.rizos` | 0 inteira, 1 ou 2 rizos, −1 arriada | caixa negra (botões da página Velas) | ecrã (Velas), caixa negra (tabela da AI) |
+| `sails.grande.rizos` | 0 inteira, 1, 2 ou 3 rizos, −1 arriada | caixa negra (botões da página Velas) | ecrã (Velas), caixa negra (tabela da AI) |
 | `sails.genoa.percentagem` | percentagem, 0–100 (a norma usaria uma razão 0–1) | caixa negra (página Velas) | ecrã (Velas), caixa negra (tabela da AI) |
 | `sensors.porao.agua`, `sensors.porao.bomba`, `sensors.fumo`, `sensors.gasoleo.liquido`, `sensors.gaiuta.aberta`, `sensors.movimento` | 0/1 (ou falso/verdadeiro) | os sensores do barco parado: um ESP32 (SensESP) ou o GPIO do Pi | plugin porto (caminhos configuráveis) |
 | `tanks.fuel.0.senderVoltage`, `tanks.fuel.0.supplyVoltage` | V (a sonda e a alimentação do medidor) | a app I2C do OpenPlotter (ADS1115, A0 e A1) | plugin do gasóleo (caminhos configuráveis) |

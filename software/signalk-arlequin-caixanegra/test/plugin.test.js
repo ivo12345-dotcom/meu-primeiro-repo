@@ -131,7 +131,7 @@ test('velas: POST muda, publica e sobrevive a um reinício; inválido dá 400', 
   assert.equal(ok.ok, true)
   assert.equal(app.valores['sails.grande.rizos'], 1)
   assert.equal(app.valores['sails.genoa.percentagem'], 70)
-  const mau = await chamar(r.post['/velas'], { grandeRizos: 3 })
+  const mau = await chamar(r.post['/velas'], { grandeRizos: 4 })
   assert.equal(mau.code, 400)
   assert.match(mau.erro, /rizos/)
   p.stop()

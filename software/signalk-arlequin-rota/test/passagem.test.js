@@ -151,6 +151,23 @@ test('rizos pelas rajadas (20 e 27 nós) com os fatores 0,95 e 0,9, e evento', (
   assert.equal(vistos[0], 2)
 })
 
+test('3.º rizo (a grande do Arlequin tem 3, Ivo 22/10): acima de 28 nós ou rajadas de 34, fator 0,85 e evento', () => {
+  const r3 = simularPassagem(base({ tempo: () => ({ ...ventoFixo(30, 270)(), rajada: 36 }) }))
+  assert.equal(r3.pontos[0].rizos, 3)
+  assert.ok(Math.abs(r3.pontos[0].stw - 6 * 0.85 * 0.85) < 1e-12)
+  assert.equal(r3.eventos[1].texto, 'Rizar: 3 rizos (vento 30 nós, rajadas 36)')
+  // só pela rajada (tws abaixo do limiar do 3.º)
+  assert.equal(simularPassagem(base({ tempo: () => ({ ...ventoFixo(20, 270)(), rajada: 35 }) })).pontos[0].rizos, 3)
+  // a velocidade à vela recebe os 3 rizos
+  const vistos = []
+  simularPassagem(base({ tempo: () => ({ ...ventoFixo(30, 270)(), rajada: 36 }), velocidadeVela: (x) => { vistos.push(x.rizos); return 6 } }))
+  assert.equal(vistos[0], 3)
+  // opções antigas (sem rizo3, só 3 fatores): fica nos 2 rizos, com o último fator
+  const antigo = simularPassagem(base({ tempo: () => ({ ...ventoFixo(30, 270)(), rajada: 36 }), opcoes: { rizo3: null, fatoresRizos: [1, 0.95, 0.9] } }))
+  assert.equal(antigo.pontos[0].rizos, 2)
+  assert.ok(Math.abs(antigo.pontos[0].stw - 6 * 0.85 * 0.9) < 1e-12)
+})
+
 test('rizar por tws quando a rajada não tem previsão (null): o evento diz "sem previsão", não "NaN"', () => {
   // tws=18 > rizo1.tws (16) já riza por si só; rajada null nunca ultrapassa os limiares (não força rizo2)
   const r = simularPassagem(base({ tempo: () => ({ ...ventoFixo(18, 270)(), rajada: null }) }))

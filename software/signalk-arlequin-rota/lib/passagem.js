@@ -57,7 +57,7 @@ const PADRAO = Object.freeze({
   stwMotorRio: 4.8, // dentro dos portos e do rio
   fatorLeme: 0.85, // leme à mão, sozinho
   fatorMarVela: true, // também à vela o mar tira velocidade (0,8–1)
-  fatoresRizos: [1, 0.95, 0.9],
+  fatoresRizos: [1, 0.95, 0.9, 0.85], // 0, 1, 2 e 3 rizos (a grande do Arlequin tem 3)
   corredor: 0.7, // MN para cada lado da perna, nos bordos e nas cambadelas
   bolinaMin: 45, // graus: abaixo disto bordeja
   popaMax: 155, // graus: acima disto cambeia (sem piloto)
@@ -66,6 +66,7 @@ const PADRAO = Object.freeze({
   stwMinVela: 3, // nós
   rizo1: { rajada: 20, tws: 16 },
   rizo2: { rajada: 27, tws: 22 },
+  rizo3: { rajada: 34, tws: 28 }, // 3.º rizo (Ivo, 22/10/2026): o passo seguinte da mesma escada
   motorNasAproximacoes: true,
   chegadaWpMn: 0.15,
   chegadaPassagem: true, // também conta o ponto de rota ao passá-lo (não só a 0,15 MN)
@@ -193,11 +194,12 @@ function simularPassagem ({ rota, partida, tempo, correnteExtra, velocidadeVela,
         amura = null
       }
       const twa = dif(w.twd, rumoAlvo)
-      const rizosAgora = w.rajada > o.rizo2.rajada || w.tws > o.rizo2.tws ? 2 : (w.rajada > o.rizo1.rajada || w.tws > o.rizo1.tws ? 1 : 0)
+      const rizosAgora = (o.rizo3 && (w.rajada > o.rizo3.rajada || w.tws > o.rizo3.tws)) ? 3
+        : w.rajada > o.rizo2.rajada || w.tws > o.rizo2.tws ? 2 : (w.rajada > o.rizo1.rajada || w.tws > o.rizo1.tws ? 1 : 0)
       if (rizosAgora !== rizos) { ev(`${rizosAgora > rizos ? 'Rizar' : 'Largar rizo'}: ${rizosAgora} rizo${rizosAgora === 1 ? '' : 's'} (vento ${Math.round(w.tws)} nós, rajadas ${Number.isFinite(w.rajada) ? Math.round(w.rajada) : 'sem previsão'})`, 'vela'); rizos = rizosAgora }
       const twaPrevAbs = Math.abs(dif(prevTwdDe(w), rumoAlvo))
       stw = velocidadeVela({ twa, twaPrevAbs, tws: w.tws, twd: w.twd, rizos, w, t, lat: pos.lat, lon: pos.lon, rumo: rumoAlvo }) * o.fatorLeme * (o.fatorMarVela ? fatorMar : 1)
-      stw *= o.fatoresRizos[rizos]
+      stw *= o.fatoresRizos[rizos] ?? o.fatoresRizos[o.fatoresRizos.length - 1]
       if (stw < o.stwMinVela) motor = true
     }
     if (motor) { rumoAlvo = alvo.rumo; stw = (noPorto ? o.stwMotorRio : o.stwMotor) * fatorMar; amura = null }

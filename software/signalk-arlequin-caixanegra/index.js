@@ -20,7 +20,7 @@ const velasLib = require('./lib/velas')
 const { EXTRAS, DESTINOS_DA_ROTA, portosDaRota, juntarPortos, portoMaisPerto } = require('./lib/geo')
 const { proaVerdadeira, DECLINACAO_MAX_MS } = require('./lib/proa')
 
-const NOME_GRANDE = { 0: 'inteira', 1: '1 rizo', 2: '2 rizos', '-1': 'arriada' }
+const NOME_GRANDE = { 0: 'inteira', 1: '1 rizo', 2: '2 rizos', 3: '3 rizos', '-1': 'arriada' }
 // As notificações do plugin: notifications.arlequin.caixanegra.<id>.
 const NOTIFICACOES = ['disco', 'relogio', 'velas']
 

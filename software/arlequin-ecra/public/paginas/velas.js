@@ -10,7 +10,7 @@ import { motivo } from '../lib/erros.js'
 const PASSOS = ['Liga o motor', 'Aproa ao vento', 'Recolhe as velas', 'Terminado']
 
 const URL_VELAS = '/plugins/signalk-arlequin-caixanegra/velas'
-const GRANDE = [[0, 'Inteira'], [1, '1 rizo'], [2, '2 rizos'], [-1, 'Arriada']]
+const GRANDE = [[0, 'Inteira'], [1, '1 rizo'], [2, '2 rizos'], [3, '3 rizos'], [-1, 'Arriada']]
 const GENOA = [[100, '100%'], [70, '70%'], [50, '50%'], [0, 'Enrolada']]
 
 function estadoVelas (ctx) {

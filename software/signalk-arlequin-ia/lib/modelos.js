@@ -18,7 +18,7 @@
 //   prevOndas      m     altura das ondas prevista
 //   prevPeriodo    s     período das ondas previsto
 //   ondasAnguloRel graus |direção das ondas prevista − proa| (0–180)
-//   grandeRizos    −1 arriada, 0 inteira, 1 ou 2 rizos (no planeamento: os limiares da simulação)
+//   grandeRizos    −1 arriada, 0 inteira, 1, 2 ou 3 rizos (no planeamento: os limiares da simulação)
 //   genoaPct       %     0 enrolada … 100 toda aberta
 //   Quem dá o quê: o planeador passa a previsão em bruto do ponto e hora (lib/previsao.js: força, rajada e
 //   o ângulo entre o rumo e a DIREÇÃO em bruto) e as velas que decidiu; o `stwPolar` de preverVelocidade é

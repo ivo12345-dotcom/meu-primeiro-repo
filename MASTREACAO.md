@@ -173,6 +173,10 @@ Gréement, 2015) e de donos. Pedido do Ivo a 22/10/2026.
 | Leme / barra | Semi-suspenso, **cana** de origem (a roda do Arlequin é montagem posterior) |
 | Rácios | Lastro 48 % (2 900 kg em ferro fundido / 6 000 kg); IOR 27,5 pés; HN 18,5 |
 
+**A grande do Arlequin (Ivo, 22/10/2026): 12,32 m de guinda × 3,55 m de esteira, 3 rizos.** 58 cm mais curta de guinda e
+10 cm de esteira do que a de origem (P 12,90 × E 3,65): ≈ 7 % menos pano, o normal numa grande de cruzeiro cortada com
+folga para a driza e a retranca. Três rizos é o que convém a solo: o 3.º faz de grande de temporal.
+
 **Pontos fracos de origem conhecidos (vários donos no Hisse-et-Oh):**
 1. **Os capelagens dos brandais baixos no mastro**: são rasgos (lumières) onde encaixam os terminais em T; com a idade fissuram e o terminal salta → vários Melody desmastrearam assim. **Ver os rasgos à lupa quando se subir ao mastro.**
 2. **A chapa do estai de proa**: feita em varão redondo de inox soldado, sofre com o enrolador (não previsto no projeto). O gancho pelicano e o olhal do estai interior já estão na lista deste ficheiro; juntar a chapa do estai.

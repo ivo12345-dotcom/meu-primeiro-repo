@@ -11,6 +11,7 @@ Regra: o cabo velho é o molde; medir esticado no cais, diâmetro com paquímetr
 | Driza do spi | | | | | | 10 | Dyneema c/ capa | |
 | Rizo 1 (ao poço) | | | | | | 8–10 | Dyneema c/ capa | |
 | Rizo 2 (ao poço) | | | | | | 8–10 | Dyneema c/ capa | |
+| Rizo 3 (a grande tem 3 rizos, Ivo 22/10; hoje com cabo permanente ou só quando precisa: ver e decidir) | | | | | | 8–10 | Dyneema c/ capa | |
 | Escota da maior | | | | | | 10–12 | poliéster trança dupla | |
 | Escotas de genoa (2) | | | | | | 12 | poliéster trança dupla | |
 | Amantilho | | | | | | 8 | poliéster | |
