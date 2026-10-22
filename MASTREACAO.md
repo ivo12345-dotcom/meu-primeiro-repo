@@ -184,3 +184,29 @@ folga para a driza e a retranca. Três rizos é o que convém a solo: o 3.º faz
 4. Um mastro completo (com cordame e radar) pesou **450 kg** numa balança; é um perfil pesado ("poste da EDF"), e alguns barcos de regata saíram com perfil ainda maior e rebitado a meio.
 
 **O que as fontes não dão** (só medindo no barco ou na chapa do fabricante no pé do mastro/ponteiras da retranca): secção do mastro e da retranca, comprimento das cruzetas, marca dos espares.
+
+## Estai interior em Dyneema (decisão do Ivo, 22/10/2026)
+
+O estai interior amovível saiu do barco a 22/10. Vai ser substituído por um **estai em Dyneema puro**
+(sem capa), com a **vela de mau tempo presa por anéis de baixa fricção** que correm no estai, e com o
+**afinador metálico com gancho pelicano** que estava no cabo de aço, reaproveitado. **O cabo de aço mede
+12,45 m sem o esticador** (olhal a olhal).
+
+Receita recomendada (fontes: tabelas Hampidjan DynIce Dux e Marlow D12 MAX 78 na Jimmy Green; regra do
+fabricante de trabalhar abaixo de 20 % da carga de rotura para não haver fluência):
+
+| | |
+|---|---|
+| Material | Dyneema **SK78 ou SK99 termofixado e pré-esticado** (DynIce Dux, Marlow D12 MAX 78, Liros D-Pro XTR). Dyneema "normal" (não termofixado) estica e cede com o tempo: não serve num estai |
+| Diâmetro | **9 mm** (Dux 9 mm: rotura 10,9 t, 9,8 t com as costuras; D12 MAX 78 8 mm 8,7 t, 10 mm 11,7 t). O aço de 7 mm 1×19 rompe a ~4,4 t. Com a vela de mau tempo o estai não passa de ~1 t: a 9 mm fica abaixo dos 20 % da rotura, que é o que evita a fluência, e é grosso o suficiente para os anéis correrem sem desgastar |
+| Pontas | Olhal costurado (costura de 12 cordões, enterro de 72 diâmetros) em cima e em baixo, cada um com **sapatilho** (anel de baixa fricção ou sapatilho inox) à medida do perno do afinador e do capelo no mastro. Nunca nó |
+| Comprimento | Pedir **12,40 m olhal a olhal, medidos sob carga** (5 cm menos do que o aço): o afinador recupera a diferença. Quem cose faz uma ponta, carrega o estai (10–15 % da rotura, umas horas), marca e cose a outra. Nas primeiras saídas volta-se a afinar |
+| Anéis da vela | Anéis de baixa fricção de 20–25 mm de furo interior, presos à testa da vela por laçadas de Dyneema (3–4 mm), **com um laço de abertura** para largar a vela sem desfazer o estai; um anel a cada 50–60 cm. Os anéis podem ser de alumínio anodizado; o estai não precisa de capa para eles |
+| Manga anti-roço | Só nos 50 cm de baixo, onde o estai toca o convés e as escotas: manga de Dyneema cosida, folgada |
+| Gancho pelicano | **Confirmar as picadas antes de o reaproveitar** (ver "Gancho pelicano" acima): picadas fundas ou folga no perno → novo, €40–90. É a peça que falha de repente |
+| Base no convés | O olhal rebatível com 4 parafusos continua a precisar de **chapa de reforço confirmada por baixo** (paiol da proa) antes de o estai levar vela com vento |
+| Onde pega no mastro | Ver a que altura o capelo está em relação às cruzetas: se ficar bem acima delas, o mastro precisa de apoio para a ré quando o estai trabalha (brandais volantes ou os baixos à ré bem afinados) |
+| Vida | Inspeção anual à lupa nas costuras e onde os anéis correm; o Dyneema grosso aguenta bem o UV, mas o estai guardado ao abrigo quando não se usa dura mais |
+
+Vantagens que motivam a troca: pesa um quarto do aço, não bate no mastro nem risca o convés guardado,
+enrola-se, e um estai de Dyneema que se solta ou cai não fere ninguém.
