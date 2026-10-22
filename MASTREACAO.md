@@ -221,4 +221,8 @@ enrola-se, e um estai de Dyneema que se solta ou cai não fere ninguém.
   para a **roldana do amantilho**; o amantilho saiu (o boom vang rígido segura a retranca). **Trocar a
   roldana quando se mudar a mastreação em 2028** (e ver então as capelagens dos brandais baixos e os
   suportes das cruzetas, os pontos fracos de origem).
+- **Roldanas do topo (Ivo, 22/10):** são aos pares, gémeas, encostadas, com a mesma dimensão e à mesma
+  distância do centro da calha, por isso a driza da grande na roldana do amantilho corre exatamente como
+  na dela, sem ângulo nem roço. À frente, a caixa da driza da genoa tem também duas roldanas: uma para a
+  genoa e outra para o foque de temporal (estai interior).
 - Registo completo por área: `OBRAS.md`.
