@@ -19,6 +19,8 @@ Notas, desenhos e software do veleiro Arlequin, que navega sobretudo a solo.
 - [`MASTREACAO.md`](MASTREACAO.md) — a mastreação fixa.
 - [`CABOS.md`](CABOS.md) — o cordame de manobra.
 - [`QUILHA.md`](QUILHA.md) — a quilha, a osmose e a pintura do fundo.
+- [`OBRAS.md`](OBRAS.md) — o registo das obras e das peças substituídas: o que foi feito, quando,
+  por quem e o que falta (PDF em `docs/obras-arlequin-2026.pdf`).
 - [`TREM-DE-TRAS.md`](TREM-DE-TRAS.md) — o hélice, o veio e o casquilho.
 
 ## Desenhos e outros documentos
