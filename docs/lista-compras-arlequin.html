@@ -34,7 +34,7 @@ footer { margin-top: 12px; color: #777; font-size: 8pt; border-top: 1px solid #d
 <body>
 <header>
   <h1>ARLEQUIN · Jeanneau Melody 34</h1>
-  <div class="sub">Lista de compras do sistema de navegação, motor, energia, gasóleo e água · preços de 28–29/09/2026 (solar: 06/10; baterias, ligações NMEA e material elétrico: 14/10), com IVA, sem portes · <b>fase 1 (secções 1–3): links e preços revalidados a 14/10/2026; solar (secção 4): 22/10/2026</b></div>
+  <div class="sub">Lista de compras do sistema de navegação, motor, energia, gasóleo e água · preços de 28–29/09/2026 (solar: 06/10; baterias, ligações NMEA e material elétrico: 14/10), com IVA, sem portes · <b>fase 1 (secções 1–3): links e preços revalidados a 14/10/2026; solar (secção 4) e material elétrico (secção 5): 22/10/2026</b></div>
 </header>
 
 <h2 class="nav">1. Navegação — Pi, ecrã, sensores e ligações · €746,35</h2>
@@ -108,14 +108,14 @@ footer { margin-top: 12px; color: #777; font-size: 8pt; border-top: 1px solid #d
 <tr><td class="n">S10</td><td><i>Opcional:</i> Victron <b>Smart Battery Sense</b> (tensão e temperatura da bateria por Bluetooth: compensa a carga das AGM nos dois MPPT pela rede VE.Smart; o sensor com fio do SmartShunt, ref. ASS000100000, não apareceu nas lojas)</td><td class="l"><a href="https://www.svb24.pt/pt/victron-smart-battery-sense-sensor-de-tensao-e-temperatura-12-24-v.html">SVB</a></td><td class="p">€39,95 (opcional)</td></tr>
 </table>
 
-<h2 class="sol">5. Baterias e material elétrico · decisão de 08/10: ficam as 2 Tudor TK960 AGM (serviço) e 1 TG1101 (motor); entram 4 novas · material elétrico ≈ €470–730 (as 4 AGM, €680–800, ficam fora dos totais por agora: Ivo, 22/10)</h2>
+<h2 class="sol">5. Baterias e material elétrico · decisão de 08/10: ficam as 2 Tudor TK960 AGM (serviço) e 1 TG1101 (motor); entram 4 novas · material elétrico €673,19 (links validados a 22/10; as 4 AGM, €680–800, ficam fora dos totais por agora: Ivo, 22/10)</h2>
 <table>
 <tr><th>#</th><th>Peça</th><th>Loja</th><th class="p">Preço</th></tr>
 <tr><td class="n">B1</td><td><b>4 × AGM 96 Ah iguais às TK960</b> (Tudor TK960 ou Exide EK960: 12 V, 96 Ah, 850 A EN, caixa L05 353 × 175 × 190 mm, ~28 kg) para o serviço passar a 6 × 96 = 576 Ah <span class="nota">antes de as ligar em paralelo, testar as 2 atuais (§8b ponto 15 do NAVEGACAO); se fracas, as 2 vão para o guincho da âncora e o serviço fica 4 × 96 = 384 Ah. A bateria de arranque nova (Exide EP800) deixou de ser precisa: fica uma TG1101 de 110 Ah</span></td><td class="l">a cotar (innpo.pt, Norauto, Tudor)</td><td class="p">≈ €170–200 cada</td></tr>
-<tr><td class="n">B2</td><td>2 barramentos (positivo e negativo) de 250 A para 6 baterias em paralelo + 1 fusível principal Class T ou MEGA de 250 A com porta-fusível (positivo do banco) <span class="nota">o negativo do serviço passa todo pelo SmartShunt (S3)</span></td><td class="l">náutica / Victron, Blue Sea</td><td class="p">≈ €120–180</td></tr>
-<tr><td class="n">B3</td><td>Fusíveis por ramal: MIDI/ANL 63 A × 2 (MPPT, já em S4), ANL 80 A (inversor 600 W), ANL 100–125 A (guincho da âncora, confirmar potência), MEGA 100 A (alimentação do quadro com 16 mm²; 150 A se for 25 mm²), 10 A (EV-100 ACU-100), 5 A (Pi)</td><td class="l">náutica</td><td class="p">≈ €90–140</td></tr>
-<tr><td class="n">B4</td><td>Cabo estanhado: 50 mm² (baterias ↔ barramentos, comprimentos iguais), 35 mm² (alternador e guincho), 16 mm² (MPPT, inversor, quadro), terminais cravados com manga termorretrátil, etiquetas</td><td class="l">náutica</td><td class="p">≈ €150–250 (depende dos comprimentos: medir)</td></tr>
-<tr><td class="n">B5</td><td>Corta-corrente de serviço ON/OFF 300 A (substitui o seletor branco) + porta-fusíveis MEGA de borne (6) para as baterias de serviço</td><td class="l">náutica / Blue Sea, Victron</td><td class="p">≈ €110–160</td></tr>
+<tr><td class="n">B2</td><td>Barramentos BEP 300 A (×2) + fusível principal Class T 250 A com bloco (Renogy) <span class="nota">(detalhe e alternativas económicas: lista-eletrico-links.pdf)</span></td><td class="l"><a href="https://www.svb24.pt/pt/bepmarine-barramento-de-distribuicao-300-a.html">SVB (barramentos)</a><br><a href="https://www.amazon.es/dp/B0DS48KWCW">Amazon.es (Class T)</a></td><td class="p">€183,88 + €37,36 = €221,24</td></tr>
+<tr><td class="n">B3</td><td>Fusíveis por ramal: ANL 80 A (inversor) e 125 A (guincho) com porta-fusíveis SEATEC, MEGA 100 A com porta-fusíveis Victron (quadro), ATO 10 A (EV-100); os MIDI dos MPPT estão no solar <span class="nota">(detalhe e alternativas económicas: lista-eletrico-links.pdf)</span></td><td class="l"><a href="https://www.svb24.pt/pt/seatec-porta-fusiveis-anl-com-tampa.html">SVB (ANL)</a><br><a href="https://www.svb24.pt/pt/victron-porta-fusiveis-mega-montagem-em-superficie.html">SVB (MEGA)</a><br><a href="https://www.svb24.pt/pt/seatec-porta-fusiveis-em-linha-ato.html">SVB (ATO)</a></td><td class="p">€55,60 + €34,01 + €8,08 = €97,69</td></tr>
+<tr><td class="n">B4</td><td>Cabo flexível a metro (50 mm² ≈ 7 m, 35 mm² ≈ 4 m, 16 mm² ≈ 16 m; estimativa, <b>medir</b>) + terminais estanhados 50 mm² M10 e 35 mm² M8 + manga termorretrátil <span class="nota">(detalhe e alternativas económicas: lista-eletrico-links.pdf)</span></td><td class="l"><a href="https://www.svb24.pt/pt/cabos-de-controlo-flexiveis-unipolares.html">SVB (cabo ≈)</a><br><a href="https://www.amazon.es/dp/B0GTTTSB4B">Amazon.es (terminais)</a><br><a href="https://www.amazon.es/dp/B0CG5H59GC">Amazon.es (manga)</a></td><td class="p">€176,00 + €24,38 + €15,24 = €215,62</td></tr>
+<tr><td class="n">B5</td><td>Corta-corrente ON/OFF Blue Sea m-Series 300 A + 2 porta-fusíveis de borne MRBF Blue Sea 5191 + 2 fusíveis MRBF 150 A (mais 4 de cada quando as AGM novas entrarem) <span class="nota">(detalhe e alternativas económicas: lista-eletrico-links.pdf)</span></td><td class="l"><a href="https://www.amazon.es/dp/B00558LSJE">Amazon.es (corta-corrente)</a><br><a href="https://www.svb24.pt/pt/blue-sea-bloco-de-fusiveis-terminal-mrbf-com-furo-de-10-mm-e-parafuso-m8.html">SVB (MRBF ×2)</a><br><a href="https://www.svb24.pt/pt/mrbf-fusivel-de-bateria-para-bloco-de-fusiveis-de-terminal-com-parafuso-m8.html">SVB (fusíveis ×2)</a></td><td class="p">€39,62 + €78,46 + €20,56 = €138,64</td></tr>
 <tr><td class="n">B6</td><td>Carregador de cais Victron Blue Smart IP22 12/30 (3 saídas, perfil AGM) <span class="nota">opcional: só se o Navicom Invac não tiver perfil AGM (confirmar na placa)</span></td><td class="l">SVB</td><td class="p">≈ €280 (opcional)</td></tr>
 <tr><td class="n">—</td><td class="nota">Opção futura: lítio no serviço (2 × LiTime 200 Ah Bluetooth ~€450–550 cada + Victron Orion XS 12/12-50 €277,27 na SVB). O aerogerador ficou de fora (06/10).</td><td class="l">—</td><td class="p">—</td></tr>
 </table>
@@ -127,11 +127,11 @@ footer { margin-top: 12px; color: #777; font-size: 8pt; border-top: 1px solid #d
 <tr><td>Água doce</td><td class="p">€28,17</td></tr>
 <tr class="soma"><td>Navegação + motor + água (links validados a 14/10)</td><td class="p">€840,18 + portes</td></tr>
 <tr><td>Solar (2 × 625 W Yingli, 2 MPPT 100/50, SmartShunt, fusíveis, cabos, Cyrix; estrutura e entrega à parte)</td><td class="p">€961,77</td></tr>
-<tr><td>Material elétrico (barramentos, fusíveis, cabos, corta-corrente; sem as 4 AGM)</td><td class="p">≈ €470–730</td></tr>
+<tr><td>Material elétrico (barramentos, Class T, fusíveis, cabos, corta-corrente, MRBF; sem as 4 AGM)</td><td class="p">€673,19</td></tr>
 <tr><td class="nota">4 baterias AGM novas (€680–800): fora dos totais por agora (Ivo, 22/10)</td><td class="p nota">—</td></tr>
 <tr><td><b>Fase 1 — o sistema do vídeo a bordo (navegação + motor J1939 + água)</b></td><td class="p"><b>≈ €840 + portes</b></td></tr>
-<tr><td><b>Fase 2 — energia (solar + material elétrico, sem as baterias)</b></td><td class="p"><b>≈ €1 430–1 690</b></td></tr>
-<tr><td><b>Total das duas fases, sem os opcionais (estrutura do teto e baterias à parte)</b></td><td class="p"><b>≈ €2 270–2 530</b></td></tr>
+<tr><td><b>Fase 2 — energia (solar + material elétrico, sem as baterias)</b></td><td class="p"><b>€1 634,96</b></td></tr>
+<tr><td><b>Total das duas fases, sem os opcionais (estrutura do teto e baterias à parte)</b></td><td class="p"><b>€2 475,14</b></td></tr>
 <tr><td>Opcionais: carregador Blue Smart (€280), alternador de reserva (€202), seccionadores DC e Smart Battery Sense (€87), limpeza do depósito (a confirmar)</td><td class="p">≈ +€570</td></tr>
 <tr><td class="nota">Cabos, fitas e portes</td><td class="p nota">≈ €30–50</td></tr>
 </table>
