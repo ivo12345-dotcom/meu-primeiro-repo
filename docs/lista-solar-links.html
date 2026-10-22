@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<title>ARLEQUIN · Solar — lista de compras com links</title>
+<style>
+@page { size: A4 portrait; margin: 14mm 12mm 14mm 12mm; }
+* { box-sizing: border-box; }
+body { font-family: Arial, Helvetica, sans-serif; color: #1f1f1f; font-size: 9.6pt; margin: 0; }
+header { border-bottom: 1px solid #bbb; padding-bottom: 6px; margin-bottom: 10px; }
+h1 { font-size: 15pt; margin: 0; }
+.sub { color: #555; font-size: 9.5pt; margin-top: 3px; }
+h2 { font-size: 11.5pt; margin: 14px 0 5px; padding: 4px 8px; border-radius: 4px; }
+h2.nav { background: #E1F5EE; color: #085041; }
+h2.mot { background: #EEEDFE; color: #3C3489; }
+h2.sol { background: #FAEEDA; color: #633806; }
+h2.tot { background: #F1EFE8; color: #2C2C2A; }
+table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+tr { page-break-inside: avoid; }
+th { text-align: left; font-size: 8.5pt; color: #555; font-weight: normal; border-bottom: 1px solid #999; padding: 3px 5px; }
+td { padding: 3.5px 5px; border-bottom: 1px solid #e3e1da; vertical-align: top; }
+td.n { width: 22px; color: #777; }
+td.p { white-space: nowrap; text-align: right; width: 95px; }
+td.l { width: 120px; }
+th.p { text-align: right; }
+a { color: #185FA5; text-decoration: none; }
+.nota { color: #555; font-size: 8.5pt; }
+tr.soma td { font-weight: bold; border-top: 1px solid #999; border-bottom: none; }
+.caixa { border: 1px solid #ddd; border-radius: 5px; padding: 6px 9px; margin-top: 10px; font-size: 8.8pt; color: #333; }
+.caixa b { color: #1f1f1f; }
+footer { margin-top: 12px; color: #777; font-size: 8pt; border-top: 1px solid #ddd; padding-top: 5px; }
+</style>
+<style>@page { margin: 9mm 11mm 9mm 11mm; } body { font-size: 9pt; } td { padding: 2.5px 5px; } .caixa { font-size: 8.3pt; padding: 4px 8px; margin-top: 6px; } footer { margin-top: 6px; } header { margin-bottom: 6px; } h2 { margin: 8px 0 4px; }</style>
+</head>
+<body>
+<header>
+  <h1>ARLEQUIN · Energia solar — lista de compras com links</h1>
+  <div class="sub">2 × Yingli 625 W no teto por cima da roda, um MPPT por painel, SmartShunt no serviço · links e preços validados a 22/10/2026 (com IVA, sem portes) · carregar no nome da loja abre a página do artigo</div>
+</header>
+
+<h2 class="sol">Material · €1 100,03 sem a estrutura · opcionais €86,69</h2>
+<table>
+<tr><th>#</th><th>Peça</th><th>Loja (link)</th><th class="p">Preço</th></tr>
+<tr><td class="n">S1</td><td>2 painéis <b>Yingli PANDA 3.0 Pro 625 W</b> (YL625CF78 e/2; n-type TOPCon bifacial, 2465 × 1134 × 30 mm, 35 kg, Voc 55,72 V, Isc 14,28 A; ref. Leroy Merlin 73554725), €93,44 cada + entrega ao domicílio ≈ €35 <span class="nota">a 22/10 estava "indisponível" para levantamento na loja de Telheiras; só com entrega ao domicílio. Nunca ligar os dois em série (≈ 111 V > 100 V do MPPT)</span></td><td class="l"><a href="https://www.leroymerlin.pt/produtos/painel-solar-yingli-topcon-625-w-73554725.html">Leroy Merlin (×2)</a><br><a href="https://www.leroymerlin.pt/produtos/painel-solar-yingli-topcon-625-w-73554725.html">entrega</a></td><td class="p">€186,88 + €35,00 = €221,88</td></tr>
+<tr><td class="n">S2</td><td>2 × MPPT Victron <b>SmartSolar 100/50</b> (um por painel: 700 W a 12 V, Voc máx. 100 V, 50 A; Bluetooth, rede VE.Smart), €196,33 cada <span class="nota">limitar cada um a ~30 A enquanto o banco tiver 192 Ah; 50 A com os 576 Ah. Perfil AGM nos dois</span></td><td class="l"><a href="https://www.svb24.pt/pt/victron-controlador-de-carga-solar-smartsolar-mppt-100-50.html">SVB (×2)</a></td><td class="p">€392,66</td></tr>
+<tr><td class="n">S3</td><td>Victron <b>SmartShunt 500 A</b> (negativo do banco de serviço; Bluetooth, lido pelo Pi) </td><td class="l"><a href="https://www.svb24.pt/pt/victron-smartshunt-com-bluetooth-500-a.html">SVB</a></td><td class="p">€113,65</td></tr>
+<tr><td class="n">S4</td><td>2 fusíveis <b>MIDI 60 A</b> (um à saída de cada MPPT, junto às baterias; o valor MIDI mais próximo dos 63 A previstos) + 2 suportes MIDI em linha SEATEC, €6,15 cada</td><td class="l"><a href="https://www.svb24.pt/pt/fusiveis-midi-30-200-a-m5.html">SVB (fusíveis ×2)</a><br><a href="https://www.svb24.pt/pt/seatec-suporte-de-fusivel-midi-em-linha.html">SVB (suportes ×2)</a></td><td class="p">€8,16 + €12,30 = €20,46</td></tr>
+<tr><td class="n">S5</td><td>Cabo solar <b>6 mm² com MC4</b>: 2 cabos de 20 m (Oududianzi, €88,42 cada), <b>cada um cortado ao meio</b> → 4 troços de 10 m, um por polo e por painel, com a ficha MC4 do lado do painel e a ponta nua no MPPT (sem alicate de cravar) <span class="nota">alternativa mais barata: cabo SOLARFLEX a metro na SVB + pares MC4 (€2,50) + alicate MC4. Queda de tensão a 13,5 A em 10 m: ~0,8 V em 46 V (1,8 %)</span></td><td class="l"><a href="https://www.amazon.es/dp/B0BV1LWYF9">Amazon.es (×2)</a></td><td class="p">€176,84</td></tr>
+<tr><td class="n">S5b</td><td>Cabo <b>16 mm²</b> do MPPT ao barramento (2 × ~2 m, vermelho e preto): <b>já está no B4 do eletricista</b>; só os terminais tubulares 16 mm² M8 (Lumonic, 10 un.)</td><td class="l"><a href="https://www.amazon.es/dp/B074J9Z5SS">Amazon.es</a></td><td class="p">€7,12</td></tr>
+<tr><td class="n">S6</td><td>Estrutura inox do teto por cima da roda (2,3 × 2,5 m, ~70 kg de painéis, 5,6 m² ao vento: tubo de 32 mm ou mais, com escoras) — <b>serralheiro, orçamento</b> + parafusaria A4 M8 para os furos da moldura dos painéis (kit DIN 912 A4 M8 × 30)</td><td class="l"><a href="https://www.amazon.es/dp/B0H337YYF4">Amazon.es (parafusos)</a></td><td class="p">€10,52</td></tr>
+<tr><td class="n">S7</td><td>Victron <b>Cyrix-ct 12/24-120</b> (VSR, substitui o separador a díodos Power-first PF 270, que rouba 0,7–1 V à carga das AGM) <span class="nota">a SVB não o lista; na Amazon.es em stock</span></td><td class="l"><a href="https://www.amazon.es/dp/B071Y7C9MM">Amazon.es</a></td><td class="p">€53,64</td></tr>
+<tr><td class="n">S8</td><td>2 passa-cabos de convés <b>Scanstrut DS-HD10</b> (cada um leva os 2 cabos de um painel, 6–10 mm, IP68), €51,63 cada <span class="nota">ou 4 × DS-H10 (1 cabo cada, €35,09)</span></td><td class="l"><a href="https://www.svb24.pt/pt/p/scanstrut-ds-hd10-vedacao-de-cabos-para-cabos-de-satelite-e-solares-de-6-10-mm.html">SVB (×2)</a></td><td class="p">€103,26</td></tr>
+<tr><td class="n">S9</td><td><i>Opcional:</i> 2 seccionadores DC 2 polos 32 A / 500 V IP65 (um por painel, para isolar o painel ao mexer no MPPT: o MPPT nunca fica ligado ao painel sem bateria), €23,37 cada</td><td class="l"><a href="https://www.amazon.es/dp/B0CCYLX92K">Amazon.es (×2)</a></td><td class="p">€46,74 (opcional)</td></tr>
+<tr><td class="n">S10</td><td><i>Opcional:</i> Victron <b>Smart Battery Sense</b> (tensão e temperatura da bateria por Bluetooth: compensa a carga das AGM nos dois MPPT pela rede VE.Smart; o sensor com fio do SmartShunt, ref. ASS000100000, não apareceu nas lojas)</td><td class="l"><a href="https://www.svb24.pt/pt/victron-smart-battery-sense-sensor-de-tensao-e-temperatura-12-24-v.html">SVB</a></td><td class="p">€39,95 (opcional)</td></tr>
+<tr class="soma"><td></td><td>Subtotal sem a estrutura (S1–S8)</td><td></td><td class="p">€1 100,03</td></tr>
+<tr class="soma"><td></td><td>Estrutura inox do teto (serralheiro)</td><td></td><td class="p">€500–900</td></tr>
+<tr class="soma"><td></td><td>Opcionais (S9, S10)</td><td></td><td class="p">€86,69</td></tr>
+<tr class="soma"><td></td><td><b>Total com estrutura, sem opcionais</b></td><td></td><td class="p"><b>≈ €1 600,03 – €2 000,03</b></td></tr>
+</table>
+
+<div class="caixa"><b>Como liga (resumo do esquema do eletricista):</b> cada painel → seccionador (opcional) → MPPT próprio (strings independentes, nunca em série) → fusível MIDI 60 A → barramento positivo do banco de serviço. Negativos ao barramento negativo, que passa todo pelo SmartShunt. Os dois MPPT, o SmartShunt (e o Smart Battery Sense, se vier) ficam na mesma rede VE.Smart por Bluetooth: partilham tensão e temperatura e o Pi lê tudo. Perfil AGM nos MPPT: absorção 14,4 V, flutuação 13,8 V, corrente máxima 30 A por MPPT enquanto o banco for de 192 Ah (50 A com 576 Ah). O Cyrix-ct liga a bateria de arranque ao serviço só quando há carga.</div>
+
+<div class="caixa"><b>Antes de encomendar:</b> tirar as medidas do arco (largura útil de cada lado do radar, comprimento para a frente, diâmetro dos tubos, altura ao piso do poço, distância à roda e à retranca) e fechar o desenho da estrutura com o serralheiro: os painéis são 2,27 × 2,47 m lado a lado e pesam 64–70 kg. Os cabos de 10 m chegam do teto ao banco de baterias com folga; confirmar o percurso antes de cortar os de 20 m ao meio. Cabo de 16 mm² MPPT→barramento, terminais e manga: no B4 do eletricista.</div>
+
+<footer>Preços lidos nas páginas das lojas a 22/10/2026; podem mudar — confirmar antes de encomendar. Esquema completo: docs/esquema-eletrico-eletricista.pdf · lista geral: lista-compras-arlequin.pdf · decisões no NAVEGACAO.md (§5, §5c, §8b ponto 16).</footer>
+</body>
+</html>
