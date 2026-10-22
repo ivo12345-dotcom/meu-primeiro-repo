@@ -109,7 +109,7 @@ Revisão **por fazer** (22/10). Registar aqui quando se fizer:
 | Obra | Estado | Data | Quem | Saiu → entrou / notas |
 |---|---|---|---|---|
 | Cabos velhos retirados com mensageiro no sítio | Feito | 14/10/2026 | Ivo | |
-| **Cordame trocado: todos os cabos**, menos a driza da genoa e a do balão | Feito | out. 2026 | Ivo | Driza da genoa e do balão: **trocam-se na água** (para não abrir a genoa com o barco no cavalete; guias no sítio) |
+| **Cordame trocado: todos os cabos**, menos a driza da genoa e a do balão. **Cada cabo novo leva mais 5 m do que o velho, para se operar a partir da roda do leme** | Feito | out. 2026 | Ivo | Driza da genoa e do balão: **trocam-se na água** (para não abrir a genoa com o barco no cavalete; guias no sítio), também com +5 m |
 | Amantilho | Retirado | out. 2026 | Ivo | Fica guia; a roldana dele leva agora a driza da grande; o boom vang rígido faz o trabalho |
 | Drizas do foque de temporal e do pau de spi | Retiradas, com guia | out. 2026 | Ivo | Trocam-se mais tarde |
 | **Mordente múltiplo ("piano") de 4 cabos** | **Substituído** | out. 2026 | Ivo | Novo |
@@ -170,7 +170,7 @@ Revisão **por fazer** (22/10). Registar aqui quando se fizer:
 | Peça | Saiu | Entrou | Data | Custo | Onde |
 |---|---|---|---|---|---|
 | Ânodos (hélice + 2 da quilha) | gastos | 3 novos | out. 2026 | | |
-| Cordame de manobra (todos os cabos menos driza da genoa e do balão) | cabos velhos | novos | out. 2026 | | |
+| Cordame de manobra (todos os cabos menos driza da genoa e do balão) | cabos velhos | novos, cada um com +5 m (operar da roda) | out. 2026 | | |
 | Mordente múltiplo de 4 cabos ("piano") | velho | novo | out. 2026 | | |
 | 2 organizadores de 8 cabos (4+4), bombordo | velhos | novos | out. 2026 | | |
 | Organizadores de estibordo | gripados | recuperados, casquilhos novos (Ivo) | out. 2026 | | |

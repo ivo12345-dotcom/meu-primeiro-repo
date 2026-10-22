@@ -119,6 +119,9 @@ dos seguros considera vida útil de 10 a 15 anos."
 
 - **Cordame trocado: todos os cabos**, menos a **driza da genoa e a do balão**, que se trocam **na água**
   (não se abre a genoa com o barco no cavalete). Guias deixadas em tudo.
+- **Todos os cabos novos têm mais 5 m do que os velhos, para se operarem a partir da roda do leme** (Ivo,
+  22/10). Isto substitui a correção de 14/10, que só alongava as escotas: as drizas, os rizos e o boom jack
+  também vêm à roda. A driza da genoa e a do balão, quando se trocarem na água, levam o mesmo +5 m.
 - **Retirados, com guia:** o amantilho (o boom vang rígido faz o trabalho; a roldana dele leva agora a
   driza da grande, porque a roldana do topo está estragada), a driza do foque de temporal e a do pau de spi.
 - **Ferragens:** mordente múltiplo ("piano") de 4 cabos novo; 2 organizadores de 8 cabos (4+4) novos a
