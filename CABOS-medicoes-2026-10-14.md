@@ -27,3 +27,7 @@ Esperado pelas contas (I = 14,17 m), para cabos ao mastro/à escotilha: drizas d
 
 Notas do dia (roldanas do topo, caixas de saída, mordentes, mensageiros deixados, o que falta):
 
+
+
+**Estado a 22/10/2026:** cordame trocado (ver `CABOS.md`, "Execução"); faltam só a driza da genoa e a do
+balão, na água. Esta folha fica como histórico.

@@ -210,3 +210,15 @@ fabricante de trabalhar abaixo de 20 % da carga de rotura para não haver fluên
 
 Vantagens que motivam a troca: pesa um quarto do aço, não bate no mastro nem risca o convés guardado,
 enrola-se, e um estai de Dyneema que se solta ou cai não fere ninguém.
+
+
+## Inspeção do técnico (out. 2026) e decisão do Ivo (22/10/2026)
+
+- **O técnico de mastreação deu o rig por bom: "está tudo bom, aguenta mais uns anos".** O Ivo decide
+  **trocar a mastreação fixa daqui a ~2 anos (2028)**, por opção. Até lá: lavar os esticadores com água
+  doce, manter os tubos fora do terminal e olhar ao gancho pelicano antes de o pôr no estai de Dyneema.
+- **Roldana do topo da driza da grande estragada** (estava a comer o cabo novo). A driza da grande passou
+  para a **roldana do amantilho**; o amantilho saiu (o boom vang rígido segura a retranca). **Trocar a
+  roldana quando se mudar a mastreação em 2028** (e ver então as capelagens dos brandais baixos e os
+  suportes das cruzetas, os pontos fracos de origem).
+- Registo completo por área: `OBRAS.md`.

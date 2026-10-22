@@ -119,3 +119,15 @@ equivalentes: **Thordon**, **Orkot**.
 **Tirar o veio.** Para o casquilho sair, o veio tem de sair, e isso obriga a
 separar o acoplamento na caixa. Acoplamentos velhos gripam no veio e às
 vezes custam mais a soltar do que todo o resto junto.
+
+
+---
+
+# EXECUÇÃO (22/10/2026, respostas do Ivo)
+
+- **Casquilho do veio: adiado para 2027** ("não precisa, para o ano faço"). Tirar então as três medidas
+  (Ø veio, Ø exterior, comprimento) e ver se há medida de catálogo.
+- **Ânodos: trocado o do hélice e os 2 da quilha.**
+- **Hélice e veio: limpos e pintados com antivegetativo** (sem Propspeed, como decidido a 09/09). Em
+  bronze, o antivegetativo normal costuma largar numa época: ver no fim do verão e decidir Velox/Propspeed.
+- Registo completo por área: `OBRAS.md`.

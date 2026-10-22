@@ -378,3 +378,18 @@ pode servir de primário do costado sob o Hardtop AX. Um produto a menos.
 
 Alquídico não gosta de epóxi ainda a curar. Respeitar o tempo, e **lavar o
 blush do epóxi** antes de aplicar, senão descola.
+
+
+---
+
+# EXECUÇÃO (22/10/2026, respostas do Ivo)
+
+- **Osmose: feito.** Bolhas abertas, lavadas e cheias com a massa epóxi; alisado.
+- **Barreira epóxi: feito — Jotun, 7 demãos, 16 L** no fundo todo (incluindo a quilha).
+- **Quilha: feito.** Bolsos das cavilhas limpos até ao ferro e cheios. Os 2 ânodos da quilha trocados.
+- **Antivegetativo: a 23/10/2026 — Hempel, 3 demãos, 12 L.** Confirmar na ficha do Antipest a janela
+  máxima de repintura; se já passou, lixa leve (180–220) e limpeza antes da 1.ª demão.
+- **Convés e costado: feitos em 2026**, ao contrário do adiamento de 09/09. Convés: 2 demãos de primário
+  Jotun + 3 de Jotun 1K, antiderrapante com areia. Costado: 2 demãos de primário 2K + 2 de poliuretano 2K
+  Jotun. Lazy bag remendado e reforçado.
+- Registo completo por área: `OBRAS.md`.

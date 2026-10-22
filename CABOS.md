@@ -113,3 +113,15 @@ com o mastro em pé e mensageiros.
 A pergunta era: "A mastreação fixa é a original dos anos 80? Se os cabos de aço, terminais e
 esticadores tiverem 40 anos, isso é um risco **muito maior** do que drizas cansadas, e a maioria
 dos seguros considera vida útil de 10 a 15 anos."
+
+
+## EXECUÇÃO (22/10/2026, respostas do Ivo)
+
+- **Cordame trocado: todos os cabos**, menos a **driza da genoa e a do balão**, que se trocam **na água**
+  (não se abre a genoa com o barco no cavalete). Guias deixadas em tudo.
+- **Retirados, com guia:** o amantilho (o boom vang rígido faz o trabalho; a roldana dele leva agora a
+  driza da grande, porque a roldana do topo está estragada), a driza do foque de temporal e a do pau de spi.
+- **Ferragens:** mordente múltiplo ("piano") de 4 cabos novo; 2 organizadores de 8 cabos (4+4) novos a
+  bombordo; os de estibordo recuperados pelo Ivo com casquilhos novos; vários moitões novos.
+- A folha `CABOS-medicoes-2026-10-14.md` fica como histórico (as medidas finais são as dos cabos comprados).
+- Registo completo por área: `OBRAS.md`.
