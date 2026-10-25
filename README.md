@@ -11,3 +11,7 @@ Um repositório de exemplo para aprender Git e GitHub.
 ## Contribuindo
 
 Pull requests são bem-vindos. Para mudancas maiores, abra uma issue primeiro.
+
+## Sessão de estudo
+
+Nome da sessão: **Sessão de estudo**
