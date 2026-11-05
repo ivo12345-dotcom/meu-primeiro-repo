@@ -11,3 +11,7 @@ Um repositório de exemplo para aprender Git e GitHub.
 ## Contribuindo
 
 Pull requests são bem-vindos. Para mudancas maiores, abra uma issue primeiro.
+
+## Projetos
+
+- [Cartucho multi-BB para revólver de airsoft (ASG Dan Wesson)](airsoft-cartucho-multi-bb/) — modelo 3D paramétrico em OpenSCAD.
