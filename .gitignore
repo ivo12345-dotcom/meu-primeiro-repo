@@ -6,3 +6,10 @@ Thumbs.db
 # Editor
 .vscode/
 *.swp
+
+# Bitcoin puzzle (progresso e resultados locais - nunca publicar)
+puzzle/progresso_puzzle*.json
+puzzle/ENCONTRADO_puzzle*.txt
+progresso_puzzle*.json
+ENCONTRADO_puzzle*.txt
+__pycache__/
