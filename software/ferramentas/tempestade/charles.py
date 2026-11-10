@@ -198,9 +198,10 @@ def avancar(pos, rumo, mn):
 
 # ---------------------------------------------------------------- simulações "se apanhados"
 LIM = {'vento': 22, 'rajada': 30, 'ondas': 3}  # os limites a solo do planeador (lib/seguranca.js)
-PARTIDAS = {'P1': ('20 MN a oeste de Cascais, a regressar', (38.70, -9.85)),
-            'P2': ('10 MN a sul do Cabo Espichel, a subir de Sines', (38.25, -9.35)),
-            'P3': ('60 MN ao largo, a regressar de uma travessia', (38.60, -10.90))}
+PARTIDAS = {'P4': ('O cenário do Ivo: 40 MN ao largo, entre Sines e Lisboa, às 05:00', (38.30, -10.05), '2026-11-11T05:00'),
+            'P1': ('20 MN a oeste de Cascais, a regressar, às 06:00', (38.70, -9.85), '2026-11-11T06:00'),
+            'P2': ('10 MN a sul do Cabo Espichel, a subir de Sines, às 06:00', (38.25, -9.35), '2026-11-11T06:00'),
+            'P3': ('60 MN ao largo, a regressar de uma travessia, às 06:00', (38.60, -10.90), '2026-11-11T06:00')}
 CASCAIS = (38.69, -9.42); SINES = (37.95, -8.87); PENICHE = (39.35, -9.38)
 T0 = '2026-11-11T06:00'; TF = '2026-11-12T03:00'
 
@@ -212,9 +213,9 @@ def barra_fechada(ih):
     hs = mm['wave_height'][mm['time'].index(t)]
     return hs is not None and hs >= 3.0
 
-def simular(modelo, p0, tatica):
+def simular(modelo, p0, tatica, t0=T0):
     c = CAMPOS[modelo]; pos = p0; linhas = []; chegou = None
-    for ih in range(ih_de(T0), ih_de(TF) + 1):
+    for ih in range(ih_de(t0), ih_de(TF) + 1):
         v = c['v'].em(pos[0], pos[1], ih); r = c['r'].em(pos[0], pos[1], ih); d = c['d'].em(pos[0], pos[1], ih)
         hs = MAR_HS.em(pos[0], pos[1], ih); dcosta = dist_costa_mn(pos[0], pos[1])
         fator_mar = max(0.8, 1 - 0.04 * max(0, (hs if not math.isnan(hs) else 2) - 1))
@@ -255,10 +256,10 @@ def resumo(sim):
     return dict(vmax=vmax, rmax=rmax, hmax=hmax, cmin=cmin, acima=acima, chegou=sim['chegou'], barra=barra, encalhou=any(l.get('encalhou') for l in L), horas=len(L))
 
 SIMS = {}
-for pk, (desc, p0) in PARTIDAS.items():
+for pk, (desc, p0, t0) in PARTIDAS.items():
     for tk in TATICAS:
         for m in MODELOS_GRELHA:
-            SIMS[(pk, tk, m)] = simular(m, p0, tk)
+            SIMS[(pk, tk, m)] = simular(m, p0, tk, t0)
 
 # ---------------------------------------------------------------- figuras
 import matplotlib
@@ -303,7 +304,7 @@ def figura_mapa(ih_vento):
                 ax.annotate(x['t'][11:13] + 'h', (x['lon'], x['lat']), textcoords='offset points', xytext=(4, 4), fontsize=8, color=cor, zorder=7)
     for nome, (la, lo) in (('Lisboa', (38.72, -9.14)), ('Sines', (37.95, -8.87)), ('Peniche', (39.36, -9.38)), ('C. S. Vicente', (37.02, -8.99)), ('Figueira', (40.15, -8.87)), ('Porto', (41.15, -8.68))):
         ax.plot(lo, la, 'k.', zorder=6); ax.annotate(nome, (lo, la), textcoords='offset points', xytext=(5, -3), fontsize=8, zorder=7)
-    for pk, (desc, p0) in PARTIDAS.items():
+    for pk, (desc, p0, t0) in PARTIDAS.items():
         ax.plot(p0[1], p0[0], marker='*', color='#0a7d3a', markersize=13, zorder=8, markeredgecolor='k')
         ax.annotate(pk, (p0[1], p0[0]), textcoords='offset points', xytext=(6, 6), fontsize=9, color='#0a7d3a', weight='bold', zorder=8)
     ax.set_xlabel('longitude'); ax.set_ylabel('latitude'); ax.grid(True, alpha=0.3); ax.legend(loc='lower left', fontsize=8)
@@ -341,16 +342,16 @@ def figura_series(nome, titulo):
     return fig_b64(fig)
 
 def figura_sims(pk):
-    desc, p0 = PARTIDAS[pk]
+    desc, p0, t0 = PARTIDAS[pk]
     fig, axs = plt.subplots(2, 1, figsize=(9, 6.4), sharex=True)
     cores = {'cascais': '#1a4fa0', 'sines': '#b0281e', 'peniche': '#6a4fa0', 'capa': '#0a7d3a', 'fugir_NW': '#d08a00', 'correr': '#6b6b6b'}
     for tk, nome in TATICAS.items():
-        s = SIMS[(pk, tk, 'ecmwf_ifs025')]; L = s['linhas']; x = [ih_de(l['t']) - ih_de(T0) for l in L]
+        s = SIMS[(pk, tk, 'ecmwf_ifs025')]; L = s['linhas']; x = [ih_de(l['t']) - ih_de(t0) for l in L]
         axs[0].plot(x, [l['rajada'] for l in L], color=cores[tk], linewidth=1.6, label=nome)
         axs[1].plot(x, [l['costa'] for l in L], color=cores[tk], linewidth=1.6)
     axs[0].axhline(LIM['rajada'], color='k', linestyle=':', linewidth=1); axs[0].set_ylabel('rajada no barco (nós, ECMWF)'); axs[0].legend(fontsize=7, ncol=2)
     axs[1].set_ylabel('distância à costa (MN)'); axs[1].axhline(5, color='k', linestyle=':', linewidth=1)
-    axs[1].set_xlabel('horas desde as 06:00 de 11/11'); axs[0].set_title(f'{pk}: {desc}', fontsize=10)
+    axs[1].set_xlabel(f'horas desde as {t0[11:16]} de 11/11'); axs[0].set_title(f'{pk}: {desc}', fontsize=10)
     for ax in axs: ax.grid(True, alpha=0.3)
     return fig_b64(fig)
 
@@ -479,8 +480,8 @@ img{max-width:100%;page-break-inside:avoid} .sub{color:#555;font-size:9pt} .caix
 
 def html_boletim():
     sims_html = ''
-    for pk, (desc, p0) in PARTIDAS.items():
-        sims_html += f'<h3>{pk}: {desc} ({p0[0]:.2f} N {abs(p0[1]):.2f} W, às 06:00 de 11/11)</h3><img src="{IMG_SIMS[pk]}">' \
+    for pk, (desc, p0, t0) in PARTIDAS.items():
+        sims_html += f'<h3>{pk}: {desc} ({p0[0]:.2f} N {abs(p0[1]):.2f} W)</h3><img src="{IMG_SIMS[pk]}">' \
                      f'<table><tr><th>Tática</th><th>Modelo</th><th>Vento máx. (nós)</th><th>Rajada máx.</th><th>Hs máx. (m)</th><th>Mín. à costa (MN)</th><th>Horas acima dos limites a solo</th><th>Fim</th></tr>{tabela_sims(pk)}</table>'
     return f'''<!doctype html><html lang="pt-PT"><head><meta charset="utf-8"><title>Depressão Charles — acompanhamento para o Arlequin</title><style>{CSS}</style></head><body>
 <h1>Depressão Charles · acompanhamento e estudo para o Arlequin</h1>
@@ -524,6 +525,10 @@ def html_boletim():
 <div class="nota">Três posições às 06:00 de 11/11, quando o aviso começa a valer, e seis táticas, com a previsão interpolada na posição do barco hora a hora (ECMWF e GFS). Barco: 6 nós a motor e vela (menos com mar e vento de frente), à capa deriva 1,5 nós, a correr com o tempo 4 nós, a fugir 5. "Barra fechada" = Hs ≥ 3,5 m na barra. É um exercício de aprendizagem, não um plano: a resolução dos modelos não vê as rajadas nem o mar cruzado junto ao centro.</div>
 {sims_html}
 
+<h3>P4 hora a hora, ECMWF: as três táticas que interessam</h3>
+<p><b>{TATICAS['fugir_NW']}</b></p><table><tr><th>Hora</th><th>Posição</th><th>Vento (nós)</th><th>Rajada</th><th>De</th><th>Hs (m)</th><th>Costa (MN)</th><th>Rumo e velocidade</th></tr>{tabela_horaria('P4', 'fugir_NW')}</table>
+<p><b>{TATICAS['capa']}</b></p><table><tr><th>Hora</th><th>Posição</th><th>Vento (nós)</th><th>Rajada</th><th>De</th><th>Hs (m)</th><th>Costa (MN)</th><th>Rumo e velocidade</th></tr>{tabela_horaria('P4', 'capa')}</table>
+<p><b>{TATICAS['cascais']}</b></p><table><tr><th>Hora</th><th>Posição</th><th>Vento (nós)</th><th>Rajada</th><th>De</th><th>Hs (m)</th><th>Costa (MN)</th><th>Rumo e velocidade</th></tr>{tabela_horaria('P4', 'cascais')}</table>
 <h2>6. O que se aprende</h2>
 <div class="caixa"><ol>
 <li><b>A decisão certa foi tomada dias antes:</b> não estar no mar. A única tática que não aparece a vermelho nas simulações é a de quem ficou no porto.</li>
@@ -539,6 +544,11 @@ def html_boletim():
 <div class="nota">Próxima atualização: correr de novo o charles.py (descarrega tudo e refaz o boletim). Os dados de cada corrida ficam guardados com a hora, para comparar a evolução da trajetória entre corridas.</div>
 </body></html>'''
 
+def tabela_horaria(pk, tk, m='ecmwf_ifs025'):
+    L = SIMS[(pk, tk, m)]['linhas']; out = []
+    for l in L:
+        out.append(f'<tr><td>{l["t"][11:16]}</td><td>{l["lat"]:.2f} N {abs(l["lon"]):.2f} W</td><td>{fmt(l["vento"])}</td><td>{fmt(l["rajada"])}</td><td>{rumo_txt(l["dir"])}</td><td>{fmt(l["hs"], 1)}</td><td>{fmt(l["costa"])}</td><td>{fmt(l["rumo"])}° a {l["vel"]:.1f} nós</td></tr>')
+    return chr(10).join(out)
 html = html_boletim()
 nome = f'boletim-{CARIMBO}'
 io.open(os.path.join(SAIDA, nome + '.html'), 'w', encoding='utf-8').write(html)
@@ -551,6 +561,12 @@ try:
     import fitz; print('PDF', pdf, 'páginas', fitz.open(pdf).page_count)
 except Exception as e:
     print('PDF escrito (sem contagem de páginas):', e)
+# hora a hora do cenário do Ivo no terminal
+for tk in ('cascais', 'fugir_NW', 'capa'):
+    for m in MODELOS_GRELHA:
+        print('--- P4', TATICAS[tk], m)
+        for l in SIMS[('P4', tk, m)]['linhas']:
+            print(f"{l['t'][11:16]} {l['lat']:.2f}N {abs(l['lon']):.2f}W vento {fmt(l['vento'])} raj {fmt(l['rajada'])} {rumo_txt(l['dir'])} Hs {fmt(l['hs'], 1)} costa {fmt(l['costa'])} MN rumo {fmt(l['rumo'])}° {l['vel']:.1f} nós{' BARRA FECHADA' if l.get('barra') else ''}")
 # resumo no terminal
 print('centro cruza:', ' | '.join(CRUZ))
 for pk in PARTIDAS:
