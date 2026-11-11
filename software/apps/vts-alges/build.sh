@@ -10,7 +10,10 @@ SDK="${ANDROID_SDK_ROOT:-$LOCALAPPDATA/Android/Sdk}"
 BT="$SDK/build-tools/34.0.0"
 PLAT="$SDK/platforms/android-34/android.jar"
 if [ -z "${JAVA_HOME:-}" ]; then
-    JAVA_HOME="$(ls -d "/c/Program Files/Eclipse Adoptium/jdk-17"* 2>/dev/null | head -1)"
+    # Temurin instalado pelo winget, ou o zip portátil em %LOCALAPPDATA%\Programs\jdk-17 (caminhos POSIX para o PATH do Git Bash)
+    for c in "/c/Program Files/Eclipse Adoptium/jdk-17"* "$(cygpath -u "$LOCALAPPDATA")/Programs/jdk-17"; do
+        if [ -x "$c/bin/java.exe" ]; then JAVA_HOME="$c"; break; fi
+    done
 fi
 export JAVA_HOME
 export PATH="$JAVA_HOME/bin:$PATH"
