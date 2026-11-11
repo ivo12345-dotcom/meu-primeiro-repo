@@ -31,6 +31,10 @@ Notas, desenhos e software do veleiro Arlequin, que navega sobretudo a solo.
 - `docs/` — a lista de compras, a folha de calibração do gasóleo, as capturas do ecrã e os PDF dos
   desenhos da melhor rota "Antes de sair" (`melhor-rota-3b1-antes-de-sair.pdf`) e "A navegar"
   (`melhor-rota-3b2-a-navegar.pdf`), refeitos a 05/10 a partir dos desenhos corrigidos.
+- `docs/tempestades/` — o acompanhamento de temporais: da depressão Charles (11/11/2026) ficam os
+  boletins, as figuras da torre VTS de Algés e, em `dados/`, as previsões descarregadas em que cada
+  boletim assenta (com o `README.md` que diz como voltar a calcular); `docs/apps/` — o APK da app
+  VTS Algés; `docs/video/` — o vídeo de demonstração do ecrã da roda (14/10) e as legendas.
 - Na raiz: a planta, o esquema de ligações e o esquema de energia (`*-arlequin.svg` e `.pdf`), a
   maqueta do ecrã de 28/09 (histórico), a polar estimada (uma cópia; o código usa a do ecrã) e os PDF
   da lista de compras, da folha de calibração e da proposta da melhor rota de 29/09

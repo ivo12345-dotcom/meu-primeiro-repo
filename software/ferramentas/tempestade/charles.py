@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Acompanhamento da depressão CHARLES (11/11/2026) para o Arlequin: avisos do IPMA, trajetória do centro
+"""Acompanhamento da depressão CHARLES (11/11/2026) para o Arlequin: avisos do IPMA, trajetórias dos centros
 em dois modelos (ECMWF e GFS, Open-Meteo), vento/pressão/mar na costa e ao largo, e simulações de
-"se fôssemos apanhados": três posições de partida × cinco táticas, com a previsão interpolada na posição
+"se fôssemos apanhados": quatro posições de partida × seis táticas, com a previsão interpolada na posição
 do barco hora a hora.
 
 python charles.py [--pasta-dados PASTA] [--sem-descarregar] [--sem-boletim] [--anterior PASTA_DA_CORRIDA_ANTERIOR]
 
-Os dados brutos ficam na pasta de dados (por omissão, a pasta scratch desta sessão): avisos do IPMA,
+Os dados brutos ficam na pasta de dados (por omissão, a da variável de ambiente CHARLES_DADOS ou, sem ela,
+a pasta deste script; os das corridas que deram boletim estão em docs/tempestades/2026-11-11-charles/dados/,
+com um README que diz como voltar a calcular): avisos do IPMA,
 grelhas de 0,5° (vento, rajada, direção, pressão) por modelo, grelha de mar de 1°, e séries em pontos
 fixos. Cada corrida com descarga guarda uma cópia datada dos dados e escreve o boletim em
 docs/tempestades/2026-11-11-charles/ (HTML com as figuras embebidas + PDF pelo Chrome).

@@ -1,0 +1,180 @@
+1
+00:00:00,000 --> 00:00:09,000
+O ecrã da roda, a funcionar
+
+2
+00:00:09,000 --> 00:00:21,500
+Carta: aqui fica o OpenCPN com a rota ativa, o rasto, o AIS e o vento. No portátil é a maqueta; no barco é a carta a sério, com o painel ao lado.
+
+3
+00:00:21,500 --> 00:00:28,000
+A barra de cima muda de página com um toque, mesmo com luvas; qualquer alarme aparece nela, venha de que plugin vier.
+
+4
+00:00:28,000 --> 00:00:35,000
+Instrumentos: vento real e aparente em grande, VMG, proa, fundo, adorno, barómetro e tendência, corrente.
+
+5
+00:00:35,000 --> 00:00:44,333
+A polar do Arlequin: a velocidade alvo para este vento e este ângulo, contra a real. Hoje é estimada; vai ser aprendida, como se explica no fim.
+
+6
+00:00:44,333 --> 00:00:52,999
+AIS: os navios à volta com CPA e TCPA; o alarme de colisão toca aqui e no servidor, com a mesma regra para todos os alarmes.
+
+7
+00:00:52,999 --> 00:01:00,999
+Um toque num alvo abre o detalhe: rumo, velocidade, ponto de maior aproximação. Silenciar e Fechar são botões de um toque.
+
+8
+00:01:00,999 --> 00:01:09,999
+Silenciar cala o som sem apagar o aviso, também na barra de cima; Fechar volta à lista.
+
+9
+00:01:09,999 --> 00:01:21,666
+Motor: rotações, temperatura, óleo, alternador, horas e consumo em litros por hora e por milha; baterias, painéis solares e água doce.
+
+10
+00:01:21,666 --> 00:01:31,333
+Abasteci: teclado grande, para luvas. Diz-se quantos litros entraram e o gasóleo passa a ser contado a partir daí, com a curva de consumo da Volvo.
+
+11
+00:01:31,333 --> 00:01:37,333
+OK grava no diário, com a hora e a posição.
+
+12
+00:01:37,333 --> 00:01:44,166
+Calibrar: diz-se quantos litros tem o depósito e a sonda fica afinada; com o depósito vazio faz-se a tabela completa, 5 litros de cada vez.
+
+13
+00:01:44,166 --> 00:01:47,500
+Cancelar fecha sem mexer em nada.
+
+14
+00:01:47,500 --> 00:01:53,333
+Água doce: Enchi põe o depósito a 100 % e o consumo passa a ser descontado pelo caudalímetro; pede confirmação.
+
+15
+00:01:53,333 --> 00:01:59,833
+Sim, enchi: fica registado.
+
+16
+00:01:59,833 --> 00:02:12,833
+Viagem: distância, tempo, médias, horas à vela e a motor, gasóleo gasto, vento e pressão; o resumo sai em GPX e vai para o diário.
+
+17
+00:02:12,833 --> 00:02:22,333
+Diário de bordo: as entradas automáticas (motor, velas, alarmes, cargas) e oito botões de um toque, com a hora de Lisboa.
+
+18
+00:02:22,333 --> 00:02:29,666
+Orcas: um toque e fica registado com a hora, a posição e o que os instrumentos diziam nesse momento.
+
+19
+00:02:29,666 --> 00:02:43,666
+O cartão da AI: o que o barco já aprendeu, a versão em uso, Treinar agora e Voltar atrás. Hoje diz «a aprender»: ainda não há horas reais do Arlequin.
+
+20
+00:02:43,666 --> 00:02:52,166
+Velas: regista-se a grande (inteira, 1 ou 2 rizos, arriada) e o genoa (100, 70, 50 %, enrolado). É assim que a AI sabe com que velas o barco andou.
+
+21
+00:02:52,166 --> 00:03:01,166
+Um rizo e genoa a 70 %, com dois toques: vai para o diário e para a caixa negra, e o barco lembra-se de perguntar se as velas mudaram quando o vento muda.
+
+22
+00:03:01,166 --> 00:03:11,666
+Recolher velas a solo, sem piloto: o ecrã guia passo a passo, com o rumo para aproar ao vento e a correção de leme em graus.
+
+23
+00:03:11,666 --> 00:03:16,499
+Cancelar sai do guia.
+
+24
+00:03:16,499 --> 00:03:32,499
+Melhor rota: escolhe-se o destino e se vamos só ou acompanhados (muda os limites de segurança). Há destinos conhecidos e pode acrescentar-se um ponto.
+
+25
+00:03:32,499 --> 00:03:36,499
+A calcular: previsão de 48 h, polar, marés na barra, costa e zonas a evitar, limites de segurança, e os três cenários: pessimista, provável e otimista.
+
+26
+00:03:36,499 --> 00:03:46,499
+O resultado: as melhores alternativas com o veredicto, a hora de chegada nos três cenários, gasóleo e bateria à chegada, e os porquês por extenso.
+
+27
+00:03:46,499 --> 00:03:53,333
+Um toque noutra alternativa mostra o plano dela: partida, troços, vento previsto, motor ou vela em cada um.
+
+28
+00:03:53,333 --> 00:04:03,666
+O mapa da rota: pontos e horas de passagem, vento previsto por troço, a costa e as zonas a evitar.
+
+29
+00:04:03,666 --> 00:04:11,499
+Modo noite com um toque: vermelho escuro, sem ofuscar; os botões de brilho ao lado.
+
+30
+00:04:11,499 --> 00:04:18,166
+De volta ao dia e ao resultado.
+
+31
+00:04:18,166 --> 00:04:26,999
+Plano para terra: o resumo da viagem vai por Telegram a quem fica em terra, com a hora prevista e o «chegada mais tarde que» para alarme. No portátil o Telegram é a fingir.
+
+32
+00:04:26,999 --> 00:04:32,333
+Ativar: a rota fica rota ativa no SignalK e no OpenCPN, o ponto a seguir avança sozinho, e a página passa ao Leme a navegar.
+
+33
+00:04:32,333 --> 00:04:42,166
+Leme a navegar: próximo ponto, rumo, hora de chegada a atualizar com o vento real, avisos de vento, gasóleo e bateria, e a comparação com o plano.
+
+34
+00:04:42,166 --> 00:04:48,499
+Estou bem: a vigia do skipper a solo. Sem toque no ecrã durante o tempo definido, o barco avisa quem está em terra.
+
+35
+00:04:48,499 --> 00:04:58,833
+Recalcular a meio da viagem: nova previsão, nova rota a partir de onde o barco está, com a mesma lógica dos três cenários.
+
+36
+00:04:58,833 --> 00:05:06,666
+Ativar a rota nova: o OpenCPN e o Leme seguem-na a partir do ponto certo.
+
+37
+00:05:06,666 --> 00:05:18,833
+De noite a carta e o painel ficam vermelhos; o brilho baixa-se com os botões da barra.
+
+38
+00:05:18,833 --> 00:05:28,833
+Os instrumentos à noite: a letra nunca desce dos 14 píxeis e os alvos de toque têm o tamanho de um dedo com luva.
+
+39
+00:05:28,833 --> 00:05:39,333
+Terminar: fecha o plano. No barco a sério o «cheguei bem» sai sozinho por Telegram, 5 minutos parado no cais, e o porto fica a vigiar.
+
+40
+00:05:39,333 --> 00:05:46,000
+Sim, terminar: o plano fica arquivado e a próxima saída começa limpa.
+
+41
+00:05:46,000 --> 00:06:00,000
+O que é a polar e a que está a bordo hoje
+
+42
+00:06:00,000 --> 00:06:16,000
+Onde nasce a polar verdadeira: a caixa negra
+
+43
+00:06:16,000 --> 00:06:34,000
+Como a AI aprende a polar, e como se protege
+
+44
+00:06:34,000 --> 00:06:50,000
+O que muda à medida que a polar fica fidedigna
+
+45
+00:06:50,000 --> 00:07:04,000
+O que já funciona e o que vem a seguir
+

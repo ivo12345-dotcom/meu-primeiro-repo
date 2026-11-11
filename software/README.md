@@ -22,6 +22,11 @@ pasta é o quê, como se testa no portátil e o que cada plugin precisa no barco
 | `ferramentas/costa/` | Gera as linhas de costa e valida os destinos (Python, no portátil) | Não |
 | `ferramentas/passagem/` | `simular.mjs`: a passagem de referência Algés → Peniche de 29/09 | Não |
 | `ferramentas/sincronizar/` | Copia os dados do Pi para o portátil e põe no barco um modelo treinado no portátil | Não (corre no portátil) |
+| `ferramentas/tempestade/` | Acompanhar um temporal: `charles.py` (as simulações "se fôssemos apanhados" e o boletim) e `vts_alges.py` (a estação da torre VTS de Algés em direto); as saídas e os dados descarregados ficam em `docs/tempestades/` | Não |
+| `ferramentas/esquema-eletrico/` | Gera o esquema elétrico para o eletricista (`esquema-eletrico-arlequin.svg`), a tabela de cabos e a página partilhável | Não |
+| `ferramentas/apresentacao/` | As capturas e o PDF da apresentação de 05/10 | Não |
+| `ferramentas/video/` | Grava e monta o vídeo de demonstração do ecrã (`docs/video/`) | Não |
+| `apps/vts-alges/` | App Android "VTS Algés": vento medido e previsto, maré e pressão em Algés; o APK fica em `docs/apps/` | Não (telemóvel) |
 
 ## Testar no portátil (Windows, Node 22 ou mais recente)
 
