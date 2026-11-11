@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>VTS Algés</title>
+<style>
+/* Painel de instrumentos numa coluna: primeiro o que interessa agora (vento, pressão, maré), depois as próximas 24 h em gráfico e em tabela. */
+:root {
+  --bg: #0b1320; --painel: #131f32; --linha: #253451; --fg: #e9eff8; --mudo: #93a3bb;
+  --vento: #ffb347; --rajada: #ff6b4a; --pressao: #6cc0ff; --mare: #5fd3a6; --alerta: #ff5252; --laranja: #ff9f1c; --amarelo: #ffd93d;
+  --fonte: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #eef2f7; --painel: #ffffff; --linha: #d3dbe7; --fg: #142033; --mudo: #5a6b85;
+    --vento: #c26a00; --rajada: #cf3416; --pressao: #1868c0; --mare: #118a5e; --alerta: #d12b2b; --laranja: #d97a00; --amarelo: #b89500;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #eef2f7; --painel: #ffffff; --linha: #d3dbe7; --fg: #142033; --mudo: #5a6b85;
+  --vento: #c26a00; --rajada: #cf3416; --pressao: #1868c0; --mare: #118a5e; --alerta: #d12b2b; --laranja: #d97a00; --amarelo: #b89500;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--fonte); font-size: 15px; line-height: 1.35;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 10px 28px; font-variant-numeric: tabular-nums;
+}
+header.topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding-block: 4px 10px; }
+h1 { font-size: 1.25rem; margin: 0; letter-spacing: 0.01em; }
+h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--mudo); margin: 0 0 8px; font-weight: 600; }
+.sub { color: var(--mudo); font-size: 0.82rem; }
+.botoes { display: flex; gap: 8px; flex-shrink: 0; }
+button { background: var(--painel); color: var(--fg); border: 1px solid var(--linha); border-radius: 8px; padding: 8px 12px; font: inherit; font-size: 0.9rem; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--pressao); outline-offset: 2px; }
+button:active { transform: translateY(1px); }
+.aviso { border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; font-size: 0.9rem; border-left: 6px solid; background: var(--painel); }
+.aviso.red { border-color: var(--alerta); } .aviso.orange { border-color: var(--laranja); } .aviso.yellow { border-color: var(--amarelo); }
+.aviso b { text-transform: uppercase; letter-spacing: 0.04em; }
+.aviso.red b { color: var(--alerta); } .aviso.orange b { color: var(--laranja); } .aviso.yellow b { color: var(--amarelo); }
+main { display: flex; flex-direction: column; gap: 10px; }
+.painel { background: var(--painel); border: 1px solid var(--linha); border-radius: 12px; padding: 12px; min-width: 0; }
+.agora { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.agora canvas { width: 190px; height: 190px; max-width: 100%; flex-shrink: 0; }
+.numeros { flex: 1 1 180px; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.rotulo { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mudo); }
+.grande { font-size: 3.4rem; line-height: 1; font-weight: 700; color: var(--vento); display: flex; align-items: baseline; gap: 6px; }
+.grande .un, .medio .un { font-size: 0.95rem; font-weight: 500; color: var(--mudo); }
+.dir { font-size: 1.35rem; font-weight: 600; }
+.linha { display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid var(--linha); padding-top: 4px; margin-top: 2px; font-size: 0.92rem; }
+.grelha { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.medio { font-size: 1.7rem; font-weight: 700; display: flex; align-items: baseline; gap: 5px; margin-top: 2px; }
+.pressao .medio { color: var(--pressao); } .mare .medio { color: var(--mare); } .boia .medio { color: var(--fg); } .prox .medio { color: var(--rajada); }
+canvas.grafico { width: 100%; height: 230px; display: block; }
+.legenda { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.78rem; color: var(--mudo); margin-top: 6px; }
+.legenda i { display: inline-block; width: 18px; height: 0; border-top: 3px solid; vertical-align: middle; margin-right: 5px; }
+.legenda i.tracejado { border-top-style: dashed; }
+.tabela-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; white-space: nowrap; }
+th { text-align: left; color: var(--mudo); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 4px 6px; border-bottom: 1px solid var(--linha); }
+td { padding: 5px 6px; border-bottom: 1px solid var(--linha); }
+td.n { text-align: right; }
+tr.agora-linha td { background: color-mix(in srgb, var(--pressao) 14%, transparent); }
+tr.vermelho td.raj { color: var(--rajada); font-weight: 700; }
+.seta { display: inline-block; transition: transform 0.3s; }
+footer { color: var(--mudo); font-size: 0.75rem; margin-top: 14px; line-height: 1.4; }
+footer a { color: var(--pressao); }
+.erro { color: var(--alerta); }
+@media (prefers-reduced-motion: reduce) { .seta { transition: none; } }
+</style>
+</head>
+<body>
+<header class="topo">
+  <div>
+    <h1>VTS Algés</h1>
+    <div class="sub" id="estado">A ler a estação da torre VTS…</div>
+  </div>
+  <div class="botoes">
+    <button id="btn-tema" type="button" aria-label="Mudar tema">☾</button>
+    <button id="btn-atualizar" type="button">Atualizar</button>
+  </div>
+</header>
+<div id="avisos"></div>
+<main>
+  <section class="painel agora">
+    <canvas id="bussola" width="190" height="190" aria-label="Rosa dos ventos com a direção atual e prevista"></canvas>
+    <div class="numeros">
+      <div class="rotulo">Vento médio na torre (30 min)</div>
+      <div class="grande"><span id="vento">–</span><span class="un">nós</span></div>
+      <div class="dir"><span id="dir">–</span></div>
+      <div class="linha"><span class="rotulo">Máx. 24 h</span><span id="max24">–</span></div>
+      <div class="linha"><span class="rotulo">Rajada prevista agora</span><span id="raj-agora">–</span></div>
+      <div class="linha"><span class="rotulo">Daqui a 6 h</span><span id="em6h">–</span></div>
+    </div>
+  </section>
+  <section class="grelha">
+    <div class="painel pressao"><div class="rotulo">Pressão</div><div class="medio"><span id="pressao">–</span><span class="un">hPa</span></div><div class="sub" id="tendencia">–</div></div>
+    <div class="painel mare"><div class="rotulo">Maré · Alcântara</div><div class="medio"><span id="mare">–</span><span class="un">m</span></div><div class="sub" id="mare-prox">–</div></div>
+    <div class="painel boia"><div class="rotulo">Boia da barra</div><div class="medio"><span id="hs">–</span><span class="un">m Hs</span></div><div class="sub" id="boia-sub">–</div></div>
+    <div class="painel prox"><div class="rotulo">Pior das próximas 24 h</div><div class="medio"><span id="pior">–</span><span class="un">nós raj.</span></div><div class="sub" id="pior-sub">–</div></div>
+  </section>
+  <section class="painel">
+    <h2>Vento: 12 h medidas e 24 h previstas</h2>
+    <canvas id="g-vento" class="grafico"></canvas>
+    <div class="legenda">
+      <span><i style="border-color: var(--fg)"></i>medido na torre</span>
+      <span><i style="border-color: var(--vento)"></i>previsto médio (ICON)</span>
+      <span><i class="tracejado" style="border-color: var(--rajada)"></i>rajada (AROME)</span>
+      <span>setas: para onde sopra</span>
+    </div>
+  </section>
+  <section class="painel">
+    <h2>Pressão e maré</h2>
+    <canvas id="g-pressao" class="grafico"></canvas>
+    <div class="legenda">
+      <span><i style="border-color: var(--pressao)"></i>pressão (medida, depois AROME)</span>
+      <span><i style="border-color: var(--mare)"></i>maré medida</span>
+      <span><i class="tracejado" style="border-color: var(--mare)"></i>maré prevista com sobre-elevação</span>
+    </div>
+  </section>
+  <section class="painel">
+    <h2>Hora a hora</h2>
+    <div class="tabela-wrap">
+      <table id="tabela">
+        <thead><tr><th>Hora</th><th>De</th><th class="n">Médio</th><th class="n">Rajada</th><th class="n">hPa</th><th class="n">Maré</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<footer>
+  Medições: estação meteorológica da torre VTS (Porto de Lisboa), marégrafo de Alcântara (IH) e boia ondógrafo da barra sul (APL), via
+  <a href="https://portodelisboa.hidromod.com/meteoapl/">portal Meteorologia do Porto de Lisboa</a>. A estação dá médias de 30 min com cerca de 1 h de atraso e não mede rajadas.
+  Previsão média: ICON 7 km (APL). Rajadas e pressão previstas: AROME (Open-Meteo) no ponto da estação. Avisos: IPMA, distrito de Lisboa. Horas locais.
+</footer>
+<script>
+(function () {
+  'use strict';
+  var API = 'https://portodelisboa.hidromod.com/AquaSafeServer/rest/';
+  var SERIES = { vento: 664, dir: 667, pressao: 663, nivel: 849, nivelPrev: 758, sobre: 759, tabela: 1048, iconV: 679, iconD: 681, hs: 674, hmax: 690, tp: 677, dirMar: 675 };
+  var LAT = 38.6939, LON = -9.2343;
+  var H = 3600e3;
+  var RUMOS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+  var D = null;            // últimos dados carregados
+  var ultimaLeitura = 0;   // quando atualizámos
+  var $ = function (id) { return document.getElementById(id); };
+
+  function rumo(g) { return (g == null || isNaN(g)) ? '–' : RUMOS[Math.round(g / 22.5) % 16]; }
+  function hhmm(t) { return new Date(t).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }); }
+  function ddmm(t) { return new Date(t).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' }); }
+  function f1(x) { return (x == null || isNaN(x)) ? '–' : x.toLocaleString('pt-PT', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
+  function f2(x) { return (x == null || isNaN(x)) ? '–' : x.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function f0(x) { return (x == null || isNaN(x)) ? '–' : String(Math.round(x)); }
+  function cor(nome) { return getComputedStyle(document.documentElement).getPropertyValue(nome).trim(); }
+  function iso(ms) { return new Date(ms).toISOString().slice(0, 19) + '.000Z'; }
+  function msDe(s) { var m = /(-?\d+)/.exec(s || ''); return m ? +m[1] : NaN; }
+  function ultimo(s) { return (s && s.length) ? s[s.length - 1] : null; }
+  function valorEm(s, t, tol) {
+    if (!s || !s.length) return null;
+    tol = tol || H;
+    var melhor = null, dist = Infinity;
+    for (var i = 0; i < s.length; i++) { var d = Math.abs(s[i].t - t); if (d < dist) { dist = d; melhor = s[i]; } }
+    return (melhor && dist <= tol) ? melhor.v : null;
+  }
+
+  function serie(id, t0, t1) {
+    return fetch(API + 'GetTimeSerieValuesByTimeSerieId/' + id + '/' + iso(t0) + '/' + iso(t1) + '/?format=json')
+      .then(function (r) { if (!r.ok) throw new Error('Porto de Lisboa respondeu ' + r.status); return r.json(); })
+      .then(function (j) {
+        return (j.Values || []).map(function (v) { return { t: msDe(v.DateTime), v: +v.Value }; })
+          .filter(function (p) { return isFinite(p.t) && isFinite(p.v); })
+          .sort(function (a, b) { return a.t - b.t; });
+      });
+  }
+  function arome() {
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + LAT + '&longitude=' + LON +
+      '&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,surface_pressure&wind_speed_unit=kn&timezone=UTC&past_hours=12&forecast_days=2&models=meteofrance_seamless';
+    return fetch(url).then(function (r) { if (!r.ok) throw new Error('Open-Meteo respondeu ' + r.status); return r.json(); })
+      .then(function (j) {
+        var h = j.hourly, out = [];
+        for (var i = 0; i < h.time.length; i++) {
+          out.push({ t: Date.parse(h.time[i] + 'Z'), v: h.wind_speed_10m[i], raj: h.wind_gusts_10m[i], dir: h.wind_direction_10m[i], p: h.surface_pressure[i] });
+        }
+        return out;
+      });
+  }
+  function avisos() {
+    return fetch('https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json')
+      .then(function (r) { if (!r.ok) throw new Error('IPMA respondeu ' + r.status); return r.json(); })
+      .then(function (lista) {
+        var agora = Date.now(), ordem = { red: 0, orange: 1, yellow: 2 };
+        return lista.filter(function (a) { return a.idAreaAviso === 'LSB' && a.awarenessLevelID !== 'green' && Date.parse(a.endTime + 'Z') > agora; })
+          .map(function (a) { return { tipo: a.awarenessTypeName, nivel: a.awarenessLevelID, ini: Date.parse(a.startTime + 'Z'), fim: Date.parse(a.endTime + 'Z'), texto: a.text || '' }; })
+          .sort(function (a, b) { return (ordem[a.nivel] - ordem[b.nivel]) || (a.ini - b.ini); });
+      });
+  }
+
+  function carregar() {
+    var agora = Date.now(), t0 = agora - 36 * H, t1 = agora + 48 * H;
+    var nomes = Object.keys(SERIES);
+    var pedidos = nomes.map(function (n) { return serie(SERIES[n], t0, t1); });
+    pedidos.push(arome(), avisos());
+    return Promise.allSettled(pedidos).then(function (res) {
+      var dados = { erros: [] };
+      nomes.forEach(function (n, i) {
+        if (res[i].status === 'fulfilled') dados[n] = res[i].value; else { dados[n] = []; dados.erros.push(n + ': ' + res[i].reason.message); }
+      });
+      var ra = res[nomes.length], rv = res[nomes.length + 1];
+      dados.arome = ra.status === 'fulfilled' ? ra.value : []; if (ra.status !== 'fulfilled') dados.erros.push('AROME: ' + ra.reason.message);
+      dados.avisos = rv.status === 'fulfilled' ? rv.value : []; if (rv.status !== 'fulfilled') dados.erros.push('IPMA: ' + rv.reason.message);
+      return dados;
+    });
+  }
+
+  // ---------- desenho ----------
+  function prepara(c, altura) {
+    var dpr = window.devicePixelRatio || 1;
+    var W = c.getBoundingClientRect().width || 320;
+    c.width = Math.round(W * dpr); c.height = Math.round(altura * dpr); c.style.height = altura + 'px';
+    var ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, altura);
+    return { ctx: ctx, W: W, H: altura };
+  }
+  function seta(ctx, x, y, ang, tam, corS, tracejada) {
+    // ang: para onde aponta, em graus a partir do norte, sentido horário
+    var a = (ang - 90) * Math.PI / 180;
+    var dx = Math.cos(a), dy = Math.sin(a);
+    ctx.save(); ctx.strokeStyle = corS; ctx.fillStyle = corS; ctx.lineWidth = Math.max(1.5, tam / 9);
+    ctx.setLineDash(tracejada ? [4, 3] : []);
+    ctx.beginPath(); ctx.moveTo(x - dx * tam / 2, y - dy * tam / 2); ctx.lineTo(x + dx * tam / 2, y + dy * tam / 2); ctx.stroke();
+    ctx.setLineDash([]);
+    var px = x + dx * tam / 2, py = y + dy * tam / 2, c = tam * 0.38;
+    ctx.beginPath(); ctx.moveTo(px, py);
+    ctx.lineTo(px - dx * c - dy * c * 0.5, py - dy * c + dx * c * 0.5);
+    ctx.lineTo(px - dx * c + dy * c * 0.5, py - dy * c - dx * c * 0.5);
+    ctx.closePath(); ctx.fill(); ctx.restore();
+  }
+
+  function desenharBussola(dirAgora, dir6h, vento) {
+    var c = $('bussola'), p = prepara(c, 190), ctx = p.ctx, W = p.W, Hh = p.H;
+    var cx = W / 2, cy = Hh / 2, r = Math.min(W, Hh) / 2 - 16;
+    ctx.strokeStyle = cor('--linha'); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.stroke();
+    ctx.fillStyle = cor('--mudo'); ctx.font = '600 12px ' + cor('--fonte'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (var g = 0; g < 360; g += 30) {
+      var a = (g - 90) * Math.PI / 180, longa = g % 90 === 0;
+      ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * (r - (longa ? 10 : 5)), cy + Math.sin(a) * (r - (longa ? 10 : 5)));
+      ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); ctx.strokeStyle = cor('--mudo'); ctx.lineWidth = longa ? 2 : 1; ctx.stroke();
+    }
+    ['N', 'E', 'S', 'W'].forEach(function (l, i) {
+      var a = (i * 90 - 90) * Math.PI / 180;
+      ctx.fillStyle = l === 'N' ? cor('--fg') : cor('--mudo');
+      ctx.fillText(l, cx + Math.cos(a) * (r + 10), cy + Math.sin(a) * (r + 10));
+    });
+    if (dir6h != null) { // seta prevista: entra pela borda e aponta para onde sopra, tracejada
+      var a6 = (dir6h - 90) * Math.PI / 180;
+      seta(ctx, cx + Math.cos(a6) * r * 0.55, cy + Math.sin(a6) * r * 0.55, dir6h + 180, r * 0.6, cor('--mudo'), true);
+      ctx.fillStyle = cor('--mudo'); ctx.font = '11px ' + cor('--fonte');
+      ctx.fillText('+6 h', cx + Math.cos(a6) * r * 0.86, cy + Math.sin(a6) * r * 0.86);
+    }
+    if (dirAgora != null) { // seta atual: entra pela borda e pára antes do rótulo do centro
+      var a0 = (dirAgora - 90) * Math.PI / 180;
+      seta(ctx, cx + Math.cos(a0) * r * 0.64, cy + Math.sin(a0) * r * 0.64, dirAgora + 180, r * 0.62, cor('--vento'), false);
+    }
+    ctx.fillStyle = cor('--fg'); ctx.font = '700 22px ' + cor('--fonte');
+    ctx.fillText(dirAgora == null ? '–' : rumo(dirAgora), cx, cy - (vento == null ? 0 : 4));
+    if (dirAgora != null) { ctx.font = '12px ' + cor('--fonte'); ctx.fillStyle = cor('--mudo'); ctx.fillText(Math.round(dirAgora) + '°', cx, cy + 16); }
+  }
+
+  function eixoTempo(ctx, x, t0, t1, yBase, yTopo) {
+    ctx.save(); ctx.font = '11px ' + cor('--fonte'); ctx.fillStyle = cor('--mudo'); ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    var t = Math.ceil(t0 / (3 * H)) * 3 * H;
+    for (; t <= t1; t += 3 * H) {
+      ctx.strokeStyle = cor('--linha'); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x(t), yTopo); ctx.lineTo(x(t), yBase); ctx.stroke();
+      var d = new Date(t), hora = d.getHours();
+      ctx.fillText(hora === 0 ? ddmm(t) : (hora < 10 ? '0' + hora : '' + hora), x(t), yBase + 4);
+    }
+    ctx.restore();
+  }
+  function faixasAviso(ctx, x, lista, y0, y1) {
+    lista.forEach(function (a) {
+      if (!/vento/i.test(a.tipo)) return;
+      var c = a.nivel === 'red' ? cor('--alerta') : a.nivel === 'orange' ? cor('--laranja') : cor('--amarelo');
+      ctx.save(); ctx.globalAlpha = 0.13; ctx.fillStyle = c; ctx.fillRect(x(a.ini), y0, x(a.fim) - x(a.ini), y1 - y0); ctx.restore();
+    });
+  }
+  function linha(ctx, pontos, x, y, c, largura, tracejada) {
+    if (!pontos.length) return;
+    ctx.save(); ctx.strokeStyle = c; ctx.lineWidth = largura; ctx.setLineDash(tracejada ? [6, 4] : []); ctx.lineJoin = 'round';
+    ctx.beginPath(); pontos.forEach(function (p, i) { if (i === 0) ctx.moveTo(x(p.t), y(p.v)); else ctx.lineTo(x(p.t), y(p.v)); }); ctx.stroke(); ctx.restore();
+  }
+
+  function desenharVento(d, agora) {
+    var c = $('g-vento'), p = prepara(c, 230), ctx = p.ctx, W = p.W, Hh = p.H;
+    var t0 = agora - 12 * H, t1 = agora + 24 * H, pl = 30, pr = 8, pt = 30, pb = 20;
+    var x = function (t) { return pl + (t - t0) / (t1 - t0) * (W - pl - pr); };
+    var dentro = function (s) { return s.filter(function (q) { return q.t >= t0 && q.t <= t1; }); };
+    var medido = dentro(d.vento), icon = dentro(d.iconV);
+    var raj = dentro(d.arome).map(function (q) { return { t: q.t, v: q.raj }; });
+    var maximo = 30;
+    [medido, icon, raj].forEach(function (s) { s.forEach(function (q) { if (q.v > maximo) maximo = q.v; }); });
+    var yMax = Math.ceil((maximo * 1.12) / 10) * 10;
+    var y = function (v) { return Hh - pb - v / yMax * (Hh - pb - pt); };
+    faixasAviso(ctx, x, d.avisos, pt, Hh - pb);
+    ctx.font = '11px ' + cor('--fonte'); ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (var v = 0; v <= yMax; v += 10) {
+      ctx.strokeStyle = cor('--linha'); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(pl, y(v)); ctx.lineTo(W - pr, y(v)); ctx.stroke();
+      ctx.fillStyle = cor('--mudo'); ctx.fillText(String(v), pl - 4, y(v));
+    }
+    [[34, 'F8'], [48, 'F10'], [64, 'F12']].forEach(function (b) {
+      if (b[0] > yMax) return;
+      ctx.save(); ctx.setLineDash([3, 3]); ctx.strokeStyle = cor('--mudo'); ctx.beginPath(); ctx.moveTo(pl, y(b[0])); ctx.lineTo(W - pr, y(b[0])); ctx.stroke(); ctx.restore();
+      ctx.textAlign = 'left'; ctx.fillStyle = cor('--mudo'); ctx.fillText(b[1], pl + 3, y(b[0]) - 7); ctx.textAlign = 'right';
+    });
+    eixoTempo(ctx, x, t0, t1, Hh - pb, pt);
+    linha(ctx, icon, x, y, cor('--vento'), 2, false);
+    linha(ctx, raj, x, y, cor('--rajada'), 2, true);
+    linha(ctx, medido, x, y, cor('--fg'), 2.5, false);
+    // setas de direção prevista (AROME), de 2 em 2 h, na fila de cima
+    d.arome.forEach(function (q) {
+      if (q.t < agora - H || q.t > t1 || (new Date(q.t).getHours() % 2) !== 0) return;
+      seta(ctx, x(q.t), pt - 14, q.dir + 180, 14, q.raj >= 34 ? cor('--rajada') : cor('--mudo'), false);
+    });
+    ctx.save(); ctx.strokeStyle = cor('--alerta'); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x(agora), pt); ctx.lineTo(x(agora), Hh - pb); ctx.stroke();
+    ctx.fillStyle = cor('--alerta'); ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.font = '600 11px ' + cor('--fonte'); ctx.fillText('agora', x(agora) + 3, pt + 2); ctx.restore();
+  }
+
+  function desenharPressao(d, agora) {
+    var c = $('g-pressao'), p = prepara(c, 230), ctx = p.ctx, W = p.W, Hh = p.H;
+    var t0 = agora - 12 * H, t1 = agora + 24 * H, pl = 36, pr = 34, pt = 14, pb = 20;
+    var x = function (t) { return pl + (t - t0) / (t1 - t0) * (W - pl - pr); };
+    var dentro = function (s) { return s.filter(function (q) { return q.t >= t0 && q.t <= t1; }); };
+    var pMed = dentro(d.pressao), pPrev = dentro(d.arome).filter(function (q) { return q.t >= agora; }).map(function (q) { return { t: q.t, v: q.p }; });
+    var nMed = dentro(d.nivel), nPrev = dentro(d.nivelPrev);
+    var pMin = 1040, pMax = 960;
+    pMed.concat(pPrev).forEach(function (q) { if (q.v < pMin) pMin = q.v; if (q.v > pMax) pMax = q.v; });
+    if (pMin > pMax) { pMin = 990; pMax = 1020; }
+    pMin = Math.floor((pMin - 2) / 5) * 5; pMax = Math.ceil((pMax + 2) / 5) * 5;
+    var yP = function (v) { return Hh - pb - (v - pMin) / (pMax - pMin) * (Hh - pb - pt); };
+    var nMax = 4.5; nMed.concat(nPrev).forEach(function (q) { if (q.v > nMax) nMax = q.v; });
+    var yN = function (v) { return Hh - pb - v / (nMax + 0.3) * (Hh - pb - pt); };
+    faixasAviso(ctx, x, d.avisos, pt, Hh - pb);
+    ctx.font = '11px ' + cor('--fonte'); ctx.textBaseline = 'middle';
+    for (var v = pMin; v <= pMax; v += 5) {
+      ctx.strokeStyle = cor('--linha'); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(pl, yP(v)); ctx.lineTo(W - pr, yP(v)); ctx.stroke();
+      ctx.textAlign = 'right'; ctx.fillStyle = cor('--pressao'); ctx.fillText(String(v), pl - 4, yP(v));
+    }
+    for (var m = 0; m <= nMax; m += 1) { ctx.textAlign = 'left'; ctx.fillStyle = cor('--mare'); ctx.fillText(m + ' m', W - pr + 4, yN(m)); }
+    eixoTempo(ctx, x, t0, t1, Hh - pb, pt);
+    linha(ctx, nPrev, x, yN, cor('--mare'), 1.5, true);
+    linha(ctx, nMed, x, yN, cor('--mare'), 2.5, false);
+    d.tabela.forEach(function (e) {
+      if (e.t < t0 || e.t > t1) return;
+      var pm = e.v > 2.2, s = valorEm(d.sobre, e.t);
+      ctx.fillStyle = cor('--mare'); ctx.textAlign = 'center'; ctx.textBaseline = pm ? 'bottom' : 'top'; ctx.font = '600 10px ' + cor('--fonte');
+      ctx.fillText((pm ? 'PM ' : 'BM ') + hhmm(e.t) + ' ' + f2(e.v) + (s != null ? ' (+' + f2(s) + ')' : ''), x(e.t), yN(e.v) + (pm ? -3 : 3));
+    });
+    linha(ctx, pPrev, x, yP, cor('--pressao'), 1.5, true);
+    linha(ctx, pMed, x, yP, cor('--pressao'), 2.5, false);
+    ctx.save(); ctx.strokeStyle = cor('--alerta'); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x(agora), pt); ctx.lineTo(x(agora), Hh - pb); ctx.stroke(); ctx.restore();
+  }
+
+  function tabela(d, agora) {
+    var corpo = $('tabela').querySelector('tbody'), html = '';
+    var inicio = Math.floor(agora / H) * H;
+    for (var h = 0; h <= 24; h++) {
+      var t = inicio + h * H;
+      var a = null; for (var i = 0; i < d.arome.length; i++) if (d.arome[i].t === t) { a = d.arome[i]; break; }
+      var iv = valorEm(d.iconV, t, 30 * 60e3), idir = valorEm(d.iconD, t, 30 * 60e3);
+      var dir = a ? a.dir : idir;
+      var raj = a ? a.raj : null, medio = iv != null ? iv : (a ? a.v : null);
+      var nivel = valorEm(d.nivelPrev, t, 30 * 60e3);
+      var classes = (h === 0 ? 'agora-linha' : '') + (raj != null && raj >= 34 ? ' vermelho' : '');
+      html += '<tr class="' + classes.trim() + '"><td>' + (new Date(t).getHours() === 0 ? ddmm(t) + ' ' : '') + hhmm(t) + '</td>' +
+        '<td><span class="seta" style="transform:rotate(' + (dir != null ? Math.round(dir + 180) : 0) + 'deg)">↑</span> ' + rumo(dir) + '</td>' +
+        '<td class="n">' + f0(medio) + '</td><td class="n raj">' + f0(raj) + '</td><td class="n">' + (a ? f0(a.p) : '–') + '</td><td class="n">' + f2(nivel) + '</td></tr>';
+    }
+    corpo.innerHTML = html;
+  }
+
+  function mostrarAvisos(lista) {
+    var el = $('avisos');
+    var graves = lista.filter(function (a) { return a.nivel !== 'yellow'; });
+    if (graves.length) lista = graves; // os amarelos só aparecem quando não há nada pior
+    el.innerHTML = lista.map(function (a) {
+      return '<div class="aviso ' + a.nivel + '"><b>' + a.tipo + ' · ' + ({ red: 'vermelho', orange: 'laranja', yellow: 'amarelo' }[a.nivel] || a.nivel) + '</b> ' +
+        hhmm(a.ini) + '–' + hhmm(a.fim) + (ddmm(a.ini) !== ddmm(a.fim) ? ' (' + ddmm(a.fim) + ')' : '') + ': ' + a.texto + '</div>';
+    }).join('');
+  }
+
+  function render() {
+    var d = D, agora = Date.now();
+    var uv = ultimo(d.vento), ud = ultimo(d.dir), up = ultimo(d.pressao);
+    $('vento').textContent = uv ? f1(uv.v) : '–';
+    $('dir').textContent = ud ? (rumo(ud.v) + ' ' + Math.round(ud.v) + '°') : '–';
+    var janela = d.vento.filter(function (q) { return q.t >= agora - 24 * H; });
+    if (janela.length) { var mx = janela.reduce(function (a, b) { return b.v > a.v ? b : a; }); $('max24').textContent = f1(mx.v) + ' nós às ' + hhmm(mx.t); } else $('max24').textContent = '–';
+    var horaAtual = Math.floor(agora / H) * H, aAgora = null, a6 = null;
+    d.arome.forEach(function (q) { if (q.t === horaAtual) aAgora = q; if (q.t === horaAtual + 6 * H) a6 = q; });
+    $('raj-agora').textContent = aAgora ? f0(aAgora.raj) + ' nós (AROME)' : '–';
+    var i6 = valorEm(d.iconV, horaAtual + 6 * H, 30 * 60e3), d6 = a6 ? a6.dir : valorEm(d.iconD, horaAtual + 6 * H, 30 * 60e3);
+    $('em6h').textContent = (d6 != null ? rumo(d6) + ' ' : '') + (i6 != null ? f0(i6) + ' nós' : '') + (a6 ? ', raj. ' + f0(a6.raj) : '');
+    if (up) {
+      $('pressao').textContent = f1(up.v);
+      var p3 = valorEm(d.pressao, up.t - 3 * H, 50 * 60e3);
+      var delta = p3 != null ? up.v - p3 : null;
+      $('tendencia').textContent = delta == null ? 'medida às ' + hhmm(up.t) : ('Δ 3 h ' + (delta >= 0 ? '+' : '') + f1(delta) + ' hPa' + (delta <= -3 ? ' · a cair depressa' : delta <= -1 ? ' · a cair' : delta >= 1 ? ' · a subir' : ' · estável'));
+    }
+    var un = ultimo(d.nivel);
+    $('mare').textContent = un ? f2(un.v) : '–';
+    var prox = d.tabela.filter(function (e) { return e.t > agora; }).slice(0, 2);
+    $('mare-prox').textContent = prox.length ? prox.map(function (e) { var s = valorEm(d.sobre, e.t); return (e.v > 2.2 ? 'PM ' : 'BM ') + hhmm(e.t) + ' ' + f2(e.v) + ' m' + (s != null ? ' (+' + f2(s) + ')' : ''); }).join(' · ') : (un ? 'medido às ' + hhmm(un.t) : '–');
+    var uhs = ultimo(d.hs);
+    $('hs').textContent = uhs ? f1(uhs.v) : '–';
+    $('boia-sub').textContent = uhs ? ('máx. ' + f1(valorEm(d.hmax, uhs.t)) + ' m · Tp ' + f1(valorEm(d.tp, uhs.t)) + ' s · de ' + rumo(valorEm(d.dirMar, uhs.t)) + ' · ' + hhmm(uhs.t)) : '–';
+    var pior = null;
+    d.arome.forEach(function (q) { if (q.t >= agora && q.t <= agora + 24 * H && (!pior || q.raj > pior.raj)) pior = q; });
+    $('pior').textContent = pior ? f0(pior.raj) : '–';
+    $('pior-sub').textContent = pior ? ('às ' + hhmm(pior.t) + ' de ' + rumo(pior.dir) + ', médio ' + f0(pior.v) + ' nós (AROME)') : '–';
+    desenharBussola(ud ? ud.v : null, d6, uv ? uv.v : null);
+    desenharVento(d, agora);
+    desenharPressao(d, agora);
+    tabela(d, agora);
+    mostrarAvisos(d.avisos);
+    var est = uv ? ('Estação lida às ' + hhmm(uv.t) + ' (há ' + Math.round((agora - uv.t) / 60e3) + ' min)') : 'Sem leitura da estação';
+    est += ' · atualizado ' + hhmm(agora);
+    $('estado').innerHTML = est + (d.erros.length ? ' <span class="erro">· falhou: ' + d.erros.join('; ') + '</span>' : '');
+  }
+
+  var aCarregar = false;
+  function atualizar() {
+    if (aCarregar) return;
+    aCarregar = true;
+    $('btn-atualizar').textContent = 'A ler…';
+    carregar().then(function (dados) { D = dados; ultimaLeitura = Date.now(); render(); })
+      .catch(function (e) { $('estado').innerHTML = '<span class="erro">Sem ligação: ' + e.message + '</span>'; })
+      .then(function () { aCarregar = false; $('btn-atualizar').textContent = 'Atualizar'; });
+  }
+  function atualizarSeVelho() { if (Date.now() - ultimaLeitura > 5 * 60e3) atualizar(); }
+  window.atualizar = atualizar;
+  window.atualizarSeVelho = atualizarSeVelho;
+
+  // tema: escolha manual guardada; senão, o sistema (o Android avisa por definirTemaSistema)
+  function temaGuardado() { try { return localStorage.getItem('tema'); } catch (e) { return null; } }
+  function aplicarTema(t, guardar) {
+    if (t) document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme');
+    if (guardar) { try { if (t) localStorage.setItem('tema', t); else localStorage.removeItem('tema'); } catch (e) { /* sem armazenamento */ } }
+    var escuro = document.documentElement.getAttribute('data-theme') === 'dark' ||
+      (!document.documentElement.getAttribute('data-theme') && !window.matchMedia('(prefers-color-scheme: light)').matches);
+    $('btn-tema').textContent = escuro ? '☀' : '☾';
+    if (D) render();
+  }
+  window.definirTemaSistema = function (t) { if (!temaGuardado()) aplicarTema(t === 'dark' ? 'dark' : 'light', false); };
+  $('btn-tema').addEventListener('click', function () {
+    var atual = document.documentElement.getAttribute('data-theme');
+    var escuro = atual === 'dark' || (!atual && !window.matchMedia('(prefers-color-scheme: light)').matches);
+    aplicarTema(escuro ? 'light' : 'dark', true);
+  });
+  $('btn-atualizar').addEventListener('click', atualizar);
+  var temporizador; window.addEventListener('resize', function () { clearTimeout(temporizador); temporizador = setTimeout(function () { if (D) render(); }, 150); });
+  window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', function () { if (!temaGuardado()) aplicarTema(null, false); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) atualizarSeVelho(); });
+
+  aplicarTema(temaGuardado(), false);
+  atualizar();
+  setInterval(atualizar, 10 * 60e3);
+})();
+</script>
+</body>
+</html>

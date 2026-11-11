@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rosa dos ventos com seta: 108dp com zona segura de 66dp ao centro -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- anel -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#9fc5ff"
+        android:strokeWidth="3"
+        android:pathData="M54,26 A28,28 0 1,1 53.99,26 Z" />
+    <!-- marcas N E S W -->
+    <path android:fillColor="#9fc5ff" android:pathData="M52.5,22 h3 v7 h-3 Z" />
+    <path android:fillColor="#9fc5ff" android:pathData="M52.5,79 h3 v7 h-3 Z" />
+    <path android:fillColor="#9fc5ff" android:pathData="M22,52.5 h7 v3 h-7 Z" />
+    <path android:fillColor="#9fc5ff" android:pathData="M79,52.5 h7 v3 h-7 Z" />
+    <!-- seta do vento (de SW para NE) -->
+    <path
+        android:fillColor="#ff6b4a"
+        android:pathData="M36,72 L66,42 L60,40 L70,34 L68,44 L66,42 L36,72 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#ff6b4a"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M37,71 L64,44" />
+</vector>
