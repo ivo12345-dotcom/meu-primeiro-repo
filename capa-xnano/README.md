@@ -15,12 +15,13 @@
 ## O que medir (paquímetro)
 | Parâmetro | O que é |
 |---|---|
-| `dev_w`, `dev_h`, `dev_l` | largura, altura e comprimento do corpo |
+| `dev_w`, `dev_h`, `dev_l` | largura, altura e comprimento do corpo (já medidos: 41 × 42 × 60) |
 | `dev_r` | raio dos cantos |
 | `lens_dx`, `lens_dz` | desvio do centro da lente em relação ao centro do corpo |
 | `ring_t` | espessura do anel de titânio |
 | `ring_open_d` | diâmetro da abertura interior do anel |
-| `top_cutouts`, `side_cutouts` | posição dos botões, da porta USB e do compartimento da pilha |
+| `buttons_side`, `btn_y1..btn_z2` | janela dos botões (já medida: lado esquerdo, 18,1–35,5 mm da frente, 9,5–33,8 mm do topo) |
+| `bottom_slot_w` | largura da abertura de baixo para o rail |
 
 ## Impressão
 - Material: **TPU 95A** (capa flexível que absorve impactos e entra à pressão) ou PETG/ASA (rígida, nesse caso use `back_lip = 0`).

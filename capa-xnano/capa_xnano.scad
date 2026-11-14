@@ -14,9 +14,9 @@
 // =====================================================================
 
 /* [Aparelho - MEDIR] */
-dev_w = 50;     // largura do corpo (mm)
-dev_h = 45;     // altura do corpo (mm)
-dev_l = 75;     // comprimento total do corpo (mm)
+dev_w = 41;     // largura do corpo (mm) - medido
+dev_h = 42;     // altura do corpo (mm) - medido
+dev_l = 60;     // comprimento total do corpo (mm) - medido
 dev_r = 6;      // raio dos cantos do corpo (mm)
 lens_dx = 0;    // desvio horizontal do centro da lente vs centro do corpo (mm)
 lens_dz = 0;    // desvio vertical do centro da lente vs centro do corpo (mm)
@@ -32,7 +32,8 @@ front_t   = 2.0;  // espessura do rebordo frontal que segura o anel (mm)
 clear     = 0.4;  // folga entre aparelho e capa (mm)
 ring_clear= 0.3;  // folga do anel no pocket (mm)
 lip       = 3.0;  // quanto o rebordo frontal sobrepõe o anel (mm, por lado)
-cover_len = 55;   // até onde a capa cobre o corpo, a partir da frente (mm)
+cover_len = 60.5; // até onde a capa cobre o corpo, a partir da frente (mm)
+                  // (o rebordo traseiro só é feito se cobrir o corpo todo)
 back_lip  = 1.2;  // pequeno rebordo de retenção na traseira (0 = sem)
 
 /* [Abertura em baixo - rail] */
@@ -41,10 +42,14 @@ bottom_slot_w = 30;    // largura da abertura em baixo (mm) - MEDIR a base/monta
                        // (o que sobra de cada lado fica como aba que segura o aparelho)
 
 /* [Abertura dos botões] */
-buttons_side = "top";  // onde estão os botões: "top", "left", "right"
-btn_from     = 20;     // início da abertura, medido a partir da frente do aparelho (mm)
-btn_len      = 35;     // comprimento da abertura (mm)
-btn_w        = 30;     // largura da abertura (mm)
+// "left"/"right" = vistos por trás do aparelho (do lado do olho)
+buttons_side = "left"; // onde estão os botões: "top", "left", "right"
+btn_y1       = 18.1;   // início, a partir da frente do aparelho (mm) - medido
+btn_y2       = 35.5;   // fim, a partir da frente do aparelho (mm) - medido
+btn_z1       = 9.5;    // (lado) início, a partir do topo do aparelho (mm) - medido
+btn_z2       = 33.8;   // (lado) fim, a partir do topo do aparelho (mm) - medido
+btn_w        = 30;     // (só para "top") largura da abertura (mm)
+btn_margin   = 1.0;    // folga extra à volta da abertura (mm)
 
 /* [Recortes extra - opcional] */
 // Lista de recortes no TOPO: [posição a partir da frente, largura, comprimento]
@@ -97,13 +102,16 @@ module capa() {
                 cube([bottom_slot_w, body_len, out_h]);
 
         // abertura dos botões
-        y0 = front_t + ring_t + btn_from;
+        y0 = front_t + ring_t + btn_y1 - btn_margin;
+        bl = btn_y2 - btn_y1 + 2*btn_margin;
+        zt = dev_h/2 - btn_z1 + btn_margin;   // z do topo da abertura
+        zb = dev_h/2 - btn_z2 - btn_margin;   // z do fundo da abertura
         if (buttons_side == "top")
-            translate([-btn_w/2, y0, 0]) cube([btn_w, btn_len, out_h]);
-        if (buttons_side == "right")
-            translate([0, y0, -btn_w/2]) cube([out_w, btn_len, btn_w]);
-        if (buttons_side == "left")
-            translate([-out_w, y0, -btn_w/2]) cube([out_w, btn_len, btn_w]);
+            translate([-btn_w/2, y0, 0]) cube([btn_w, bl, out_h]);
+        if (buttons_side == "left")    // visto por trás = +X
+            translate([0, y0, zb]) cube([out_w, bl, zt - zb]);
+        if (buttons_side == "right")   // visto por trás = -X
+            translate([-out_w, y0, zb]) cube([out_w, bl, zt - zb]);
 
         // recortes extra no topo
         for (c = top_cutouts)
@@ -117,7 +125,7 @@ module capa() {
     }
 
     // rebordo traseiro de retenção (pequena aba que "abraça" o aparelho)
-    if (back_lip > 0)
+    if (back_lip > 0 && cover_len >= dev_l)
         difference() {
             translate([0, body_len - 1.2, 0]) rbox(in_w, in_h, 1.2, in_r);
             translate([0, body_len - 1.3, 0])
