@@ -1,6 +1,6 @@
 # Capa para Owlset HEIM ES X-NANO XPD + anel honeycomb de titânio (41 mm)
 
-![pré-visualização](preview.png)
+![por cima](preview.png) ![por baixo](preview_baixo.png)
 
 - `capa_xnano.scad`: modelo paramétrico (OpenSCAD). Todas as medidas estão no topo do ficheiro.
 - `capa_xnano.stl`: STL gerado com as medidas **provisórias**. **Não imprima antes de medir o aparelho.**
@@ -9,6 +9,8 @@
 1. Coloque o anel de titânio dentro da capa, encostado à frente. Fica no encaixe de 41 mm.
 2. Meta o aparelho por trás. A frente do aparelho prende o anel contra o rebordo frontal.
 3. A traseira fica aberta para a ocular e o ecrã.
+4. A base está aberta de ponta a ponta (`bottom_slot_w`) para o rail e a montagem.
+5. Há uma janela no sítio dos botões (`buttons_side`, `btn_from`, `btn_len`, `btn_w`).
 
 ## O que medir (paquímetro)
 | Parâmetro | O que é |

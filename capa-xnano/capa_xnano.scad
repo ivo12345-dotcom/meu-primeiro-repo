@@ -35,7 +35,18 @@ lip       = 3.0;  // quanto o rebordo frontal sobrepõe o anel (mm, por lado)
 cover_len = 55;   // até onde a capa cobre o corpo, a partir da frente (mm)
 back_lip  = 1.2;  // pequeno rebordo de retenção na traseira (0 = sem)
 
-/* [Recortes de botões - opcional] */
+/* [Abertura em baixo - rail] */
+bottom_open   = true;  // abre a base de ponta a ponta (para o rail/montagem)
+bottom_slot_w = 30;    // largura da abertura em baixo (mm) - MEDIR a base/montagem do aparelho
+                       // (o que sobra de cada lado fica como aba que segura o aparelho)
+
+/* [Abertura dos botões] */
+buttons_side = "top";  // onde estão os botões: "top", "left", "right"
+btn_from     = 20;     // início da abertura, medido a partir da frente do aparelho (mm)
+btn_len      = 35;     // comprimento da abertura (mm)
+btn_w        = 30;     // largura da abertura (mm)
+
+/* [Recortes extra - opcional] */
 // Lista de recortes no TOPO: [posição a partir da frente, largura, comprimento]
 top_cutouts  = [ /* [30, 12, 20] */ ];
 // Lista de recortes no LADO DIREITO: [posição a partir da frente, altura, comprimento]
@@ -80,7 +91,21 @@ module capa() {
             cylinder(d1 = max(ring_d - 2*lip, ring_open_d) + 2*front_t,
                      d2 = max(ring_d - 2*lip, ring_open_d), h = front_t);
 
-        // recortes de botões no topo
+        // abertura em baixo para o rail (de ponta a ponta, inclui a frente até ao anel)
+        if (bottom_open)
+            translate([-bottom_slot_w/2, front_t + ring_t, -out_h])
+                cube([bottom_slot_w, body_len, out_h]);
+
+        // abertura dos botões
+        y0 = front_t + ring_t + btn_from;
+        if (buttons_side == "top")
+            translate([-btn_w/2, y0, 0]) cube([btn_w, btn_len, out_h]);
+        if (buttons_side == "right")
+            translate([0, y0, -btn_w/2]) cube([out_w, btn_len, btn_w]);
+        if (buttons_side == "left")
+            translate([-out_w, y0, -btn_w/2]) cube([out_w, btn_len, btn_w]);
+
+        // recortes extra no topo
         for (c = top_cutouts)
             translate([-c[1]/2, front_t + ring_t + c[0], 0])
                 cube([c[1], c[2], out_h]);
@@ -97,6 +122,8 @@ module capa() {
             translate([0, body_len - 1.2, 0]) rbox(in_w, in_h, 1.2, in_r);
             translate([0, body_len - 1.3, 0])
                 rbox(in_w - 2*back_lip, in_h - 2*back_lip, 1.4, max(in_r - back_lip, 0.5));
+            if (bottom_open)
+                translate([-bottom_slot_w/2, body_len - 2, -out_h]) cube([bottom_slot_w, 3, out_h]);
         }
 }
 
