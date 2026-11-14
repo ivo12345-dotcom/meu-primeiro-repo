@@ -6,11 +6,14 @@
 - `capa_xnano.stl`: STL gerado com as medidas **provisórias**. **Não imprima antes de medir o aparelho.**
 
 ## Como funciona
-1. Coloque o anel de titânio dentro da capa, encostado à frente. Fica no encaixe de 41 mm.
-2. Meta o aparelho por trás. A frente do aparelho prende o anel contra o rebordo frontal.
-3. A traseira fica aberta para a ocular e o ecrã.
-4. A base está aberta de ponta a ponta (`bottom_slot_w`) para o rail e a montagem.
-5. Há uma janela no sítio dos botões (`buttons_side`, `btn_from`, `btn_len`, `btn_w`).
+Frente, da face para trás: aba de retenção de 1 mm → encaixe do anel (4 mm) → **espaçador de 4 mm** → aparelho.
+1. Encaixe o anel de titânio **pela frente**. Em TPU, a aba cede e o anel "clica" para o lugar.
+2. Meta o aparelho por trás até encostar ao espaçador. O honeycomb fica a 4 mm da lente.
+3. A traseira fica aberta para a ocular e o ecrã. A base está aberta para o rail.
+4. A janela dos botões fica do lado esquerdo (visto por trás).
+
+Medidas atuais: corpo de 41 × 42 mm. Os 60 mm medidos a partir da face incluem 5 mm de frente, por isso o aparelho tem 55 mm.
+Capa por fora: 46,6 × 47,6 × 64,4 mm.
 
 ## O que medir (paquímetro)
 | Parâmetro | O que é |
