@@ -41,7 +41,7 @@ valores.
 | Popa | Espelho invertido (o painel inclina-se para vante) |
 | Governo | **Roda de leme, com travão** (Ivo, 29/09). O barco nasceu com cana (a ficha diz "barre franche"); a cana de inox de emergência encaixa no topo da madre (`LEME-EMERGENCIA.md`, Camada A) |
 | Piloto automático | **Ainda não há.** Decidido a 02/10: **Raymarine EV-100 Wheel** (de roda, ref. T70152), **comprado a 14/10/2026, chega até 20/11/2026; por instalar** (`PILOTO-AUTOMATICO.md` §3). Limite do fabricante: 7 500 kg carregado; o Arlequin carregado anda pelos ~7,2 t (6 046 kg + 20 %): perto do limite, rizar cedo. O ST4000+ não governa (falta a unidade de roda) e só dá a proa |
-| Motor | **Volvo Penta D1-20B** (de origem: Yanmar 2QM) |
+| Motor | **Volvo Penta D1-20B** (de origem: Yanmar 2QM): n.º de produto 868985, n.º de série 5102100024P; inversor **MS10A-B** (n.º de produto 3809120, n.º de série 50100722489). Filtros montados e peças da revisão: `OBRAS.md` §4; fotos em `docs/img-motor/` (16/11/2026) |
 | Gasóleo | **200 L**, depósito de inox que parece ter sido prolongado para trás (de origem: 90 L) |
 | Água doce | 2 depósitos flexíveis, debaixo dos beliches da sala. De origem: **180 L** ao todo (ficha; 48 galões, ~182 L, na Wikipedia e no sailboatdata). O plugin da água assume **2 × 80 L** (configurável). A capacidade de cada depósito: **por confirmar no barco** (§8b, ponto 11) |
 | Baterias | **Decisão de 08/10 (depois das fotos):** serviço = 2 × Tudor TK960 AGM 96 Ah em paralelo = **192 Ah** (caixa sob o piso); arranque = 1 × Tudor TG1101 110 Ah; as outras 3 saem. Entram **4 AGM novas iguais às TK960** → serviço **576 Ah** (6 × 96). A melhor rota planeia com os **192 Ah** reais (576 na configuração do plugin quando as novas entrarem) e o solar com perdas (**fator 0,65**), como o simulador (§5b) |
@@ -1246,7 +1246,8 @@ funcionar também ali:
 3. **Costas dos três NASA** (vento, log, sonda): fichas e número de fios. No
    vento, o cabo do mastro tem 3 ou 5 fios? Isto decide entre cabos e o
    conversor ESP32.
-4. **Chapa do motor Volvo** (modelo e número de série).
+4. ~~**Chapa do motor Volvo** (modelo e número de série).~~ Feito a 16/11/2026: D1-20B, n.º de produto 868985,
+   n.º de série 5102100024P; inversor MS10A-B (`OBRAS.md` §4).
 5. **Quadro elétrico e baterias.**
 6. **Diâmetro do tubo do pedestal da roda** (paquímetro) e percurso do cabo até
    onde fica o Pi.

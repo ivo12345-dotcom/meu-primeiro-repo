@@ -71,16 +71,27 @@ mesmo nome da linha.
 
 ## 4. Motor Volvo Penta D1-20B (de origem: Yanmar 2QM)
 
-Revisão **por fazer** (22/10). Registar aqui quando se fizer:
+**Identificação (fotos do Ivo, 16/11/2026, em `docs/img-motor/`):** motor D1-20B, n.º de produto **868985**,
+n.º de série **5102100024P**; inversor **MS10A-B**, n.º de produto 3809120, n.º de série 50100722489. A chapa de
+emissões (regras do lago de Constança, Bodensee-Schifffahrtsordnung, anexo C) repete o 868985. O motor tem também uma
+etiqueta da Perkins, e as peças de desgaste têm equivalentes Perkins (o filtro de óleo Volvo 861473 é o Perkins
+140517030).
+
+Revisão **por fazer** (22/10). Abaixo, o que está montado (fotos de 16/11) e o que comprar. Os números Volvo vêm de
+lojas de peças: o catálogo oficial da Volvo Penta não abriu a 16/11, por isso a loja confirma-os com o n.º de produto
+868985. O kit de revisão Volvo **21189380** (D1-13 e D1-20) traz o filtro de óleo 861473, o de gasóleo 861477 e o
+impulsor 22222936. Registar aqui quando se fizer:
 
 | Obra | Estado | Data | Quem | Saiu → entrou / notas |
 |---|---|---|---|---|
-| Óleo e filtro de óleo | Por fazer | | | |
-| Filtro de gasóleo (do motor e pré-filtro separador) | Por fazer | | | Na lista como G4 |
-| Impulsor da bomba de água do mar | Por fazer | | | |
-| Correia poly-V (e a de reserva a bordo) | Por fazer | | | Reserva do alternador 115 A (A3TR0091) e correia: lista M5, opcional |
-| Ânodo do permutador | Por fazer | | | |
-| Fuga de gasóleo na ligação da mangueira ao depósito (braçadeira inox 316, mangueira ISO 7840) | Por fazer | | | `NAVEGACAO.md` §8b ponto 12 |
+| Óleo e filtro de óleo | Por fazer | | | Montado: Fleetguard **LF17532** (não encontrei a equivalência publicada). Original: Volvo **861473** (= Perkins 140517030, rosca 3/4-16 UNF, 86 mm de altura). Óleo de motor diesel **15W-40** (o da Volvo é o VDS-4.5); encher pela vareta, 5 L chegam |
+| Filtro de gasóleo do motor | Por fazer | | | Montado: Fleetguard **FF5114**, equivalente ao Volvo **861477**: comprar igual |
+| Pré-filtro com purga de água (antes do do motor) | Por fazer | | | Montado: **MANN WK 842/2** (filtro de automóvel, rosca M16 × 1,5, 81 mm de diâmetro, purga da água por baixo): comprar igual. Na lista como G4 |
+| Impulsor da bomba de água do mar | Por fazer | | | Volvo **22222936** (51 mm), no kit 21189380. Bomba por fotografar |
+| Correia poly-V do alternador (e a de reserva a bordo) | Por fazer | | | A medida não se lê na foto de 16/11, só o lote ("Made in Spain G 155 S3722"). As lojas dão Volvo **21951188** (substitui a 3812159) para o D1-20B: confirmar pela medida escrita nas costas da correia. Reserva do alternador 115 A (A3TR0091): lista M5, opcional |
+| Óleo do inversor MS10A-B | Por fazer | | | **ATF Dexron II/III**, cerca de 0,4 L (tabela de inversores da Volvo Penta de 2007; outra folha dá 0,35 L). Encher pela vareta sem passar do máximo |
+| Ânodo do permutador | A confirmar | | | Não encontrei fonte que diga se o D1-20 tem ânodo no permutador: ver no motor |
+| Fuga de gasóleo na ligação da mangueira ao depósito (braçadeira inox 316, mangueira ISO 7840) | Por fazer | | | `NAVEGACAO.md` §8b ponto 12. Na foto 09 de 16/11, a mangueira de gasóleo de 10 mm junto ao inversor está marcada **BS1435:1987**: norma britânica de mangueiras de óleo, já retirada, que não é a ISO 7840 (resistente ao fogo). Trocar por ISO 7840 A1 quando se mexer |
 | Teste de arranque e de carga do alternador (14,2 V) | Por fazer | | | |
 
 ## 5. Governo, leme de emergência e piloto
