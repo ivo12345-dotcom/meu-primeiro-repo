@@ -117,10 +117,11 @@ class LD2460 {
         uint8_t n = (total - 11) / 4;
         if (n > MAX_TARGETS) n = MAX_TARGETS;
         // Guardar os alvos anteriores para saber há quanto tempo cada um está imóvel
-        RadarTarget old[MAX_TARGETS];
+        RadarTarget old[MAX_TARGETS], oldAnchor[MAX_TARGETS];
         uint32_t oldSince[MAX_TARGETS];
         const uint8_t oldN = targetCount;
         memcpy(old, targets, sizeof(old));
+        memcpy(oldAnchor, anchor_, sizeof(oldAnchor));
         memcpy(oldSince, frozenSince, sizeof(oldSince));
         const uint32_t t = millis();
         for (uint8_t i = 0; i < n; i++) {
@@ -129,10 +130,16 @@ class LD2460 {
           const int16_t ry = (int16_t)(buf_[o + 2] | (buf_[o + 3] << 8));
           targets[i].x = rx / 10.0f;
           targets[i].y = ry / 10.0f;
+          // Mesmo alvo da trama anterior (perto)? Se não saiu de um raio de STILL_M à volta do
+          // ponto onde parou, continua "parado" desde a mesma hora; senão recomeça a contar.
           frozenSince[i] = t;
+          anchor_[i] = targets[i];
           for (uint8_t j = 0; j < oldN; j++)
-            if (fabsf(old[j].x - targets[i].x) < 0.01f && fabsf(old[j].y - targets[i].y) < 0.01f) {
-              frozenSince[i] = oldSince[j];  // exatamente na mesma posição: continua "congelado"
+            if (hypotf(old[j].x - targets[i].x, old[j].y - targets[i].y) < 0.4f) {
+              if (hypotf(oldAnchor[j].x - targets[i].x, oldAnchor[j].y - targets[i].y) < STILL_M) {
+                frozenSince[i] = oldSince[j];
+                anchor_[i] = oldAnchor[j];
+              }
               break;
             }
         }
@@ -156,6 +163,8 @@ class LD2460 {
     len_ -= n;
   }
 
+  static constexpr float STILL_M = 0.2f;  // mexer menos do que isto = "parado"
+  RadarTarget anchor_[MAX_TARGETS] = {};
   HardwareSerial *port_ = nullptr;
   uint8_t buf_[64];
   size_t len_ = 0;
