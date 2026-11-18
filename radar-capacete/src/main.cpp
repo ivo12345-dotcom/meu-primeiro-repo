@@ -133,6 +133,24 @@ void handleData() {
                    fabsf(atan2f(x, y)) * 180.0f / PI, i, true};
     }
   }
+  // "Pelas costas": cada radar também vê um pouco para trás. A distância vem certa, mas o
+  // ângulo não, por isso aparece um alvo à MESMA distância noutro sítio. A fronteira entre
+  // dois radares fica exatamente atrás do terceiro, por isso é aí que mais acontece.
+  // Se o alvo de B está atrás do radar de A e ambos estão à mesma distância, o de A é falso.
+  auto angDiff = [](float a, float b) {
+    float d = fmodf(fabsf(a - b), 360.0f);
+    return d > 180.0f ? 360.0f - d : d;
+  };
+  bool ghost[15] = {false};
+  for (int a = 0; a < nc; a++)
+    for (int b = 0; b < nc; b++) {
+      if (a == b || c[a].r == c[b].r || fabsf(c[a].d - c[b].d) > BACK_SAME_D) continue;
+      const bool aFake = angDiff(c[b].bearing, cfg.yaw[c[a].r] + 180.0f) < BACK_CONE_DEG;
+      const bool bFake = angDiff(c[a].bearing, cfg.yaw[c[b].r] + 180.0f) < BACK_CONE_DEG;
+      if (aFake && !bFake) ghost[a] = true;  // só quando é claro qual dos dois é o falso
+    }
+  for (int a = 0; a < nc; a++)
+    if (ghost[a]) c[a].keep = false;
   // A mesma pessoa vista por dois radares: perto (< MERGE_DIST) = a mesma. Na fronteira entre
   // radares (ambos na borda) junta-se mais longe, porque o radar que a perdeu ainda a segura
   // um instante na posição antiga. Fica o alvo mais ao centro do seu radar (mais fiável).

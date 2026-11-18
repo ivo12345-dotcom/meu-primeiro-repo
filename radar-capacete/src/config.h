@@ -43,7 +43,9 @@ static const float SHADOW_DEG = 15.0f;  // graus: alvo mais longe no mesmo ângu
 static const float MERGE_DIST = 0.7f;
 static const float SEAM_MERGE_DIST = 1.6f;  // m: na fronteira entre dois radares junta-se mais longe (passagem rápida)
 static const float SEAM_EDGE_DEG = 35.0f;   // graus do centro do radar a partir dos quais o alvo está "na borda"
-static const uint32_t EDGE_HOLD_MS = 600;  // alvo congelado na borda mais do que isto = fantasma
+static const uint32_t EDGE_HOLD_MS = 600;
+static const float BACK_SAME_D = 0.3f;     // m: "mesma distância" para o eco pelas costas
+static const float BACK_CONE_DEG = 40.0f;  // graus atrás de cada radar onde ele vê pelas costas  // alvo congelado na borda mais do que isto = fantasma
 static const uint16_t MOUNT_HEIGHT_CM = 170;
 static const int16_t RADAR_HALF_FOV_DDEG = 600;  // ±60,0° por radar   // m: alvos de radares diferentes mais perto que isto = a mesma pessoa
 
