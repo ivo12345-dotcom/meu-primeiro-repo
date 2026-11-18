@@ -77,8 +77,10 @@ class HeadImu {
     const float gmag = sqrtf(gc[0] * gc[0] + gc[1] * gc[1] + gc[2] * gc[2]);
     motion = motion * 0.9f + gmag * 0.1f;
 
-    // Cabeça parada?
-    const bool quiet = gmag < 4.0f && fabsf(an - 1.0f) < 0.08f;
+    // Cabeça parada? Média dos últimos ~0,3 s (uma pessoa nunca fica 100% imóvel: o tremor da
+    // mão ou da cabeça não pode contar como "em movimento")
+    accDev_ = accDev_ * 0.9f + fabsf(an - 1.0f) * 0.1f;
+    const bool quiet = motion < 10.0f && accDev_ < 0.06f;
     if (quiet) {
       if (quietSinceMs_ == 0) quietSinceMs_ = millis();
     } else {
@@ -86,8 +88,8 @@ class HeadImu {
     }
     still = quietSinceMs_ != 0 && millis() - quietSinceMs_ > 600;
 
-    // Correção lenta do erro do giroscópio enquanto está parado
-    if (quietSinceMs_ != 0 && millis() - quietSinceMs_ > 1500 && gmag < 2.0f) {
+    // Correção lenta do erro do giroscópio: só quando está MESMO parado (pousado)
+    if (quietSinceMs_ != 0 && millis() - quietSinceMs_ > 1500 && gmag < 2.0f && motion < 2.0f) {
       for (int i = 0; i < 3; i++) bias_[i] += (g[i] - bias_[i]) * 0.01f;
     }
 
@@ -103,6 +105,7 @@ class HeadImu {
 
   bool ok = false;
   uint16_t failRun_ = 0;
+  float accDev_ = 0.0f;
   bool calibrating = false;
   bool still = false;
   bool invert = false;
