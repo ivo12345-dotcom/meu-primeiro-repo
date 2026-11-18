@@ -53,6 +53,11 @@ superfície, sem furos):
   115200, trama `F4 F3 F2 F1 04 0B 00 F8 F7 F6 F5` = 0 alvos, envia sozinho)**, 7 = GND, 8 = 3,3 V.
 - Os 4 pontos do canto (VCC/RXD/TXD/IO) são uma **porta de serviço**: o "TXD" não transmite (só pull-up fraco).
   Só o VCC é usado. O "IO" não é GND. Do lado das antenas dizem "Tx Rx GND 5V" — enganador.
+- **GND alternativo** (no J2 a solda não pega: o ponto puxa o calor da massa de cobre): J1 **patilha 7**, ou o pino do
+  conectorzinho preto logo abaixo do VCC do canto (medido 0,0 Ω à massa). Os radares 2 e 3 usam este último.
+- Estado a 18/11/2026: os 3 radares, RCWL (VIN no 5V, OUT no GPIO 2) e Modulino ligados. 5V e GND de todos
+  juntam-se numa união (a Heltec só tem um pino 5V). Teste de bancada OK (IMU encontrado, RCWL a mudar, radar 1
+  com 2 alvos). Versão final (3 radares) gravada; falta confirmar radares 2 e 3 no OLED/telemóvel.
 - Fotos marcadas em `radar-capacete/docs/` (`ld2460_mudar_fios*.png` = ligação final).
 - Pinos da Heltec a evitar: 0, 3, 21 (reset do OLED), 26, 35 (LED), 36 (Vext), 37, 45, 46, e 17/18 (I2C do OLED).
 - Com `NUM_RADARS 3`, a UART0 (a do USB) passa a ser usada pelo radar 3 e **deixa de haver monitor série**.
