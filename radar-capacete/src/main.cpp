@@ -99,11 +99,10 @@ void handleData() {
                   (unsigned long)radars[i].framesTotal);
   }
   n += snprintf(out + n, sizeof(out) - n, "],\"tg\":[");
-  // Os radares sobrepõem-se nas bordas: a mesma pessoa pode ser vista por dois.
-  // Alvos de radares diferentes a menos de MERGE_DIST um do outro contam como um só.
-  float px[15], py[15];
-  int pr[15], np = 0;
-  bool first = true;
+  // 1) recolher os alvos de todos os radares; 2) juntar repetidos; 3) escrever.
+  struct Cand { float wx, wy, bearing, d, rel; int r; bool keep; };
+  Cand c[15];
+  int nc = 0;
   for (int i = 0; i < NUM_RADARS; i++) {
     if (!radars[i].alive(now)) continue;
     for (uint8_t k = 0; k < radars[i].targetCount; k++) {
@@ -124,16 +123,29 @@ void handleData() {
         shadow = qd >= cfg.minDist && qd < d - 0.3f && da < SHADOW_DEG;
       }
       if (shadow) continue;
-      const float wx = d * sinf(bearing * PI / 180.0f), wy = d * cosf(bearing * PI / 180.0f);
-      bool dup = false;
-      for (int j = 0; j < np && !dup; j++)
-        dup = pr[j] != i && hypotf(px[j] - wx, py[j] - wy) < MERGE_DIST;
-      if (dup) continue;
-      if (np < 15) { px[np] = wx; py[np] = wy; pr[np] = i; np++; }
-      n += snprintf(out + n, sizeof(out) - n, "%s[%.1f,%.2f,%d]", first ? "" : ",", bearing, d, i);
-      first = false;
-      if (n > (int)sizeof(out) - 40) break;
+      if (nc < 15)
+        c[nc++] = {d * sinf(bearing * PI / 180.0f), d * cosf(bearing * PI / 180.0f), bearing, d,
+                   fabsf(atan2f(x, y)) * 180.0f / PI, i, true};
     }
+  }
+  // A mesma pessoa vista por dois radares: perto (< MERGE_DIST) = a mesma. Na fronteira entre
+  // radares (ambos na borda) junta-se mais longe, porque o radar que a perdeu ainda a segura
+  // um instante na posição antiga. Fica o alvo mais ao centro do seu radar (mais fiável).
+  for (int a = 0; a < nc; a++)
+    for (int b = a + 1; b < nc; b++) {
+      if (!c[a].keep || !c[b].keep || c[a].r == c[b].r) continue;
+      const float dist = hypotf(c[a].wx - c[b].wx, c[a].wy - c[b].wy);
+      const bool seam = c[a].rel > SEAM_EDGE_DEG && c[b].rel > SEAM_EDGE_DEG;
+      if (dist < MERGE_DIST || (seam && dist < SEAM_MERGE_DIST)) {
+        if (c[a].rel <= c[b].rel) c[b].keep = false; else c[a].keep = false;
+      }
+    }
+  bool first = true;
+  for (int a = 0; a < nc; a++) {
+    if (!c[a].keep) continue;
+    n += snprintf(out + n, sizeof(out) - n, "%s[%.1f,%.2f,%d]", first ? "" : ",", c[a].bearing, c[a].d, c[a].r);
+    first = false;
+    if (n > (int)sizeof(out) - 40) break;
   }
   n += snprintf(out + n, sizeof(out) - n, "]}");
   server.sendHeader("Cache-Control", "no-store");
@@ -233,6 +245,15 @@ void setup() {
   // Radares
   for (int i = 0; i < NUM_RADARS; i++) {
     radars[i].begin(RADAR_PORT[i], RADAR_RX_PIN[i], RADAR_TX_PIN[i], RADAR_BAUD);
+  }
+  // Dizer aos radares onde estão: capacete a ~1,7 m, a olhar a direito, cada um só na sua fatia
+  delay(300);
+  for (int i = 0; i < NUM_RADARS; i++) {
+    radars[i].setMountParams(MOUNT_HEIGHT_CM, 0);
+    delay(60);
+    radars[i].setRange(60, -RADAR_HALF_FOV_DDEG, RADAR_HALF_FOV_DDEG);
+    delay(60);
+    radars[i].enableReporting();
   }
 
   // IMU

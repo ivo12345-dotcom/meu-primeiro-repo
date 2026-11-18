@@ -40,7 +40,11 @@ static const int LED_PIN = 35;
 // Tempo em que o ecrã fica ligado depois de ligar a placa (depois apaga-se para não dar luz)
 static const uint32_t OLED_ON_MS = 30000;
 static const float SHADOW_DEG = 15.0f;  // graus: alvo mais longe no mesmo ângulo do mesmo radar = eco na parede
-static const float MERGE_DIST = 0.7f;   // m: alvos de radares diferentes mais perto que isto = a mesma pessoa
+static const float MERGE_DIST = 0.7f;
+static const float SEAM_MERGE_DIST = 1.6f;  // m: na fronteira entre dois radares junta-se mais longe (passagem rápida)
+static const float SEAM_EDGE_DEG = 35.0f;   // graus do centro do radar a partir dos quais o alvo está "na borda"
+static const uint16_t MOUNT_HEIGHT_CM = 170;
+static const int16_t RADAR_HALF_FOV_DDEG = 600;  // ±60,0° por radar   // m: alvos de radares diferentes mais perto que isto = a mesma pessoa
 
 // --- Wi-Fi (o telemóvel liga-se a esta rede) -----------------------------
 #define WIFI_SSID     "RADAR-CAPACETE"

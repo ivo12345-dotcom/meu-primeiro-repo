@@ -55,6 +55,25 @@ class LD2460 {
     if (port_) port_->write(cmd, sizeof(cmd));
   }
 
+  // Altura (cm) e inclinação para baixo (centésimos de grau). De fábrica: 260 cm e 30°
+  // (radar de parede a olhar para o chão). No capacete: ~170 cm e 0° (a direito). Fica gravado.
+  void setMountParams(uint16_t heightCm, int16_t tiltCdeg) {
+    const uint8_t cmd[] = {0xFD, 0xFC, 0xFB, 0xFA, 0x07, 0x0F, 0x00,
+                           (uint8_t)(heightCm & 0xFF), (uint8_t)(heightCm >> 8),
+                           (uint8_t)(tiltCdeg & 0xFF), (uint8_t)((uint16_t)tiltCdeg >> 8),
+                           0x04, 0x03, 0x02, 0x01};
+    if (port_) port_->write(cmd, sizeof(cmd));
+  }
+
+  // Zona de deteção: distância (dm) e ângulos inicial/final (décimas de grau). Ex.: 60, -600, 600.
+  void setRange(uint8_t distDm, int16_t startDdeg, int16_t endDdeg) {
+    const uint8_t cmd[] = {0xFD, 0xFC, 0xFB, 0xFA, 0x11, 0x10, 0x00, distDm,
+                           (uint8_t)(startDdeg & 0xFF), (uint8_t)((uint16_t)startDdeg >> 8),
+                           (uint8_t)(endDdeg & 0xFF), (uint8_t)((uint16_t)endDdeg >> 8),
+                           0x04, 0x03, 0x02, 0x01};
+    if (port_) port_->write(cmd, sizeof(cmd));
+  }
+
   bool alive(uint32_t now) const { return lastFrameMs != 0 && now - lastFrameMs < 2000; }
 
   RadarTarget targets[MAX_TARGETS];
