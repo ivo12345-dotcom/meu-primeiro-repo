@@ -49,8 +49,10 @@ class HeadImu {
     uint8_t raw[12];
     if (!readN_(0x22, raw, 12)) {
       errors++;
+      if (++failRun_ > 20) ok = false;  // deixou de responder: o main volta a procurá-lo
       return;
     }
+    failRun_ = 0;
     float g[3], a[3];
     for (int i = 0; i < 3; i++) {
       g[i] = (int16_t)(raw[2 * i] | (raw[2 * i + 1] << 8)) * 0.0175f;        // dps
@@ -100,6 +102,7 @@ class HeadImu {
   }
 
   bool ok = false;
+  uint16_t failRun_ = 0;
   bool calibrating = false;
   bool still = false;
   bool invert = false;

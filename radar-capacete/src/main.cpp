@@ -311,6 +311,12 @@ void loop() {
     if (!radars[i].alive(now) && now - radars[i].lastEnableMs > 3000) radars[i].enableReporting();
   }
 
+  // Se o giroscópio não respondeu no arranque (mau contacto), tenta outra vez a cada 2 s
+  static uint32_t lastImuTry = 0;
+  if (!imu.ok && now - lastImuTry > 2000) {
+    lastImuTry = now;
+    imu.begin(&imuWire);
+  }
   imu.update();
   server.handleClient();
 
