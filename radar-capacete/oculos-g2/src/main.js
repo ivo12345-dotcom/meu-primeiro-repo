@@ -25,6 +25,13 @@ const cv = document.createElement('canvas');
 cv.width = W; cv.height = H;
 const ctx = cv.getContext('2d', { willReadFrequently: true });
 
+let blink = false;
+function aviso(x, y) {  // triângulo de aviso com "!"
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.moveTo(x, y - 20); ctx.lineTo(x - 20, y + 15); ctx.lineTo(x + 20, y + 15); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#000'; ctx.font = 'bold 24px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('!', x, y + 12);
+}
+
 function draw(d) {
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
   const cx = W / 2, cy = H / 2, R = W / 2 - 6, sc = R / RANGE_M;
@@ -45,10 +52,13 @@ function draw(d) {
     return;
   }
   // aviso RCWL (movimento atrás de parede, só com a cabeça parada): fatia tracejada para o lado do RCWL
+  // Pisca (uma imagem sim, outra não) e põe um triângulo de aviso "!" na borda, do lado do RCWL.
   if (d.rc && d.st && d.ry !== undefined) {
+    blink = !blink;
     const a0 = (d.ry - 45 - 90) * Math.PI / 180, a1 = (d.ry + 45 - 90) * Math.PI / 180;
-    ctx.save(); ctx.setLineDash([6, 5]); ctx.strokeStyle = '#ccc'; ctx.lineWidth = 3;
+    ctx.save(); ctx.setLineDash([6, 5]); ctx.strokeStyle = blink ? '#fff' : '#555'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, a0, a1); ctx.closePath(); ctx.stroke(); ctx.restore();
+    if (blink) aviso(cx + Math.sin(d.ry * Math.PI / 180) * (R - 30), cy - Math.cos(d.ry * Math.PI / 180) * (R - 30));
   }
   // alvos: [rumo°, distância m, radar]; a página do telemóvel compensa a rotação da cabeça com d.h
   const h = d.h || 0;

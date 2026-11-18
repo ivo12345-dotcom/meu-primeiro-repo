@@ -157,7 +157,10 @@ function draw(){
   if(data&&data.rc&&data.st&&data.ry!==undefined){const a0=(data.ry-45-90)*Math.PI/180,a1=(data.ry+45-90)*Math.PI/180;
     ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,R,a0,a1);ctx.closePath();
     ctx.fillStyle='rgba(255,159,26,'+(0.18+0.12*Math.sin(now/150))+')';ctx.fill();
-    ctx.strokeStyle='#ff9f1a';ctx.lineWidth=2;ctx.stroke()}
+    ctx.strokeStyle='#ff9f1a';ctx.lineWidth=2;ctx.stroke();
+    if(Math.floor(now/300)%2){const ra=data.ry*Math.PI/180,ax=cx+Math.sin(ra)*(R-34),ay=cy-Math.cos(ra)*(R-34);
+      ctx.fillStyle='#ff9f1a';ctx.beginPath();ctx.moveTo(ax,ay-24);ctx.lineTo(ax-22,ay+16);ctx.lineTo(ax+22,ay+16);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#000';ctx.font='bold 26px system-ui';ctx.textAlign='center';ctx.fillText('!',ax,ay+12);ctx.textAlign='start'}}
   // anéis
   ctx.strokeStyle='#1d3b1d';ctx.lineWidth=1;ctx.fillStyle='#4f6b4f';ctx.font='12px system-ui';
   for(let m=1;m<=opt.range;m++){ctx.beginPath();ctx.arc(cx,cy,m*sc,0,Math.PI*2);ctx.stroke();if(m%2==0||opt.range<=4)ctx.fillText(m+'m',cx+4,cy-m*sc+13)}
