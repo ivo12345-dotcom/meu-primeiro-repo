@@ -38,19 +38,22 @@ Alertas só **visuais ou por vibração, nunca som**.
 
 ### ⚠️ Ligações REAIS do LD2460 (confirmadas com fotos e multímetro a 18/11/2026)
 
-A numeração "pino 1…8" acima veio da loja e **não corresponde à placa**. O conector preto 2×4 (J1) tem
-passo pequeno (não encaixa Dupont) e é alimentado a 3,3 V — **não se usa**. Os fios são **soldados**:
+A numeração "pino 1…8" acima veio da loja e **não corresponde à placa**. Os fios são **soldados** (pontos de
+superfície, sem furos):
 
-| Furo no LD2460 (lado dos componentes) | Fio | Heltec |
+| Ponto no LD2460 (lado dos componentes, conector J1 à esquerda) | Fio | Heltec |
 |---|---|---|
-| **VCC** (4 furos junto ao chip grande, cima-direita) | vermelho | 5V |
-| **RXD** (cima-esquerda) | laranja | GPIO 5 (radar 1) |
-| **TXD** (baixo-esquerda) | amarelo | GPIO 4 (radar 1) |
-| **IO** (baixo-direita) | — | vazio (NÃO é GND: sem continuidade) |
-| **GND** do J2 (fila de 5 furos em baixo, "PAD DM DP GND 3.3V", 4.º furo) | preto | GND |
+| **VCC** (4 pontos junto ao chip grande, cima-direita) — alimentação 5 V | vermelho | 5V |
+| **GND** do J2 (fila de 5 pontos em baixo, "PAD DM DP GND 3.3V", o 4.º) | preto | GND |
+| **J1 patilha 6** (lado direito do conector preto, 2.ª de cima) = **Tx do radar, dados** | amarelo | GPIO 4 (radar 1) |
+| **J1 patilha 5** (lado direito, 1.ª de cima) = Rx do radar | laranja | GPIO 5 (radar 1) |
 
-Do lado das antenas os mesmos 4 furos dizem "Tx Rx GND 5V" — o "GND" aí é enganador. Fotos marcadas em
-`radar-capacete/docs/`. Ainda por confirmar se estes TXD/RXD são a porta que manda os alvos.
+- J1 é uma ficha **fêmea** 2×4 SMD; as 8 patilhas de solda estão à vista, 4 de cada lado. Mapa medido com sonda
+  (fio no GPIO 6 + `pio run -e diag`): esquerda 1–4 = tudo "alto" (IO1–IO4); direita 5 = Rx, **6 = Tx (dados a
+  115200, trama `F4 F3 F2 F1 04 0B 00 F8 F7 F6 F5` = 0 alvos, envia sozinho)**, 7 = GND, 8 = 3,3 V.
+- Os 4 pontos do canto (VCC/RXD/TXD/IO) são uma **porta de serviço**: o "TXD" não transmite (só pull-up fraco).
+  Só o VCC é usado. O "IO" não é GND. Do lado das antenas dizem "Tx Rx GND 5V" — enganador.
+- Fotos marcadas em `radar-capacete/docs/` (`ld2460_mudar_fios*.png` = ligação final).
 - Pinos da Heltec a evitar: 0, 3, 21 (reset do OLED), 26, 35 (LED), 36 (Vext), 37, 45, 46, e 17/18 (I2C do OLED).
 - Com `NUM_RADARS 3`, a UART0 (a do USB) passa a ser usada pelo radar 3 e **deixa de haver monitor série**.
   Para testar na bancada com o monitor série, usar `NUM_RADARS 1`.
