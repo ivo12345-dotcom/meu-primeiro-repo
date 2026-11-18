@@ -2484,15 +2484,16 @@
         const res = await bridge.createStartUpPageContainer({
           containerTotalNum: 3,
           imageObject: [img(1, "radar-cima", 0), img(2, "radar-baixo", 144)],
+          // tudo do lado ESQUERDO: o texto fica no canto de cima do próprio radar, a metade direita fica vazia
           textObject: [{
-            xPosition: 300,
-            yPosition: 20,
-            width: 270,
-            height: 250,
+            xPosition: 0,
+            yPosition: 0,
+            width: 120,
+            height: 70,
             containerID: 3,
             containerName: "estado",
             zOrderIndex: 3,
-            content: "A ligar ao radar...",
+            content: "A ligar...",
             isEventCapture: 1
           }]
         });
@@ -2508,10 +2509,10 @@
         if (!G.isSuccess(r1) || !G.isSuccess(r2)) log("imagem falhou:", r1, r2);
         const n = d ? (d.tg || []).length : 0;
         let txt;
-        if (!d) txt = "SEM LIGA\xC7\xC3O\nao radar\n\nliga o telem\xF3vel\na RADAR-CAPACETE";
+        if (!d) txt = "SEM\nRADAR";
         else {
-          const radares = (d.r || []).map((r, i) => (r[0] ? "ok" : "--") + " " + NAMES[i]).join("\n");
-          txt = (n ? n + (n === 1 ? " ALVO" : " ALVOS") : "sem alvos") + "\n\n" + (d.st ? "parado" : "EM MOVIMENTO") + (d.rc && d.st ? "\nMOVIMENTO ATR\xC1S\nDA PAREDE" : "") + "\n\n" + radares;
+          const mortos = (d.r || []).map((r, i) => r[0] ? "" : NAMES[i]).filter(Boolean);
+          txt = (n ? n + (n === 1 ? " ALVO" : " ALVOS") : "") + (!d.st ? "\nmexer" : d.rc ? "\nPAREDE!" : "") + (mortos.length ? "\n-- " + mortos.join(" ") : "");
         }
         if (txt !== lastText) {
           lastText = txt;
