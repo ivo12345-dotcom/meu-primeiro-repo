@@ -44,6 +44,12 @@ function draw(d) {
     ctx.fillText('SEM LIGAÇÃO', cx, cy + 8);
     return;
   }
+  // aviso RCWL (movimento atrás de parede, só com a cabeça parada): fatia tracejada para o lado do RCWL
+  if (d.rc && d.st && d.ry !== undefined) {
+    const a0 = (d.ry - 45 - 90) * Math.PI / 180, a1 = (d.ry + 45 - 90) * Math.PI / 180;
+    ctx.save(); ctx.setLineDash([6, 5]); ctx.strokeStyle = '#ccc'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, a0, a1); ctx.closePath(); ctx.stroke(); ctx.restore();
+  }
   // alvos: [rumo°, distância m, radar]; a página do telemóvel compensa a rotação da cabeça com d.h
   const h = d.h || 0;
   for (const t of d.tg || []) {

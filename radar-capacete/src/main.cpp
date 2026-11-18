@@ -104,8 +104,8 @@ void handleData() {
   int n = snprintf(out, sizeof(out), "{\"t\":%lu,\"h\":%.1f,\"st\":%d,\"cal\":%d,\"imu\":%d,\"mv\":%.1f,\"rc\":%d,",
                    (unsigned long)now, imu.heading, imu.still ? 1 : 0, imu.calibrating ? 1 : 0, imu.ok ? 1 : 0,
                    imu.motion, rcwlActive() ? 1 : 0);
-  n += snprintf(out + n, sizeof(out) - n, "\"rec\":%d,\"rb\":%u,\"mk\":%u,\"g2\":%d,\"r\":[", rec.on ? 1 : 0,
-                (unsigned)rec.bytes, (unsigned)rec.marks, g2Show ? 1 : 0);
+  n += snprintf(out + n, sizeof(out) - n, "\"rec\":%d,\"rb\":%u,\"mk\":%u,\"g2\":%d,\"ry\":%d,\"r\":[", rec.on ? 1 : 0,
+                (unsigned)rec.bytes, (unsigned)rec.marks, g2Show ? 1 : 0, RCWL_YAW);
   for (int i = 0; i < NUM_RADARS; i++) {
     n += snprintf(out + n, sizeof(out) - n, "%s[%d,%lu]", i ? "," : "", radars[i].alive(now) ? 1 : 0,
                   (unsigned long)radars[i].framesTotal);

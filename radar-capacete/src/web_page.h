@@ -153,6 +153,11 @@ function draw(){
   // cobertura dos radares
   if(cfg){cfg.yaw.slice(0,cfg.n).forEach(y=>{const a0=(y-60-90)*Math.PI/180,a1=(y+60-90)*Math.PI/180;
     ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,Math.min(6,opt.range)*sc,a0,a1);ctx.closePath();ctx.fillStyle='rgba(61,220,101,0.05)';ctx.fill()})}
+  // aviso RCWL (movimento atrás de parede): fatia laranja para o lado para onde o RCWL está virado
+  if(data&&data.rc&&data.st&&data.ry!==undefined){const a0=(data.ry-45-90)*Math.PI/180,a1=(data.ry+45-90)*Math.PI/180;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,R,a0,a1);ctx.closePath();
+    ctx.fillStyle='rgba(255,159,26,'+(0.18+0.12*Math.sin(now/150))+')';ctx.fill();
+    ctx.strokeStyle='#ff9f1a';ctx.lineWidth=2;ctx.stroke()}
   // anéis
   ctx.strokeStyle='#1d3b1d';ctx.lineWidth=1;ctx.fillStyle='#4f6b4f';ctx.font='12px system-ui';
   for(let m=1;m<=opt.range;m++){ctx.beginPath();ctx.arc(cx,cy,m*sc,0,Math.PI*2);ctx.stroke();if(m%2==0||opt.range<=4)ctx.fillText(m+'m',cx+4,cy-m*sc+13)}

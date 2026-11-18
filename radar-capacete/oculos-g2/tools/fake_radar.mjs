@@ -8,6 +8,7 @@ import path from 'node:path';
 const [file, portArg, ...flags] = process.argv.slice(2);
 const PORT = Number(portArg || 8080);
 const CORS = flags.includes('--cors');
+const FORCE_RC = flags.includes('--rcwl');   // forçar o aviso do RCWL (para testar o desenho)
 const YAW = [0, -120, 120];
 const DIST = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..', 'dist');
 
@@ -41,7 +42,7 @@ http.createServer((req, res) => {
   if (CORS) res.setHeader('Access-Control-Allow-Origin', '*');
   if (u.pathname === '/data') {
     res.setHeader('Content-Type', 'application/json');
-    return res.end(JSON.stringify({ ...stateAt(Date.now() - start), g2 }));
+    return res.end(JSON.stringify({ ...stateAt(Date.now() - start), g2, ry: -60, ...(FORCE_RC ? { rc: 1, st: 1 } : {}) }));
   }
   if (u.pathname === '/cmd') {
     const c = u.searchParams.get('c');
