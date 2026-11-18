@@ -2500,16 +2500,31 @@
         log("p\xE1gina criada:", res);
         return res === F.success;
       }
+      var hidden = false;
+      function listenTaps() {
+        bridge.onEvenHubEvent((ev) => {
+          const e = ev.sysEvent || ev.textEvent || ev.listEvent;
+          if (!e) return;
+          if (P.fromJson(e.eventType) === P.DOUBLE_CLICK_EVENT) {
+            hidden = !hidden;
+            log(hidden ? "escondido" : "vis\xEDvel");
+          }
+        });
+      }
       var lastText = "";
       async function push(d) {
-        draw(d);
+        if (hidden) {
+          ctx.fillStyle = "#000";
+          ctx.fillRect(0, 0, W2, H);
+        } else draw(d);
         if (!bridge) return;
         const r1 = await bridge.updateImageRawData({ containerID: 1, containerName: "radar-cima", imageData: gray8(0, 144) });
         const r2 = await bridge.updateImageRawData({ containerID: 2, containerName: "radar-baixo", imageData: gray8(144, 144) });
         if (!G.isSuccess(r1) || !G.isSuccess(r2)) log("imagem falhou:", r1, r2);
         const n = d ? (d.tg || []).length : 0;
         let txt;
-        if (!d) txt = "SEM\nRADAR";
+        if (hidden) txt = " ";
+        else if (!d) txt = "SEM\nRADAR";
         else {
           const mortos = (d.r || []).map((r, i) => r[0] ? "" : NAMES[i]).filter(Boolean);
           txt = (n ? n + (n === 1 ? " ALVO" : " ALVOS") : "") + (!d.st ? "\nmexer" : d.rc ? "\nPAREDE!" : "") + (mortos.length ? "\n-- " + mortos.join(" ") : "");
@@ -2541,7 +2556,7 @@
         log("radar em", RADAR || location.origin);
         document.body.appendChild(cv);
         try {
-          await setupGlasses();
+          if (await setupGlasses()) listenTaps();
         } catch (e) {
           log("sem \xF3culos (s\xF3 pr\xE9-visualiza\xE7\xE3o):", e && e.message);
         }

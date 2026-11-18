@@ -7,6 +7,7 @@ import {
   waitForEvenAppBridge,
   StartUpPageCreateResult,
   ImageRawDataUpdateResult,
+  OsEventTypeList,
 } from '@evenrealities/even_hub_sdk';
 
 const W = 288, H = 288;          // radar
@@ -81,16 +82,32 @@ async function setupGlasses() {
   return res === StartUpPageCreateResult.success;
 }
 
+// Toque duplo na haste dos óculos (ou no anel) = esconder/mostrar o radar (para apontar com a mira)
+let hidden = false;
+function listenTaps() {
+  bridge.onEvenHubEvent((ev) => {
+    const e = ev.sysEvent || ev.textEvent || ev.listEvent;
+    if (!e) return;
+    if (OsEventTypeList.fromJson(e.eventType) === OsEventTypeList.DOUBLE_CLICK_EVENT) {
+      hidden = !hidden;
+      log(hidden ? 'escondido' : 'visível');
+    }
+  });
+}
+
 let lastText = '';
 async function push(d) {
-  draw(d);
+  if (hidden) {
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);  // tudo preto = lente transparente
+  } else draw(d);
   if (!bridge) return;
   const r1 = await bridge.updateImageRawData({ containerID: 1, containerName: 'radar-cima', imageData: gray8(0, 144) });
   const r2 = await bridge.updateImageRawData({ containerID: 2, containerName: 'radar-baixo', imageData: gray8(144, 144) });
   if (!ImageRawDataUpdateResult.isSuccess(r1) || !ImageRawDataUpdateResult.isSuccess(r2)) log('imagem falhou:', r1, r2);
   const n = d ? (d.tg || []).length : 0;
   let txt;
-  if (!d) txt = 'SEM\nRADAR';
+  if (hidden) txt = ' ';
+  else if (!d) txt = 'SEM\nRADAR';
   else {
     const mortos = (d.r || []).map((r, i) => (r[0] ? '' : NAMES[i])).filter(Boolean);
     txt = (n ? n + (n === 1 ? ' ALVO' : ' ALVOS') : '') +
@@ -118,6 +135,6 @@ async function poll() {
 (async () => {
   log('radar em', RADAR || location.origin);
   document.body.appendChild(cv);  // pré-visualização na página do telemóvel
-  try { await setupGlasses(); } catch (e) { log('sem óculos (só pré-visualização):', e && e.message); }
+  try { if (await setupGlasses()) listenTaps(); } catch (e) { log('sem óculos (só pré-visualização):', e && e.message); }
   poll();
 })();
