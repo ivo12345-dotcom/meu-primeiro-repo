@@ -7,7 +7,6 @@ import {
   waitForEvenAppBridge,
   StartUpPageCreateResult,
   ImageRawDataUpdateResult,
-  OsEventTypeList,
 } from '@evenrealities/even_hub_sdk';
 
 const W = 288, H = 288;          // radar
@@ -82,25 +81,24 @@ async function setupGlasses() {
   return res === StartUpPageCreateResult.success;
 }
 
-// Toque duplo na haste dos óculos (ou no anel) = esconder/mostrar o radar (para apontar com a mira)
-let hidden = false;
-function listenTaps() {
-  bridge.onEvenHubEvent((ev) => {
-    const e = ev.sysEvent || ev.textEvent || ev.listEvent;
-    if (!e) return;
-    if (OsEventTypeList.fromJson(e.eventType) === OsEventTypeList.DOUBLE_CLICK_EVENT) {
-      hidden = !hidden;
-      log(hidden ? 'escondido' : 'visível');
-    }
-  });
+// Esconder/mostrar SÓ pelo telemóvel (o Ivo não quer tocar nos óculos de luvas):
+// botão 👓 na página do radar (fica guardado na placa, "g2" no /data) ou o botão desta página.
+let hidden = false, sentBlank = false;
+async function toggle() {
+  try { await fetch(RADAR + '/cmd?c=g2_toggle', { cache: 'no-store' }); } catch (e) { log('botão falhou:', e && e.message); }
 }
 
 let lastText = '';
 async function push(d) {
+  hidden = !!d && d.g2 === 0;
+  const btn = document.getElementById('bG2');
+  if (btn) btn.textContent = hidden ? 'MOSTRAR RADAR NOS ÓCULOS' : 'ESCONDER RADAR DOS ÓCULOS';
   if (hidden) {
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);  // tudo preto = lente transparente
+    if (sentBlank) return;                              // já está apagado: não gastar Bluetooth
   } else draw(d);
   if (!bridge) return;
+  sentBlank = hidden;
   const r1 = await bridge.updateImageRawData({ containerID: 1, containerName: 'radar-cima', imageData: gray8(0, 144) });
   const r2 = await bridge.updateImageRawData({ containerID: 2, containerName: 'radar-baixo', imageData: gray8(144, 144) });
   if (!ImageRawDataUpdateResult.isSuccess(r1) || !ImageRawDataUpdateResult.isSuccess(r2)) log('imagem falhou:', r1, r2);
@@ -135,6 +133,7 @@ async function poll() {
 (async () => {
   log('radar em', RADAR || location.origin);
   document.body.appendChild(cv);  // pré-visualização na página do telemóvel
-  try { if (await setupGlasses()) listenTaps(); } catch (e) { log('sem óculos (só pré-visualização):', e && e.message); }
+  const b = document.getElementById('bG2'); if (b) b.onclick = toggle;
+  try { await setupGlasses(); } catch (e) { log('sem óculos (só pré-visualização):', e && e.message); }
   poll();
 })();

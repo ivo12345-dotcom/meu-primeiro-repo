@@ -5,13 +5,16 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Radar G2</title>
 <style>
-  body{margin:0;background:#000;color:#9f9;font-family:system-ui,sans-serif;padding:10px}
-  canvas{width:288px;height:288px;border:1px solid #333;image-rendering:pixelated}
+  body{margin:0;background:#000;color:#9f9;font-family:system-ui,sans-serif;padding:12px}
+  #bG2{display:block;width:100%;padding:22px;font-size:20px;font-weight:700;background:#111;color:#9f9;
+       border:2px solid #2a5;border-radius:14px;margin:6px 0 14px}
+  #bG2:active{background:#222}
+  canvas{width:288px;height:288px;border:1px solid #333}
   #log{font-family:monospace;font-size:11px;white-space:pre-wrap;color:#6a6}
 </style>
 </head>
 <body>
-<h3>Radar → óculos G2</h3>
+<button id="bG2">ESCONDER RADAR DOS ÓCULOS</button>
 <pre id="log"></pre>
 <script src="app.js"></script>
 </body>

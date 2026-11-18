@@ -1,2 +1,7 @@
 node_modules/
 
+shots/b*.png
+shots/t*.png
+shots/esq*.png
+shots/g[0-9].png
+shots/cors*.png

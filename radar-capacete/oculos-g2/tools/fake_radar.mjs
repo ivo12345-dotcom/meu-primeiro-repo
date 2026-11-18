@@ -35,12 +35,18 @@ function stateAt(ms) {
     r: last.map(r => [r ? 1 : 0, 0]), tg };
 }
 
+let g2 = 1;
 http.createServer((req, res) => {
   const u = new URL(req.url, 'http://x');
   if (CORS) res.setHeader('Access-Control-Allow-Origin', '*');
   if (u.pathname === '/data') {
     res.setHeader('Content-Type', 'application/json');
-    return res.end(JSON.stringify(stateAt(Date.now() - start)));
+    return res.end(JSON.stringify({ ...stateAt(Date.now() - start), g2 }));
+  }
+  if (u.pathname === '/cmd') {
+    const c = u.searchParams.get('c');
+    if (c === 'g2_toggle') g2 = g2 ? 0 : 1; else if (c === 'g2_on') g2 = 1; else if (c === 'g2_off') g2 = 0;
+    return res.end('ok');
   }
   const f = path.join(DIST, u.pathname === '/' ? 'index.html' : u.pathname);
   if (!f.startsWith(DIST) || !fs.existsSync(f)) { res.statusCode = 404; return res.end('nao existe'); }

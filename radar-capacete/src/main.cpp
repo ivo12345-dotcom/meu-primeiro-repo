@@ -14,6 +14,7 @@
 #include "imu.h"
 #include "ld2460.h"
 #include "recorder.h"
+#include "g2_app.h"
 #include "web_page.h"
 
 #if NUM_RADARS < 1 || NUM_RADARS > 3
@@ -37,6 +38,7 @@ SSD1306Wire oled(0x3c, OLED_SDA_PIN, OLED_SCL_PIN, GEOMETRY_128_64, I2C_ONE);
 WebServer server(80);
 Preferences prefs;
 Recorder rec;
+bool g2Show = true;  // óculos G2: mostrar o radar (botão no telemóvel; não fica gravado, volta a "sim" ao ligar)
 
 // Definições guardadas na memória da placa
 struct Settings {
@@ -102,8 +104,8 @@ void handleData() {
   int n = snprintf(out, sizeof(out), "{\"t\":%lu,\"h\":%.1f,\"st\":%d,\"cal\":%d,\"imu\":%d,\"mv\":%.1f,\"rc\":%d,",
                    (unsigned long)now, imu.heading, imu.still ? 1 : 0, imu.calibrating ? 1 : 0, imu.ok ? 1 : 0,
                    imu.motion, rcwlActive() ? 1 : 0);
-  n += snprintf(out + n, sizeof(out) - n, "\"rec\":%d,\"rb\":%u,\"mk\":%u,\"r\":[", rec.on ? 1 : 0,
-                (unsigned)rec.bytes, (unsigned)rec.marks);
+  n += snprintf(out + n, sizeof(out) - n, "\"rec\":%d,\"rb\":%u,\"mk\":%u,\"g2\":%d,\"r\":[", rec.on ? 1 : 0,
+                (unsigned)rec.bytes, (unsigned)rec.marks, g2Show ? 1 : 0);
   for (int i = 0; i < NUM_RADARS; i++) {
     n += snprintf(out + n, sizeof(out) - n, "%s[%d,%lu]", i ? "," : "", radars[i].alive(now) ? 1 : 0,
                   (unsigned long)radars[i].framesTotal);
@@ -246,7 +248,14 @@ void handleCmd() {
     rec.stop();
   } else if (c == "mark") {
     rec.mark();
+  } else if (c == "g2_on") {
+    g2Show = true;
+  } else if (c == "g2_off") {
+    g2Show = false;
+  } else if (c == "g2_toggle") {
+    g2Show = !g2Show;
   }
+  server.sendHeader("Access-Control-Allow-Origin", "*");
   server.send(200, "text/plain", "ok");
 }
 
@@ -335,6 +344,12 @@ void setup() {
   server.on("/cfg", handleCfg);
   server.on("/set", handleSet);
   server.on("/cmd", handleCmd);
+  // App dos óculos G2 servida pela própria placa (plano B se a app da Even não deixar ir à rede local)
+  server.on("/g2", []() {
+    server.sendHeader("Content-Encoding", "gzip");
+    server.sendHeader("Cache-Control", "no-store");
+    server.send_P(200, "text/html; charset=utf-8", (const char *)G2_APP_GZ, G2_APP_GZ_LEN);
+  });
   server.onNotFound(handleRoot);
   server.begin();
 }

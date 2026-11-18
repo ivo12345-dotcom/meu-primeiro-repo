@@ -48,6 +48,7 @@ input[type=checkbox]{width:24px;height:24px}
     <span class="chip" id="cImu">IMU</span>
     <span class="chip" id="cStill">—</span>
     <span id="sp"></span>
+    <button id="bG2" title="Radar nos óculos G2">👓 ON</button>
     <button id="bRec" title="Gravar (caixa negra)">● GRAVAR</button>
     <button id="bZero" title="Alinhar frente">⟲</button>
     <button id="bCfg" title="Definições">⚙</button>
@@ -127,6 +128,7 @@ function ingest(d){
   if(d.rc&&d.st){rc.textContent='⚠ MOVIMENTO PRÓXIMO (fora de vista)';rc.className='on';w.classList.add('rcwl')}
   else{rc.textContent=d.rc?'RCWL: ignorado (estás em movimento)':(d.cal?'A calibrar… não mexer':' ');rc.className='';w.classList.remove('rcwl')}
   chips(d);
+  const g2=d.g2!==0;$('bG2').textContent=g2?'👓 ON':'👓 OFF';$('bG2').style.color=g2?'':'#888';
   const on=!!d.rec;$('bRec').textContent=on?'■ PARAR':'● GRAVAR';$('bRec').style.color=on?'#ff5050':'';
   $('bMark').style.display=on?'block':'none';$('mN').textContent=(d.mk||0)+1;
   $('recInfo').textContent=d.rb?((on?'A gravar: ':'Gravação guardada: ')+Math.round(d.rb/1024)+' KB'):'';
@@ -202,6 +204,7 @@ $('bClose').onclick=()=>$('panel').classList.remove('open');
 $('bZero').onclick=()=>{cmd('zero');pts=[]};
 $('bCal').onclick=()=>cmd('cal');
 $('bRec').onclick=()=>{if(data&&data.rec)cmd('rec_off');else if(confirm('Começar a gravar? (apaga a gravação anterior)'))cmd('rec_on')};
+$('bG2').onclick=()=>{cmd('g2_toggle');if(navigator.vibrate)navigator.vibrate(40)};
 $('bMark').onclick=()=>{cmd('mark');if(navigator.vibrate)navigator.vibrate(60)};
 $('bSide').onclick=()=>{if(confirm('Configurar todos os radares para montagem lateral?'))cmd('side')};
 $('bSave').onclick=async()=>{

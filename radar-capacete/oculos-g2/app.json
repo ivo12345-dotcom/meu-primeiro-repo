@@ -1,7 +1,7 @@
 {
-  "package_id": "com.example.g2demo",
+  "package_id": "pt.radar.capacete",
   "edition": "202601",
-  "name": "G2 Demo",
+  "name": "Radar Capacete",
   "version": "0.1.0",
   "min_app_version": "2.2.10",
   "min_sdk_version": "0.0.16",
@@ -9,14 +9,10 @@
   "permissions": [
     {
       "name": "network",
-      "desc": "This app needs to access the network in order to ...",
+      "desc": "Ler os alvos da placa do radar de capacete na rede Wi-Fi local RADAR-CAPACETE (192.168.4.1).",
       "whitelist": [
-        "https://example.com"
+        "http://192.168.4.1"
       ]
-    },
-    {
-      "name": "location",
-      "desc": "This app needs to access the location in order to ..."
     }
   ],
   "supported_languages": [
