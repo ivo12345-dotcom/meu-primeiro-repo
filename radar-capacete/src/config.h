@@ -39,6 +39,7 @@ static const int VEXT_PIN = 36;   // LOW = liga a alimentação do ecrã
 static const int LED_PIN = 35;
 // Tempo em que o ecrã fica ligado depois de ligar a placa (depois apaga-se para não dar luz)
 static const uint32_t OLED_ON_MS = 30000;
+static const uint32_t DUMP_WAIT_MS = 1500;  // no arranque, espera pelo PC pedir a gravação
 static const float SHADOW_DEG = 15.0f;
 static const float SAME_BODY_M = 0.5f;  // m: dois alvos do mesmo radar mais perto que isto = o mesmo corpo  // graus: alvo mais longe no mesmo ângulo do mesmo radar = eco na parede
 static const float MERGE_DIST = 0.7f;

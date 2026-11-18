@@ -48,6 +48,7 @@ input[type=checkbox]{width:24px;height:24px}
     <span class="chip" id="cImu">IMU</span>
     <span class="chip" id="cStill">—</span>
     <span id="sp"></span>
+    <button id="bRec" title="Gravar (caixa negra)">● GRAVAR</button>
     <button id="bZero" title="Alinhar frente">⟲</button>
     <button id="bCfg" title="Definições">⚙</button>
   </div>
@@ -55,6 +56,8 @@ input[type=checkbox]{width:24px;height:24px}
   <div id="bottom">
     <div id="count">—</div>
     <div id="rc"> </div>
+    <button id="bMark" style="display:none;width:100%;margin-top:8px;padding:16px;font-size:20px;border-color:#a33">MARCAR <span id="mN">1</span></button>
+    <div id="recInfo" class="hint"></div>
   </div>
 </div>
 
@@ -124,6 +127,9 @@ function ingest(d){
   if(d.rc&&d.st){rc.textContent='⚠ MOVIMENTO PRÓXIMO (fora de vista)';rc.className='on';w.classList.add('rcwl')}
   else{rc.textContent=d.rc?'RCWL: ignorado (estás em movimento)':(d.cal?'A calibrar… não mexer':' ');rc.className='';w.classList.remove('rcwl')}
   chips(d);
+  const on=!!d.rec;$('bRec').textContent=on?'■ PARAR':'● GRAVAR';$('bRec').style.color=on?'#ff5050':'';
+  $('bMark').style.display=on?'block':'none';$('mN').textContent=(d.mk||0)+1;
+  $('recInfo').textContent=d.rb?((on?'A gravar: ':'Gravação guardada: ')+Math.round(d.rb/1024)+' KB'):'';
   if($('panel').classList.contains('open'))$('raw').textContent=JSON.stringify(d,null,0);
 }
 
@@ -195,6 +201,8 @@ $('bCfg').onclick=()=>{$('panel').classList.add('open');loadCfg()};
 $('bClose').onclick=()=>$('panel').classList.remove('open');
 $('bZero').onclick=()=>{cmd('zero');pts=[]};
 $('bCal').onclick=()=>cmd('cal');
+$('bRec').onclick=()=>{if(data&&data.rec)cmd('rec_off');else if(confirm('Começar a gravar? (apaga a gravação anterior)'))cmd('rec_on')};
+$('bMark').onclick=()=>{cmd('mark');if(navigator.vibrate)navigator.vibrate(60)};
 $('bSide').onclick=()=>{if(confirm('Configurar todos os radares para montagem lateral?'))cmd('side')};
 $('bSave').onclick=async()=>{
   if(!cfg)return;const q=new URLSearchParams();q.set('min',$('dMin').value);q.set('inv',$('dInv').checked?1:0);q.set('mh',$('dMh').value);q.set('mt',$('dMt').value);
