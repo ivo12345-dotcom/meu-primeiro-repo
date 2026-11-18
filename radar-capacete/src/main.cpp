@@ -120,7 +120,9 @@ void handleData() {
         const float qx = radars[i].targets[q].x * (cfg.flip[i] ? -1.0f : 1.0f), qy = radars[i].targets[q].y;
         const float qd = sqrtf(qx * qx + qy * qy);
         const float da = fabsf(atan2f(qx, qy) - atan2f(x, y)) * 180.0f / PI;
-        shadow = qd >= cfg.minDist && qd < d - 0.3f && da < SHADOW_DEG;
+        shadow = qd >= cfg.minDist && ((qd < d - 0.3f && da < SHADOW_DEG) ||
+                 // de perto o radar parte um corpo em vários alvos (tronco, braços, pernas)
+                 (hypotf(qx - x, qy - y) < SAME_BODY_M && (qd < d || (qd == d && q < k))));
       }
       if (shadow) continue;
       // Alvo "pendurado": quando uma pessoa sai pela borda do radar, o LD2460 deixa o alvo
