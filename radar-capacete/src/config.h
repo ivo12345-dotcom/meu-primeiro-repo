@@ -7,7 +7,10 @@
 // Com 3 radares, a porta série do USB passa a ser usada pelo radar 3
 // e deixa de haver mensagens de diagnóstico no computador (o ecrã OLED
 // e a página no telemóvel continuam a mostrar o estado).
+// (o ambiente "bancada" do platformio.ini força 1 radar, para haver mensagens no PC)
+#ifndef NUM_RADARS
 #define NUM_RADARS 3
+#endif
 
 // --- Pinos da Heltec V3 -------------------------------------------------
 // Radar 1 (FRENTE)        : LD2460 pino 7 (Tx2) -> GPIO 4 ; pino 8 (Rx2) <- GPIO 5
