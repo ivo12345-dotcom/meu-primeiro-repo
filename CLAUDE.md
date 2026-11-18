@@ -58,6 +58,14 @@ superfície, sem furos):
 - Estado a 18/11/2026: os 3 radares, RCWL (VIN no 5V, OUT no GPIO 2) e Modulino ligados. 5V e GND de todos
   juntam-se numa união (a Heltec só tem um pino 5V). Teste de bancada OK (IMU encontrado, RCWL a mudar, radar 1
   com 2 alvos). Versão final (3 radares) gravada: OLED mostra "Radar: OK OK OK", IMU OK. Falta o teste no telemóvel e a afinação no terreno.
+- **ORIENTAÇÃO DO LD2460 (confirmado com a caixa negra a 18/11/2026):** o ângulo lateral só é medido com o lado
+  de **50 mm na VERTICAL** (placa de pé). Deitado (50 mm na horizontal, como na caixa de teste) o X quase não varia
+  (mede a elevação) → alvos sempre ao centro de cada radar, fantasmas nas fronteiras, contagens a mais.
+  Gravações em `radar-capacete/gravacoes/` (rec_20261118_223944 = teste exterior; rec_20261118_225329 = de pé vs deitado:
+  X p5–p95 de pé −0,7…+1,1 m, deitado −0,4…0,0 m). Caixa nova: placas de pé **inclinadas ~30° para baixo**
+  (montagem de fábrica do radar; altura ≈ 43 mm) e inclinação 30° no ajuste da página.
+- **Caixa negra:** botão ● GRAVAR / MARCAR na página; ler com `python -I radar-capacete/tools/ler_caixa_negra.py COM3`,
+  resumir com `tools/analisar.py`.
 - Fotos marcadas em `radar-capacete/docs/` (`ld2460_mudar_fios*.png` = ligação final).
 - Pinos da Heltec a evitar: 0, 3, 21 (reset do OLED), 26, 35 (LED), 36 (Vext), 37, 45, 46, e 17/18 (I2C do OLED).
 - Com `NUM_RADARS 3`, a UART0 (a do USB) passa a ser usada pelo radar 3 e **deixa de haver monitor série**.
