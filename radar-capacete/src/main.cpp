@@ -112,6 +112,18 @@ void handleData() {
       const float d = sqrtf(x * x + y * y);
       if (d < cfg.minDist) continue;  // o próprio jogador / a arma
       const float bearing = cfg.yaw[i] + atan2f(x, y) * 180.0f / PI;
+      // "Sombra": o eco de uma pessoa a bater na parede atrás dela aparece no MESMO radar,
+      // quase no mesmo ângulo e mais longe. Uma pessoa real escondida atrás de outra
+      // também não seria vista (o radar não atravessa corpos), por isso deita-se fora.
+      bool shadow = false;
+      for (uint8_t q = 0; q < radars[i].targetCount && !shadow; q++) {
+        if (q == k) continue;
+        const float qx = radars[i].targets[q].x * (cfg.flip[i] ? -1.0f : 1.0f), qy = radars[i].targets[q].y;
+        const float qd = sqrtf(qx * qx + qy * qy);
+        const float da = fabsf(atan2f(qx, qy) - atan2f(x, y)) * 180.0f / PI;
+        shadow = qd >= cfg.minDist && qd < d - 0.3f && da < SHADOW_DEG;
+      }
+      if (shadow) continue;
       const float wx = d * sinf(bearing * PI / 180.0f), wy = d * cosf(bearing * PI / 180.0f);
       bool dup = false;
       for (int j = 0; j < np && !dup; j++)
