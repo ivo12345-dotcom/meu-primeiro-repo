@@ -36,8 +36,21 @@ Alertas só **visuais ou por vibração, nunca som**.
 | GPIO 41 / GPIO 42 | Modulino SDA / SCL |
 | 3V3 | Modulino 3V3 (**nunca 5 V**) |
 
-- O pino 5 do LD2460 (VDD33) **não se liga**.
-- Segundo a loja, os dados saem pela UART2 (pinos 7 e 8). Se não chegarem dados, experimentar a UART1 (pinos 3 e 4).
+### ⚠️ Ligações REAIS do LD2460 (confirmadas com fotos e multímetro a 18/11/2026)
+
+A numeração "pino 1…8" acima veio da loja e **não corresponde à placa**. O conector preto 2×4 (J1) tem
+passo pequeno (não encaixa Dupont) e é alimentado a 3,3 V — **não se usa**. Os fios são **soldados**:
+
+| Furo no LD2460 (lado dos componentes) | Fio | Heltec |
+|---|---|---|
+| **VCC** (4 furos junto ao chip grande, cima-direita) | vermelho | 5V |
+| **RXD** (cima-esquerda) | laranja | GPIO 5 (radar 1) |
+| **TXD** (baixo-esquerda) | amarelo | GPIO 4 (radar 1) |
+| **IO** (baixo-direita) | — | vazio (NÃO é GND: sem continuidade) |
+| **GND** do J2 (fila de 5 furos em baixo, "PAD DM DP GND 3.3V", 4.º furo) | preto | GND |
+
+Do lado das antenas os mesmos 4 furos dizem "Tx Rx GND 5V" — o "GND" aí é enganador. Fotos marcadas em
+`radar-capacete/docs/`. Ainda por confirmar se estes TXD/RXD são a porta que manda os alvos.
 - Pinos da Heltec a evitar: 0, 3, 21 (reset do OLED), 26, 35 (LED), 36 (Vext), 37, 45, 46, e 17/18 (I2C do OLED).
 - Com `NUM_RADARS 3`, a UART0 (a do USB) passa a ser usada pelo radar 3 e **deixa de haver monitor série**.
   Para testar na bancada com o monitor série, usar `NUM_RADARS 1`.
