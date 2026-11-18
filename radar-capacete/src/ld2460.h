@@ -78,6 +78,7 @@ class LD2460 {
 
   RadarTarget targets[MAX_TARGETS];
   uint8_t targetCount = 0;
+  uint32_t frozenSince[MAX_TARGETS] = {0};  // desde quando cada alvo está exatamente parado
   uint32_t lastFrameMs = 0;
   uint32_t lastEnableMs = 0;
   uint32_t framesTotal = 0;
@@ -115,12 +116,25 @@ class LD2460 {
       if (footer && buf_[4] == 0x04 && (total - 11) % 4 == 0) {
         uint8_t n = (total - 11) / 4;
         if (n > MAX_TARGETS) n = MAX_TARGETS;
+        // Guardar os alvos anteriores para saber há quanto tempo cada um está imóvel
+        RadarTarget old[MAX_TARGETS];
+        uint32_t oldSince[MAX_TARGETS];
+        const uint8_t oldN = targetCount;
+        memcpy(old, targets, sizeof(old));
+        memcpy(oldSince, frozenSince, sizeof(oldSince));
+        const uint32_t t = millis();
         for (uint8_t i = 0; i < n; i++) {
           const size_t o = 7 + i * 4;
           const int16_t rx = (int16_t)(buf_[o] | (buf_[o + 1] << 8));
           const int16_t ry = (int16_t)(buf_[o + 2] | (buf_[o + 3] << 8));
           targets[i].x = rx / 10.0f;
           targets[i].y = ry / 10.0f;
+          frozenSince[i] = t;
+          for (uint8_t j = 0; j < oldN; j++)
+            if (fabsf(old[j].x - targets[i].x) < 0.01f && fabsf(old[j].y - targets[i].y) < 0.01f) {
+              frozenSince[i] = oldSince[j];  // exatamente na mesma posição: continua "congelado"
+              break;
+            }
         }
         targetCount = n;
         lastFrameMs = millis();

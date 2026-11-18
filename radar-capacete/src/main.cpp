@@ -123,6 +123,11 @@ void handleData() {
         shadow = qd >= cfg.minDist && qd < d - 0.3f && da < SHADOW_DEG;
       }
       if (shadow) continue;
+      // Alvo "pendurado": quando uma pessoa sai pela borda do radar, o LD2460 deixa o alvo
+      // congelado na borda durante muito tempo. Na borda o radar vizinho já a vê, por isso
+      // um alvo imóvel na borda há mais de EDGE_HOLD_MS deita-se fora.
+      const float rel = fabsf(atan2f(x, y)) * 180.0f / PI;
+      if (rel > SEAM_EDGE_DEG && now - radars[i].frozenSince[k] > EDGE_HOLD_MS) continue;
       if (nc < 15)
         c[nc++] = {d * sinf(bearing * PI / 180.0f), d * cosf(bearing * PI / 180.0f), bearing, d,
                    fabsf(atan2f(x, y)) * 180.0f / PI, i, true};
