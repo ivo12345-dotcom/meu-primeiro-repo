@@ -187,6 +187,7 @@ void setup() {
   Serial.begin(115200);
 #endif
   pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);  // LED sempre apagado (não denunciar a posição)
   pinMode(RCWL_PIN, INPUT_PULLDOWN);
 
   // Ecrã OLED
@@ -247,14 +248,21 @@ void loop() {
   imu.update();
   server.handleClient();
 
+  // Sem luz nenhuma em jogo: o ecrã só mostra o estado nos primeiros OLED_ON_MS depois de ligar
+  // (para confirmar "Radar: OK OK OK") e depois desliga-se de vez. O LED da placa fica sempre apagado.
   static uint32_t lastOled = 0;
-  if (now - lastOled > 300) {
+  static bool oledOff = false;
+  if (!oledOff && now - lastOled > 300) {
     lastOled = now;
-    drawOled();
-    int total = 0;
-    for (int i = 0; i < NUM_RADARS; i++)
-      if (radars[i].alive(now)) total += radars[i].targetCount;
-    digitalWrite(LED_PIN, total > 0 ? HIGH : LOW);
+    if (now < OLED_ON_MS) {
+      drawOled();
+    } else {
+      oled.clear();
+      oled.display();
+      oled.displayOff();
+      digitalWrite(VEXT_PIN, HIGH);  // corta a alimentação do ecrã
+      oledOff = true;
+    }
   }
 
 #if DEBUG_LOG
