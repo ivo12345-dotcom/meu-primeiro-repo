@@ -70,6 +70,9 @@ input[type=checkbox]{width:24px;height:24px}
   <h3>Capacete</h3>
   <div class="row"><span>Ignorar alvos a menos de (m)</span><input type="number" id="dMin" step="0.1" min="0.3" max="2"></div>
   <div class="row"><span>Inverter rotação da cabeça</span><input type="checkbox" id="dInv"></div>
+  <div class="row"><span>Altura dos radares (cm)</span><input type="number" id="dMh" step="10" min="50" max="400"></div>
+  <div class="row"><span>Inclinação para baixo (°)</span><input type="number" id="dMt" step="5" min="0" max="60"></div>
+  <p class="hint">Fábrica: 260 cm e 30°. Capacete: ~170 cm e 0°. Experimenta e compara o alcance.</p>
   <div id="radCfg"></div>
   <p class="hint">Espelhar: se uma pessoa anda para a direita do radar e o ponto vai para a esquerda, liga “espelhar” nesse radar.</p>
   <div class="btns">
@@ -173,7 +176,7 @@ function draw(){
 
 async function loadCfg(){
   try{cfg=await (await fetch('/cfg',{cache:'no-store'})).json()}catch(e){setTimeout(loadCfg,2000);return}
-  $('dMin').value=cfg.min;$('dInv').checked=!!cfg.inv;
+  $('dMin').value=cfg.min;$('dInv').checked=!!cfg.inv;$('dMh').value=cfg.mh;$('dMt').value=cfg.mt;
   const names=['Frente','Trás-esquerda','Trás-direita'];let h='';
   for(let i=0;i<cfg.n;i++){h+=`<div class="row"><span>Radar ${i+1} (${names[i]}) direção °</span><input type="number" id="y${i}" value="${cfg.yaw[i]}" step="5"></div>
   <div class="row"><span>Radar ${i+1}: espelhar</span><input type="checkbox" id="f${i}" ${cfg.flip[i]?'checked':''}></div>`}
@@ -194,7 +197,7 @@ $('bZero').onclick=()=>{cmd('zero');pts=[]};
 $('bCal').onclick=()=>cmd('cal');
 $('bSide').onclick=()=>{if(confirm('Configurar todos os radares para montagem lateral?'))cmd('side')};
 $('bSave').onclick=async()=>{
-  if(!cfg)return;const q=new URLSearchParams();q.set('min',$('dMin').value);q.set('inv',$('dInv').checked?1:0);
+  if(!cfg)return;const q=new URLSearchParams();q.set('min',$('dMin').value);q.set('inv',$('dInv').checked?1:0);q.set('mh',$('dMh').value);q.set('mt',$('dMt').value);
   for(let i=0;i<cfg.n;i++){q.set('y'+i,$('y'+i).value);q.set('f'+i,$('f'+i).checked?1:0)}
   try{await fetch('/set?'+q.toString(),{cache:'no-store'});await loadCfg();$('bSave').textContent='Guardado ✓';setTimeout(()=>$('bSave').textContent='Guardar',1500)}catch(e){}
 };

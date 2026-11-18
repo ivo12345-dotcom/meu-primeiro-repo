@@ -1,7 +1,7 @@
 // =====================================================================
-//  RADAR DE CAPACETE — Heltec WiFi LoRa 32 V3
+//  RADAR DE CAPACETE â€” Heltec WiFi LoRa 32 V3
 //  3 x HLK-LD2460 + RCWL-0516 + Arduino Modulino Movement (LSM6DSOX)
-//  Página no telemóvel: ligar à rede "RADAR-CAPACETE" e abrir http://192.168.4.1
+//  PÃ¡gina no telemÃ³vel: ligar Ã  rede "RADAR-CAPACETE" e abrir http://192.168.4.1
 // =====================================================================
 #include <Arduino.h>
 #include <Preferences.h>
@@ -19,7 +19,7 @@
 #error "NUM_RADARS tem de ser 1, 2 ou 3"
 #endif
 
-// Com 3 radares a UART0 (a do USB) é usada pelo radar 3
+// Com 3 radares a UART0 (a do USB) Ã© usada pelo radar 3
 #define DEBUG_LOG (NUM_RADARS < 3)
 #if DEBUG_LOG
 #define LOG(...) Serial.printf(__VA_ARGS__)
@@ -36,12 +36,14 @@ SSD1306Wire oled(0x3c, OLED_SDA_PIN, OLED_SCL_PIN, GEOMETRY_128_64, I2C_ONE);
 WebServer server(80);
 Preferences prefs;
 
-// Definições guardadas na memória da placa
+// DefiniÃ§Ãµes guardadas na memÃ³ria da placa
 struct Settings {
   float yaw[3];
   bool flip[3];
   bool invert;
   float minDist;
+  float mountH;   // cm
+  float tilt;     // graus para baixo
 } cfg;
 
 uint32_t lastWebMs = 0;
@@ -58,6 +60,8 @@ void loadSettings() {
   }
   cfg.invert = prefs.getBool("inv", false);
   cfg.minDist = prefs.getFloat("min", 0.6f);
+  cfg.mountH = prefs.getFloat("mh", MOUNT_HEIGHT_CM);
+  cfg.tilt = prefs.getFloat("mt", 0.0f);
   prefs.end();
   imu.invert = cfg.invert;
 }
@@ -73,11 +77,13 @@ void saveSettings() {
   }
   prefs.putBool("inv", cfg.invert);
   prefs.putFloat("min", cfg.minDist);
+  prefs.putFloat("mh", cfg.mountH);
+  prefs.putFloat("mt", cfg.tilt);
   prefs.end();
   imu.invert = cfg.invert;
 }
 
-// O RCWL só conta quando a cabeça está parada (senão deteta o teu próprio movimento)
+// O RCWL sÃ³ conta quando a cabeÃ§a estÃ¡ parada (senÃ£o deteta o teu prÃ³prio movimento)
 bool rcwlActive() { return digitalRead(RCWL_PIN) == HIGH; }
 
 // ---------------------------------------------------------------------
@@ -109,11 +115,11 @@ void handleData() {
       const float x = radars[i].targets[k].x * (cfg.flip[i] ? -1.0f : 1.0f);
       const float y = radars[i].targets[k].y;
       const float d = sqrtf(x * x + y * y);
-      if (d < cfg.minDist) continue;  // o próprio jogador / a arma
+      if (d < cfg.minDist) continue;  // o prÃ³prio jogador / a arma
       const float bearing = cfg.yaw[i] + atan2f(x, y) * 180.0f / PI;
-      // "Sombra": o eco de uma pessoa a bater na parede atrás dela aparece no MESMO radar,
-      // quase no mesmo ângulo e mais longe. Uma pessoa real escondida atrás de outra
-      // também não seria vista (o radar não atravessa corpos), por isso deita-se fora.
+      // "Sombra": o eco de uma pessoa a bater na parede atrÃ¡s dela aparece no MESMO radar,
+      // quase no mesmo Ã¢ngulo e mais longe. Uma pessoa real escondida atrÃ¡s de outra
+      // tambÃ©m nÃ£o seria vista (o radar nÃ£o atravessa corpos), por isso deita-se fora.
       bool shadow = false;
       for (uint8_t q = 0; q < radars[i].targetCount && !shadow; q++) {
         if (q == k) continue;
@@ -121,13 +127,13 @@ void handleData() {
         const float qd = sqrtf(qx * qx + qy * qy);
         const float da = fabsf(atan2f(qx, qy) - atan2f(x, y)) * 180.0f / PI;
         shadow = qd >= cfg.minDist && ((qd < d - 0.3f && da < SHADOW_DEG) ||
-                 // de perto o radar parte um corpo em vários alvos (tronco, braços, pernas)
+                 // de perto o radar parte um corpo em vÃ¡rios alvos (tronco, braÃ§os, pernas)
                  (hypotf(qx - x, qy - y) < SAME_BODY_M && (qd < d || (qd == d && q < k))));
       }
       if (shadow) continue;
       // Alvo "pendurado": quando uma pessoa sai pela borda do radar, o LD2460 deixa o alvo
-      // congelado na borda durante muito tempo. Na borda o radar vizinho já a vê, por isso
-      // um alvo imóvel na borda há mais de EDGE_HOLD_MS deita-se fora.
+      // congelado na borda durante muito tempo. Na borda o radar vizinho jÃ¡ a vÃª, por isso
+      // um alvo imÃ³vel na borda hÃ¡ mais de EDGE_HOLD_MS deita-se fora.
       const float rel = fabsf(atan2f(x, y)) * 180.0f / PI;
       if (rel > SEAM_EDGE_DEG && now - radars[i].frozenSince[k] > EDGE_HOLD_MS) continue;
       if (nc < 15)
@@ -135,10 +141,10 @@ void handleData() {
                    fabsf(atan2f(x, y)) * 180.0f / PI, i, true};
     }
   }
-  // "Pelas costas": cada radar também vê um pouco para trás. A distância vem certa, mas o
-  // ângulo não, por isso aparece um alvo à MESMA distância noutro sítio. A fronteira entre
-  // dois radares fica exatamente atrás do terceiro, por isso é aí que mais acontece.
-  // Se o alvo de B está atrás do radar de A e ambos estão à mesma distância, o de A é falso.
+  // "Pelas costas": cada radar tambÃ©m vÃª um pouco para trÃ¡s. A distÃ¢ncia vem certa, mas o
+  // Ã¢ngulo nÃ£o, por isso aparece um alvo Ã  MESMA distÃ¢ncia noutro sÃ­tio. A fronteira entre
+  // dois radares fica exatamente atrÃ¡s do terceiro, por isso Ã© aÃ­ que mais acontece.
+  // Se o alvo de B estÃ¡ atrÃ¡s do radar de A e ambos estÃ£o Ã  mesma distÃ¢ncia, o de A Ã© falso.
   auto angDiff = [](float a, float b) {
     float d = fmodf(fabsf(a - b), 360.0f);
     return d > 180.0f ? 360.0f - d : d;
@@ -149,13 +155,13 @@ void handleData() {
       if (a == b || c[a].r == c[b].r || fabsf(c[a].d - c[b].d) > BACK_SAME_D) continue;
       const bool aFake = angDiff(c[b].bearing, cfg.yaw[c[a].r] + 180.0f) < BACK_CONE_DEG;
       const bool bFake = angDiff(c[a].bearing, cfg.yaw[c[b].r] + 180.0f) < BACK_CONE_DEG;
-      if (aFake && !bFake) ghost[a] = true;  // só quando é claro qual dos dois é o falso
+      if (aFake && !bFake) ghost[a] = true;  // sÃ³ quando Ã© claro qual dos dois Ã© o falso
     }
   for (int a = 0; a < nc; a++)
     if (ghost[a]) c[a].keep = false;
   // A mesma pessoa vista por dois radares: perto (< MERGE_DIST) = a mesma. Na fronteira entre
   // radares (ambos na borda) junta-se mais longe, porque o radar que a perdeu ainda a segura
-  // um instante na posição antiga. Fica o alvo mais ao centro do seu radar (mais fiável).
+  // um instante na posiÃ§Ã£o antiga. Fica o alvo mais ao centro do seu radar (mais fiÃ¡vel).
   for (int a = 0; a < nc; a++)
     for (int b = a + 1; b < nc; b++) {
       if (!c[a].keep || !c[b].keep || c[a].r == c[b].r) continue;
@@ -177,12 +183,23 @@ void handleData() {
   server.send(200, "application/json", out);
 }
 
+// Dizer aos radares a altura/inclinação e a zona de ±60° (só funciona em modo lateral)
+void applyMount() {
+  for (int i = 0; i < NUM_RADARS; i++) {
+    radars[i].setMountParams((uint16_t)cfg.mountH, (int16_t)(cfg.tilt * 100));
+    delay(60);
+    radars[i].setRange(60, -RADAR_HALF_FOV_DDEG, RADAR_HALF_FOV_DDEG);
+    delay(60);
+    radars[i].enableReporting();
+  }
+}
+
 void handleCfg() {
   char out[256];
   snprintf(out, sizeof(out),
-           "{\"n\":%d,\"yaw\":[%.0f,%.0f,%.0f],\"flip\":[%d,%d,%d],\"inv\":%d,\"min\":%.2f}", NUM_RADARS,
-           cfg.yaw[0], cfg.yaw[1], cfg.yaw[2], cfg.flip[0], cfg.flip[1], cfg.flip[2], cfg.invert ? 1 : 0,
-           cfg.minDist);
+           "{\"n\":%d,\"yaw\":[%.0f,%.0f,%.0f],\"flip\":[%d,%d,%d],\"inv\":%d,\"min\":%.2f,\"mh\":%.0f,\"mt\":%.0f}",
+           NUM_RADARS, cfg.yaw[0], cfg.yaw[1], cfg.yaw[2], cfg.flip[0], cfg.flip[1], cfg.flip[2],
+           cfg.invert ? 1 : 0, cfg.minDist, cfg.mountH, cfg.tilt);
   server.sendHeader("Cache-Control", "no-store");
   server.send(200, "application/json", out);
 }
@@ -196,7 +213,11 @@ void handleSet() {
   }
   if (server.hasArg("inv")) cfg.invert = server.arg("inv") == "1";
   if (server.hasArg("min")) cfg.minDist = constrain(server.arg("min").toFloat(), 0.3f, 2.0f);
+  const float oldH = cfg.mountH, oldT = cfg.tilt;
+  if (server.hasArg("mh")) cfg.mountH = constrain(server.arg("mh").toFloat(), 50.0f, 400.0f);
+  if (server.hasArg("mt")) cfg.tilt = constrain(server.arg("mt").toFloat(), 0.0f, 60.0f);
   saveSettings();
+  if (cfg.mountH != oldH || cfg.tilt != oldT) applyMount();
   server.send(200, "text/plain", "ok");
 }
 
@@ -208,12 +229,14 @@ void handleCmd() {
     imu.startCalibration();
   } else if (c == "side") {
     for (int i = 0; i < NUM_RADARS; i++) radars[i].setInstallMode(1);
+    delay(200);
+    applyMount();  // a altura/inclinação só pega depois de estar em modo lateral
   }
   server.send(200, "text/plain", "ok");
 }
 
 // ---------------------------------------------------------------------
-// Ecrã OLED da Heltec
+// EcrÃ£ OLED da Heltec
 void drawOled() {
   const uint32_t now = millis();
   oled.clear();
@@ -246,10 +269,10 @@ void setup() {
   Serial.begin(115200);
 #endif
   pinMode(LED_PIN, OUTPUT);
-  digitalWrite(LED_PIN, LOW);  // LED sempre apagado (não denunciar a posição)
+  digitalWrite(LED_PIN, LOW);  // LED sempre apagado (nÃ£o denunciar a posiÃ§Ã£o)
   pinMode(RCWL_PIN, INPUT_PULLDOWN);
 
-  // Ecrã OLED
+  // EcrÃ£ OLED
   pinMode(VEXT_PIN, OUTPUT);
   digitalWrite(VEXT_PIN, LOW);
   delay(50);
@@ -271,15 +294,9 @@ void setup() {
   for (int i = 0; i < NUM_RADARS; i++) {
     radars[i].begin(RADAR_PORT[i], RADAR_RX_PIN[i], RADAR_TX_PIN[i], RADAR_BAUD);
   }
-  // Dizer aos radares onde estão: capacete a ~1,7 m, a olhar a direito, cada um só na sua fatia
+  // Dizer aos radares onde estÃ£o: capacete a ~1,7 m, a olhar a direito, cada um sÃ³ na sua fatia
   delay(300);
-  for (int i = 0; i < NUM_RADARS; i++) {
-    radars[i].setMountParams(MOUNT_HEIGHT_CM, 0);
-    delay(60);
-    radars[i].setRange(60, -RADAR_HALF_FOV_DDEG, RADAR_HALF_FOV_DDEG);
-    delay(60);
-    radars[i].enableReporting();
-  }
+  applyMount();
 
   // IMU
   imuWire.begin(IMU_SDA_PIN, IMU_SCL_PIN, 400000);
@@ -289,7 +306,7 @@ void setup() {
     LOG("IMU nao encontrado - verifica SDA=41 SCL=42 3V3 GND\n");
   }
 
-  // Wi-Fi (ponto de acesso próprio, não precisa de internet)
+  // Wi-Fi (ponto de acesso prÃ³prio, nÃ£o precisa de internet)
   WiFi.mode(WIFI_AP);
   WiFi.softAP(WIFI_SSID, WIFI_PASSWORD, 6, 0, 2);
   WiFi.setSleep(false);
@@ -309,11 +326,11 @@ void loop() {
 
   for (int i = 0; i < NUM_RADARS; i++) {
     radars[i].poll();
-    // Se um radar não manda dados, volta a pedir o envio de alvos a cada 3 s
+    // Se um radar nÃ£o manda dados, volta a pedir o envio de alvos a cada 3 s
     if (!radars[i].alive(now) && now - radars[i].lastEnableMs > 3000) radars[i].enableReporting();
   }
 
-  // Se o giroscópio não respondeu no arranque (mau contacto), tenta outra vez a cada 2 s
+  // Se o giroscÃ³pio nÃ£o respondeu no arranque (mau contacto), tenta outra vez a cada 2 s
   static uint32_t lastImuTry = 0;
   if (!imu.ok && now - lastImuTry > 2000) {
     lastImuTry = now;
@@ -322,7 +339,7 @@ void loop() {
   imu.update();
   server.handleClient();
 
-  // Sem luz nenhuma em jogo: o ecrã só mostra o estado nos primeiros OLED_ON_MS depois de ligar
+  // Sem luz nenhuma em jogo: o ecrÃ£ sÃ³ mostra o estado nos primeiros OLED_ON_MS depois de ligar
   // (para confirmar "Radar: OK OK OK") e depois desliga-se de vez. O LED da placa fica sempre apagado.
   static uint32_t lastOled = 0;
   static bool oledOff = false;
@@ -334,7 +351,7 @@ void loop() {
       oled.clear();
       oled.display();
       oled.displayOff();
-      digitalWrite(VEXT_PIN, HIGH);  // corta a alimentação do ecrã
+      digitalWrite(VEXT_PIN, HIGH);  // corta a alimentaÃ§Ã£o do ecrÃ£
       oledOff = true;
     }
   }
