@@ -184,6 +184,8 @@ void handleData() {
   }
   n += snprintf(out + n, sizeof(out) - n, "]}");
   server.sendHeader("Cache-Control", "no-store");
+  // a app dos óculos G2 corre noutra "origem" (dentro da app Even): sem isto o telemóvel bloqueia a leitura
+  server.sendHeader("Access-Control-Allow-Origin", "*");
   server.send(200, "application/json", out);
 }
 
