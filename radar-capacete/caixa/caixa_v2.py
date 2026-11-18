@@ -18,7 +18,7 @@ FOLGA = 0.4
 PAREDE = 1.6
 CHAO = 2.0
 APOIO = 1.0                                # altura do degrau onde assenta a aresta de baixo
-LIP = 1.5                                  # batente: só cobre 1,5 mm da placa e só nos cantos
+LIP = 0.8                                  # batente: só cobre 0,8 mm da placa e só nos cantos (Ivo: mais curto)
 LIP_W = 4.0                                # largura de cada batente (cantos)
 FLAT = 44.0                                # largura plana de cada parede de radar (placa 32 + nervuras)
 TAMPA = 2.0
@@ -118,12 +118,12 @@ def base():
 
 def tampa():
     t = Manifold.extrude(contorno(r_parede(ALT, WOUT), FLAT + 3.7), TAMPA)
-    # lábio só nos 3 cantos (nas paredes dos radares estão as placas): mede-se onde a parede é mais estreita
+    # lábio nos 6 lados: nas paredes dos radares só fica de fora o meio (onde está a placa, 35 mm)
     ri = r_parede(ALT - LABIO_H) - LABIO_F
     lip = Manifold.extrude(contorno(ri, FLAT - 2 * LABIO_F), LABIO_H) - \
         Manifold.extrude(contorno(ri - LABIO_T, FLAT - 2 * LABIO_F - 2 * LABIO_T), LABIO_H + 1).translate([0, 0, -0.5])
     for yaw in YAWS.values():
-        lip = lip - box(FLAT + 6, 30, LABIO_H * 3, 0, ri, LABIO_H / 2).rotate([0, 0, -yaw])
+        lip = lip - box(PCB_W + 3, 30, LABIO_H * 3, 0, ri, LABIO_H / 2).rotate([0, 0, -yaw])
     lip = lip - box(USB_W + 4, 40, LABIO_H * 3, 0, -(r_parede(ALT) + 5), LABIO_H / 2)
     # dedos que seguram os cantos de cima das placas (pela face dos componentes, 1,5 mm de sobreposição)
     dedos = None
