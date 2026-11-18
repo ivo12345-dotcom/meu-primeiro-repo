@@ -57,7 +57,7 @@ superfície, sem furos):
   conectorzinho preto logo abaixo do VCC do canto (medido 0,0 Ω à massa). Os radares 2 e 3 usam este último.
 - Estado a 18/11/2026: os 3 radares, RCWL (VIN no 5V, OUT no GPIO 2) e Modulino ligados. 5V e GND de todos
   juntam-se numa união (a Heltec só tem um pino 5V). Teste de bancada OK (IMU encontrado, RCWL a mudar, radar 1
-  com 2 alvos). Versão final (3 radares) gravada; falta confirmar radares 2 e 3 no OLED/telemóvel.
+  com 2 alvos). Versão final (3 radares) gravada: OLED mostra "Radar: OK OK OK", IMU OK. Falta o teste no telemóvel e a afinação no terreno.
 - Fotos marcadas em `radar-capacete/docs/` (`ld2460_mudar_fios*.png` = ligação final).
 - Pinos da Heltec a evitar: 0, 3, 21 (reset do OLED), 26, 35 (LED), 36 (Vext), 37, 45, 46, e 17/18 (I2C do OLED).
 - Com `NUM_RADARS 3`, a UART0 (a do USB) passa a ser usada pelo radar 3 e **deixa de haver monitor série**.
