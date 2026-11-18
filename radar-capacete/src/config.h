@@ -39,6 +39,7 @@ static const int VEXT_PIN = 36;   // LOW = liga a alimentação do ecrã
 static const int LED_PIN = 35;
 // Tempo em que o ecrã fica ligado depois de ligar a placa (depois apaga-se para não dar luz)
 static const uint32_t OLED_ON_MS = 30000;
+static const float MERGE_DIST = 0.7f;   // m: alvos de radares diferentes mais perto que isto = a mesma pessoa
 
 // --- Wi-Fi (o telemóvel liga-se a esta rede) -----------------------------
 #define WIFI_SSID     "RADAR-CAPACETE"

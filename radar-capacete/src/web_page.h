@@ -90,6 +90,7 @@ const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON
              set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const opt={vib:store.get('vib',true),flash:store.get('flash',true),fade:store.get('fade',4),range:store.get('range',6),comp:store.get('comp',true)};
 let data=null,lastOk=0,cfg=null,pts=[],prevCount=0,lastAlert=0,sweep=0;
+const RCOL=['#ff3b3b','#ffd23b','#3bc8ff'];  // cor de cada radar: frente vermelho, trás-esq amarelo, trás-dir azul
 
 function resize(){const r=cv.getBoundingClientRect(),d=window.devicePixelRatio||1;cv.width=r.width*d;cv.height=r.height*d;ctx.setTransform(d,0,0,d,0,0)}
 addEventListener('resize',resize);resize();
@@ -127,7 +128,7 @@ function chips(d){
   const c=$('radChips');
   if(c.children.length!==d.r.length){c.innerHTML='';d.r.forEach((_,i)=>{const s=document.createElement('span');s.className='chip';s.style.marginRight='6px';c.appendChild(s)})}
   const names=['FRENTE','T-ESQ','T-DIR'];
-  d.r.forEach((r,i)=>{const s=c.children[i];s.textContent=names[i]||('R'+(i+1));s.className='chip '+(r[0]?'ok':'bad')});
+  d.r.forEach((r,i)=>{const s=c.children[i];s.textContent='● '+(names[i]||('R'+(i+1)));s.className='chip '+(r[0]?'ok':'bad');s.style.color=r[0]?RCOL[i]:''});
   $('cImu').className='chip '+(d.imu?(d.cal?'warn':'ok'):'bad');$('cImu').textContent=d.imu?(d.cal?'CALIB.':'IMU'):'SEM IMU';
   $('cStill').className='chip '+(d.st?'ok':'warn');$('cStill').textContent=d.st?'ESTÁVEL':'EM MOVIMENTO';
 }
@@ -160,9 +161,10 @@ function draw(){
     const age=now-p.t;const al=Math.max(0,1-age/fadeMs);if(al<=0)continue;
     const b=(p.wb-h)*Math.PI/180;const dd=Math.min(p.d,opt.range);
     const x=cx+Math.sin(b)*dd*sc,y=cy-Math.cos(b)*dd*sc;const fresh=age<250;
-    ctx.globalAlpha=fresh?1:al*0.6;ctx.fillStyle='#ff3b3b';
+    const col=RCOL[p.r]||'#ff3b3b';
+    ctx.globalAlpha=fresh?1:al*0.6;ctx.fillStyle=col;
     ctx.beginPath();ctx.arc(x,y,fresh?9:5,0,Math.PI*2);ctx.fill();
-    if(fresh){ctx.globalAlpha=1;ctx.strokeStyle='#ff3b3b';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,15,0,Math.PI*2);ctx.stroke();
+    if(fresh){ctx.globalAlpha=1;ctx.strokeStyle=col;ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,15,0,Math.PI*2);ctx.stroke();
       ctx.fillStyle='#fff';ctx.font='bold 13px system-ui';ctx.fillText(p.d.toFixed(1)+'m',x+17,y+4)}
   }
   ctx.globalAlpha=1;

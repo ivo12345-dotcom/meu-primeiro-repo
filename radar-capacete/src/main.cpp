@@ -99,6 +99,10 @@ void handleData() {
                   (unsigned long)radars[i].framesTotal);
   }
   n += snprintf(out + n, sizeof(out) - n, "],\"tg\":[");
+  // Os radares sobrepõem-se nas bordas: a mesma pessoa pode ser vista por dois.
+  // Alvos de radares diferentes a menos de MERGE_DIST um do outro contam como um só.
+  float px[15], py[15];
+  int pr[15], np = 0;
   bool first = true;
   for (int i = 0; i < NUM_RADARS; i++) {
     if (!radars[i].alive(now)) continue;
@@ -108,6 +112,12 @@ void handleData() {
       const float d = sqrtf(x * x + y * y);
       if (d < cfg.minDist) continue;  // o próprio jogador / a arma
       const float bearing = cfg.yaw[i] + atan2f(x, y) * 180.0f / PI;
+      const float wx = d * sinf(bearing * PI / 180.0f), wy = d * cosf(bearing * PI / 180.0f);
+      bool dup = false;
+      for (int j = 0; j < np && !dup; j++)
+        dup = pr[j] != i && hypotf(px[j] - wx, py[j] - wy) < MERGE_DIST;
+      if (dup) continue;
+      if (np < 15) { px[np] = wx; py[np] = wy; pr[np] = i; np++; }
       n += snprintf(out + n, sizeof(out) - n, "%s[%.1f,%.2f,%d]", first ? "" : ",", bearing, d, i);
       first = false;
       if (n > (int)sizeof(out) - 40) break;

@@ -16,7 +16,12 @@ p = L(O / "USE_process.json")
 p.update({"layer_height": "0.2", "wall_loops": "3", "top_shell_layers": "4", "bottom_shell_layers": "4",
           "sparse_infill_density": "15%", "sparse_infill_pattern": "grid", "enable_support": "0",
           "brim_type": "no_brim", "seam_position": "aligned",
-          "skirt_loops": "3", "skirt_distance": "4", "skirt_height": "1", "min_skirt_length": "0"})
+          "skirt_loops": "3", "skirt_distance": "4", "skirt_height": "1", "min_skirt_length": "0",
+          # acelerações limitadas: o perfil pedia 30000 (a Pro corta a 20000) e o input shaper do X
+          # (ei 43,2 Hz) só aguenta ~3500 sem tremer -> peça descolou do lado esquerdo a 18/11
+          "default_acceleration": "5000", "outer_wall_acceleration": "3000", "inner_wall_acceleration": "5000",
+          "sparse_infill_acceleration": "5000", "top_surface_acceleration": "3000",
+          "travel_acceleration": "5000", "initial_layer_acceleration": "1000"})
 json.dump(m, open(HERE / "m.json", "w", encoding="utf-8"), indent=1, ensure_ascii=False)
 json.dump(p, open(HERE / "p.json", "w", encoding="utf-8"), indent=1, ensure_ascii=False)
 flatten.build(str(RES / "filament" / "Generic PLA @K2 Pro-all.json"), "filament", str(HERE / "f.json"))
