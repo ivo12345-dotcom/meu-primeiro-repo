@@ -6,3 +6,6 @@ Thumbs.db
 # Editor
 .vscode/
 *.swp
+
+# PlatformIO
+.pio/
