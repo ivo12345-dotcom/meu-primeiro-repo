@@ -15,7 +15,8 @@ m = L(O / "USE_machine.json"); m["print_host"] = f"{IP}:7125"
 p = L(O / "USE_process.json")
 p.update({"layer_height": "0.2", "wall_loops": "3", "top_shell_layers": "4", "bottom_shell_layers": "4",
           "sparse_infill_density": "15%", "sparse_infill_pattern": "grid", "enable_support": "0",
-          "brim_type": "no_brim", "seam_position": "aligned"})
+          "brim_type": "no_brim", "seam_position": "aligned",
+          "skirt_loops": "3", "skirt_distance": "4", "skirt_height": "1", "min_skirt_length": "0"})
 json.dump(m, open(HERE / "m.json", "w", encoding="utf-8"), indent=1, ensure_ascii=False)
 json.dump(p, open(HERE / "p.json", "w", encoding="utf-8"), indent=1, ensure_ascii=False)
 flatten.build(str(RES / "filament" / "Generic PLA @K2 Pro-all.json"), "filament", str(HERE / "f.json"))
