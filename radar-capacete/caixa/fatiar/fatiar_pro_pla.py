@@ -10,12 +10,14 @@ O = Path(r"C:\Users\ivo12\Documents\OrcaCLI")
 RES = Path(r"C:\Program Files\OrcaSlicer\resources\profiles\Creality")
 L = lambda p: json.load(open(p, encoding="utf-8"))
 w = lambda p: str(p).replace("\\", "/")
-IP = sys.argv[1] if len(sys.argv) > 1 else "192.168.1.178"
+IP = "192.168.1.178"
+NOMES = sys.argv[1:] or ["caixa_v2_base.stl", "caixa_v2_tampa.stl"]
 m = L(O / "USE_machine.json"); m["print_host"] = f"{IP}:7125"
 p = L(O / "USE_process.json")
 p.update({"layer_height": "0.2", "wall_loops": "3", "top_shell_layers": "4", "bottom_shell_layers": "4",
           "sparse_infill_density": "15%", "sparse_infill_pattern": "grid", "enable_support": "0",
-          "brim_type": "no_brim", "seam_position": "aligned",
+          "brim_type": "outer_only", "brim_width": "5", "brim_object_gap": "0",  # brim colada: não descolar
+          "seam_position": "aligned",
           "skirt_loops": "3", "skirt_distance": "4", "skirt_height": "1", "min_skirt_length": "0",
           # acelerações limitadas: o perfil pedia 30000 (a Pro corta a 20000) e o input shaper do X
           # (ei 43,2 Hz) só aguenta ~3500 sem tremer -> peça descolou do lado esquerdo a 18/11
@@ -36,6 +38,6 @@ C = HERE.parent
 cmd = [str(ORCA / "orca-slicer.exe"), "--slice", "0",
        "--load-settings", f"{w(HERE/'m.json')};{w(HERE/'p.json')}",
        "--load-filaments", w(HERE / "f.json"), "--arrange", "1", "--orient", "0",
-       "--outputdir", w(OUT), w(C / "caixa_teste_base.stl"), w(C / "caixa_teste_tampa.stl")]
+       "--outputdir", w(OUT), *[w(C / n) for n in NOMES]]
 r = subprocess.run(cmd, cwd=ORCA, capture_output=True, text=True, errors="ignore")
 print(f"rc=0x{r.returncode & 0xFFFFFFFF:08X} gcode={g.exists()} {((r.stdout or '') + (r.stderr or '')).strip()[-300:]}")
