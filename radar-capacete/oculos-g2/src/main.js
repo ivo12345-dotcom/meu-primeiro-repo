@@ -104,7 +104,7 @@ async function toggle() {
   try { await fetch(RADAR + '/cmd?c=g2_toggle', { cache: 'no-store' }); } catch (e) { log('botão falhou:', e && e.message); }
 }
 
-let lastText = '';
+let lastText = null;
 async function push(d) {
   hidden = !!d && d.g2 === 0;
   const btn = document.getElementById('bG2');
@@ -125,8 +125,10 @@ async function push(d) {
   else {
     const mortos = (d.r || []).map((r, i) => (r[0] ? '' : NAMES[i])).filter(Boolean);
     txt = (n ? n + (n === 1 ? ' ALVO' : ' ALVOS') : '') +
-      (!d.st ? '\nmexer' : (d.rc ? '\nPAREDE!' : '')) + (mortos.length ? '\n-- ' + mortos.join(' ') : '');
+      (!d.st ? '\nmexer' : '') +   // aviso do RCWL: só o triângulo "!" no radar, sem texto
+(mortos.length ? '\n-- ' + mortos.join(' ') : '');
   }
+  if (!txt) txt = ' ';   // texto vazio não é aceite: um espaço apaga o "A ligar..."
   if (txt !== lastText) {
     lastText = txt;
     await bridge.textContainerUpgrade({ containerID: 3, containerName: 'estado', content: txt });

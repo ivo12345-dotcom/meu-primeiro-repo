@@ -125,7 +125,7 @@ function ingest(d){
   $('count').textContent=n?(n+(n==1?' alvo':' alvos')):'sem alvos';
   $('count').style.color=n?'var(--tg)':'var(--dim)';
   const rc=$('rc'),w=$('wrap');
-  if(d.rc&&d.st){rc.textContent='⚠ MOVIMENTO PRÓXIMO (fora de vista)';rc.className='on';w.classList.add('rcwl')}
+  if(d.rc&&d.st){rc.textContent='⚠';rc.className='on';w.classList.add('rcwl')}
   else{rc.textContent=d.rc?'RCWL: ignorado (estás em movimento)':(d.cal?'A calibrar… não mexer':' ');rc.className='';w.classList.remove('rcwl')}
   chips(d);
   const g2=d.g2!==0;$('bG2').textContent=g2?'👓 ON':'👓 OFF';$('bG2').style.color=g2?'':'#888';
