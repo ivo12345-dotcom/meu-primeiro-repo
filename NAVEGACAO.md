@@ -803,6 +803,14 @@ memória RAM
 ([Tom's Hardware](https://www.tomshardware.com/raspberry-pi/raspberry-pi-5-price-increases-drastically-as-ai-shortage-bites-16gb-version-now-usd205-second-price-increase-in-three-months-over-70-percent-more-expensive-than-original-msrp)).
 Confirmar tudo no dia da compra.
 
+**Preços vistos a 19/11/2026 na [Mauser](https://mauser.pt/desenvolvimento-e-maker/raspberry-pi/microcomputadores)**
+(com IVA, em stock em Lisboa, portes grátis acima de €50): Pi 5 de 8 GB **€197,64** (abaixo dos €204,80 da Amazon.es
+de 28/09); 4 GB €124,23; 16 GB **€434,19** (o preço oficial do 16 GB subiu para $385 a 2/11). O de 16 GB foi ponderado
+nesse dia, a pedido do Ivo: tem o mesmo processador do de 8 GB e só muda a memória, por isso não corre nada mais
+depressa. A AI do barco (LightGBM, tabelas pequenas) e a deteção por câmara (que corre no chip do AI HAT Hailo, §3) não
+precisam dessa memória. Só faria falta para correr no próprio Pi um modelo de linguagem dos grandes (13 mil milhões de
+parâmetros), e esse anda a 1–2 tokens por segundo. Parecer de 19/11: manter o de 8 GB; a decisão é do Ivo.
+
 Fontes dos preços: [RasPi Shop](https://raspishop.pt/c/robotica-e-desenvolvimento/raspberry-pi-robotica-e-desenvolvimento/placas-e-kits/raspberry-pi-5/),
 [SailProof STS10](https://sailproof.shop/product/sunlight-readable-waterproof-touchscreen-10-2/),
 [o-charts Portugal](https://o-charts.org/shop/en/oesenc/79-portugal.html).
