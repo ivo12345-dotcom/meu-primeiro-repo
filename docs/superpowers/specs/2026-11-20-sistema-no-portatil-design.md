@@ -68,8 +68,13 @@ cabo curto do sensor. Regras da caixa:
 
 - o sensor a um palmo (15 cm ou mais) da placa e dos fios de alimentação, porque a corrente da
   placa também faz campo magnético; os fios de alimentação torcidos;
-- parafusos de latão ou de nylon, nunca de aço; caixa em PETG ou ASA (o PLA amolece com o calor do
-  verão);
+- **sem parafusos (ideia do Ivo):** as placas ficam presas por pinos impressos que entram nos furos
+  delas, e a tampa, ao fechar, aperta-as contra a base; nada de metal dentro da caixa. Os pinos
+  soltos imprimem-se deitados, para não partirem pelas camadas;
+- fita isoladora líquida só nos fios, nas soldaduras e nas fichas, para não se soltarem com a
+  vibração; as placas têm de poder sair. Testar primeiro num resto do mesmo plástico, porque o
+  solvente pode atacá-lo;
+- caixa em PETG ou ASA (o PLA amolece com o calor do verão);
 - a 20–30 cm, pelo menos, da bússola do piloto velho.
 
 Os chicotes do vento e do log passam a ir para a cabine de popa, e não para a mesa de navegação.
