@@ -184,6 +184,15 @@ Fontes: [MacArthur HAT, documentação](https://macarthur-hat-documentation.read
   [conector curto de 25 cm](https://www.marinesuperstore.com/marine-instruments/wind-instruments/nasa-wind-nmea-output-connector-25cm)
   (£7,95). O Clipper Log tem saída NMEA 0183 (VHW e VLW), segundo a NASA; o cabo para a tomada dele
   está por confirmar. Falta a foto das costas para fechar o modelo e a versão de cada um.
+  **Log avariado (Ivo, 20/11):** o mostrador não dá velocidade e a reparação ainda não resultou; a
+  roda de pás está boa. Não é para já. Em vez de comprar outro mostrador (£145,62 na NASA), pode
+  ler-se a roda diretamente: o sensor é uma bobina de indução (daí o cabo coaxial) que dá cerca de
+  2 impulsos por volta, e 1 impulso por segundo são uns 0,2 nós (notas do projeto
+  [NASAMarineDuetDriver](https://github.com/pljakobs/NASAMarineDuetDriver), sobre o Duet, da mesma
+  família; a confirmar na nossa roda). O sinal da bobina é fraco, por isso leva um pequeno
+  amplificador antes do ESP32. Se a tomada do vento só falar a linguagem do repetidor, há quem a
+  leia com um ESP ([espWIND](https://github.com/coylen/espWIND)). O cabo para as tomadas pode ser
+  feito por nós, depois de identificar os pinos com o multímetro (a tomada também tem 12 V).
 
 **Portas da MacArthur (proposta):**
 
