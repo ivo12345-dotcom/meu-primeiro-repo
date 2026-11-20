@@ -62,6 +62,21 @@ enganava a bússola), com bucins. Alimentação e dados pelo mesmo cabo USB do p
 O sensor fica fixo, alinhado com o eixo do barco e longe de ferro, do motor e de cabos com muita
 corrente.
 
+**Sítio da caixa 1 (ideia do Ivo, 20/11): no cubículo da bússola do piloto velho, ao lado da cama
+da cabine de popa,** com o BNO085 dentro da mesma caixa. É um sítio seco e resolve o problema do
+cabo curto do sensor. Regras da caixa:
+
+- o sensor a um palmo (15 cm ou mais) da placa e dos fios de alimentação, porque a corrente da
+  placa também faz campo magnético; os fios de alimentação torcidos;
+- parafusos de latão ou de nylon, nunca de aço; caixa em PETG ou ASA (o PLA amolece com o calor do
+  verão);
+- a 20–30 cm, pelo menos, da bússola do piloto velho.
+
+Os chicotes do vento e do log passam a ir para a cabine de popa, e não para a mesa de navegação.
+**Ligação ao portátil:** cabo USB se o portátil ficar até 5 m (dá também a alimentação). Se não
+chegar, a caixa 1 fala pelo rádio das placas com uma terceira placa pequena ligada ao USB do
+portátil. O Wi-Fi fica de fora para os sensores, porque dependia da rede do Fold.
+
 ## Caixa 2: motor
 
 A segunda placa ESP32 da ELEGOO, junto ao motor, na derivação soldada à cablagem do MDI que já
@@ -184,10 +199,8 @@ definitivo, ou a caixa 2 fica de vez.
    alternador). Proposta: junto à bússola do piloto velho, ao lado da roda, em baixo, na cabine de
    popa, que já foi escolhido como sítio sossegado. Confirma-se com o sensor na mão, a ver a proa em
    direto enquanto se muda de sítio e se liga o motor.
-8. **O comprimento do cabo do sensor.** A ligação I²C só é garantida a curta distância (cerca de
-   1 m). Se o sítio do sensor ficar a 3 ou 4 m da caixa 1, testa-se na bancada com esse
-   comprimento. Saídas se falhar: um extensor de I²C, ou uma placa pequena junto ao sensor, a falar
-   por rádio com a caixa 1.
+8. **O comprimento do cabo do sensor: resolvido** com a caixa 1 no cubículo da bússola e o sensor
+   lá dentro. Fica por saber onde vai estar o portátil, para escolher entre o cabo USB e o rádio.
 9. **Tabela de desvios da proa.** Além do desvio fixo, o plugin das caixas leva uma tabela de
    desvios por rumo, tirada numa volta completa do barco. Não corrige o que muda com o tempo (motor
    a trabalhar, ferro que se mexe de sítio).
