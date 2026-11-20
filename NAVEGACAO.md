@@ -212,6 +212,11 @@ Fontes: [MacArthur HAT, documentação](https://macarthur-hat-documentation.read
   placa não fica à vista (serve só para outros projetos mais tarde); fala com o computador por cabo
   ou por Wi-Fi e, se possível, também com o tablet; compras com entrega rápida, nada vindo da China.
   Daí a T-Display pequena. A caixa tem de ser de plástico: metal tapa o Wi-Fi e engana a bússola.
+  Mais barato ainda, a pedido do Ivo (sem ecrã, só Wi-Fi e USB): conjunto de
+  [2 placas ESP32 USB-C da ELEGOO](https://www.amazon.es/dp/B0D8T7LZF2) a €13,47, enviado pela
+  Amazon, entrega a 25/11 (fica uma de reserva); ou uma placa
+  [DevKitC de 38 pinos](https://www.amazon.es/dp/B0DKF9NCN1) a €9,14. Uma só placa lê o log, o vento
+  e o sensor.
 
 **Portas da MacArthur (proposta):**
 
