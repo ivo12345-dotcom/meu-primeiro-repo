@@ -198,6 +198,11 @@ Fontes: [MacArthur HAT, documentação](https://macarthur-hat-documentation.read
   (proa, adornamento e caimento) e manda tudo ao portátil por USB ou Wi-Fi; o GPS e o AIS vêm do
   Wi-Fi do B330. A bússola do piloto velho (SeaTalk1) fica de fora, por escolha do Ivo: a proa vem
   do sensor de 9 eixos e, mais tarde, do EV-100.
+  **Sensor para a proa e o adornamento (20/11):** o LSM6DSOX (Modulino Movement) só tem 6 eixos, sem
+  bússola: dá o adornamento e o caimento, não a proa. O Ivo encontrou o **Adafruit BNO085 (ref.
+  4754)** na Amazon.es a €42,64, com Prime e entrega a 23/11: tem 9 eixos e faz ele próprio a
+  fusão e a calibração, entregando a proa, o adornamento e o caimento já calculados. Parecer:
+  preferível ao ICM-20948 para a proa, porque tira do nosso programa a parte mais delicada.
 
 **Portas da MacArthur (proposta):**
 
