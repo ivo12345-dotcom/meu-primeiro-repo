@@ -221,6 +221,30 @@ definitivo, ou a caixa 2 fica de vez.
     contraste). As horas leem-se à noite e ficam registadas; depois vêm pelo J1939 (a confirmar na
     primeira escuta). Há LCD de substituição; falta a foto do instrumento para saber o modelo.
 
+## Pedido novo: carta com toque e caminhos guardados (por desenhar com o Ivo)
+
+O Ivo quer, no Fold: mexer na carta com os dedos, marcar uma rota, ver as batimétricas, ver sempre
+o caminho feito e escolher no fim se o guarda ou se o tira do ecrã, para a carta não ficar cheia
+nas zonas de passagem. Só ficam à vista os caminhos que ele escolher (os habituais).
+
+Proposta do Claude, duas cartas, cada uma para o que faz bem, com um botão para trocar:
+
+1. **A nossa carta, com toque** (a página Carta, a partir do `carta-demo.html`): mexer e ampliar,
+   tocar para marcar pontos e fazer uma rota, que fica guardada no SignalK (e por isso serve à
+   Melhor rota, ao Leme e, mais tarde, ao piloto); o caminho da viagem; os caminhos guardados; o
+   AIS; e as linhas de profundidade da fonte europeia gratuita EMODnet (o serviço tem as camadas
+   `emodnet:contours` e `emodnet:mean_multicolour`, confirmado a 20/11). Não é carta oficial, e o
+   pormenor destas linhas na nossa zona está por ver.
+2. **A carta oficial** (OpenCPN espelhado): para ver os fundos com pormenor em baixios e entradas
+   de porto. Mostra a rota marcada na nossa carta. Não serve para marcar rotas com o dedo, e as
+   rotas feitas lá dentro não chegavam ao nosso sistema.
+
+O caminho: a caixa negra já grava a posição de 10 em 10 s, sempre. Falta mostrar no ecrã o caminho
+da viagem em curso (mesmo depois de fechar e abrir a página, ou de trocar de aparelho) e, no fim,
+dois botões: **Guardar caminho** (com nome; fica na lista e na carta, noutra cor) e **Tirar do
+ecrã** (sai da carta e continua na caixa negra). Uma lista dos caminhos guardados, para mostrar,
+esconder ou apagar cada um.
+
 ## Pedido novo: ligar e desligar o motor da roda do leme (por decidir)
 
 O Ivo quer ligar e desligar o motor sem ir ao painel da Volvo, sobretudo numa emergência. A
