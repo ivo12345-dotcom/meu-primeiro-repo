@@ -157,6 +157,13 @@ confirmar a viagem antes de a AI aprender com ela. Regras: **a navegar só alter
 configuração do plugin das caixas); nunca mexer na gravação em bruto; regravar uma placa só com o
 barco parado. Sem rede móvel o sistema continua sozinho.
 
+**Para depois (ideia do Ivo, 20/11): um assistente local sem internet.** O portátil tem o Ollama
+com um modelo de linguagem instalado. Não faz falta ao sistema (a polar e a rota são contas e
+modelos numéricos, não um modelo de linguagem), mas pode vir a servir para perguntar coisas ao
+barco quando não houver rede: resumos do dia, consumos, médias, o que está nos manuais. Só para
+perguntas e resumos, nunca para alarmes nem para comandos. Gasta muita energia enquanto responde,
+por isso só a pedido.
+
 ## Peças
 
 Compradas pelo Ivo a 20/11 (Amazon.es; a confirmar por ele): sensor Adafruit BNO085, conjunto de 2
