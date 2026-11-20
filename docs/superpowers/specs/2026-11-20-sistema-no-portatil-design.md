@@ -239,6 +239,17 @@ Proposta do Claude, duas cartas, cada uma para o que faz bem, com um botão para
    de porto. Mostra a rota marcada na nossa carta. Não serve para marcar rotas com o dedo, e as
    rotas feitas lá dentro não chegavam ao nosso sistema.
 
+**Cartas pagas para dentro da nossa carta (o Ivo aceita pagar licença; visto a 20/11):**
+
+| Fonte | O que dá | Limites |
+|---|---|---|
+| o-charts no OpenCPN (cerca de €20 + €23 da chave, preços de 28/09) | Cartas oficiais de Portugal | Só abrem dentro do OpenCPN; no Fold, por espelho |
+| [Navionics Web API](https://developer.garmin.com/marine-charts/web/), plano "Enhanced" | Cartas Navionics com batimetria HD **dentro da nossa página**, com o barco, a rota e o AIS por cima | Pago por ano, preço só a pedido; pensado para empresas; precisa de internet. O plano grátis não deixa pôr nada por cima da carta |
+| [GeoGarage](https://www.geogarage.com/pro/), serviço para empresas | Cartas do Instituto Hidrográfico em mosaicos para qualquer mapa web | Só para empresas e marcado "não usar para navegação". A assinatura de particulares só funciona nas aplicações parceiras |
+
+Caminho proposto: começar pelas o-charts no OpenCPN e, em paralelo, pedir à Garmin o preço do plano
+"Enhanced". Se for razoável, a Navionics passa a ser a carta de fundo da nossa carta com toque.
+
 O caminho: a caixa negra já grava a posição de 10 em 10 s, sempre. Falta mostrar no ecrã o caminho
 da viagem em curso (mesmo depois de fechar e abrir a página, ou de trocar de aparelho) e, no fim,
 dois botões: **Guardar caminho** (com nome; fica na lista e na carta, noutra cor) e **Tirar do
