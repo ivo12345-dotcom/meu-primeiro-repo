@@ -208,6 +208,10 @@ Fontes: [MacArthur HAT, documentação](https://macarthur-hat-documentation.read
   a €20,33, enviada pela Amazon, entrega a 25/11; a Heltec com ecrã mais barata (WiFi LoRa 32 V4)
   está a €34,69, com entrega de 10 a 15/12. A T-Display-S3, de ecrã maior, só vem da China (cerca de
   €31 com portes, entrega em dezembro).
+  **Requisitos do Ivo para a caixa (20/11):** fica toda selada, por causa da humidade, e o ecrã da
+  placa não fica à vista (serve só para outros projetos mais tarde); fala com o computador por cabo
+  ou por Wi-Fi e, se possível, também com o tablet; compras com entrega rápida, nada vindo da China.
+  Daí a T-Display pequena. A caixa tem de ser de plástico: metal tapa o Wi-Fi e engana a bússola.
 
 **Portas da MacArthur (proposta):**
 
