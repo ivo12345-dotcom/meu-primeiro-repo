@@ -175,6 +175,15 @@ Fontes: [MacArthur HAT, documentação](https://macarthur-hat-documentation.read
 - **NASA V1 ou V2?** Ver as costas do Clipper Wind e do Clipper Log (número de
   fios, se há fio NMEA). Se não houver saída NMEA, a NASA vende cabos e
   conversores.
+  **20/11/2026, descrição do Ivo (de memória, sem foto):** cada um tem atrás dois fios de
+  alimentação, o cabo do sensor e uma ficha redonda de 7 ou 8 pinos. A ficha redonda deve ser a
+  tomada de saída (repetidor e NMEA). Para o vento de 5 fios (MK1), a NASA vende o cabo que tira o
+  NMEA dessa tomada e acaba em dois fios:
+  [Clipper Wind NMEA Output cable, 5 m, £17,51](https://www.nasamarine.com/product/clipper-wind-nmea-output-cable/);
+  há também um
+  [conector curto de 25 cm](https://www.marinesuperstore.com/marine-instruments/wind-instruments/nasa-wind-nmea-output-connector-25cm)
+  (£7,95). O Clipper Log tem saída NMEA 0183 (VHW e VLW), segundo a NASA; o cabo para a tomada dele
+  está por confirmar. Falta a foto das costas para fechar o modelo e a versão de cada um.
 
 **Portas da MacArthur (proposta):**
 
