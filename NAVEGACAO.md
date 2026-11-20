@@ -828,6 +828,12 @@ aparecem no fim da compra.
 Na Amazon.es estas placas estão ainda mais caras (Orange Pi 5 Plus de 4 GB a €280,28, entrega no fim de dezembro).
 A falta de memória RAM encareceu todas as placas, não só o Pi.
 
+**Preços dentro da China (20/11/2026, câmbio do BCE: 7,34 yuans por euro),** para trazer na bagagem: Raspberry Pi 5
+de 8 GB a ¥1 688,79 na [LCSC](https://item.szlcsc.com/22031874.html) (≈ €230, mais caro do que na Mauser); Orange Pi
+5 Max de 8 GB a ¥2 731 num anúncio da JD (≈ €372, captura de ecrã do Ivo, loja por identificar), acima dos €253,88
+do AliExpress entregue em Portugal. A JD só mostra preços a quem tem conta, por isso a loja oficial da Orange Pi
+ficou por ver. A estes preços não compensa comprar lá.
+
 O que as RK3588 têm a mais: 8 núcleos (4 do mesmo tipo dos do Pi e 4 pequenos), um chip de AI já incluído (6 TOPS)
 e, na Max e na Plus, o encaixe do disco NVMe na própria placa. Em repouso gastam tanto ou menos do que o Pi; a
 puxar, um pouco mais ([LinuxLinks](https://www.linuxlinks.com/orangepi5-max-single-board-computer-power-consumption/)).
