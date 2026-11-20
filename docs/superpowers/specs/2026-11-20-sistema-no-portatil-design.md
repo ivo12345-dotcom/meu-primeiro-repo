@@ -257,6 +257,23 @@ primeiras viagens. Preços vistos a 20/11 em o-charts.org, sem IVA: cartas "Port
 chave USB €19,00 (em stock). As rotas vêm da Melhor rota ou marcam-se no portátil. A carta com
 toque, os caminhos guardados com o fundo e a Navionics ficam para depois.
 
+**Melhor do que o espelho, a ensaiar (20/11, noite): o AvNav.** O Ivo não queria o espelho e pediu
+"uma maneira". O [AvNav](https://www.wellenvogel.net/software/avnav/docs/install.html?lang=en) é
+um programa de cartas feito para se usar pelo browser, com toque, rotas e caminhos, que lê os
+dados do SignalK. Tem um acordo com a o-charts: o seu módulo abre as **mesmas cartas oficiais** e
+serve-as ao browser, só dentro da rede do barco e para 5 aparelhos no máximo
+([documentação](https://www.wellenvogel.net/software/avnav/docs/hints/ocharts.html?lang=en)).
+Esse módulo corre em Linux (Raspberry Pi) e em Android, não em Windows. Por isso:
+
+- **No portátil:** ensaiar o AvNav com o módulo das o-charts numa camada Linux dentro do Windows.
+  Se funcionar, o Fold abre a carta oficial como página, com toque, sem espelho.
+- **No computador definitivo** (Raspberry ou Orange Pi, que são Linux): corre diretamente.
+- **Se o ensaio falhar:** fica o espelho do OpenCPN, como reserva.
+
+A chave USB da o-charts passa a ser ainda mais importante: sem ela a licença fica presa a um
+sistema, e aqui vai haver mais do que um. Por ver no ensaio: como a rota da Melhor rota aparece no
+AvNav e como as rotas marcadas no AvNav chegam ao SignalK.
+
 O cartão de cartas que está no plotter Garmin da mesa de navegação não serve para isto: essas
 cartas só abrem em aparelhos Garmin. Continua a servir no próprio plotter, como reserva.
 
