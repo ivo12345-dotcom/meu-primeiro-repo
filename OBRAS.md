@@ -134,8 +134,19 @@ oficial que a [Nors](https://trucks-buses-pt-vt.nors.com/contactos/) (o importad
 | Nautibrás, Sampaio, Sesimbra | 212 685 540 |
 | Boatcenter, Mitrena, Setúbal | 234 390 270 |
 
-Não se encontrou loja portuguesa com os kits de marca branca (Recmar/Orbitrade); esses vêm de lojas de fora. O site
-nautiserstore.pt, que ainda aparece nas pesquisas com peças Volvo Penta, é hoje uma página de casino: não usar.
+Kit de marca branca do permutador (Recmar/Orbitrade 23015, com os 4 + 2 O-rings), procurado a 20/11: nenhuma loja
+portuguesa o mostra à venda na internet (sem resultados na Nautifish e na Zimbromotor; noutras lojas náuticas nacionais a
+pesquisa não funcionou ou não mostrou nada). Lojas de fora, com página em português, que entregam em Portugal:
+
+| Loja | Preço com IVA | Portes e prazo |
+|---|---|---|
+| [Poseidon Marine](https://www.poseidonmarine.eu/products/gasket-set-heat-exchanger-4) (Recmar) | €24,69 | portes calculados no fim da compra; 7–15 dias em envio económico |
+| [Moory](https://www.moory.pt/p/kit-de-juntas-para-permutador-de-calor-para-volvo-penta-d1-d2/) (Suécia; Orbitrade) | €43,78 | €6,49; por encomenda, sai em 3–6 dias úteis |
+| [SVB](https://www.svb24.pt/pt/p/conjunto-de-juntas-do-permutador-de-calor-para-volvo-penta-d1-13-d1-20-d1-30-d2-40.html) (Alemanha; artigo 79270) | €46,46 | portes à parte, não confirmados; em stock em Bremen |
+
+A Nautifish (Figueiró dos Vinhos, 236 628 235) vende peças Recmar e talvez o encomende pela referência REC23015: por
+confirmar. O site nautiserstore.pt, que ainda aparece nas pesquisas com peças Volvo Penta, é hoje uma página de casino:
+não usar.
 
 ## 5. Governo, leme de emergência e piloto
 
