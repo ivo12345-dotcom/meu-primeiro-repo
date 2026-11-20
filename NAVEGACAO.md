@@ -193,6 +193,11 @@ Fontes: [MacArthur HAT, documentação](https://macarthur-hat-documentation.read
   amplificador antes do ESP32. Se a tomada do vento só falar a linguagem do repetidor, há quem a
   leia com um ESP ([espWIND](https://github.com/coylen/espWIND)). O cabo para as tomadas pode ser
   feito por nós, depois de identificar os pinos com o multímetro (a tomada também tem 12 V).
+  **Ideia do Ivo (20/11), por desenhar:** até haver placa no barco, o portátil grava só nas
+  navegações. Uma caixa com um ESP32 lê a roda do log, a ficha do vento e o sensor de 9 eixos
+  (proa, adornamento e caimento) e manda tudo ao portátil por USB ou Wi-Fi; o GPS e o AIS vêm do
+  Wi-Fi do B330. A bússola do piloto velho (SeaTalk1) fica de fora, por escolha do Ivo: a proa vem
+  do sensor de 9 eixos e, mais tarde, do EV-100.
 
 **Portas da MacArthur (proposta):**
 
@@ -537,7 +542,7 @@ alimentação da HAT a alimentar tudo
 | 13 | **ADS1115** (I²C) + resistências do divisor, para o nível do gasóleo | a cotar | **~€5–10** | Ver "Nível do gasóleo" |
 | 14 | **Barómetro BME280** (pressão, temperatura, humidade) DFRobot Gravity I²C, com cabo | [Botnroll PT](https://www.botnroll.com/en/temperature/5336-gravity-i2c-bme280-environmental-sensor-dfrobot-sen0236.html) | **€23,80** | Liga à I²C da MacArthur. Montar **fora da caixa do Pi** (o calor falseia a temperatura). Alternativa: Adafruit €26,60 |
 | 15 | **2 besouros piezo ativos 12 V, 95 dB a 30 cm**, 8 mA (1 no poço, 1 na **cabine do comandante**, junto ao beliche e ao ecrã 2) | [Botnroll PT](https://www.botnroll.com/en/sounders/861-buzzer-piezoelectrico.html) | **€3,60** (2 × €1,80) | Comandados pelo Pi por um **transístor NPN** (BC337 ou 2N2222) + resistência de 1 kΩ, a partir de um GPIO (cêntimos). Testar se o volume acorda quem dorme; se não, trocar por uma sirene de painel mais forte |
-| 16 | **Sensor de inclinação (IMU) SparkFun 9DoF ICM-20948 (Qwiic)**: adorno e caimento para o abatimento | [RS Online](https://es.rs-online.com/web/p/kits-de-desarrollo-de-sensores/2836590) | **~€25,51** (€21,08 s/IVA) | Liga à ficha Qwiic/I²C da MacArthur. O da OpenMarine (€10 s/IVA) está esgotado e o revendedor dos EUA deixou de o vender por problemas de qualidade. Montar rígido e alinhado com o eixo do barco, longe de ferro |
+| 16 | **Sensor de inclinação (IMU) SparkFun 9DoF ICM-20948 (Qwiic)**: adorno e caimento para o abatimento | [RS Online](https://es.rs-online.com/web/p/kits-de-desarrollo-de-sensores/2836590) | **~€25,51** (€21,08 s/IVA). A 20/11 a RS não tinha: [PTRobotics](https://www.ptrobotics.com/imu/8595-sparkfun-modulo-imu-9dof-icm-20948-qwiic.html) €26,26 por encomenda, ou módulo genérico com o mesmo chip na [Amazon.es](https://www.amazon.es/dp/B0G6KQB9HY) a €38,28, em stock | Liga à ficha Qwiic/I²C da MacArthur. O da OpenMarine (€10 s/IVA) está esgotado e o revendedor dos EUA deixou de o vender por problemas de qualidade. Montar rígido e alinhado com o eixo do barco, longe de ferro |
 | 17 | **Sensor de temperatura DS18B20 à prova de água, 2 m** (frigorífico) + resistência de 4,7 kΩ | [Botnroll PT](https://www.botnroll.com/en/temperature/429-sensor-de-temperatura-a-prova-de-agua-ds18b20-09m-.html) | **€4,65** (em promoção, antes €9,30) | 1-Wire num GPIO do Pi. Vários no mesmo fio: dá para juntar depois a casa do motor, a cabine, etc. Alarme se o frigorífico aquecer |
 | | **Total** | | **≈ €596** (€482 dos itens 1–11 + €49,21 motor + ~€7,50 gasóleo + €23,80 barómetro + €3,60 besouros + €25,51 IMU + €4,65 frigorífico) | Sem portes, sem cabos e sem o kit N2K. Portes: contar €30–50 |
 
