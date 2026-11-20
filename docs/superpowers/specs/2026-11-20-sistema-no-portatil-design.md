@@ -250,6 +250,16 @@ Proposta do Claude, duas cartas, cada uma para o que faz bem, com um botão para
 Caminho proposto: começar pelas o-charts no OpenCPN e, em paralelo, pedir à Garmin o preço do plano
 "Enhanced". Se for razoável, a Navionics passa a ser a carta de fundo da nossa carta com toque.
 
+O cartão de cartas que está no plotter Garmin da mesa de navegação não serve para isto: essas
+cartas só abrem em aparelhos Garmin. Continua a servir no próprio plotter, como reserva.
+
+**Para que servem os caminhos guardados (explicado pelo Ivo):** deixar marcados na carta os sítios
+por onde já passou, para ter cuidado com o fundo e o calado (1,90 m) e passar sempre pelos sítios
+melhores. Proposta do Claude: ligar também a **sonda de profundidade** (NASA Clipper Depth) à
+caixa 1, se o mostrador tiver saída de dados, para cada ponto do caminho levar o fundo medido e a
+hora (a maré dessa hora permite comparar passagens). O caminho guardado pode então mostrar a cor
+conforme a água que havia debaixo da quilha. Falta a foto das costas do mostrador da sonda.
+
 O caminho: a caixa negra já grava a posição de 10 em 10 s, sempre. Falta mostrar no ecrã o caminho
 da viagem em curso (mesmo depois de fechar e abrir a página, ou de trocar de aparelho) e, no fim,
 dois botões: **Guardar caminho** (com nome; fica na lista e na carta, noutra cor) e **Tirar do
