@@ -215,7 +215,18 @@ paragem na pior altura, motor de arranque preso). Parecer do Claude:
    (grupo 30 do manual de oficina). Nada de testar fios às cegas: a caixa eletrónica do motor (MDI)
    é sensível e cara.
 
-Fica fora das duas caixas desta fase até o Ivo decidir.
+**Decidido pelo Ivo (20/11, noite): só dois botões, ligar e desligar, e a chave faz de "armar".**
+No barco dele a ordem é: chave, o painel acende e faz a verificação (apita), e só depois o botão de
+ligar; o de desligar para o motor, e enquanto a chave e o painel ficarem ligados pode voltar a
+ligar a qualquer momento. Os botões do painel são de pressão e mandam um impulso à caixa do motor.
+Os nossos dois comandos ficam **em paralelo com esses dois botões**: com a chave desligada o painel
+não tem corrente e os comandos não fazem nada. No ecrã, os botões só ficam ativos quando o sistema
+vê o motor "acordado" (chegam tramas do J1939). Mantêm-se as proteções: toque demorado, não dar ao
+arranque com o motor a trabalhar, e largar o arranque sozinho. Por confirmar: se o botão de ligar é
+de toque ou de manter carregado, e onde se apanham os dois fios (no painel ou na cablagem junto à
+caixa do motor), com fotos e o esquema.
+
+Fica fora das duas caixas desta fase até haver as fotos e o esquema.
 
 ## Decisões de 20/11
 
