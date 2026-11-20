@@ -811,6 +811,37 @@ depressa. A AI do barco (LightGBM, tabelas pequenas) e a deteção por câmara (
 precisam dessa memória. Só faria falta para correr no próprio Pi um modelo de linguagem dos grandes (13 mil milhões de
 parâmetros), e esse anda a 1–2 tokens por segundo. Parecer de 19/11: manter o de 8 GB; a decisão é do Ivo.
 
+**Placas chinesas em vez do Pi, e o Pi comprado na China (visto a 20/11/2026, a pedido do Ivo).** Preços do
+AliExpress para Portugal, com IVA, entrega de 5 a 12 de dezembro. O site avisa que as taxas de importação só
+aparecem no fim da compra.
+
+| Placa | Preço | Notas |
+|---|---|---|
+| Raspberry Pi 5 de 8 GB na Mauser (referência) | €197,64 | Em Lisboa, igual a 19/11 |
+| Raspberry Pi 5 de 8 GB no AliExpress | €301–316 | Três vendedores, portes grátis. Não compensa |
+| Orange Pi 5 Max de 6 GB (RK3588) | €171,56 + €16,42 de portes | |
+| Orange Pi 5 Max de 8 GB, com fonte | €230,60 + €23,28 de portes | |
+| Orange Pi 5 Plus (RK3588) de 4 / 8 / 16 GB | €198,18 / €309,96 / €492,22 | Portes grátis |
+| Radxa Rock 5C de 4 GB (RK3588S2) | €176,30 | 8 GB e 16 GB esgotados |
+| Radxa Rock 5B+ (RK3588) | desde €375 | |
+
+Na Amazon.es estas placas estão ainda mais caras (Orange Pi 5 Plus de 4 GB a €280,28, entrega no fim de dezembro).
+A falta de memória RAM encareceu todas as placas, não só o Pi.
+
+O que as RK3588 têm a mais: 8 núcleos (4 do mesmo tipo dos do Pi e 4 pequenos), um chip de AI já incluído (6 TOPS)
+e, na Max e na Plus, o encaixe do disco NVMe na própria placa. Em repouso gastam tanto ou menos do que o Pi; a
+puxar, um pouco mais ([LinuxLinks](https://www.linuxlinks.com/orangepi5-max-single-board-computer-power-consumption/)).
+
+O que se perde: a **MacArthur HAT só é suportada no Raspberry Pi** (Pi 4 e Pi 5, na
+[tabela de compatibilidade](https://macarthur-hat-documentation.readthedocs.io/en/latest/)), e o OpenPlotter é
+feito para o Raspberry Pi. Noutras placas instala-se, mas as partes que usam os pinos (I²C, sensores) não
+funcionam de origem, e o autor do OpenPlotter não tem estas placas para testar
+([fórum OpenMarine](https://forum.openmarine.net/showthread.php?tid=4428)). O SeaTalk1, o NMEA 0183, o NMEA 2000, o
+desligar seguro e a alimentação a 12 V passam todos pela MacArthur: trocar de placa é refazer essa parte à mão.
+
+Parecer de 20/11: manter o Pi 5 de 8 GB. Se um dia fizer falta mais força (AI, câmaras), junta-se um segundo
+computador na rede do barco, comprado nessa altura, e o Pi continua a ler os instrumentos. A decisão é do Ivo.
+
 Fontes dos preços: [RasPi Shop](https://raspishop.pt/c/robotica-e-desenvolvimento/raspberry-pi-robotica-e-desenvolvimento/placas-e-kits/raspberry-pi-5/),
 [SailProof STS10](https://sailproof.shop/product/sunlight-readable-waterproof-touchscreen-10-2/),
 [o-charts Portugal](https://o-charts.org/shop/en/oesenc/79-portugal.html).
