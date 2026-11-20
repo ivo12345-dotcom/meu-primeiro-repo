@@ -195,6 +195,28 @@ definitivo, ou a caixa 2 fica de vez.
     contraste). As horas leem-se à noite e ficam registadas; depois vêm pelo J1939 (a confirmar na
     primeira escuta). Há LCD de substituição; falta a foto do instrumento para saber o modelo.
 
+## Pedido novo: ligar e desligar o motor da roda do leme (por decidir)
+
+O Ivo quer ligar e desligar o motor sem ir ao painel da Volvo, sobretudo numa emergência. A
+sequência de hoje no painel: ON até os manómetros mexerem; quando o apito para, START; para
+desligar, OFF.
+
+Tecnicamente dá: um relé em paralelo com cada botão faz o mesmo que o dedo, e a caixa 2 está junto
+ao motor. Mas é a única função do sistema em que um erro é perigoso (arranque sem ninguém querer,
+paragem na pior altura, motor de arranque preso). Parecer do Claude:
+
+1. **Para a emergência, botões verdadeiros na roda, ligados por fio** aos mesmos contactos do
+   painel, sem telemóvel, Wi-Fi nem portátil pelo meio.
+2. **No sistema, os mesmos comandos como comodidade**, com proteções: interruptor físico de
+   "armar" que corta a alimentação dos relés; toque demorado no ecrã; não dá ao arranque se o motor
+   já trabalha (lê as rotações); larga o arranque quando o motor pega ou ao fim de cerca de 10 s,
+   com um corte no próprio circuito; o sistema nunca liga o motor sozinho.
+3. **Antes de mexer:** fotos do painel (frente, costas e ficha) e o esquema elétrico do motor
+   (grupo 30 do manual de oficina). Nada de testar fios às cegas: a caixa eletrónica do motor (MDI)
+   é sensível e cara.
+
+Fica fora das duas caixas desta fase até o Ivo decidir.
+
 ## Decisões de 20/11
 
 - Sistema completo no portátil, e não só um gravador (Ivo).
