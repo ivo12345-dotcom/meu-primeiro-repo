@@ -196,6 +196,12 @@ definitivo, ou a caixa 2 fica de vez.
    profundidades e mosaicos guardados no portátil para funcionar sem rede (fonte a escolher no
    plano, respeitando as regras de cada fornecedor). **Não é carta oficial:** para entradas de
    porto e baixios mantém-se uma carta oficial à mão (o OpenCPN com as o-charts no portátil).
+   **Pedido do Ivo (20/11, noite): a carta original do projeto no PC.** Não é preciso emular: o
+   OpenCPN tem versão para Windows, com as mesmas cartas oficiais o-charts (com a chave USB, a
+   licença passa depois para o computador definitivo) e a ler o SignalK como no Pi (rota ativa,
+   rasto, AIS). Para a ver no Fold, espelha-se a janela do OpenCPN do portátil para dentro da
+   página Carta, ao lado do painel, pela rede do barco. Fica como carta principal; a carta livre
+   no browser fica de reserva. Por ensaiar em casa: a fluidez do toque no Fold e o que gasta.
 4. **O endereço do portátil na rede do Fold** (nome fixo ou endereço fixo) e a firewall do Windows.
 5. **O B330 por USB**: confirmar que entrega os dados por esse cabo.
 6. **O VHF tem posição própria?** O Ivo verifica no ecrã do rádio (diz que tem antena de GPS).
