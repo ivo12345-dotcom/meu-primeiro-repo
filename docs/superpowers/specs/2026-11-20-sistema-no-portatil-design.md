@@ -173,7 +173,22 @@ definitivo, ou a caixa 2 fica de vez.
    Ivo.
 4. **O endereço do portátil na rede do Fold** (nome fixo ou endereço fixo) e a firewall do Windows.
 5. **O B330 por USB**: confirmar que entrega os dados por esse cabo.
-6. **O VHF tem posição própria?** O Ivo verifica no ecrã do rádio.
+6. **O VHF tem posição própria?** O Ivo verifica no ecrã do rádio (diz que tem antena de GPS).
+7. **O sítio do sensor BNO085.** A meio do barco e em baixo não pode ser: a quilha é de ferro
+   fundido e o pé do mastro tem reforço de metal. Por cima do motor também não (ferro e o
+   alternador). Proposta: junto à bússola do piloto velho, ao lado da roda, em baixo, na cabine de
+   popa, que já foi escolhido como sítio sossegado. Confirma-se com o sensor na mão, a ver a proa em
+   direto enquanto se muda de sítio e se liga o motor.
+8. **O comprimento do cabo do sensor.** A ligação I²C só é garantida a curta distância (cerca de
+   1 m). Se o sítio do sensor ficar a 3 ou 4 m da caixa 1, testa-se na bancada com esse
+   comprimento. Saídas se falhar: um extensor de I²C, ou uma placa pequena junto ao sensor, a falar
+   por rádio com a caixa 1.
+9. **Tabela de desvios da proa.** Além do desvio fixo, o plugin das caixas leva uma tabela de
+   desvios por rumo, tirada numa volta completa do barco. Não corrige o que muda com o tempo (motor
+   a trabalhar, ferro que se mexe de sítio).
+10. **Mostrador da Volvo ilegível de dia.** Avaria conhecida destes mostradores (o LCD perde o
+    contraste). As horas leem-se à noite e ficam registadas; depois vêm pelo J1939 (a confirmar na
+    primeira escuta). Há LCD de substituição; falta a foto do instrumento para saber o modelo.
 
 ## Decisões de 20/11
 
