@@ -203,6 +203,11 @@ Fontes: [MacArthur HAT, documentação](https://macarthur-hat-documentation.read
   4754)** na Amazon.es a €42,64, com Prime e entrega a 23/11: tem 9 eixos e faz ele próprio a
   fusão e a calibração, entregando a proa, o adornamento e o caimento já calculados. Parecer:
   preferível ao ICM-20948 para a proa, porque tira do nosso programa a parte mais delicada.
+  **Placa da caixa (20/11):** o Ivo quer uma com ecrã e não tem nenhuma livre. Na Amazon.es, a
+  [LILYGO T-Display](https://www.amazon.es/dp/B099MPFJ9M) (ESP32, ecrã a cores de 1,14", USB-C) está
+  a €20,33, enviada pela Amazon, entrega a 25/11; a Heltec com ecrã mais barata (WiFi LoRa 32 V4)
+  está a €34,69, com entrega de 10 a 15/12. A T-Display-S3, de ecrã maior, só vem da China (cerca de
+  €31 com portes, entrega em dezembro).
 
 **Portas da MacArthur (proposta):**
 
