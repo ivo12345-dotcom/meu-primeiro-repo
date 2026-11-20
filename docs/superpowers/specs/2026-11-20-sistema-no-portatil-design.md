@@ -68,9 +68,11 @@ cabo curto do sensor. Regras da caixa:
 
 - o sensor a um palmo (15 cm ou mais) da placa e dos fios de alimentação, porque a corrente da
   placa também faz campo magnético; os fios de alimentação torcidos;
-- **sem parafusos (ideia do Ivo):** as placas ficam presas por pinos impressos que entram nos furos
-  delas, e a tampa, ao fechar, aperta-as contra a base; nada de metal dentro da caixa. Os pinos
-  soltos imprimem-se deitados, para não partirem pelas camadas;
+- **sem parafusos (ideia do Ivo):** a base da caixa leva furos nas posições dos furos de cada
+  placa; a placa pousa em cima e quatro estacas impressas, com cabeça, atravessam os furos da placa
+  e entram à pressão nos furos da base. Nada de metal dentro da caixa. As estacas imprimem-se
+  deitadas, para não partirem pelas camadas, e a base leva um ressalto à volta de cada furo para os
+  pinos de baixo da placa não tocarem no fundo. O aperto afina-se com uma peça de ensaio;
 - fita isoladora líquida só nos fios, nas soldaduras e nas fichas, para não se soltarem com a
   vibração; as placas têm de poder sair. Testar primeiro num resto do mesmo plástico, porque o
   solvente pode atacá-lo;
