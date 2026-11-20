@@ -839,6 +839,34 @@ funcionam de origem, e o autor do OpenPlotter não tem estas placas para testar
 ([fórum OpenMarine](https://forum.openmarine.net/showthread.php?tid=4428)). O SeaTalk1, o NMEA 0183, o NMEA 2000, o
 desligar seguro e a alimentação a 12 V passam todos pela MacArthur: trocar de placa é refazer essa parte à mão.
 
+**Dá para ligar a MacArthur a uma Orange Pi 5 Max? Verificação pino a pino (20/11/2026).** Impossível não é: a
+MacArthur usa ligações normais (SPI, série, I²C, GPIO). Comparei os pinos que ela usa
+([tabela da MacArthur](https://macarthur-hat-documentation.readthedocs.io/en/latest/pinout.html)) com os da Orange
+Pi 5 Max ([tabelas do `wiringOP`](https://github.com/orangepi-xunlong/wiringOP), da própria Orange Pi, e as funções
+dos pinos do RK3588 no
+[kernel do Linux](https://github.com/torvalds/linux/blob/master/arch/arm64/boot/dts/rockchip/rk3588-base-pinctrl.dtsi)):
+
+| Função da MacArthur | Pinos | Na Orange Pi 5 Max | Resultado |
+|---|---|---|---|
+| NMEA 2000 (chip MCP2518FD por SPI) | 19, 21, 23, 26 e 22 | SPI0 (MOSI, MISO, CLK, CS1) e um GPIO | Os pinos batem. O kernel da Armbian traz o driver (`CAN_MCP251XFD`); falta escrever a configuração à mão |
+| NMEA 0183 IN 1 (vento) | 29 | GPIO3_C1 = entrada da UART7 | Possível |
+| NMEA 0183 IN 2 (log) | 33 | GPIO3_B6 = entrada da UART3 | Possível |
+| NMEA 0183 OUT 1 (radar e VHF) | 7 | GPIO1_A7: sem função de saída série | **Não dá.** Resolve-se com um adaptador USB–NMEA 0183 |
+| NMEA 0183 OUT 2 (livre) | 32 | GPIO1_D6: sem função de saída série | Não dá (não faz falta) |
+| SeaTalk1 (entrada) | 38 | GPIO3_C0 (GPIO) | O pino serve. O leitor do SignalK (biblioteca gpiod) está feito para o Raspberry e tem de ser adaptado: é a parte mais incerta |
+| Sensores I²C | 3 e 5 | I²C2 | Possível (o número do barramento muda) |
+| 1-Wire (frigorífico) | 35 | GPIO3_C2 (GPIO) | Possível, com configuração à mão (`W1_MASTER_GPIO`) |
+| Desligar seguro (Shutdown e Power Off) | 40 e 37 | GPIO3_B7 e GPIO4_A7 | Os pinos servem; a lógica do OpenPlotter tem de ser refeita |
+
+No Raspberry tudo isto são uns cliques no OpenPlotter. Na Orange Pi são seis configurações escritas à mão, que só
+se provam com a placa na bancada, e não encontrei ninguém que o tenha feito. Só a 5 Max foi verificada: as outras
+placas têm os pinos noutra ordem.
+
+Três maneiras de usar uma placa chinesa: (1) a MacArthur em cima dela, como na tabela, mais um adaptador USB para
+a saída 0183; (2) dois computadores, um Raspberry pequeno com a MacArthur a ler os instrumentos e a placa chinesa
+para o trabalho pesado, ligados pela rede (o SignalK foi feito para isso); (3) sem MacArthur, com tudo por
+adaptadores USB (perde-se o desligar seguro e o SeaTalk1 precisa de um conversor).
+
 Parecer de 20/11: manter o Pi 5 de 8 GB. Se um dia fizer falta mais força (AI, câmaras), junta-se um segundo
 computador na rede do barco, comprado nessa altura, e o Pi continua a ler os instrumentos. A decisão é do Ivo.
 
