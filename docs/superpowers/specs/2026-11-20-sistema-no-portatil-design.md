@@ -250,6 +250,13 @@ Proposta do Claude, duas cartas, cada uma para o que faz bem, com um botão para
 Caminho proposto: começar pelas o-charts no OpenCPN e, em paralelo, pedir à Garmin o preço do plano
 "Enhanced". Se for razoável, a Navionics passa a ser a carta de fundo da nossa carta com toque.
 
+**Parecer final de 20/11, a pedido do Ivo ("qual é a melhor opção para a carta?"):** nesta fase, a
+carta é o **OpenCPN no portátil com as o-charts de Portugal**, espelhado no Fold ao lado do painel.
+É oficial, tem as batimétricas, funciona sem internet e é o que dá menos trabalho antes das
+primeiras viagens. Preços vistos a 20/11 em o-charts.org, sem IVA: cartas "Portugal 2026" €16,00 e
+chave USB €19,00 (em stock). As rotas vêm da Melhor rota ou marcam-se no portátil. A carta com
+toque, os caminhos guardados com o fundo e a Navionics ficam para depois.
+
 O cartão de cartas que está no plotter Garmin da mesa de navegação não serve para isto: essas
 cartas só abrem em aparelhos Garmin. Continua a servir no próprio plotter, como reserva.
 
