@@ -168,9 +168,14 @@ definitivo, ou a caixa 2 fica de vez.
 
 1. **Versão do mostrador do vento** (foto das costas): NMEA ou linguagem do repetidor.
 2. **Sinal da roda do log** (medir com o multímetro): escolhe o comparador.
-3. **A carta náutica no Fold.** No Pi era o OpenCPN ao lado do painel. Proposta: a Navionics em ecrã
-   dividido com o nosso painel, a receber GPS, AIS e vento do portátil por rede. A confirmar com o
-   Ivo.
+3. **A carta náutica no Fold: decidido pelo Ivo (20/11), carta no browser, servida pelo
+   portátil.** A Navionics fica de fora (não recebe a nossa rota e gasta a bateria do Fold). Parte-se
+   do `software/dev/carta-demo.html`, que já mostra, com o Leaflet, o barco, o rasto, a rota ativa
+   da Melhor rota e os alvos AIS, ao lado do painel. Falta: passar a ser uma página do ecrã servida
+   pelo SignalK (sem `localhost` nem bibliotecas da internet), arrumação para o Fold, uma camada de
+   profundidades e mosaicos guardados no portátil para funcionar sem rede (fonte a escolher no
+   plano, respeitando as regras de cada fornecedor). **Não é carta oficial:** para entradas de
+   porto e baixios mantém-se uma carta oficial à mão (o OpenCPN com as o-charts no portátil).
 4. **O endereço do portátil na rede do Fold** (nome fixo ou endereço fixo) e a firewall do Windows.
 5. **O B330 por USB**: confirmar que entrega os dados por esse cabo.
 6. **O VHF tem posição própria?** O Ivo verifica no ecrã do rádio (diz que tem antena de GPS).
