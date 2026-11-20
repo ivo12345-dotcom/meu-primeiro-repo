@@ -212,6 +212,13 @@ Fontes: [MacArthur HAT, documentação](https://macarthur-hat-documentation.read
   placa não fica à vista (serve só para outros projetos mais tarde); fala com o computador por cabo
   ou por Wi-Fi e, se possível, também com o tablet; compras com entrega rápida, nada vindo da China.
   Daí a T-Display pequena. A caixa tem de ser de plástico: metal tapa o Wi-Fi e engana a bússola.
+  **Objetivo corrigido pelo Ivo (20/11, noite):** não é só gravar. Quer o **sistema inteiro a
+  funcionar já, com o portátil no lugar do Raspberry**, e o ecrã no portátil, no tablet ou no
+  telemóvel. O motor faz falta desde o primeiro dia: é por ele que o sistema sabe se o barco vai à
+  vela ou a motor. As caixas com ESP32 passam a fazer o trabalho da MacArthur: caixa 1 = vento, log,
+  proa e adornamento; caixa 2 = motor (J1939), junto ao motor; depois o gasóleo, a água, o barómetro
+  e o frigorífico. Vantagem: o computador passa a poder ser qualquer um (o portátil agora, um
+  Raspberry ou uma Orange Pi depois). Desenho por escrever em `docs/superpowers/specs/`.
   Mais barato ainda, a pedido do Ivo (sem ecrã, só Wi-Fi e USB): conjunto de
   [2 placas ESP32 USB-C da ELEGOO](https://www.amazon.es/dp/B0D8T7LZF2) a €13,47, enviado pela
   Amazon, entrega a 25/11 (fica uma de reserva); ou uma placa
