@@ -226,6 +226,15 @@ arranque com o motor a trabalhar, e largar o arranque sozinho. Por confirmar: se
 de toque ou de manter carregado, e onde se apanham os dois fios (no painel ou na cablagem junto à
 caixa do motor), com fotos e o esquema.
 
+**Correção do Ivo (20/11): não há chave.** No painel do motor há um botão que liga o sistema todo
+(liga e desliga); passados uns segundos o painel apita, feita a verificação, e só então o botão de
+ligar o motor funciona. É esse **botão de ligar o painel que faz de "armar"**: com o painel
+desligado, os nossos comandos não fazem nada. **Sem botões físicos na roda** (decisão do Ivo: o
+painel está a 2 m; o pedido é só para não largar o leme enquanto não há piloto). Consequência: para
+ligar o motor da roda a meio de uma manobra, o painel tem de ter ficado ligado. O comando de ligar
+segura o contacto até o motor pegar (lê as rotações) ou até cerca de 10 s, o que serve quer o botão
+do painel seja de toque quer seja de manter carregado.
+
 Fica fora das duas caixas desta fase até haver as fotos e o esquema.
 
 ## Decisões de 20/11
