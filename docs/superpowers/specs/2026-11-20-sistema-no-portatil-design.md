@@ -175,6 +175,14 @@ mais simples ao mais pesado:
 3. **Conversa livre:** precisa de um modelo de linguagem. Com rede, o Claude; sem rede, um modelo
    local (bem no portátil; devagar num Raspberry Pi 5; a ver no chip de AI de uma Orange Pi).
 
+Pedido do Ivo (21/11) para o nível 3: chamar o Claude pelo nome, pedir-lhe uma tarefa por voz e
+ouvir a resposta nas colunas do barco. O Claude não fica à escuta por si; faz-se com um programa
+pequeno no portátil: (1) fica à escuta só do nome, no próprio portátil, sem enviar nada; (2) ao
+ouvir o nome, apanha a frase e passa-a a texto; (3) entrega o texto ao Claude, que trabalha com
+acesso ao sistema do barco; (4) lê a resposta em voz alta pela saída de som do portátil, ligada às
+colunas. Precisa de rede móvel, demora uns segundos por pedido e depende de um bom microfone. As
+tarefas com risco (motor, alterações ao sistema a navegar) pedem confirmação ou ficam de fora.
+
 ## Peças
 
 Compradas pelo Ivo a 20/11 (Amazon.es; a confirmar por ele): sensor Adafruit BNO085, conjunto de 2
