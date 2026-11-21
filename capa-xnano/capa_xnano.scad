@@ -47,7 +47,7 @@ bottom_slot_w = 33;   // largura da abertura em baixo (mm)
 
 /* [Botões - medidos a partir da FACE da capa] */
 // "left"/"right" = vistos por trás do aparelho (do lado do olho)
-buttons_side = "right";
+buttons_side = "left";
 btn_y1     = 18.1;  // início, a partir da face da capa (mm)
 btn_y2     = 35.5;  // fim, a partir da face da capa (mm)
 btn_z1     = 9.5;   // a partir do topo (mm)
@@ -158,4 +158,4 @@ module capa() {
 }
 
 // Imprimir com a frente virada para a mesa (sem suportes)
-rotate([90, 0, 0]) mirror([0, 1, 0]) capa();
+rotate([90, 0, 0]) capa();   // frente em z=0, sem espelhar
