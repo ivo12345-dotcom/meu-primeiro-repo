@@ -42,11 +42,11 @@ back_lip  = 1.2;  // rebordo de retenção atrás (0 = sem)
 
 /* [Abertura em baixo - rail] */
 bottom_open   = true;
-bottom_slot_w = 30;   // largura da abertura em baixo (mm) - confirmar
+bottom_slot_w = 33;   // largura da abertura em baixo (mm)
 
 /* [Botões - medidos a partir da FACE da capa] */
 // "left"/"right" = vistos por trás do aparelho (do lado do olho)
-buttons_side = "left";
+buttons_side = "right";
 btn_y1     = 18.1;  // início, a partir da face da capa (mm)
 btn_y2     = 35.5;  // fim, a partir da face da capa (mm)
 btn_z1     = 9.5;   // a partir do topo (mm)
