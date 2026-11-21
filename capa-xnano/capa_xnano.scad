@@ -36,7 +36,8 @@ spacer_t  = 4.0;  // espaço entre o anel e o aparelho (mm)
 spacer_d  = 35;   // abertura do espaçador (tem de ser > lente; < anel) (mm)
 
 /* [Capa] */
-wall      = 2.4;  // paredes (mm)
+wall      = 2.4;  // paredes da frente, à volta do anel (mm) - flexível
+wall_body = 3.6;  // paredes à volta do aparelho (mm) - mais rijas
 clear     = 0.4;  // folga aparelho-capa (mm)
 back_lip  = 1.2;  // rebordo de retenção atrás (0 = sem)
 
@@ -71,12 +72,17 @@ out_w = max(in_w, ring_d + 2*ring_clear) + 2*wall;
 out_h = max(in_h, ring_d + 2*ring_clear) + 2*wall;
 in_r  = dev_r + clear;
 out_r = in_r + wall;
+// zona do aparelho, com paredes mais grossas
+body_out_w = in_w + 2*wall_body;
+body_out_h = in_h + 2*wall_body;
+body_out_r = in_r + wall_body;
+step = max(body_out_w - out_w, body_out_h - out_h, 0) / 2;  // degrau (chanfro a 45°)
 body_len = front_total + dev_l + clear;
 // posições dos botões relativas à frente do aparelho
 btn_dev_y1 = btn_y1 - meas_front;
 btn_dev_y2 = btn_y2 - meas_front;
 
-echo(str("Capa por fora: ", out_w, " x ", out_h, " x ", body_len, " mm"));
+echo(str("Capa por fora: ", max(out_w, body_out_w), " x ", max(out_h, body_out_h), " x ", body_len, " mm"));
 
 module rbox(w, h, l, r) {
     r2 = min(r, w/2 - 0.01, h/2 - 0.01);
@@ -103,7 +109,14 @@ module rampa() {
 module capa() {
     if (ramp_on) rampa();
     difference() {
-        rbox(out_w, out_h, body_len, out_r);
+        union() {
+        rbox(out_w, out_h, front_total, out_r);
+        hull() {
+            translate([0, front_total - 0.01, 0]) rbox(out_w, out_h, 0.01, out_r);
+            translate([0, front_total + step, 0])
+                rbox(body_out_w, body_out_h, body_len - front_total - step, body_out_r);
+        }
+        }
 
         // cavidade do aparelho (aberta atrás)
         translate([0, front_total, 0]) rbox(in_w, in_h, body_len, in_r);
@@ -118,7 +131,7 @@ module capa() {
         // base aberta para o rail (só na zona do aparelho)
         if (bottom_open)
             translate([-bottom_slot_w/2, front_total, -out_h])
-                cube([bottom_slot_w, body_len, out_h]);
+                cube([bottom_slot_w, body_len, out_h + 2*step]);
 
         // janela dos botões
         y0 = front_total + btn_dev_y1 - btn_margin;
@@ -128,9 +141,9 @@ module capa() {
         if (buttons_side == "top")
             translate([-btn_w/2, y0, 0]) cube([btn_w, bl, out_h]);
         if (buttons_side == "left")    // visto por trás = +X
-            translate([0, y0, zb]) cube([out_w, bl, zt - zb]);
+            translate([0, y0, zb]) cube([out_w + 2*step, bl, zt - zb]);
         if (buttons_side == "right")   // visto por trás = -X
-            translate([-out_w, y0, zb]) cube([out_w, bl, zt - zb]);
+            translate([-out_w - 2*step, y0, zb]) cube([out_w + 2*step, bl, zt - zb]);
     }
 
     // rebordo traseiro de retenção
@@ -140,7 +153,7 @@ module capa() {
             translate([0, body_len - 1.3, 0])
                 rbox(in_w - 2*back_lip, in_h - 2*back_lip, 1.4, max(in_r - back_lip, 0.5));
             if (bottom_open)
-                translate([-bottom_slot_w/2, body_len - 2, -out_h]) cube([bottom_slot_w, 3, out_h]);
+                translate([-bottom_slot_w/2, body_len - 2, -out_h]) cube([bottom_slot_w, 3, out_h + 2*step]);
         }
 }
 
