@@ -538,6 +538,41 @@ umas saídas: dataset da nossa costa e medida real dos alcances; (1) Hailo + YOL
 seguimento, horizonte com o IMU, treino com as nossas imagens. Custo €250–400 de material e muitos fins de semana
 de software. Não substitui a vigia nem o AIS/radar.
 
+### Sailing Exodus (link do Ivo, 21/11): radar Raymarine num Raspberry Pi, com o código oferecido
+
+[Vídeo](https://youtu.be/2eYEBF7tb8o) de 15/10/2026 (12 min) e
+[código](https://github.com/sailingexodus/exodus-radar). Um Raspberry Pi 5 com OpenPlotter e SignalK,
+ligado ao cabo de rede do radar, lê o que a antena **Raymarine Quantum** manda ao Axiom e desenha a
+imagem num ecrã próprio e em qualquer browser da rede do barco. À volta da imagem: alvos AIS com a
+lista dos perigosos (CPA abaixo de 1 000 pés em 15 min), alarme de fundeio (círculo de 150 pés, com
+mensagem pelo Telegram), vento, fundo, velocidade e barra do leme. Os comandos do radar passam pelo
+[Mayara](https://github.com/MarineYachtRadar/mayara-server). Os "$150" do título são só o computador:
+o radar e o Axiom já lá estavam (o dele é um Quantum Q24C; um Quantum 2 Q24D novo, sem cabos, estava a
+€2 299 na AWN a 21/11), e o autor chama-lhe uma segunda opinião, não um instrumento de navegação.
+Licença PolyForm Noncommercial 1.0.0: livre para uso próprio; não serve para vender nem para instalar
+a pagar em barcos de outros.
+
+- **O radar não entra no Arlequin.** O programa só desenha o Quantum, e o JRC 1000 não está na lista
+  do Mayara (testados: Navico BR24/3G/4G/HALO, Raymarine Quantum/RD/HD, Furuno DRS-NXT, DRS4W e
+  FAR-2xx7, ONWA KRA-1009; por validar: Garmin, Koden, outros Furuno e Raymarine). Mantém-se o §2b: o
+  JRC fica autónomo. Para memória: o Mayara corre em Windows, macOS e Linux e é lido pelo OpenCPN
+  (`mayara_pi`) e pelo Freeboard-SK, por isso um radar de rede dessa lista entraria no nosso ecrã.
+- **O resto já existe no nosso sistema:** perigo AIS (`signalk-arlequin-ais`, CPA < 0,5 MN e TCPA
+  < 20 min), "o barco saiu do lugar" e Telegram com comandos (`signalk-arlequin-porto`), e o ecrã em
+  qualquer aparelho com browser.
+- **Ideias a aproveitar, por decidir pelo Ivo:**
+  1. **Ondulação medida.** O autor estima a altura e o período com um sensor de movimento e o README
+     aponta o BNO085, o mesmo da nossa caixa 1 (a conta não vem no repositório dele). Para nós basta a
+     caixa 1 mandar também o sobe-e-desce (aceleração vertical) e a caixa negra gravá-lo desde a
+     primeira viagem; a conta faz-se depois, com dados reais. Limites (avaliação do Claude): o sensor
+     fica à popa e mede o movimento do barco nesse sítio, não o mar; serve para a ondulação longa,
+     engana-se na vaga curta e a navegar; não dá direção.
+  2. **Fundeado, fundo e velocidade em números muito grandes**, para ler da cama. Fica para quando
+     entrar a parte do barco parado.
+- **A série continua:** prometidos a sonda, o MFD e um assistente de voz offline com os manuais do
+  barco. Já saiu "Raspberry Pi Sailing Display + Autopilot Control vs Raymarine" (visto na lista do
+  canal a 21/11, por ler): interessa quando o EV-100 chegar.
+
 ## 4. Lista de material
 
 Preços pesquisados a 28/09/2026. O "c/IVA" das lojas que mostram preço sem
