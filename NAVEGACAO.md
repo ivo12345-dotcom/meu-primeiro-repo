@@ -960,6 +960,29 @@ adaptadores USB (perde-se o desligar seguro e o SeaTalk1 precisa de um conversor
 Parecer de 20/11: manter o Pi 5 de 8 GB. Se um dia fizer falta mais força (AI, câmaras), junta-se um segundo
 computador na rede do barco, comprado nessa altura, e o Pi continua a ler os instrumentos. A decisão é do Ivo.
 
+**Pi 5 em segunda mão no OLX (visto a 21/11/2026, a partir de um anúncio enviado pelo Ivo).** São vendedores
+particulares: sem fatura não há garantia. Pela página das [Entregas OLX](https://entregas.olx.pt/), o que existe é
+envio pelos CTT com opção de pagar à cobrança; não encontrei pagamento guardado pelo OLX.
+
+| Anúncio | Preço | Notas |
+|---|---|---|
+| [Pi 5 de 16 GB "novo na caixa, selado"](https://www.olx.pt/d/anuncio/raspberry-pi-5-16gb-novo-na-caixa-IDJISlY.html), Braga | €260, negociável | Só a placa. As fotos são do vendedor, a caixa diz 16 GB e o código de barras (5056561803333) é o do modelo de 16 GB (SC1113). Vendedor sem classificações, com este único anúncio, posto a 21/11. Não fala em fatura, e as fotos não mostram se a caixa foi aberta |
+| [Pi 5 de 16 GB usado](https://www.olx.pt/d/anuncio/raspberry-pi-5-16gb-IDJuZBx.html), Queluz | €310 | Vem montado na base NVMe de baixo da Pimoroni (o item 3 da lista, €19,93), com fonte de 27 W, dissipador Joy-IT com ventoinha e cabo HDMI. O anúncio diz que tem ainda 2 anos de garantia na Mauser. Dá para ver a trabalhar e pagar em mão |
+| [Pi 5 de 8 GB novo](https://www.olx.pt/d/anuncio/raspberry-pi-5-8gb-ram-novo-IDJIiPq.html), Braga | €150 | O anúncio diz "garantia e fatura da loja Mauser". Vendedor sem classificações |
+| Outros Pi 5 de 16 GB, em conjuntos com caixa, fonte ou monitor | €300–350 | [Pesquisa](https://www.olx.pt/ads/q-raspberry-pi-5-16gb/) |
+| Outros Pi 5 de 8 GB, só a placa | €130–150 | Na mesma pesquisa, pelos títulos dos anúncios |
+| Novos na [Mauser](https://mauser.pt/desenvolvimento-e-maker/raspberry-pi/microcomputadores), no mesmo dia | 8 GB €197,64; 16 GB €434,19 | Iguais a 19/11 |
+
+O de 16 GB entra no projeto sem mudar nada: é a mesma placa do de 8 GB, com os mesmos furos e as mesmas fichas, e
+leva a MacArthur e a base NVMe da mesma maneira. Não corre nada mais depressa; dá folga de memória, que só faria
+falta para ter um modelo de linguagem local a correr ao lado do resto (o nível 3 do assistente de voz, sem rede), e
+esse continua lento num Pi. O dissipador Joy-IT do conjunto de Queluz é alto: está por confirmar se cabe debaixo da
+MacArthur; se não couber, usa-se o oficial da lista (item 2).
+
+Parecer de 21/11: a €260 o de 16 GB tem um preço justo (€174 abaixo da loja e €62 acima do de 8 GB novo), mas para o
+barco o de 8 GB continua a chegar, e o de €150 com fatura da Mauser poupa €110, que pagam a MacArthur e o módulo de
+alimentação (≈ €104). Qualquer um destes só à cobrança ou em mão, nunca com pagamento adiantado. A decisão é do Ivo.
+
 Fontes dos preços: [RasPi Shop](https://raspishop.pt/c/robotica-e-desenvolvimento/raspberry-pi-robotica-e-desenvolvimento/placas-e-kits/raspberry-pi-5/),
 [SailProof STS10](https://sailproof.shop/product/sunlight-readable-waterproof-touchscreen-10-2/),
 [o-charts Portugal](https://o-charts.org/shop/en/oesenc/79-portugal.html).
