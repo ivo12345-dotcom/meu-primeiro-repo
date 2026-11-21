@@ -34,10 +34,12 @@ snap_t    = 1.0;  // espessura da aba que segura o anel pela frente (mm)
 snap_lip  = 0.8;  // quanto a aba sobrepõe o anel, por lado (mm)
 spacer_t  = 4.0;  // espaço entre o anel e o aparelho (mm)
 spacer_d  = 35;   // abertura do espaçador (tem de ser > lente; < anel) (mm)
+seat_w    = 1.2;  // apoio plano para o anel no espaçador (mm, por lado)
+// O resto do espaçador fecha a 45° até spacer_d: imprime sem fios no ar.
 
 /* [Capa] */
 wall      = 2.4;  // paredes da frente, à volta do anel (mm) - flexível
-wall_body = 3.6;  // paredes à volta do aparelho (mm) - mais rijas
+wall_body = 2.4;  // paredes à volta do aparelho (mm)
 clear     = 0.4;  // folga aparelho-capa (mm)
 back_lip  = 1.2;  // rebordo de retenção atrás (0 = sem)
 
@@ -126,6 +128,9 @@ module capa() {
         // encaixe do anel
         ycyl(ring_d + 2*ring_clear, snap_t, ring_t);
         // abertura do espaçador (até à lente)
+        seat_d = ring_d + 2*ring_clear - 2*seat_w;
+        cone_h = min((seat_d - spacer_d)/2, spacer_t);
+        ycyl(seat_d, snap_t + ring_t - 0.01, cone_h + 0.01, spacer_d);
         ycyl(spacer_d, snap_t + ring_t - 0.01, spacer_t + 0.02);
 
         // base aberta para o rail (só na zona do aparelho)

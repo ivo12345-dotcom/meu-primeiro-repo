@@ -13,7 +13,7 @@ Frente, da face para trás: aba de retenção de 1 mm → encaixe do anel (4 mm)
 4. A janela dos botões fica do lado esquerdo (visto por trás).
 
 Medidas atuais: corpo de 41 × 42 mm. Os 60 mm medidos a partir da face incluem 5 mm de frente, por isso o aparelho tem 55 mm.
-Capa por fora: 49 × 50 × 64,4 mm (a frente, à volta do anel, fica com 46,6 × 47,6 mm). Paredes de 3,6 mm à volta do aparelho, para ficar mais rija, e 2,4 mm na frente, para manter a flexibilidade do encaixe do anel.
+Capa por fora: 46,6 × 47,6 × 64,4 mm, paredes de 2,4 mm.
 
 ## O que medir (paquímetro)
 | Parâmetro | O que é |
@@ -25,7 +25,8 @@ Capa por fora: 49 × 50 × 64,4 mm (a frente, à volta do anel, fica com 46,6 ×
 | `ring_open_d` | diâmetro da abertura interior do anel |
 | `buttons_side`, `btn_y1..btn_z2` | janela dos botões (já medida: lado esquerdo (visto por trás), 18,1–35,5 mm da frente, 9,5–33,8 mm do topo) |
 | `ramp_h`, `ramp_l` | rampa de guia no topo, por dentro: 4 mm junto à frente do aparelho, desce até 0 em 25 mm |
-| `wall`, `wall_body` | paredes da frente (2,4 mm, flexível) e à volta do aparelho (3,6 mm, mais rija) |
+| `wall`, `wall_body` | paredes (2,4 mm); `wall_body` permite engrossar só à volta do aparelho |
+| `seat_w` | apoio plano de 1,2 mm para o anel; o espaçador fecha a 45° até aos 35 mm, para imprimir sem fios no ar |
 | `bottom_slot_w` | largura da abertura de baixo para o rail (33 mm) |
 
 ## Impressão
