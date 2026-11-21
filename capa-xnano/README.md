@@ -1,6 +1,6 @@
 # Capa para Owlset HEIM ES X-NANO XPD + anel honeycomb de titânio (41 mm)
 
-![por cima](preview.png) ![por baixo](preview_baixo.png)
+![por cima](preview.png) ![por baixo](preview_baixo.png) ![corte com a rampa](preview_corte.png)
 
 - `capa_xnano.scad`: modelo paramétrico (OpenSCAD). Todas as medidas estão no topo do ficheiro.
 - `capa_xnano.stl`: STL gerado com as medidas **provisórias**. **Não imprima antes de medir o aparelho.**
@@ -24,6 +24,7 @@ Capa por fora: 46,6 × 47,6 × 64,4 mm.
 | `ring_t` | espessura do anel de titânio |
 | `ring_open_d` | diâmetro da abertura interior do anel |
 | `buttons_side`, `btn_y1..btn_z2` | janela dos botões (já medida: lado direito (visto por trás), 18,1–35,5 mm da frente, 9,5–33,8 mm do topo) |
+| `ramp_h`, `ramp_l` | rampa de guia no topo, por dentro: 4 mm junto à frente do aparelho, desce até 0 em 25 mm |
 | `bottom_slot_w` | largura da abertura de baixo para o rail (33 mm) |
 
 ## Impressão

@@ -54,6 +54,13 @@ btn_z2     = 33.8;  // a partir do topo (mm)
 btn_w      = 30;    // (só "top") largura (mm)
 btn_margin = 1.0;   // folga extra à volta (mm)
 
+/* [Rampa de guia no topo, por dentro] */
+// O topo do aparelho desce na frente: esta rampa preenche essa folga
+// para o aparelho ficar justo e centrado.
+ramp_on = true;
+ramp_h  = 4;    // altura junto à frente do aparelho (mm)
+ramp_l  = 25;   // comprimento até chegar a 0 (mm)
+
 $fn = 96;
 
 // ----------------- derivados -----------------
@@ -82,7 +89,19 @@ module ycyl(d, y, l, d2 = undef) {
         cylinder(d1 = d, d2 = (d2 == undef ? d : d2), h = l);
 }
 
+module rampa() {
+    intersection() {
+        translate([0, front_total, 0]) rbox(in_w, in_h, ramp_l + 0.01, in_r);
+        translate([in_w/2 + 1, 0, 0]) rotate([0, -90, 0])
+            linear_extrude(in_w + 2)
+                polygon([[in_h/2 + 0.01, front_total - 0.01],
+                         [in_h/2 - ramp_h, front_total - 0.01],
+                         [in_h/2 + 0.01, front_total + ramp_l]]);
+    }
+}
+
 module capa() {
+    if (ramp_on) rampa();
     difference() {
         rbox(out_w, out_h, body_len, out_r);
 
