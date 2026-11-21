@@ -296,6 +296,21 @@ Esse módulo corre em Linux (Raspberry Pi) e em Android, não em Windows. Por is
 - **No computador definitivo** (Raspberry ou Orange Pi, que são Linux): corre diretamente.
 - **Se o ensaio falhar:** fica o espelho do OpenCPN, como reserva.
 
+**Ensaio de 21/11/2026 no portátil: funciona.** O Ivo ligou a camada Linux do Windows (WSL 2) e
+instalou-se o Ubuntu 24.04. Lá dentro, pelo repositório oficial do AvNav (free-x.de, Ubuntu Noble):
+`avnav` 20261102 e `avnav-ochartsng` 20260703. Resultado:
+
+- A página do AvNav abre no portátil em `http://localhost:8080`.
+- O módulo das o-charts só arrancou depois de uma correção: o descodificador da o-charts
+  (`oexserverd` 1.0.29) rebentava por o WSL não ter nenhum barramento USB. Resolve-se carregando o
+  módulo `vhci_hcd` (USB virtual), que ficou permanente em
+  `/etc/modules-load.d/arlequin-usb-virtual.conf`. Com isso o módulo fica estável (estado
+  "Running") e gera a impressão digital do sistema que a loja pede para a licença.
+- Por provar: uma carta comprada a abrir de facto; se a licença presa ao sistema sobrevive a
+  reinícios do WSL (daí a chave USB, que no WSL precisa de mais uma peça, o `usbipd`); o acesso a
+  partir do Fold (a porta do WSL tem de ser aberta para a rede, o que mexe nas definições do
+  Windows); o arranque automático; a ligação ao SignalK.
+
 A chave USB da o-charts passa a ser ainda mais importante: sem ela a licença fica presa a um
 sistema, e aqui vai haver mais do que um. Por ver no ensaio: como a rota da Melhor rota aparece no
 AvNav e como as rotas marcadas no AvNav chegam ao SignalK.
