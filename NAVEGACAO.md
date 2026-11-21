@@ -983,6 +983,11 @@ Parecer de 21/11: a €260 o de 16 GB tem um preço justo (€174 abaixo da loja
 barco o de 8 GB continua a chegar, e o de €150 com fatura da Mauser poupa €110, que pagam a MacArthur e o módulo de
 alimentação (≈ €104). Qualquer um destes só à cobrança ou em mão, nunca com pagamento adiantado. A decisão é do Ivo.
 
+**Decisão do Ivo (21/11): acha o preço bom e quer o de 16 GB do anúncio de Braga, levantado em mão. Por comprar.**
+Na entrega confirma-se o modelo na própria placa: a de 16 GB tem "16GB RAM" impresso logo por baixo da fila de pinos
+([Hackster](https://www.hackster.io/news/raspberry-pi-doubles-the-ram-with-a-new-raspberry-pi-5-16gb-variant-93177d6a769c)).
+Se a compra se fizer, o item 1 da lista do §4 passa a 16 GB; o resto da lista fica igual.
+
 Fontes dos preços: [RasPi Shop](https://raspishop.pt/c/robotica-e-desenvolvimento/raspberry-pi-robotica-e-desenvolvimento/placas-e-kits/raspberry-pi-5/),
 [SailProof STS10](https://sailproof.shop/product/sunlight-readable-waterproof-touchscreen-10-2/),
 [o-charts Portugal](https://o-charts.org/shop/en/oesenc/79-portugal.html).
