@@ -306,14 +306,44 @@ instalou-se o Ubuntu 24.04. Lá dentro, pelo repositório oficial do AvNav (free
   módulo `vhci_hcd` (USB virtual), que ficou permanente em
   `/etc/modules-load.d/arlequin-usb-virtual.conf`. Com isso o módulo fica estável (estado
   "Running") e gera a impressão digital do sistema que a loja pede para a licença.
-- Por provar: uma carta comprada a abrir de facto; se a licença presa ao sistema sobrevive a
-  reinícios do WSL (daí a chave USB, que no WSL precisa de mais uma peça, o `usbipd`); o acesso a
-  partir do Fold (a porta do WSL tem de ser aberta para a rede, o que mexe nas definições do
-  Windows); o arranque automático; a ligação ao SignalK.
+- Por provar: uma carta comprada a abrir de facto; a chave USB a chegar ao WSL (precisa de mais
+  uma peça no Windows, o `usbipd`); o acesso a partir do Fold (a porta do WSL tem de ser aberta
+  para a rede, o que mexe nas definições do Windows); o arranque automático; a ligação ao SignalK.
 
-A chave USB da o-charts passa a ser ainda mais importante: sem ela a licença fica presa a um
-sistema, e aqui vai haver mais do que um. Por ver no ensaio: como a rota da Melhor rota aparece no
-AvNav e como as rotas marcadas no AvNav chegam ao SignalK.
+**Ensaio de reinício (21/11, 13:53): a licença tem de ir na chave USB, não no "sistema".**
+
+- Depois de desligar a camada Linux por completo (`wsl --shutdown`) e de a voltar a ligar, tudo
+  arranca sozinho: o USB virtual, o AvNav e o descodificador (à primeira tentativa).
+- A "impressão digital" que a loja pede para prender a licença a um sistema leva o endereço da
+  placa de rede da camada Linux, o nome do utilizador e da máquina, o nome do sistema operativo e
+  o identificador do disco. O endereço da placa de rede **muda a cada arranque** da camada Linux
+  (medido: mudou de um arranque para o seguinte); o resto ficou igual. A documentação da
+  Microsoft não tem nenhuma definição para o fixar.
+- As condições da loja dizem que, se um destes elementos mudar, o aparelho passa a contar como
+  novo e perde-se uma das instalações. Logo: **nunca atribuir as cartas ao "sistema" da camada
+  Linux**. Atribuem-se à chave USB, que conta como um aparelho portátil e serve em todos os
+  computadores (este portátil e o computador definitivo).
+- A camada Linux já está pronta para a chave: o pacote do AvNav traz a regra que lhe dá acesso e
+  o núcleo tem as peças do USB por rede (`vhci-hcd`, `usbip-core`). Falta o `usbipd` do lado do
+  Windows, quando a chave chegar (é o Ivo que corre o comando).
+- A camada Linux adormece logo que fecha a última sessão, mesmo com o AvNav a correr. Para o
+  arranque automático há uma definição própria do WSL (`instanceIdleTimeout=-1`, secção
+  `[general]` do `.wslconfig`); até lá mantém-se uma sessão aberta.
+
+**Loja o-charts, visto a 21/11:**
+[Portugal 2026](https://o-charts.org/shop/en/oesenc/79-portugal.html) (ref. PT2, edição 2026/1-3
+de 05/10/2026) €16,00 sem IVA, **5 instalações permitidas**;
+[chave USB](https://o-charts.org/shop/en/hardware/38-usb-key-dongle.html) €19,00 sem IVA, em
+stock, enviada em 1 a 2 dias úteis (correio normal 5 a 10 dias úteis na UE; DHL Express 3 a 5).
+As cartas caducam um ano depois da compra: deixam de ter atualizações e deixa de se poder
+atribuí-las a aparelhos novos, mas as já pedidas continuam a abrir. Uma atribuição não se desfaz
+depois de pedidas as cartas. O módulo do AvNav só abre as cartas vetoriais (as de Portugal são);
+as de imagem (oeRNC) não.
+
+Plano das instalações: uma para a chave USB (AvNav no portátil e no computador definitivo) e, se
+o Ivo quiser ver as cartas antes de a chave chegar, uma para o OpenCPN no Windows, que fica como
+reserva. Por ver no ensaio: como a rota da Melhor rota aparece no AvNav e como as rotas marcadas
+no AvNav chegam ao SignalK.
 
 O cartão de cartas que está no plotter Garmin da mesa de navegação não serve para isto: essas
 cartas só abrem em aparelhos Garmin. Continua a servir no próprio plotter, como reserva.
