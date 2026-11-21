@@ -164,6 +164,17 @@ barco quando não houver rede: resumos do dia, consumos, médias, o que está no
 perguntas e resumos, nunca para alarmes nem para comandos. Gasta muita energia enquanto responde,
 por isso só a pedido.
 
+**Para depois (pedido do Ivo, 21/11): assistente de voz a bordo, tipo "Alexa".** Três níveis, do
+mais simples ao mais pesado:
+
+1. **Falar:** bom dia, a previsão lida em voz alta, avisos de cansaço ("estás há X horas ao leme:
+   come e bebe"), alarmes ditos por voz. O sistema já tem estes dados; só falta dar-lhes voz. Corre
+   em qualquer computador, incluindo um Raspberry Pi, e pode começar pela voz do próprio Fold.
+2. **Ouvir comandos simples:** uma lista curta de frases ("qual é o vento?", "regista no diário…",
+   "previsão"). Também corre num Raspberry Pi. O difícil é o microfone no poço, com vento.
+3. **Conversa livre:** precisa de um modelo de linguagem. Com rede, o Claude; sem rede, um modelo
+   local (bem no portátil; devagar num Raspberry Pi 5; a ver no chip de AI de uma Orange Pi).
+
 ## Peças
 
 Compradas pelo Ivo a 20/11 (Amazon.es; a confirmar por ele): sensor Adafruit BNO085, conjunto de 2
