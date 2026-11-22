@@ -609,6 +609,22 @@ alimentação da HAT a alimentar tudo
 | 17 | **Sensor de temperatura DS18B20 à prova de água, 2 m** (frigorífico) + resistência de 4,7 kΩ | [Botnroll PT](https://www.botnroll.com/en/temperature/429-sensor-de-temperatura-a-prova-de-agua-ds18b20-09m-.html) | **€4,65** (em promoção, antes €9,30) | 1-Wire num GPIO do Pi. Vários no mesmo fio: dá para juntar depois a casa do motor, a cabine, etc. Alarme se o frigorífico aquecer |
 | | **Total** | | **≈ €596** (€482 dos itens 1–11 + €49,21 motor + ~€7,50 gasóleo + €23,80 barómetro + €3,60 besouros + €25,51 IMU + €4,65 frigorífico) | Sem portes, sem cabos e sem o kit N2K. Portes: contar €30–50 |
 
+**Disco do Pi: o Ivo tem um SSD externo de 1 TB, pequeno, de ligar por USB (22/11).** Serve, ligado por USB a uma
+das duas portas azuis do Pi 5, sem o abrir: o Pi 5 arranca de um disco USB. Substitui os itens 3 e 4 (poupa
+€54,26) e dá quatro vezes o espaço. Ressalvas:
+
+- instalar o sistema apaga o que lá estiver;
+- gasta uma das 4 portas USB, e por USB vão também a caixa 1, o AIS, a chave das cartas e o toque do ecrã: vai
+  ser preciso um hub USB com alimentação própria;
+- o Pi 5 só dá 1,6 A às portas USB com uma fonte de 5 A (com uma de 3 A dá 0,6 A e nem arranca do disco USB).
+  No barco, o conversor de 12 → 5 V tem de ser de 5 A e liga-se `usb_max_current_enable=1` no `config.txt`
+  ([documentação do Raspberry Pi](https://www.raspberrypi.com/documentation/computers/raspberry-pi.html));
+- o cabo USB tem de ficar preso, por causa da vibração.
+
+Não abrir o disco: nestes modelos pequenos a ficha USB e a memória costumam estar na mesma placa, que não encaixa
+na base NVMe. A base com o disco por baixo do Pi continua a ser a montagem mais arrumada para o barco (sem cabo e
+sem gastar porta USB), mas deixa de ser preciso comprá-la para começar. Falta saber a marca e o modelo do disco.
+
 **Também é preciso** (preço não confirmado, loja náutica ou sobras):
 - Cabo **estanhado** de 1,5 mm² (≥ 16 AWG) vermelho/preto, do quadro até ao
   Pi.
