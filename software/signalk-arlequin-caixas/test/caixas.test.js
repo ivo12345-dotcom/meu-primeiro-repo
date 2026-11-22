@@ -41,3 +41,17 @@ test('a fingir: vem do último batimento da caixa 1', () => {
   assert.equal(avaliarCaixas(e, 200).sim, true)
   assert.equal(avaliarCaixas(anotarBatimento(e, bat(1, false), 300), 400).sim, false)
 })
+
+// Revisão final (22/11/2026): a caixa do motor a fingir, com a dos instrumentos verdadeira, deixava
+// sair as rotações sem a marca de simulado.
+test('a fingir: basta uma das duas caixas dizer que finge; a do motor só enquanto der sinal', () => {
+  let e = anotarPorta(novoEstadoCaixas(0), { aberta: true, nome: 'COM7' }, 0)
+  e = anotarBatimento(anotarBatimento(e, bat(1, false), 1000), bat(2, true), 1000)
+  assert.equal(avaliarCaixas(e, 1500).sim, true, 'a caixa do motor a fingir chega para marcar tudo')
+  e = anotarBatimento(e, bat(1, false), 7000) // a caixa do motor calou-se há 6 s: o que dizia já não conta
+  assert.equal(avaliarCaixas(e, 7100).sim, false)
+  e = anotarBatimento(anotarBatimento(e, bat(2, false), 8000), bat(1, true), 8000)
+  assert.equal(avaliarCaixas(e, 8100).sim, true)
+  e = anotarBatimento(e, bat(1, false), 9000)
+  assert.equal(avaliarCaixas(e, 9100).sim, false)
+})

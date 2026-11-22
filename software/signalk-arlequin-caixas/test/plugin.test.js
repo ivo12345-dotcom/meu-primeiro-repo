@@ -261,6 +261,75 @@ test('a fingir: tudo sai marcado como simulado', (t) => {
   assert.deepEqual(b.app.notificacoes.map(x => x.state), ['warn', 'normal'])
 })
 
+// Revisão final (22/11/2026): a caixa do motor a fingir, com a dos instrumentos verdadeira.
+test('a fingir: se só a caixa do motor finge, sai tudo marcado na mesma', (t) => {
+  const { app, f, p } = arrancar(t)
+  app.fontes.length = 0
+  f.aoLinha(batimento(1))
+  f.aoLinha(escrever('B', [2, 1000, '0.1.0', 1, -58, 0])) // a caixa 2 diz que finge
+  f.aoLinha('(12.345678) can1 0CF00400#FFFFFF004BFFFFFF')
+  for (let i = 0; i < 5; i++) f.aoLinha(log(1000 + 500 * i, 100 + 5 * i))
+  t.mock.timers.tick(1000)
+  p.stop()
+  assert.ok(app.fontes.length >= 2)
+  assert.ok(app.fontes.every(s => s === SIMULADO), JSON.stringify(app.fontes))
+  assert.match(app.estados.at(-1), / · A FINGIR$/)
+})
+
+// Revisão final (22/11/2026): a proa saía como boa com o chip a dizer que não era de fiar (na bancada,
+// antes de a bússola dele se acertar, dava "erro estimado 180°" e confiança 0). O adornamento e o
+// caimento vêm da gravidade e continuam a valer; a proa só sai com confiança e com o erro dentro do limite.
+const movCom = (n, precisao, estado, q = [0, 1736, 0, 9848]) => escrever('M', [n, 10, 512, -2980, 9320, -12, 35, 4, ...q, precisao, estado])
+function proaCom (t, opcoes, precisao, estado) {
+  const { app, f, p } = arrancar(t, opcoes)
+  f.aoLinha(batimento(1))
+  for (let i = 0; i < 10; i++) f.aoLinha(movCom(1 + i, precisao, estado))
+  t.mock.timers.tick(1000)
+  p.stop()
+  return app
+}
+
+test('a proa não se publica quando o sensor diz que a bússola não é de fiar', (t) => {
+  const app = proaCom(t, {}, 31416, 0) // erro estimado 180°, confiança 0
+  const v = app.valores
+  assert.equal(v['navigation.headingMagnetic'], null)
+  perto(v['navigation.attitude'].roll, 0.3490, 0.001)
+  perto(v['navigation.attitude'].pitch, 0, 0.001)
+  assert.equal(v['navigation.attitude'].yaw, null)
+  assert.equal(v['arlequin.caixas.atitude.estado'], 0) // o que o sensor disse continua à vista
+  perto(v['arlequin.caixas.atitude.precisao'], 3.1416)
+  // e diz-se porquê, para ninguém ficar a olhar para um ecrã sem proa sem saber a razão
+  assert.match(app.estados.at(-1), / · sem proa: o sensor ainda não confia na bússola dele$/)
+})
+
+test('a proa não se publica com o erro estimado acima do limite, mesmo com alguma confiança', (t) => {
+  const app = proaCom(t, {}, 5000, 2) // 0,5 rad = 28,6°, acima dos 20° por omissão
+  assert.equal(app.valores['navigation.headingMagnetic'], null)
+  assert.equal(app.valores['navigation.attitude'].yaw, null)
+  assert.match(app.estados.at(-1), / · sem proa: o sensor estima 29° de erro \(o limite é 20°\)$/)
+})
+
+test('a proa publica-se no limite do erro, sem queixa no estado', (t) => {
+  const app = proaCom(t, {}, 3490, 1) // 0,349 rad = 20,0°, confiança baixa mas não nula
+  assert.notEqual(app.valores['navigation.headingMagnetic'], null)
+  assert.equal(app.valores['navigation.attitude'].yaw, app.valores['navigation.headingMagnetic'])
+  assert.doesNotMatch(app.estados.at(-1), /sem proa/)
+})
+
+test('o limite do erro da proa vem da configuração', (t) => {
+  const app = proaCom(t, { erroMaxProa: 45 }, 5000, 2)
+  assert.notEqual(app.valores['navigation.headingMagnetic'], null)
+})
+
+test('sem leituras do sensor não há queixa da bússola: a proa falta por outra razão', (t) => {
+  const { app, f, p } = arrancar(t)
+  f.aoLinha(batimento(1))
+  t.mock.timers.tick(1000)
+  p.stop()
+  assert.equal(app.valores['navigation.headingMagnetic'], null)
+  assert.doesNotMatch(app.estados.at(-1), /sem proa/)
+})
+
 test('motor: a trama segue para o plugin do motor com a hora do portátil', (t) => {
   const { app, f, p } = arrancar(t)
   const tramas = []
@@ -390,6 +459,7 @@ test('a configuração: os valores por omissão do desenho', () => {
     desvioProa: 0,
     desvioAdorno: 0,
     desvioCaimento: 0,
+    erroMaxProa: 20,
     tabelaDesvios: [],
     posicaoSensor: { vante: 0, estibordo: 0, acima: 0 },
     acelerometro: { desvio: [0, 0, 0], escala: [1, 1, 1] }

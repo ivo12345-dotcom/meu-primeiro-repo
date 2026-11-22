@@ -4,6 +4,7 @@
 //     motivo (a porta não abre, ou está aberta e a caixa não fala).
 //   caixa 2 (motor): o batimento dela chega pela caixa 1. Sem a caixa 1 não se sabe nada da 2.
 // Só a caixa 1 dá aviso daqui: o da caixa 2 dá-o o plugin do motor (o semLigacao dele, com o motivo).
+// "A fingir" é das duas: se uma disser que finge, tudo o que sai é marcado como simulado.
 // As funções não mexem no estado que recebem: devolvem um novo.
 
 const VELHO = 5000 // um batimento mais velho do que isto já não conta
@@ -22,7 +23,7 @@ function novoEstadoCaixas (agora) {
   return {
     desde: agora, // o arranque
     batimentos: { 1: null, 2: null }, // a hora do último de cada caixa
-    sim: false, // a caixa 1 diz que finge
+    fingem: { 1: false, 2: false }, // o que cada caixa disse de si no último batimento dela
     porta: { aberta: false, nome: '', motivo: '' },
     falou: false, // a caixa 1 já falou alguma vez
     aviso: false // o aviso caixa1 está aceso
@@ -30,11 +31,12 @@ function novoEstadoCaixas (agora) {
 }
 
 function anotarBatimento (estado, batimento, agora) {
-  const e = { ...estado, batimentos: { ...estado.batimentos, [batimento.caixa]: agora } }
-  if (batimento.caixa === 1) {
-    e.sim = batimento.sim === true
-    e.falou = true
+  const e = {
+    ...estado,
+    batimentos: { ...estado.batimentos, [batimento.caixa]: agora },
+    fingem: { ...estado.fingem, [batimento.caixa]: batimento.sim === true }
   }
+  if (batimento.caixa === 1) e.falou = true
   return e
 }
 
@@ -74,7 +76,10 @@ function avaliarCaixas (estado, agora) {
     aviso = false
     notificacoes.push(APAGADO)
   }
-  return { estado: { ...estado, aviso }, caixas, sim: estado.sim, notificacoes }
+  // A fingir: basta uma das duas dizê-lo, porque o que a caixa do motor manda entra na mesma linha da
+  // caixa negra do que o resto. O que a caixa do motor disse só conta enquanto ela der sinal.
+  const sim = estado.fingem[1] || (viva2 && estado.fingem[2])
+  return { estado: { ...estado, aviso }, caixas, sim, notificacoes }
 }
 
 module.exports = { VELHO, ESPERA, novoEstadoCaixas, anotarBatimento, anotarPorta, avaliarCaixas }

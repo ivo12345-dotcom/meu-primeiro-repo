@@ -11,6 +11,7 @@
     "desvioProa": 0,
     "desvioAdorno": 0,
     "desvioCaimento": 0,
+    "erroMaxProa": 20,
     "tabelaDesvios": [],
     "posicaoSensor": {
       "vante": 0,

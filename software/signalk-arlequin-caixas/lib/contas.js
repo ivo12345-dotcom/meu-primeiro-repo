@@ -10,7 +10,8 @@ const VOLTA = 2 * Math.PI
 // --- Roda do log -----------------------------------------------------------------------------------
 // A caixa manda, 2 vezes por segundo, o contador de impulsos e o período entre os dois últimos.
 // Guardam-se as leituras dos últimos 3 s (pelo tempo da caixa). Depressa, contam-se os impulsos;
-// devagar (menos de 8 na janela), usa-se o período, que dá a velocidade sem degraus.
+// devagar (menos de 8 na janela), usa-se o período, que dá a velocidade sem degraus, com o teto do
+// que os impulsos contados permitem.
 const JANELA_MS = 3000
 const MINIMO_MS = 2000
 const RAPIDO = 8
@@ -37,7 +38,10 @@ function hzLog (estado) {
   if (ms < MINIMO_MS) return null
   const impulsos = ultima.impulsos - primeira.impulsos
   if (impulsos >= RAPIDO) return impulsos * 1000 / ms
-  if (impulsos >= 1 && ultima.periodoUs > 0) return 1000000 / ultima.periodoUs
+  // Devagar vale o período, mas nunca mais do que os impulsos contados deixam: n impulsos seguidos
+  // em t segundos são, no máximo, (n + 1) / t por segundo. Assim um impulso falso colado ao anterior
+  // (um período de microssegundos) não dá um pico de centenas de nós.
+  if (impulsos >= 1 && ultima.periodoUs > 0) return Math.min(1000000 / ultima.periodoUs, (impulsos + 1) * 1000 / ms)
   return 0
 }
 

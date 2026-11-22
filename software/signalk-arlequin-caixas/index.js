@@ -11,9 +11,12 @@
 //     salto de hora (o portátil adormeceu e acordou) envelhecer tudo de uma vez.
 //   - Sem o batimento da caixa 1 há 5 s ou menos nada sai como medição: é por ele que se sabe se a
 //     caixa finge, e uma caixa calada não pode deixar valores a parecer atuais.
-//   - Dados a fingir nunca ensinam a AI: com "ensaio" ligado, ou com a caixa 1 a dizer que finge,
-//     todas as atualizações levam o $source 'arlequin-simulador.caixas' (a caixa negra marca "simulado"
-//     o que vem de 'arlequin-simulador' ou 'arlequin-simulador.*').
+//   - Dados a fingir nunca ensinam a AI: com "ensaio" ligado, ou com uma das duas caixas a dizer que
+//     finge, todas as atualizações levam o $source 'arlequin-simulador.caixas' (a caixa negra marca
+//     "simulado" o que vem de 'arlequin-simulador' ou 'arlequin-simulador.*').
+//   - A proa só sai quando o sensor confia na bússola dele: com a confiança a 0, ou com o erro que ele
+//     próprio estima acima do limite da configuração, a proa vai a null e o estado do plugin diz porquê.
+//     O adornamento e o caimento vêm da gravidade e saem na mesma.
 //   - As tramas do motor seguem logo para o plugin do motor, pelo evento 'arlequin-j1939', com a hora
 //     do portátil. O estado de cada caixa vai em arlequin.caixas.N.estado; o aviso da caixa 2 calada
 //     é do plugin do motor, daqui só sai o da caixa 1 (lib/caixas.js).
@@ -32,6 +35,7 @@ const { abrirFonte: abrirFonteVerdadeira } = require('./lib/fonte')
 const VELHO = 5000 // uma linha mais velha do que isto já não vale
 const PASSO = 500 // ms: a atitude sai a cada passo, o resto de dois em dois
 const SIMULADO = 'arlequin-simulador.caixas'
+const GRAU = Math.PI / 180
 const EIXOS = ['+x', '-x', '+y', '-y', '+z', '-z']
 const DIZER = { 'a-receber': 'a receber', 'sem-ligacao': 'sem ligação' }
 const POR_OMISSAO = {
@@ -45,6 +49,7 @@ const POR_OMISSAO = {
   desvioProa: 0,
   desvioAdorno: 0,
   desvioCaimento: 0,
+  erroMaxProa: 20,
   tabelaDesvios: [],
   posicaoSensor: { vante: 0, estibordo: 0, acima: 0 },
   acelerometro: { desvio: [0, 0, 0], escala: [1, 1, 1] }
@@ -75,6 +80,7 @@ module.exports = function (app, { abrirFonte = abrirFonteVerdadeira } = {}) {
       desvioProa: { type: 'number', title: 'Proa: graus a somar (o sensor não ficou bem apontado)', default: POR_OMISSAO.desvioProa },
       desvioAdorno: { type: 'number', title: 'Adornamento: graus que o sensor marca com o barco direito', default: POR_OMISSAO.desvioAdorno },
       desvioCaimento: { type: 'number', title: 'Caimento: graus que o sensor marca com o barco de nível', default: POR_OMISSAO.desvioCaimento },
+      erroMaxProa: { type: 'number', title: 'Proa: o maior erro, em graus, que o sensor pode estimar para a proa ainda se publicar (acima disto fica sem proa, e o estado diz porquê)', default: POR_OMISSAO.erroMaxProa },
       tabelaDesvios: {
         type: 'array',
         title: 'Tabela de desvios da bússola (o ferro do barco): graus a somar em cada rumo',
@@ -216,9 +222,18 @@ module.exports = function (app, { abrirFonte = abrirFonteVerdadeira } = {}) {
     // 2 vezes por segundo: a atitude e a proa
     const m = viva1 && mov && fresco(movVisto, agora) ? mov : null
     const a = m ? atitudeDe(m.q) : null
+    // A proa só sai com o sensor a dar alguma confiança à bússola dele (1 a 3) e com o erro que ele
+    // próprio estima dentro do limite. O adornamento e o caimento vêm da gravidade: saem na mesma.
+    const erroProa = m ? m.precisao / 10000 / GRAU : null
+    const semProa = !a
+      ? null
+      : m.estado < 1
+        ? 'o sensor ainda não confia na bússola dele'
+        : erroProa > o.erroMaxProa ? `o sensor estima ${Math.round(erroProa)}° de erro (o limite é ${o.erroMaxProa}°)` : null
+    const proa = a && !semProa ? a.yaw : null
     enviar([
-      { path: 'navigation.attitude', value: a },
-      { path: 'navigation.headingMagnetic', value: a ? a.yaw : null }
+      { path: 'navigation.attitude', value: a ? { roll: a.roll, pitch: a.pitch, yaw: proa } : null },
+      { path: 'navigation.headingMagnetic', value: proa }
     ])
     meio = !meio
     if (meio) return
@@ -259,7 +274,7 @@ module.exports = function (app, { abrirFonte = abrirFonteVerdadeira } = {}) {
       app.setPluginError(`Sem a caixa dos instrumentos: ${c1.motivo}`)
     } else {
       app.setPluginStatus(`${porta.nome || o.porta} · caixa 1 ${DIZER[c1.estado]} · caixa 2 ${DIZER[c2.estado]} · ${nLinhas} linhas · ` +
-        `${invalidas} inválidas · ${faltam} leituras em falta${aFingir() ? ' · A FINGIR' : ''}`)
+        `${invalidas} inválidas · ${faltam} leituras em falta${semProa ? ` · sem proa: ${semProa}` : ''}${aFingir() ? ' · A FINGIR' : ''}`)
     }
   }
 

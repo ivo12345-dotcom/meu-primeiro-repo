@@ -396,14 +396,21 @@ test('fonte caixa: a caixa 2 viva e sem tramas é "calado"', (t) => {
   assert.deepEqual(app.erros, [])
 })
 
-test('fonte caixa: sem a caixa 2 é "sem-ligacao", com o aviso e o motivo certo', (t) => {
+test('fonte caixa: sem a caixa 2 é "sem-ligacao" logo, com o motivo certo; o aviso só apita se durar 20 s seguidos', (t) => {
   const { app, p } = comCaixas(t, { 1: 'a-receber', 2: 'sem-ligacao' })
   for (let s = 0; s < 4; s++) t.mock.timers.tick(1000)
-  assert.deepEqual(avisos(app), [], 'as caixas ainda podem estar a arrancar: sem aviso nos primeiros 5 s')
+  assert.equal('propulsion.main.ligacao' in app.valores, false, 'nos primeiros 5 s ainda não se diz')
   for (let s = 0; s < 2; s++) t.mock.timers.tick(1000)
-  assert.equal(app.valores['propulsion.main.ligacao'], 'sem-ligacao')
+  assert.equal(app.valores['propulsion.main.ligacao'], 'sem-ligacao', 'o estado diz a verdade logo')
   assert.equal(app.valores['propulsion.main.state'], null)
+  assert.equal(app.erros.at(-1), SEM_MOTOR)
+  assert.deepEqual(avisos(app), [], 'uns segundos sem a caixa são normais: ainda não apita')
+  for (let s = 0; s < 19; s++) t.mock.timers.tick(1000)
+  assert.deepEqual(avisos(app), [], 'com 19 s seguidos ainda não')
+  t.mock.timers.tick(1000)
   assert.deepEqual(avisos(app).map(n => [n.state, n.apito, n.message]), [['warn', 'curto', SEM_MOTOR]])
+  for (let s = 0; s < 30; s++) t.mock.timers.tick(1000)
+  assert.equal(avisos(app).length, 1, 'um aviso só, não um por segundo')
   assert.equal(app.erros.at(-1), SEM_MOTOR)
   app.caixas = { 1: 'sem-ligacao', 2: 'sem-ligacao' } // o cabo USB da caixa 1 saiu
   t.mock.timers.tick(1000)
@@ -418,6 +425,57 @@ test('fonte caixa: sem a caixa 2 é "sem-ligacao", com o aviso e o motivo certo'
   p.stop()
   assert.deepEqual(avisos(app).map(n => n.state), ['warn', 'normal'])
   assert.equal(app.valores['propulsion.main.ligacao'], 'a-receber')
+})
+
+// Revisão final (22/11/2026): guardar uma calibração no plugin das caixas com o motor desligado fazia
+// apitar "Sem leitura do motor". O servidor apaga os caminhos de um plugin que para, e o das caixas
+// ainda tem de voltar a procurar a porta (3 s por cada porta USB que experimenta).
+test('fonte caixa: o plugin das caixas a reiniciar (os caminhos dele somem-se 12 s) não faz apitar', (t) => {
+  const { app, p } = comCaixas(t, { 1: 'a-receber', 2: 'a-receber' })
+  for (let s = 0; s < 8; s++) t.mock.timers.tick(1000)
+  assert.equal(app.valores['propulsion.main.ligacao'], 'calado')
+  app.caixas = {} // o servidor apagou os caminhos do plugin das caixas
+  for (let s = 0; s < 12; s++) t.mock.timers.tick(1000)
+  assert.equal(app.valores['propulsion.main.ligacao'], 'sem-ligacao', 'o estado diz a verdade logo')
+  assert.equal(app.erros.at(-1), SEM_CAIXA1)
+  app.caixas = { 1: 'a-receber', 2: 'sem-ligacao' } // a caixa 1 já fala; a 2 ainda não deu o batimento
+  t.mock.timers.tick(1000)
+  assert.equal(app.erros.at(-1), SEM_MOTOR)
+  app.caixas = { 1: 'a-receber', 2: 'a-receber' }
+  for (let s = 0; s < 3; s++) t.mock.timers.tick(1000)
+  p.stop()
+  assert.equal(app.valores['propulsion.main.ligacao'], 'calado')
+  assert.deepEqual(avisos(app), [])
+})
+
+// Revisão final (22/11/2026): com várias portas USB no portátil, a caixa 1 pode demorar a ser achada.
+test('fonte caixa: um arranque lento (a caixa 1 só aparece aos 16 s) não faz apitar', (t) => {
+  const { app, p } = comCaixas(t, {})
+  for (let s = 0; s < 16; s++) t.mock.timers.tick(1000)
+  assert.equal(app.valores['propulsion.main.ligacao'], 'sem-ligacao')
+  assert.equal(app.erros.at(-1), SEM_CAIXA1)
+  app.caixas = { 1: 'a-receber', 2: 'a-receber' }
+  enviar(app, 61444, 'FFFFFF004BFFFFFF')
+  t.mock.timers.tick(1000)
+  p.stop()
+  assert.equal(app.valores['propulsion.main.ligacao'], 'a-receber')
+  assert.deepEqual(avisos(app), [])
+})
+
+// O tempo sem ligação conta-se seguido: uma falha curta, a leitura a voltar e outra falha curta não somam.
+test('fonte caixa: duas falhas curtas separadas não somam para o aviso', (t) => {
+  const { app, p } = comCaixas(t, { 1: 'a-receber', 2: 'a-receber' })
+  for (let s = 0; s < 6; s++) t.mock.timers.tick(1000)
+  for (let volta = 0; volta < 2; volta++) {
+    app.caixas = { 1: 'a-receber', 2: 'sem-ligacao' }
+    for (let s = 0; s < 12; s++) t.mock.timers.tick(1000)
+    assert.equal(app.valores['propulsion.main.ligacao'], 'sem-ligacao')
+    app.caixas = { 1: 'a-receber', 2: 'a-receber' }
+    for (let s = 0; s < 2; s++) t.mock.timers.tick(1000)
+    assert.equal(app.valores['propulsion.main.ligacao'], 'calado')
+  }
+  p.stop()
+  assert.deepEqual(avisos(app), [])
 })
 
 test('fonte caixa: o estado da caixa 2 com mais de 5 s não vale', (t) => {

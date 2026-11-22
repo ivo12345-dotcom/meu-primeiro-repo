@@ -40,7 +40,9 @@ const { criarAtivos } = require('./lib/ativos')
 //     o estado a null, os alarmes ativos ficam como estão, e o aviso notifications.propulsion.main.semLigacao
 //     (warn, apito curto, só para o ecrã: o porto não o manda para o Telegram), que limpa com uma trama ou
 //     com 30 s seguidos de 'calado' (a interface a ir e vir não o faz apitar outra vez). O estado do plugin
-//     passa a erro com o motivo (o de cada segundo já não apaga o erro do candump).
+//     passa a erro com o motivo (o de cada segundo já não apaga o erro do candump). Com a fonte 'caixa' o
+//     estado e o erro dizem-se logo, mas o aviso só apita ao fim de 20 s seguidos sem ligação: o plugin
+//     das caixas a arrancar ou a ser reconfigurado dá uns segundos assim sem haver avaria.
 // Nota do SignalK 2.33 (adenda 2): ao parar o plugin o servidor apaga da árvore os valores dele. Os alarmes
 // ativos ficam em alarmes-ativos.json (lib/ativos.js) e o arranque seguinte volta a publicá-los e a pô-los
 // ativos nas regras (o sobreaquecimento, o alternador, o mapa do MDI, o semLigacao), que decidem depois se
@@ -52,6 +54,10 @@ const HORAS = 'propulsion.main.runTime'
 const LIGACAO = 'propulsion.main.ligacao'
 const MAPA = 'pgn:65417'
 const CALADO_LIMPA = 30 * 1000 // o aviso semLigacao limpa com tanto tempo seguido de 'calado'
+// Com a fonte 'caixa', o aviso semLigacao só acende com tanto tempo SEGUIDO sem ligação: o plugin das
+// caixas a arrancar ou a ser reconfigurado (o servidor apaga-lhe os caminhos e ele volta a procurar a
+// porta, 3 s por cada porta USB) dá uns segundos sem ligação que não são avaria nenhuma.
+const ESPERA_CAIXA = 20 * 1000
 const RELIGAR = 5000 // o candump volta a lançar-se de tanto em tanto
 
 // deps (só para os testes): spawn (o do child_process) e lerInterface (o de lib/ligacao.js).
@@ -106,6 +112,7 @@ module.exports = function (app, { spawn: lancar = spawn, lerInterface: interface
   let motivoLigacao = null
   let avisoLigacao = false // o aviso semLigacao está publicado
   let caladoDesde = null // desde quando está 'calado' seguido, com o aviso publicado
+  let semLigacaoDesde = null // desde quando está 'sem-ligacao' seguido
   let aCorrer = false // entre o start() e o stop()
   let ativosArq = null // os alarmes ativos no ficheiro (lib/ativos.js)
 
@@ -147,16 +154,21 @@ module.exports = function (app, { spawn: lancar = spawn, lerInterface: interface
     if (registar) ativosArq?.registar(values)
   }
 
-  // O aviso semLigacao (C11): acende ao ficar sem ligação; limpa com uma trama ou com CALADO_LIMPA
-  // seguido de 'calado' (a interface a ir e vir, ou o candump a ser relançado, não o faz apitar outra vez).
+  // O aviso semLigacao (C11): acende ao ficar sem ligação (com a fonte 'caixa', só ao fim de ESPERA_CAIXA
+  // seguidos: o estado e o erro do plugin dizem a verdade logo, o apito espera); limpa com uma trama ou
+  // com CALADO_LIMPA seguido de 'calado' (a interface a ir e vir, ou o candump a ser relançado, não o faz
+  // apitar outra vez).
   function avisarLigacao (agora) {
     if (ligacao === 'sem-ligacao') {
       caladoDesde = null
+      semLigacaoDesde ??= agora
       if (avisoLigacao) return
+      if (o.fonte === 'caixa' && agora - semLigacaoDesde < ESPERA_CAIXA) return
       avisoLigacao = true
       publicarNotificacoes([{ id: 'semLigacao', state: 'warn', method: ['visual', 'sound'], apito: 'curto', message: `Sem leitura do motor (J1939): ${motivoLigacao}` }])
       return
     }
+    semLigacaoDesde = null
     if (!avisoLigacao) return
     caladoDesde = ligacao === 'calado' ? (caladoDesde ?? agora) : null
     if (ligacao === 'a-receber' || (ligacao === 'calado' && agora - caladoDesde >= CALADO_LIMPA)) {
@@ -314,6 +326,7 @@ module.exports = function (app, { spawn: lancar = spawn, lerInterface: interface
     motivoLigacao = null
     avisoLigacao = false
     caladoDesde = null
+    semLigacaoDesde = null
     aCorrer = true
     const dir = app.getDataDirPath()
     fs.mkdirSync(dir, { recursive: true })

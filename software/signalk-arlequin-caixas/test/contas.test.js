@@ -24,6 +24,21 @@ test('log devagar usa o período do último impulso; parado dá 0; sem 2 s de le
   assert.equal(c.hzLog(p), 0)
 })
 
+// Revisão final (22/11/2026): devagar, um impulso falso colado ao anterior (um período de 200 µs)
+// dava 5000 impulsos por segundo, ou seja, 1000 nós durante um segundo. O período nunca pode dizer mais
+// do que os impulsos contados na janela deixam: n impulsos em t segundos são, no máximo, (n + 1) / t.
+test('log devagar: um impulso falso não dá um pico de velocidade', () => {
+  let e = c.novoLog()
+  for (const [ms, impulsos, periodoUs] of [[0, 10, 1000000], [1000, 11, 1000000], [2000, 12, 1000000], [3000, 14, 200]]) e = c.juntarLog(e, { ms, impulsos, periodoUs })
+  const hz = c.hzLog(e)
+  assert.ok(hz > 0 && hz <= 5 / 3 + 1e-9, `${hz} impulsos por segundo`)
+  assert.ok(c.velocidadeNaAgua(hz) / c.NO < 0.4, 'menos de meio nó, não centenas')
+  // e um período honesto continua a valer por inteiro
+  let h = c.novoLog()
+  for (const [ms, impulsos] of [[0, 7], [1000, 8], [2000, 9]]) h = c.juntarLog(h, { ms, impulsos, periodoUs: 1000000 })
+  assert.equal(c.hzLog(h), 1)
+})
+
 test('Review Focus 3: a caixa reinicia e a conta recomeça, sem negativos nem picos', () => {
   let e = c.novoLog()
   for (let i = 0; i <= 4; i++) e = c.juntarLog(e, { ms: 90000 + 500 * i, impulsos: 5000 + 5 * i, periodoUs: 100000 })
