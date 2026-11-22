@@ -150,13 +150,14 @@ def base():
     # apoios do sensor
     for x, y in furos_sen():
         b = b.union(pinca_sen(x, y, T))
-    # letras e seta em relevo: o lado comprido da base fica paralelo ao eixo do barco
+    # seta em relevo com a palavra PROA: diz só para que lado a caixa aponta (o sítio da caixa é o
+    # cubículo da cabine de popa). Aponta para a ponta dos cabos, para o sensor ficar do lado da
+    # popa, mais longe do motor. Se no barco tiver de ficar de outra maneira, acerta-se no programa.
     xm = (XS + SEN_COMP / 2 + X_ESP0) / 2
     b = b.union(cq.Workplane('XY').workplane(offset=T).center(xm, 13.5)
-                .text('EIXO DO BARCO', 6.0, 0.6, font='Arial', kind='bold', halign='center', valign='center'))
+                .text('PROA', 7.0, 0.6, font='Arial', kind='bold', halign='center', valign='center'))
     b = b.union(caixa(xm - 34, xm + 34, 6.4, 7.6, T, T + 0.6))
-    for s in (-1, 1):
-        b = b.union(prisma([(xm + s * 34, 4.5), (xm + s * 40, 7.0), (xm + s * 34, 9.5)], T, T + 0.6))
+    b = b.union(prisma([(xm + 34, 3.8), (xm + 43, 7.0), (xm + 34, 10.2)], T, T + 0.6))
     b = b.union(cq.Workplane('XY').workplane(offset=T).center((XH1 + XH2) / 2, 0)
                 .text('C1 v1', 5.0, 0.6, font='Arial', kind='bold', halign='center', valign='center'))
     # apoio para prender o cabo USB com uma abraçadeira, para a ficha não trabalhar na tomada

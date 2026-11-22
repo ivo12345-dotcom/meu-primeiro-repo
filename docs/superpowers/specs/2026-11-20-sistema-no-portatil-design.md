@@ -100,8 +100,12 @@ cabo curto do sensor. Regras da caixa:
   trabalhar na tomada com o balanço.
 - Quatro orelhas com furo de 4,3 mm para fixar a caixa com parafusos de latão ou de nylon; a tampa
   prende pelos mesmos parafusos.
-- Letras em relevo: o lado comprido da base fica paralelo ao eixo do barco. Marcas nas pontas
-  (o eixo) e nos lados (o sítio do sensor), para as medidas do ponto em aberto 11.
+- Uma seta em relevo com a palavra PROA. Diz só para que lado a caixa aponta; o sítio da caixa não
+  muda, é o cubículo da cabine de popa. A seta aponta para a ponta dos cabos, para o sensor ficar
+  do lado da popa, mais longe do motor. Se no cubículo a caixa tiver de ficar virada de outra
+  maneira, monta-se como couber e acerta-se no programa. (A primeira versão dizia "eixo do barco" e
+  o Ivo leu, com razão, que a caixa ia para o meio do barco; corrigido a 22/11.)
+- Marcas nas pontas e nos lados (o sítio do sensor), para as medidas do ponto em aberto 11.
 - Peça de ensaio (`caixa1-ensaio.stl`): os oito apoios nas posições certas, numa armação fina, com
   as suas oito estacas. Imprime-se primeiro, para confirmar com as placas verdadeiras a distância
   entre furos e o aperto das estacas.
