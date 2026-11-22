@@ -21,6 +21,14 @@
 // O que nenhum dos dois sinais vê: um fio CAN solto entre o adaptador e o MDI, com a interface de pé, é
 // igual à ignição desligada (só escutamos: ninguém responde a nada). Fica escrito no NAVEGACAO.
 // No simulador (fonte 'simulador') não há interface nem candump: só 'a-receber' e 'calado'.
+// Com a fonte 'caixa' (o sistema no portátil) também não: as tramas chegam pela caixa 1 e quem diz se a
+// leitura está de pé é a caixa 2 (a do motor), pelo batimento dela (s.caixa):
+//   'a-receber'   uma trama há 5 s ou menos (as tramas valem mais do que tudo);
+//   'calado'      a caixa 2 viva e nenhuma trama há mais de 5 s: a ignição desligada;
+//   'sem-ligacao' a caixa 2 não dá sinal, com o motivo que s.caixa der (sem a caixa 1, ou sem a 2);
+//   null          os primeiros 5 s à escuta sem tramas: as caixas demoram um ou dois segundos a dar sinal
+//                 depois de o servidor arrancar, e dizer logo "sem ligação" fazia apitar em cada arranque.
+// O que isto não vê é o mesmo de sempre: um fio solto entre a caixa 2 e o MDI é igual à ignição desligada.
 
 const fs = require('node:fs')
 const path = require('node:path')
@@ -44,11 +52,17 @@ function lerInterface (nome, base = '/sys/class/net') {
 // → { ligacao: 'a-receber' | 'calado' | 'sem-ligacao' | null, motivo (só em 'sem-ligacao') }
 // s: { agora, ultimaTrama, simulador, ouvirDesde (o candump de agora, ou o simulador, à escuta desde),
 //      candumpVivo, lerInterface: () => { existe, ativa, estado }, anterior (o estado de antes),
-//      motivoCandump (o último erro do candump), nome (da interface) }
+//      motivoCandump (o último erro do candump), nome (da interface),
+//      caixa (só com a fonte 'caixa'): () => { viva, motivo } }
 function avaliarLigacao (s) {
   if (s.agora - s.ultimaTrama <= VELHO) return { ligacao: 'a-receber', motivo: null }
   const aEscutaHa = s.agora - s.ouvirDesde
   if (s.simulador) return { ligacao: aEscutaHa > VELHO ? 'calado' : null, motivo: null }
+  if (s.caixa) {
+    if (aEscutaHa <= VELHO) return { ligacao: null, motivo: null }
+    const c = s.caixa()
+    return c.viva ? { ligacao: 'calado', motivo: null } : { ligacao: 'sem-ligacao', motivo: c.motivo }
+  }
   const i = s.lerInterface()
   if (!i.existe) return { ligacao: 'sem-ligacao', motivo: `a interface ${s.nome} não existe (adaptador USB-CAN solto?)` }
   if (!i.ativa) return { ligacao: 'sem-ligacao', motivo: `a interface ${s.nome} está em baixo (estado "${i.estado}": desligada ou em bus-off; ver ip -details link show ${s.nome})` }

@@ -334,3 +334,111 @@ test('curva aprendida: regime estável a andar entra na faixa certa e aparece em
   assert.equal(c.melhor.de, 2400)
   assert.match(c.consumo, /estimado/)
 })
+
+// --- A fonte 'caixa' (o sistema no portátil) -------------------------------------------------------
+// As tramas chegam pelo evento, como no simulador; o estado da leitura vem do que o plugin das caixas
+// publica (arlequin.caixas.N.estado), visto como o SignalK o mostra a quem pergunta: { value, timestamp }.
+function comCaixas (t, estados) {
+  t.mock.timers.enable({ apis: ['setInterval', 'setTimeout', 'Date'], now: 1_727_600_000_000 })
+  const app = appFalso()
+  app.caixas = estados // { 1: 'a-receber', 2: 'a-receber' }; muda-se a meio do teste
+  app.idade = 0 // há quantos ms o plugin das caixas publicou
+  app.getSelfPath = (p) => {
+    const m = /^arlequin\.caixas\.([12])\.estado$/.exec(p)
+    if (!m || !app.caixas[m[1]]) return undefined
+    return { value: app.caixas[m[1]], timestamp: new Date(Date.now() - app.idade).toISOString() }
+  }
+  app.erros = []
+  app.estados = []
+  app.setPluginError = (e) => app.erros.push(e)
+  app.setPluginStatus = (s) => app.estados.push(s)
+  app.lancados = 0
+  app.interfacesLidas = 0
+  const lancar = () => { app.lancados++; throw new Error('a fonte caixa não lança o candump') }
+  const lerInterface = () => { app.interfacesLidas++; return { existe: false, ativa: false, estado: null } }
+  const p = criar(app, { spawn: lancar, lerInterface })
+  t.after(() => p.stop()) // mesmo que o teste falhe a meio, não fica nada a correr
+  p.start({ fonte: 'caixa' })
+  return { app, p }
+}
+const avisos = (app) => app.notificacoes.filter(n => n.path === 'notifications.propulsion.main.semLigacao')
+const SEM_MOTOR = 'Sem leitura do motor (J1939): a caixa do motor não dá sinal (sem corrente ou fora do alcance do rádio)'
+const SEM_CAIXA1 = 'Sem leitura do motor (J1939): a caixa dos instrumentos não está ligada ao portátil'
+
+test('fonte caixa: tramas pelo evento dão rotações e estado, como no simulador', (t) => {
+  const { app, p } = comCaixas(t, { 1: 'a-receber', 2: 'a-receber' })
+  enviar(app, 61444, 'FFFFFF004BFFFFFF') // 2400 rpm
+  enviar(app, 65262, '7AFFFFFFFFFFFFFF') // 82 °C
+  enviar(app, 65271, 'FFFFFFFFFFFF1C01') // 14,2 V
+  enviar(app, 65253, '26610000FFFFFFFF') // 1243,5 h
+  t.mock.timers.tick(1000)
+  p.stop()
+  assert.equal(app.valores['propulsion.main.revolutions'], 40)
+  assert.equal(app.valores['propulsion.main.temperature'], 82 + 273.15)
+  assert.ok(Math.abs(app.valores['propulsion.main.alternatorVoltage'] - 14.2) < 1e-9)
+  assert.equal(app.valores['propulsion.main.runTime'], 1243.5 * 3600)
+  assert.equal(app.valores['propulsion.main.state'], 'started')
+  assert.equal(app.valores['propulsion.main.ligacao'], 'a-receber')
+  assert.match(app.estados.at(-1), /^caixa · 4 tramas · 2400 rpm/)
+  assert.deepEqual(app.erros, [])
+})
+
+test('fonte caixa: a caixa 2 viva e sem tramas é "calado"', (t) => {
+  const { app, p } = comCaixas(t, { 1: 'a-receber', 2: 'a-receber' })
+  for (let s = 0; s < 4; s++) t.mock.timers.tick(1000)
+  assert.equal('propulsion.main.ligacao' in app.valores, false, 'nos primeiros 5 s ainda não se diz')
+  assert.equal(app.estados.at(-1), 'caixa · à escuta…')
+  for (let s = 0; s < 2; s++) t.mock.timers.tick(1000)
+  p.stop()
+  assert.equal(app.valores['propulsion.main.ligacao'], 'calado')
+  assert.equal(app.valores['propulsion.main.state'], 'stopped')
+  assert.deepEqual(avisos(app), [])
+  assert.deepEqual(app.erros, [])
+})
+
+test('fonte caixa: sem a caixa 2 é "sem-ligacao", com o aviso e o motivo certo', (t) => {
+  const { app, p } = comCaixas(t, { 1: 'a-receber', 2: 'sem-ligacao' })
+  for (let s = 0; s < 4; s++) t.mock.timers.tick(1000)
+  assert.deepEqual(avisos(app), [], 'as caixas ainda podem estar a arrancar: sem aviso nos primeiros 5 s')
+  for (let s = 0; s < 2; s++) t.mock.timers.tick(1000)
+  assert.equal(app.valores['propulsion.main.ligacao'], 'sem-ligacao')
+  assert.equal(app.valores['propulsion.main.state'], null)
+  assert.deepEqual(avisos(app).map(n => [n.state, n.apito, n.message]), [['warn', 'curto', SEM_MOTOR]])
+  assert.equal(app.erros.at(-1), SEM_MOTOR)
+  app.caixas = { 1: 'sem-ligacao', 2: 'sem-ligacao' } // o cabo USB da caixa 1 saiu
+  t.mock.timers.tick(1000)
+  assert.equal(app.erros.at(-1), SEM_CAIXA1)
+  app.caixas = {} // o plugin das caixas parou: os caminhos dele desaparecem
+  t.mock.timers.tick(1000)
+  assert.equal(app.erros.at(-1), SEM_CAIXA1)
+  // tudo volta e chega uma trama: o aviso apaga-se
+  app.caixas = { 1: 'a-receber', 2: 'a-receber' }
+  enviar(app, 61444, 'FFFFFF004BFFFFFF')
+  t.mock.timers.tick(1000)
+  p.stop()
+  assert.deepEqual(avisos(app).map(n => n.state), ['warn', 'normal'])
+  assert.equal(app.valores['propulsion.main.ligacao'], 'a-receber')
+})
+
+test('fonte caixa: o estado da caixa 2 com mais de 5 s não vale', (t) => {
+  const { app, p } = comCaixas(t, { 1: 'a-receber', 2: 'a-receber' })
+  app.idade = 5000
+  for (let s = 0; s < 6; s++) t.mock.timers.tick(1000)
+  assert.equal(app.valores['propulsion.main.ligacao'], 'calado', 'com 5 s ainda vale')
+  app.idade = 5001
+  t.mock.timers.tick(1000)
+  p.stop()
+  assert.equal(app.valores['propulsion.main.ligacao'], 'sem-ligacao')
+  assert.equal(app.erros.at(-1), SEM_CAIXA1)
+})
+
+test('fonte caixa: nunca lança o candump nem lê a interface CAN', (t) => {
+  const { app, p } = comCaixas(t, { 1: 'a-receber', 2: 'sem-ligacao' })
+  for (let s = 0; s < 8; s++) t.mock.timers.tick(1000)
+  enviar(app, 61444, 'FFFFFF004BFFFFFF')
+  t.mock.timers.tick(1000)
+  p.stop()
+  assert.equal(app.lancados, 0)
+  assert.equal(app.interfacesLidas, 0)
+  assert.deepEqual(criar(appFalso()).schema.properties.fonte.enum, ['candump', 'simulador', 'caixa'])
+})

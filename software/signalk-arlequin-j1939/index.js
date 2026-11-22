@@ -1,6 +1,9 @@
 'use strict'
 // Plugin SignalK: motor Volvo Penta D1-20B pelo J1939 do MDI (só escuta).
-// Fonte: candump -L no Pi, ou o simulador (evento 'arlequin-j1939') no portátil.
+// Fonte: candump -L no Pi; o simulador (evento 'arlequin-j1939') no portátil de desenvolvimento; ou a
+// 'caixa' (o sistema no portátil): as tramas que a caixa 2 lê no motor chegam pela caixa 1 e o plugin
+// signalk-arlequin-caixas passa-as pelo mesmo evento. Com a 'caixa' não há interface nem candump: quem
+// diz se a leitura está de pé é a caixa 2, por arlequin.caixas.2.estado (regras em lib/ligacao.js).
 
 const fs = require('node:fs')
 const path = require('node:path')
@@ -62,7 +65,7 @@ module.exports = function (app, { spawn: lancar = spawn, lerInterface: interface
   plugin.schema = {
     type: 'object',
     properties: {
-      fonte: { type: 'string', title: 'Fonte das tramas', enum: ['candump', 'simulador'], default: 'candump' },
+      fonte: { type: 'string', title: 'Fonte das tramas (candump: adaptador CAN no Pi; caixa: as caixas ESP32, pelo plugin das caixas)', enum: ['candump', 'simulador', 'caixa'], default: 'candump' },
       interface: { type: 'string', title: 'Interface CAN do motor (NUNCA a da rede NMEA 2000)', default: 'can1' },
       estimarConsumo: { type: 'boolean', title: 'Estimar o consumo pelas rotações (curva Volvo Penta)', default: true },
       fatorConsumo: { type: 'number', title: 'Fator de calibração do consumo (medir com o depósito)', default: 1 },
@@ -163,12 +166,29 @@ module.exports = function (app, { spawn: lancar = spawn, lerInterface: interface
     }
   }
 
+  // A caixa do motor (a 2), pelo que o plugin das caixas publica: viva com 'a-receber' há 5 s ou menos.
+  // Sem ela, o motivo depende de a caixa 1 estar ou não a falar com o portátil.
+  function caixaDoMotor () {
+    const aReceber = (caminho) => {
+      const v = app.getSelfPath?.(caminho)
+      return v?.value === 'a-receber' && Date.now() - Date.parse(v.timestamp) <= VELHO
+    }
+    if (aReceber('arlequin.caixas.2.estado')) return { viva: true, motivo: '' }
+    return {
+      viva: false,
+      motivo: aReceber('arlequin.caixas.1.estado')
+        ? 'a caixa do motor não dá sinal (sem corrente ou fora do alcance do rádio)'
+        : 'a caixa dos instrumentos não está ligada ao portátil'
+    }
+  }
+
   // A 1 Hz: o estado da ligação, os valores, o estado, o consumo estimado e os alarmes calculados.
   function publicar () {
     const agora = Date.now()
     const l = avaliarLigacao({
       agora, ultimaTrama, simulador: o.fonte === 'simulador', ouvirDesde, candumpVivo,
-      lerInterface: () => interfaceDe(o.interface), anterior: ligacao, motivoCandump, nome: o.interface
+      lerInterface: () => interfaceDe(o.interface), anterior: ligacao, motivoCandump, nome: o.interface,
+      caixa: o.fonte === 'caixa' ? caixaDoMotor : undefined
     })
     ligacao = l.ligacao
     motivoLigacao = l.motivo
@@ -226,7 +246,7 @@ module.exports = function (app, { spawn: lancar = spawn, lerInterface: interface
     else if (ligacao === 'calado') {
       const ha = Number.isFinite(ultimaTrama) ? `nenhuma trama há ${Math.round((agora - ultimaTrama) / 1000)} s` : 'nenhuma trama desde o arranque'
       app.setPluginStatus(`${o.fonte} · calado (ignição desligada): ${ha} · ${vistasTotal} tramas · ${pgns}`)
-    } else if (ligacao === null) app.setPluginStatus(`${o.fonte} · à escuta${o.fonte === 'simulador' ? '' : ` em ${o.interface}`}…`)
+    } else if (ligacao === null) app.setPluginStatus(`${o.fonte} · à escuta${o.fonte === 'candump' ? ` em ${o.interface}` : ''}…`)
     else app.setPluginStatus(`${o.fonte} · ${vistasTotal} tramas · ${estado.ligado ? Math.round(rpm) + ' rpm' : 'parado'} · ${pgns}`)
     ativosArq?.gravar()
   }
@@ -330,7 +350,7 @@ module.exports = function (app, { spawn: lancar = spawn, lerInterface: interface
     detetor = criarDetetor()
     ultimaGravacao = 0
     try { curva = JSON.parse(fs.readFileSync(ficheiroCurva, 'utf8')) } catch { curva = novaCurva() }
-    if (o.fonte === 'simulador') {
+    if (o.fonte === 'simulador' || o.fonte === 'caixa') {
       ouvinte = aoReceber
       app.on('arlequin-j1939', ouvinte)
     } else {

@@ -238,3 +238,25 @@ test('C11: as tramas valem mais do que a interface; um candump acabado de relan�
   assert.equal(avaliarLigacao(s({ simulador: true, candumpVivo: false, lerInterface: () => { throw new Error('não se lê') } })).ligacao, 'calado')
   assert.equal(avaliarLigacao(s({ simulador: true, ouvirDesde: 97_000 })).ligacao, null)
 })
+
+// A fonte 'caixa' (o sistema no portátil): as tramas chegam pela caixa 1 e quem diz se a leitura está
+// de pé é a caixa 2, pelo batimento dela. Não há interface nem candump para ler.
+test('fonte caixa: a caixa 2 viva sem tramas é a ignição desligada; sem a caixa é leitura perdida', () => {
+  const { avaliarLigacao } = require('../lib/ligacao')
+  const base = { agora: 100000, ultimaTrama: -Infinity, simulador: false, candumpVivo: false, lerInterface: () => { throw new Error('não se lê a interface') }, anterior: null, nome: 'can1' }
+  const viva = () => ({ viva: true, motivo: '' })
+  const morta = () => ({ viva: false, motivo: 'a caixa do motor não dá sinal (sem corrente ou fora do alcance do rádio)' })
+  assert.deepEqual(avaliarLigacao({ ...base, ultimaTrama: 99000, ouvirDesde: 0, caixa: morta }), { ligacao: 'a-receber', motivo: null })
+  assert.deepEqual(avaliarLigacao({ ...base, ouvirDesde: 90000, caixa: viva }), { ligacao: 'calado', motivo: null })
+  assert.deepEqual(avaliarLigacao({ ...base, ouvirDesde: 98000, caixa: viva }), { ligacao: null, motivo: null })
+  assert.deepEqual(avaliarLigacao({ ...base, ouvirDesde: 0, caixa: morta }), { ligacao: 'sem-ligacao', motivo: 'a caixa do motor não dá sinal (sem corrente ou fora do alcance do rádio)' })
+})
+
+test('fonte caixa: nos primeiros 5 s à escuta ainda não se diz que falta a caixa (as caixas demoram a dar sinal)', () => {
+  const { avaliarLigacao } = require('../lib/ligacao')
+  const base = { agora: 100000, ultimaTrama: -Infinity, simulador: false, candumpVivo: false, lerInterface: () => { throw new Error('não se lê a interface') }, anterior: null, nome: 'can1' }
+  const morta = () => ({ viva: false, motivo: 'a caixa dos instrumentos não está ligada ao portátil' })
+  assert.deepEqual(avaliarLigacao({ ...base, ouvirDesde: 98000, caixa: morta }), { ligacao: null, motivo: null })
+  assert.deepEqual(avaliarLigacao({ ...base, ouvirDesde: 95000, caixa: morta }), { ligacao: null, motivo: null })
+  assert.deepEqual(avaliarLigacao({ ...base, ouvirDesde: 94999, caixa: morta }), { ligacao: 'sem-ligacao', motivo: 'a caixa dos instrumentos não está ligada ao portátil' })
+})
