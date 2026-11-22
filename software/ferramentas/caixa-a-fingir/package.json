@@ -1,0 +1,13 @@
+{
+  "name": "arlequin-caixa-a-fingir",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Caixa a fingir: fala por TCP a linguagem da caixa 1 do Arlequin (e faz de GPS), para ensaiar o portátil sem as placas",
+  "main": "caixa-a-fingir.js",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node caixa-a-fingir.js",
+    "test": "node --test \"test/*.test.js\""
+  }
+}
