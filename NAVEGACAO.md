@@ -990,6 +990,26 @@ Na entrega confirma-se o modelo na própria placa: a de 16 GB tem "16GB RAM" imp
 ([Hackster](https://www.hackster.io/news/raspberry-pi-doubles-the-ram-with-a-new-raspberry-pi-5-16gb-variant-93177d6a769c)).
 Se a compra se fizer, o item 1 da lista do §4 passa a 16 GB; o resto da lista fica igual.
 
+**Pergunta do Ivo (22/11): para quê comprar a MacArthur, se as caixas ESP32 já ligam tudo?** Com as duas caixas
+(`docs/superpowers/specs/2026-11-20-sistema-no-portatil-design.md`), o vento, o log, a proa, o adornamento e o motor
+deixam de passar pela MacArthur, e os sensores que faltam (barómetro, gasóleo, frigorífico) podem ir pelas caixas. A
+bússola do piloto velho (SeaTalk1) já tinha ficado de fora. O que a MacArthur ainda faria, e como se faz sem ela:
+
+| O que ainda faria | Sem a MacArthur | Custo |
+|---|---|---|
+| Falar com a rede NMEA 2000: o piloto EV-100 e, se se quiser, o AIS por essa rede | O adaptador USB–CAN isolado que já está na lista do motor (item da "Motor J1939: compras"). O motor agora vai pela caixa 2, por isso o adaptador fica livre para esta rede. Para o SignalK é igual: aparece como `can0` | €37,02 (preço de 29/09) |
+| Dar a posição ao radar e ao VHF (saída NMEA 0183) | Um adaptador USB–NMEA 0183, ou uma saída na caixa 1 com uma peça de adaptação | por cotar (cerca de €15–25) |
+| Alimentar o Pi pelos 12 V e desligá-lo em segurança ao cortar o quadro | Um conversor 12 → 5 V. O desligar em segurança deixa de vir feito: tem de ser desenhado por nós (uma das caixas pode avisar o Pi) | por cotar (cerca de €15–25) |
+
+Em dinheiro a diferença é pequena (cerca de €110 da MacArthur com o módulo, contra cerca de €75 em adaptadores). O
+que se ganha sem ela: tudo entra por USB, como na fase do portátil, o computador pode ser qualquer um, e a ligação à
+rede do piloto fica isolada (a da MacArthur não é). O que se perde: uma placa feita e testada por muita gente, e o
+desligar seguro pronto a usar.
+
+Parecer de 22/11: **não comprar a MacArthur agora.** Nada na fase do portátil a usa, e o que lhe sobra só faz
+falta quando o Pi estiver montado e o piloto chegar (dezembro ou depois). Nessa altura as caixas já estão provadas e
+decide-se com o que faltar ligar. A decisão é do Ivo.
+
 Fontes dos preços: [RasPi Shop](https://raspishop.pt/c/robotica-e-desenvolvimento/raspberry-pi-robotica-e-desenvolvimento/placas-e-kits/raspberry-pi-5/),
 [SailProof STS10](https://sailproof.shop/product/sunlight-readable-waterproof-touchscreen-10-2/),
 [o-charts Portugal](https://o-charts.org/shop/en/oesenc/79-portugal.html).
