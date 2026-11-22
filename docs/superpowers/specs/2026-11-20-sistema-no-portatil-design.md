@@ -23,6 +23,7 @@ passar para lá e acertar a polar, os consumos, as velocidades, as médias e os 
 | Motor pelo J1939 (vela ou motor, rotações, horas, temperaturas, alarmes, consumo estimado) | Sonda do gasóleo, água doce, barómetro, frigorífico, sonda de profundidade |
 | GPS e AIS (B330) | Baterias Victron (quando o SmartShunt estiver montado) |
 | Caixa negra, AI, Melhor rota, Diário, Velas, alarmes | Posição para o VHF e o radar (o VHF tem antena de GPS própria; a confirmar pelo Ivo) |
+| Sobe e desce do barco na onda, só gravado (decidido pelo Ivo, 21/11) | Altura e período da onda no ecrã (a conta faz-se depois, com dados reais) |
 
 No ecrã, o que fica para depois aparece a "—", como já acontece quando falta uma leitura.
 
@@ -58,6 +59,7 @@ enganava a bússola), com bucins. Alimentação e dados pelo mesmo cabo USB do p
 | Velocidade na água | Cabo coaxial da roda do log (o mostrador NASA está avariado e sai do circuito) | A bobina dá um sinal fraco: passa por um comparador pequeno e entra num contador de impulsos. Cerca de 2 impulsos por volta; 1 impulso por segundo ≈ 0,2 nós (a confirmar na nossa roda) |
 | Vento | Ficha redonda de saída do mostrador NASA Clipper Wind, que continua a funcionar | Chicote feito por nós. Se sair NMEA 0183 (MWV, 4 800 baud), entra numa porta série com adaptação de nível. Se sair só a linguagem do repetidor (versões antigas), lê-se como I²C |
 | Proa, adornamento, caimento | Sensor Adafruit BNO085 (ref. 4754), dentro ou junto da caixa | I²C. O chip entrega os valores já calculados e calibra-se sozinho |
+| Movimento do barco na onda (sobe e desce) | O mesmo BNO085 | Aceleração e rotação nos três eixos, lidas pelo menos 100 vezes por segundo; a caixa manda a média de cada décimo de segundo. Ver "Sobe e desce da onda" |
 
 O sensor fica fixo, alinhado com o eixo do barco e longe de ferro, do motor e de cabos com muita
 corrente.
@@ -101,9 +103,10 @@ A caixa 2 fica o mais simples possível (lê e reenvia), para raramente precisar
 ## Das caixas para o portátil
 
 A caixa 1 manda pelo USB linhas de texto, uma por leitura: impulsos do log, frase do vento, atitude
-do BNO085, tramas do motor reenviadas no formato `candump -L` (o mesmo que o plugin do motor já lê)
-e, de segundo a segundo, um batimento de cada caixa (viva, contadores, força do rádio). Os campos
-exatos ficam no plano de implementação.
+do BNO085, o movimento do barco (10 linhas por segundo, com aceleração, rotação e inclinação, e um
+número de ordem para se ver se faltou alguma), tramas do motor reenviadas no formato `candump -L`
+(o mesmo que o plugin do motor já lê) e, de segundo a segundo, um batimento de cada caixa (viva,
+contadores, força do rádio). Os campos exatos ficam no plano de implementação.
 
 ## No portátil
 
@@ -114,7 +117,8 @@ simulador, e duas peças de código:
    `environment.wind.angleApparent` e `speedApparent`, `navigation.speedThroughWater`,
    `navigation.headingMagnetic`, `navigation.attitude`, mais os valores em bruto e o estado de cada
    caixa (a receber, calada, sem ligação), com aviso no ecrã quando uma caixa se cala. As
-   calibrações (fator do log, desvio do vento, desvio da proa) ficam na configuração do plugin.
+   calibrações (fator do log, desvio do vento, desvio da proa, acelerómetro) ficam na configuração
+   do plugin. Junta as leituras do movimento num bloco por segundo e publica-o num caminho próprio.
    Reenvia as tramas do motor pelo evento `arlequin-j1939`, que o plugin do motor já escuta.
 2. **Plugin do motor (`signalk-arlequin-j1939`): fonte nova `caixa`.** Hoje tem `candump` (Linux) e
    `simulador`. A fonte `caixa` usa o mesmo evento do simulador, mas com as regras do barco:
@@ -148,6 +152,63 @@ A caixa negra grava como no Pi, em `~/arlequin-dados` (bruto, tabela de 10 em 10
 previsões). Os valores em bruto das caixas também ficam gravados. Quando houver o computador
 definitivo, a pasta copia-se para lá com a ferramenta `ferramentas/sincronizar` (a direção
 portátil → barco confirma-se no plano).
+
+## Sobe e desce da onda (decidido pelo Ivo, 21/11)
+
+A caixa negra passa a gravar também o movimento do barco na onda, desde a primeira viagem. Nesta
+fase **só se grava**. A altura e o período da onda calculam-se depois, a partir do que ficou
+gravado, e só vão para o ecrã quando a conta estiver confirmada com dados reais. Não é preciso
+comprar nada: é o mesmo sensor BNO085 da caixa 1, lido de outra maneira.
+
+**O que se grava, 10 vezes por segundo:**
+
+| Leitura | Para que serve |
+|---|---|
+| Aceleração nos três eixos, em bruto | O sobe e desce tira-se daqui |
+| Rotação nos três eixos (giroscópio) | Refazer a inclinação com mais rigor do que a do chip, e passar a medida do sítio do sensor para o meio do barco |
+| Adornamento e caimento calculados pelo chip | Saber para onde é "para cima" quando o barco vai adornado |
+
+**Regras, tiradas de um ensaio no computador (21/11).** Simularam-se 20 minutos de mar de cada vez:
+cinco estados de mar (de 0,3 m com 3 s a 2,5 m com 11 s), o barco adornado a 18°, o sensor 3,5 m a
+ré do meio do barco e 0,8 m ao lado do eixo, os erros do sensor pela ficha do fabricante e a
+vibração do motor a cinco rotações diferentes. Cada caso correu três vezes.
+
+1. **A caixa lê o sensor pelo menos 100 vezes por segundo e manda a média de cada décimo de
+   segundo.** Lido só 10 vezes por segundo, sem média, a vibração do motor mistura-se com a onda e
+   a conta inventa ondas de 10 a 50 m. Com a média e o acelerómetro calibrado, o erro da altura
+   ficou abaixo de 6 % em todos os casos e em todas as rotações ensaiadas. Ler 50 vezes por segundo não chega: a cerca de 2 000
+   rotações (o D1-20B tem 3 cilindros, que a essa rotação batem 50 vezes por segundo) a vibração
+   volta a entrar. Isto tem de ficar certo na caixa, porque não se corrige depois de gravado.
+2. **Gravam-se os três eixos e a inclinação, e não só o eixo "de cima" do sensor.** Com o barco
+   adornado, esse eixo deixa de apontar para cima: o erro chegou a 64 % na ondulação baixa e
+   comprida.
+3. **Grava-se também a rotação.** O sensor fica à popa e ao lado do eixo, por isso sente o cabeceio
+   e o balanço além da onda. Para passar a medida para o meio do barco, a inclinação do chip não
+   chega no mar pequeno (0,37 m calculados para 0,30 m verdadeiros, e o período errado); com a
+   rotação gravada deu 0,31 m e o período certo.
+4. **O acelerómetro calibra-se na bancada antes de fechar a caixa:** pousa-se a caixa em cada uma
+   das seis faces, uns segundos em cada. Sem isso, o erro na ondulação baixa e comprida chegou a
+   45 %. Os valores ficam na configuração do plugin, como as outras calibrações.
+5. **O que se pode esperar:** a altura com um erro de poucos por cento a partir de 0,4 m; abaixo
+   de 0,1 a 0,2 m a medida perde-se no ruído do sensor. São resultados de simulação, por confirmar
+   com o sensor verdadeiro.
+
+**Limites que a gravação não resolve.** Mede-se o movimento do barco, não o mar. Na ondulação
+comprida o barco acompanha a onda e a medida é boa; na vaga curta o barco não sobe tudo e a medida
+fica por baixo. A navegar, o período medido é o do encontro com as ondas, que depende do rumo e da
+velocidade (a caixa negra tem os dois, para corrigir). A direção da onda não se promete. Com o
+barco fundeado ou amarrado é quando a medida fica mais limpa.
+
+**Como chega à caixa negra.** A caixa 1 manda as 10 leituras por segundo pelo USB; o plugin das
+caixas junta-as num bloco por segundo e publica-o no SignalK; a caixa negra grava-o no bruto como
+tudo o resto, sem alterações ao plugin dela. Medido com o gravador verdadeiro da caixa negra
+(`lib/bruto.js`): cerca de 0,8 MB por hora, ou 0,25 GB em 300 horas de navegação. A tabela de 10 em
+10 s da AI não muda agora: uma coluna com o estado do mar pode juntar-se mais tarde e calcular-se
+para todas as viagens já gravadas, porque o bruto fica guardado.
+
+**Para depois:** a ferramenta que faz a conta da altura e do período sobre a gravação (entra no
+plano, porque o ensaio de bancada precisa dela), os números no ecrã, a comparação com a ondulação
+da previsão e o estado do mar como variável da AI.
 
 ## Acompanhamento em direto
 
@@ -207,10 +268,16 @@ definitivo, ou a caixa 2 fica de vez.
 1. **Bancada, em casa.** A caixa 1 com o BNO085, impulsos a fingir a roda e uma frase de vento a
    fingir o mostrador; a caixa 2 com tramas a fingir o motor. O ecrã do portátil e do Fold mostram
    os valores e a caixa negra grava. Os plugins levam testes automáticos, como os outros.
+   **Sobe e desce:** calibrar o acelerómetro nas seis faces; depois mexer a caixa para cima e para
+   baixo cerca de 30 cm, num ritmo certo, durante dois minutos, e confirmar que a conta feita sobre
+   a gravação devolve esses 30 cm e esse ritmo.
 2. **Barco em seco.** Montar as caixas; rodar a roda do log à mão; ligar o mostrador do vento;
    ignição ligada com o motor parado (teste de escuta do J1939); confirmar o B330 por USB.
 3. **Primeiras viagens (Tejo, Oeiras, Cascais, com rede).** Verificação em direto de cada sensor;
    calibrar o log contra o GPS com ida e volta, por causa da corrente; calibrar a proa.
+   **Sobe e desce:** com o barco amarrado em água parada, levar o motor devagar do ralenti ao
+   máximo; a conta feita sobre essa gravação não pode inventar ondas. Se inventar, a caixa tem de
+   ler o sensor mais depressa.
 
 ## Pontos em aberto
 
@@ -246,6 +313,14 @@ definitivo, ou a caixa 2 fica de vez.
 10. **Mostrador da Volvo ilegível de dia.** Avaria conhecida destes mostradores (o LCD perde o
     contraste). As horas leem-se à noite e ficam registadas; depois vêm pelo J1939 (a confirmar na
     primeira escuta). Há LCD de substituição; falta a foto do instrumento para saber o modelo.
+11. **Posição do sensor, para o sobe e desce.** Medir com a fita três distâncias: do sensor ao meio
+    do barco (para vante ou para ré), ao eixo do barco (para o lado) e à linha de água (em altura).
+    Servem para passar a medida para o meio do barco. A gravação não depende delas: podem medir-se
+    em qualquer altura.
+12. **Cadência de leitura do BNO085.** Confirmar na bancada a cadência mais alta que a ligação
+    aguenta sem falhas, com a aceleração, a rotação e a atitude ao mesmo tempo (100 por segundo no
+    mínimo; mais é melhor), e se o chip já entrega as leituras filtradas. O ensaio no computador
+    só levou vibrações até 90 por segundo; a 2 000 rotações o motor também vibra a 100.
 
 ## Pedido novo: carta com toque e caminhos guardados (por desenhar com o Ivo)
 
@@ -413,3 +488,9 @@ Fica fora das duas caixas desta fase até haver as fotos e o esquema.
 - O Fold faz a rede e mantém os dados móveis (Ivo).
 - Caixa 2 por rádio até à caixa 1, e caixa 1 por USB, para não depender do telemóvel (Claude).
 - Calibrações no portátil, valores em bruto gravados (Claude).
+
+## Decisões de 21/11
+
+- A caixa negra grava também o sobe e desce do barco na onda (Ivo).
+- Grava-se o movimento completo em bruto (aceleração, rotação e inclinação), 10 vezes por segundo,
+  com a média feita na caixa; a conta da altura e do período fica para depois (Claude).

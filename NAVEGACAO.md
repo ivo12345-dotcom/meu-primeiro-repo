@@ -560,15 +560,17 @@ a pagar em barcos de outros.
 - **O resto já existe no nosso sistema:** perigo AIS (`signalk-arlequin-ais`, CPA < 0,5 MN e TCPA
   < 20 min), "o barco saiu do lugar" e Telegram com comandos (`signalk-arlequin-porto`), e o ecrã em
   qualquer aparelho com browser.
-- **Ideias a aproveitar, por decidir pelo Ivo:**
-  1. **Ondulação medida.** O autor estima a altura e o período com um sensor de movimento e o README
+- **Ideias a aproveitar:**
+  1. **Ondulação medida: decidido pelo Ivo a 21/11, a caixa negra grava o sobe e desce.** O desenho
+     e o ensaio que o sustenta estão em `docs/superpowers/specs/2026-11-20-sistema-no-portatil-design.md`,
+     "Sobe e desce da onda". O autor estima a altura e o período com um sensor de movimento e o README
      aponta o BNO085, o mesmo da nossa caixa 1 (a conta não vem no repositório dele). Para nós basta a
      caixa 1 mandar também o sobe-e-desce (aceleração vertical) e a caixa negra gravá-lo desde a
      primeira viagem; a conta faz-se depois, com dados reais. Limites (avaliação do Claude): o sensor
      fica à popa e mede o movimento do barco nesse sítio, não o mar; serve para a ondulação longa,
      engana-se na vaga curta e a navegar; não dá direção.
-  2. **Fundeado, fundo e velocidade em números muito grandes**, para ler da cama. Fica para quando
-     entrar a parte do barco parado.
+  2. **Fundeado, fundo e velocidade em números muito grandes**, para ler da cama. Por decidir pelo
+     Ivo; fica para quando entrar a parte do barco parado.
 - **A série continua:** prometidos a sonda, o MFD e um assistente de voz offline com os manuais do
   barco. Já saiu "Raspberry Pi Sailing Display + Autopilot Control vs Raymarine" (visto na lista do
   canal a 21/11, por ler): interessa quando o EV-100 chegar.
