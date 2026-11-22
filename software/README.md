@@ -209,6 +209,16 @@ caixa 2 a receber · … linhas · 0 inválidas · 0 leituras em falta") e
 `http://localhost:3000/plugins/signalk-arlequin-caixas/estado` (as últimas 20 linhas recebidas). Quando a
 caixa 1 se cala, os valores passam a "sem dado" em 5 s e o ecrã apita uma vez; quando volta, voltam sozinhos.
 
+**Segurança (estado a 22/11/2026).** O aviso CVE-2026-123807 (GHSA-4xm8-rg9h-jhq2) diz que o servidor
+SignalK e o plugin das rotas e pontos (`@signalk/resources-provider`) deixavam ler, escrever e apagar
+ficheiros fora da pasta dos recursos, a quem chegasse à porta 3000. Confirmado no nosso servidor com a
+versão 1.5.2 (entregou o `settings.json` e a configuração do Telegram) e fechado com a 1.5.3, que ficou nos
+dois perfis (`dev` e `bordo`); a mesma prova deu "não encontrado" depois da troca. **Fica por fazer, antes
+de o sistema andar em redes com mais gente (a de uma marina, por exemplo):** atualizar o servidor para a
+2.34.0 ou mais nova, que é onde o aviso dá a falha por corrigida do lado do servidor, e ligar a segurança
+do SignalK neste perfil (contas com palavra-passe), que hoje está desligada como no `dev`. Na rede de casa
+e na do Fold, só com os aparelhos do barco, o risco é baixo.
+
 **Fica por fazer à mão no Windows** (são definições do sistema, que só o dono do portátil muda):
 
 - não deixar o portátil adormecer nem suspender as portas USB enquanto navega;
