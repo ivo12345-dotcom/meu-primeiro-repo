@@ -35,16 +35,17 @@ SEN_FURO = 2.5
 SEN_FUROS_X, SEN_FUROS_Y = 20.32, 17.78
 
 # --- Base ------------------------------------------------------------------------------------------
-L, W, T = 250.0, 52.0, 3.0                       # comprimento, largura, espessura do fundo
+L, W, T = 280.0, 52.0, 3.0                       # comprimento, largura, espessura do fundo
 RAIO = 6.0                                       # cantos
 LABIO_RECUO, LABIO_ESP, LABIO_ALT = 2.6, 1.6, 5.0  # rebordo onde encaixa a tampa (que vem depois)
 XS = 25.0                                        # centro do sensor
-AFASTAMENTO = 120.0                              # do centro do sensor à ponta mais próxima do ESP32:
-                                                 # o mais longe a que o cabo de 20 cm chega com folga
+AFASTAMENTO = 150.0                              # do centro do sensor à ponta mais próxima do ESP32.
+                                                 # Os fios do sensor soldam-se à medida, em cabo de
+                                                 # silicone (Ivo, 22/11): já não manda o cabo de encaixe
 H_SEN = 6.0                                      # altura do sensor acima do fundo
 H_ESP = 24.0                                     # altura do ESP32: os fios encaixam por baixo
-ORELHAS_X = (90.0, 225.0)                        # orelhas para fixar a caixa (parafusos de latão)
-CABO_SENSOR = 182.0                              # fio útil de um cabo de ficha pequena de 20 cm, no pior caso
+ORELHAS_X = (95.0, 252.0)                        # orelhas para fixar a caixa (parafusos de latão)
+FOLGA_FIO = 30.0                                 # a mais em cada fio, para as pontas e para não ficar esticado
 
 X_ESP0 = XS + AFASTAMENTO                        # ponta do ESP32 virada para o sensor (a da antena)
 MARGEM_X = (ESP_COMP - ESP_FUROS_X) / 2
@@ -378,11 +379,8 @@ def main():
     print(f'do fundo à ponta das fichas dos fios (para o fio fazer a curva): {H_ESP - 16.5:.1f} mm')
     lista_fios = fios()
     for f in lista_fios:
-        folga = CABO_SENSOR - f['comprimento']
-        print(f"  fio {f['nome']} ({f['cor']}): {f['comprimento']:.0f} mm de caminho; sobra {folga:.0f} mm num cabo de 20 cm")
-        if folga < 10:
-            falhas += 1
-            print('  CURTO: o cabo do sensor não chega com folga')
+        cortar = math.ceil((f['comprimento'] + FOLGA_FIO) / 10)
+        print(f"  fio {f['nome']} ({f['cor']}): {f['comprimento']:.0f} mm de caminho; cortar com {cortar} cm")
     print('VERIFICAÇÃO: ' + ('tudo livre' if falhas == 0 else f'{falhas} problema(s)'))
 
     cq.exporters.export(b, os.path.join(saida, 'caixa1-base.step'))

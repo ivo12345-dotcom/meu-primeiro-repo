@@ -69,10 +69,10 @@ corrente.
 da cabine de popa,** com o BNO085 dentro da mesma caixa. É um sítio seco e resolve o problema do
 cabo curto do sensor. Regras da caixa:
 
-- o sensor a 12 cm ou mais da placa e dos fios de alimentação, porque a corrente da placa e as
-  peças de aço dela também enganam a bússola; os fios de alimentação torcidos. (Eram 15 cm na conta
-  de 20/11. Ficaram 12 a 22/11: é o mais longe a que o cabo de 20 cm do sensor chega com folga. Com
-  fios soldados à medida pode voltar aos 15.)
+- o sensor a 15 cm ou mais da placa e dos fios de alimentação, porque a corrente da placa e as
+  peças de aço dela também enganam a bússola; os fios de alimentação torcidos. Os fios do sensor
+  soldam-se à medida, em cabo de silicone (Ivo, 22/11). A primeira versão da base tinha 12 cm,
+  que era onde chegava o cabo de encaixe de 20 cm; com os fios soldados voltou aos 15.
 - **sem parafusos (ideia do Ivo):** a base da caixa leva furos nas posições dos furos de cada
   placa; a placa pousa em cima e quatro estacas impressas, com cabeça, atravessam os furos da placa
   e entram à pressão nos furos da base. Nada de metal dentro da caixa. As estacas imprimem-se
@@ -88,9 +88,9 @@ cabo curto do sensor. Regras da caixa:
 `software/ferramentas/caixas/caixa1_base.py`; os ficheiros para imprimir e as imagens estão em
 `docs/caixas/`.
 
-- Base de 250 × 52 mm (76 mm nas orelhas), com o fundo de 3 mm e um rebordo de 5 mm onde vai
+- Base de 280 × 52 mm (76 mm nas orelhas), com o fundo de 3 mm e um rebordo de 5 mm onde vai
   encaixar a tampa.
-- O sensor fica numa ponta, a 6 mm do fundo. O ESP32 fica 12 cm adiante, levantado 24 mm e com o
+- O sensor fica numa ponta, a 6 mm do fundo. O ESP32 fica 15 cm adiante, levantado 24 mm e com o
   lado das peças para cima: os nomes dos pinos, os botões e a ficha USB ficam à vista, e os fios
   encaixam nos pinos por baixo. Cada parede de apoio tem um túnel para os fios passarem.
 - Cada placa pousa em quatro apoios com o furo fendido: o furo abre um nada quando a estaca entra
@@ -112,12 +112,10 @@ cabo curto do sensor. Regras da caixa:
   entre furos e o aperto das estacas.
 
 Verificado no modelo: nada bate em nada (as duas placas, os pinos, as 30 fichas dos fios, os botões,
-o módulo e a ficha do cabo USB), e o cabo de 20 cm do sensor chega com 26 mm de folga no fio mais
-comprido. Por confirmar: as medidas da placa ESP32, que vieram da fotografia do anúncio com o passo
-dos pinos a servir de régua (erro de cerca de 0,2 mm); o comprimento do cabo de ficha pequena que o
-Ivo tem (contou-se com 20 cm); e o espaço no cubículo (fechada, a caixa fica com cerca de
-250 × 76 × 40 mm). Fica para depois: a tampa, as saídas dos cabos e o sítio do pequeno circuito do
-log e do vento (há 9 cm livres entre o sensor e o ESP32).
+o módulo e a ficha do cabo USB), e o programa diz com quantos centímetros se corta cada fio do sensor (19 a 22 cm). Por confirmar: as medidas da placa ESP32, que vieram da fotografia do anúncio com o passo
+dos pinos a servir de régua (erro de cerca de 0,2 mm); e o espaço no cubículo (fechada, a caixa fica com cerca de
+280 × 76 × 40 mm). Fica para depois: a tampa, as saídas dos cabos e o sítio do pequeno circuito do
+log e do vento (há 12 cm livres entre o sensor e o ESP32).
 
 Os chicotes do vento e do log passam a ir para a cabine de popa, e não para a mesa de navegação.
 **Ligação ao portátil:** cabo USB se o portátil ficar até 5 m (dá também a alimentação). Se não

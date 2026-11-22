@@ -143,18 +143,18 @@ def main():
         return [ator(pecas, n) for n in ['base', 'estacas'] + placas] + fios(pecas)
 
     # 1. o conjunto montado
-    imagem(os.path.join(saida, 'caixa1-conjunto.png'), conjunto(), olho=(40, -270, 185), alvo=(125, 2, 6), altura=800)
+    imagem(os.path.join(saida, 'caixa1-conjunto.png'), conjunto(), olho=(45, -300, 205), alvo=(140, 2, 6), altura=800)
     # 2. só a base, como sai da impressora
-    imagem(os.path.join(saida, 'caixa1-base.png'), [ator(pecas, 'base')], olho=(40, -270, 185), alvo=(125, 2, 6), altura=800)
+    imagem(os.path.join(saida, 'caixa1-base.png'), [ator(pecas, 'base')], olho=(45, -300, 205), alvo=(140, 2, 6), altura=800)
     # 3. a ponta do ESP32, de perto, vista do lado do USB
-    imagem(os.path.join(saida, 'caixa1-esp32.png'), conjunto(), olho=(292, -118, 92), alvo=(178, 0, 15), angulo=26)
+    imagem(os.path.join(saida, 'caixa1-esp32.png'), conjunto(), olho=(322, -118, 92), alvo=(208, 0, 15), angulo=26)
     # 4. o ESP32 visto de baixo e de lado: os fios encaixam por baixo e passam pelo túnel
-    imagem(os.path.join(saida, 'caixa1-fios.png'), conjunto(), olho=(108, -112, 30), alvo=(168, 4, 14), angulo=26)
+    imagem(os.path.join(saida, 'caixa1-fios.png'), conjunto(), olho=(138, -112, 30), alvo=(198, 4, 14), angulo=26)
     # 5. a ponta do sensor, de perto
     imagem(os.path.join(saida, 'caixa1-sensor.png'), conjunto(), olho=(-22, -62, 56), alvo=(30, 0, 7), angulo=26)
     # 6. como se monta: placas e estacas levantadas
     explodido = [ator(pecas, 'base')] + [ator(pecas, n, (0, 0, 14)) for n in placas if n != 'esp_usb'] + [ator(pecas, 'estacas', (0, 0, 30))]
-    imagem(os.path.join(saida, 'caixa1-montagem.png'), explodido, olho=(30, -290, 180), alvo=(125, 2, 18), altura=860)
+    imagem(os.path.join(saida, 'caixa1-montagem.png'), explodido, olho=(35, -320, 200), alvo=(140, 2, 18), altura=860)
     # 7. a peça de ensaio com as suas estacas
     imagem(os.path.join(saida, 'caixa1-ensaio.png'), [ator(pecas, 'ensaio')], olho=(20, -105, 95), alvo=(44, 24, 2), angulo=26, altura=900)
 
