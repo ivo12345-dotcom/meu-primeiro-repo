@@ -1,6 +1,7 @@
 # ARLEQUIN · Sistema no portátil, com duas caixas ESP32 (desenho)
 
-Data: 20/11/2026 · Estado: **por rever pelo Ivo**. Nasce das conversas de 20/11 (registo no
+Data: 20/11/2026 · Estado: **aprovado pelo Ivo para avançar (22/11: "vamos agora pôr o sistema todo a
+funcionar e validar tudo")**; os pontos em aberto continuam em aberto. Nasce das conversas de 20/11 (registo no
 `NAVEGACAO.md`, §2b). Substitui, nesta fase, o Raspberry Pi e a MacArthur HAT. Não muda o desenho do
 sistema definitivo: prepara-o.
 
@@ -299,8 +300,8 @@ Por comprar:
 
 | Peça | Para quê | Quando |
 |---|---|---|
-| 2 módulos transcetores CAN de 3,3 V (um de reserva) | Caixa 2 | Já |
-| Conversor 12 → 5 V, porta-fusível e fusível | Alimentar a caixa 2 | Já |
+| 2 módulos transcetores CAN de 3,3 V (um de reserva): [ECSiNG SN65HVD230, 2 unidades](https://www.amazon.es/dp/B0F7XCC1PT), €9,45, enviado pela Amazon (visto a 22/11) | Caixa 2. Os pinos vêm por soldar. Antes de usar tira-se a resistência de 120 Ω do módulo (junto a CANH/CANL), porque a linha do motor já tem as suas duas. Só se liga a saída de leitura (CRX); a entrada de escrita (CTX) fica presa aos 3,3 V, para o módulo não poder escrever na linha do motor nem por engano | Já |
+| Conversor 12 → 5 V: [Greluma estanque, 8–22 V para 5 V 3 A, com ficha USB-C](https://www.amazon.es/dp/B0BX3MQ18D), €10,16; e [5 porta-fusíveis em linha JOREST com fusíveis de 2 A e 3 A](https://www.amazon.es/dp/B0DBPQBGBQ), €10,16; os dois enviados pela Amazon (visto a 22/11) | Alimentar a caixa 2 pela ficha USB-C da placa, com fusível de 2 A. Não serve um cabo de câmara de carro: esses cortam a corrente quando a bateria desce aos 11,6–12 V, e a caixa 2 apagava-se ao dar ao arranque | Já |
 | Comparador para o sinal da roda do log | Caixa 1 | Depois de medir o sinal da roda |
 | Adaptação de nível e ficha para a tomada do vento | Caixa 1 | Depois da foto das costas do mostrador |
 | Cabo USB com o comprimento caixa 1 → portátil, e cabo USB do B330 | Ligações | Depois de medir no barco |
