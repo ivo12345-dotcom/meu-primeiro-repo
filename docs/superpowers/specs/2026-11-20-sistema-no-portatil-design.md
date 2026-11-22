@@ -73,32 +73,38 @@ cabo curto do sensor. Regras da caixa:
   peças de aço dela também enganam a bússola; os fios de alimentação torcidos. Os fios do sensor
   soldam-se à medida, em cabo de silicone (Ivo, 22/11). A primeira versão da base tinha 12 cm,
   que era onde chegava o cabo de encaixe de 20 cm; com os fios soldados voltou aos 15.
-- **sem parafusos (ideia do Ivo):** a base da caixa leva furos nas posições dos furos de cada
-  placa; a placa pousa em cima e quatro estacas impressas, com cabeça, atravessam os furos da placa
-  e entram à pressão nos furos da base. Nada de metal dentro da caixa. As estacas imprimem-se
-  deitadas, para não partirem pelas camadas, e a base leva um ressalto à volta de cada furo para os
-  pinos de baixo da placa não tocarem no fundo. O aperto afina-se com uma peça de ensaio;
+- **sem parafusos (ideia do Ivo):** nada de metal dentro da caixa. Da base saem quatro espigões
+  maciços por placa, nas posições dos furos; a placa enfia-se neles e prende-se com uma gota de
+  cola em cima de cada espigão. (A primeira versão tinha estacas soltas a entrar à pressão em
+  apoios de furo fendido; no ensaio do Ivo com as placas verdadeiras alguns apoios partiram, e a
+  ideia dos espigões é dele, de 22/11);
 - fita isoladora líquida só nos fios, nas soldaduras e nas fichas, para não se soltarem com a
   vibração; as placas têm de poder sair. Testar primeiro num resto do mesmo plástico, porque o
   solvente pode atacá-lo;
 - caixa em PETG ou ASA (o PLA amolece com o calor do verão);
 - a 20–30 cm, pelo menos, da bússola do piloto velho.
 
-**Base da caixa 1 (desenhada a 22/11, a pedido do Ivo; por imprimir).** Gera-se com
-`software/ferramentas/caixas/caixa1_base.py`; os ficheiros para imprimir e as imagens estão em
-`docs/caixas/`.
+**Base da caixa 1, versão 2 (redesenhada a 22/11 à noite, depois do ensaio do Ivo; por imprimir).**
+Gera-se com `software/ferramentas/caixas/caixa1_base.py`; os ficheiros para imprimir e as imagens
+estão em `docs/caixas/`.
 
-- Base de 280 × 52 mm (76 mm nas orelhas), com o fundo de 3 mm e um rebordo de 5 mm onde vai
-  encaixar a tampa.
-- O sensor fica numa ponta, a 6 mm do fundo. O ESP32 fica 15 cm adiante, levantado 24 mm e com o
-  lado das peças para cima: os nomes dos pinos, os botões e a ficha USB ficam à vista, e os fios
-  encaixam nos pinos por baixo. Cada parede de apoio tem um túnel para os fios passarem.
-- Cada placa pousa em quatro apoios com o furo fendido: o furo abre um nada quando a estaca entra
-  e aperta-a. As estacas imprimem-se deitadas. Têm uma aba que segura a placa pelo bordo de fora e
-  um dente que desce por fora da placa e não as deixa rodar. Cabeça redonda não dava: no ESP32 há
-  peças encostadas aos furos (os botões e o módulo).
-- Um apoio com rasgo para prender o cabo USB com uma abraçadeira de plástico, para a ficha não
-  trabalhar na tomada com o balanço.
+- Base de 280 × 52 mm (76 mm nas orelhas) e só 13 mm de altura, com o fundo de 3 mm e um rebordo de
+  5 mm onde vai encaixar a tampa. É uma peça só: já não há estacas soltas.
+- **As duas placas ficam de pinos para cima**, para os fios se ligarem por cima, à vista (foi como o
+  Ivo as montou na peça de ensaio; com os pinos para baixo não havia espaço para as fichas dos
+  fios). O sensor fica numa ponta, a 4 mm do fundo; o ESP32 15 cm adiante, a 6 mm do fundo, com o
+  lado das peças para baixo. Os botões e a luz da placa ficam por baixo: não fazem falta no uso (a
+  placa grava-se pelo USB sem tocar nos botões, confirmado na bancada).
+- **Torres do ESP32:** um pé de 6 mm de diâmetro, um espigão de 2,6 mm que atravessa o furo, e um
+  quarto de anel do lado de fora de cada furo, onde o canto da placa pousa. O pé acaba abaixo dos
+  botões, que ficam encostados aos furos. Por baixo da tampa de metal do módulo e da tomada USB
+  há dois batentes, 0,3 mm abaixo delas: seguram a placa quando se carrega nas fichas dos fios.
+- **Torres do sensor:** um anel de 4,6 mm à volta de cada furo, onde a placa pousa, e um espigão de
+  2,1 mm.
+- O cabo USB sai por baixo da placa e prende-se a um berço com uma abraçadeira de plástico, para a
+  ficha não trabalhar na tomada com o balanço. A abraçadeira passa por duas ranhuras do fundo e por
+  um rasgo por baixo da base, sem a levantar. Os fios do sensor prendem-se ao fundo da mesma
+  maneira, em dois sítios.
 - Quatro orelhas com furo de 4,3 mm para fixar a caixa com parafusos de latão ou de nylon; a tampa
   prende pelos mesmos parafusos.
 - Uma seta em relevo com a palavra PROA. Diz só para que lado a caixa aponta; o sítio da caixa não
@@ -107,15 +113,21 @@ cabo curto do sensor. Regras da caixa:
   maneira, monta-se como couber e acerta-se no programa. (A primeira versão dizia "eixo do barco" e
   o Ivo leu, com razão, que a caixa ia para o meio do barco; corrigido a 22/11.)
 - Marcas nas pontas e nos lados (o sítio do sensor), para as medidas do ponto em aberto 11.
-- Peça de ensaio (`caixa1-ensaio.stl`): os oito apoios nas posições certas, numa armação fina, com
-  as suas oito estacas. Imprime-se primeiro, para confirmar com as placas verdadeiras a distância
-  entre furos e o aperto das estacas.
+- Peça de ensaio (`caixa1-ensaio.stl`, 96 × 35 mm): os dois bocados da base onde as placas
+  assentam, cortados da própria base e postos lado a lado. Serve para ver com as placas verdadeiras
+  se os espigões entram e se as placas pousam, antes da base inteira.
 
-Verificado no modelo: nada bate em nada (as duas placas, os pinos, as 30 fichas dos fios, os botões,
-o módulo e a ficha do cabo USB), e o programa diz com quantos centímetros se corta cada fio do sensor (19 a 22 cm). Por confirmar: as medidas da placa ESP32, que vieram da fotografia do anúncio com o passo
-dos pinos a servir de régua (erro de cerca de 0,2 mm); e o espaço no cubículo (fechada, a caixa fica com cerca de
-280 × 76 × 40 mm). Fica para depois: a tampa, as saídas dos cabos e o sítio do pequeno circuito do
-log e do vento (há 12 cm livres entre o sensor e o ESP32).
+Verificado no modelo: nada bate em nada (as duas placas, as peças de baixo do ESP32, os pinos, as
+fichas dos fios e a ficha do cabo USB), as placas têm onde pousar, e o programa diz com quantos
+centímetros se corta cada fio do sensor (23 a 26 cm). A distância entre os furos do ESP32 ficou
+confirmada pela primeira peça de ensaio (as placas entraram). Por confirmar: as posições das peças
+de baixo do ESP32 (os botões, a tomada, o módulo), que vieram da fotografia do anúncio, com um erro
+de cerca de 0,2 mm; e o espaço no cubículo (com as fichas dos fios nos pinos, a caixa fechada fica
+com cerca de 280 × 76 × 35 mm). Fica para depois: a tampa, as saídas dos cabos e o sítio do pequeno
+circuito do log e do vento (há 12 cm livres entre o sensor e o ESP32). Com o sensor montado como no
+desenho (a fila do VIN do lado oposto à palavra PROA, e a seta X impressa no sensor a apontar para
+onde aponta a seta da base), o eixo dele que aponta à proa é o X: na configuração do plugin das
+caixas fica `eixoProa: '+x'`, a confirmar com a bússola na bancada.
 
 Os chicotes do vento e do log passam a ir para a cabine de popa, e não para a mesa de navegação.
 **Ligação ao portátil:** cabo USB se o portátil ficar até 5 m (dá também a alimentação). Se não
