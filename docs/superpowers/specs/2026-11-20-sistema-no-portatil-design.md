@@ -58,7 +58,7 @@ enganava a bússola), com bucins. Alimentação e dados pelo mesmo cabo USB do p
 |---|---|---|
 | Velocidade na água | Cabo coaxial da roda do log (o mostrador NASA está avariado e sai do circuito) | A bobina dá um sinal fraco: passa por um comparador pequeno e entra num contador de impulsos. Cerca de 2 impulsos por volta; 1 impulso por segundo ≈ 0,2 nós (a confirmar na nossa roda) |
 | Vento | Ficha redonda de saída do mostrador NASA Clipper Wind, que continua a funcionar | Chicote feito por nós. Se sair NMEA 0183 (MWV, 4 800 baud), entra numa porta série com adaptação de nível. Se sair só a linguagem do repetidor (versões antigas), lê-se como I²C |
-| Proa, adornamento, caimento | Sensor Adafruit BNO085 (ref. 4754), dentro ou junto da caixa | I²C. O chip entrega os valores já calculados e calibra-se sozinho |
+| Proa, adornamento, caimento | Sensor Adafruit BNO085 (ref. 4754), dentro ou junto da caixa | O chip entrega os valores já calculados e calibra-se sozinho. A maneira de o ligar à placa (4 fios ou 10 fios) decide-se na bancada: ver o ponto 12 dos pontos em aberto |
 | Movimento do barco na onda (sobe e desce) | O mesmo BNO085 | Aceleração e rotação nos três eixos, lidas pelo menos 100 vezes por segundo; a caixa manda a média de cada décimo de segundo. Ver "Sobe e desce da onda" |
 
 O sensor fica fixo, alinhado com o eixo do barco e longe de ferro, do motor e de cabos com muita
@@ -246,8 +246,10 @@ tarefas com risco (motor, alterações ao sistema a navegar) pedem confirmação
 
 ## Peças
 
-Compradas pelo Ivo a 20/11 (Amazon.es; a confirmar por ele): sensor Adafruit BNO085, conjunto de 2
-placas ESP32 ELEGOO, cabos.
+Compradas pelo Ivo a 20/11 (Amazon.es): sensor Adafruit BNO085, conjunto de 2 placas ESP32 ELEGOO,
+cabos. **As duas placas e o sensor chegaram a 22/11.** As placas são o modelo "ESP32 DEVKIT V1
+TYPEC": 30 pinos em duas filas, 29 × 51,7 mm e um furo em cada canto (medidas do anúncio, por
+confirmar com o paquímetro antes de desenhar a caixa).
 
 Por comprar:
 
@@ -317,10 +319,23 @@ definitivo, ou a caixa 2 fica de vez.
     do barco (para vante ou para ré), ao eixo do barco (para o lado) e à linha de água (em altura).
     Servem para passar a medida para o meio do barco. A gravação não depende delas: podem medir-se
     em qualquer altura.
-12. **Cadência de leitura do BNO085.** Confirmar na bancada a cadência mais alta que a ligação
-    aguenta sem falhas, com a aceleração, a rotação e a atitude ao mesmo tempo (100 por segundo no
-    mínimo; mais é melhor), e se o chip já entrega as leituras filtradas. O ensaio no computador
-    só levou vibrações até 90 por segundo; a 2 000 rotações o motor também vibra a 100.
+12. **Ligação e cadência de leitura do BNO085.** Confirmar na bancada a cadência mais alta que a
+    ligação aguenta sem falhas, com a aceleração, a rotação e a atitude ao mesmo tempo (100 por
+    segundo no mínimo; mais é melhor), e se o chip já entrega as leituras filtradas. O ensaio no
+    computador só levou vibrações até 90 por segundo; a 2 000 rotações o motor também vibra a 100.
+    **Aviso do fabricante (visto a 22/11):** o
+    [guia da Adafruit](https://learn.adafruit.com/adafruit-9-dof-orientation-imu-fusion-breakout-bno085/arduino)
+    diz que a ligação de 4 fios (I²C) deste sensor não funciona bem com as placas ESP32, e que a de
+    10 fios (SPI) precisa dos fios INT e RST para ser estável. Por isso a ligação não se escolhe
+    pelo que é mais simples de ligar, escolhe-se pelo ensaio:
+    1. Placa viva e sensor a responder, a 4 fios, com o cabo de ficha pequena (sem solda).
+    2. Ensaio de resistência a 4 fios, ao ritmo do desenho e acima dele, durante horas: contar as
+       leituras que faltam, os erros e as vezes que o sensor se reinicia.
+    3. Se falhar, passa à ligação de 10 fios (SPI), que o fabricante dá como fiável. Obriga a
+       soldar a régua de pinos ao sensor e a levar os pinos P0 e P1 a 3 V. A ligação série (UART)
+       fica como terceira via.
+
+    Os programas de ensaio estão em `software/ferramentas/bancada/`. O resultado regista-se aqui.
 
 ## Pedido novo: carta com toque e caminhos guardados (por desenhar com o Ivo)
 
@@ -494,3 +509,8 @@ Fica fora das duas caixas desta fase até haver as fotos e o esquema.
 - A caixa negra grava também o sobe e desce do barco na onda (Ivo).
 - Grava-se o movimento completo em bruto (aceleração, rotação e inclinação), 10 vezes por segundo,
   com a média feita na caixa; a conta da altura e do período fica para depois (Claude).
+
+## Decisões de 22/11
+
+- A maneira de ligar o sensor à placa escolhe-se pelo ensaio de bancada. Se a de 4 fios falhar ao
+  ritmo do desenho, fica a de 10 fios, mesmo dando mais trabalho a montar (Claude).

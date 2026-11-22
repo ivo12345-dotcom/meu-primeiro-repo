@@ -22,6 +22,7 @@ pasta é o quê, como se testa no portátil e o que cada plugin precisa no barco
 | `ferramentas/costa/` | Gera as linhas de costa e valida os destinos (Python, no portátil) | Não |
 | `ferramentas/passagem/` | `simular.mjs`: a passagem de referência Algés → Peniche de 29/09 | Não |
 | `ferramentas/ondas/` | O ensaio que sustenta o desenho do "sobe e desce da onda" (como a caixa 1 tem de ler o sensor e quanto ocupa na caixa negra); Python com numpy e Node | Não |
+| `ferramentas/bancada/` | Programas de ensaio para as placas ESP32 das caixas, na bancada. `placa/`: a placa está viva e o sensor BNO085 responde? (compila; por correr na placa verdadeira) | Não |
 | `ferramentas/sincronizar/` | Copia os dados do Pi para o portátil e põe no barco um modelo treinado no portátil | Não (corre no portátil) |
 | `ferramentas/tempestade/` | Acompanhar um temporal: `charles.py` (as simulações "se fôssemos apanhados" e o boletim) e `vts_alges.py` (a estação da torre VTS de Algés em direto); as saídas e os dados descarregados ficam em `docs/tempestades/` | Não |
 | `ferramentas/esquema-eletrico/` | Gera o esquema elétrico para o eletricista (`esquema-eletrico-arlequin.svg`), a tabela de cabos e a página partilhável | Não |
