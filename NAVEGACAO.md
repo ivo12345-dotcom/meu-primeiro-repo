@@ -593,8 +593,8 @@ alimentação da HAT a alimentar tudo
 | 2 | Dissipador ativo oficial (SC1148) | [Botnroll PT](https://www.botnroll.com/en/accessories/5018-raspberry-pi-5-official-active-cooler-sc1148.html) | **€5,90** | |
 | 3 | Pimoroni NVMe Base | [RaspberryPi.dk](https://raspberrypi.dk/en/product/pimoroni-nvme-base-for-raspberry-pi-5/) | **€19,93** | Traz cabo PCIe, espaçadores e pés |
 | 4 | SSD NVMe 256 GB (M.2 2280) | [PcComponentes](https://www.pccomponentes.pt/gigabyte-ssd-m2-2280-256gb-pcie-30-x4-nvme) (Gigabyte) | **€34,33** | Preferir uma marca testada pela Pimoroni (Kingston, Crucial, Samsung, Kioxia) se custar o mesmo |
-| 5 | MacArthur HAT | [OpenMarine](https://shop.openmarine.net/home/23-macarthur-hat.html) | **~€76** (€62 s/IVA) | 36 em stock. Só envia às segundas e terças |
-| 6 | Módulo de alimentação 12→5 V da HAT | OpenMarine | **~€28** (desde €23 s/IVA) | Alimenta o conjunto todo a partir dos 12 V |
+| 5 | MacArthur HAT | [OpenMarine](https://shop.openmarine.net/home/23-macarthur-hat.html) | **~€76** (€62 s/IVA) | A 28/09 havia 36. **A 22/11: esgotada, com reposição prevista para 23/11; aceita encomendas.** Só envia às segundas e terças |
+| 6 | Módulo de alimentação 12→5 V da HAT | [OpenMarine](https://shop.openmarine.net/front/24-10-power-module-for-macarthur-hat.html) | **~€28** sem soldar (€23 s/IVA); **~€34** com os pinos já soldados (€28 s/IVA, visto a 22/11) | Alimenta o conjunto todo a partir dos 12 V e desliga o Pi em segurança quando se corta o quadro. O total abaixo conta com a versão sem soldar |
 | 7 | Ecrã de testes LAFVIN 7" HDMI, tátil capacitivo, 1024×600 | [Amazon.es](https://www.amazon.es/dp/B0BVW7J1J8) | **€48,78** | HDMI + toque por USB, como o definitivo. Há versão de 10,1" a €71,14 |
 | 7b | Cabo **micro-HDMI → HDMI** (o Pi 5 só tem micro-HDMI), com o comprimento até à roda (3–5 m; por medir: §8, ponto 7) | Amazon | a confirmar (1 m: €9,95) | + cabo USB do mesmo comprimento para o toque |
 | 8 | Cartas o-charts Portugal | [o-charts](https://o-charts.org/shop/en/oesenc/79-portugal.html) | **~€20** (€16 s/IVA) | Continente, Açores e Madeira |
