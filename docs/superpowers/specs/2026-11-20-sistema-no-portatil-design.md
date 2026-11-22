@@ -125,9 +125,16 @@ portátil. O Wi-Fi fica de fora para os sensores, porque dependia da rede do Fol
 
 ## Caixa 2: motor
 
-A segunda placa ESP32 da ELEGOO, junto ao motor, na derivação soldada à cablagem do MDI que já
-estava decidida (`NAVEGACAO.md`, "Motor J1939: compras": pinos 5 CAN-H, 2 CAN-L e 4 massa; o pino 6
-não se toca).
+A segunda placa ESP32 da ELEGOO, na derivação soldada à cablagem do MDI que já estava decidida
+(`NAVEGACAO.md`, "Motor J1939: compras": pinos 5 CAN-H, 2 CAN-L e 4 massa; o pino 6 não se toca).
+
+**Onde se faz a derivação (Ivo, 22/11): primeiro tenta-se por trás do painel do motor; se não der,
+no chicote junto ao motor.** O par de fios dos dados vai da caixa do motor (MDI) ao mostrador do
+painel, por isso é o mesmo nas duas pontas, e a caixa 2 fica junto do sítio onde se fizer a
+derivação (no máximo a 50 cm). O painel tem três vantagens: é mais seco e mais fresco do que a casa
+do motor, chega-se lá melhor, e é onde estão os botões de ligar e desligar que o Ivo quer comandar
+mais tarde. Antes de mexer: fotos das costas do painel e da caixa MDI, e identificar os fios com o
+multímetro, com tudo desligado (60 a 120 Ω entre os dois fios dos dados).
 
 - Um módulo transcetor CAN de 3,3 V liga a derivação à placa, **só em escuta** (a placa nunca
   escreve no barramento do motor).
@@ -551,3 +558,8 @@ Fica fora das duas caixas desta fase até haver as fotos e o esquema.
 
 - A maneira de ligar o sensor à placa escolhe-se pelo ensaio de bancada. Se a de 4 fios falhar ao
   ritmo do desenho, fica a de 10 fios, mesmo dando mais trabalho a montar (Claude).
+- Os dados do motor vão buscar-se primeiro por trás do painel; o chicote junto ao motor fica como
+  alternativa (Ivo).
+- **O que conta agora é o portátil (Ivo).** O Raspberry Pi, a MacArthur, o disco e a alimentação do
+  computador definitivo ficam em espera até o piloto automático chegar; nada disso se compra nem se
+  desenha entretanto. O que já se apurou fica anotado no `NAVEGACAO.md`, §4.
