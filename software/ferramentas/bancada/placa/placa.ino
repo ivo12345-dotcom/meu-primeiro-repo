@@ -3,23 +3,30 @@
 // Só usa o que vem com a placa (não precisa de nenhuma biblioteca à parte). Serve para apanhar
 // logo o que costuma falhar: cabo USB que só carrega, fio trocado, sensor sem corrente.
 //
-// Placa: ELEGOO "ESP32 DEVKIT V1 TYPEC" (30 pinos). Sensor: Adafruit BNO085 (ref. 4754), pelo cabo
-// de ficha pequena (STEMMA QT / Qwiic):
-//   vermelho -> 3V3     preto -> GND     azul (SDA) -> D21     amarelo (SCL) -> D22
+// Placa: ELEGOO "ESP32 DEVKIT V1 TYPEC" (30 pinos). Sensor: Adafruit BNO085 (ref. 4754), a 4 fios:
+//   VIN -> 3V3     GND -> GND     SDA -> D21     SCL -> D22
 //
 // De 2 em 2 segundos manda uma linha pelo USB (115 200 baud):
-//   BANCADA1 t=12 chip=ESP32-D0WD-V3 rev=301 flash=4MB puxa_sda=1 puxa_scl=1 i2c=4A sensor=sim pacote=276/0
+//   BANCADA1 t=12 chip=ESP32-D0WD-V3 rev=301 flash=4MB puxa_sda=1 puxa_scl=1 i2c=4A sensor=sim pacote=276/0 lidos=290
 //
 //   puxa_sda, puxa_scl  1 se o sensor está a puxar essa linha para cima: prova que o sensor tem
 //                       corrente e que esse fio está ligado
-//   i2c                 os endereços que respondem (o BNO085 é o 4A; o 4B se o pino DI estiver alto)
-//   sensor              sim, se responde o 4A ou o 4B
-//   pacote              comprimento/canal do pacote que o sensor oferece (só informativo)
+//   i2c                 o endereço a que o sensor responde (4A; 4B se o pino DI estiver alto)
+//   sensor              sim, se respondeu nesta volta
+//   pacote              comprimento/canal do primeiro pacote que o sensor ofereceu (276/0 é a
+//                       apresentação de quem acabou de arrancar; "-" se não tinha nada para dizer)
+//   lidos               bytes lidos ao sensor desde o arranque da placa
+//
+// ATENÇÃO, aprendido na bancada a 22/11/2026 (ponto 12 do desenho): a primeira versão deste programa
+// procurava o sensor com escritas vazias a todos os endereços e lia-lhe só os 4 primeiros bytes, de
+// 2 em 2 segundos. Isso deixou o sensor num estado em que ignorava ordens até recomeçar sozinho.
+// Esta versão só lê, e lê cada pacote até ao fim, que é como o sensor quer ser tratado.
+// (Compila; ainda não correu numa placa.)
 //
 // Compilar, gravar e ler (COMx é a porta que o Windows der à placa):
 //   arduino-cli compile --fqbn esp32:esp32:esp32doit-devkit-v1 --build-path <pasta fora do projeto> placa
 //   arduino-cli upload  --fqbn esp32:esp32:esp32doit-devkit-v1 --input-dir <a mesma pasta> -p COMx placa
-//   arduino-cli monitor -p COMx --config baudrate=115200
+//   python ../ler.py COMx 12
 #include <Wire.h>
 
 const int PINO_SDA = 21;
@@ -27,8 +34,16 @@ const int PINO_SCL = 22;
 const int PINO_LED = 2;                 // a luz azul da placa, se a tiver
 const uint32_t VELOCIDADE_I2C = 100000;
 const uint32_t PERIODO_MS = 2000;
+const uint8_t ENDERECOS[] = {0x4A, 0x4B};
+const size_t MAIOR_LEITURA = 128;       // o que cabe de uma vez no barramento desta placa
+
+static bool puxaSda = false, puxaScl = false, barramento = false;
+static uint8_t endereco = 0;            // 0: o sensor ainda não respondeu
+static String primeiro = "-";
+static uint32_t lidos = 0;
 
 // Com a resistência interna a puxar para baixo, a linha só fica alta se o sensor a puxar para cima.
+// Só se faz com o barramento parado: mexer no modo dos pinos a meio de uma conversa estragava-a.
 static bool linhaPuxada(int pino) {
   pinMode(pino, INPUT_PULLDOWN);
   delay(2);
@@ -43,6 +58,30 @@ static String doisHex(uint8_t v) {
   return v < 16 ? "0" + s : s;
 }
 
+// Lê tudo o que o sensor tiver para dizer, cada pacote até ao fim. Devolve false se ele não responder.
+// Um pacote começa por 4 bytes: comprimento (2, com o cabeçalho incluído), canal e número de ordem.
+// Lido o cabeçalho, o resto vem aos bocados, e cada bocado traz outra vez um cabeçalho à frente.
+static bool esvazia(uint8_t e) {
+  for (int pacotes = 0; pacotes < 16; pacotes++) {
+    if (Wire.requestFrom((int)e, 4) != 4) return false;
+    uint8_t c[4];
+    for (int i = 0; i < 4; i++) c[i] = Wire.read();
+    uint16_t resto = ((uint16_t)(c[1] & 0x7F) << 8) | c[0];
+    if (resto <= 4) return true;  // nada à espera
+    if (primeiro == "-") primeiro = String(resto) + "/" + String(c[2]);
+    lidos += 4;
+    resto -= 4;
+    while (resto > 0) {
+      const size_t n = (size_t)resto + 4 > MAIOR_LEITURA ? MAIOR_LEITURA : (size_t)resto + 4;
+      if (Wire.requestFrom((int)e, (int)n) != n) return false;
+      while (Wire.available()) Wire.read();
+      lidos += n - 4;
+      resto -= n - 4;
+    }
+  }
+  return true;
+}
+
 void setup() {
   Serial.begin(115200);
   pinMode(PINO_LED, OUTPUT);
@@ -52,41 +91,30 @@ void setup() {
 }
 
 void loop() {
-  const bool puxaSda = linhaPuxada(PINO_SDA);
-  const bool puxaScl = linhaPuxada(PINO_SCL);
-
-  String enderecos = "";
-  uint8_t enderecoSensor = 0;
-  String pacote = "-";
-
-  // Sem as duas linhas puxadas para cima não há barramento: procurar só fazia perder tempo.
-  if (puxaSda && puxaScl) {
-    Wire.begin(PINO_SDA, PINO_SCL, VELOCIDADE_I2C);
-    for (uint8_t e = 0x08; e <= 0x77; e++) {
-      Wire.beginTransmission(e);
-      if (Wire.endTransmission() == 0) {
-        if (enderecos.length()) enderecos += ",";
-        enderecos += doisHex(e);
-        if (e == 0x4A || e == 0x4B) enderecoSensor = e;
-      }
-    }
-    if (enderecoSensor) {
-      // Os quatro primeiros bytes de um pacote do BNO085: comprimento (2), canal, número de ordem.
-      if (Wire.requestFrom((int)enderecoSensor, 4) == 4) {
-        const uint8_t b0 = Wire.read();
-        const uint8_t b1 = Wire.read();
-        const uint8_t canal = Wire.read();
-        Wire.read();
-        const uint16_t comprimento = (uint16_t)((b1 & 0x7F) << 8) | b0;
-        pacote = String(comprimento) + "/" + String(canal);
-      } else {
-        pacote = "erro";
-      }
-    }
-    Wire.end();
+  // Enquanto não houver barramento, vê-se se as duas linhas estão puxadas para cima; depois de o abrir
+  // já não se mexe nos pinos.
+  if (!barramento) {
+    puxaSda = linhaPuxada(PINO_SDA);
+    puxaScl = linhaPuxada(PINO_SCL);
+    if (puxaSda && puxaScl) barramento = Wire.begin(PINO_SDA, PINO_SCL, VELOCIDADE_I2C);
   }
 
-  digitalWrite(PINO_LED, enderecoSensor ? HIGH : !digitalRead(PINO_LED));
+  bool responde = false;
+  if (barramento) {
+    if (endereco) {
+      responde = esvazia(endereco);
+    } else {
+      for (uint8_t e : ENDERECOS) {
+        if (esvazia(e)) {
+          endereco = e;
+          responde = true;
+          break;
+        }
+      }
+    }
+  }
+
+  digitalWrite(PINO_LED, responde ? HIGH : !digitalRead(PINO_LED));
 
   Serial.print("BANCADA1 t=");
   Serial.print(millis() / 1000);
@@ -101,11 +129,13 @@ void loop() {
   Serial.print(" puxa_scl=");
   Serial.print(puxaScl ? 1 : 0);
   Serial.print(" i2c=");
-  Serial.print(enderecos.length() ? enderecos : String("-"));
+  Serial.print(endereco ? doisHex(endereco) : String("-"));
   Serial.print(" sensor=");
-  Serial.print(enderecoSensor ? "sim" : "nao");
+  Serial.print(responde ? "sim" : "nao");
   Serial.print(" pacote=");
-  Serial.println(pacote);
+  Serial.print(primeiro);
+  Serial.print(" lidos=");
+  Serial.println(lidos);
 
   delay(PERIODO_MS);
 }

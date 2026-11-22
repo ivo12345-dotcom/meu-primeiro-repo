@@ -381,6 +381,62 @@ definitivo, ou a caixa 2 fica de vez.
 
     Os programas de ensaio estão em `software/ferramentas/bancada/`. O resultado regista-se aqui.
 
+    **Bancada de 22/11/2026 (primeira noite).** Placa ELEGOO (ESP32-D0WD-V3, 4 MB, chip de USB
+    CP2102) e sensor com o programa 3.2.13 (peça 10004148), no endereço 4A. O Ivo soldou os dois
+    pentes de pinos ao sensor (pinos para cima, do lado do chip) e ligou 4 fios de encaixe de
+    cerca de 20 cm: VIN→3V3, GND→GND, SDA→D21, SCL→D22
+    ([as fotos dele, marcadas](../../caixas/bancada-ligacao-4-fios.jpg)).
+
+    - **Passo 1, passou:** placa viva, as duas linhas puxadas para cima, sensor a responder.
+    - **A ligação de 4 fios funciona a 400 kHz nos dois sentidos:** pedidos e respostas certos,
+      leituras de 128 bytes de uma vez sem erro, e as três leituras a chegar ao ritmo pedido.
+    - **Achado que conta para o firmware: o sensor pode ficar num estado anormal sem perder a
+      corrente.** Nesse estado responde a pedidos (identificação, apresentação) mas ignora a ordem
+      de recomeçar e os pedidos de leituras, e a biblioteca da Adafruit não consegue abrir a
+      conversa. Pô-lo lá foi o meu primeiro programa de ensaio, que de 2 em 2 s, com a apresentação
+      de arranque do sensor ainda por ler, lhe fazia uma escrita vazia (a "procura de endereços") e
+      lhe lia só os 4 primeiros bytes. A lista de erros do sensor mostrava nove vezes o erro 2 e o
+      12 (lista cheia). Saiu de lá quando recomeçou por si: uma escrita mal formada (23 bytes com um
+      cabeçalho a anunciar 21) fê-lo recomeçar em menos de 1 s (a identificação dava "causa do
+      último recomeço: 3", que é o cão de guarda dele). A partir daí obedeceu sempre.
+    - **Outro achado:** quando a placa recomeça a meio de uma leitura, o sensor pode ficar a
+      segurar a linha dos dados e a primeira conversa a seguir falha ("endereço não encontrado").
+      Resolve-se com nove impulsos de relógio dados à mão antes de abrir o barramento.
+
+    **Ensaio rápido (1 minuto por ritmo), 22/11 às 20:37.** Sem uma falha nos fios em 695 000
+    conversas, sem o sensor se reiniciar nem se calar:
+
+    | Barramento | Pedido por segundo (aceleração / rotação / atitude) | Chegou por segundo | Em falta | Conversa mais demorada |
+    |---|---|---|---|---|
+    | 100 kHz | 100 / 100 / 100 | 128 / 100 / 100 | 0 | 4,9 ms |
+    | 400 kHz | 100 / 100 / 100 | 128 / 100 / 100 | 0 | 1,5 ms |
+    | 400 kHz | 200 / 200 / 100 | 255 / 200 / 100 | 0 | 2,1 ms |
+    | 400 kHz | 400 / 400 / 100 | 83 / 311 / 78 | 0 | 1,2 ms |
+    | 400 kHz | 500 / 400 / 100 | 82 / 312 / 78 | 0 | 1,3 ms |
+
+    - A aceleração vem a 125 por segundo quando se pedem 100 (o degrau do sensor é de 8 ms).
+    - **O teto desta ligação é à volta de 200 / 200 / 100.** Acima disso o sensor não dá vazão: não
+      há erros nem saltos no número de ordem, mas chegam menos leituras do que as pedidas (serve
+      primeiro a rotação). O desenho precisa de 100 de cada, por isso chega com folga.
+    - Ruído com o sensor parado (desvio-padrão): 0,02 m/s² nos eixos deitados, 0,03 a 0,07 no
+      vertical. A proa ainda não vale ("erro estimado 180°"): o sensor só a acerta depois de rodado
+      em várias direções, o que fica para o ensaio da bússola.
+
+    **Ensaio de resistência:** a correr desde as 20:45 de 22/11, 3 horas a 400 kHz e
+    200 / 200 / 100 (o dobro do desenho). O resultado regista-se aqui.
+
+    Regras que isto dá ao firmware da caixa 1:
+
+    1. Ao arrancar: soltar o barramento (os nove impulsos), ler até ao fim tudo o que o sensor
+       tiver para dizer, só depois escrever. Nunca escritas vazias para "ver se está lá", nunca
+       pacotes lidos a meio.
+    2. Confirmar que o sensor respondeu "recomeço completo" à ordem de recomeçar e que as
+       leituras chegam mesmo; "a conversa abriu" não chega como prova.
+    3. A placa recomeça sem o sensor perder a corrente sempre que o portátil reabre a porta USB:
+       esse caminho tem de ficar ensaiado (na bancada correu bem três vezes em três).
+    4. **Levar um quinto fio, do pino RST do sensor a um pino da placa** (parecer meu, por decidir
+       com o Ivo): é o recomeço garantido, por fio, para quando o sensor não obedece à ordem.
+
 ## Pedido novo: carta com toque e caminhos guardados (por desenhar com o Ivo)
 
 O Ivo quer, no Fold: mexer na carta com os dedos, marcar uma rota, ver as batimétricas, ver sempre

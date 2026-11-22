@@ -32,6 +32,19 @@
 //   z        põe os totais a zero
 //   n        pede ao sensor os contadores dele (linhas "N")
 //   x        refaz a ligação ao sensor
+//   e <ms>   tempo que a placa espera pelo sensor em cada conversa (50 é o costume)
+//
+// Ao arrancar fica 1,5 s à escuta antes de abrir a ligação (cada comando recebido estica mais 1,5 s;
+// um "g" acaba a escuta). Se a ligação não abrir, mostra as conversas uma a uma (linhas "S passo=")
+// e a placa recomeça. Só nessa escuta, para estudar o sensor quando ele não colabora:
+//   r        manda-lhe só a ordem de recomeçar e mostra o que ele diz a seguir
+//   w <ms> <hex>   escreve-lhe um pacote, espera e lê tudo o que ele tiver ("W": sem ler)
+//   k        obriga-o a recomeçar com uma escrita mal formada (recurso de bancada, ver o ponto 12)
+//   a 0|1    a seguir à ordem de recomeçar, pede-lhe também a apresentação
+//   f <us>   folga mínima entre o fim de uma escrita e a conversa seguinte
+//
+// O que a bancada de 22/11/2026 ensinou está no ponto 12 do desenho: o sensor guarda o estado
+// enquanto tiver corrente, mesmo que a placa recomece, e pode ficar num estado em que ignora ordens.
 //
 // Compilar e gravar (COMx é a porta que o Windows der à placa):
 //   arduino-cli compile --fqbn esp32:esp32:esp32doit-devkit-v1 --build-path <pasta fora do projeto> bno085
@@ -52,25 +65,85 @@ public:
 
   uint32_t leituras = 0, falhasLeitura = 0, escritas = 0, falhasEscrita = 0, duracaoMax = 0;
 
+  // O traço: as primeiras conversas, uma a uma, para se ver onde a ligação se estraga.
+  struct Passo {
+    char tipo;                // 'L' leitura, 'E' escrita
+    uint16_t pedidos, feitos; // bytes pedidos e lidos; na escrita, bytes mandados e o código de erro
+    uint32_t us;
+    uint8_t bytes[20];        // os primeiros vinte
+  };
+  static const size_t TRACO = 48;
+  Passo traco[TRACO];
+  size_t passos = 0;
+  bool tracar = false;
+
+  // A folga: o tempo mínimo entre o fim de uma escrita e a conversa seguinte. O sensor precisa de
+  // um instante para tratar o que lhe mandaram; esta placa é rápida de mais e fala-lhe logo a seguir.
+  uint32_t folgaUs = 0;
+
+  // A biblioteca abre a conversa a mandar o sensor recomeçar e fica à espera de que ele se apresente.
+  // Visto na bancada (22/11/2026): num estado anormal o sensor responde a pedidos mas não obedece a
+  // essa ordem, e sem recomeçar não se apresenta. Com isto ligado (comando "a 1"), a seguir à ordem
+  // pede-se-lhe a apresentação por extenso: serve para o estudar nesse estado, não para trabalhar.
+  bool pedeApresentacao = false;
+  uint32_t apresentacoesPedidas = 0;
+
   size_t requestFrom(uint8_t endereco, size_t n, bool parar) override {
+    daFolga();
     const uint32_t t0 = micros();
     const size_t lidos = TwoWire::requestFrom(endereco, n, parar);
-    anota(micros() - t0);
+    const uint32_t duracao = micros() - t0;
+    anota(duracao);
     leituras++;
     if (lidos != n) falhasLeitura++;
+    if (tracar && passos < TRACO) {
+      Passo &p = traco[passos++];
+      p.tipo = 'L';
+      p.pedidos = n;
+      p.feitos = lidos;
+      p.us = duracao;
+      for (size_t i = 0; i < sizeof(p.bytes); i++) p.bytes[i] = (rxBuffer && i < rxLength) ? rxBuffer[i] : 0;
+    }
     return lidos;
   }
 
   uint8_t endTransmission(bool parar) override {
+    Passo p = {'E', (uint16_t)txLength, 0, 0, {0}};
+    for (size_t i = 0; i < sizeof(p.bytes); i++) p.bytes[i] = (txBuffer && i < txLength) ? txBuffer[i] : 0;
+    const uint16_t destino = txAddress;
+    // a ordem de recomeçar: 5 bytes, para o canal 1, com a carga 1
+    const bool recomecar = txLength == 5 && p.bytes[0] == 5 && p.bytes[1] == 0 && p.bytes[2] == 1 && p.bytes[4] == 1;
+    daFolga();
     const uint32_t t0 = micros();
     const uint8_t erro = TwoWire::endTransmission(parar);
-    anota(micros() - t0);
+    fimEscrita = micros();
+    houveEscrita = true;
+    p.us = fimEscrita - t0;
+    p.feitos = erro;
+    anota(p.us);
     escritas++;
     if (erro != 0) falhasEscrita++;
+    if (tracar && passos < TRACO) traco[passos++] = p;
+    if (recomecar && pedeApresentacao && erro == 0) {
+      static const uint8_t APRESENTA_TE[] = {6, 0, 0, 0, 0, 1};  // canal 0, pedido 0 (apresentação), tudo
+      apresentacoesPedidas++;
+      TwoWire::beginTransmission(destino);
+      TwoWire::write(APRESENTA_TE, sizeof(APRESENTA_TE));
+      endTransmission(true);  // por aqui outra vez, para ficar contada e no traço
+    }
     return erro;
   }
 
 private:
+  uint32_t fimEscrita = 0;
+  bool houveEscrita = false;
+
+  void daFolga() {
+    if (!houveEscrita || !folgaUs) return;
+    const uint32_t passou = micros() - fimEscrita;
+    if (passou < folgaUs) delayMicroseconds(folgaUs - passou);
+  }
+
   void anota(uint32_t duracao) {
     if (duracao > duracaoMax) duracaoMax = duracao;
   }
@@ -91,6 +164,7 @@ struct Canal {  // um tipo de leitura: aceleração, rotação ou atitude
 
 struct Ritmo {
   uint32_t barramento = 400000, acel = 100, giro = 100, rot = 100;
+  uint32_t espera = 50;  // ms que a placa espera pelo sensor em cada conversa (50 é o costume)
 };
 
 static FioContado fio(0);
@@ -100,6 +174,9 @@ static Canal acel, giro, rot;
 static float quat[4] = {0, 0, 0, 1};  // i, j, k, real
 static float precisaoRot = 0;
 static bool ligado = false, despejo = false;
+static bool aberta = false;  // a biblioteca tem uma conversa aberta com o sensor
+static bool avanca = false;  // chegou um "g": acabou a escuta do arranque
+static uint32_t comandos = 0;
 static uint32_t tLeitura = 0, tSegundo = 0, tTotais = 0, voltas = 0, tentativas = 0;
 static uint32_t reinicios = 0, silencios = 0, silenciosSeguidos = 0, errosDescodificar = 0;
 static uint32_t fioLeituras = 0, fioFalhasLeitura = 0, fioEscritas = 0, fioFalhasEscrita = 0, fioDuracaoMax = 0;
@@ -202,18 +279,120 @@ static void ativaLeituras(bool anuncia) {
                 (unsigned long)intervaloReal(SH2_GYROSCOPE_CALIBRATED), (unsigned long)intervaloReal(SH2_ROTATION_VECTOR));
 }
 
+static void mostraTraco() {
+  for (size_t i = 0; i < fio.passos; i++) {
+    const FioContado::Passo &p = fio.traco[i];
+    Serial.printf("S passo=%u %c pedidos=%u feitos=%u us=%lu bytes=", (unsigned)i, p.tipo, p.pedidos, p.feitos,
+                  (unsigned long)p.us);
+    const size_t n = p.pedidos < sizeof(p.bytes) ? p.pedidos : sizeof(p.bytes);
+    for (size_t k = 0; k < n; k++) Serial.printf("%02X%s", p.bytes[k], k + 1 < n ? "." : "");
+    Serial.println();
+  }
+}
+
+// Se a placa recomeçou a meio de uma conversa, o sensor pode ter ficado a segurar a linha dos dados à
+// espera do resto dos impulsos do relógio, e a conversa seguinte falha. Dão-se-lhe os impulsos à mão
+// (nove chegam para acabar qualquer byte) e fecha-se com uma paragem.
+static void soltaBarramento() {
+  pinMode(PINO_SDA, INPUT_PULLUP);
+  pinMode(PINO_SCL, OUTPUT_OPEN_DRAIN);
+  digitalWrite(PINO_SCL, HIGH);
+  delayMicroseconds(10);
+  for (int i = 0; i < 9 && digitalRead(PINO_SDA) == LOW; i++) {
+    digitalWrite(PINO_SCL, LOW);
+    delayMicroseconds(10);
+    digitalWrite(PINO_SCL, HIGH);
+    delayMicroseconds(10);
+  }
+  pinMode(PINO_SDA, OUTPUT_OPEN_DRAIN);
+  digitalWrite(PINO_SDA, LOW);
+  delayMicroseconds(10);
+  digitalWrite(PINO_SDA, HIGH);  // a paragem: os dados sobem com o relógio em cima
+  delayMicroseconds(10);
+  pinMode(PINO_SDA, INPUT);
+  pinMode(PINO_SCL, INPUT);
+}
+
+// Experiência, só com a ligação por abrir: escreve ao sensor um pacote à escolha, espera e lê tudo o
+// que ele tiver para dizer, até ao fim de cada pacote (para não o deixar a meio de uma frase).
+// Um sensor que recomeçou apresenta-se com um pacote de 276 bytes com o número de ordem 0.
+static void experimenta(const uint8_t *pacote, size_t n, uint32_t esperaMs, bool le = true) {
+  if (ligado) {
+    Serial.println("! experiências: só antes de a ligação abrir");
+    return;
+  }
+  fio.end();
+  soltaBarramento();
+  fio.begin(PINO_SDA, PINO_SCL, ritmo.barramento);
+  fio.setTimeOut(ritmo.espera);
+  fio.passos = 0;
+  fio.tracar = true;
+  if (n) {
+    fio.beginTransmission(ENDERECO);
+    fio.write(pacote, n);
+    fio.endTransmission(true);
+  }
+  delay(esperaMs);
+  for (int k = 0; le && k < 8; k++) {
+    if (fio.requestFrom(ENDERECO, (size_t)4, true) != 4) break;
+    uint8_t cabeca[4];
+    for (int i = 0; i < 4; i++) cabeca[i] = fio.read();
+    uint16_t resto = ((uint16_t)cabeca[0] | ((uint16_t)cabeca[1] << 8)) & 0x7FFF;
+    if (resto <= 4) break;  // nada à espera
+    resto -= 4;             // ficou lido o cabeçalho; falta a carga
+    while (resto > 0) {
+      const size_t m = resto + 4 > 128 ? 128 : resto + 4;  // cada leitura traz outra vez um cabeçalho
+      if (fio.requestFrom(ENDERECO, m, true) != m) {
+        resto = 0;
+        break;
+      }
+      while (fio.available()) fio.read();
+      resto -= m - 4;
+    }
+    delay(5);
+  }
+  fio.tracar = false;
+  Serial.printf("S experiencia bytes=%u espera=%lu barramento=%lu folga=%lu\n", (unsigned)n, (unsigned long)esperaMs,
+                (unsigned long)ritmo.barramento, (unsigned long)fio.folgaUs);
+  mostraTraco();
+}
+
 static bool liga() {
   tentativas++;
+  // A biblioteca só deixa abrir uma conversa nova depois de fechar a anterior.
+  if (aberta) {
+    sh2_close();
+    aberta = false;
+  }
   fio.end();
+  soltaBarramento();
   fio.begin(PINO_SDA, PINO_SCL, ritmo.barramento);
-  if (!bno.begin_I2C(ENDERECO, &fio)) {
-    Serial.printf("S ligacao=falhou tentativa=%lu\n", (unsigned long)tentativas);
+  fio.setTimeOut(ritmo.espera);
+  fio.passos = 0;
+  fio.tracar = true;
+  const uint32_t t0 = millis();
+  const bool ok = bno.begin_I2C(ENDERECO, &fio);
+  fio.tracar = false;
+  if (!ok) {
+    Serial.printf("S ligacao=falhou tentativa=%lu barramento=%lu espera=%lu ms=%lu lei=%lu fl=%lu esc=%lu fe=%lu dmax=%lu\n",
+                  (unsigned long)tentativas, (unsigned long)ritmo.barramento, (unsigned long)ritmo.espera,
+                  (unsigned long)(millis() - t0), (unsigned long)fio.leituras, (unsigned long)fio.falhasLeitura,
+                  (unsigned long)fio.escritas, (unsigned long)fio.falhasEscrita, (unsigned long)fio.duracaoMax);
+    mostraTraco();
+    // Depois de uma abertura falhada a biblioteca fica presa (não se sabe se chegou a abrir, e fechar o que
+    // não abriu rebenta): a única maneira limpa de tentar outra vez é a placa recomeçar.
+    Serial.println("S reinicia");
+    Serial.flush();
+    delay(1500);
+    ESP.restart();
     return false;
   }
+  aberta = true;
   sh2_setSensorCallback(aoReceber, NULL);
   bno.wasReset();  // o reinício do arranque não conta
   const sh2_ProductId_t &p = bno.prodIds.entry[0];
-  Serial.printf("S ligado tentativa=%lu parte=%lu versao=%u.%u.%u compilacao=%lu\n", (unsigned long)tentativas,
+  Serial.printf("S ligado tentativa=%lu ms=%lu barramento=%lu parte=%lu versao=%u.%u.%u compilacao=%lu\n",
+                (unsigned long)tentativas, (unsigned long)(millis() - t0), (unsigned long)ritmo.barramento,
                 (unsigned long)p.swPartNumber, p.swVersionMajor, p.swVersionMinor, p.swVersionPatch,
                 (unsigned long)p.swBuildNumber);
   ativaLeituras(true);
@@ -247,7 +426,11 @@ static void mostraTotais() {
 }
 
 static void executa(char *texto) {
+  comandos++;
   switch (texto[0]) {
+    case 'g':
+      avanca = true;
+      break;
     case 'c': {
       unsigned long b, a, g, r;
       if (sscanf(texto + 1, "%lu %lu %lu %lu", &b, &a, &g, &r) != 4 || b < 10000 || b > 1000000 || a > 1000 ||
@@ -263,7 +446,64 @@ static void executa(char *texto) {
         ativaLeituras(true);
         zeraTotais();
         acel.tChegada = micros();
+      } else {
+        Serial.printf("S ritmo barramento=%lu pedido=%lu/%lu/%lu\n", b, a, g, r);
       }
+      break;
+    }
+    case 'f': {
+      unsigned long us;
+      if (sscanf(texto + 1, "%lu", &us) != 1 || us > 100000) {
+        Serial.println("! comando f: f <folga depois de cada escrita, em microssegundos, 0 a 100000>");
+        return;
+      }
+      fio.folgaUs = us;
+      Serial.printf("S folga=%lu\n", us);
+      break;
+    }
+    case 'a':  // a 0|1: desliga/liga o pedido de apresentação a seguir à ordem de recomeçar
+      fio.pedeApresentacao = !(texto[1] == ' ' && texto[2] == '0');
+      Serial.printf("S apresentacao=%d\n", fio.pedeApresentacao);
+      break;
+    case 'r': {  // a ordem de recomeçar, sozinha
+      const uint8_t recomeca[] = {5, 0, 1, 0, 1};
+      experimenta(recomeca, sizeof(recomeca), 300);
+      break;
+    }
+    case 'k': {  // obriga o sensor a recomeçar quando ele não obedece à ordem (não lê nada a seguir)
+      // Visto na bancada: uma escrita mais comprida do que o cabeçalho dela anuncia (23 bytes, anuncia 21)
+      // faz o sensor recomeçar sozinho em menos de 1 s. Não vem na documentação: é recurso de bancada.
+      const uint8_t malFormado[23] = {0x15, 0x00, 0x02, 0x00, 0xFD, 0x01, 0, 0, 0, 0x10, 0x27};
+      experimenta(malFormado, sizeof(malFormado), 1000, false);
+      break;
+    }
+    case 'W':  // como o "w", mas sem ler nada a seguir
+    case 'w': {  // w <ms de espera> <pacote em hexadecimal, sem espaços> (ou só o tempo, para ler sem escrever)
+      unsigned long ms = 0;
+      char hex[64] = "";
+      if (sscanf(texto + 1, "%lu %63s", &ms, hex) < 1 || ms > 5000 || strlen(hex) % 2) {
+        Serial.println("! comando w: w <ms> <pacote em hexadecimal>");
+        return;
+      }
+      uint8_t pacote[32];
+      const size_t n = strlen(hex) / 2;
+      for (size_t i = 0; i < n; i++) {
+        unsigned b;
+        sscanf(hex + 2 * i, "%2x", &b);
+        pacote[i] = (uint8_t)b;
+      }
+      experimenta(pacote, n, ms, texto[0] == 'w');
+      break;
+    }
+    case 'e': {
+      unsigned long ms;
+      if (sscanf(texto + 1, "%lu", &ms) != 1 || ms < 1 || ms > 2000) {
+        Serial.println("! comando e: e <ms de espera pelo sensor, 1 a 2000>");
+        return;
+      }
+      ritmo.espera = ms;
+      fio.setTimeOut(ritmo.espera);
+      Serial.printf("S espera=%lu\n", ms);
       break;
     }
     case 'd':
@@ -289,7 +529,7 @@ static void executa(char *texto) {
       Serial.println("S religar");
       break;
     default:
-      Serial.println("! comandos: c d t z n x");
+      Serial.println("! comandos: c d t z n x e f a r w W k g");
   }
 }
 
@@ -361,6 +601,15 @@ void setup() {
   delay(300);
   Serial.println();
   Serial.println("S arranque programa=bancada2");
+  // Antes da primeira tentativa, 1,5 s à escuta: dá tempo de mandar um "c" ou um "e" de partida.
+  // Cada comando recebido estica a escuta mais 1,5 s (para as experiências); um "g" acaba-a logo.
+  uint32_t fim = millis() + 1500;
+  while ((int32_t)(fim - millis()) > 0 && !avanca) {
+    const uint32_t antes = comandos;
+    leComandos();
+    if (comandos != antes) fim = millis() + 1500;
+    delay(5);
+  }
 }
 
 void loop() {
