@@ -147,11 +147,12 @@ A caixa 2 fica o mais simples possível (lê e reenvia), para raramente precisar
 
 ## Das caixas para o portátil
 
-A caixa 1 manda pelo USB linhas de texto, uma por leitura: impulsos do log, frase do vento, atitude
-do BNO085, o movimento do barco (10 linhas por segundo, com aceleração, rotação e inclinação, e um
-número de ordem para se ver se faltou alguma), tramas do motor reenviadas no formato `candump -L`
-(o mesmo que o plugin do motor já lê) e, de segundo a segundo, um batimento de cada caixa (viva,
-contadores, força do rádio). Os campos exatos ficam no plano de implementação.
+A caixa 1 manda pelo USB linhas de texto, uma por leitura: impulsos do log, a frase do vento, o
+sensor BNO085 numa só linha (10 por segundo, com a aceleração, a rotação, a orientação completa e
+um número de ordem para se ver se faltou alguma), tramas do motor reenviadas no formato
+`candump -L` (o mesmo que o plugin do motor já lê) e, de segundo a segundo, um batimento de cada
+caixa (viva, contadores, força do rádio). Os campos exatos estão em
+`docs/superpowers/plans/2026-11-22-sistema-no-portatil-parte1.md`, "A linguagem das linhas".
 
 ## No portátil
 
@@ -211,7 +212,7 @@ comprar nada: é o mesmo sensor BNO085 da caixa 1, lido de outra maneira.
 |---|---|
 | Aceleração nos três eixos, em bruto | O sobe e desce tira-se daqui |
 | Rotação nos três eixos (giroscópio) | Refazer a inclinação com mais rigor do que a do chip, e passar a medida do sítio do sensor para o meio do barco |
-| Adornamento e caimento calculados pelo chip | Saber para onde é "para cima" quando o barco vai adornado |
+| Orientação completa calculada pelo chip (quaternião) | Saber para onde é "para cima" quando o barco vai adornado, e para onde aponta a proa |
 
 **Regras, tiradas de um ensaio no computador (21/11).** Simularam-se 20 minutos de mar de cada vez:
 cinco estados de mar (de 0,3 m com 3 s a 2,5 m com 11 s), o barco adornado a 18°, o sensor 3,5 m a

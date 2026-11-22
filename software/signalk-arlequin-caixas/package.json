@@ -1,0 +1,10 @@
+{
+  "name": "signalk-arlequin-caixas",
+  "version": "0.1.0",
+  "description": "Caixas ESP32 do Arlequin: vento, velocidade na água, proa, adornamento, movimento e motor, por USB",
+  "main": "index.js",
+  "keywords": ["signalk-node-server-plugin", "signalk-category-hardware"],
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": { "test": "node --test \"test/*.test.js\"" }
+}
