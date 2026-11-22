@@ -1,0 +1,22 @@
+{
+  "name": "arlequin-signalk-bordo",
+  "private": true,
+  "description": "Pasta de configuração do SignalK de bordo (o portátil com as duas caixas; plugins do Arlequin ligados por file:)",
+  "dependencies": {
+    "signalk-arlequin-energia": "file:../../signalk-arlequin-energia",
+    "arlequin-ecra": "file:../../arlequin-ecra",
+    "signalk-arlequin-ais": "file:../../signalk-arlequin-ais",
+    "@meri-imperiumi/signalk-logbook": "0.13.2",
+    "signalk-arlequin-j1939": "file:../../signalk-arlequin-j1939",
+    "signalk-arlequin-caixas": "file:../../signalk-arlequin-caixas",
+    "signalk-arlequin-gasoleo": "file:../../signalk-arlequin-gasoleo",
+    "signalk-arlequin-agua": "file:../../signalk-arlequin-agua",
+    "signalk-arlequin-caixanegra": "file:../../signalk-arlequin-caixanegra",
+    "signalk-arlequin-ia": "file:../../signalk-arlequin-ia",
+    "signalk-arlequin-rota": "file:../../signalk-arlequin-rota",
+    "signalk-arlequin-porto": "file:../../signalk-arlequin-porto",
+    "@signalk/resources-provider": "1.5.2",
+    "@signalk/course-provider": "1.4.0",
+    "signalk-derived-data": "1.47.0"
+  }
+}

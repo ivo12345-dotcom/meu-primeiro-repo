@@ -66,6 +66,14 @@ $IIMWV,35.0,R,14.0,N,A*3E
 (12.345678) can1 0CF00400#FFFFFF004BFFFFFF
 ```
 
+**O que o lado do portátil espera das caixas** (escrito ao executar o plano, a 22/11, para o plano do firmware):
+
+- **O batimento da caixa 1 sai de segundo a segundo desde o primeiro segundo**, mesmo que o sensor ou o mostrador do vento não arranquem. Sem um batimento com 5 s ou menos o portátil não publica medição nenhuma: é por ele que sabe se a caixa finge.
+- **O portátil abre a porta USB sem reiniciar a placa** (as duas linhas de comando em repouso). A caixa tem de aguentar as duas coisas: arrancar com o portátil já à escuta, e o portátil ligar-se a meio (a primeira linha pode ir cortada; deita-se fora).
+- **Na procura automática** o portátil abre cada porta de placa ESP32 e espera 3 s pelo batimento da caixa 1. A caixa 2, se estiver ligada por USB só para ter corrente, manda o batimento dela (`caixa` 2) e o portátil passa logo à porta seguinte.
+- **Uma porta aberta sem um único byte durante 10 s** é fechada e reaberta pelo portátil.
+- **O sensor BNO085 guarda o estado quando a placa recomeça** e pode ficar a ignorar ordens: as regras de arranque estão no ponto 12 do desenho (bancada de 22/11).
+
 **Decisão deste plano sobre o desenho:** a atitude deixa de ter linha própria. Vai no `$AQM`, como quaternião (a orientação completa que o chip calcula), em vez do adornamento e do caimento. Guarda-se mais e não se perde nada: o adornamento, o caimento e a proa tiram-se do quaternião no portátil, com a montagem da caixa na configuração.
 
 ---
@@ -822,5 +830,5 @@ git commit -m "Bordo: o SignalK do portátil sem simulador, com os modos bordo e
 
 ## O que fica para os planos seguintes
 
-- **O programa das duas placas**, a falar esta linguagem: a caixa 1 (sensor, log, vento, rádio, USB) e a caixa 2 (motor só em escuta, rádio). A ligação do sensor (4 ou 10 fios) sai do ensaio de bancada, que ainda não correu.
+- **O programa das duas placas**, a falar esta linguagem: a caixa 1 (sensor, log, vento, rádio, USB) e a caixa 2 (motor só em escuta, rádio). A ligação do sensor: a bancada de 22/11 mostrou que os 4 fios funcionam (ponto 12 do desenho); falta o resultado do ensaio de resistência e decidir com o Ivo o quinto fio (RST).
 - **A conta da onda** sobre a gravação (altura e período), que o ensaio de bancada dos 30 cm precisa.

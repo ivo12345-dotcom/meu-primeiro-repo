@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "configuration": {
+    "notifications": {
+      "sound": false,
+      "enableArrival": false,
+      "enablePerpendicular": false
+    },
+    "calculations": {
+      "method": "GreatCircle"
+    }
+  }
+}

@@ -16,7 +16,10 @@ pasta é o quê, como se testa no portátil e o que cada plugin precisa no barco
 | `signalk-arlequin-ais/` | Alarme de colisão AIS no servidor (o mesmo `cpa.js` do ecrã) e o "em porto" | Sim |
 | `signalk-arlequin-gasoleo/` | Gasóleo pela sonda original (ADS1115): calibração, reserva ≤ 40 L, fuga, consumo anormal, abastecimentos | Sim |
 | `signalk-arlequin-agua/` | Água doce pelas pedaladas das bombas de pé: Enchi, calibrar a bomba, aviso ≤ 20 %, dias que faltam | Sim |
-| `signalk-arlequin-j1939/` | Motor D1-20B pelo J1939 do MDI: rotações, horas, temperaturas, tensão, consumo, alarmes, estado da ligação, descoberta da PGN 65417 | Sim |
+| `signalk-arlequin-j1939/` | Motor D1-20B pelo J1939 do MDI: rotações, horas, temperaturas, tensão, consumo, alarmes, estado da ligação, descoberta da PGN 65417. Três fontes: `candump` (adaptador CAN no Pi), `caixa` (as caixas ESP32, no portátil) e `simulador` | Sim |
+| `signalk-arlequin-caixas/` | **As caixas ESP32** (o sistema no portátil): lê o que a caixa 1 manda pelo cabo USB e põe no SignalK a velocidade na água (roda do log), o vento aparente, a proa, o adornamento e o caimento (sensor BNO085), o bloco do movimento para a caixa negra, o estado das duas caixas e as tramas do motor para o plugin do motor. As calibrações estão na configuração do plugin | Sim (com as caixas) |
+| `bordo/` | **O SignalK do portátil a bordo**, com as duas caixas e sem simulador: a configuração, o `preparar.js` (modos `bordo` e `ensaio`) e os comandos. Ver "No portátil a bordo, com as duas caixas" | **Não** (é o portátil) |
+| `ferramentas/caixa-a-fingir/` | Faz de caixa 1 e de GPS no próprio portátil (por TCP), para ensaiar tudo em casa sem as placas; o que manda sai marcado como simulado | Não |
 | `arlequin-simulador/` | Plugin que finge o barco (navegação, vento, AIS, motor, baterias, sol) | **Não** (só testes) |
 | `dev/` | SignalK local no portátil, com tudo ligado, e os scripts de ensaio | **Não** |
 | `ferramentas/costa/` | Gera as linhas de costa e valida os destinos (Python, no portátil) | Não |
@@ -144,6 +147,65 @@ Os da energia (aprovados pelo Ivo a 29/09; o apito como ficou a 02/10):
 
 De noite, com o barco parado (menos de 1 nó durante 5 min), os avisos de 55 % e 85 % ficam só no
 ecrã. A navegar, apitam também de noite. O besouro por GPIO é uma melhoria por decidir.
+
+## No portátil a bordo, com as duas caixas
+
+Enquanto não há computador de bordo, o sistema corre no portátil: a caixa 1 (roda do log, mostrador do
+vento, sensor de movimento) liga-se por USB, a caixa 2 (motor) fala com a caixa 1 por rádio, e o B330
+(AIS e GPS) liga-se por USB. O desenho está em
+`docs/superpowers/specs/2026-11-20-sistema-no-portatil-design.md`. É o mesmo SignalK do `dev/` (usa o
+servidor instalado lá), com outra pasta de configuração e **sem o simulador**.
+
+```bash
+cd software/dev   && npm run instalar   # uma vez: o servidor (se ainda não estiver instalado)
+cd software/bordo && npm run instalar   # uma vez: os plugins de bordo
+cd software/bordo && npm start          # a bordo: http://localhost:3000/arlequin-ecra/
+```
+
+O `dev` e o `bordo` usam os dois a porta 3000: **nunca os dois ao mesmo tempo.**
+
+**Ensaiar em casa, sem as placas** (dois terminais, na pasta `software/bordo`):
+
+```bash
+npm run caixa-a-fingir   # faz de caixa 1 e de GPS: 5,2 nós, vento de 14 nós a 35°, motor 1 min sim, 1 min não
+npm run ensaio           # o SignalK ligado à caixa a fingir
+```
+
+Opções da caixa a fingir: `-- --sem-caixa2` (a caixa do motor calada), `-- --sem-vento`, `-- --lixo`
+(linhas estragadas no meio das boas) e `-- --parar-aos 30` (o cabo tirado aos 30 s).
+
+| | `npm start` (bordo) | `npm run ensaio` |
+|---|---|---|
+| A caixa 1 | pelo cabo USB (procura a porta sozinho) | a caixa a fingir (`tcp://localhost:8765`) |
+| O GPS e o AIS | o B330, se a porta dele estiver escrita | o GPS a fingir (porta 8766) |
+| Os dados (caixa negra, AI, rota) | `~/arlequin-dados` | `software/bordo/arlequin-dados-ensaio/` (fora do git) |
+| Marca de simulado | não | **sim, em tudo:** a AI não aprende com um ensaio |
+
+Quem troca de modo é o `preparar.js`, que os dois comandos chamam antes de arrancar o servidor. Muda só
+essas cinco coisas e guarda o resto: as calibrações acertadas no barco (o fator do log, os desvios da
+proa, a montagem do sensor) ficam como estiverem. O teste `npm test` (na pasta `bordo`) diz se o que
+está para ir para o git é o modo de bordo e não tem segredos: corre-se antes de cada commit.
+
+**O que se acerta no barco**, no Admin UI do SignalK (`http://localhost:3000`), plugin "Arlequin · caixas":
+
+- `nosPorHz`: o fator da roda do log, contra o GPS em água parada;
+- `eixoProa` e `eixoCima`: como a caixa ficou montada; `desvioProa`, `desvioAdorno` e `desvioCaimento`:
+  o que o sensor marca com o barco direito e apontado; `tabelaDesvios`: a tabela de desvios da bússola;
+- `desvioVento` e `fatorVento`, se o mostrador do vento não estiver certo;
+- `porta`: fica em `auto`; só se escreve o nome (`COM7`) se a procura automática se enganar.
+
+**A porta do B330** escreve-se uma vez em `software/bordo/config/settings.json`, no `device` da entrada
+`b330` (por exemplo `"COM5"`); a partir daí o `npm start` liga-a sozinho.
+
+**O que diz se está tudo bem:** o estado do plugin das caixas no Admin UI ("COM7 · caixa 1 a receber ·
+caixa 2 a receber · … linhas · 0 inválidas · 0 leituras em falta") e
+`http://localhost:3000/plugins/signalk-arlequin-caixas/estado` (as últimas 20 linhas recebidas). Quando a
+caixa 1 se cala, os valores passam a "sem dado" em 5 s e o ecrã apita uma vez; quando volta, voltam sozinhos.
+
+**Fica por fazer à mão no Windows** (são definições do sistema, que só o dono do portátil muda):
+
+- não deixar o portátil adormecer nem suspender as portas USB enquanto navega;
+- abrir a porta 3000 na firewall para a rede do Fold, para o ecrã se ver no telemóvel e no tablet.
 
 ## No barco
 

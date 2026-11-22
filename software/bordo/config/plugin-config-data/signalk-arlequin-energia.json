@@ -1,0 +1,9 @@
+{
+  "enabled": false,
+  "configuration": {
+    "servico": "servico",
+    "motor": "motor",
+    "propulsao": "main",
+    "logbook": false
+  }
+}

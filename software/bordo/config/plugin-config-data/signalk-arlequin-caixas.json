@@ -1,0 +1,33 @@
+{
+  "enabled": true,
+  "configuration": {
+    "porta": "auto",
+    "ensaio": false,
+    "nosPorHz": 0.2,
+    "desvioVento": 0,
+    "fatorVento": 1,
+    "eixoProa": "+y",
+    "eixoCima": "+z",
+    "desvioProa": 0,
+    "desvioAdorno": 0,
+    "desvioCaimento": 0,
+    "tabelaDesvios": [],
+    "posicaoSensor": {
+      "vante": 0,
+      "estibordo": 0,
+      "acima": 0
+    },
+    "acelerometro": {
+      "desvio": [
+        0,
+        0,
+        0
+      ],
+      "escala": [
+        1,
+        1,
+        1
+      ]
+    }
+  }
+}

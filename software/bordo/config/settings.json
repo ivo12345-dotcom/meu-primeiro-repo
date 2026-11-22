@@ -1,0 +1,47 @@
+{
+  "interfaces": {},
+  "ssl": false,
+  "pipedProviders": [
+    {
+      "id": "b330",
+      "enabled": false,
+      "pipeElements": [
+        {
+          "type": "providers/simple",
+          "options": {
+            "logging": false,
+            "type": "NMEA0183",
+            "subOptions": {
+              "type": "serial",
+              "device": "",
+              "baudrate": 38400,
+              "validateChecksum": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "b330-a-fingir",
+      "enabled": false,
+      "pipeElements": [
+        {
+          "type": "providers/simple",
+          "options": {
+            "logging": false,
+            "type": "NMEA0183",
+            "subOptions": {
+              "type": "tcp",
+              "host": "localhost",
+              "port": 8766,
+              "validateChecksum": true
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "vessel": {
+    "name": "Arlequin"
+  }
+}

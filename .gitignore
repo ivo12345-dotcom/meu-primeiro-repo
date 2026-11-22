@@ -17,6 +17,13 @@ software/dev/config/plugin-config-data/*/
 software/ferramentas/passagem/*.json
 software/ferramentas/passagem/relatorio.svg
 software/dev/arlequin-dados/
+# SignalK de bordo (o portátil com as caixas): no git só a configuração; os dados dos ensaios ficam fora
+software/bordo/config/*
+!software/bordo/config/package.json
+!software/bordo/config/settings.json
+!software/bordo/config/plugin-config-data/
+software/bordo/config/plugin-config-data/*/
+software/bordo/arlequin-dados-ensaio/
 
 # Python
 __pycache__/
