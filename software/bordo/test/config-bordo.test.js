@@ -89,6 +89,25 @@ test('o motor lê pela caixa; a rota sem modo de teste; a caixa negra com os lim
   assert.deepEqual([cn.limiteAviso, cn.limiteParar], [80, 95])
 })
 
+// O signalk-derived-data (id "derived-data") faz só as contas que os nossos plugins não fazem: a
+// declinação pela posição, a proa verdadeira e o vento real pela água. O resto fica desligado.
+test('o derived-data só com as contas da proa verdadeira e do vento real', () => {
+  const c = plugin('derived-data').configuration
+  assert.deepEqual(c.heading, { magneticVariation: true, heading: true })
+  assert.deepEqual(c.wind, { angleTrueWater: true, directionTrue: true })
+  const grupos = Object.keys(c).filter(k => c[k] && typeof c[k] === 'object')
+  assert.deepEqual(grupos.sort(), ['heading', 'wind'], 'nenhum outro grupo de contas ligado')
+})
+
+// Visto no ensaio geral de 22/11/2026: o GPS manda a declinação magnética vazia (null) de segundo a
+// segundo, na frase RMC, e isso atropelava a declinação que o derived-data calcula de 10 em 10 s; a proa
+// verdadeira só se atualizava nesse instante. O ficheiro de prioridades do servidor (priorities.json)
+// diz que, para este caminho, o derived-data vale mais: outra fonte só entra se ele se calar 2 minutos.
+test('prioridades: a declinação calculada vale mais do que a declinação vazia do GPS', () => {
+  const p = json(CONFIG, 'priorities.json')
+  assert.deepEqual(p, { priorityOverrides: { 'navigation.magneticVariation': [{ sourceRef: 'derived-data', timeout: 120000 }] } })
+})
+
 test('ligado o que conta agora; desligado o que fica para depois', () => {
   const ligados = ['signalk-arlequin-caixas', 'signalk-arlequin-j1939', 'signalk-arlequin-caixanegra', 'signalk-arlequin-ia', 'signalk-arlequin-rota',
     'arlequin-ecra', 'signalk-arlequin-ais', 'signalk-logbook', 'course-provider', 'resources-provider', 'derived-data']

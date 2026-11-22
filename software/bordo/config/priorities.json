@@ -1,0 +1,10 @@
+{
+  "priorityOverrides": {
+    "navigation.magneticVariation": [
+      {
+        "sourceRef": "derived-data",
+        "timeout": 120000
+      }
+    ]
+  }
+}

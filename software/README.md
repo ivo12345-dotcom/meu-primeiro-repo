@@ -197,6 +197,13 @@ está para ir para o git é o modo de bordo e não tem segredos: corre-se antes 
 **A porta do B330** escreve-se uma vez em `software/bordo/config/settings.json`, no `device` da entrada
 `b330` (por exemplo `"COM5"`); a partir daí o `npm start` liga-a sozinho.
 
+**A proa verdadeira e o vento real** não são dos nossos plugins: faz-os o `signalk-derived-data` (o único
+plugin de fora que este perfil acrescenta), ligado só para quatro contas: a declinação magnética pela
+posição, a proa verdadeira, o vento real pela água e a direção do vento. O ficheiro
+`config/priorities.json` diz ao servidor que, para a declinação, essa conta vale mais do que a do GPS: o
+GPS manda-a vazia de segundo a segundo e, sem a prioridade, a proa verdadeira só se atualizava de 10 em
+10 s (visto no ensaio geral de 22/11/2026).
+
 **O que diz se está tudo bem:** o estado do plugin das caixas no Admin UI ("COM7 · caixa 1 a receber ·
 caixa 2 a receber · … linhas · 0 inválidas · 0 leituras em falta") e
 `http://localhost:3000/plugins/signalk-arlequin-caixas/estado` (as últimas 20 linhas recebidas). Quando a

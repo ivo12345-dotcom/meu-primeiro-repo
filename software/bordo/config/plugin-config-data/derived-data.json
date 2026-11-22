@@ -1,4 +1,14 @@
 {
   "enabled": true,
-  "configuration": {}
+  "configuration": {
+    "default_ttl": 0,
+    "heading": {
+      "magneticVariation": true,
+      "heading": true
+    },
+    "wind": {
+      "angleTrueWater": true,
+      "directionTrue": true
+    }
+  }
 }

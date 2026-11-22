@@ -21,6 +21,7 @@ software/dev/arlequin-dados/
 software/bordo/config/*
 !software/bordo/config/package.json
 !software/bordo/config/settings.json
+!software/bordo/config/priorities.json
 !software/bordo/config/plugin-config-data/
 software/bordo/config/plugin-config-data/*/
 software/bordo/arlequin-dados-ensaio/

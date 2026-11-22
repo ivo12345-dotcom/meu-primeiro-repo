@@ -6,7 +6,8 @@
       "waypoints": true,
       "notes": true,
       "regions": true,
-      "charts": true
+      "charts": true,
+      "logentries": true
     },
     "custom": []
   }
