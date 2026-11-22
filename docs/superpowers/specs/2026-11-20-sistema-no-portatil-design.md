@@ -23,7 +23,7 @@ passar para lá e acertar a polar, os consumos, as velocidades, as médias e os 
 | Proa, adornamento e caimento | Avisos de alagamento e fumo por LoRa (com as Heltec do Ivo) |
 | Motor pelo J1939 (vela ou motor, rotações, horas, temperaturas, alarmes, consumo estimado) | Sonda do gasóleo, água doce, barómetro, frigorífico, sonda de profundidade |
 | GPS e AIS (B330) | Baterias Victron (quando o SmartShunt estiver montado) |
-| Caixa negra, AI, Melhor rota, Diário, Velas, alarmes | Posição para o VHF e o radar (o VHF tem antena de GPS própria; a confirmar pelo Ivo) |
+| Caixa negra, AI, Melhor rota, Diário, Velas, alarmes | Posição para o radar. O VHF não se liga ao sistema: tem GPS próprio, já ligado (Ivo, 22/11) |
 | Sobe e desce do barco na onda, só gravado (decidido pelo Ivo, 21/11) | Altura e período da onda no ecrã (a conta faz-se depois, com dados reais) |
 
 No ecrã, o que fica para depois aparece a "—", como já acontece quando falta uma leitura.
@@ -346,7 +346,7 @@ definitivo, ou a caixa 2 fica de vez.
    no browser fica de reserva. Por ensaiar em casa: a fluidez do toque no Fold e o que gasta.
 4. **O endereço do portátil na rede do Fold** (nome fixo ou endereço fixo) e a firewall do Windows.
 5. **O B330 por USB**: confirmar que entrega os dados por esse cabo.
-6. **O VHF tem posição própria?** O Ivo verifica no ecrã do rádio (diz que tem antena de GPS).
+6. **O VHF: resolvido (Ivo, 22/11).** Tem GPS próprio, já ligado. Não se liga ao sistema.
 7. **O sítio do sensor BNO085.** A meio do barco e em baixo não pode ser: a quilha é de ferro
    fundido e o pé do mastro tem reforço de metal. Por cima do motor também não (ferro e o
    alternador). Proposta: junto à bússola do piloto velho, ao lado da roda, em baixo, na cabine de
@@ -561,6 +561,7 @@ Fica fora das duas caixas desta fase até haver as fotos e o esquema.
   ritmo do desenho, fica a de 10 fios, mesmo dando mais trabalho a montar (Claude).
 - Os dados do motor vão buscar-se primeiro por trás do painel; o chicote junto ao motor fica como
   alternativa (Ivo).
+- O VHF não se liga ao sistema: tem GPS próprio (Ivo).
 - **O que conta agora é o portátil (Ivo).** O Raspberry Pi, a MacArthur, o disco e a alimentação do
   computador definitivo ficam em espera até o piloto automático chegar; nada disso se compra nem se
   desenha entretanto. O que já se apurou fica anotado no `NAVEGACAO.md`, §4.

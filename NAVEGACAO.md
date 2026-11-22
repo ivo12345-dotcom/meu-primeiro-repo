@@ -1014,7 +1014,7 @@ bússola do piloto velho (SeaTalk1) já tinha ficado de fora. O que a MacArthur 
 | O que ainda faria | Sem a MacArthur | Custo |
 |---|---|---|
 | Falar com a rede NMEA 2000: o piloto EV-100 e, se se quiser, o AIS por essa rede | O adaptador USB–CAN isolado que já está na lista do motor (item da "Motor J1939: compras"). O motor agora vai pela caixa 2, por isso o adaptador fica livre para esta rede. Para o SignalK é igual: aparece como `can0` | €37,02 (preço de 29/09) |
-| Dar a posição ao radar e ao VHF (saída NMEA 0183) | Um adaptador USB–NMEA 0183, ou uma saída na caixa 1 com uma peça de adaptação | por cotar (cerca de €15–25) |
+| Dar a posição ao radar (saída NMEA 0183). O VHF não precisa: tem GPS próprio, já ligado (Ivo, 22/11) | Um adaptador USB–NMEA 0183, ou uma saída na caixa 1 com uma peça de adaptação; só se se quiser a posição no radar | por cotar (cerca de €15–25) |
 | Alimentar o Pi pelos 12 V e desligá-lo em segurança ao cortar o quadro | Um conversor 12 → 5 V. O desligar em segurança deixa de vir feito: tem de ser desenhado por nós (uma das caixas pode avisar o Pi) | por cotar (cerca de €15–25) |
 
 Em dinheiro a diferença é pequena (cerca de €110 da MacArthur com o módulo, contra cerca de €75 em adaptadores). O
