@@ -130,3 +130,6 @@ mar (Hs, Tp)   motor  | verdade: meio  Tp | meio c/ chip   Tp | meio c/ rotaçã
 decimais (3 casas acel., 4 resto)  texto 3.00 MB/h   gravado 0.83 MB/h   (20 MB por dia inteiro, 0.25 GB em 300 h)
 inteiros (mm/s2, 0,1 mrad/s, 0,1 mrad) texto 2.33 MB/h   gravado 0.77 MB/h   (19 MB por dia inteiro, 0.23 GB em 300 h)
 so aceleracao e inclinacao         texto 1.80 MB/h   gravado 0.54 MB/h   (13 MB por dia inteiro, 0.16 GB em 300 h)
+
+##### tamanho.js, 2026-11-22: o bloco verdadeiro do plugin das caixas (n, k, a, w e o quaterniao q), no caminho arlequin.caixas.movimento
+bloco do movimento (n, k, a, w, q) texto 3.00 MB/h   gravado 1.01 MB/h   (24 MB por dia inteiro, 0.30 GB em 300 h)

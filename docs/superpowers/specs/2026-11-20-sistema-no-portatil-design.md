@@ -245,8 +245,10 @@ barco fundeado ou amarrado é quando a medida fica mais limpa.
 
 **Como chega à caixa negra.** A caixa 1 manda as 10 leituras por segundo pelo USB; o plugin das
 caixas junta-as num bloco por segundo e publica-o no SignalK; a caixa negra grava-o no bruto como
-tudo o resto, sem alterações ao plugin dela. Medido com o gravador verdadeiro da caixa negra
-(`lib/bruto.js`): cerca de 0,8 MB por hora, ou 0,25 GB em 300 horas de navegação. A tabela de 10 em
+tudo o resto, sem alterações ao plugin dela. Medido a 22/11 com o gravador verdadeiro da caixa negra
+(`lib/bruto.js`) e o bloco verdadeiro do plugin das caixas (número de ordem, aceleração, rotação e a
+orientação completa de cada leitura): 1,0 MB por hora, ou 0,30 GB em 300 horas de navegação (com a
+inclinação em vez da orientação completa eram 0,8 MB por hora). A tabela de 10 em
 10 s da AI não muda agora: uma coluna com o estado do mar pode juntar-se mais tarde e calcular-se
 para todas as viagens já gravadas, porque o bruto fica guardado.
 
