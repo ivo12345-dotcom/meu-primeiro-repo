@@ -84,7 +84,7 @@
 **Interfaces:**
 - Produces (Node, `lib/linhas.js`), porque os ensaios das placas leem com o `ler()` e têm de o encontrar já a falar o contrato novo:
   - `ler()`: a linha do motor só vale com a soma certa (`(12.345678) can1 0CF00400#FFFFFF004BFFFFFF*HH`); o batimento da caixa 1 devolve também `sensor` (0 a 4), `arranque` e `rsts` quando os três campos vêm e são inteiros (sem eles, as chaves não aparecem, e um batimento antigo de 7 campos lê-se como antes).
-  - `escreverMotor(m: { id, dados }, s: number, us: number): string` (a linha com soma; a caixa a fingir passa a usá-la).
+  - A caixa a fingir junta a soma a cada linha do motor com o `soma()` que já usava.
 - Produces (C++, `arlequin_linhas.h`):
   - `uint8_t aqSoma(const char *texto)` (o ou-exclusivo dos caracteres)
   - `class AqLinha { AqLinha(const char *tipo); AqLinha &i(long v); AqLinha &t(const char *v); void manda(Print &p); }` (junta os campos com vírgulas, fecha com `*HH\n`; nunca passa de 200 caracteres: se passar, não manda e conta em `aqCortadas`)

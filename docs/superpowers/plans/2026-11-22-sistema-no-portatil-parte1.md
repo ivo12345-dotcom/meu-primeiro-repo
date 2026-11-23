@@ -49,11 +49,11 @@ As linhas próprias são `$AQ<tipo>,<campos>*HH`, com `HH` a soma do NMEA 0183: 
 
 | Linha | Cadência | Campos, por ordem |
 |---|---|---|
-| `$AQB` batimento | 1 por segundo e por caixa | caixa (1 ou 2); ms desde o arranque dessa caixa; versão do programa (`[A-Za-z0-9._-]`, 1 a 12); a fingir (0 ou 1); força do rádio em dBm (−127 a 0; a caixa 1 manda 0); perdidos (contador) |
+| `$AQB` batimento | 1 por segundo e por caixa | caixa (1 ou 2); ms desde o arranque dessa caixa; versão do programa (`[A-Za-z0-9._-]`, 1 a 12); a fingir (0 ou 1); força do rádio em dBm (−127 a 0; a caixa 1 manda 0); perdidos (contador). **A caixa 1 junta três campos (23/11):** estado do sensor (0 a medir, 1 a arrancar, 2 calado e a tentar o RST, 3 não volta, 4 a fingir); motivo do último arranque da placa (0 a 255); toques no RST desde o arranque |
 | `$AQL` log | 2 por segundo | ms; impulsos (contador desde o arranque); período entre os dois últimos impulsos em µs (0 se não houver) |
 | `$AQM` movimento | 10 por segundo | n.º de ordem; k (leituras do sensor na média, 1 a 255); aceleração x, y, z em mm/s² (±160 000); rotação x, y, z em 0,1 mrad/s (±350 000); quaternião i, j, k, r × 10 000 (±10 000, norma entre 0,9 e 1,1); erro estimado da atitude em 0,1 mrad (0 a 31 416); confiança (0 a 3) |
 | `$..MWV` vento | como o mostrador mandar | a frase NMEA 0183 tal como chega (ou feita pela caixa, se o mostrador só falar a linguagem do repetidor): ângulo em graus, `R`, velocidade, unidade `N`, `M` ou `K`, estado `A` |
-| `(s.µs) can1 ID#DADOS` motor | cada trama | a linha do `candump -L`, com o tempo da caixa 2 no lugar da hora; ID com 8 letras hexadecimais, 0 a 8 bytes de dados |
+| `(s.µs) can1 ID#DADOS*HH` motor | cada trama | a linha do `candump -L`, com o tempo da caixa 2 no lugar da hora; ID com 8 letras hexadecimais, 0 a 8 bytes de dados. **Com soma desde 23/11** (regra 8 do ponto 12 do desenho): `HH` é o ou-exclusivo de tudo o que está antes do `*`, e sem a soma certa a linha não vale |
 
 Exemplos com a soma certa:
 
@@ -63,8 +63,10 @@ $AQB,2,120000,0.1.0,1,-58,3*70
 $AQL,123500,5210,38462*48
 $AQM,1042,10,512,-2980,9320,-12,35,4,0,1736,0,9848,349,3*54
 $IIMWV,35.0,R,14.0,N,A*3E
-(12.345678) can1 0CF00400#FFFFFF004BFFFFFF
+(12.345678) can1 0CF00400#FFFFFF004BFFFFFF*HH
 ```
+
+(O `HH` da linha do motor calcula-se como se diz na tabela; o programa das caixas e os comandos de ensaio estão em `docs/superpowers/plans/2026-11-23-sistema-no-portatil-parte2-caixas.md`.)
 
 **O que o lado do portátil espera das caixas** (escrito ao executar o plano, a 22/11, para o plano do firmware):
 

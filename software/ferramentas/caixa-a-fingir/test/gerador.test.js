@@ -47,6 +47,18 @@ test('a motor: saem tramas que o plugin do motor lê', () => {
   assert.ok(motor.some(m => (m.id >>> 8 & 0x3FFFF) === 61444))
 })
 
+test('as linhas do motor levam a soma de tudo o que está antes do "*"', () => {
+  const g = criarGerador()
+  const motor = []
+  for (let ms = 100; ms <= 62000; ms += 100) motor.push(...g.linhas(ms).filter(l => l.startsWith('(')))
+  assert.ok(motor.length >= 5)
+  for (const l of motor) {
+    const m = /^(.*)\*([0-9A-F]{2})$/.exec(l)
+    assert.ok(m, l)
+    assert.equal(soma(m[1]), m[2], l)
+  }
+})
+
 test('as opções: sem a caixa 2, sem vento e com lixo', () => {
   const tudo = (o, ate = 62000) => { const g = criarGerador(o); const l = []; for (let ms = 100; ms <= ate; ms += 100) l.push(...g.linhas(ms)); return l }
   const sem2 = tudo({ semCaixa2: true }).map(ler)

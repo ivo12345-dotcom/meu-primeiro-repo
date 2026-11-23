@@ -107,7 +107,8 @@ function criarGerador ({ inicio = Date.UTC(2026, 10, 22, 10, 15, 0), semCaixa2 =
     if (t % 1000 === 0 && !semVento) saida.push(frase(`IIMWV,${c.ventoAngulo.toFixed(1)},R,${c.ventoNos.toFixed(1)},N,A`))
     saida.push(movimento(t))
     if (t % 1000 === 0 && !semCaixa2 && motorLigado(t)) {
-      saida.push(...tramasMotor({ t, rpm: c.rpm, tempK: MOTOR.tempK, volt: MOTOR.volt, horasS: MOTOR.horasS + t / 1000 }))
+      // cada trama leva a soma de tudo o que está antes do "*", como as da caixa verdadeira
+      saida.push(...tramasMotor({ t, rpm: c.rpm, tempK: MOTOR.tempK, volt: MOTOR.volt, horasS: MOTOR.horasS + t / 1000 }).map(l => `${l}*${soma(l)}`))
     }
     if (lixo && t % 5000 === 0) {
       saida.push('rst:0x1 (POWERON_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)') // o que a placa diz ao arrancar

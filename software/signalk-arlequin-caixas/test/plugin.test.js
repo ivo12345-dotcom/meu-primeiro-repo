@@ -4,7 +4,10 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const { EventEmitter } = require('node:events')
 const criar = require('..')
-const { escrever } = require('../lib/linhas')
+const { escrever, soma } = require('../lib/linhas')
+
+// A linha do motor como a caixa a manda: com a soma de tudo o que está antes do "*".
+const motor = (corpo) => `${corpo}*${soma(corpo)}`
 
 const AGORA = 1_727_600_000_000
 const SIMULADO = 'arlequin-simulador.caixas'
@@ -243,7 +246,7 @@ test('a fingir: tudo sai marcado como simulado', (t) => {
   const { app, f, p } = arrancar(t)
   app.fontes.length = 0
   umSegundoBom(f, { sim: 1 })
-  f.aoLinha('(12.345678) can1 0CF00400#FFFFFF004BFFFFFF')
+  f.aoLinha(motor('(12.345678) can1 0CF00400#FFFFFF004BFFFFFF'))
   t.mock.timers.tick(2000)
   assert.ok(app.fontes.length >= 4)
   assert.ok(app.fontes.every(s => s === SIMULADO), JSON.stringify(app.fontes))
@@ -267,7 +270,7 @@ test('a fingir: se só a caixa do motor finge, sai tudo marcado na mesma', (t) =
   app.fontes.length = 0
   f.aoLinha(batimento(1))
   f.aoLinha(escrever('B', [2, 1000, '0.1.0', 1, -58, 0])) // a caixa 2 diz que finge
-  f.aoLinha('(12.345678) can1 0CF00400#FFFFFF004BFFFFFF')
+  f.aoLinha(motor('(12.345678) can1 0CF00400#FFFFFF004BFFFFFF'))
   for (let i = 0; i < 5; i++) f.aoLinha(log(1000 + 500 * i, 100 + 5 * i))
   t.mock.timers.tick(1000)
   p.stop()
@@ -334,14 +337,26 @@ test('motor: a trama segue para o plugin do motor com a hora do portátil', (t) 
   const { app, f, p } = arrancar(t)
   const tramas = []
   app.on('arlequin-j1939', (l) => tramas.push(l))
-  f.aoLinha('(12.345678) can1 0CF00400#FFFFFF004BFFFFFF')
+  f.aoLinha(motor('(12.345678) can1 0CF00400#FFFFFF004BFFFFFF'))
   t.mock.timers.tick(250)
-  f.aoLinha('(12.445678) can1 18FEEE00#7AFFFFFFFFFFFFFF\r')
+  f.aoLinha(motor('(12.445678) can1 18FEEE00#7AFFFFFFFFFFFFFF') + '\r')
   p.stop()
   assert.deepEqual(tramas, [
     '(1727600000.000000) can1 0CF00400#FFFFFF004BFFFFFF',
     '(1727600000.250000) can1 18FEEE00#7AFFFFFFFFFFFFFF'
   ])
+})
+
+test('motor: uma linha sem soma, ou com a soma errada, não segue para o plugin do motor', (t) => {
+  const { app, f, p } = arrancar(t)
+  const tramas = []
+  app.on('arlequin-j1939', (l) => tramas.push(l))
+  f.aoLinha('(12.345678) can1 0CF00400#FFFFFF004BFFFFFF')
+  f.aoLinha('(12.345678) can1 0CF00400#FFFFFF004BFFFFFF*00')
+  f.aoLinha(motor('(12.345678) can1 0CF00400#FFFFFF004BFFFFFF').replace('4B', '4C')) // um byte trocado no cabo
+  assert.deepEqual(tramas, [])
+  assert.equal(estado(p).invalidas, 3)
+  p.stop()
 })
 
 test('Review Focus 3: a caixa reinicia', (t) => {

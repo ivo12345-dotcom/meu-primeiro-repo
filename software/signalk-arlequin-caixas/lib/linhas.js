@@ -5,10 +5,14 @@
 // Porta série a 460 800 baud, uma linha por leitura, 200 caracteres no máximo:
 //   $AQB  batimento de uma caixa        $AQL  impulsos da roda do log
 //   $AQM  movimento (o sensor BNO085)   $..MWV  a frase do vento, tal como o mostrador a manda
-//   (s.µs) can1 ID#DADOS  uma trama do motor, como a escreve o candump -L
-// As linhas $AQ levam a soma do NMEA 0183 (ou-exclusivo do que está entre o $ e o *). Campos a mais
+//   (s.µs) can1 ID#DADOS*HH  uma trama do motor, como a escreve o candump -L, mais a soma
+// As linhas $AQ levam a soma do NMEA 0183 (ou-exclusivo do que está entre o $ e o *); a do motor leva
+// o ou-exclusivo de tudo o que está antes do *. Sem a soma certa uma linha não vale. Campos a mais
 // no fim ignoram-se, para a linguagem poder crescer; campos a menos ou fora dos limites invalidam a
 // linha inteira: daqui nunca sai um valor de uma linha estragada.
+// O batimento da caixa 1 pode trazer três campos a mais: o estado do sensor (0 a medir, 1 a arrancar,
+// 2 calado e a tentar o RST, 3 não volta, 4 a fingir), o motivo do último arranque da placa e os
+// toques no RST desde o arranque.
 
 const BAUD = 460800
 const MAX_LINHA = 200
@@ -17,7 +21,8 @@ const INTEIRO = /^-?\d+$/
 const DECIMAL = /^\d+(\.\d+)?$/
 const VERSAO = /^[A-Za-z0-9._-]{1,12}$/
 const COM_SOMA = /^\$([^$*]*)\*([0-9A-Fa-f]{2})$/
-const MOTOR = /^\((\d+)\.(\d{1,6})\)\s+(\S+)\s+([0-9A-Fa-f]{8})#((?:[0-9A-Fa-f]{2}){0,8})\s*$/
+const MOTOR = /^\((\d+)\.(\d{1,6})\)\s+(\S+)\s+([0-9A-Fa-f]{8})#((?:[0-9A-Fa-f]{2}){0,8})$/
+const MOTOR_COM_SOMA = /^(\(.*)\*([0-9A-Fa-f]{2})\s*$/
 // para m/s: nós, metros por segundo e quilómetros por hora
 const UNIDADES = { N: 0.514444, M: 1, K: 0.277778 }
 
@@ -59,7 +64,14 @@ function batimento (c) {
   const perdidos = inteiro(c[6], 0, U32)
   if (caixa === null || ms === null || sim === null || rssi === null || perdidos === null) return null
   if (typeof c[3] !== 'string' || !VERSAO.test(c[3])) return null
-  return { tipo: 'batimento', caixa, ms, fw: c[3], sim: sim === 1, rssi, perdidos }
+  const b = { tipo: 'batimento', caixa, ms, fw: c[3], sim: sim === 1, rssi, perdidos }
+  if (caixa === 1 && c.length >= 10) {
+    const sensor = inteiro(c[7], 0, 4)
+    const arranque = inteiro(c[8], 0, 255)
+    const rsts = inteiro(c[9], 0, U32)
+    if (sensor !== null && arranque !== null && rsts !== null) Object.assign(b, { sensor, arranque, rsts })
+  }
+  return b
 }
 
 function log (c) {
@@ -92,7 +104,9 @@ function vento (c) {
 }
 
 function motor (linha) {
-  const m = MOTOR.exec(linha)
+  const s = MOTOR_COM_SOMA.exec(linha)
+  if (!s || soma(s[1]) !== s[2].toUpperCase()) return null
+  const m = MOTOR.exec(s[1])
   return m ? { tipo: 'motor', id: parseInt(m[4], 16), dados: m[5].toUpperCase() } : null
 }
 
