@@ -71,16 +71,17 @@ static void obedece(const char *linha) {
 }
 
 void setup() {
+  // O cão de guarda do ciclo principal: 5 s sem dar a volta e a placa recomeça. Arma-se antes de tudo,
+  // para também valer se alguma coisa ficar presa a arrancar (a linha do motor, o rádio).
+  const esp_task_wdt_config_t cao = {.timeout_ms = CAO_DE_GUARDA_MS, .idle_core_mask = 0, .trigger_panic = true};
+  esp_task_wdt_reconfigure(&cao);
+  enableLoopWDT();
+
   Serial.setTxBufferSize(4096);
   Serial.begin(AQ_BAUD);
   pinMode(PINO_LUZ, OUTPUT);
   motorIniciar();
   radioIniciar();
-
-  // O cão de guarda do ciclo principal: 5 s sem dar a volta e a placa recomeça.
-  const esp_task_wdt_config_t cao = {.timeout_ms = CAO_DE_GUARDA_MS, .idle_core_mask = 0, .trigger_panic = true};
-  esp_task_wdt_reconfigure(&cao);
-  enableLoopWDT();
 
   proximoBatimento = millis();
 }
@@ -89,7 +90,14 @@ void loop() {
   const uint32_t agora = millis();
 
   while (Serial.available() > 0) {
-    if (entrada.junta(Serial.read())) obedece(entrada.texto());
+    if (!entrada.junta(Serial.read())) continue;
+    const bool fingia = ensaioAlgum();
+    obedece(entrada.texto());
+    // Passou a fingir: di-lo já, pelo rádio e pelo USB, antes de sair a primeira trama a fingir.
+    if (!fingia && ensaioAlgum()) {
+      radioBatimento(agora, true);
+      batimento(agora);
+    }
   }
 
   // o que vier da linha do motor (ou do gerador de bancada) segue para o rádio

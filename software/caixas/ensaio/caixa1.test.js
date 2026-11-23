@@ -5,8 +5,13 @@
 // caixas, que é quem as vai ler no barco.
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
 const { abrir, comPlaca, espera } = require('./placa')
 const { ler } = require('../../signalk-arlequin-caixas/lib/linhas')
+
+// A versão que a placa tem de dizer é a do programa que está nesta pasta (o que se acabou de gravar).
+const VERSAO = /#define\s+AQ_VERSAO\s+"([^"]+)"/.exec(fs.readFileSync(path.join(__dirname, '..', 'comum', 'src', 'arlequin_versao.h'), 'utf8'))[1]
 
 const PORTA = comPlaca('ARLEQUIN_CAIXA1')
 const COM_PLACA = PORTA ? {} : { skip: 'sem a placa ligada: definir ARLEQUIN_CAIXA1=COMx' }
@@ -43,7 +48,7 @@ test('batimento desde o primeiro segundo, com a versão e sem fingir', COM_PLACA
     assert.ok(passo >= 950 && passo <= 1050, `batimentos a ${passo} ms um do outro`)
   }
   for (const x of b) {
-    assert.equal(x.fw, '0.2.0')
+    assert.equal(x.fw, VERSAO, 'a placa não tem o programa desta pasta: gravar com npm run gravar:1')
     assert.equal(x.sim, false)
     assert.equal(x.rssi, 0)
     assert.ok([0, 1, 2, 3].includes(x.sensor), `estado do sensor: ${x.sensor}`)
@@ -286,3 +291,116 @@ test('sem leituras do sensor não há linhas do movimento, e o número de ordem 
   assert.equal(await p.manda('parar'), 'ok')
   assert.equal(await p.manda('movimento', 2), 'fora-dos-limites')
 }))
+
+// --- Revisão final das caixas (23/11/2026) ------------------------------------------------------------
+
+// A caixa dizia que fingia só no batimento seguinte, até um segundo depois de as primeiras linhas a
+// fingir já terem saído: nesse intervalo o portátil tomava-as por medições.
+const semFingir = (p) => p.ate((l) => { const b = batimento1(l); return b && !b.sim ? b : null }, 2500, 'um batimento sem fingir')
+const eMovimento = (l) => { const x = ler(l); return Boolean(x && x.tipo === 'movimento') }
+const eVento = (l) => /^\$..MWV,/.test(l)
+
+for (const [nome, valores, eAFingir] of [['movimento', [1], eMovimento], ['vento', [350, 140], eVento]]) {
+  test(`ao ligar o ${nome} a fingir, a caixa diz que finge antes de sair a primeira linha a fingir`, COM_PLACA, () => comACaixa(async (p) => {
+    assert.equal(await p.manda('parar'), 'ok')
+    await espera(300)
+    await semFingir(p)
+    await espera(150) // longe do batimento seguinte: sem o aviso imediato, ele só vinha uns 850 ms depois
+    const vistas = []
+    const parar = p.ouvir((l) => vistas.push(l))
+    assert.equal(await p.manda(nome, ...valores), 'ok')
+    await p.ate(eAFingir, 2500, `uma linha a fingir do ${nome}`)
+    parar()
+    const primeira = vistas.findIndex(eAFingir)
+    assert.ok(primeira >= 0, `não saiu nenhuma linha a fingir do ${nome}`)
+    const avisou = vistas.slice(0, primeira).some((l) => { const b = batimento1(l); return Boolean(b && b.sim) })
+    assert.ok(avisou, `a primeira linha a fingir do ${nome} saiu antes de a caixa dizer que fingia`)
+    assert.equal(await p.manda('parar'), 'ok')
+  }))
+}
+
+// Um fio no ar a apanhar ruído, ou um comparador a oscilar, davam uma interrupção por cada flanco, sem
+// limite: o ciclo principal deixava de correr e o cão de guarda reiniciava a caixa uma vez e outra, e
+// com ela o vento, o log, o movimento e o que vem do motor. A avalanche de bancada é uma onda de 1 MHz
+// feita pelo próprio chip no pino de entrada, que continua mesmo com o ciclo principal parado.
+const hzDoLog = (l) => (l.at(-1).impulsos - l[0].impulsos) / ((l.at(-1).ms - l[0].ms) / 1000)
+
+async function aguentaAAvalanche (p, qual) {
+  assert.equal(await p.manda('parar'), 'ok')
+  const antes = await proximoBatimento(p)
+  const contados = contadores(await p.manda('estado'))
+  assert.equal(await p.manda('avalanche', qual, 1000), 'ok')
+  const linhas = await p.linhas(8000) // mais do que os 5 s do cão de guarda
+  const b = batimentos(linhas)
+  assert.ok(b.length >= 7, `só ${b.length} batimentos em 8 s de avalanche`)
+  assert.ok(b.every(x => x.ms > antes.ms), 'a caixa recomeçou')
+  for (let i = 1; i < b.length; i++) assert.ok(b[i].ms - b[i - 1].ms <= 1200, `batimentos a ${b[i].ms - b[i - 1].ms} ms um do outro`)
+  assert.ok(b.every(x => x.sim === true), 'a caixa não disse que fingia')
+  assert.ok(linhas.map(ler).every(Boolean), `saiu uma linha que o portátil não lê: ${linhas.find(l => !ler(l))}`)
+  // a meio da avalanche a caixa continua a obedecer
+  const durante = contadores(await p.manda('estado'))
+  assert.equal(await p.manda('parar'), 'ok')
+  await espera(300)
+  const depois = await proximoBatimento(p)
+  assert.ok(depois.ms > antes.ms, 'a caixa recomeçou')
+  assert.equal(depois.arranque, antes.arranque)
+  return { linhas, contados, durante }
+}
+
+test('avalanche na entrada do log (1 MHz): a caixa continua a dar o batimento, obedece e não recomeça', COM_PLACA, () => comACaixa(async (p) => {
+  const { linhas, contados, durante } = await aguentaAAvalanche(p, 1)
+  // a contagem não dispara: no máximo um impulso de 4 em 4 ms
+  const l = logs(linhas)
+  assert.ok(l.length >= 14, `${l.length} linhas do log em 8 s`)
+  assert.ok(hzDoLog(l) <= 255, `${hzDoLog(l).toFixed(0)} impulsos por segundo contados na avalanche`)
+  assert.ok(durante['log-recusados'] - contados['log-recusados'] >= 1000, 'a caixa não contou os flancos a mais que recusou')
+  // e a entrada fica como estava: a roda a fingir volta a contar certo
+  assert.equal(await p.manda('log', 26), 'ok')
+  await espera(1200)
+  const certo = logs(await p.linhas(3000))
+  assert.ok(Math.abs(hzDoLog(certo) - 26) <= 1.5, `${hzDoLog(certo).toFixed(2)} impulsos por segundo depois da avalanche`)
+  assert.equal(await p.manda('parar'), 'ok')
+}))
+
+test('avalanche na entrada do vento (1 MHz): a caixa continua a dar o batimento, obedece e não recomeça', COM_PLACA, () => comACaixa(async (p) => {
+  const { linhas, contados, durante } = await aguentaAAvalanche(p, 2)
+  assert.equal(ventos(linhas).length, 0, `saiu uma frase de vento da avalanche: ${ventos(linhas)[0]}`)
+  assert.ok(durante.avalanches - contados.avalanches >= 1000, 'a caixa não deu pela avalanche')
+  // e a entrada fica como estava: o vento a fingir volta a passar
+  assert.equal(await p.manda('vento', 350, 140), 'ok')
+  const v = ventos(await p.linhas(3500))
+  assert.ok(v.length >= 2, `${v.length} frases de vento depois da avalanche`)
+  assert.ok(v.every(f => f === '$IIMWV,35.0,R,14.0,N,A*3E'), v[0])
+  assert.equal(await p.manda('parar'), 'ok')
+  assert.equal(await p.manda('avalanche', 3, 1000), 'fora-dos-limites')
+  assert.equal(await p.manda('avalanche', 1, 5000), 'fora-dos-limites')
+}))
+
+// Um recomeço da placa não apaga o que os pinos tinham. Visto na placa a 23/11/2026: com a avalanche na
+// entrada do vento a caixa recomeçava e ficava presa a arrancar, calada, até lhe cortarem a corrente (a
+// interrupção do pino continuava ligada de antes do recomeço, sem ninguém para a atender). Aqui força-se
+// o recomeço com a avalanche a decorrer: a onda do chip, como um sinal de fora, não para com ele.
+for (const [nome, qual] of [['do log', 1], ['do vento', 2]]) {
+  test(`a caixa que recomeça a meio de uma avalanche na entrada ${nome} volta a arrancar e fica a funcionar`, COM_PLACA, () => comACaixa(async (p) => {
+    assert.equal(await p.manda('parar'), 'ok')
+    const antes = await proximoBatimento(p)
+    assert.equal(await p.manda('avalanche', qual, 1000), 'ok')
+    await espera(1500)
+    assert.equal(await p.manda('prender'), 'ok')
+    const depois = await recomecou(p, antes)
+    assert.ok(CAO_DE_GUARDA.includes(depois.arranque), `motivo do arranque: ${depois.arranque}`)
+    const linhas = await p.linhas(4000)
+    const b = batimentos(linhas)
+    assert.ok(b.length >= 3, `só ${b.length} batimentos em 4 s depois de recomeçar`)
+    assert.ok(b.every(x => x.sim === false), 'a avalanche sobreviveu ao recomeço')
+    assert.ok(linhas.map(ler).every(Boolean), `saiu uma linha que o portátil não lê: ${linhas.find(l => !ler(l))}`)
+    // e as duas entradas ficam a funcionar
+    assert.equal(await p.manda('log', 26), 'ok')
+    assert.equal(await p.manda('vento', 350, 140), 'ok')
+    await espera(1200)
+    const aSeguir = await p.linhas(3500)
+    assert.ok(Math.abs(hzDoLog(logs(aSeguir)) - 26) <= 1.5, `${hzDoLog(logs(aSeguir)).toFixed(2)} impulsos por segundo depois de recomeçar`)
+    assert.ok(ventos(aSeguir).length >= 2, `${ventos(aSeguir).length} frases de vento depois de recomeçar`)
+    assert.equal(await p.manda('parar'), 'ok')
+  }))
+}

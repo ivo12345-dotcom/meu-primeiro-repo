@@ -26,12 +26,23 @@ function comando (nome, ...valores) {
   return `$${corpo}*${soma(corpo)}`
 }
 
-function abrir (porta) {
-  const { SerialPort } = pedirSerialport([path.join(__dirname, '..', '..', 'dev')])
+// deps (só para os ensaios sem placas): { SerialPort }.
+function abrir (porta, deps = {}) {
+  const SerialPort = deps.SerialPort || pedirSerialport([path.join(__dirname, '..', '..', 'dev')]).SerialPort
   return new Promise((resolve, reject) => {
     // hupcl: false deixa as duas linhas de comando em repouso: abrir a porta não reinicia a placa
     const s = new SerialPort({ path: porta, baudRate: VELOCIDADE, autoOpen: false, hupcl: false })
     const ouvintes = new Set()
+    const aoFechar = new Set() // quem quer saber que a porta se perdeu
+    let pedida = false // fomos nós a fechá-la
+    let perdida = false
+    // A porta perdeu-se sem ninguém pedir (o cabo saiu, a placa desligou-se, um erro do sistema): diz-se
+    // uma vez só, com o motivo. Sem isto, quem estivesse a contar linhas ficava a contar "nada de mal".
+    const perdeu = (motivo) => {
+      if (pedida || perdida) return
+      perdida = true
+      for (const f of [...aoFechar]) f(motivo)
+    }
     let resto = ''
     // Ao abrir, a porta pode trazer duas coisas que não são da caixa agora:
     //   - o fim de uma linha que já ia a meio;
@@ -69,8 +80,9 @@ function abrir (porta) {
         if (linha.length === 0) continue
         // A enxurrada da ponte USB (ver acima) pode começar depois de a linha parecer sossegada: uma
         // linha igual à anterior, chegada menos de 20 ms depois dela, é cópia e não se conta. A caixa
-        // nunca manda duas linhas iguais tão juntas.
-        if (linha === ultimaLinha && agora - horaDaUltima < 20) {
+        // nunca manda duas linhas iguais tão juntas, a não ser as respostas a dois comandos seguidos
+        // com o mesmo resultado ($AQR): essas passam sempre (uma resposta repetida não faz mal a ninguém).
+        if (linha === ultimaLinha && agora - horaDaUltima < 20 && !linha.startsWith('$AQR,')) {
           horaDaUltima = agora
           placa.repetidas++
           continue
@@ -80,11 +92,17 @@ function abrir (porta) {
         for (const o of [...ouvintes]) o(linha)
       }
     })
-    s.on('error', () => {})
+    s.on('error', (erro) => perdeu(erro && erro.message ? erro.message : 'erro da porta'))
+    s.on('close', (erro) => perdeu(erro && erro.disconnected ? 'o cabo USB saiu ou a placa desligou-se' : 'a porta fechou'))
 
     const placa = {
       porta,
       repetidas: 0, // cópias deitadas fora (a enxurrada da ponte USB)
+      // Chama aoPerder(motivo), uma vez, se a porta se perder sem ser a pedido. Devolve a função que desiste.
+      aoFechar (aoPerder) {
+        aoFechar.add(aoPerder)
+        return () => aoFechar.delete(aoPerder)
+      },
       // Chama aoLinha(linha) por cada linha inteira, à medida que chegam. Devolve a função que para.
       ouvir (aoLinha) {
         ouvintes.add(aoLinha)
@@ -127,6 +145,7 @@ function abrir (porta) {
         return (await resposta).resultado
       },
       fechar () {
+        pedida = true
         return new Promise((feito) => (s.isOpen ? s.close(() => feito()) : feito()))
       }
     }

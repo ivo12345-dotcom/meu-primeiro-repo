@@ -81,6 +81,20 @@ inline void radioJunta(const AqTrama &t, uint32_t agoraMs) {
   if (radioLote.quantas >= AQ_MAX_TRAMAS) radioDespacha(agoraMs);
 }
 
+// Manda o batimento agora, se a caixa 1 estiver a ouvir. Sai de segundo a segundo (radioCorre) e também
+// no instante em que a caixa passa a fingir, antes das primeiras tramas a fingir: o batimento certo
+// podia vir até um segundo depois delas, e nesse intervalo o portátil tomava-as por medições.
+inline void radioBatimento(uint32_t agoraMs, bool aFingir) {
+  if (!radioLigado || !radioTemOuvinte(agoraMs) || !radioTemPar) return;
+  AqPacoteBatimento b;
+  aqCabecalho(b.c, AQ_BATIMENTO, radioArranque, radioOrdem++);
+  b.ms = agoraMs;
+  memset(b.fw, 0, sizeof(b.fw));
+  strncpy(b.fw, AQ_VERSAO, sizeof(b.fw));
+  b.sim = aFingir ? 1 : 0;
+  radioManda(&b, sizeof(b));
+}
+
 inline void radioCorre(uint32_t agoraMs, bool aFingir) {
   if (!radioLigado) return;
   // um endereço novo (o primeiro farol, ou a caixa 1 foi trocada): passa a ser esse o destino
@@ -102,14 +116,6 @@ inline void radioCorre(uint32_t agoraMs, bool aFingir) {
   if (radioLote.quantas > 0 && agoraMs - radioLoteDesde >= RADIO_JUNTA_MS) radioDespacha(agoraMs);
   if ((int32_t)(agoraMs - radioProximoBatimento) >= 0) {
     radioProximoBatimento = agoraMs + RADIO_BATIMENTO_MS;
-    if (radioTemOuvinte(agoraMs) && radioTemPar) {
-      AqPacoteBatimento b;
-      aqCabecalho(b.c, AQ_BATIMENTO, radioArranque, radioOrdem++);
-      b.ms = agoraMs;
-      memset(b.fw, 0, sizeof(b.fw));
-      strncpy(b.fw, AQ_VERSAO, sizeof(b.fw));
-      b.sim = aFingir ? 1 : 0;
-      radioManda(&b, sizeof(b));
-    }
+    radioBatimento(agoraMs, aFingir);
   }
 }

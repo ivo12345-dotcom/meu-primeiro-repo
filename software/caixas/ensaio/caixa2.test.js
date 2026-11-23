@@ -11,6 +11,9 @@ const { abrir, comPlaca, espera } = require('./placa')
 const { ler, linhaMotor } = require('../../signalk-arlequin-caixas/lib/linhas')
 const { lerLinha, descodificar } = require('../../signalk-arlequin-j1939/lib/j1939')
 
+// A versão que as placas têm de dizer é a do programa que está nesta pasta (o que se acabou de gravar).
+const VERSAO = /#define\s+AQ_VERSAO\s+"([^"]+)"/.exec(fs.readFileSync(path.join(__dirname, '..', 'comum', 'src', 'arlequin_versao.h'), 'utf8'))[1]
+
 const P1 = comPlaca('ARLEQUIN_CAIXA1')
 const P2 = comPlaca('ARLEQUIN_CAIXA2')
 const COM_A_2 = P2 ? {} : { skip: 'sem a caixa 2 ligada: definir ARLEQUIN_CAIXA2=COMx' }
@@ -57,7 +60,7 @@ test('a caixa 2 sozinha, pelo USB: o batimento dela, de segundo a segundo, e mai
     assert.ok(b.length >= 4 && b.length <= 6, `${b.length} batimentos em 5 s`)
     assert.equal(b.length, linhas.length, 'a caixa 2 mandou pelo USB mais do que o batimento')
     for (const x of b) {
-      assert.equal(x.fw, '0.2.0')
+      assert.equal(x.fw, VERSAO, 'a caixa 2 não tem o programa desta pasta: gravar com npm run gravar:2')
       assert.equal(x.sim, false)
       assert.equal(x.rssi, 0)
     }
@@ -76,7 +79,7 @@ test('motor a fingir, pelo rádio: a caixa 1 passa o batimento e as tramas da ca
   assert.ok(b2.length >= 4 && b2.length <= 7, `${b2.length} batimentos da caixa 2 em 6 s`)
   for (const x of b2) {
     assert.equal(x.sim, true, 'a caixa 2 não disse que fingia')
-    assert.equal(x.fw, '0.2.0')
+    assert.equal(x.fw, VERSAO)
     assert.ok(x.rssi >= -90 && x.rssi <= -10, `força do rádio: ${x.rssi} dBm`)
   }
   assert.ok(b2.at(-1).perdidos - b2[0].perdidos <= 3, `pacotes perdidos em 6 s, lado a lado: ${b2.at(-1).perdidos - b2[0].perdidos}`)
@@ -90,6 +93,26 @@ test('motor a fingir, pelo rádio: a caixa 1 passa o batimento e as tramas da ca
   for (const pgn of [61444, 65262, 65271, 65253]) assert.ok(pgns.has(pgn), `falta a trama ${pgn}`)
   // a caixa 1 não finge: quem finge é a 2
   assert.ok(batimentos(linhas, 1).every(x => x.sim === false))
+}))
+
+// Revisão final das caixas (23/11/2026): a caixa 2 só dizia que fingia no batimento seguinte, até um
+// segundo depois de as primeiras tramas a fingir já terem chegado ao portátil, que as tomava por medições.
+const eMotor = (l) => { const x = ler(l); return Boolean(x && x.tipo === 'motor') }
+
+test('ao ligar o motor a fingir, a caixa 2 diz que finge antes de chegar a primeira trama a fingir', COM_AS_DUAS, () => comAsDuas(async (p1, p2) => {
+  assert.equal(await p2.manda('parar'), 'ok')
+  await espera(1500) // deixa passar as tramas que ainda vinham a caminho
+  await p1.ate((l) => { const b = batimento(2)(l); return b && !b.sim ? b : null }, 3000, 'um batimento da caixa 2 sem fingir')
+  await espera(150) // longe do batimento seguinte: sem o aviso imediato, ele só vinha uns 850 ms depois
+  const vistas = []
+  const parar = p1.ouvir((l) => vistas.push(l))
+  assert.equal(await p2.manda('motor', 2100), 'ok')
+  await p1.ate(eMotor, 3000, 'uma trama do motor a fingir')
+  parar()
+  const primeira = vistas.findIndex(eMotor)
+  assert.ok(primeira >= 0, 'não chegou nenhuma trama do motor a fingir')
+  const avisou = vistas.slice(0, primeira).some((l) => { const b = batimento(2)(l); return Boolean(b && b.sim) })
+  assert.ok(avisou, 'a primeira trama a fingir chegou antes de a caixa 2 dizer que fingia')
 }))
 
 test('Review Focus 2: a caixa 2 recomeça; o batimento dela para e volta, e os perdidos não disparam nem andam para trás', COM_AS_DUAS, () => comAsDuas(async (p1, p2) => {

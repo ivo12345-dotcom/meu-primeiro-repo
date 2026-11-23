@@ -9,6 +9,7 @@
 #include <Arduino.h>
 #include <driver/gpio.h>
 #include <esp_rom_gpio.h>
+#include <hal/gpio_ll.h>
 #include <soc/gpio_sig_map.h>
 
 #include <arlequin_linhas.h>
@@ -17,13 +18,28 @@
 
 const uint32_t VENTO_BAUD = 4800;
 const size_t VENTO_MAX = 82;  // o tamanho máximo de uma frase NMEA 0183
+// As mudanças de nível do pino atendidas em cada volta do ciclo principal, no máximo. A 4 800 baud a
+// frase dá menos de 5 por milésimo de segundo; acima disto é uma avalanche (o fio no ar a apanhar ruído)
+// e a interrupção do pino desliga-se até à volta seguinte, para a caixa nunca parar por causa dela.
+// (Revisão final de 23/11/2026: com 1 MHz neste pino a caixa deixava de responder.)
+const uint32_t VENTO_RAJADA = 16;
 
 inline uint32_t ventoInvalidas = 0;
 inline uint32_t ventoBytes = 0;      // tudo o que entrou pelo pino do vento, bom ou mau
 inline uint32_t ventoFrases = 0;     // frases MWV boas, mandadas ao portátil
+inline uint32_t ventoAvalanches = 0;  // voltas do ciclo em que as mudanças de nível passaram do limite
 static volatile uint32_t ventoMexidas = 0;  // vezes que o pino do vento mudou de nível: há sinal no fio?
+static volatile uint32_t ventoNaVolta = 0;  // as desta volta do ciclo
+static volatile bool ventoCalado = false;   // a interrupção do pino está desligada até à volta seguinte
 
-static void IRAM_ATTR ventoMexeu(void *) { ventoMexidas = ventoMexidas + 1; }
+static void IRAM_ATTR ventoMexeu(void *) {
+  ventoMexidas = ventoMexidas + 1;
+  ventoNaVolta = ventoNaVolta + 1;
+  if (ventoNaVolta >= VENTO_RAJADA) {
+    gpio_ll_intr_disable(&GPIO, PINO_VENTO);
+    ventoCalado = true;
+  }
+}
 static char ventoFrase[VENTO_MAX + 2];
 static size_t ventoN = 0;
 static bool ventoADeitarFora = true;  // até ao primeiro fim de linha não se sabe se se apanhou o princípio
@@ -67,7 +83,14 @@ inline void ventoIniciar() {
   gpio_isr_handler_add((gpio_num_t)PINO_VENTO, ventoMexeu, nullptr);
 }
 
+// Chama-se em todas as voltas do ciclo principal.
 inline void ventoCorre() {
+  ventoNaVolta = 0;
+  if (ventoCalado) {
+    ventoCalado = false;
+    ventoAvalanches++;
+    gpio_intr_enable((gpio_num_t)PINO_VENTO);  // limpa o que ficou pendente e volta a ouvir o pino
+  }
   while (Serial2.available() > 0) {
     const int c = Serial2.read();
     ventoBytes++;

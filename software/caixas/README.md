@@ -19,8 +19,10 @@ comandos, os pacotes do rádio) está em `comum/`.
 |---|---|
 | Caixa 1: sinal de vida, reinício automático, roda do log, vento, movimento a fingir | feito e ensaiado na placa |
 | Caixa 1: rádio | feito; a placa passa os ensaios dela com o rádio ligado |
-| Caixa 2: escuta do motor, rádio, motor a fingir | escrito e a compilar; **por gravar e ensaiar** (falta ligar a segunda placa) |
+| Caixa 2: escuta do motor, rádio, motor a fingir | feito e ensaiado com as duas placas ligadas (a escuta do motor verdadeiro só no barco) |
+| Revisão independente do programa (23/11) | feita; os cinco pontos importantes estão corrigidos na versão **0.2.1**, que é a que está gravada nas duas placas |
 | Sensor de movimento verdadeiro (BNO085) | **por fazer**: o primeiro sensor deixou de responder a 22/11; espera-se o segundo. Até lá a caixa 1 diz ao portátil que o sensor não responde |
+| Entradas do log e do vento no barco | **por fazer**: falta escolher o comparador e o adaptador (medidas do Ivo). Cada entrada leva uma **resistência de 1 kΩ em série** junto à placa (ver "Sinais a fingir") |
 
 ## Os pinos
 
@@ -28,8 +30,8 @@ comandos, os pacotes do rádio) está em `comum/`.
 |---|---|---|
 | Sensor: os dois fios de dados | D21, D22 | como está em `docs/caixas/bancada-ligacao-6-fios.jpg`; a ligação do sensor novo decide-se quando ele chegar |
 | Sensor: aviso (INT) e recomeço (RST) | D19, D18 | |
-| Roda do log | D27 | entrada; duas subidas a menos de 4 ms contam como uma |
-| Vento | RX2 (D16) | 4 800 baud, só leitura |
+| Roda do log | D27 | entrada; duas subidas a menos de 4 ms contam como uma; no máximo uma interrupção por volta do ciclo |
+| Vento | RX2 (D16) | 4 800 baud, só leitura; as mudanças de nível contam-se com limite por volta do ciclo |
 | Luz | D2 | acesa com tudo a sair; apaga-se um instante quando a caixa deita uma linha fora |
 
 | Caixa 2 | Pino | Nota |
@@ -75,25 +77,62 @@ $env:ARLEQUIN_CAIXA1 = 'COM3'; $env:ARLEQUIN_CAIXA2 = 'COM5'; npm test
 O que fica provado: o sinal de vida de segundo a segundo; que abrir e fechar a porta não reinicia a
 caixa; que lixo e comandos sem soma não fazem nada; que uma caixa presa recomeça sozinha em 5 s; a
 contagem e o período do log; o vento tal e qual, e que lixo na entrada do vento nunca dá uma frase; o
-movimento a 10 linhas por segundo; e, com as duas, o motor pelo rádio e o que acontece quando a
-caixa 2 recomeça ou se cala.
+movimento a 10 linhas por segundo; que a caixa diz que finge antes de sair a primeira linha a fingir;
+que uma avalanche de sinais numa entrada (1 MHz no pino do log ou no do vento) não a para nem a faz
+recomeçar, e que, se recomeçar a meio dela, volta a arrancar; e, com as duas, o motor pelo rádio e o
+que acontece quando a caixa 2 recomeça ou se cala.
+
+Os ensaios `contador.test.js` e `placa.test.js` não precisam de placas: correm sempre.
 
 Para o caminho inteiro, até ao ecrã e à gravação, há o ensaio do `software/bordo` com a placa
 verdadeira (`npm run caixa-a-fingir` numa janela, para o GPS a fingir, e `npm run ensaio-placa` noutra).
 Escreve só nas pastas do ensaio e sai tudo marcado como simulado.
+
+## Ensaio de resistência
+
+Fica a ouvir a caixa 1 o tempo que se pedir e conta o que correu mal no caminho até ao portátil. De
+minuto a minuto diz como vai; no fim escreve `LIMPO` ou `COM FALHAS` (com a lista delas).
+
+```powershell
+node ensaio/resistencia.js COM3 60 --caixa2 COM5 --registo C:\caminho\registo.log
+```
+
+| Opção | Para quê |
+|---|---|
+| (nenhuma) | Liga os sinais a fingir da caixa 1 (log, vento, movimento). **Só na bancada** |
+| `--caixa2 COM5` | Liga também o motor a fingir da caixa 2 e exige o sinal dela pelo rádio |
+| `--duas` | Exige o sinal da caixa 2, sem lhe mexer |
+| `--sem-geradores` | Não liga sinal a fingir nenhum: ouve o que a caixa tiver de verdade. **É a única maneira de o correr no barco** |
+| `--registo <ficheiro>` | Guarda também o que escreve |
+
+Conta como falha: linhas que o portátil não lê; leituras de movimento em falta; segundos sem sinal de
+vida (os que o relógio da caixa mostra e, pelo relógio do portátil, o silêncio que estiver a decorrer);
+a caixa que recomeça; linhas que a caixa diz que não conseguiu mandar; a porta que se perde (acaba
+logo); e, com a caixa 2, o silêncio dela, os recomeços e os pacotes perdidos no rádio. As cópias que a
+ponte USB repete só se mostram: são linhas boas.
 
 ## Sinais a fingir (comandos de ensaio)
 
 Cada caixa traz geradores de bancada: sinais feitos por ela própria, que entram pelo caminho
 verdadeiro. Só se ligam por um comando com a soma certa (`$AQC,<comando>[,<valores>]*HH`), nunca ficam
 gravados (um recomeço desliga-os todos), e enquanto houver algum ligado a caixa diz no batimento que
-finge: o portátil marca tudo como simulado e a AI não aprende com isso.
+finge: o portátil marca tudo como simulado e a AI não aprende com isso. A caixa di-lo logo no instante
+em que passa a fingir, antes da primeira linha a fingir, e o portátil mantém a marca mais 7 s depois de
+ela deixar de o dizer, enquanto os últimos valores a fingir ainda valem.
+
+> **Só na bancada, com os fios do log e do vento soltos.** Os geradores do log, do vento e da avalanche
+> fazem a caixa **escrever nos próprios pinos de entrada**. Com a roda do log (o comparador) ou o
+> mostrador do vento ligados, ficam dois a mandar no mesmo fio. Por isso: no barco não se correm os
+> ensaios com geradores (`npm test` usa-os sempre; o de resistência só com `--sem-geradores`), e cada
+> uma das duas entradas leva uma **resistência de 1 kΩ em série**, junto à placa, que torna o engano
+> inofensivo. O movimento e o motor a fingir não mexem em pinos.
 
 | Comando | Caixa | O que faz |
 |---|---|---|
 | `log,<Hz>` | 1 | Impulsos da roda a fingir (0 para; 26 dá 5,2 nós) |
 | `vento,<décimos de grau>,<décimos de nó>` | 1 | Uma frase de vento por segundo (`0,0` para; `-1,0` manda lixo, para ensaiar a entrada) |
 | `movimento,<0\|1>` | 1 | 100 leituras por segundo com 12° de adornamento e a proa a 245° |
+| `avalanche,<1\|2>,<kHz>` | 1 | Uma onda rápida no pino do log (1) ou do vento (2), para ensaiar que um fio no ar ou um comparador a oscilar não param a caixa (0 para; 2000 no máximo) |
 | `motor,<rpm>` | 2 | Tramas do motor a fingir (0 para) |
 | `parar` | as duas | Desliga todos os geradores |
 | `estado` | as duas | Os contadores da caixa (o que entrou em cada entrada, o que se perdeu) |
@@ -101,6 +140,15 @@ finge: o portátil marca tudo como simulado e a AI não aprende com isso.
 
 A caixa responde a cada comando com `$AQR,<comando>,<resultado>*HH`. O programa do portátil nunca manda
 comandos: só os ensaios o fazem.
+
+Dois contadores do `estado` da caixa 1 servem para a instalação no barco: `avalanches` (vezes que as
+mudanças de nível na entrada do vento passaram do limite: fio no ar ou ruído) e `log-recusados`
+(impulsos a menos de 4 ms do anterior: ruído do comparador). Com as entradas boas, não sobem.
+
+**A avalanche e os recomeços.** A onda da avalanche é feita por um temporizador do chip e, como um
+sinal de fora, não para quando a placa recomeça sozinha (um recomeço não apaga o que os pinos tinham);
+só para com o `parar`, ou quando a placa arranca e volta a pôr os pinos como entradas. É de propósito:
+serve para ensaiar que a caixa arranca com a avalanche a decorrer.
 
 ## O batimento
 

@@ -71,12 +71,16 @@ static void obedece(const char *linha) {
     responde(nome, ensaioMovimento(v[0]) ? "ok" : "fora-dos-limites");
   } else if (strcmp(nome, "vento") == 0 && (quantos == 2 || quantos == 3)) {
     responde(nome, ensaioVento(v[0], v[1], quantos == 3 && v[2] != 0) ? "ok" : "fora-dos-limites");
+  } else if (strcmp(nome, "avalanche") == 0 && quantos == 2) {
+    responde(nome, ensaioAvalanche(v[0], v[1]) ? "ok" : "fora-dos-limites");
   } else if (strcmp(nome, "estado") == 0 && quantos == 0) {
-    // os contadores da caixa, para se ver de fora o que entra em cada entrada
-    char texto[128];
-    snprintf(texto, sizeof(texto), "vento-mexidas=%lu;vento-bytes=%lu;vento-frases=%lu;vento-invalidas=%lu;perdidas=%lu;cortadas=%lu",
-             (unsigned long)ventoMexidas, (unsigned long)ventoBytes, (unsigned long)ventoFrases, (unsigned long)ventoInvalidas, (unsigned long)aqPerdidas,
-             (unsigned long)aqCortadas);
+    // os contadores da caixa, para se ver de fora o que entra em cada entrada. Cabem sempre: com os 8
+    // números no máximo (10 algarismos cada) o texto tem 185 letras e a linha 200, que é o limite.
+    char texto[186];
+    snprintf(texto, sizeof(texto),
+             "vento-mexidas=%lu;vento-bytes=%lu;vento-frases=%lu;vento-invalidas=%lu;avalanches=%lu;log-recusados=%lu;perdidas=%lu;cortadas=%lu",
+             (unsigned long)ventoMexidas, (unsigned long)ventoBytes, (unsigned long)ventoFrases, (unsigned long)ventoInvalidas,
+             (unsigned long)ventoAvalanches, (unsigned long)logRecusados, (unsigned long)aqPerdidas, (unsigned long)aqCortadas);
     responde(nome, texto);
   } else if (strcmp(nome, "prender") == 0 && quantos == 0) {
     responde(nome, "ok");
@@ -91,6 +95,20 @@ static void obedece(const char *linha) {
 
 void setup() {
   motivoDoArranque = (uint8_t)esp_reset_reason();
+
+  // O cão de guarda do ciclo principal: 5 s sem dar a volta e a placa recomeça. Arma-se antes de tudo,
+  // para também valer se alguma coisa ficar presa a arrancar.
+  const esp_task_wdt_config_t cao = {.timeout_ms = CAO_DE_GUARDA_MS, .idle_core_mask = 0, .trigger_panic = true};
+  esp_task_wdt_reconfigure(&cao);
+  enableLoopWDT();
+
+  // Um recomeço da placa não apaga o que os pinos tinham: as interrupções das duas entradas ficam ligadas
+  // como estavam. Desligam-se aqui, antes de haver quem as atenda; cada entrada volta a ligar a sua mais
+  // abaixo, já com quem a atenda. (Visto na placa a 23/11/2026: com um sinal muito rápido na entrada do
+  // vento, a placa recomeçava e ficava presa a arrancar, calada, até lhe cortarem a corrente.)
+  gpio_intr_disable((gpio_num_t)PINO_LOG);
+  gpio_intr_disable((gpio_num_t)PINO_VENTO);
+
   Serial.setTxBufferSize(8192);
   Serial.begin(AQ_BAUD);
   pinMode(PINO_LUZ, OUTPUT);
@@ -99,11 +117,6 @@ void setup() {
   movIniciar();
   radioIniciar();
 
-  // O cão de guarda do ciclo principal: 5 s sem dar a volta e a placa recomeça.
-  const esp_task_wdt_config_t cao = {.timeout_ms = CAO_DE_GUARDA_MS, .idle_core_mask = 0, .trigger_panic = true};
-  esp_task_wdt_reconfigure(&cao);
-  enableLoopWDT();
-
   proximoBatimento = millis();
 }
 
@@ -111,7 +124,12 @@ void loop() {
   const uint32_t agora = millis();
 
   while (Serial.available() > 0) {
-    if (entrada.junta(Serial.read())) obedece(entrada.texto());
+    if (!entrada.junta(Serial.read())) continue;
+    const bool fingia = ensaioAlgum();
+    obedece(entrada.texto());
+    // Passou a fingir: di-lo já, antes de sair a primeira linha a fingir (o batimento certo podia vir até
+    // um segundo depois, e nesse intervalo o portátil tomava-as por medições).
+    if (!fingia && ensaioAlgum()) batimento(agora);
   }
 
   if ((int32_t)(agora - proximoBatimento) >= 0) {

@@ -8,8 +8,10 @@
 
 #include <Arduino.h>
 #include <driver/gpio.h>
+#include <driver/ledc.h>
 #include <esp_rom_gpio.h>
 #include <esp_timer.h>
+#include <hal/gpio_ll.h>
 #include <soc/gpio_sig_map.h>
 
 #include <arlequin_linhas.h>
@@ -20,6 +22,7 @@
 const uint8_t ENSAIO_LOG = 1;
 const uint8_t ENSAIO_VENTO = 2;
 const uint8_t ENSAIO_MOVIMENTO = 4;
+const uint8_t ENSAIO_AVALANCHE = 8;
 
 inline uint8_t ensaioLigados = 0;
 
@@ -127,6 +130,54 @@ static void ensaioCorreVento(uint32_t agoraMs) {
   }
 }
 
+// ---- A avalanche: uma onda quadrada rápida num dos pinos de entrada, feita por um temporizador do chip --
+// Serve para ensaiar que um fio no ar a apanhar ruído, ou um comparador a oscilar, não param a caixa. A
+// onda sai pelo próprio pino (que fica saída e entrada ao mesmo tempo) e não passa pelo ciclo principal:
+// continua a sair mesmo que ele deixe de correr.
+static int ensaioAvalanchePino = -1;
+
+static void ensaioAvalanchePara() {
+  if (ensaioAvalanchePino < 0) return;
+  ledc_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0);
+  gpio_set_direction((gpio_num_t)ensaioAvalanchePino, GPIO_MODE_INPUT);  // volta a ser só entrada
+  // a saída do pino deixa de ser a do temporizador (para o gerador do log voltar a mandar nele)
+  esp_rom_gpio_connect_out_signal(ensaioAvalanchePino, SIG_GPIO_OUT_IDX, false, false);
+  ensaioAvalanchePino = -1;
+  ensaioMarca(ENSAIO_AVALANCHE, false);
+}
+
+// qual: 1 o pino do log, 2 o do vento. khz: milhares de voltas por segundo (0 para parar; 2000 no
+// máximo). Devolve false se estiver fora dos limites.
+inline bool ensaioAvalanche(long qual, long khz) {
+  if ((qual != 1 && qual != 2) || khz < 0 || khz > 2000) return false;
+  ensaioAvalanchePara();
+  if (khz == 0) return true;
+  // o pino só leva um sinal a fingir de cada vez
+  if (qual == 1) ensaioLog(0);
+  else ensaioVento(0, 0, false);
+  const int pino = qual == 1 ? PINO_LOG : PINO_VENTO;
+  ledc_timer_config_t relogio = {};
+  relogio.speed_mode = LEDC_LOW_SPEED_MODE;
+  relogio.duty_resolution = LEDC_TIMER_1_BIT;
+  relogio.timer_num = LEDC_TIMER_0;
+  relogio.freq_hz = (uint32_t)khz * 1000UL;
+  relogio.clk_cfg = LEDC_AUTO_CLK;
+  if (ledc_timer_config(&relogio) != ESP_OK) return false;
+  ledc_channel_config_t canal = {};
+  canal.gpio_num = pino;
+  canal.speed_mode = LEDC_LOW_SPEED_MODE;
+  canal.channel = LEDC_CHANNEL_0;
+  canal.intr_type = LEDC_INTR_DISABLE;
+  canal.timer_sel = LEDC_TIMER_0;
+  canal.duty = 1;  // metade do tempo em cima
+  canal.hpoint = 0;
+  if (ledc_channel_config(&canal) != ESP_OK) return false;
+  gpio_ll_input_enable(&GPIO, (uint32_t)pino);  // o temporizador deixou o pino só como saída: volta a ouvir-se
+  ensaioAvalanchePino = pino;
+  ensaioMarca(ENSAIO_AVALANCHE, true);
+  return true;
+}
+
 // ---- O movimento a fingir: 100 leituras por segundo, com o cenário da caixa a fingir do portátil -----
 // (software/ferramentas/caixa-a-fingir/lib/gerador.js: as mesmas contas, para os dois ensaios darem o
 // mesmo.) Adornamento de 12° a estibordo; proa 245°, mais ou menos 3° de 20 em 20 s; caimento de mais
@@ -211,6 +262,7 @@ inline void ensaioCorre(uint32_t agoraMs) {
 }
 
 inline void ensaioParar() {
+  ensaioAvalanchePara();
   ensaioLog(0);
   ensaioVento(0, 0, false);
   ensaioMovimento(0);
