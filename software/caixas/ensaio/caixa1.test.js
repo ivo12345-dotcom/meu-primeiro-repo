@@ -77,8 +77,9 @@ test('lixo e comandos sem soma não fazem nada', COM_PLACA, () => comACaixa(asyn
   const b = batimentos(linhas)
   assert.ok(b.length >= 3, `só ${b.length} batimentos depois do lixo`)
   assert.ok(b.every(x => x.sim === false), 'a caixa passou a dizer que finge')
+  // o contador do log é desde o arranque: não tem de estar a zero, tem é de não mexer
   const log = linhas.map(ler).filter(l => l && l.tipo === 'log')
-  assert.ok(log.every(l => l.impulsos === 0), 'apareceram impulsos do log')
+  assert.ok(log.every(l => l.impulsos === log[0].impulsos), 'apareceram impulsos do log')
 }))
 
 test('um gerador ligado obriga a caixa a dizer que finge', COM_PLACA, () => comACaixa(async (p) => {
