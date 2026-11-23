@@ -481,3 +481,50 @@ test('a configuração: os valores por omissão do desenho', () => {
   })
   assert.deepEqual(s.eixoProa.enum, ['+x', '-x', '+y', '-y', '+z', '-z'])
 })
+
+// --- O sensor de movimento dito pela caixa 1 (programa das caixas de 23/11) --------------------------
+const batimentoComSensor = (sensor, { arranque = 1, rsts = 0 } = {}) => escrever('B', [1, 1000, '0.2.0', 0, 0, 0, sensor, arranque, rsts])
+
+test('sensor: o estado, o motivo do arranque e os toques no RST vão para o SignalK', (t) => {
+  const { app, f, p } = arrancar(t)
+  f.aoLinha(batimentoComSensor(0, { arranque: 6, rsts: 2 }))
+  t.mock.timers.tick(1000)
+  assert.equal(app.valores['arlequin.caixas.1.sensor'], 'a-medir')
+  assert.equal(app.valores['arlequin.caixas.1.arranque'], 6)
+  assert.equal(app.valores['arlequin.caixas.1.sensorRsts'], 2)
+  assert.deepEqual(app.notificacoes, [])
+  p.stop()
+})
+
+test('sensor: "não volta" acende o aviso no ecrã e apaga-se quando volta a medir', (t) => {
+  const { app, f, p } = arrancar(t)
+  f.aoLinha(batimentoComSensor(3, { rsts: 5 }))
+  t.mock.timers.tick(1000)
+  assert.equal(app.valores['arlequin.caixas.1.sensor'], 'nao-volta')
+  assert.deepEqual(app.notificacoes.map(n => [n.path, n.state]), [['notifications.arlequin.caixas.sensor', 'warn']])
+  assert.match(app.notificacoes[0].message, /sensor de movimento não responde/)
+  assert.equal(app.notificacoes[0].apito, 'curto')
+  f.aoLinha(batimentoComSensor(0, { rsts: 6 }))
+  t.mock.timers.tick(1000)
+  assert.deepEqual(app.notificacoes.map(n => n.state), ['warn', 'normal'])
+  p.stop()
+})
+
+test('sensor: uma caixa que não diz nada do sensor deixa os três caminhos a null, sem aviso', (t) => {
+  const { app, f, p } = arrancar(t)
+  umSegundoBom(f)
+  t.mock.timers.tick(1000)
+  assert.equal(app.valores['arlequin.caixas.1.sensor'], null)
+  assert.equal(app.valores['arlequin.caixas.1.arranque'], null)
+  assert.equal(app.valores['arlequin.caixas.1.sensorRsts'], null)
+  assert.deepEqual(app.notificacoes, [])
+  p.stop()
+})
+
+test('sensor: ao parar o plugin, um aviso do sensor aceso apaga-se', (t) => {
+  const { app, f, p } = arrancar(t)
+  f.aoLinha(batimentoComSensor(3))
+  t.mock.timers.tick(1000)
+  p.stop()
+  assert.deepEqual(app.notificacoes.filter(n => n.path.endsWith('.sensor')).map(n => n.state), ['warn', 'normal'])
+})

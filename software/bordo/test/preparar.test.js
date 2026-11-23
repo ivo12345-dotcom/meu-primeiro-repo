@@ -275,3 +275,34 @@ test('"criar" só cria a configuração do barco: não pede os plugins instalado
   assert.equal(r.copia, null)
   assert.equal(fs.existsSync(p.copias), false)
 })
+
+// --- O ensaio com a placa verdadeira (programa das caixas de 23/11) ---------------------------------
+// Como o ensaio em casa (pasta do ensaio, dados do ensaio, tudo marcado como simulado, GPS a fingir),
+// mas a ler a caixa verdadeira pela porta que o barco tiver escolhida (de fábrica, 'auto').
+test('o ensaio com a placa: tudo como no ensaio, menos a porta, que é a do barco', (t) => {
+  const p = pastas(t)
+  preparar('bordo', p)
+  const antes = tudo(p.config)
+  const r = preparar('ensaio-placa', p)
+  assert.equal(r.pasta, p.ensaio)
+  assert.deepEqual(chaves(p.ensaio), { ...ENSAIO, porta: 'auto' })
+  assert.deepEqual(tudo(p.config), antes, 'a configuração do barco fica igual, byte a byte')
+  preparar('ensaio', p) // e volta-se ao ensaio com a caixa a fingir
+  assert.deepEqual(chaves(p.ensaio), ENSAIO)
+  preparar('ensaio-placa', p)
+  assert.deepEqual(chaves(p.ensaio), { ...ENSAIO, porta: 'auto' })
+})
+
+test('o ensaio com a placa respeita uma porta escolhida à mão no barco', (t) => {
+  const p = pastas(t)
+  preparar('bordo', p)
+  mexer(p.config, 'signalk-arlequin-caixas', c => { c.porta = 'COM7' })
+  preparar('ensaio-placa', p)
+  assert.equal(plugin(p.ensaio, 'signalk-arlequin-caixas').configuration.porta, 'COM7')
+  assert.equal(plugin(p.ensaio, 'signalk-arlequin-caixas').configuration.ensaio, true)
+})
+
+test('o comando do ensaio com a placa usa a pasta do ensaio', () => {
+  const s = require('../package.json').scripts
+  assert.match(s['ensaio-placa'], /^node preparar\.js ensaio-placa && node \S+signalk-server -c config-ensaio$/)
+})

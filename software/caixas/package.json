@@ -1,0 +1,15 @@
+{
+  "name": "arlequin-caixas",
+  "version": "0.2.0",
+  "private": true,
+  "description": "O programa das duas caixas ESP32 do Arlequin e os ensaios com as placas ligadas ao portátil",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "compilar:1": "node compilar.js 1",
+    "compilar:2": "node compilar.js 2",
+    "gravar:1": "node compilar.js 1 --gravar",
+    "gravar:2": "node compilar.js 2 --gravar",
+    "test": "node --test --test-concurrency=1 \"ensaio/*.test.js\""
+  }
+}

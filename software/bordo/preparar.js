@@ -34,7 +34,7 @@ const path = require('node:path')
 
 const AQUI = __dirname
 const PASTAS = { modelo: path.join(AQUI, 'modelo'), config: path.join(AQUI, 'config'), ensaio: path.join(AQUI, 'config-ensaio') }
-const MODOS = ['bordo', 'ensaio', 'criar']
+const MODOS = ['bordo', 'ensaio', 'ensaio-placa', 'criar']
 const DADOS = '~/arlequin-dados' // a pasta dos dados, se a configuração não disser outra
 const DADOS_ENSAIO = 'arlequin-dados-ensaio'
 const PORTA_ENSAIO = 'tcp://localhost:8765'
@@ -93,7 +93,9 @@ function completar (modelo, config) {
 
 // A configuração do barco, com os valores do ensaio por cima, na pasta do ensaio. Lê e confere tudo
 // antes de escrever: se um ficheiro do barco não se perceber, dá erro sem ter mexido em nenhum.
-function paraOEnsaio (config, ensaio) {
+// comAPlaca: o ensaio lê a caixa verdadeira (com os geradores de bancada dela) pela porta que o barco
+// tiver escolhida, em vez da caixa a fingir; o resto é igual, e tudo sai marcado como simulado.
+function paraOEnsaio (config, ensaio, comAPlaca = false) {
   const abertos = new Map(ficheiros(config).map(nome => [nome, lerJson(config, nome)]))
   const deUmPlugin = (id) => {
     const nome = `plugin-config-data/${id}.json`
@@ -111,7 +113,7 @@ function paraOEnsaio (config, ensaio) {
   }
 
   const caixas = deUmPlugin('signalk-arlequin-caixas')
-  caixas.porta = PORTA_ENSAIO
+  if (!comAPlaca) caixas.porta = PORTA_ENSAIO
   caixas.ensaio = true
   for (const id of COM_DADOS) deUmPlugin(id).pasta = DADOS_ENSAIO
   fornecedor('b330').enabled = false
@@ -172,11 +174,11 @@ function guardarCopia (config, destino, agora) {
 // → { pasta (a que se dá ao servidor), criados (o que veio do modelo), copia (a cópia guardada, ou null),
 //     aviso (se a cópia falhou), semPlugins (true se ainda falta "npm run instalar") }
 function preparar (modo, { modelo = PASTAS.modelo, config = PASTAS.config, ensaio = PASTAS.ensaio, copias, agora = new Date() } = {}) {
-  if (!MODOS.includes(modo)) throw new Error(`modo desconhecido: ${JSON.stringify(modo)} (é "bordo", "ensaio" ou "criar")`)
+  if (!MODOS.includes(modo)) throw new Error(`modo desconhecido: ${JSON.stringify(modo)} (é "bordo", "ensaio", "ensaio-placa" ou "criar")`)
   const r = { pasta: config, criados: completar(modelo, config), copia: null, aviso: null, semPlugins: false }
   r.semPlugins = !fs.existsSync(path.join(config, 'node_modules'))
-  if (modo === 'ensaio') {
-    paraOEnsaio(config, ensaio)
+  if (modo === 'ensaio' || modo === 'ensaio-placa') {
+    paraOEnsaio(config, ensaio, modo === 'ensaio-placa')
     ligarPlugins(config, ensaio)
     r.pasta = ensaio
   } else if (modo === 'bordo') {
@@ -198,6 +200,9 @@ if (require.main === module) {
     if (modo === 'ensaio') {
       console.log('Modo de ENSAIO: a caixa a fingir, dados à parte e tudo marcado como simulado.')
       console.log('  Parte de uma cópia da configuração do barco (config → config-ensaio): o que mexeres no ensaio fica só no ensaio.')
+    } else if (modo === 'ensaio-placa') {
+      console.log('Modo de ENSAIO COM A PLACA: a caixa verdadeira, dados à parte e tudo marcado como simulado.')
+      console.log('  A posição vem do GPS a fingir: é preciso o "npm run caixa-a-fingir" a correr noutra janela.')
     } else if (modo === 'bordo') {
       console.log('Modo de BORDO: a caixa verdadeira e os dados do barco.')
     } else {
@@ -211,7 +216,7 @@ if (require.main === module) {
       process.exit(2)
     }
   } catch (erro) {
-    console.error(`${erro.message}\nuso: node preparar.js bordo|ensaio|criar`)
+    console.error(`${erro.message}\nuso: node preparar.js bordo|ensaio|ensaio-placa|criar`)
     process.exit(2)
   }
 }

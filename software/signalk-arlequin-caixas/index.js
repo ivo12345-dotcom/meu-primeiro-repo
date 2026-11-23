@@ -20,6 +20,9 @@
 //   - As tramas do motor seguem logo para o plugin do motor, pelo evento 'arlequin-j1939', com a hora
 //     do portátil. O estado de cada caixa vai em arlequin.caixas.N.estado; o aviso da caixa 2 calada
 //     é do plugin do motor, daqui só sai o da caixa 1 (lib/caixas.js).
+//   - O sensor de movimento: a caixa 1 diz no batimento como ele está, e isso vai em
+//     arlequin.caixas.1.sensor, com o motivo do último arranque da placa e os toques no RST. Um sensor
+//     que não volta acende o aviso notifications.arlequin.caixas.sensor.
 //   - Linhas que não se percebem contam-se e mostram-se no estado do plugin e no /estado; nunca uma
 //     mensagem por linha no registo.
 //
@@ -117,7 +120,7 @@ module.exports = function (app, { abrirFonte = abrirFonteVerdadeira } = {}) {
   let mov, movVisto
   let bloco, nAnterior
   let nLinhas, invalidas, faltam, ultimas
-  let meio, queixou, avisoAceso
+  let meio, queixou, avisoAceso, avisoSensorAceso
 
   function zerar (agora) {
     porta = { aberta: false, nome: '' }
@@ -140,6 +143,7 @@ module.exports = function (app, { abrirFonte = abrirFonteVerdadeira } = {}) {
     meio = false
     queixou = false
     avisoAceso = false
+    avisoSensorAceso = false
   }
   zerar(0)
 
@@ -151,7 +155,10 @@ module.exports = function (app, { abrirFonte = abrirFonteVerdadeira } = {}) {
   }
 
   function publicarNotificacoes (ns) {
-    for (const n of ns) if (n.id === 'caixa1') avisoAceso = n.state !== 'normal'
+    for (const n of ns) {
+      if (n.id === 'caixa1') avisoAceso = n.state !== 'normal'
+      if (n.id === 'sensor') avisoSensorAceso = n.state !== 'normal'
+    }
     enviar(ns.map(n => ({
       path: `notifications.arlequin.caixas.${n.id}`,
       value: { state: n.state, method: n.method, message: n.message, ...(n.apito ? { apito: n.apito } : {}) }
@@ -177,7 +184,7 @@ module.exports = function (app, { abrirFonte = abrirFonteVerdadeira } = {}) {
       const agora = Date.now()
       if (l.tipo === 'batimento') {
         estadoCaixas = anotarBatimento(estadoCaixas, l, agora)
-        info[l.caixa] = { fw: l.fw, perdidos: l.perdidos, rssi: l.rssi }
+        info[l.caixa] = { fw: l.fw, perdidos: l.perdidos, rssi: l.rssi, arranque: l.arranque ?? null, rsts: l.rsts ?? null }
       } else if (l.tipo === 'log') {
         log = contas.juntarLog(log, l)
         logVisto = agora
@@ -263,6 +270,13 @@ module.exports = function (app, { abrirFonte = abrirFonteVerdadeira } = {}) {
         { path: `arlequin.caixas.${n}.perdidos`, value: dela ? dela.perdidos : null }
       )
       if (n === 2) valores.push({ path: 'arlequin.caixas.2.rssi', value: dela ? dela.rssi : null })
+      if (n === 1) {
+        valores.push(
+          { path: 'arlequin.caixas.1.sensor', value: avaliado.sensor },
+          { path: 'arlequin.caixas.1.arranque', value: dela ? dela.arranque : null },
+          { path: 'arlequin.caixas.1.sensorRsts', value: dela ? dela.rsts : null }
+        )
+      }
     }
     // o bloco do movimento deste segundo; sem a caixa 1 a dizer quem é, deita-se fora
     const b = fechar(bloco)
@@ -300,6 +314,7 @@ module.exports = function (app, { abrirFonte = abrirFonteVerdadeira } = {}) {
     fonte = null
     // um aviso não pode ficar preso na árvore depois de o plugin parar (auditoria I-21)
     if (aCorrer && avisoAceso) publicarNotificacoes([{ id: 'caixa1', state: 'normal', method: [], message: 'Normal' }])
+    if (aCorrer && avisoSensorAceso) publicarNotificacoes([{ id: 'sensor', state: 'normal', method: [], message: 'Normal' }])
     aCorrer = false
   }
 

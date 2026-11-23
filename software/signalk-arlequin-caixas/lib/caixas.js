@@ -5,10 +5,15 @@
 //   caixa 2 (motor): o batimento dela chega pela caixa 1. Sem a caixa 1 não se sabe nada da 2.
 // Só a caixa 1 dá aviso daqui: o da caixa 2 dá-o o plugin do motor (o semLigacao dele, com o motivo).
 // "A fingir" é das duas: se uma disser que finge, tudo o que sai é marcado como simulado.
+// O sensor de movimento: a caixa 1 diz no batimento como ele está (a medir, a arrancar, calado, não
+// volta, a fingir). "Não volta" dá aviso logo; calado ou a arrancar só ao fim de 20 s seguidos sem
+// medir, porque um recomeço do sensor resolve-se em segundos e não é notícia.
 // As funções não mexem no estado que recebem: devolvem um novo.
 
 const VELHO = 5000 // um batimento mais velho do que isto já não conta
 const ESPERA = 30000 // uma caixa que nunca falou só dá aviso ao fim deste tempo
+const SEM_MEDIR = 20000 // o sensor calado ou a arrancar há mais do que isto dá aviso
+const SENSOR = ['a-medir', 'a-arrancar', 'calado', 'nao-volta', 'a-fingir'] // pela ordem do número que a caixa manda
 
 const ACESO = (motivo) => ({
   id: 'caixa1',
@@ -18,6 +23,17 @@ const ACESO = (motivo) => ({
   message: `A caixa dos instrumentos (vento, velocidade, proa) deixou de falar: ${motivo}`
 })
 const APAGADO = { id: 'caixa1', state: 'normal', method: [], message: 'Normal' }
+const SENSOR_ACESO = {
+  id: 'sensor',
+  state: 'warn',
+  method: ['visual', 'sound'],
+  apito: 'curto',
+  message: 'O sensor de movimento não responde: sem proa nem adornamento'
+}
+const SENSOR_APAGADO = { id: 'sensor', state: 'normal', method: [], message: 'Normal' }
+
+// O sensor está bem quando mede ou quando a caixa finge por ele; se a caixa nada diz, não se sabe.
+const semQueixa = (codigo) => codigo === null || codigo === 0 || codigo === 4
 
 function novoEstadoCaixas (agora) {
   return {
@@ -26,7 +42,10 @@ function novoEstadoCaixas (agora) {
     fingem: { 1: false, 2: false }, // o que cada caixa disse de si no último batimento dela
     porta: { aberta: false, nome: '', motivo: '' },
     falou: false, // a caixa 1 já falou alguma vez
-    aviso: false // o aviso caixa1 está aceso
+    aviso: false, // o aviso caixa1 está aceso
+    sensor: null, // o número que a caixa 1 disse do sensor no último batimento (null: não disse)
+    semMedirDesde: null, // a hora do primeiro batimento seguido em que o sensor não media
+    avisoSensor: false // o aviso sensor está aceso
   }
 }
 
@@ -36,7 +55,11 @@ function anotarBatimento (estado, batimento, agora) {
     batimentos: { ...estado.batimentos, [batimento.caixa]: agora },
     fingem: { ...estado.fingem, [batimento.caixa]: batimento.sim === true }
   }
-  if (batimento.caixa === 1) e.falou = true
+  if (batimento.caixa === 1) {
+    e.falou = true
+    e.sensor = Number.isInteger(batimento.sensor) && batimento.sensor >= 0 && batimento.sensor < SENSOR.length ? batimento.sensor : null
+    e.semMedirDesde = semQueixa(e.sensor) ? null : (estado.semMedirDesde ?? agora)
+  }
   return e
 }
 
@@ -76,10 +99,23 @@ function avaliarCaixas (estado, agora) {
     aviso = false
     notificacoes.push(APAGADO)
   }
+  // O sensor: só se sabe dele enquanto a caixa 1 falar. Com ela calada, o aviso fica como estava.
+  const codigo = viva1 ? estado.sensor : null
+  let avisoSensor = estado.avisoSensor
+  if (viva1) {
+    const falha = codigo === 3 || ((codigo === 1 || codigo === 2) && agora - estado.semMedirDesde > SEM_MEDIR)
+    if (falha && !avisoSensor) {
+      avisoSensor = true
+      notificacoes.push(SENSOR_ACESO)
+    } else if (semQueixa(codigo) && avisoSensor) {
+      avisoSensor = false
+      notificacoes.push(SENSOR_APAGADO)
+    }
+  }
   // A fingir: basta uma das duas dizê-lo, porque o que a caixa do motor manda entra na mesma linha da
   // caixa negra do que o resto. O que a caixa do motor disse só conta enquanto ela der sinal.
   const sim = estado.fingem[1] || (viva2 && estado.fingem[2])
-  return { estado: { ...estado, aviso }, caixas, sim, notificacoes }
+  return { estado: { ...estado, aviso, avisoSensor }, caixas, sim, sensor: codigo === null ? null : SENSOR[codigo], notificacoes }
 }
 
-module.exports = { VELHO, ESPERA, novoEstadoCaixas, anotarBatimento, anotarPorta, avaliarCaixas }
+module.exports = { VELHO, ESPERA, SEM_MEDIR, novoEstadoCaixas, anotarBatimento, anotarPorta, avaliarCaixas }

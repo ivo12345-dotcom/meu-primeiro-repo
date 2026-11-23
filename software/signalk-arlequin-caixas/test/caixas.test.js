@@ -55,3 +55,63 @@ test('a fingir: basta uma das duas caixas dizer que finge; a do motor só enquan
   e = anotarBatimento(e, bat(1, false), 9000)
   assert.equal(avaliarCaixas(e, 9100).sim, false)
 })
+
+// --- O sensor de movimento, que a caixa 1 diz no batimento dela (programa das caixas de 23/11) -------
+const batS = (sensor) => ({ ...bat(1), sensor, arranque: 1, rsts: 0 })
+const aberta = () => anotarPorta(novoEstadoCaixas(0), { aberta: true, nome: 'COM7' }, 0)
+
+test('sensor: o estado por palavras; null quando a caixa não o diz ou deixou de falar', () => {
+  let e = aberta()
+  assert.equal(avaliarCaixas(e, 100).sensor, null) // ainda sem batimento
+  for (const [codigo, texto] of [[0, 'a-medir'], [1, 'a-arrancar'], [2, 'calado'], [3, 'nao-volta'], [4, 'a-fingir']]) {
+    e = anotarBatimento(e, batS(codigo), 1000)
+    assert.equal(avaliarCaixas(e, 1000).sensor, texto)
+  }
+  e = anotarBatimento(e, bat(1), 2000) // uma caixa que nada diz do sensor: a caixa a fingir, um programa antigo
+  assert.equal(avaliarCaixas(e, 2000).sensor, null)
+  e = anotarBatimento(e, batS(0), 3000)
+  assert.equal(avaliarCaixas(e, 3000).sensor, 'a-medir')
+  assert.equal(avaliarCaixas(e, 3000 + VELHO + 1).sensor, null) // a caixa calou-se: já não se sabe
+})
+
+test('sensor: calado ou a arrancar só dá aviso ao fim de 20 s seguidos sem medir; um aviso só; apaga-se ao medir', () => {
+  let r = avaliarCaixas(anotarBatimento(aberta(), batS(0), 1000), 1000)
+  assert.deepEqual(r.notificacoes, [])
+  // cala-se, tenta arrancar, cala-se outra vez: enquanto não passarem 20 s sem medir, nada
+  let t = 2000
+  for (const codigo of [2, 1, 2, 1, 2]) {
+    r = avaliarCaixas(anotarBatimento(r.estado, batS(codigo), t), t)
+    assert.deepEqual(r.notificacoes, [], `aos ${t} ms`)
+    t += 4000
+  }
+  r = avaliarCaixas(anotarBatimento(r.estado, batS(1), 22500), 22500) // 20,5 s sem medir
+  assert.equal(r.notificacoes.length, 1)
+  assert.deepEqual({ ...r.notificacoes[0], message: '' }, { id: 'sensor', state: 'warn', method: ['visual', 'sound'], apito: 'curto', message: '' })
+  assert.match(r.notificacoes[0].message, /sensor de movimento não responde/)
+  assert.deepEqual(avaliarCaixas(anotarBatimento(r.estado, batS(3), 23000), 23000).notificacoes, [])
+  r = avaliarCaixas(anotarBatimento(r.estado, batS(0), 24000), 24000)
+  assert.deepEqual(r.notificacoes, [{ id: 'sensor', state: 'normal', method: [], message: 'Normal' }])
+})
+
+test('sensor: "não volta" avisa logo; a fingir e sem os campos novos nunca avisam, e apagam um aviso aceso', () => {
+  let r = avaliarCaixas(anotarBatimento(aberta(), batS(3), 1000), 1000)
+  assert.equal(r.notificacoes.length, 1)
+  assert.equal(r.notificacoes[0].state, 'warn')
+  r = avaliarCaixas(anotarBatimento(r.estado, batS(4), 2000), 2000) // ligaram o gerador de bancada
+  assert.deepEqual(r.notificacoes.map(n => [n.id, n.state]), [['sensor', 'normal']])
+  r = avaliarCaixas(anotarBatimento(r.estado, batS(3), 3000), 3000)
+  assert.equal(r.notificacoes[0].state, 'warn')
+  r = avaliarCaixas(anotarBatimento(r.estado, bat(1), 4000), 4000) // deixou de dizer: não se sabe, não se avisa
+  assert.deepEqual(r.notificacoes.map(n => [n.id, n.state]), [['sensor', 'normal']])
+  assert.deepEqual(avaliarCaixas(anotarBatimento(aberta(), bat(1), 1000), 60000 - VELHO).notificacoes.filter(n => n.id === 'sensor'), [])
+})
+
+test('sensor: com a caixa calada o aviso do sensor fica como estava; quem avisa é o da caixa', () => {
+  let r = avaliarCaixas(anotarBatimento(aberta(), batS(3), 1000), 1000)
+  assert.deepEqual(r.notificacoes.map(n => n.id), ['sensor'])
+  r = avaliarCaixas(r.estado, 1000 + VELHO + 1)
+  assert.deepEqual(r.notificacoes.map(n => n.id), ['caixa1'])
+  assert.equal(r.sensor, null)
+  r = avaliarCaixas(anotarBatimento(r.estado, batS(0), 9000), 9000)
+  assert.deepEqual(r.notificacoes.map(n => [n.id, n.state]).sort(), [['caixa1', 'normal'], ['sensor', 'normal']])
+})
