@@ -436,8 +436,49 @@ definitivo, ou a caixa 2 fica de vez.
       vertical. A proa ainda não vale ("erro estimado 180°"): o sensor só a acerta depois de rodado
       em várias direções, o que fica para o ensaio da bússola.
 
-    **Ensaio de resistência:** a correr desde as 20:45 de 22/11, 3 horas a 400 kHz e
-    200 / 200 / 100 (o dobro do desenho). O resultado regista-se aqui.
+    **Ensaio de resistência, 22/11 das 20:45 às 23:11: não passou.** A 400 kHz e 200 / 200 / 100
+    (o dobro do desenho; chegaram 256 / 200 / 100). Era para durar 3 horas e acabou às 2 h 26 min,
+    porque o sensor bloqueou sozinho e não voltou. O registo completo ficou no portátil, em
+    `Documents\Veleiro\bancada\bno085\2026-11-22_204510_resistencia.log`.
+
+    - **Enquanto correu, correu limpo.** 8 484 segundos de leituras sem uma falha nos fios
+      (23,4 milhões de conversas), nenhuma leitura em falta pelo número de ordem, e a conversa mais
+      demorada 4,4 ms. O troço mais comprido foi de 2 h 09 min seguidas (das 21:01:51 às 23:11:04),
+      com uma única conversa falhada, às 21:02:13, sem consequência.
+    - **Primeiro episódio, das 20:57:43 às 21:01:51.** O sensor deixou de responder sete vezes em
+      4 minutos ("endereço não encontrado"). De cada vez o programa de bancada reiniciou a placa e o
+      sensor voltou a responder sem lhe cortarem a corrente. Mas arranque sim, arranque não, abria a
+      conversa e não mandava leituras; mais um reinício resolvia. Ao fim de 14 reinícios estabilizou.
+    - **Segundo episódio, às 23:11:04: bloqueou de vez.** Reiniciada a placa à mão, o sensor continua
+      mudo. Tem corrente (a luz dele está acesa e as duas linhas estão puxadas para cima), não segura
+      nenhuma linha e não responde em nenhum endereço do barramento: nem no 4A/4B, nem no 28/29 do
+      programa de arranque dele (varrimento feito à 01:31). À 01:32, 2 h 21 min depois, estava
+      igual: não recupera sozinho. Falta confirmar que volta quando se lhe corta a corrente.
+    - **A placa estava parada nos dois episódios.** Vê-se na aceleração gravada: o Ivo mudou-a de
+      sítio às 20:54–20:55 e deu-lhe dois toques, às 21:08 e às 22:29. O primeiro episódio começou
+      2 min 40 s depois de a pousar e o segundo 42 minutos depois do último toque.
+    - **Os oito bloqueios começaram todos a um múltiplo exato de 5 segundos depois de a conversa
+      abrir** (aos 10, 20, 25, 35, 750 e 7 750 s). Por acaso seria 1 hipótese em 5 de cada vez. O
+      programa de bancada não faz nada de 5 em 5 segundos; fica a suspeita de uma tarefa periódica do
+      próprio sensor (a gravação das calibrações na memória dele), **por confirmar** na documentação
+      do sensor e num ensaio com essa gravação desligada.
+    - **O programa de bancada também ficou preso** no segundo episódio: deixou de mandar linhas às
+      23:11:05 e só voltou com um reinício à mão. Não tem cão de guarda. Das sete vezes anteriores
+      tinha recuperado sozinho.
+    - **Linhas estragadas no cabo USB a 921 600 baud:** das 7 641 linhas de um segundo do troço
+      comprido, 110 (1,4 %) chegaram ilegíveis, cada uma por inteiro e sem relação com as falhas do
+      sensor. O desenho usa 460 800 baud; falta medir aí.
+    - **A bússola do sensor esteve as três horas com confiança 0 e erro estimado de 180°** (a placa
+      quase não rodou). Nesse estado o plugin das caixas deixou de publicar a proa (correção feita na
+      mesma noite; o adornamento e o caimento saem na mesma).
+
+    **O que isto decide (parecer do Claude, por combinar com o Ivo).** A ligação de 4 fios lê bem
+    mas não chega: um bloqueio como o das 23:11 só se resolve cortando a corrente ao sensor, e no mar
+    ninguém vai tirar o cabo. O passo seguinte, antes de ir para os 10 fios (SPI), é juntar dois fios
+    aos quatro e repetir o ensaio: o **RST** (a placa reinicia o sensor sozinha) e o **INT** (o sensor
+    avisa quando tem dados, que é como o fabricante manda usá-lo; o programa de bancada perguntava-lhe
+    2 750 vezes por segundo). Se com os seis fios os bloqueios continuarem a aparecer, passa-se à
+    ligação de 10 fios.
 
     Regras que isto dá ao firmware da caixa 1:
 
@@ -448,8 +489,23 @@ definitivo, ou a caixa 2 fica de vez.
        leituras chegam mesmo; "a conversa abriu" não chega como prova.
     3. A placa recomeça sem o sensor perder a corrente sempre que o portátil reabre a porta USB:
        esse caminho tem de ficar ensaiado (na bancada correu bem três vezes em três).
-    4. **Levar um quinto fio, do pino RST do sensor a um pino da placa** (parecer meu, por decidir
-       com o Ivo): é o recomeço garantido, por fio, para quando o sensor não obedece à ordem.
+    4. **Levar um quinto fio, do pino RST do sensor a um pino da placa.** Deixou de ser só um
+       parecer: o bloqueio das 23:11 mostrou que sem ele o sensor não volta. É o recomeço garantido,
+       por fio, para quando o sensor não obedece à ordem ou nem sequer responde. Por combinar com o
+       Ivo, com os pinos marcados na foto dele.
+    5. **Cão de guarda na caixa.** Se o programa da caixa ficar preso, como o de bancada ficou, a
+       placa recomeça sozinha em poucos segundos. Uma caixa calada sem ninguém a reiniciar não pode
+       acontecer.
+    6. **Não martelar o sensor.** Ler só quando ele avisa (um sexto fio, do pino INT a um pino da
+       placa) ou, sem esse fio, a um ritmo pouco acima do das leituras; nunca milhares de perguntas
+       por segundo.
+    7. **Experimentar desligar a gravação periódica das calibrações do sensor** e repetir o ensaio
+       de resistência. Se os bloqueios desaparecerem, fica desligada e a calibração grava-se só a
+       pedido, com o barco parado.
+    8. **Todas as linhas que a caixa manda levam soma de controlo**, as do motor também (hoje não
+       levam): o cabo estraga linhas inteiras, e uma linha do motor estragada não pode passar por boa.
+    9. **O ensaio de resistência repete-se com o RST e o cão de guarda a trabalhar** e só passa com
+       3 horas seguidas em que qualquer bloqueio se resolva sozinho, com o tempo sem leituras contado.
 
 ## Pedido novo: carta com toque e caminhos guardados (por desenhar com o Ivo)
 

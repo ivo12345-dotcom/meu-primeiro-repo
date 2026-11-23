@@ -18,7 +18,7 @@ pasta é o quê, como se testa no portátil e o que cada plugin precisa no barco
 | `signalk-arlequin-agua/` | Água doce pelas pedaladas das bombas de pé: Enchi, calibrar a bomba, aviso ≤ 20 %, dias que faltam | Sim |
 | `signalk-arlequin-j1939/` | Motor D1-20B pelo J1939 do MDI: rotações, horas, temperaturas, tensão, consumo, alarmes, estado da ligação, descoberta da PGN 65417. Três fontes: `candump` (adaptador CAN no Pi), `caixa` (as caixas ESP32, no portátil) e `simulador` | Sim |
 | `signalk-arlequin-caixas/` | **As caixas ESP32** (o sistema no portátil): lê o que a caixa 1 manda pelo cabo USB e põe no SignalK a velocidade na água (roda do log), o vento aparente, a proa, o adornamento e o caimento (sensor BNO085), o bloco do movimento para a caixa negra, o estado das duas caixas e as tramas do motor para o plugin do motor. As calibrações estão na configuração do plugin | Sim (com as caixas) |
-| `bordo/` | **O SignalK do portátil a bordo**, com as duas caixas e sem simulador: a configuração, o `preparar.js` (modos `bordo` e `ensaio`) e os comandos. Ver "No portátil a bordo, com as duas caixas" | **Não** (é o portátil) |
+| `bordo/` | **O SignalK do portátil a bordo**, com as duas caixas e sem simulador: o modelo da configuração (`modelo/`), o `preparar.js` (que cria a pasta do barco e a do ensaio) e os comandos. Ver "No portátil a bordo, com as duas caixas" | **Não** (é o portátil) |
 | `ferramentas/caixa-a-fingir/` | Faz de caixa 1 e de GPS no próprio portátil (por TCP), para ensaiar tudo em casa sem as placas; o que manda sai marcado como simulado | Não |
 | `arlequin-simulador/` | Plugin que finge o barco (navegação, vento, AIS, motor, baterias, sol) | **Não** (só testes) |
 | `dev/` | SignalK local no portátil, com tudo ligado, e os scripts de ensaio | **Não** |
@@ -177,14 +177,31 @@ Opções da caixa a fingir: `-- --sem-caixa2` (a caixa do motor calada), `-- --s
 | | `npm start` (bordo) | `npm run ensaio` |
 |---|---|---|
 | A caixa 1 | pelo cabo USB (procura a porta sozinho) | a caixa a fingir (`tcp://localhost:8765`) |
-| O GPS e o AIS | o B330, se a porta dele estiver escrita | o GPS a fingir (porta 8766) |
+| O GPS e o AIS | o B330, depois de se lhe escolher a porta | o GPS a fingir (porta 8766) |
 | Os dados (caixa negra, AI, rota) | `~/arlequin-dados` | `software/bordo/arlequin-dados-ensaio/` (fora do git) |
+| A pasta de configuração do servidor | `software/bordo/config/` | `software/bordo/config-ensaio/` |
 | Marca de simulado | não | **sim, em tudo:** a AI não aprende com um ensaio |
 
-Quem troca de modo é o `preparar.js`, que os dois comandos chamam antes de arrancar o servidor. Muda só
-essas cinco coisas e guarda o resto: as calibrações acertadas no barco (o fator do log, os desvios da
-proa, a montagem do sensor) ficam como estiverem. O teste `npm test` (na pasta `bordo`) diz se o que
-está para ir para o git é o modo de bordo e não tem segredos: corre-se antes de cada commit.
+**Três pastas de configuração, cada uma com o seu papel** (quem trata delas é o `preparar.js`, que os
+comandos chamam antes de arrancar o servidor):
+
+| Pasta | O que é | No git? |
+|---|---|---|
+| `bordo/modelo/` | a configuração de fábrica: sem calibrações, sem segredos, sem simulador | **sim** (é a única) |
+| `bordo/config/` | a configuração **do barco**. Nasce do modelo à primeira vez e daí em diante é do barco: o servidor escreve lá o que se acerta no Admin UI (a porta, as calibrações, a tabela de desvios, as prioridades) e o que os plugins guardam (o diário, os consumos aprendidos, a saída em curso) | não |
+| `bordo/config-ensaio/` | a do **ensaio em casa**. Cada `npm run ensaio` parte de uma cópia da configuração do barco, com os valores do ensaio por cima, e deixa aqui o diário e os consumos a fingir | não |
+
+- **Um ensaio nunca escreve na pasta do barco** (revisão de 22/11/2026: antes havia uma pasta só, e um
+  ensaio deixava lá diário e consumos a fingir). O que se mexer no Admin UI durante um ensaio fica só no
+  ensaio e perde-se no ensaio seguinte. Para recomeçar o ensaio do zero, apaga-se a pasta `config-ensaio`.
+- **O `npm start` não muda valor nenhum na pasta do barco**: o que o barco tem, fica. Só lhe acrescenta o
+  que o modelo ganhar de novo (um ficheiro que falte; um plugin novo na lista, com a versão do modelo).
+- **As calibrações do barco já não estão no git.** Para não ficarem só numa pasta, cada `npm start` guarda
+  uma cópia datada da configuração em `~/arlequin-dados/copias-da-configuracao/` quando ela mudou (ficam as
+  últimas 10; a segurança do servidor e o que os plugins guardam não vão na cópia). Para repor uma, copia-se
+  o conteúdo dela para `software/bordo/config/`.
+- O teste `npm test` (na pasta `bordo`) confirma que o modelo é o de bordo, sem segredos, e que cada modo
+  usa a sua pasta: corre-se antes de cada commit.
 
 **O que se acerta no barco**, no Admin UI do SignalK (`http://localhost:3000`), plugin "Arlequin · caixas":
 
@@ -192,15 +209,20 @@ está para ir para o git é o modo de bordo e não tem segredos: corre-se antes 
 - `eixoProa` e `eixoCima`: como a caixa ficou montada; `desvioProa`, `desvioAdorno` e `desvioCaimento`:
   o que o sensor marca com o barco direito e apontado; `tabelaDesvios`: a tabela de desvios da bússola;
 - `desvioVento` e `fatorVento`, se o mostrador do vento não estiver certo;
+- `erroMaxProa` (20° de fábrica): a proa só se publica quando o sensor confia na bússola dele e estima um
+  erro abaixo deste limite. Enquanto não, o ecrã fica sem proa (o adornamento e o caimento continuam) e o
+  estado do plugin diz porquê ("sem proa: o sensor ainda não confia na bússola dele"). Acerta-se a bússola
+  do sensor rodando o barco; não se sobe o limite para "fazer aparecer" a proa;
 - `porta`: fica em `auto`; só se escreve o nome (`COM7`) se a procura automática se enganar.
 
-**A porta do B330** escreve-se uma vez em `software/bordo/config/settings.json`, no `device` da entrada
-`b330` (por exemplo `"COM5"`); a partir daí o `npm start` liga-a sozinho.
+**A porta do B330** escolhe-se uma vez no Admin UI (Server → Data Connections → `b330`: escolher a porta
+e ligar a entrada), ou em `software/bordo/config/settings.json` (o `device` da entrada `b330`, por exemplo
+`"COM5"`, e `"enabled": true`). O `npm start` já não a liga nem desliga sozinho.
 
 **A proa verdadeira e o vento real** não são dos nossos plugins: faz-os o `signalk-derived-data` (o único
 plugin de fora que este perfil acrescenta), ligado só para quatro contas: a declinação magnética pela
 posição, a proa verdadeira, o vento real pela água e a direção do vento. O ficheiro
-`config/priorities.json` diz ao servidor que, para a declinação, essa conta vale mais do que a do GPS: o
+`priorities.json` (na pasta de configuração) diz ao servidor que, para a declinação, essa conta vale mais do que a do GPS: o
 GPS manda-a vazia de segundo a segundo e, sem a prioridade, a proa verdadeira só se atualizava de 10 em
 10 s (visto no ensaio geral de 22/11/2026).
 
@@ -208,6 +230,9 @@ GPS manda-a vazia de segundo a segundo e, sem a prioridade, a proa verdadeira s�
 caixa 2 a receber · … linhas · 0 inválidas · 0 leituras em falta") e
 `http://localhost:3000/plugins/signalk-arlequin-caixas/estado` (as últimas 20 linhas recebidas). Quando a
 caixa 1 se cala, os valores passam a "sem dado" em 5 s e o ecrã apita uma vez; quando volta, voltam sozinhos.
+Se for a caixa do motor a calar-se, o estado do motor passa logo a "sem leitura", mas o apito só vem ao fim
+de 20 s seguidos: uns segundos sem ela são normais quando o plugin das caixas arranca ou se lhe grava uma
+calibração. Se uma das duas caixas disser que está a fingir, tudo sai marcado como simulado.
 
 **Segurança (estado a 22/11/2026).** O aviso CVE-2026-123807 (GHSA-4xm8-rg9h-jhq2) diz que o servidor
 SignalK e o plugin das rotas e pontos (`@signalk/resources-provider`) deixavam ler, escrever e apagar
