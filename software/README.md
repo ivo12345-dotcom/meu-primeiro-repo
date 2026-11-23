@@ -242,7 +242,8 @@ caixa 2 a receber · … linhas · 0 inválidas · 0 leituras em falta") e
 caixa 1 se cala, os valores passam a "sem dado" em 5 s e o ecrã apita uma vez; quando volta, voltam sozinhos.
 Se for a caixa do motor a calar-se, o estado do motor passa logo a "sem leitura", mas o apito só vem ao fim
 de 20 s seguidos: uns segundos sem ela são normais quando o plugin das caixas arranca ou se lhe grava uma
-calibração. Se uma das duas caixas disser que está a fingir, tudo sai marcado como simulado.
+calibração. Se uma das duas caixas disser que está a fingir, tudo sai marcado como simulado, e continua
+marcado 7 s depois de ela deixar de o dizer (os últimos valores a fingir ainda valem esse tempo).
 
 **O sensor de movimento** tem estado próprio, que a caixa 1 diz de segundo a segundo: vê-se em
 `arlequin.caixas.1.sensor` (a medir, a arrancar, calado, não volta, a fingir). Se o sensor não voltar, ou

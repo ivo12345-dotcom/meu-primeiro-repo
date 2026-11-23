@@ -63,10 +63,10 @@ $AQB,2,120000,0.1.0,1,-58,3*70
 $AQL,123500,5210,38462*48
 $AQM,1042,10,512,-2980,9320,-12,35,4,0,1736,0,9848,349,3*54
 $IIMWV,35.0,R,14.0,N,A*3E
-(12.345678) can1 0CF00400#FFFFFF004BFFFFFF*HH
+(12.345678) can1 0CF00400#FFFFFF004BFFFFFF*2E
 ```
 
-(O `HH` da linha do motor calcula-se como se diz na tabela; o programa das caixas e os comandos de ensaio estão em `docs/superpowers/plans/2026-11-23-sistema-no-portatil-parte2-caixas.md`.)
+(A soma da linha do motor, aqui `2E`, calcula-se como se diz na tabela; o programa das caixas e os comandos de ensaio estão em `docs/superpowers/plans/2026-11-23-sistema-no-portatil-parte2-caixas.md`.)
 
 **O que o lado do portátil espera das caixas** (escrito ao executar o plano, a 22/11, para o plano do firmware):
 

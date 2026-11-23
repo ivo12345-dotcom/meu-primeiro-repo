@@ -67,6 +67,14 @@
 3. **Linhas só de bancada**, que o portátil não conhece e conta como desconhecidas: `$AQR,<comando>,<resultado>*HH`, a resposta a um comando de ensaio.
 4. **Comandos, do portátil para a caixa:** `$AQC,<comando>[,<valores>]*HH`. Sem soma certa não fazem nada. De ensaio: `log,<Hz>` (0 para parar), `vento,<décimos de grau>,<décimos de nó>` (`vento,0,0` para parar; `vento,-1,0` manda lixo, para ensaiar a entrada), `movimento,<0|1>`, `motor,<rpm>` (na caixa 2; 0 para parar), `prender` (bloqueia o ciclo, para ensaiar o cão de guarda), `rst` (um toque no RST do sensor), `parar` (desliga todos os geradores). De uso, com o barco parado: `guardar` (o sensor grava as calibrações dele; regra 7 do ponto 12).
 
+5. **Depois da revisão final (23/11, versão 0.2.1 das duas caixas):**
+   - a caixa manda um batimento **no instante em que passa a fingir**, antes da primeira linha a fingir (a caixa 2 também pelo rádio), e o portátil mantém tudo marcado como simulado **7 s** depois do último batimento a fingir;
+   - na procura automática da porta, **só o batimento da caixa 1 decide**: o da caixa 2 (que a caixa 1 retransmite pelo mesmo cabo) não faz desistir da porta; espera-se o prazo inteiro, 3 s;
+   - comando de ensaio novo, só na caixa 1: `avalanche,<1|2>,<kHz>` (uma onda rápida no pino do log ou do vento; 0 para parar, 2000 no máximo);
+   - o `estado` da caixa 1 ganha `avalanches` e `log-recusados`; o texto cabe sempre nos 200 caracteres da linha;
+   - cada entrada da caixa 1 atende um número limitado de sinais por volta do ciclo, as interrupções das entradas desligam-se ao arrancar e o cão de guarda arma-se antes de tudo (nas duas caixas);
+   - o rádio entre as caixas **nunca leva ordens** (não tem chave nem endereços).
+
 ---
 
 ### Task 1: O contrato no portátil, o esqueleto da caixa 1 e a bancada automática

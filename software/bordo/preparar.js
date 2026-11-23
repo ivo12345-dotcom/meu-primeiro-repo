@@ -21,12 +21,14 @@
 //                                 caixas: porta "tcp://localhost:8765" e "ensaio" ligado (tudo simulado)
 //                                 caixa negra, AI e rota: a pasta de dados "arlequin-dados-ensaio"
 //                                 o GPS a fingir ligado e o B330 verdadeiro desligado
+//   ensaio-placa (npm run ensaio-placa)  o mesmo ensaio, mas com a caixa 1 verdadeira ligada por USB: fica
+//                               a porta que o barco tiver escolhida (e "ensaio" ligado: tudo simulado)
 //   criar    (npm run instalar) só garante que a pasta do barco existe, para se instalarem os plugins.
 //
 // O que o modelo ganhar de novo chega ao barco sem estragar nada: um ficheiro que o barco não tenha é
 // copiado; um plugin novo entra na lista (package.json), com a versão do modelo; o resto não se toca.
 //
-//   node preparar.js bordo|ensaio|criar
+//   node preparar.js bordo|ensaio|ensaio-placa|criar
 
 const fs = require('node:fs')
 const os = require('node:os')

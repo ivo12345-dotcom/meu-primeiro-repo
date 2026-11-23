@@ -147,6 +147,22 @@ do motor, chega-se lá melhor, e é onde estão os botões de ligar e desligar q
 mais tarde. Antes de mexer: fotos das costas do painel e da caixa MDI, e identificar os fios com o
 multímetro, com tudo desligado (60 a 120 Ω entre os dois fios dos dados).
 
+**Costas do painel, primeira vista (Ivo, 23/11, fotogramas de um vídeo):**
+
+- O conta-rotações tem nas costas a ficha de 6 fios do cabo de dados do motor (cinzenta, com o fecho
+  laranja; cabo de manga amarela, depois vermelha). É aí que se tenta a derivação. Veem-se dois fios
+  amarelos, um branco, um preto e um vermelho, mas ainda não que fio entra em cada número da ficha:
+  **falta uma foto parada e de perto, do lado onde os fios entram.**
+- A outra ficha do conta-rotações, pequena, de 3 fios (vermelho, azul, amarelo), é a saída para os
+  mostradores extra da Volvo; há um mostrador branco pequeno ligado a ela. Não é precisa.
+- Os fios vermelhos grossos no cimo do painel vão aos interruptores das **duas ventoinhas do cofre do
+  motor** (uma mete ar, a outra tira; explicado pelo Ivo). Não têm que ver com os dados do motor, mas
+  são motores: a derivação e a caixa 2 ficam afastadas desses fios.
+- Há ainda um mostrador antigo de ponteiro, de costas verdes, com três pernos e um fio cinzento:
+  por identificar pela frente do painel (se for o do gasóleo, o fio cinzento é o da sonda).
+- Faltam: a frente do painel inteiro, uma vista de mais longe das costas (espaço e folga do cabo) e
+  os números da etiqueta branca e da manga vermelha do cabo de dados.
+
 - Um módulo transcetor CAN de 3,3 V liga a derivação à placa, **só em escuta** (a placa nunca
   escreve no barramento do motor).
 - Alimentação pelos 12 V do barco, com fusível e um conversor 12 → 5 V.
@@ -212,7 +228,47 @@ ligados e o programa de ensaio a ler a porta):** 104 413 linhas, 29 por segundo,
 estragada**. Das 36 005 leituras de movimento não faltou nenhuma; não houve um segundo sem batimento
 nem um recomeço da placa, e o maior silêncio entre linhas foi de 107 ms. Por tipo: 3 601 batimentos,
 7 201 do log, 3 600 do vento, 36 005 de movimento e 50 405 do motor (pelo rádio). Nenhuma das duas
-manias apareceu nessa hora.
+manias apareceu nessa hora. (O programa que fez este ensaio não dava por uma caixa calada, como a
+revisão apontou a seguir; o resultado vale porque as contagens por tipo batem com o ritmo certo e o
+registo de minuto a minuto sobe 1 740 linhas em cada minuto, do primeiro ao último.)
+
+**Revisão independente do programa das caixas (23/11, ao fim da tarde).** Um revisor que não tinha
+visto o código leu tudo o que mudou. Nenhum defeito crítico; cinco importantes, todos corrigidos na
+versão 0.2.1 das duas caixas, cada um com um ensaio que falhava antes e passa depois:
+
+1. **O portátil podia não reconhecer a caixa 1.** A caixa 1 passa pelo cabo dela o sinal de vida da
+   caixa 2, e a procura automática da porta desistia ao ler um sinal de vida que não fosse o da
+   caixa 1: com as duas caixas a funcionar, ficava à sorte de qual chegava primeiro, e podia falhar
+   muitas vezes seguidas. (O "escolhe sozinho a caixa 1", escrito acima, tinha sido sorte.) Agora só
+   o sinal de vida da caixa 1 decide, e espera-se por ele o prazo inteiro, 3 s. Com as placas
+   verdadeiras: 14 arranques seguidos, 14 à primeira, o mais lento em 0,9 s.
+2. **O ensaio de resistência dava "limpo" a uma caixa calada.** Só fazia contas quando chegava uma
+   linha; sem linhas, nada contava. Agora conta o silêncio pelo relógio do portátil, dá pela porta
+   que se perde (e acaba logo, com falhas), segue também a caixa 2 e os pacotes perdidos no rádio, e
+   diz quais foram as falhas.
+3. **Uma avalanche de sinais numa entrada parava a caixa.** Com 1 MHz no pino do log ou no do vento
+   (o que um fio no ar a apanhar ruído, ou um comparador a oscilar, podem dar) a caixa deixava de
+   responder. Ao ensaiá-lo apareceu pior: depois de recomeçar com a avalanche ainda no pino do
+   vento, a placa ficava presa a arrancar, calada, até lhe cortarem a corrente, porque um recomeço
+   não apaga o que os pinos tinham. Agora cada entrada atende um número limitado de sinais por volta
+   do ciclo, as interrupções das duas entradas desligam-se logo ao arrancar, e o reinício automático
+   arma-se antes de tudo o resto (nas duas caixas). Na placa: 8 s de avalanche em cada entrada sem
+   falhar um sinal de vida nem um comando, e um recomeço forçado a meio dela com a caixa a voltar
+   sozinha e as duas entradas a funcionar. Ficam dois contadores para a instalação no barco, que
+   dizem se uma entrada está a apanhar ruído.
+4. **A marca "a fingir" chegava atrasada.** A caixa só o dizia no sinal de vida seguinte, até um
+   segundo depois de as primeiras linhas a fingir já terem saído; e quando deixava de fingir, os
+   últimos valores a fingir ainda valiam 5 s no portátil, já sem a marca. Agora a caixa di-lo no
+   instante em que passa a fingir (as duas caixas), e o portátil mantém a marca 7 s depois do último
+   sinal de vida a fingir.
+5. **Os sinais a fingir escrevem nos próprios pinos de entrada.** Com o comparador do log ou o
+   adaptador do vento ligados, ficavam dois a mandar no mesmo fio. Fica como regra de montagem (ver
+   "Peças"): uma resistência de 1 kΩ em série em cada entrada, junto à placa; e no barco não se
+   correm ensaios com sinais a fingir.
+
+Regra que fica da revisão: **o rádio entre as duas caixas nunca leva ordens.** Não tem chave nem
+endereços: quem estiver ao alcance com uma placa igual pode calar os dados do motor ou mandar dados
+falsos. Hoje só leva dados do motor para o ecrã, e assim tem de continuar.
 
 Fica por fazer: o ensaio de três horas com o sensor verdadeiro, quando o sensor novo chegar, que
 serve também para ver se as manias voltam; e, se incomodarem, experimentar o cabo a metade da
@@ -370,10 +426,15 @@ Por comprar:
 |---|---|---|
 | 2 módulos transcetores CAN de 3,3 V (um de reserva): [ECSiNG SN65HVD230, 2 unidades](https://www.amazon.es/dp/B0F7XCC1PT), €9,45, enviado pela Amazon (visto a 22/11) | Caixa 2. Os pinos vêm por soldar. Antes de usar tira-se a resistência de 120 Ω do módulo (junto a CANH/CANL), porque a linha do motor já tem as suas duas. Só se liga a saída de leitura (CRX); a entrada de escrita (CTX) fica presa aos 3,3 V, para o módulo não poder escrever na linha do motor nem por engano | Já |
 | Conversor 12 → 5 V: [Greluma estanque, 8–22 V para 5 V 3 A, com ficha USB-C](https://www.amazon.es/dp/B0BX3MQ18D), €10,16; e [5 porta-fusíveis em linha JOREST com fusíveis de 2 A e 3 A](https://www.amazon.es/dp/B0DBPQBGBQ), €10,16; os dois enviados pela Amazon (visto a 22/11) | Alimentar a caixa 2 pela ficha USB-C da placa, com fusível de 2 A. Não serve um cabo de câmara de carro: esses cortam a corrente quando a bateria desce aos 11,6–12 V, e a caixa 2 apagava-se ao dar ao arranque | Já |
-| Comparador para o sinal da roda do log | Caixa 1 | Depois de medir o sinal da roda |
-| Adaptação de nível e ficha para a tomada do vento | Caixa 1 | Depois da foto das costas do mostrador |
+| Comparador para o sinal da roda do log, **com histerese** (para não oscilar quando o sinal está no limiar) e uma **resistência de 1 kΩ em série** entre a saída dele e o pino da placa | Caixa 1 | Depois de medir o sinal da roda |
+| Adaptação de nível e ficha para a tomada do vento, com uma **resistência de 1 kΩ em série** entre a saída e o pino da placa | Caixa 1 | Depois da foto das costas do mostrador |
 | Cabo USB com o comprimento caixa 1 → portátil, e cabo USB do B330 | Ligações | Depois de medir no barco |
 | Caixas de plástico (impressas), bucins, fio | As duas caixas | Na montagem |
+
+As duas resistências de 1 kΩ são regra da revisão de 23/11: os sinais a fingir da caixa 1 escrevem
+nos próprios pinos de entrada, e sem a resistência um ensaio corrido por engano com o barco ligado
+punha a placa e o comparador (ou o adaptador) a mandar no mesmo fio. Com ela passam 3 mA e não se
+estraga nada.
 
 O adaptador USB–CAN da lista de 29/09 não é preciso nesta fase. Fica como opção para o computador
 definitivo, ou a caixa 2 fica de vez.
