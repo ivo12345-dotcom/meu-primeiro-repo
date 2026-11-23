@@ -285,6 +285,14 @@ Depende de haver um sensor a responder. O primeiro deixou de responder a 22/11 e
 - [ ] **Step 4: Gravar e ver passar.** Expected: PASS.
 - [ ] **Step 5: O ensaio de resistência (regra 9).** Três horas ao ritmo do desenho, com `software/caixas/ensaio/resistencia.js` a contar, pelo `ler()`: linhas inválidas, saltos no número de ordem, segundos sem `$AQM`, mudanças do estado do sensor e toques no RST. Passa com 3 horas em que qualquer bloqueio se resolva sozinho; regista-se no ponto 12 do desenho o tempo total sem leituras e a taxa de linhas estragadas a 460 800 baud.
 - [ ] **Step 6: Commit** `git commit -m "Caixa 1: o sensor BNO085, com o INT, o RST e as regras da bancada"`
+- [ ] **Step 7: Os pontos adiados da revisão final que tocam na fiabilidade (decisão do Ivo, 23/11: fazem-se nesta tarefa, que é quando as duas placas voltam a ser gravadas).** Cada um com o seu ensaio a falhar primeiro; no fim, a bateria com as duas placas e o ensaio de resistência do passo 5 correm já com eles. Um commit por ponto.
+  - **Caixa 2, sinal da caixa 1 recebido a meio da volta do ciclo** (`radio2.h`, `radioTemOuvinte`): a conta do tempo desde o último sinal dá a volta e deita-se fora um pacote (até 11 dados do motor) ou um sinal de vida. Fazer a conta com sinal.
+  - **Caixa 2, rádio que falha ao arrancar ou ao juntar o par** (`radio2.h`, `radioIniciar` e `radioCorre`): hoje fica assim até lhe cortarem a corrente. Voltar a tentar de tempos a tempos.
+  - **Caixa 2, texto dos contadores** (`caixa2.ino`, comando `estado`): pode cortar-se com números muito grandes. Dimensionar como na caixa 1 (cabe sempre na linha de 200).
+  - **As duas caixas, leitura das ordens sem limite por volta** (`caixa1.ino` e `caixa2.ino`, o `while (Serial.available())`): um portátil a mandar sem parar atrasava o sinal de vida. Pôr um limite de bytes por volta.
+  - **A conta dos pacotes perdidos no rádio** (`AqPerdidos`, em `arlequin_radio.h`) não tem ensaio próprio: a volta do número de ordem, o pacote repetido e o salto de mais de 1000. Ensaiá-la na placa (por exemplo com uma ordem de bancada `autoteste`, com casos em tabela).
+  - **A verificação "só em escuta"** (`ensaio/caixa2.test.js`): juntar aos nomes proibidos os da interface nova do chip para escrever na linha do motor (`twai_node_transmit` e os que houver).
+  - Ficam como estão (decisão do Ivo, a mesma): a luz da caixa 1 ao fim de 25 dias, o gerador de lixo do vento que prende 0,2 s na bancada, os três pormenores de arrumação do código, o exemplo da enxurrada do cabo USB por guardar, os três ensaios que provam menos do que o nome diz e o "parar" automático depois de cada ensaio.
 
 ### Task 8: Instruções e arrumação
 
