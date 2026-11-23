@@ -30,15 +30,25 @@ function abrir (porta) {
     const s = new SerialPort({ path: porta, baudRate: BAUD, autoOpen: false, hupcl: false })
     const ouvintes = new Set()
     let resto = ''
-    // Ao abrir, a porta pode trazer o fim de uma linha que já ia a meio. Nos primeiros 40 ms deita-se
-    // tudo fora; se nessa altura se ficou a meio de uma linha, deita-se fora também o resto dela. Daí em
+    // Ao abrir, a porta pode trazer duas coisas que não são da caixa agora:
+    //   - o fim de uma linha que já ia a meio;
+    //   - uma enxurrada da ponte USB da placa. Visto a 23/11/2026 neste portátil, com as duas bibliotecas
+    //     (esta e o pyserial): depois de a porta estar fechada uns segundos com a caixa a mandar poucas
+    //     linhas, a abertura entrega até 200 KB de cópias das últimas linhas, tudo no primeiro segundo e
+    //     mais depressa do que o fio consegue levar. Daí em diante vem limpo.
+    // Por isso deita-se fora tudo até a linha sossegar (15 ms sem um byte, com 40 ms no mínimo e 1,5 s no
+    // máximo); se nessa altura se ficou a meio de uma linha, deita-se fora também o resto dela. Daí em
     // diante todas as linhas são inteiras, a primeira incluída (pode ser a resposta a um comando).
     let acertada = false
     let aMeio = false
+    let ultimoBocado = 0
+    let ultimaLinha = null
+    let horaDaUltima = 0
     s.on('data', (bocado) => {
       let texto = bocado.toString('latin1')
       if (!acertada) {
         aMeio = !texto.endsWith('\n')
+        ultimoBocado = Date.now()
         return
       }
       if (aMeio) {
@@ -50,9 +60,20 @@ function abrir (porta) {
       const partes = (resto + texto).split('\n')
       resto = partes.pop()
       if (resto.length > 4 * MAX_LINHA) resto = ''
+      const agora = Date.now()
       for (const parte of partes) {
         const linha = parte.endsWith('\r') ? parte.slice(0, -1) : parte
         if (linha.length === 0) continue
+        // A enxurrada da ponte USB (ver acima) pode começar depois de a linha parecer sossegada: uma
+        // linha igual à anterior, chegada menos de 20 ms depois dela, é cópia e não se conta. A caixa
+        // nunca manda duas linhas iguais tão juntas.
+        if (linha === ultimaLinha && agora - horaDaUltima < 20) {
+          horaDaUltima = agora
+          placa.repetidas++
+          continue
+        }
+        ultimaLinha = linha
+        horaDaUltima = agora
         for (const o of [...ouvintes]) o(linha)
       }
     })
@@ -60,6 +81,7 @@ function abrir (porta) {
 
     const placa = {
       porta,
+      repetidas: 0, // cópias deitadas fora (a enxurrada da ponte USB)
       // Chama aoLinha(linha) por cada linha inteira, à medida que chegam. Devolve a função que para.
       ouvir (aoLinha) {
         ouvintes.add(aoLinha)
@@ -107,7 +129,17 @@ function abrir (porta) {
     }
     s.open((erro) => {
       if (erro) return reject(new Error(`${porta} não abre: ${erro.message}`))
-      s.flush(() => setTimeout(() => { acertada = true; resolve(placa) }, 40))
+      s.flush(() => {
+        const aberta = Date.now()
+        const relogio = setInterval(() => {
+          const agora = Date.now()
+          const sossegada = agora - aberta >= 40 && agora - ultimoBocado >= 15
+          if (!sossegada && agora - aberta < 1500) return
+          clearInterval(relogio)
+          acertada = true
+          resolve(placa)
+        }, 5)
+      })
     })
   })
 }
