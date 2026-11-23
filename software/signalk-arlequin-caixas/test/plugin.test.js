@@ -575,3 +575,23 @@ test('cópias da ponte USB: a mesma frase do vento um segundo depois é vento no
   assert.doesNotMatch(app.estados.at(-1), /cópias/)
   p.stop()
 })
+
+// Para se saber, no barco, que cara têm as linhas que chegam estragadas (ensaio geral de 23/11/2026: 6 em
+// 22 000, em grupos de 3, sem se saber de que tipo eram).
+test('as últimas linhas inválidas ficam guardadas, com a hora, para se verem no /estado', (t) => {
+  const { f, p } = arrancar(t)
+  f.aoLinha(batimento(1))
+  assert.deepEqual(estado(p).ultimasInvalidas, [])
+  for (let i = 0; i < 14; i++) {
+    f.aoLinha(`$AQM,${i},estragada*00`)
+    t.mock.timers.tick(100)
+  }
+  const e = estado(p)
+  assert.equal(e.invalidas, 14)
+  assert.equal(e.ultimasInvalidas.length, 10, 'ficam as últimas 10')
+  assert.deepEqual(e.ultimasInvalidas[0], { hora: new Date(AGORA + 400).toISOString(), linha: '$AQM,4,estragada*00' })
+  assert.equal(e.ultimasInvalidas.at(-1).linha, '$AQM,13,estragada*00')
+  f.aoLinha('x'.repeat(300)) // uma linha enorme guarda-se cortada
+  assert.equal(estado(p).ultimasInvalidas.at(-1).linha.length, 120)
+  p.stop()
+})

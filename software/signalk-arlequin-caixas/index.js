@@ -129,6 +129,7 @@ module.exports = function (app, { abrirFonte = abrirFonteVerdadeira } = {}) {
   let bloco, nAnterior
   let nLinhas, invalidas, faltam, ultimas
   let ultimaLinha, horaDaUltima, repetidas
+  let ultimasInvalidas
   let meio, queixou, avisoAceso, avisoSensorAceso
 
   function zerar (agora) {
@@ -152,6 +153,7 @@ module.exports = function (app, { abrirFonte = abrirFonteVerdadeira } = {}) {
     ultimaLinha = null
     horaDaUltima = -Infinity
     repetidas = 0
+    ultimasInvalidas = [] // as últimas 10 linhas que não se perceberam, com a hora (cortadas aos 120 caracteres)
     meio = false
     queixou = false
     avisoAceso = false
@@ -198,6 +200,7 @@ module.exports = function (app, { abrirFonte = abrirFonteVerdadeira } = {}) {
       const l = ler(texto)
       if (!l) {
         invalidas++
+        ultimasInvalidas = [...ultimasInvalidas.slice(-9), { hora: new Date(agora).toISOString(), linha: String(texto).slice(0, 120) }]
         return
       }
       nLinhas++
@@ -350,6 +353,7 @@ module.exports = function (app, { abrirFonte = abrirFonteVerdadeira } = {}) {
         linhas: nLinhas,
         invalidas,
         repetidas,
+        ultimasInvalidas: [...ultimasInvalidas],
         emFalta: faltam,
         ultimas: [...ultimas]
       })
