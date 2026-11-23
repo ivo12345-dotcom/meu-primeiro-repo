@@ -279,6 +279,34 @@ test('a fingir: se só a caixa do motor finge, sai tudo marcado na mesma', (t) =
   assert.match(app.estados.at(-1), / · A FINGIR$/)
 })
 
+// Revisão final das caixas (23/11/2026): a caixa deixa de fingir (pararam os sinais a fingir, ou ela
+// recomeçou) e o último vento e a última atitude a fingir ainda valem 5 s: saíam esses segundos como
+// medição verdadeira, e a caixa negra gravava-os assim.
+test('a fingir: depois de a caixa deixar de fingir, o que ela mandou a fingir continua marcado enquanto valer', (t) => {
+  const { app, f, p } = arrancar(t)
+  umSegundoBom(f, { sim: 1 })
+  t.mock.timers.tick(1000)
+  app.fontes.length = 0
+  f.aoLinha(batimento(1)) // já não finge
+  t.mock.timers.tick(1000)
+  assert.ok(app.valores['environment.wind.speedApparent'] > 0, 'o vento a fingir ainda vale')
+  assert.ok(app.fontes.length >= 2)
+  assert.ok(app.fontes.every(s => s === SIMULADO), JSON.stringify(app.fontes))
+  assert.match(app.estados.at(-1), / · A FINGIR$/)
+  for (let i = 0; i < 7; i++) {
+    f.aoLinha(batimento(1))
+    t.mock.timers.tick(1000)
+  }
+  app.fontes.length = 0
+  f.aoLinha(batimento(1))
+  t.mock.timers.tick(1000)
+  p.stop()
+  assert.equal(app.valores['environment.wind.speedApparent'], null) // o vento a fingir já deixou de valer
+  assert.ok(app.fontes.length >= 2)
+  assert.ok(app.fontes.every(s => s === undefined), JSON.stringify(app.fontes))
+  assert.doesNotMatch(app.estados.at(-1), /A FINGIR/)
+})
+
 // Revisão final (22/11/2026): a proa saía como boa com o chip a dizer que não era de fiar (na bancada,
 // antes de a bússola dele se acertar, dava "erro estimado 180°" e confiança 0). O adornamento e o
 // caimento vêm da gravidade e continuam a valer; a proa só sai com confiança e com o erro dentro do limite.

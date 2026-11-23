@@ -1,7 +1,7 @@
 'use strict'
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { novoEstadoCaixas, anotarBatimento, anotarPorta, avaliarCaixas, VELHO, ESPERA } = require('../lib/caixas')
+const { novoEstadoCaixas, anotarBatimento, anotarPorta, avaliarCaixas, VELHO, ESPERA, PRESO } = require('../lib/caixas')
 const bat = (caixa, sim = false) => ({ tipo: 'batimento', caixa, ms: 1, fw: '0.1.0', sim, rssi: -58, perdidos: 0 })
 
 test('as duas caixas a falar; a 2 cala-se sem aviso daqui; a 1 cala-se com um aviso só', () => {
@@ -36,10 +36,31 @@ test('nunca falou: só avisa ao fim de 30 s, e diz porque a porta não abre', ()
   assert.match(r.notificacoes[0].message, /a porta COM7 não abre: File not found/)
 })
 
-test('a fingir: vem do último batimento da caixa 1', () => {
+test('a fingir: vem do batimento da caixa 1', () => {
   const e = anotarBatimento(novoEstadoCaixas(0), bat(1, true), 100)
   assert.equal(avaliarCaixas(e, 200).sim, true)
-  assert.equal(avaliarCaixas(anotarBatimento(e, bat(1, false), 300), 400).sim, false)
+  assert.equal(avaliarCaixas(anotarBatimento(novoEstadoCaixas(0), bat(1, false), 100), 200).sim, false)
+})
+
+// Revisão final das caixas (23/11/2026): quando uma caixa deixa de fingir (ou recomeça), o que mandou a
+// fingir ainda vale uns segundos no portátil (o último vento, a última atitude, a janela do log). Sem
+// isto, saía como medição verdadeira durante esse tempo.
+test('a fingir: fica marcado 7 s depois do último batimento a dizer que fingia', () => {
+  assert.equal(PRESO, VELHO + 2000)
+  let e = anotarPorta(novoEstadoCaixas(0), { aberta: true, nome: 'COM7' }, 0)
+  e = anotarBatimento(e, bat(1, true), 1000)
+  e = anotarBatimento(e, bat(1, false), 2000) // deixou de fingir, ou recomeçou
+  assert.equal(avaliarCaixas(e, 2100).sim, true, 'o que mandou a fingir ainda está fresco')
+  e = anotarBatimento(e, bat(1, false), 7000)
+  assert.equal(avaliarCaixas(e, 1000 + PRESO).sim, true)
+  e = anotarBatimento(e, bat(1, false), 8000)
+  assert.equal(avaliarCaixas(e, 1000 + PRESO + 1).sim, false, 'passado esse tempo, o que sai já é medição')
+  // o mesmo com a caixa do motor, mesmo que ela se cale logo a seguir
+  e = anotarBatimento(anotarBatimento(e, bat(1, false), 20000), bat(2, true), 20000)
+  e = anotarBatimento(e, bat(1, false), 26500)
+  assert.equal(avaliarCaixas(e, 26500).sim, true)
+  e = anotarBatimento(e, bat(1, false), 27500)
+  assert.equal(avaliarCaixas(e, 27500).sim, false)
 })
 
 // Revisão final (22/11/2026): a caixa do motor a fingir, com a dos instrumentos verdadeira, deixava
@@ -48,12 +69,12 @@ test('a fingir: basta uma das duas caixas dizer que finge; a do motor só enquan
   let e = anotarPorta(novoEstadoCaixas(0), { aberta: true, nome: 'COM7' }, 0)
   e = anotarBatimento(anotarBatimento(e, bat(1, false), 1000), bat(2, true), 1000)
   assert.equal(avaliarCaixas(e, 1500).sim, true, 'a caixa do motor a fingir chega para marcar tudo')
-  e = anotarBatimento(e, bat(1, false), 7000) // a caixa do motor calou-se há 6 s: o que dizia já não conta
-  assert.equal(avaliarCaixas(e, 7100).sim, false)
-  e = anotarBatimento(anotarBatimento(e, bat(2, false), 8000), bat(1, true), 8000)
-  assert.equal(avaliarCaixas(e, 8100).sim, true)
-  e = anotarBatimento(e, bat(1, false), 9000)
+  e = anotarBatimento(e, bat(1, false), 9000) // a caixa do motor calou-se há 8 s: o que dizia já não conta
   assert.equal(avaliarCaixas(e, 9100).sim, false)
+  e = anotarBatimento(anotarBatimento(e, bat(2, false), 10000), bat(1, true), 10000)
+  assert.equal(avaliarCaixas(e, 10100).sim, true)
+  e = anotarBatimento(e, bat(1, false), 18000)
+  assert.equal(avaliarCaixas(e, 18100).sim, false)
 })
 
 // --- O sensor de movimento, que a caixa 1 diz no batimento dela (programa das caixas de 23/11) -------

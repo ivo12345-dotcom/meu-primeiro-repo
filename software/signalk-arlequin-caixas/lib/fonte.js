@@ -183,8 +183,10 @@ function abrirFonte ({ porta, aoLinha, aoEstado, deps = {} }) {
         aoLinhaDela: (linha) => {
           if (confirmada) return aoLinha(linha)
           const b = ler(linha)
-          if (!b || b.tipo !== 'batimento') return
-          if (b.caixa !== 1) return desistir() // é a caixa do motor, ligada por USB só para ter corrente
+          // Só o batimento da caixa 1 confirma a porta. O da caixa 2 não decide nada: tanto vem da própria
+          // caixa do motor (ligada por USB só para ter corrente) como da caixa 1, que passa por este cabo
+          // o que lhe chega pelo rádio. Espera-se o prazo inteiro pelo da caixa 1; sem ele, larga-se a porta.
+          if (!b || b.tipo !== 'batimento' || b.caixa !== 1) return
           confirmada = true
           clearTimeout(prazo)
           dizer({ aberta: true, nome })

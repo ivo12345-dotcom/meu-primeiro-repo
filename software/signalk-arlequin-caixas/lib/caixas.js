@@ -13,6 +13,12 @@
 const VELHO = 5000 // um batimento mais velho do que isto já não conta
 const ESPERA = 30000 // uma caixa que nunca falou só dá aviso ao fim deste tempo
 const SEM_MEDIR = 20000 // o sensor calado ou a arrancar há mais do que isto dá aviso
+// Depois do último batimento a dizer que uma caixa fingia, tudo continua marcado como simulado durante
+// este tempo: o batimento vem de segundo a segundo, por isso a última linha a fingir pode ter saído até
+// um segundo depois dele, e vale 5 s no plugin (o último vento, a última atitude, a janela do log);
+// mais um segundo de folga. Sem isto, uma caixa que deixa de fingir (ou recomeça) deixava sair esses
+// restos como medição verdadeira.
+const PRESO = VELHO + 2000
 const SENSOR = ['a-medir', 'a-arrancar', 'calado', 'nao-volta', 'a-fingir'] // pela ordem do número que a caixa manda
 
 const ACESO = (motivo) => ({
@@ -40,6 +46,7 @@ function novoEstadoCaixas (agora) {
     desde: agora, // o arranque
     batimentos: { 1: null, 2: null }, // a hora do último de cada caixa
     fingem: { 1: false, 2: false }, // o que cada caixa disse de si no último batimento dela
+    fingiu: null, // a hora do último batimento, de qualquer das duas, a dizer que fingia
     porta: { aberta: false, nome: '', motivo: '' },
     falou: false, // a caixa 1 já falou alguma vez
     aviso: false, // o aviso caixa1 está aceso
@@ -53,7 +60,8 @@ function anotarBatimento (estado, batimento, agora) {
   const e = {
     ...estado,
     batimentos: { ...estado.batimentos, [batimento.caixa]: agora },
-    fingem: { ...estado.fingem, [batimento.caixa]: batimento.sim === true }
+    fingem: { ...estado.fingem, [batimento.caixa]: batimento.sim === true },
+    fingiu: batimento.sim === true ? agora : estado.fingiu
   }
   if (batimento.caixa === 1) {
     e.falou = true
@@ -113,9 +121,12 @@ function avaliarCaixas (estado, agora) {
     }
   }
   // A fingir: basta uma das duas dizê-lo, porque o que a caixa do motor manda entra na mesma linha da
-  // caixa negra do que o resto. O que a caixa do motor disse só conta enquanto ela der sinal.
-  const sim = estado.fingem[1] || (viva2 && estado.fingem[2])
+  // caixa negra do que o resto. O que a caixa do motor disse só conta enquanto ela der sinal. E fica
+  // preso uns segundos depois do último batimento a dizer que fingia (ver PRESO), enquanto o que ela
+  // mandou a fingir ainda vale.
+  const preso = estado.fingiu !== null && agora - estado.fingiu <= PRESO
+  const sim = estado.fingem[1] || (viva2 && estado.fingem[2]) || preso
   return { estado: { ...estado, aviso, avisoSensor }, caixas, sim, sensor: codigo === null ? null : SENSOR[codigo], notificacoes }
 }
 
-module.exports = { VELHO, ESPERA, SEM_MEDIR, novoEstadoCaixas, anotarBatimento, anotarPorta, avaliarCaixas }
+module.exports = { VELHO, ESPERA, SEM_MEDIR, PRESO, novoEstadoCaixas, anotarBatimento, anotarPorta, avaliarCaixas }

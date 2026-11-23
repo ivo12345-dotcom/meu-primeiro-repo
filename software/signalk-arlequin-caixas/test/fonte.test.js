@@ -271,6 +271,46 @@ test('Review Focus 2: auto escolhe a porta da caixa 1', async (t) => {
   assert.equal(f.criadas[2].isOpen, false)
 })
 
+// Revisão final das caixas (23/11/2026): a caixa 1 passa pelo seu próprio cabo o batimento da caixa 2,
+// que lhe chega pelo rádio. A procura desistia da porta ao ler um batimento que não fosse da caixa 1:
+// com as duas caixas a funcionar, achar a caixa 1 ficava à sorte de qual dos dois batimentos chegava
+// primeiro, e podia falhar muitas vezes seguidas.
+test('auto: o batimento da caixa 2 que a caixa 1 retransmite não faz desistir da porta dela', async (t) => {
+  const { f, linhas, estados, fonte } = automatica(t, {
+    lista: [{ path: 'COM3', vendorId: '10C4' }],
+    aoAbrir: { COM3: p => p.emit('data', Buffer.from(batimento(2) + '\n(12.345678) can1 0CF00400#FFFFFF004BFFFFFF*2E\n')) }
+  })
+  await passar(t, 400, 1) // aberta; o primeiro batimento que chegou foi o da caixa 2, vindo pelo rádio
+  assert.equal(f.criadas[0].isOpen, true, 'a porta fica aberta, à espera do batimento da caixa 1')
+  assert.deepEqual(estados, [])
+  f.criadas[0].emit('data', Buffer.from(batimento(1) + '\n$AQL,123500,5210,38462*48\n'))
+  await assentar()
+  assert.deepEqual(f.criadas.map(p => p.path), ['COM3']) // uma abertura só
+  assert.deepEqual(estados, [{ aberta: true, nome: 'COM3' }])
+  // as linhas contam a partir do batimento da caixa 1: antes dele não se sabe se ela finge
+  assert.deepEqual(linhas, [batimento(1), '$AQL,123500,5210,38462*48'])
+  fonte.fechar()
+})
+
+// A porta da própria caixa 2 (ligada por USB só para ter corrente) só dá o batimento dela: larga-se no
+// fim do prazo da prova, e a procura segue para a porta seguinte.
+test('auto: uma porta que só dá o batimento da caixa 2 larga-se ao fim do prazo, e a seguinte é provada', async (t) => {
+  const { f, estados, fonte } = automatica(t, {
+    lista: [{ path: 'COM5', vendorId: '10C4' }, { path: 'COM6', vendorId: '10C4' }],
+    aoAbrir: {
+      COM5: p => p.emit('data', Buffer.from(batimento(2) + '\n')),
+      COM6: p => p.emit('data', Buffer.from(batimento(1) + '\n'))
+    }
+  })
+  await passar(t, 2900, 1)
+  assert.deepEqual(f.criadas.map(p => p.path), ['COM5']) // ainda dentro do prazo: pode ser a caixa 1 a retransmitir
+  await passar(t, 100, 1)
+  assert.deepEqual(f.criadas.map(p => p.path), ['COM5', 'COM6'])
+  assert.equal(f.criadas[0].isOpen, false)
+  assert.deepEqual(estados, [{ aberta: true, nome: 'COM6' }])
+  fonte.fechar()
+})
+
 test('Review Focus 2: a porta muda de número: perde-a, procura outra vez e encontra-a', async (t) => {
   const { f, linhas, estados, fonte } = automatica(t, {
     lista: [{ path: 'COM9', vendorId: '10C4' }],
