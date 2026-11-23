@@ -14,6 +14,7 @@
 
 #include <arlequin_linhas.h>
 
+#include "movimento.h"
 #include "pinos.h"
 
 const uint8_t ENSAIO_LOG = 1;
@@ -103,8 +104,7 @@ static void ensaioFrase(const char *corpo) {
   Serial1.printf("$%s*%02X%s", corpo, aqSoma(corpo), FIM_DE_FRASE);
 }
 
-// Chama-se em cada volta do ciclo principal: manda o que os geradores devem neste instante.
-inline void ensaioCorre(uint32_t agoraMs) {
+static void ensaioCorreVento(uint32_t agoraMs) {
   if (!ensaioVentoLigado || (int32_t)(agoraMs - ensaioVentoProxima) < 0) return;
   ensaioVentoProxima = agoraMs + 1000;
   if (ensaioVentoLixo) {
@@ -127,8 +127,92 @@ inline void ensaioCorre(uint32_t agoraMs) {
   }
 }
 
+// ---- O movimento a fingir: 100 leituras por segundo, com o cenário da caixa a fingir do portátil -----
+// (software/ferramentas/caixa-a-fingir/lib/gerador.js: as mesmas contas, para os dois ensaios darem o
+// mesmo.) Adornamento de 12° a estibordo; proa 245°, mais ou menos 3° de 20 em 20 s; caimento de mais
+// ou menos 2° e sobe e desce de mais ou menos 0,4 m/s², os dois de 6 em 6 s. A caixa conta-se montada
+// com o eixo y à proa e o z para cima.
+static bool ensaioMovLigado = false;
+static uint32_t ensaioMovInicio = 0, ensaioMovProxima = 0;
+
+// O produto de dois quaterniões [i, j, k, r]: roda primeiro pelo segundo, depois pelo primeiro.
+static void ensaioVezes(const float a[4], const float b[4], float o[4]) {
+  o[0] = a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1];
+  o[1] = a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0];
+  o[2] = a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3];
+  o[3] = a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2];
+}
+
+static void ensaioEmTorno(int eixo, float graus, float q[4]) {
+  const float meio = graus * 0.017453293f / 2;
+  q[0] = q[1] = q[2] = 0;
+  q[3] = cosf(meio);
+  q[eixo] = sinf(meio);
+}
+
+// Um vetor do mundo visto pelo sensor (a rotação ao contrário).
+static void ensaioNoSensor(const float q[4], const float v[3], float o[3]) {
+  const float a = -q[0], b = -q[1], c = -q[2], r = q[3];
+  const float t[3] = {2 * (b * v[2] - c * v[1]), 2 * (c * v[0] - a * v[2]), 2 * (a * v[1] - b * v[0])};
+  o[0] = v[0] + r * t[0] + (b * t[2] - c * t[1]);
+  o[1] = v[1] + r * t[1] + (c * t[0] - a * t[2]);
+  o[2] = v[2] + r * t[2] + (a * t[1] - b * t[0]);
+}
+
+static void ensaioUmaLeitura(float s) {
+  const float DOIS_PI = 6.2831853f, GRAU = 0.017453293f, G = 9.80665f;
+  const float proa = 245.0f + 3.0f * sinf(DOIS_PI * s / 20.0f);
+  const float caimento = 2.0f * sinf(DOIS_PI * s / 6.0f);
+  float daProa[4], doCaimento[4], doAdorno[4], meio[4], q[4];
+  ensaioEmTorno(2, -proa, daProa);
+  ensaioEmTorno(0, caimento, doCaimento);
+  ensaioEmTorno(1, 12.0f, doAdorno);
+  ensaioVezes(daProa, doCaimento, meio);
+  ensaioVezes(meio, doAdorno, q);
+  // o que o acelerómetro sente: o peso (para cima) mais o sobe e desce, vistos pelo sensor inclinado
+  const float mundo[3] = {0, 0, G + 0.4f * sinf(DOIS_PI * s / 6.0f)};
+  float a[3];
+  ensaioNoSensor(q, mundo, a);
+  movAceleracao(a[0], a[1], a[2]);
+  // a rotação: o caimento a mexer (em torno do x) e a proa a passear (em torno do z, ao contrário)
+  movRotacao(2.0f * GRAU * (DOIS_PI / 6.0f) * cosf(DOIS_PI * s / 6.0f), 0, -3.0f * GRAU * (DOIS_PI / 20.0f) * cosf(DOIS_PI * s / 20.0f));
+  movAtitude(q[0], q[1], q[2], q[3], 0.0349f, 3);
+}
+
+// ligado: 1 liga, 0 desliga. Devolve false se for outra coisa.
+inline bool ensaioMovimento(long ligado) {
+  if (ligado != 0 && ligado != 1) return false;
+  if (ligado && !ensaioMovLigado) {
+    ensaioMovInicio = millis();
+    ensaioMovProxima = ensaioMovInicio;
+  } else if (!ligado && ensaioMovLigado) {
+    movLimpa();
+  }
+  ensaioMovLigado = ligado == 1;
+  ensaioMarca(ENSAIO_MOVIMENTO, ensaioMovLigado);
+  return true;
+}
+
+static void ensaioCorreMovimento(uint32_t agoraMs) {
+  if (!ensaioMovLigado) return;
+  int feitas = 0;
+  while ((int32_t)(agoraMs - ensaioMovProxima) >= 0 && feitas < 20) {  // uma leitura de 10 em 10 ms
+    ensaioUmaLeitura((ensaioMovProxima - ensaioMovInicio) / 1000.0f);
+    ensaioMovProxima += 10;
+    feitas++;
+  }
+  if ((int32_t)(agoraMs - ensaioMovProxima) >= 0) ensaioMovProxima = agoraMs + 10;  // muito atrasado: acerta
+}
+
+// Chama-se em cada volta do ciclo principal: manda o que os geradores devem neste instante.
+inline void ensaioCorre(uint32_t agoraMs) {
+  ensaioCorreMovimento(agoraMs);
+  ensaioCorreVento(agoraMs);
+}
+
 inline void ensaioParar() {
   ensaioLog(0);
   ensaioVento(0, 0, false);
+  ensaioMovimento(0);
   ensaioLigados = 0;
 }

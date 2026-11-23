@@ -242,3 +242,47 @@ test('o gerador do vento liga e desliga sem a leitura morrer, e a caixa conta o 
   assert.ok(depois['vento-mexidas'] - antes['vento-mexidas'] >= 500, 'as mudanças de nível do pino não foram contadas')
   assert.equal(depois['vento-invalidas'], antes['vento-invalidas'])
 }))
+
+// --- O movimento (leituras a fingir, 100 por segundo, com o cenário da caixa a fingir do portátil) ----
+const GRAU = Math.PI / 180
+const movimentos = (linhas) => linhas.map(ler).filter(l => l && l.tipo === 'movimento')
+
+test('movimento a fingir: 10 linhas por segundo, com a média de cada décimo, e o portátil lê 12° de adornamento', COM_PLACA, () => comACaixa(async (p) => {
+  assert.equal(await p.manda('movimento', 1), 'ok')
+  await espera(600)
+  const linhas = await p.linhas(5000)
+  assert.ok(linhas.map(ler).every(Boolean), 'saiu uma linha que o portátil não lê')
+  const m = movimentos(linhas)
+  assert.ok(m.length >= 49 && m.length <= 51, `${m.length} linhas do movimento em 5 s`)
+  for (let i = 1; i < m.length; i++) assert.equal(m[i].n, m[i - 1].n + 1, 'saltou um número de ordem')
+  assert.ok(m.every(x => x.k >= 9 && x.k <= 11), `leituras por linha: ${[...new Set(m.map(x => x.k))]}`)
+  const eixos = contas.eixos('+y', '+z')
+  for (const x of m) {
+    const a = contas.atitude(x.q.map(v => v / 10000), eixos)
+    assert.ok(Math.abs(a.roll / GRAU - 12) < 0.5, `adornamento de ${(a.roll / GRAU).toFixed(2)}°`)
+    assert.ok(a.heading / GRAU > 241.5 && a.heading / GRAU < 248.5, `proa de ${(a.heading / GRAU).toFixed(1)}°`)
+    assert.ok(Math.abs(a.pitch / GRAU) < 2.5, `caimento de ${(a.pitch / GRAU).toFixed(2)}°`)
+    const g = Math.hypot(...x.a) / 1000
+    assert.ok(g > 9.3 && g < 10.3, `aceleração de ${g.toFixed(2)} m/s²`)
+    assert.equal(x.estado, 3)
+  }
+  const b = batimentos(linhas)
+  assert.ok(b.every(x => x.sim === true && x.sensor === 4), 'a caixa não disse que o movimento era a fingir')
+  assert.equal(await p.manda('parar'), 'ok')
+}))
+
+test('sem leituras do sensor não há linhas do movimento, e o número de ordem não avança sozinho', COM_PLACA, () => comACaixa(async (p) => {
+  assert.equal(await p.manda('movimento', 1), 'ok')
+  const antes = movimentos(await p.linhas(1200))
+  assert.equal(await p.manda('movimento', 0), 'ok')
+  await espera(400)
+  const parado = await p.linhas(2500)
+  assert.equal(movimentos(parado).length, 0, 'continuaram a sair linhas do movimento')
+  assert.ok(batimentos(parado).every(x => x.sensor !== 4 && x.sim === false))
+  assert.equal(await p.manda('movimento', 1), 'ok')
+  const depois = movimentos(await p.linhas(1200))
+  assert.ok(antes.length > 0 && depois.length > 0)
+  assert.ok(depois[0].n - antes.at(-1).n <= 5, `o número de ordem andou ${depois[0].n - antes.at(-1).n} com o sensor calado`)
+  assert.equal(await p.manda('parar'), 'ok')
+  assert.equal(await p.manda('movimento', 2), 'fora-dos-limites')
+}))

@@ -20,6 +20,7 @@
 
 #include "ensaio.h"
 #include "log.h"
+#include "movimento.h"
 #include "pinos.h"
 #include "vento.h"
 
@@ -66,6 +67,8 @@ static void obedece(const char *linha) {
     responde(nome, "ok");
   } else if (strcmp(nome, "log") == 0 && quantos == 1) {
     responde(nome, ensaioLog(v[0]) ? "ok" : "fora-dos-limites");
+  } else if (strcmp(nome, "movimento") == 0 && quantos == 1) {
+    responde(nome, ensaioMovimento(v[0]) ? "ok" : "fora-dos-limites");
   } else if (strcmp(nome, "vento") == 0 && (quantos == 2 || quantos == 3)) {
     responde(nome, ensaioVento(v[0], v[1], quantos == 3 && v[2] != 0) ? "ok" : "fora-dos-limites");
   } else if (strcmp(nome, "estado") == 0 && quantos == 0) {
@@ -93,6 +96,7 @@ void setup() {
   pinMode(PINO_LUZ, OUTPUT);
   logIniciar();  // antes do vento: é o log que monta o serviço das interrupções dos pinos
   ventoIniciar();
+  movIniciar();
 
   // O cão de guarda do ciclo principal: 5 s sem dar a volta e a placa recomeça.
   const esp_task_wdt_config_t cao = {.timeout_ms = CAO_DE_GUARDA_MS, .idle_core_mask = 0, .trigger_panic = true};
@@ -118,6 +122,7 @@ void loop() {
   logCorre(agora);
   ventoCorre();
   ensaioCorre(agora);
+  movCorre(agora);
 
   // A luz: acesa com tudo a sair; apagada um instante de cada vez que se deita uma linha fora.
   static uint32_t deitadasFora = 0, apagadaAte = 0;
