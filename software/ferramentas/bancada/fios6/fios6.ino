@@ -386,9 +386,29 @@ static uint32_t pinoLivreCom(bool paraCima) {
   return soma / 64;
 }
 
+// O D4 visto com a resistência interna da placa (uns 45 kΩ) para cima ou para baixo. Diz que tipo de
+// ponto está do outro lado do fio:
+//   para baixo e continua no teto        ponto com corrente a sério (o 3Vo, por exemplo)
+//   para baixo e desce                   ponto só puxado para cima por uma resistência, ou fio solto
+//   para cima e fica perto de 0,6 V      ponto puxado para baixo por 10 kΩ com a massa boa (cada 0,1 V
+//                                        a mais na massa do sensor soma uns 0,08 V)
+//   para cima e vai ao teto              fio solto
+static uint32_t d4Com(gpio_pull_mode_t resistencia) {
+  analogReadMilliVolts(PINO_MEDIDA);
+  gpio_set_pull_mode((gpio_num_t)PINO_MEDIDA, resistencia);
+  delay(10);
+  uint32_t soma = 0;
+  for (int i = 0; i < 64; i++) soma += analogReadMilliVolts(PINO_MEDIDA);
+  gpio_set_pull_mode((gpio_num_t)PINO_MEDIDA, GPIO_FLOATING);
+  delay(5);
+  return soma / 64;
+}
+
 // Milhares de leituras seguidas do D4. Com toque = true dá um toque de 20 ms no RST ao fim de um
 // terço das leituras, para ver o que a tensão faz quando o sensor tenta arrancar.
 static void medeTensoes(bool toque) {
+  const uint32_t d4ParaCima = d4Com(GPIO_PULLUP_ONLY);
+  const uint32_t d4ParaBaixo = d4Com(GPIO_PULLDOWN_ONLY);
   // Os 3,3 V da placa: o pino livre puxado para cima. Puxado para baixo tem de dar quase zero; se não
   // der, a medida não é de fiar.
   const uint32_t placa = pinoLivreCom(true);
@@ -419,6 +439,10 @@ static void medeTensoes(bool toque) {
   Serial.print(placa);
   Serial.print(" zero_mV=");
   Serial.print(zero);
+  Serial.print(" d4_com_cima_mV=");
+  Serial.print(d4ParaCima);
+  Serial.print(" d4_com_baixo_mV=");
+  Serial.print(d4ParaBaixo);
   Serial.print(" d4_min_mV=");
   Serial.print(minimo);
   Serial.print(" d4_media_mV=");
