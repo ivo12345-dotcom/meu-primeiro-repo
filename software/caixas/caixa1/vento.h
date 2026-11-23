@@ -28,12 +28,24 @@ static char ventoFrase[VENTO_MAX + 2];
 static size_t ventoN = 0;
 static bool ventoADeitarFora = true;  // até ao primeiro fim de linha não se sabe se se apanhou o princípio
 
+// O valor de uma letra hexadecimal (0 a 15), ou -1.
+static int ventoHex(char c) {
+  if (c >= '0' && c <= '9') return c - '0';
+  if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+  if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+  return -1;
+}
+
 // "$" + duas letras + "MWV," ... "*HH", com HH o ou-exclusivo do que está entre o $ e o *.
+// A soma lê-se pelas duas letras e mais nada: a seguir a elas, na memória, pode estar o resto de uma
+// frase anterior mais comprida. (Visto na placa a 23/11: depois de "14.0" uma frase com "5.0" era
+// deitada fora, porque a soma "09" se lia agarrada ao "E" que sobrava do "3E" da anterior.)
 static bool ventoBoa(const char *f, size_t n) {
   if (n < 12 || f[0] != '$' || !isupper((unsigned char)f[1]) || !isupper((unsigned char)f[2])) return false;
   if (strncmp(f + 3, "MWV,", 4) != 0 || f[n - 3] != '*') return false;
-  if (!isxdigit((unsigned char)f[n - 2]) || !isxdigit((unsigned char)f[n - 1])) return false;
-  return aqSoma(f + 1, n - 4) == (uint8_t)strtoul(f + n - 2, nullptr, 16);
+  const int alto = ventoHex(f[n - 2]), baixo = ventoHex(f[n - 1]);
+  if (alto < 0 || baixo < 0) return false;
+  return aqSoma(f + 1, n - 4) == (uint8_t)(alto * 16 + baixo);
 }
 
 // A frase é de vento (MWV) mas não vale: soma errada ou cortada.
