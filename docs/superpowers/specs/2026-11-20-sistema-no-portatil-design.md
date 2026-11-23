@@ -178,7 +178,7 @@ caixa (viva, contadores, força do rádio). Os campos exatos estão em
 - **Medido na placa verdadeira, com o programa do barco em modo de ensaio:** a 460 800 baud, 2 329
   linhas em 3 minutos sem uma estragada (a 921 600, na bancada da véspera, estragavam-se 1,4 %); o
   portátil achou a caixa sozinho entre as portas USB; uma caixa presa recomeça sozinha em 5 segundos.
-  Fica por medir a taxa de linhas estragadas em horas, no ensaio de resistência.
+  A taxa de linhas estragadas numa hora seguida mediu-se depois, com as duas caixas (abaixo).
 - **Com as duas caixas (23/11 à tarde):** o motor a fingir chega ao portátil pelo rádio (2100
   rotações, 82 °C, 14,2 V; rádio a −20/−26 dBm com as placas lado a lado, sem pacotes perdidos); com
   as duas placas ligadas por USB o portátil escolhe sozinho a caixa 1; quando a caixa 2 recomeça ou
@@ -207,9 +207,17 @@ dois defeitos têm o tamanho de um pacote USB ou chegam mais depressa do que o f
    últimas 10 linhas inválidas, com a hora, para se ver o que são. Nenhum valor errado chega ao ecrã
    nem à gravação: perdem-se uma ou duas linhas por minuto nos períodos maus.
 
-Fica por fazer: um ensaio de resistência de horas com as duas caixas, para ver quanto tempo passam
-nos períodos maus; e, se incomodar, experimentar o cabo a metade da velocidade (o programa das
-caixas já se compila para outra velocidade: `node compilar.js 1 --baud 230400`).
+**Uma hora seguida com as duas caixas (23/11, das 16:14 às 17:14, com todos os sinais a fingir
+ligados e o programa de ensaio a ler a porta):** 104 413 linhas, 29 por segundo, **nenhuma
+estragada**. Das 36 005 leituras de movimento não faltou nenhuma; não houve um segundo sem batimento
+nem um recomeço da placa, e o maior silêncio entre linhas foi de 107 ms. Por tipo: 3 601 batimentos,
+7 201 do log, 3 600 do vento, 36 005 de movimento e 50 405 do motor (pelo rádio). Nenhuma das duas
+manias apareceu nessa hora.
+
+Fica por fazer: o ensaio de três horas com o sensor verdadeiro, quando o sensor novo chegar, que
+serve também para ver se as manias voltam; e, se incomodarem, experimentar o cabo a metade da
+velocidade (o programa das caixas já se compila para outra velocidade:
+`node compilar.js 1 --baud 230400`).
 
 ## No portátil
 
