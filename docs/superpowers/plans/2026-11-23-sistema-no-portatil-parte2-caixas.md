@@ -69,9 +69,12 @@
 
 ---
 
-### Task 1: O esqueleto da caixa 1 e a bancada automática
+### Task 1: O contrato no portátil, o esqueleto da caixa 1 e a bancada automática
 
 **Files:**
+- Modify: `software/signalk-arlequin-caixas/lib/linhas.js`; Test: `software/signalk-arlequin-caixas/test/linhas.test.js`
+- Modify: `software/ferramentas/caixa-a-fingir/lib/gerador.js`; Test: `software/ferramentas/caixa-a-fingir/test/gerador.test.js`
+- Modify: `docs/superpowers/plans/2026-11-22-sistema-no-portatil-parte1.md` (a tabela do contrato)
 - Create: `software/caixas/comum/library.properties`, `software/caixas/comum/src/arlequin_linhas.h`, `software/caixas/comum/src/arlequin_versao.h`
 - Create: `software/caixas/caixa1/caixa1.ino`, `software/caixas/caixa1/pinos.h`, `software/caixas/caixa1/ensaio.h`
 - Create: `software/caixas/ensaio/package.json`, `software/caixas/ensaio/placa.js`
@@ -79,6 +82,9 @@
 - Create: `software/caixas/package.json` (os comandos de compilar e gravar)
 
 **Interfaces:**
+- Produces (Node, `lib/linhas.js`), porque os ensaios das placas leem com o `ler()` e têm de o encontrar já a falar o contrato novo:
+  - `ler()`: a linha do motor só vale com a soma certa (`(12.345678) can1 0CF00400#FFFFFF004BFFFFFF*HH`); o batimento da caixa 1 devolve também `sensor` (0 a 4), `arranque` e `rsts` quando os três campos vêm e são inteiros (sem eles, as chaves não aparecem, e um batimento antigo de 7 campos lê-se como antes).
+  - `escreverMotor(m: { id, dados }, s: number, us: number): string` (a linha com soma; a caixa a fingir passa a usá-la).
 - Produces (C++, `arlequin_linhas.h`):
   - `uint8_t aqSoma(const char *texto)` (o ou-exclusivo dos caracteres)
   - `class AqLinha { AqLinha(const char *tipo); AqLinha &i(long v); AqLinha &t(const char *v); void manda(Print &p); }` (junta os campos com vírgulas, fecha com `*HH\n`; nunca passa de 200 caracteres: se passar, não manda e conta em `aqCortadas`)
@@ -92,6 +98,8 @@
   - `placa.fechar(): Promise<void>`
   - `comPlaca(nome: 'ARLEQUIN_CAIXA1'|'ARLEQUIN_CAIXA2')`: a porta dada por essa variável de ambiente, ou `null`; os ensaios usam `{ skip: 'sem a placa ligada: definir ARLEQUIN_CAIXA1=COMx' }`
 - Comandos: `npm run compilar:1`, `npm run gravar:1 -- COM3`, `npm test` (em `software/caixas`), que chamam o arduino-cli com `--library comum` e uma pasta de compilação fora do projeto (`%TEMP%/arlequin-caixas/caixa1`).
+
+- [ ] **Step 0: O contrato no portátil, primeiro.** Testes que falham em `linhas.test.js` (linha do motor com a soma certa lê-se, sem soma ou com a soma errada dá `null`; batimento de 10 campos devolve `sensor`, `arranque` e `rsts`; o de 7 campos fica como estava) e em `gerador.test.js` (as linhas do motor da caixa a fingir levam soma e continuam a ler-se). Ver falhar (`cd software/dev && npm test`), implementar, ver passar em tudo, atualizar a tabela do contrato no plano da parte 1 e fazer commit: `git commit -m "Caixas: linha do motor com soma e estado do sensor no batimento"`.
 
 - [ ] **Step 1: Escrever os ensaios que falham** (`caixa1.test.js`, só os desta tarefa):
   - "batimento desde o primeiro segundo": em 6 s chegam 5 a 7 linhas `$AQB` da caixa 1, com `ms` a crescer de 1000 em 1000 (±50), `fw` `0.2.0`, `sim` falso; o `ler()` do plugin lê todas as linhas recebidas (nenhuma `null`).
@@ -213,18 +221,16 @@ git commit -m "Caixas: esqueleto da caixa 1 (linhas, batimento, cão de guarda) 
 ### Task 6: O lado do portátil
 
 **Files:**
-- Modify: `software/signalk-arlequin-caixas/lib/linhas.js`, `lib/caixas.js`, `index.js`; Test: `test/linhas.test.js`, `test/caixas.test.js`, `test/plugin.test.js`
-- Modify: `software/ferramentas/caixa-a-fingir/lib/gerador.js`; Test: `test/gerador.test.js`
+- Modify: `software/signalk-arlequin-caixas/lib/caixas.js`, `index.js`; Test: `test/caixas.test.js`, `test/plugin.test.js`
 - Modify: `software/bordo/preparar.js`, `software/bordo/package.json`; Test: `software/bordo/test/preparar.test.js`
-- Modify: `software/dev/package.json` (o `test` passa por `software/caixas`), `docs/superpowers/plans/2026-11-22-sistema-no-portatil-parte1.md` (a tabela do contrato), `software/README.md`
+- Modify: `software/dev/package.json` (o `test` passa por `software/caixas`), `software/README.md`
 
 **Interfaces:**
-- `ler()`: a linha do motor só vale com a soma certa (`(12.345678) can1 0CF00400#FFFFFF004BFFFFFF*HH`); o batimento da caixa 1 devolve também `sensor` (0 a 4), `arranque` e `rsts` quando os três campos vêm e são inteiros (sem eles, as chaves não aparecem).
-- `escreverMotor(m: { id, dados }, s: number, us: number): string` (a linha com soma, para a caixa a fingir).
+- Consumes: o `sensor` do batimento (Tarefa 1, passo 0).
 - O plugin publica `arlequin.caixas.1.sensor` (`'a-medir' | 'a-arrancar' | 'calado' | 'nao-volta' | 'a-fingir' | null`) e levanta o aviso `notifications.arlequin.caixas.sensor` ("O sensor de movimento não responde: sem proa nem adornamento") quando o estado é `'nao-volta'`, ou `'calado'` há mais de 20 s. O aviso apaga-se quando volta a medir.
 - `preparar('ensaio-placa')`: como o `ensaio` (pasta do ensaio, dados do ensaio, tudo marcado como simulado), mas com a porta das caixas em `'auto'`; `npm run ensaio-placa` em `software/bordo`.
 
-- [ ] **Step 1: Escrever os testes que falham** (um por cada linha de cima, mais: uma linha do motor sem soma ou com a soma errada dá `null`; a caixa a fingir continua a ser lida por inteiro; um batimento antigo de 7 campos continua a ler-se como antes).
+- [ ] **Step 1: Escrever os testes que falham** (um por cada linha de cima, mais: sem os campos novos no batimento, o caminho do sensor fica a `null` e não há aviso).
 - [ ] **Step 2: Correr e ver falhar.** Run: `cd software/dev && npm test`. Expected: FAIL nos testes novos.
 - [ ] **Step 3: Implementar.**
 - [ ] **Step 4: Correr e ver passar.** Expected: PASS em tudo.
