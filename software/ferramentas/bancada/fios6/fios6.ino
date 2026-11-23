@@ -37,6 +37,9 @@
 //              para onde se leva um fio do ponto a medir (por exemplo o 3Vo do sensor). Do D4 tira
 //              milhares de leituras seguidas e diz a mais baixa, a média e a mais alta, para apanhar
 //              quedas curtas. "v r" faz o mesmo com um toque no RST a meio.
+//   i          confere o lado da placa: os pinos D21 e D22 conseguem puxar a linha para baixo? Depois
+//              faz à mão, sem o circuito de barramento do chip, o princípio de uma conversa com os
+//              endereços 4A, 4B, 28 e 29, e diz se alguém responde
 //   ?          manda já a linha de estado
 //
 // Cuidados com o RST, porque o fio pode ter ficado no pino errado:
@@ -464,10 +467,151 @@ static void medeTensoes(bool toque) {
   Serial.println();
 }
 
+// O barramento à mão (comando "i"): confere o lado da PLACA. Até aqui só estava provado que os pinos
+// D21 e D22 leem; falta ver se também conseguem puxar a linha para baixo, que é como a placa fala.
+// Depois faz ela própria, pino a pino e devagar (uns 5 kHz), o princípio de uma conversa com cada
+// endereço possível do sensor, sem passar pelo circuito de barramento do chip nem pela biblioteca.
+static const uint32_t MEIO_BIT_US = 100;
+
+static void solta(int pino) { digitalWrite(pino, HIGH); }   // dreno aberto: "alto" é largar a linha
+static void baixa(int pino) { digitalWrite(pino, LOW); }
+
+// Larga o relógio e espera que suba (o sensor pode segurá-lo um instante). false se não subir em 5 ms.
+static bool relogioSobe() {
+  solta(PINO_SCL);
+  const uint32_t t0 = micros();
+  while (digitalRead(PINO_SCL) == LOW) {
+    if (micros() - t0 > 5000) return false;
+  }
+  delayMicroseconds(MEIO_BIT_US);
+  return true;
+}
+
+static bool mandaByte(uint8_t b, bool *respondeu) {
+  for (int i = 7; i >= 0; i--) {
+    if (b & (1 << i)) solta(PINO_SDA); else baixa(PINO_SDA);
+    delayMicroseconds(MEIO_BIT_US);
+    if (!relogioSobe()) return false;
+    baixa(PINO_SCL);
+  }
+  solta(PINO_SDA);  // o nono bit é do sensor: puxa os dados para baixo se lá estiver
+  delayMicroseconds(MEIO_BIT_US);
+  if (!relogioSobe()) return false;
+  *respondeu = digitalRead(PINO_SDA) == LOW;
+  baixa(PINO_SCL);
+  return true;
+}
+
+static bool leByte(uint8_t *b, bool ultimo) {
+  uint8_t v = 0;
+  solta(PINO_SDA);
+  for (int i = 7; i >= 0; i--) {
+    delayMicroseconds(MEIO_BIT_US);
+    if (!relogioSobe()) return false;
+    if (digitalRead(PINO_SDA) == HIGH) v |= (1 << i);
+    baixa(PINO_SCL);
+  }
+  if (ultimo) solta(PINO_SDA); else baixa(PINO_SDA);  // confirma todos menos o último
+  delayMicroseconds(MEIO_BIT_US);
+  if (!relogioSobe()) return false;
+  baixa(PINO_SCL);
+  solta(PINO_SDA);
+  *b = v;
+  return true;
+}
+
+static void fimDeConversa() {
+  baixa(PINO_SDA);
+  delayMicroseconds(MEIO_BIT_US);
+  solta(PINO_SCL);
+  delayMicroseconds(MEIO_BIT_US);
+  solta(PINO_SDA);
+  delayMicroseconds(MEIO_BIT_US);
+}
+
+static void barramentoAMao() {
+  if (barramento) {
+    Wire.end();
+    barramento = false;
+  }
+  pinMode(PINO_SDA, INPUT);
+  pinMode(PINO_SCL, INPUT);
+  delay(2);
+  const int sdaAntes = digitalRead(PINO_SDA), sclAntes = digitalRead(PINO_SCL);
+
+  // 1. Cada pino consegue puxar a sua linha para baixo, e a linha volta a subir quando ele a larga?
+  const bool sdaDesce = puxaParaBaixo(PINO_SDA);
+  pinMode(PINO_SDA, INPUT);
+  delay(1);
+  const bool sdaSobe = digitalRead(PINO_SDA) == HIGH;
+  const bool sclDesce = puxaParaBaixo(PINO_SCL);
+  pinMode(PINO_SCL, INPUT);
+  delay(1);
+  const bool sclSobe = digitalRead(PINO_SCL) == HIGH;
+  Serial.print("BANCADA3 amao sda_antes=");
+  Serial.print(sdaAntes);
+  Serial.print(" scl_antes=");
+  Serial.print(sclAntes);
+  Serial.print(" sda_desce=");
+  Serial.print(sdaDesce);
+  Serial.print(" sda_sobe=");
+  Serial.print(sdaSobe);
+  Serial.print(" scl_desce=");
+  Serial.print(sclDesce);
+  Serial.print(" scl_sobe=");
+  Serial.println(sclSobe);
+  if (!(sdaDesce && sdaSobe && sclDesce && sclSobe)) {
+    Serial.println("BANCADA3 amao PAROU: um dos dois pinos da placa nao mexe na linha como deve");
+    return;
+  }
+
+  // 2. O princípio de uma conversa de leitura com cada endereço, feito à mão.
+  gpio_set_drive_capability((gpio_num_t)PINO_SDA, GPIO_DRIVE_CAP_2);
+  gpio_set_drive_capability((gpio_num_t)PINO_SCL, GPIO_DRIVE_CAP_2);
+  digitalWrite(PINO_SDA, HIGH);
+  digitalWrite(PINO_SCL, HIGH);
+  pinMode(PINO_SDA, OUTPUT_OPEN_DRAIN);
+  pinMode(PINO_SCL, OUTPUT_OPEN_DRAIN);
+  solta(PINO_SDA);
+  solta(PINO_SCL);
+  delay(1);
+  for (uint8_t e : {(uint8_t)0x4A, (uint8_t)0x4B, (uint8_t)0x28, (uint8_t)0x29}) {
+    // início de conversa: os dados descem com o relógio em cima
+    baixa(PINO_SDA);
+    delayMicroseconds(MEIO_BIT_US);
+    baixa(PINO_SCL);
+    bool respondeu = false;
+    const bool relogio = mandaByte((uint8_t)((e << 1) | 1), &respondeu);
+    Serial.print("BANCADA3 amao endereco=");
+    Serial.print(doisHex(e));
+    Serial.print(" relogio=");
+    Serial.print(relogio ? "ok" : "preso");
+    Serial.print(" responde=");
+    Serial.print(respondeu ? "sim" : "nao");
+    if (relogio && respondeu) {
+      // lê o cabeçalho de 4 bytes e fecha (o resto do pacote fica por ler: a seguir dá-se um toque no RST)
+      Serial.print(" cabecalho=");
+      for (int i = 0; i < 4; i++) {
+        uint8_t b = 0;
+        if (!leByte(&b, i == 3)) break;
+        Serial.print(doisHex(b));
+      }
+    }
+    Serial.println();
+    fimDeConversa();
+    delay(2);
+  }
+  pinMode(PINO_SDA, INPUT);
+  pinMode(PINO_SCL, INPUT);
+  endereco = 0;
+}
+
 static void obedece(String c) {
   c.trim();
   if (c == "?") {
     linhaDeEstado();
+  } else if (c == "i") {
+    barramentoAMao();
   } else if (c == "v") {
     medeTensoes(false);
   } else if (c == "v r") {

@@ -502,10 +502,27 @@ definitivo, ou a caixa 2 fica de vez.
     teto do medidor (3,1 V ou mais).
 
     O Ivo contou entretanto que tinha passado as duas placas para a peça nova e emendado os fios, que
-    ficavam a fazer força. Voltou a pô-los diretos, sem emendas: o sensor continuou sem responder.
-    Em curso, por esta ordem: medir com a placa a tensão dentro do sensor (o pino 3Vo levado por um
-    fio ao D4; comando `v` do `fios6`) e a massa dele; depois um toque nas soldas dos pinos. Só
-    depois se fala em trocar o sensor.
+    ficavam a fazer força. O que se fez a seguir, por esta ordem, sempre com o mesmo resultado (o
+    sensor sem responder):
+
+    1. Fios diretos, sem emendas.
+    2. A tensão dentro do sensor medida pela própria placa (o pino 3Vo levado por um fio ao D4;
+       comando `v` do `fios6`): no teto do medidor (3,1 V ou mais), sem uma queda em 12 000 leituras
+       seguidas, nem durante um toque no RST, e firme contra a resistência interna da placa (é
+       mesmo a saída do regulador, não uma linha só puxada para cima).
+    3. As soldas dos pinos retocadas pelo Ivo e o fio preto (a massa) trocado por um novo.
+    4. O lado da placa conferido (comando `i`): os pinos D21 e D22 puxam as linhas para baixo e
+       largam-nas como devem; e o princípio de uma conversa com os endereços 4A, 4B, 28 e 29, feito
+       à mão pela placa, a 5 kHz, sem o circuito de barramento do chip nem a biblioteca, não teve
+       resposta de ninguém.
+
+    Ao todo: quatro cortes de corrente e onze toques no RST. **O que fica: com fios bons, corrente
+    boa e a placa a falar bem, a plaquinha do sensor nem responde nem dá sinal no INT.** O que
+    sobra está dentro dela (o chip, o cristal, uma das peças pequenas), e de fora não há mais nada
+    a fazer-lhe. A massa do sensor não chegou a ser medida (fio novo e solda retocada). A causa não
+    se sabe; uma hipótese sem prova é eletricidade estática: o registo da véspera mostra a placa
+    mexida às 21:08 e às 22:29, e o sensor parou às 23:11. A decisão de o trocar é do Ivo (comprado
+    a 20/11).
 
     **O que já fica decidido para o firmware, seja qual for o desfecho:**
 

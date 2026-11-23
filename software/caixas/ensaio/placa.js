@@ -30,13 +30,27 @@ function abrir (porta) {
     const s = new SerialPort({ path: porta, baudRate: BAUD, autoOpen: false, hupcl: false })
     const ouvintes = new Set()
     let resto = ''
-    let primeira = true // o primeiro bocado pode começar a meio de uma linha: deita-se fora
+    // Ao abrir, a porta pode trazer o fim de uma linha que já ia a meio. Nos primeiros 40 ms deita-se
+    // tudo fora; se nessa altura se ficou a meio de uma linha, deita-se fora também o resto dela. Daí em
+    // diante todas as linhas são inteiras, a primeira incluída (pode ser a resposta a um comando).
+    let acertada = false
+    let aMeio = false
     s.on('data', (bocado) => {
-      const partes = (resto + bocado.toString('latin1')).split('\n')
+      let texto = bocado.toString('latin1')
+      if (!acertada) {
+        aMeio = !texto.endsWith('\n')
+        return
+      }
+      if (aMeio) {
+        const fim = texto.indexOf('\n')
+        if (fim === -1) return
+        texto = texto.slice(fim + 1)
+        aMeio = false
+      }
+      const partes = (resto + texto).split('\n')
       resto = partes.pop()
       if (resto.length > 4 * MAX_LINHA) resto = ''
       for (const parte of partes) {
-        if (primeira) { primeira = false; continue }
         const linha = parte.endsWith('\r') ? parte.slice(0, -1) : parte
         if (linha.length === 0) continue
         for (const o of [...ouvintes]) o(linha)
@@ -86,7 +100,10 @@ function abrir (porta) {
         return new Promise((feito) => (s.isOpen ? s.close(() => feito()) : feito()))
       }
     }
-    s.open((erro) => (erro ? reject(new Error(`${porta} não abre: ${erro.message}`)) : resolve(placa)))
+    s.open((erro) => {
+      if (erro) return reject(new Error(`${porta} não abre: ${erro.message}`))
+      s.flush(() => setTimeout(() => { acertada = true; resolve(placa) }, 40))
+    })
   })
 }
 
