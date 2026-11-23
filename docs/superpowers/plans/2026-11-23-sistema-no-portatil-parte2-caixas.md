@@ -239,22 +239,38 @@ git commit -m "Caixas: esqueleto da caixa 1 (linhas, batimento, cão de guarda) 
 
 ### Task 7: O sensor verdadeiro
 
-Depende de haver um sensor a responder. A 23/11 o da bancada não responde (ponto 12 do desenho); até lá a caixa anda com o estado do sensor a 3 e o resto a trabalhar, que é o que o Review Focus 3 pede.
+Depende de haver um sensor a responder. O primeiro deixou de responder a 22/11 e a 23/11 ficou provado que não é dos fios, das soldas nem da placa (ponto 12 do desenho). O Ivo encomendou outro. Até ele chegar a caixa anda com o estado do sensor a 3 e o resto a trabalhar, que é o que o Review Focus 3 pede.
+
+**Mudança de 23/11 (pedido do Ivo: "ligamos logo os pinos todos para acordar e tudo"; parecer do Claude):** o sensor novo liga-se logo pela ligação que o fabricante dá como fiável nestas placas, a de 10 ligações (SPI), com o INT e o RST, e com a biblioteca do fabricante (Adafruit BNO08x 1.2.7, já instalada), que nessa ligação só lê quando o sensor avisa. A de 4 fios era a única suspeita que o fabricante já tinha escrito, e não se repete a experiência num sensor novo.
+
+**As ligações do sensor novo** (a marcar na foto do Ivo antes de ele ligar; os seis primeiros fios ficam onde estão hoje):
+
+| Sensor | Placa | Nota |
+|---|---|---|
+| VIN | 3V3 | como hoje (vermelho) |
+| GND | GND | como hoje (preto) |
+| SCL | D22 | como hoje (castanho); nesta ligação é o relógio |
+| SDA | D21 | como hoje (laranja); nesta ligação são os dados do sensor para a placa |
+| INT | D19 | como hoje (branco) |
+| RST | D18 | como hoje (azul) |
+| DI | D23 | novo: os dados da placa para o sensor. É o último pino da fila, colado ao castanho |
+| CS | D5 | novo: a placa escolhe o sensor. É o pino colado ao azul, do lado do vermelho |
+| P0 e P1 | 3 V | duas gotas de solda nas pontes "PS0" e "PS1" das costas do sensor: dizem-lhe que a ligação é esta |
 
 **Files:**
-- Create: `software/caixas/caixa1/sensor.h`, `software/caixas/caixa1/sensor_ligacao.h`
-- Modify: `software/caixas/caixa1/caixa1.ino`
+- Create: `software/caixas/caixa1/sensor.h`
+- Modify: `software/caixas/caixa1/caixa1.ino`, `software/caixas/caixa1/pinos.h`
 - Test: `software/caixas/ensaio/caixa1.test.js`
 
 **Interfaces:**
-- `sensor_ligacao.h`: a ligação à SH-2 da CEVA (`sh2_Hal_t`), pelos 6 fios: só lê quando o INT está em baixo, lê cada pacote até ao fim, nunca faz escritas vazias; `bool ligacaoLivre()` (os nove impulsos de relógio antes de abrir, regra 1).
-- `sensor.h`: `void sensorIniciar()`, `void sensorCorre(uint32_t agoraMs)` (nunca bloqueia mais de 50 ms), `uint8_t sensorEstado()` (0 a 3), `uint32_t sensorRsts()`, `bool sensorGuarda()` (o comando `guardar`: o sensor grava as calibrações dele agora; a gravação automática de 5 em 5 segundos fica desligada). Máquina de estados: **a arrancar** (solta o barramento, toque no RST, espera pelo INT e pelo "recomeço completo", desliga a gravação periódica das calibrações, pede aceleração, rotação e atitude a 100 por segundo, e só passa a **a medir** quando as três chegam: regra 2); **calado** ao fim de 500 ms sem leituras (toque no RST e volta a arrancar; os toques espaçam-se: 1 s, 2 s, 5 s, 10 s, depois de 30 em 30 s); **não volta** ao fim de 5 toques seguidos sem leituras (continua a tentar de 30 em 30 s).
+- `sensor.h`: `void sensorIniciar()`, `void sensorCorre(uint32_t agoraMs)`, `uint8_t sensorEstado()` (0 a 3), `uint32_t sensorRsts()`, `bool sensorGuarda()` (o comando `guardar`: o sensor grava as calibrações dele agora; a gravação automática de 5 em 5 segundos fica desligada, regra 7). Máquina de estados: **a arrancar** (toque no RST, a biblioteca espera pelo INT e pelo "recomeço completo", desliga-se a gravação periódica das calibrações, pedem-se aceleração, rotação e atitude a 100 por segundo, e só passa a **a medir** quando as três chegam: regra 2); **calado** ao fim de 500 ms sem leituras (toque no RST e volta a arrancar; os toques espaçam-se: 1 s, 2 s, 5 s, 10 s, depois de 30 em 30 s); **não volta** ao fim de 5 toques seguidos sem leituras (continua a tentar de 30 em 30 s). O arranque do sensor demora mais do que os 50 ms que o ciclo principal admite: enquanto durar, o batimento continua a sair (a espera faz-se aos bocados, com o ciclo a dar a volta).
+- **As primeiras horas do sensor novo correm ao ritmo do desenho** (100 / 100 / 100) e sem ensaios ao dobro do ritmo.
 
 - [ ] **Step 1: Ensaios que falham**
   - "movimento verdadeiro": sem geradores, 49 a 51 `$AQM` em 5 s, `k` ≥ 9, norma da aceleração entre 9,3 e 10,3 m/s² com a caixa pousada, estado do sensor 0.
   - "Review Focus 3, o sensor cala-se": `manda('rst')` a meio; os `$AQM` voltam em menos de 2 s, o número de ordem continua, o contador de toques sobe 1, e durante esse tempo o batimento e o log (gerador a 26 Hz) não falham uma linha.
   - "a placa recomeça com o sensor a meio de uma frase": `manda('prender')`; depois do recomeço os `$AQM` voltam em menos de 5 s (regras 1 e 3).
-  - "sem sensor": com o fio do SDA fora (é o Ivo que o tira e volta a pôr), o estado passa a 2 e depois a 3, o batimento não falha, e com o fio de volta passa a 0 sozinho em menos de 40 s.
+  - "sem sensor": com o fio do CS fora (é o Ivo que o tira e volta a pôr, com a placa desligada do PC de cada vez), o estado passa a 2 e depois a 3 e o batimento não falha; com o fio de volta passa a 0 sozinho em menos de 40 s.
 
 - [ ] **Step 2: Correr e ver falhar.** Expected: FAIL.
 - [ ] **Step 3: Implementar.**
@@ -279,5 +295,5 @@ Depende de haver um sensor a responder. A 23/11 o da bancada não responde (pont
 
 - A linguagem do repetidor do mostrador do vento (se a foto das costas mostrar que não sai NMEA): fica para quando se souber a versão.
 - O comparador da roda do log e a adaptação de nível do vento: são peças, escolhem-se depois de medir o sinal (pontos em aberto 1 e 2).
-- A ligação de 10 fios (SPI) do sensor: só se a de 6 fios não passar o ensaio de resistência. O `sensor.h` não muda; troca-se o `sensor_ligacao.h`.
+- Se a ligação de 10 ligações (SPI) também der bloqueios no ensaio de resistência, sobra a ligação série do sensor (UART), que o fabricante também dá como boa nestas placas.
 - A conta da onda sobre a gravação.

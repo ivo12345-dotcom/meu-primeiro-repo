@@ -19,6 +19,7 @@ pasta é o quê, como se testa no portátil e o que cada plugin precisa no barco
 | `signalk-arlequin-j1939/` | Motor D1-20B pelo J1939 do MDI: rotações, horas, temperaturas, tensão, consumo, alarmes, estado da ligação, descoberta da PGN 65417. Três fontes: `candump` (adaptador CAN no Pi), `caixa` (as caixas ESP32, no portátil) e `simulador` | Sim |
 | `signalk-arlequin-caixas/` | **As caixas ESP32** (o sistema no portátil): lê o que a caixa 1 manda pelo cabo USB e põe no SignalK a velocidade na água (roda do log), o vento aparente, a proa, o adornamento e o caimento (sensor BNO085), o bloco do movimento para a caixa negra, o estado das duas caixas e as tramas do motor para o plugin do motor. As calibrações estão na configuração do plugin | Sim (com as caixas) |
 | `bordo/` | **O SignalK do portátil a bordo**, com as duas caixas e sem simulador: o modelo da configuração (`modelo/`), o `preparar.js` (que cria a pasta do barco e a do ensaio) e os comandos. Ver "No portátil a bordo, com as duas caixas" | **Não** (é o portátil) |
+| `caixas/` | **O programa das duas placas ESP32** (caixa 1, instrumentos; caixa 2, motor só em escuta) e os ensaios que correm com as placas ligadas ao portátil. Ver `caixas/README.md` | **Não** (grava-se nas placas) |
 | `ferramentas/caixa-a-fingir/` | Faz de caixa 1 e de GPS no próprio portátil (por TCP), para ensaiar tudo em casa sem as placas; o que manda sai marcado como simulado | Não |
 | `arlequin-simulador/` | Plugin que finge o barco (navegação, vento, AIS, motor, baterias, sol) | **Não** (só testes) |
 | `dev/` | SignalK local no portátil, com tudo ligado, e os scripts de ensaio | **Não** |
@@ -174,6 +175,15 @@ npm run ensaio           # o SignalK ligado à caixa a fingir
 Opções da caixa a fingir: `-- --sem-caixa2` (a caixa do motor calada), `-- --sem-vento`, `-- --lixo`
 (linhas estragadas no meio das boas) e `-- --parar-aos 30` (o cabo tirado aos 30 s).
 
+**Ensaiar em casa com a placa verdadeira** (a caixa 1 ligada por USB, com os sinais a fingir dela
+ligados: ver `software/caixas/README.md`). É o ensaio de cima, mas a ler a caixa a sério pela porta que
+o barco tiver escolhida; a caixa a fingir continua a ser precisa, só para dar o GPS:
+
+```bash
+npm run caixa-a-fingir   # só para o GPS a fingir
+npm run ensaio-placa     # o SignalK ligado à caixa verdadeira, com tudo marcado como simulado
+```
+
 | | `npm start` (bordo) | `npm run ensaio` |
 |---|---|---|
 | A caixa 1 | pelo cabo USB (procura a porta sozinho) | a caixa a fingir (`tcp://localhost:8765`) |
@@ -233,6 +243,15 @@ caixa 1 se cala, os valores passam a "sem dado" em 5 s e o ecrã apita uma vez; 
 Se for a caixa do motor a calar-se, o estado do motor passa logo a "sem leitura", mas o apito só vem ao fim
 de 20 s seguidos: uns segundos sem ela são normais quando o plugin das caixas arranca ou se lhe grava uma
 calibração. Se uma das duas caixas disser que está a fingir, tudo sai marcado como simulado.
+
+**O sensor de movimento** tem estado próprio, que a caixa 1 diz de segundo a segundo: vê-se em
+`arlequin.caixas.1.sensor` (a medir, a arrancar, calado, não volta, a fingir). Se o sensor não voltar, ou
+ficar mais de 20 s seguidos sem medir, o ecrã apita uma vez com "O sensor de movimento não responde: sem
+proa nem adornamento"; o resto (vento, velocidade, motor) continua. Ficam também gravados o motivo do
+último arranque da placa e as vezes que a caixa mandou o sensor recomeçar, para se ver depois de uma viagem.
+
+**As linhas do motor levam soma de controlo** desde 23/11/2026: uma linha que o cabo estrague é deitada
+fora e conta nas inválidas, em vez de dar um valor errado do motor.
 
 **Segurança (estado a 22/11/2026).** O aviso CVE-2026-123807 (GHSA-4xm8-rg9h-jhq2) diz que o servidor
 SignalK e o plugin das rotas e pontos (`@signalk/resources-provider`) deixavam ler, escrever e apagar

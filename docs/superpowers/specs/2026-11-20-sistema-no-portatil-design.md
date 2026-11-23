@@ -164,6 +164,22 @@ um número de ordem para se ver se faltou alguma), tramas do motor reenviadas no
 caixa (viva, contadores, força do rádio). Os campos exatos estão em
 `docs/superpowers/plans/2026-11-22-sistema-no-portatil-parte1.md`, "A linguagem das linhas".
 
+**Como ficou a 23/11, com o programa das caixas** (`software/caixas`, plano em
+`docs/superpowers/plans/2026-11-23-sistema-no-portatil-parte2-caixas.md`):
+
+- **Todas as linhas levam soma de controlo**, as do motor também: uma linha que o cabo estrague é
+  deitada fora no portátil, em vez de dar um valor errado.
+- **O batimento da caixa 1 diz também como está o sensor de movimento** (a medir, a arrancar, calado,
+  não volta, a fingir), o motivo do último arranque da placa e as vezes que mandou o sensor
+  recomeçar. O ecrã avisa quando o sensor não responde.
+- **As caixas trazem sinais a fingir lá dentro** (roda, vento, movimento, motor), para se ensaiar o
+  caminho inteiro em casa. Só se ligam por ordem do portátil, nunca ficam gravados, e a caixa diz
+  sempre que está a fingir.
+- **Medido na placa verdadeira, com o programa do barco em modo de ensaio:** a 460 800 baud, 2 329
+  linhas em 3 minutos sem uma estragada (a 921 600, na bancada da véspera, estragavam-se 1,4 %); o
+  portátil achou a caixa sozinho entre as portas USB; uma caixa presa recomeça sozinha em 5 segundos.
+  Fica por medir a taxa de linhas estragadas em horas, no ensaio de resistência.
+
 ## No portátil
 
 O sistema já corre no portátil com o simulador (`software/dev`). Falta um **perfil de bordo**, sem
