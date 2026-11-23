@@ -124,3 +124,52 @@ test('Review Focus 1: o portátil deixa de ler 20 s e a caixa nem dá por isso',
     await p.fechar()
   }
 })
+
+// --- A roda do log (impulsos a fingir feitos pela própria placa, no pino do log) ---------------------
+const contas = require('../../signalk-arlequin-caixas/lib/contas')
+const logs = (linhas) => linhas.map(ler).filter(l => l && l.tipo === 'log')
+const recomecou = (p, antes) => p.ate((l) => { const b = batimento1(l); return b && b.ms < antes.ms ? b : null }, 12000, 'a caixa a recomeçar')
+
+test('log a 26 impulsos por segundo: a conta do portátil dá 5,2 nós', COM_PLACA, () => comACaixa(async (p) => {
+  assert.equal(await p.manda('log', 26), 'ok')
+  await espera(1200)
+  const l = logs(await p.linhas(5000))
+  assert.ok(l.length >= 9 && l.length <= 11, `${l.length} linhas do log em 5 s`)
+  for (let i = 1; i < l.length; i++) assert.ok(Math.abs(l[i].ms - l[i - 1].ms - 500) <= 30, `linhas do log a ${l[i].ms - l[i - 1].ms} ms`)
+  const porSegundo = (l.at(-1).impulsos - l[0].impulsos) / ((l.at(-1).ms - l[0].ms) / 1000)
+  assert.ok(Math.abs(porSegundo - 26) <= 1, `${porSegundo.toFixed(2)} impulsos por segundo`)
+  for (const x of l) assert.ok(Math.abs(x.periodoUs - 38462) < 385, `período de ${x.periodoUs} µs`)
+  let conta = contas.novoLog()
+  for (const x of l) conta = contas.juntarLog(conta, x)
+  const nos = contas.velocidadeNaAgua(contas.hzLog(conta)) / contas.NO
+  assert.ok(Math.abs(nos - 5.2) < 0.1, `${nos.toFixed(2)} nós`)
+  assert.equal(await p.manda('parar'), 'ok')
+}))
+
+test('Review Focus 5: com a roda parada a contagem não mexe, e sem dois impulsos o período é 0', COM_PLACA, () => comACaixa(async (p) => {
+  assert.equal(await p.manda('log', 26), 'ok')
+  await espera(1500)
+  assert.equal(await p.manda('log', 0), 'ok')
+  await espera(600)
+  const parado = logs(await p.linhas(3000))
+  assert.ok(parado.length >= 5, `${parado.length} linhas do log em 3 s`)
+  assert.ok(parado[0].impulsos > 20, `só ${parado[0].impulsos} impulsos contados`)
+  assert.ok(parado.every(x => x.impulsos === parado[0].impulsos), 'a contagem mexeu com a roda parada')
+  // uma caixa acabada de arrancar: nem impulsos nem período
+  const antes = await proximoBatimento(p)
+  assert.equal(await p.manda('prender'), 'ok')
+  await recomecou(p, antes)
+  const novo = logs(await p.linhas(2500))
+  assert.ok(novo.length >= 3, `${novo.length} linhas do log depois de recomeçar`)
+  assert.ok(novo.every(x => x.impulsos === 0 && x.periodoUs === 0), JSON.stringify(novo[0]))
+}))
+
+test('Review Focus 5: impulsos duplos (a menos de 4 ms um do outro) contam como um', COM_PLACA, () => comACaixa(async (p) => {
+  assert.equal(await p.manda('log', 400), 'ok') // muito acima do que a roda dá: 2,5 ms entre impulsos
+  await espera(1000)
+  const l = logs(await p.linhas(3000))
+  const porSegundo = (l.at(-1).impulsos - l[0].impulsos) / ((l.at(-1).ms - l[0].ms) / 1000)
+  assert.ok(porSegundo > 150 && porSegundo <= 250, `${porSegundo.toFixed(1)} impulsos por segundo`)
+  assert.equal(await p.manda('parar'), 'ok')
+  assert.equal(await p.manda('log', 1000), 'fora-dos-limites')
+}))
