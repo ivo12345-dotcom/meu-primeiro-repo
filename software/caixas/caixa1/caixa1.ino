@@ -22,6 +22,7 @@
 #include "log.h"
 #include "movimento.h"
 #include "pinos.h"
+#include "radio1.h"
 #include "vento.h"
 
 const uint32_t BAUD = 460800;
@@ -97,6 +98,7 @@ void setup() {
   logIniciar();  // antes do vento: é o log que monta o serviço das interrupções dos pinos
   ventoIniciar();
   movIniciar();
+  radioIniciar();
 
   // O cão de guarda do ciclo principal: 5 s sem dar a volta e a placa recomeça.
   const esp_task_wdt_config_t cao = {.timeout_ms = CAO_DE_GUARDA_MS, .idle_core_mask = 0, .trigger_panic = true};
@@ -123,6 +125,7 @@ void loop() {
   ventoCorre();
   ensaioCorre(agora);
   movCorre(agora);
+  radioCorre(agora);
 
   // A luz: acesa com tudo a sair; apagada um instante de cada vez que se deita uma linha fora.
   static uint32_t deitadasFora = 0, apagadaAte = 0;
