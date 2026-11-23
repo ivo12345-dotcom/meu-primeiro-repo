@@ -3,9 +3,9 @@
   "private": true,
   "description": "O SignalK do Arlequin no portátil a bordo, com as duas caixas ESP32 (sem simulador)",
   "scripts": {
-    "instalar": "cd config && npm install",
+    "instalar": "node preparar.js criar && cd config && npm install",
     "start": "node preparar.js bordo && node ../dev/node_modules/signalk-server/bin/signalk-server -c config",
-    "ensaio": "node preparar.js ensaio && node ../dev/node_modules/signalk-server/bin/signalk-server -c config",
+    "ensaio": "node preparar.js ensaio && node ../dev/node_modules/signalk-server/bin/signalk-server -c config-ensaio",
     "caixa-a-fingir": "node ../ferramentas/caixa-a-fingir/caixa-a-fingir.js",
     "test": "node --test \"test/*.test.js\""
   }

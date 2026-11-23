@@ -7,7 +7,9 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 
-const CONFIG = path.join(__dirname, '..', 'config')
+// O que vai para o git é o modelo (software/bordo/modelo). A configuração do barco (config) e a do ensaio
+// (config-ensaio) nascem dele e ficam fora do git: ver preparar.js.
+const CONFIG = path.join(__dirname, '..', 'modelo')
 const PASTA = path.join(CONFIG, 'plugin-config-data')
 const TOKEN_FALSO = 'DEV-TELEGRAM-FALSO'
 const CHATS_FALSOS = new Set(['111', '222'])

@@ -17,13 +17,11 @@ software/dev/config/plugin-config-data/*/
 software/ferramentas/passagem/*.json
 software/ferramentas/passagem/relatorio.svg
 software/dev/arlequin-dados/
-# SignalK de bordo (o portátil com as caixas): no git só a configuração; os dados dos ensaios ficam fora
-software/bordo/config/*
-!software/bordo/config/package.json
-!software/bordo/config/settings.json
-!software/bordo/config/priorities.json
-!software/bordo/config/plugin-config-data/
-software/bordo/config/plugin-config-data/*/
+# SignalK de bordo (o portátil com as caixas): no git só o modelo (software/bordo/modelo). A configuração
+# do barco (config, com as calibrações e o que o servidor lá escreve) e a pasta do ensaio em casa
+# (config-ensaio, com os dados a fingir) ficam fora, cada uma na sua.
+software/bordo/config/
+software/bordo/config-ensaio/
 software/bordo/arlequin-dados-ensaio/
 
 # Python
