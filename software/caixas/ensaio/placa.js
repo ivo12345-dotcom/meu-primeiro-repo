@@ -60,6 +60,11 @@ function abrir (porta) {
 
     const placa = {
       porta,
+      // Chama aoLinha(linha) por cada linha inteira, à medida que chegam. Devolve a função que para.
+      ouvir (aoLinha) {
+        ouvintes.add(aoLinha)
+        return () => ouvintes.delete(aoLinha)
+      },
       // As linhas inteiras recebidas nos próximos ms.
       linhas (ms) {
         return new Promise((feito) => {
