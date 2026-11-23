@@ -1,7 +1,8 @@
 # Abre a porta da placa (programa bancada2, 921 600 baud) SEM a reiniciar (a nao ser com --reinicia),
 # manda comandos a horas marcadas e mostra tudo o que ela diz. Para diagnosticar a ligacao ao sensor.
-#   python falar.py COM3 <segundos> [--reinicia] [--espera] [t=comando ...]   ex.: 2.5="c 100000 100 100 100"
+#   python falar.py COM3 <segundos> [--reinicia] [--espera] [--baud=N] [t=comando ...]   ex.: 2.5="c 100000 100 100 100"
 # --espera: fica a espera de a porta aparecer (cabo USB a ser ligado) antes de comecar a contar.
+# --baud=115200: para os programas que falam mais devagar (bancada 1 "placa" e bancada 3 "fios6").
 import sys
 import time
 
@@ -11,16 +12,19 @@ sys.stdout.reconfigure(encoding="utf-8")
 porta, segundos = sys.argv[1], float(sys.argv[2])
 reinicia = "--reinicia" in sys.argv
 espera = "--espera" in sys.argv
+velocidade = 921600
 marcados = []
 for a in sys.argv[3:]:
-    if "=" in a and not a.startswith("--"):
+    if a.startswith("--baud="):
+        velocidade = int(a.split("=", 1)[1])
+    elif "=" in a and not a.startswith("--"):
         t, c = a.split("=", 1)
         marcados.append((float(t), c))
 marcados.sort()
 
 s = serial.Serial()
 s.port = porta
-s.baudrate = 921600
+s.baudrate = velocidade
 s.timeout = 0.1
 s.dtr = False  # as duas linhas em repouso: abrir a porta nao toca no botao EN da placa
 s.rts = False
