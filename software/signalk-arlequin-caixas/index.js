@@ -25,6 +25,13 @@
 //     que não volta acende o aviso notifications.arlequin.caixas.sensor.
 //   - Linhas que não se percebem contam-se e mostram-se no estado do plugin e no /estado; nunca uma
 //     mensagem por linha no registo.
+//   - As cópias da ponte USB das placas deitam-se fora: uma linha igual à anterior, chegada menos de
+//     20 ms depois dela, não conta. Neste portátil, ao abrir a porta depois de uns segundos fechada com
+//     a caixa a mandar poucas linhas, chegam até 200 KB de cópias das últimas linhas no primeiro
+//     segundo, mais depressa do que o fio leva (visto a 23/11/2026, com duas bibliotecas de porta
+//     série). São linhas válidas, só que repetidas aos milhares, e enchiam o bloco do movimento. A caixa
+//     nunca manda duas linhas iguais tão juntas, e a mesma frase do vento um décimo de segundo depois
+//     continua a contar.
 //
 // A proa e a atitude saem 2 vezes por segundo; o resto, 1 vez. O bloco do movimento (as leituras do
 // sensor de um segundo, tal como chegaram) sai num caminho só, para a caixa negra o gravar.
@@ -37,6 +44,7 @@ const { abrirFonte: abrirFonteVerdadeira } = require('./lib/fonte')
 
 const VELHO = 5000 // uma linha mais velha do que isto já não vale
 const PASSO = 500 // ms: a atitude sai a cada passo, o resto de dois em dois
+const COPIA = 20 // ms: uma linha igual à anterior e mais junta do que isto é cópia da ponte USB
 const SIMULADO = 'arlequin-simulador.caixas'
 const GRAU = Math.PI / 180
 const EIXOS = ['+x', '-x', '+y', '-y', '+z', '-z']
@@ -120,6 +128,7 @@ module.exports = function (app, { abrirFonte = abrirFonteVerdadeira } = {}) {
   let mov, movVisto
   let bloco, nAnterior
   let nLinhas, invalidas, faltam, ultimas
+  let ultimaLinha, horaDaUltima, repetidas
   let meio, queixou, avisoAceso, avisoSensorAceso
 
   function zerar (agora) {
@@ -140,6 +149,9 @@ module.exports = function (app, { abrirFonte = abrirFonteVerdadeira } = {}) {
     invalidas = 0
     faltam = 0
     ultimas = []
+    ultimaLinha = null
+    horaDaUltima = -Infinity
+    repetidas = 0
     meio = false
     queixou = false
     avisoAceso = false
@@ -174,6 +186,14 @@ module.exports = function (app, { abrirFonte = abrirFonteVerdadeira } = {}) {
   function aoLinha (texto) {
     if (!aCorrer) return
     try {
+      const agora = Date.now()
+      if (texto === ultimaLinha && agora - horaDaUltima < COPIA) { // uma cópia da ponte USB
+        horaDaUltima = agora
+        repetidas++
+        return
+      }
+      ultimaLinha = texto
+      horaDaUltima = agora
       ultimas = [...ultimas.slice(-19), String(texto)]
       const l = ler(texto)
       if (!l) {
@@ -181,7 +201,6 @@ module.exports = function (app, { abrirFonte = abrirFonteVerdadeira } = {}) {
         return
       }
       nLinhas++
-      const agora = Date.now()
       if (l.tipo === 'batimento') {
         estadoCaixas = anotarBatimento(estadoCaixas, l, agora)
         info[l.caixa] = { fw: l.fw, perdidos: l.perdidos, rssi: l.rssi, arranque: l.arranque ?? null, rsts: l.rsts ?? null }
@@ -288,7 +307,7 @@ module.exports = function (app, { abrirFonte = abrirFonteVerdadeira } = {}) {
       app.setPluginError(`Sem a caixa dos instrumentos: ${c1.motivo}`)
     } else {
       app.setPluginStatus(`${porta.nome || o.porta} · caixa 1 ${DIZER[c1.estado]} · caixa 2 ${DIZER[c2.estado]} · ${nLinhas} linhas · ` +
-        `${invalidas} inválidas · ${faltam} leituras em falta${semProa ? ` · sem proa: ${semProa}` : ''}${aFingir() ? ' · A FINGIR' : ''}`)
+        `${invalidas} inválidas · ${faltam} leituras em falta${repetidas ? ` · ${repetidas} cópias deitadas fora` : ''}${semProa ? ` · sem proa: ${semProa}` : ''}${aFingir() ? ' · A FINGIR' : ''}`)
     }
   }
 
@@ -330,6 +349,7 @@ module.exports = function (app, { abrirFonte = abrirFonteVerdadeira } = {}) {
         sim: aFingir(),
         linhas: nLinhas,
         invalidas,
+        repetidas,
         emFalta: faltam,
         ultimas: [...ultimas]
       })

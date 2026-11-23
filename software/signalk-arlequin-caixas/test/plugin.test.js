@@ -528,3 +528,50 @@ test('sensor: ao parar o plugin, um aviso do sensor aceso apaga-se', (t) => {
   p.stop()
   assert.deepEqual(app.notificacoes.filter(n => n.path.endsWith('.sensor')).map(n => n.state), ['warn', 'normal'])
 })
+
+// --- As cópias da ponte USB das placas ---------------------------------------------------------------
+// Visto a 23/11/2026 neste portátil, com duas bibliotecas de porta série: ao abrir a porta depois de uns
+// segundos fechada, com a caixa a mandar poucas linhas, chegam até 200 KB de cópias das últimas linhas no
+// primeiro segundo, mais depressa do que o fio consegue levar. São linhas válidas, só que repetidas.
+test('cópias da ponte USB: uma linha igual à anterior, chegada logo a seguir, não conta', (t) => {
+  const { app, f, p } = arrancar(t)
+  f.aoLinha(batimento(1))
+  for (let i = 0; i < 3000; i++) f.aoLinha(log(1000, 100))
+  for (let i = 0; i < 2000; i++) f.aoLinha(mov(1042))
+  t.mock.timers.tick(1000)
+  const e = estado(p)
+  assert.equal(e.linhas, 3, 'o batimento, uma linha do log e uma do movimento')
+  assert.equal(e.repetidas, 4998)
+  assert.equal(e.invalidas, 0)
+  assert.equal(e.emFalta, 0)
+  assert.deepEqual(app.valores['arlequin.caixas.movimento'].n, [1042], 'o bloco do movimento leva a leitura uma vez só')
+  assert.match(app.estados.at(-1), / · 4998 cópias deitadas fora/)
+  p.stop()
+})
+
+test('cópias da ponte USB: as cópias podem chegar espalhadas por um segundo inteiro', (t) => {
+  const { f, p } = arrancar(t)
+  f.aoLinha(batimento(1))
+  for (let i = 0; i < 100; i++) { f.aoLinha(log(1000, 100)); t.mock.timers.tick(10) } // uma cópia de 10 em 10 ms
+  assert.equal(estado(p).repetidas, 99)
+  assert.equal(estado(p).linhas, 2)
+  p.stop()
+})
+
+test('cópias da ponte USB: a mesma frase do vento um segundo depois é vento novo, não é cópia', (t) => {
+  const { app, f, p } = arrancar(t)
+  f.aoLinha(batimento(1))
+  f.aoLinha(VENTO)
+  t.mock.timers.tick(1000)
+  f.aoLinha(batimento(1))
+  f.aoLinha(VENTO)
+  t.mock.timers.tick(100)
+  f.aoLinha(VENTO) // 100 ms depois, sem outra linha pelo meio: o mostrador pode mandar assim
+  t.mock.timers.tick(900)
+  const e = estado(p)
+  assert.equal(e.repetidas, 0)
+  assert.equal(e.linhas, 5)
+  perto(app.valores['environment.wind.angleApparent'], 0.610865)
+  assert.doesNotMatch(app.estados.at(-1), /cópias/)
+  p.stop()
+})
