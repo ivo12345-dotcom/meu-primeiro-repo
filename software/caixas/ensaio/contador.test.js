@@ -150,3 +150,22 @@ test('leituras de movimento em falta contam-se pelo número de ordem; as cópias
   limpa.repetidas(1200)
   assert.equal(limpa.veredicto().limpo, true, 'as cópias da ponte USB não são falha: são linhas boas repetidas')
 })
+
+// Visto nas placas a 23/11 (19:32): a caixa 2 presa de propósito 6 s e reiniciada pelo cão de guarda dava
+// "1 recomeço" mas "0 s sem batimento", porque o relógio dela recomeça do zero. Os segundos calada
+// contam-se então pelo relógio do portátil.
+test('a caixa que recomeça: os segundos que esteve calada contam pelo relógio do portátil', () => {
+  const agora = relogio()
+  const c = novoContador({ agora })
+  for (let s = 1; s <= 20; s++) umSegundo(c, agora, s)
+  // a caixa 2 cala-se 6 s (a 1 continua) e volta com o relógio dela a recomeçar
+  for (let s = 21; s <= 26; s++) umSegundo(c, agora, s, { caixa2: false, n0: s * 10 })
+  c.linha(bat2(400, { sim: 0 }))
+  assert.equal(c.c.recomecos2, 1)
+  assert.ok(c.segundosSemBatimento2() >= 5 && c.segundosSemBatimento2() <= 7, `${c.segundosSemBatimento2()} s sem batimento da caixa 2`)
+  // o mesmo com a caixa 1
+  agora.passa(8000)
+  c.linha(bat1(900))
+  assert.equal(c.c.recomecos, 1)
+  assert.ok(c.segundosSemBatimento() >= 7 && c.segundosSemBatimento() <= 9, `${c.segundosSemBatimento()} s sem batimento da caixa 1`)
+})

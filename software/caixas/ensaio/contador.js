@@ -62,8 +62,11 @@ function novoContador ({ agora = Date.now, duasCaixas = false } = {}) {
     if (l.tipo === 'batimento' && l.caixa === 1) {
       c.batimentos++
       if (ultimo1) {
-        if (l.ms < ultimo1.ms) c.recomecos++
-        else c.segundosSemBatimento += emFalta(l.ms - ultimo1.ms)
+        // recomeçou: o relógio dela voltou ao zero, por isso o tempo calada mede-se pelo do portátil
+        if (l.ms < ultimo1.ms) {
+          c.recomecos++
+          c.segundosSemBatimento += emFalta(hora - ultimo1.hora)
+        } else c.segundosSemBatimento += emFalta(l.ms - ultimo1.ms)
         if (l.sensor !== ultimo1.sensor) c.mudancasDoSensor++
         if (Number.isInteger(l.rsts) && Number.isInteger(ultimo1.rsts) && l.rsts > ultimo1.rsts) c.toquesNoRst += l.rsts - ultimo1.rsts
         // o contador dela recomeça do zero quando ela recomeça: só as subidas contam
@@ -74,8 +77,10 @@ function novoContador ({ agora = Date.now, duasCaixas = false } = {}) {
     } else if (l.tipo === 'batimento' && l.caixa === 2) {
       c.batimentos2++
       if (ultimo2) {
-        if (l.ms < ultimo2.ms) c.recomecos2++
-        else c.segundosSemBatimento2 += emFalta(l.ms - ultimo2.ms)
+        if (l.ms < ultimo2.ms) {
+          c.recomecos2++
+          c.segundosSemBatimento2 += emFalta(hora - ultimo2.hora)
+        } else c.segundosSemBatimento2 += emFalta(l.ms - ultimo2.ms)
         if (Number.isInteger(l.perdidos) && Number.isInteger(ultimo2.perdidos) && l.perdidos > ultimo2.perdidos) c.perdidosNoRadio += l.perdidos - ultimo2.perdidos
       }
       ultimo2 = { ms: l.ms, perdidos: l.perdidos, hora }
