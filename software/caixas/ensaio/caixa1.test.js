@@ -174,3 +174,71 @@ test('Review Focus 5: impulsos duplos (a menos de 4 ms um do outro) contam como 
   assert.equal(await p.manda('parar'), 'ok')
   assert.equal(await p.manda('log', 1000), 'fora-dos-limites')
 }))
+
+// --- O vento (a frase a fingir sai de uma segunda porta série da placa, para o próprio pino do vento) --
+const ventos = (linhas) => linhas.filter(l => /^\$..MWV,/.test(l))
+
+test('vento a fingir: a frase passa tal e qual, e o portátil lê 35° e 14 nós', COM_PLACA, () => comACaixa(async (p) => {
+  assert.equal(await p.manda('vento', 350, 140), 'ok')
+  const linhas = await p.linhas(4500)
+  const v = ventos(linhas)
+  assert.ok(v.length >= 3 && v.length <= 5, `${v.length} frases de vento em 4,5 s`)
+  for (const f of v) {
+    assert.equal(f, '$IIMWV,35.0,R,14.0,N,A*3E')
+    const l = ler(f)
+    assert.equal(l.angulo, 35)
+    assert.ok(Math.abs(l.velocidade - 7.202216) < 1e-6)
+  }
+  assert.ok(linhas.map(ler).every(Boolean), 'saiu uma linha que o portátil não lê')
+  assert.ok(batimentos(linhas).every(b => b.sim === true), 'a caixa não disse que fingia')
+  assert.equal(await p.manda('parar'), 'ok')
+  await espera(1200)
+  assert.equal(ventos(await p.linhas(2500)).length, 0, 'o vento continuou depois de parar')
+}))
+
+test('Review Focus 4: lixo na entrada do vento nunca dá uma frase, e a caixa não se cala', COM_PLACA, () => comACaixa(async (p) => {
+  assert.equal(await p.manda('vento', -1, 0), 'ok') // soma errada, frase cortada a meio e bytes ao acaso
+  const linhas = await p.linhas(5000)
+  assert.equal(ventos(linhas).length, 0, `saiu uma frase de vento: ${ventos(linhas)[0]}`)
+  assert.ok(linhas.map(ler).every(Boolean), 'saiu uma linha que o portátil não lê')
+  const b = batimentos(linhas)
+  assert.ok(b.length >= 4, `só ${b.length} batimentos em 5 s`)
+  assert.equal(await p.manda('parar'), 'ok')
+}))
+
+test('outras frases do mostrador não passam: só o MWV', COM_PLACA, () => comACaixa(async (p) => {
+  assert.equal(await p.manda('vento', 3599, 5, 1), 'ok') // o terceiro valor junta um $IIVWR por segundo
+  const linhas = await p.linhas(4000)
+  assert.ok(ventos(linhas).length >= 3, `${ventos(linhas).length} frases de vento em 4 s`)
+  assert.ok(ventos(linhas).every(f => f.startsWith('$IIMWV,359.9,R,0.5,N,A*')), ventos(linhas)[0])
+  assert.ok(linhas.every(l => !/VWR/.test(l)), 'passou uma frase que não é o MWV')
+  assert.ok(linhas.map(ler).every(Boolean), 'saiu uma linha que o portátil não lê')
+  assert.equal(await p.manda('parar'), 'ok')
+  assert.equal(await p.manda('vento', 3600, 10), 'fora-dos-limites')
+}))
+
+// Visto na placa a 23/11: com a porta do vento ligada pelo caminho direto do pino, a leitura morria mal
+// o gerador escrevia no pino, e só voltava com um recomeço. O comando "estado" dá os contadores da caixa.
+const contadores = (texto) => Object.fromEntries(texto.split(';').map(par => { const [k, v] = par.split('='); return [k, Number(v)] }))
+
+test('o gerador do vento liga e desliga sem a leitura morrer, e a caixa conta o que entra pelo pino', COM_PLACA, () => comACaixa(async (p) => {
+  assert.equal(await p.manda('parar'), 'ok')
+  const antes = contadores(await p.manda('estado'))
+  for (const chave of ['vento-mexidas', 'vento-bytes', 'vento-frases', 'vento-invalidas', 'perdidas', 'cortadas']) {
+    assert.ok(Number.isInteger(antes[chave]), `falta o contador ${chave}`)
+  }
+  assert.equal(await p.manda('vento', 350, 140), 'ok')
+  await espera(2500)
+  assert.equal(await p.manda('vento', 0, 0), 'ok')
+  await espera(500)
+  assert.equal(await p.manda('vento', 100, 50), 'ok') // outra vez, com outro vento
+  const v = ventos(await p.linhas(3500))
+  assert.ok(v.length >= 2, `${v.length} frases depois de voltar a ligar o gerador`)
+  assert.ok(v.every(f => f.startsWith('$IIMWV,10.0,R,5.0,N,A*')), v[0])
+  assert.equal(await p.manda('parar'), 'ok')
+  const depois = contadores(await p.manda('estado'))
+  assert.ok(depois['vento-frases'] - antes['vento-frases'] >= 3, 'as frases não foram contadas')
+  assert.ok(depois['vento-bytes'] - antes['vento-bytes'] >= 100, 'os bytes não foram contados')
+  assert.ok(depois['vento-mexidas'] - antes['vento-mexidas'] >= 500, 'as mudanças de nível do pino não foram contadas')
+  assert.equal(depois['vento-invalidas'], antes['vento-invalidas'])
+}))

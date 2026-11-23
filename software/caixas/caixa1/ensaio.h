@@ -8,7 +8,11 @@
 
 #include <Arduino.h>
 #include <driver/gpio.h>
+#include <esp_rom_gpio.h>
 #include <esp_timer.h>
+#include <soc/gpio_sig_map.h>
+
+#include <arlequin_linhas.h>
 
 #include "pinos.h"
 
@@ -59,7 +63,72 @@ inline bool ensaioLog(long hz) {
   return true;
 }
 
+// ---- O vento a fingir: uma segunda porta série da placa escreve a frase para o próprio pino do vento --
+// A porta de escrita sai num pino sem fio (TX2) e o mesmo sinal é levado, por dentro do chip, ao pino
+// do vento, que fica ao mesmo tempo saída (do gerador) e entrada (da leitura verdadeira).
+const int PINO_GERADOR_VENTO = 17;  // TX2: não leva fio nenhum
+const char FIM_DE_FRASE[] = {13, 10, 0};  // o fim de uma frase NMEA 0183: CR e LF
+static bool ensaioVentoLigado = false, ensaioVentoLixo = false, ensaioVentoExtra = false;
+static long ensaioVentoGrau = 0, ensaioVentoNo = 0;  // em décimos
+static uint32_t ensaioVentoProxima = 0, ensaioVentoSemente = 20261123;
+
+// decimosDeGrau 0 a 3599 e decimosDeNo 0 a 999; (0, 0) para; (-1, x) manda lixo em vez da frase;
+// extra junta por segundo uma frase que não é o MWV. Devolve false se estiver fora dos limites.
+inline bool ensaioVento(long decimosDeGrau, long decimosDeNo, bool extra) {
+  const bool lixo = decimosDeGrau == -1;
+  if (!lixo && (decimosDeGrau < 0 || decimosDeGrau > 3599 || decimosDeNo < 0 || decimosDeNo > 999)) return false;
+  const bool ligar = lixo || decimosDeGrau != 0 || decimosDeNo != 0;
+  if (ligar && !ensaioVentoLigado) {
+    Serial1.setTxBufferSize(512);
+    Serial1.begin(4800, SERIAL_8N1, -1, PINO_GERADOR_VENTO);
+    gpio_set_direction((gpio_num_t)PINO_VENTO, GPIO_MODE_INPUT_OUTPUT);
+    esp_rom_gpio_connect_out_signal(PINO_VENTO, U1TXD_OUT_IDX, false, false);
+    ensaioVentoProxima = millis();
+  } else if (!ligar && ensaioVentoLigado) {
+    Serial1.flush();
+    gpio_set_direction((gpio_num_t)PINO_VENTO, GPIO_MODE_INPUT);  // volta a ser só entrada
+    Serial1.end();
+  }
+  ensaioVentoLigado = ligar;
+  ensaioVentoLixo = lixo;
+  ensaioVentoExtra = extra;
+  ensaioVentoGrau = decimosDeGrau;
+  ensaioVentoNo = decimosDeNo;
+  ensaioMarca(ENSAIO_VENTO, ligar);
+  return true;
+}
+
+// Uma frase NMEA 0183 inteira, com a soma certa.
+static void ensaioFrase(const char *corpo) {
+  Serial1.printf("$%s*%02X%s", corpo, aqSoma(corpo), FIM_DE_FRASE);
+}
+
+// Chama-se em cada volta do ciclo principal: manda o que os geradores devem neste instante.
+inline void ensaioCorre(uint32_t agoraMs) {
+  if (!ensaioVentoLigado || (int32_t)(agoraMs - ensaioVentoProxima) < 0) return;
+  ensaioVentoProxima = agoraMs + 1000;
+  if (ensaioVentoLixo) {
+    Serial1.print("$IIMWV,35.0,R,14.0,N,A*00");  // uma frase com a soma errada
+    Serial1.print(FIM_DE_FRASE);
+    Serial1.print("$IIMWV,35.0,R,14");           // outra cortada a meio, e logo a seguir bytes ao acaso
+    for (int i = 0; i < 80; i++) {
+      ensaioVentoSemente = ensaioVentoSemente * 1103515245UL + 12345UL;
+      Serial1.write((uint8_t)(ensaioVentoSemente >> 24));
+    }
+    Serial1.print(FIM_DE_FRASE);
+    return;
+  }
+  char corpo[64];
+  snprintf(corpo, sizeof(corpo), "IIMWV,%ld.%ld,R,%ld.%ld,N,A", ensaioVentoGrau / 10, ensaioVentoGrau % 10, ensaioVentoNo / 10, ensaioVentoNo % 10);
+  ensaioFrase(corpo);
+  if (ensaioVentoExtra) {
+    snprintf(corpo, sizeof(corpo), "IIVWR,%ld.%ld,R,%ld.%ld,N,7.2,M,25.9,K", ensaioVentoGrau / 10, ensaioVentoGrau % 10, ensaioVentoNo / 10, ensaioVentoNo % 10);
+    ensaioFrase(corpo);
+  }
+}
+
 inline void ensaioParar() {
   ensaioLog(0);
+  ensaioVento(0, 0, false);
   ensaioLigados = 0;
 }

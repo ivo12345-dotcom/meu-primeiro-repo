@@ -21,6 +21,7 @@
 #include "ensaio.h"
 #include "log.h"
 #include "pinos.h"
+#include "vento.h"
 
 const uint32_t BAUD = 460800;
 const uint32_t CAO_DE_GUARDA_MS = 5000;
@@ -65,6 +66,15 @@ static void obedece(const char *linha) {
     responde(nome, "ok");
   } else if (strcmp(nome, "log") == 0 && quantos == 1) {
     responde(nome, ensaioLog(v[0]) ? "ok" : "fora-dos-limites");
+  } else if (strcmp(nome, "vento") == 0 && (quantos == 2 || quantos == 3)) {
+    responde(nome, ensaioVento(v[0], v[1], quantos == 3 && v[2] != 0) ? "ok" : "fora-dos-limites");
+  } else if (strcmp(nome, "estado") == 0 && quantos == 0) {
+    // os contadores da caixa, para se ver de fora o que entra em cada entrada
+    char texto[128];
+    snprintf(texto, sizeof(texto), "vento-mexidas=%lu;vento-bytes=%lu;vento-frases=%lu;vento-invalidas=%lu;perdidas=%lu;cortadas=%lu",
+             (unsigned long)ventoMexidas, (unsigned long)ventoBytes, (unsigned long)ventoFrases, (unsigned long)ventoInvalidas, (unsigned long)aqPerdidas,
+             (unsigned long)aqCortadas);
+    responde(nome, texto);
   } else if (strcmp(nome, "prender") == 0 && quantos == 0) {
     responde(nome, "ok");
     Serial.flush();
@@ -81,7 +91,8 @@ void setup() {
   Serial.setTxBufferSize(8192);
   Serial.begin(BAUD);
   pinMode(PINO_LUZ, OUTPUT);
-  logIniciar();
+  logIniciar();  // antes do vento: é o log que monta o serviço das interrupções dos pinos
+  ventoIniciar();
 
   // O cão de guarda do ciclo principal: 5 s sem dar a volta e a placa recomeça.
   const esp_task_wdt_config_t cao = {.timeout_ms = CAO_DE_GUARDA_MS, .idle_core_mask = 0, .trigger_panic = true};
@@ -105,6 +116,8 @@ void loop() {
   }
 
   logCorre(agora);
+  ventoCorre();
+  ensaioCorre(agora);
 
   // A luz: acesa com tudo a sair; apagada um instante de cada vez que se deita uma linha fora.
   static uint32_t deitadasFora = 0, apagadaAte = 0;
