@@ -154,14 +154,29 @@ multímetro, com tudo desligado (60 a 120 Ω entre os dois fios dos dados).
   amarelos, um branco, um preto e um vermelho, mas ainda não que fio entra em cada número da ficha:
   **falta uma foto parada e de perto, do lado onde os fios entram.**
 - A outra ficha do conta-rotações, pequena, de 3 fios (vermelho, azul, amarelo), é a saída para os
-  mostradores extra da Volvo; há um mostrador branco pequeno ligado a ela. Não é precisa.
+  mostradores extra da Volvo. O mostrador branco pequeno ligado a ela (ficha vermelha, do lado
+  esquerdo visto por trás) é o do **nível do combustível** (Ivo, 23/11). **Pista a confirmar na
+  primeira escuta:** se o nível aparece num mostrador da Volvo alimentado pelo conta-rotações, é
+  provável que o valor também vá no cabo de dados, e nesse caso a caixa 2 lê-o sem sonda nossa. (O
+  `NAVEGACAO.md` §2b dava o nível do gasóleo como fora da caixa do motor, por se julgar que o medidor
+  era só analógico.)
+- Visto por trás, o painel fica ao contrário: o conta-rotações está à esquerda na frente do painel
+  e à direita nas costas.
+- O Ivo viu nas imagens que as costas de uma das fichas têm **letras em vez de números** (por
+  exemplo, parece ler-se "óleo" junto ao fio amarelo e branco): por confirmar em que ficha, com
+  uma imagem melhor.
 - Os fios vermelhos grossos no cimo do painel vão aos interruptores das **duas ventoinhas do cofre do
   motor** (uma mete ar, a outra tira; explicado pelo Ivo). Não têm que ver com os dados do motor, mas
   são motores: a derivação e a caixa 2 ficam afastadas desses fios.
 - Há ainda um mostrador antigo de ponteiro, de costas verdes, com três pernos e um fio cinzento:
   por identificar pela frente do painel (se for o do gasóleo, o fio cinzento é o da sonda).
-- Faltam: a frente do painel inteiro, uma vista de mais longe das costas (espaço e folga do cabo) e
-  os números da etiqueta branca e da manga vermelha do cabo de dados.
+- As etiquetas dos fios são de dois tipos (Ivo, 23/11): umas têm números (referências), outras têm
+  a descrição escrita à mão.
+- O Ivo tem um vídeo das costas do painel inteiro, que não cabe no envio pelo telemóvel (limite de
+  30 MB): passa-se para o portátil e tiram-se de lá as imagens.
+- Faltam: a frente do painel inteiro (não está nas notas nem nas fotos guardadas), uma vista de
+  mais longe das costas (espaço e folga do cabo) e os números da etiqueta branca e da manga vermelha
+  do cabo de dados.
 
 - Um módulo transcetor CAN de 3,3 V liga a derivação à placa, **só em escuta** (a placa nunca
   escreve no barramento do motor).
@@ -474,8 +489,14 @@ definitivo, ou a caixa 2 fica de vez.
    página Carta, ao lado do painel, pela rede do barco. Fica como carta principal; a carta livre
    no browser fica de reserva. Por ensaiar em casa: a fluidez do toque no Fold e o que gasta.
 4. **O endereço do portátil na rede do Fold** (nome fixo ou endereço fixo) e a firewall do Windows.
-5. **O B330 por USB**: confirmar que entrega os dados por esse cabo.
+5. **O B330 por USB**: confirmar que entrega os dados por esse cabo. **Visto pelo Ivo no barco
+   (23/11):** o AIS está montado e ligado, e o cabo dele já traz uma saída USB para ligar direto ao
+   portátil. No telemóvel não apareceu nenhuma rede Wi-Fi com o nome do AIS (das quatro redes que se
+   viam, nenhuma era dele): o Wi-Fi do B330 fica por esclarecer, e não faz falta, porque o plano é o
+   cabo USB. A etiqueta confirma o modelo (em-trak B330, 12/24 V, 200 mA no máximo, 20 cm de
+   distância à bússola).
 6. **O VHF: resolvido (Ivo, 22/11).** Tem GPS próprio, já ligado. Não se liga ao sistema.
+   Confirmado no barco a 23/11: a antena de GPS dele está lá.
 7. **O sítio do sensor BNO085.** A meio do barco e em baixo não pode ser: a quilha é de ferro
    fundido e o pé do mastro tem reforço de metal. Por cima do motor também não (ferro e o
    alternador). Proposta: junto à bússola do piloto velho, ao lado da roda, em baixo, na cabine de
