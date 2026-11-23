@@ -285,6 +285,14 @@ Regra que fica da revisão: **o rádio entre as duas caixas nunca leva ordens.**
 endereços: quem estiver ao alcance com uma placa igual pode calar os dados do motor ou mandar dados
 falsos. Hoje só leva dados do motor para o ecrã, e assim tem de continuar.
 
+**Uma hora seguida com a versão 0.2.1 e o ensaio corrigido (23/11, das 19:35 às 20:35, as duas
+caixas com todos os sinais a fingir):** 104 418 linhas, **nenhuma estragada**; 36 006 leituras de
+movimento sem faltar nenhuma; nenhum segundo sem sinal de vida de nenhuma das duas caixas; nenhum
+recomeço; **nenhum pacote perdido no rádio**; maior silêncio entre linhas, 97 ms. Por tipo: 3 601
+sinais de vida da caixa 1 e 3 600 da caixa 2, 7 201 do log, 3 601 do vento, 36 006 de movimento e
+50 409 do motor. Antes de a deixar a correr provou-se que o ensaio dá pelas falhas: com a caixa 2
+presa de propósito a meio de um minuto, o resultado foi "com falhas".
+
 Fica por fazer: o ensaio de três horas com o sensor verdadeiro, quando o sensor novo chegar, que
 serve também para ver se as manias voltam; e, se incomodarem, experimentar o cabo a metade da
 velocidade (o programa das caixas já se compila para outra velocidade:
