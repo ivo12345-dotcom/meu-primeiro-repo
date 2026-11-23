@@ -26,6 +26,17 @@
 //              quando o INT caiu e quando o sensor voltou a responder, e com que pacote (276/0 é a
 //              apresentação de quem acabou de arrancar)
 //   x          troca os papéis dos dois pinos (para o caso de os fios terem ficado trocados na placa)
+//   b          prova do programa de arranque do sensor. Só para diagnóstico, e com o fio do D19 mudado,
+//              no sensor, do INT para o BT: segura o BT em baixo, dá o toque no RST e procura quem
+//              responde no barramento (o programa de arranque responde no endereço 28, ou 29; o programa
+//              normal no 4A ou 4B). No fim solta o BT e dá outro toque no RST, para o sensor voltar ao
+//              arranque normal. Se o 28 responder, o sensor está vivo e é o programa normal dele que não
+//              arranca; se nada responder, não há vida nenhuma lá dentro.
+//   v          mede tensões com a própria placa (medidor dela, de 0,15 a uns 3,1 V; acima disso marca
+//              o teto): a dos 3,3 V da placa (num pino livre, pela resistência interna) e a do pino D4,
+//              para onde se leva um fio do ponto a medir (por exemplo o 3Vo do sensor). Do D4 tira
+//              milhares de leituras seguidas e diz a mais baixa, a média e a mais alta, para apanhar
+//              quedas curtas. "v r" faz o mesmo com um toque no RST a meio.
 //   ?          manda já a linha de estado
 //
 // Cuidados com o RST, porque o fio pode ter ficado no pino errado:
@@ -268,10 +279,177 @@ static void toqueNoRst(uint32_t ms) {
   Serial.println();
 }
 
+// Puxa um pino para baixo com os cuidados do RST: primeiro um toque fraco, e só continua se a linha
+// descer. Devolve false (e solta o pino) se não desceu.
+static bool puxaParaBaixo(int pino) {
+  gpio_set_drive_capability((gpio_num_t)pino, GPIO_DRIVE_CAP_0);
+  pinMode(pino, OUTPUT_OPEN_DRAIN);
+  digitalWrite(pino, LOW);
+  delayMicroseconds(300);
+  if (digitalRead(pino) == LOW) return true;
+  pinMode(pino, INPUT);
+  return false;
+}
+
+// Quem responde no barramento, de 08 a 77? Lê 1 byte a cada endereço. Só se usa com o sensor calado ou
+// no programa de arranque: ao programa normal a trabalhar, ler 1 byte deixava-o a meio de uma frase.
+static String quemResponde() {
+  String achados = "";
+  for (uint8_t a = 0x08; a <= 0x77; a++) {
+    if (Wire.requestFrom((int)a, 1) == 1) {
+      achados += " ";
+      achados += doisHex(a);
+      while (Wire.available()) Wire.read();
+    }
+  }
+  return achados.length() ? achados : String(" ninguem");
+}
+
+// A prova do programa de arranque (comando "b"). O fio do pino do INT tem de estar, no sensor, no BT.
+static void provaDoArranque() {
+  abreBarramento();
+  const int pinoBt = pinoInt;
+  const char *fioBt = estadoLinha(pinoBt, true);
+  const char *fioRst = estadoLinha(pinoRst, false);
+  Serial.print("BANCADA3 arranque bt=D");
+  Serial.print(pinoBt);
+  Serial.print(" fio_bt=");
+  Serial.print(fioBt);
+  Serial.print(" rst=D");
+  Serial.print(pinoRst);
+  Serial.print(" fio_rst=");
+  Serial.print(fioRst);
+  Serial.print(" barramento=");
+  Serial.println(barramento ? "aberto" : "fechado");
+  if (!barramento) {
+    Serial.println("BANCADA3 arranque RECUSADO: as linhas do barramento nao estao puxadas para cima");
+    return;
+  }
+  if (String(fioRst) != "alto") {
+    Serial.println("BANCADA3 arranque RECUSADO: a linha do RST nao esta puxada para cima");
+    return;
+  }
+  Serial.print("BANCADA3 arranque antes:");
+  Serial.println(quemResponde());
+
+  if (!puxaParaBaixo(pinoBt)) {
+    Serial.println("BANCADA3 arranque RECUSADO: o pino do BT nao desce (esta ligado a corrente)");
+    return;
+  }
+  if (!puxaParaBaixo(pinoRst)) {
+    pinMode(pinoBt, INPUT_PULLUP);
+    Serial.println("BANCADA3 arranque RECUSADO: o pino do RST nao desce (esta ligado a corrente)");
+    return;
+  }
+  delay(50);
+  pinMode(pinoRst, INPUT);  // solta o RST com o BT ainda em baixo: é agora que o sensor olha para o BT
+  for (int espera : {100, 400, 1500}) {
+    delay(espera);
+    Serial.print("BANCADA3 arranque com_bt_em_baixo bt=");
+    Serial.print(digitalRead(pinoBt));
+    Serial.print(" rst=");
+    Serial.print(digitalRead(pinoRst));
+    Serial.print(" respondem:");
+    Serial.println(quemResponde());
+  }
+
+  // De volta ao arranque normal: BT solto (a resistência do sensor leva-o para cima) e novo toque no RST.
+  pinMode(pinoBt, INPUT_PULLUP);
+  delay(20);
+  if (puxaParaBaixo(pinoRst)) {
+    delay(50);
+    pinMode(pinoRst, INPUT);
+  }
+  delay(1000);
+  Serial.print("BANCADA3 arranque depois bt=");
+  Serial.print(digitalRead(pinoBt));
+  Serial.print(" respondem:");
+  Serial.println(quemResponde());
+  endereco = 0;
+}
+
+// Medição de tensões com o medidor da própria placa (comando "v").
+const int PINO_MEDIDA = 4;              // D4: para onde vai o fio do ponto a medir
+const int PINO_LIVRE = 33;              // D33: livre; serve para medir os 3,3 V da placa
+const int LEITURAS = 12000;
+
+// Um pino livre visto pelo medidor com a resistência interna para cima (true) ou para baixo (false).
+// A primeira leitura prepara o pino para o medidor e tira-lhe as resistências; por isso a resistência
+// põe-se depois dela.
+static uint32_t pinoLivreCom(bool paraCima) {
+  analogReadMilliVolts(PINO_LIVRE);
+  gpio_set_pull_mode((gpio_num_t)PINO_LIVRE, paraCima ? GPIO_PULLUP_ONLY : GPIO_PULLDOWN_ONLY);
+  delay(10);
+  uint32_t soma = 0;
+  for (int i = 0; i < 64; i++) soma += analogReadMilliVolts(PINO_LIVRE);
+  gpio_set_pull_mode((gpio_num_t)PINO_LIVRE, GPIO_FLOATING);
+  return soma / 64;
+}
+
+// Milhares de leituras seguidas do D4. Com toque = true dá um toque de 20 ms no RST ao fim de um
+// terço das leituras, para ver o que a tensão faz quando o sensor tenta arrancar.
+static void medeTensoes(bool toque) {
+  // Os 3,3 V da placa: o pino livre puxado para cima. Puxado para baixo tem de dar quase zero; se não
+  // der, a medida não é de fiar.
+  const uint32_t placa = pinoLivreCom(true);
+  const uint32_t zero = pinoLivreCom(false);
+  uint32_t minimo = 99999, maximo = 0, abaixo2800 = 0, abaixo2400 = 0;
+  uint64_t soma = 0;
+  uint32_t minDepois = 99999;
+  bool tocou = false;
+  const uint32_t inicio = micros();
+  for (int i = 0; i < LEITURAS; i++) {
+    if (toque && !tocou && i == LEITURAS / 3) {
+      tocou = true;
+      if (puxaParaBaixo(pinoRst)) {
+        delay(20);
+        pinMode(pinoRst, INPUT);
+      }
+    }
+    const uint32_t mv = analogReadMilliVolts(PINO_MEDIDA);
+    soma += mv;
+    if (mv < minimo) minimo = mv;
+    if (mv > maximo) maximo = mv;
+    if (mv < 2800) abaixo2800++;
+    if (mv < 2400) abaixo2400++;
+    if (tocou && mv < minDepois) minDepois = mv;
+  }
+  const uint32_t durou = (micros() - inicio) / 1000;
+  Serial.print("BANCADA3 tensoes placa_3v3_mV=");
+  Serial.print(placa);
+  Serial.print(" zero_mV=");
+  Serial.print(zero);
+  Serial.print(" d4_min_mV=");
+  Serial.print(minimo);
+  Serial.print(" d4_media_mV=");
+  Serial.print((uint32_t)(soma / LEITURAS));
+  Serial.print(" d4_max_mV=");
+  Serial.print(maximo);
+  Serial.print(" leituras=");
+  Serial.print(LEITURAS);
+  Serial.print(" em_ms=");
+  Serial.print(durou);
+  Serial.print(" abaixo_2800=");
+  Serial.print(abaixo2800);
+  Serial.print(" abaixo_2400=");
+  Serial.print(abaixo2400);
+  if (toque) {
+    Serial.print(" min_depois_do_toque_mV=");
+    Serial.print(minDepois);
+  }
+  Serial.println();
+}
+
 static void obedece(String c) {
   c.trim();
   if (c == "?") {
     linhaDeEstado();
+  } else if (c == "v") {
+    medeTensoes(false);
+  } else if (c == "v r") {
+    medeTensoes(true);
+  } else if (c == "b") {
+    provaDoArranque();
   } else if (c == "x") {
     const int t = pinoRst;
     pinoRst = pinoInt;

@@ -453,7 +453,9 @@ definitivo, ou a caixa 2 fica de vez.
       mudo. Tem corrente (a luz dele está acesa e as duas linhas estão puxadas para cima), não segura
       nenhuma linha e não responde em nenhum endereço do barramento: nem no 4A/4B, nem no 28/29 do
       programa de arranque dele (varrimento feito à 01:31). À 01:32, 2 h 21 min depois, estava
-      igual: não recupera sozinho. Falta confirmar que volta quando se lhe corta a corrente.
+      igual, e às 08:41 de 23/11 também, sempre com corrente (o portátil regista a placa ligada sem
+      interrupção desde as 19:57 de 22/11): não recupera sozinho. Cortar-lhe a corrente também não
+      o recuperou (ver "23/11 de manhã", abaixo).
     - **A placa estava parada nos dois episódios.** Vê-se na aceleração gravada: o Ivo mudou-a de
       sítio às 20:54–20:55 e deu-lhe dois toques, às 21:08 e às 22:29. O primeiro episódio começou
       2 min 40 s depois de a pousar e o segundo 42 minutos depois do último toque.
@@ -472,13 +474,47 @@ definitivo, ou a caixa 2 fica de vez.
       quase não rodou). Nesse estado o plugin das caixas deixou de publicar a proa (correção feita na
       mesma noite; o adornamento e o caimento saem na mesma).
 
-    **O que isto decide (parecer do Claude, por combinar com o Ivo).** A ligação de 4 fios lê bem
-    mas não chega: um bloqueio como o das 23:11 só se resolve cortando a corrente ao sensor, e no mar
-    ninguém vai tirar o cabo. O passo seguinte, antes de ir para os 10 fios (SPI), é juntar dois fios
-    aos quatro e repetir o ensaio: o **RST** (a placa reinicia o sensor sozinha) e o **INT** (o sensor
-    avisa quando tem dados, que é como o fabricante manda usá-lo; o programa de bancada perguntava-lhe
-    2 750 vezes por segundo). Se com os seis fios os bloqueios continuarem a aparecer, passa-se à
-    ligação de 10 fios.
+    **23/11 de manhã: o sensor continua sem responder, mesmo depois de lhe cortarem a corrente.** O Ivo ligou os
+    dois fios novos, INT→D19 e RST→D18
+    ([marcados nas fotos dele](../../caixas/bancada-ligacao-6-fios.jpg)), com o cabo USB fora durante
+    10 minutos (09:16–09:26), e mais tarde outras duas vezes, uns 3 minutos de cada, para mexer nos
+    fios. Com o programa `bancada/fios6`:
+
+    - Depois de cada um dos três cortes de corrente o sensor continuou sem responder em nenhum
+      endereço do barramento (varrimento de 08 a 77).
+    - A linha do RST obedece à placa: está puxada para cima pela resistência do sensor e desce
+      quando a placa a puxa. Seis toques no RST, de 20 ms a 2 s: o sensor não acordou, e o INT nunca
+      desceu (um sensor vivo baixa-o mal arranca, para se apresentar).
+    - A linha do INT está solta: nada a segura, nem em cima nem em baixo.
+    - Prova do programa de arranque do sensor, com o fio do D19 mudado do INT para o BT e o BT em
+      baixo durante o toque no RST: ninguém responde, nem no endereço 28/29 nem no 4A/4B. Repetida
+      com os papéis dos dois fios trocados, para o caso de estarem trocados no sensor: igual.
+    - O sensor tem corrente: a luz verde dele está acesa, e as duas linhas do barramento, a do RST e
+      a do BT estão puxadas para cima.
+
+    **O que isto prova e o que não prova.** Prova que nada do que a placa faz pelos fios de sinal
+    acorda o sensor. **Não prova que o sensor avariou** (o Claude chegou a dizê-lo; o Ivo respondeu
+    "isso não morre assim", e com razão): falta ver se a corrente chega bem ao chip. A luz verde
+    acende com 1 ou 2 mA e o chip precisa de dez vezes mais; um fio de encaixe com mau contacto, ou
+    uma solda fria num dos pinos soldados à mão, dá exatamente este quadro (luz acesa, chip parado).
+    Dava também os bloqueios da véspera, se for de 5 em 5 segundos que o sensor puxa mais corrente.
+    A placa ESP32 está boa: fez estas provas todas, e os 3,3 V dela, medidos por ela própria, estão no
+    teto do medidor (3,1 V ou mais).
+
+    O Ivo contou entretanto que tinha passado as duas placas para a peça nova e emendado os fios, que
+    ficavam a fazer força. Voltou a pô-los diretos, sem emendas: o sensor continuou sem responder.
+    Em curso, por esta ordem: medir com a placa a tensão dentro do sensor (o pino 3Vo levado por um
+    fio ao D4; comando `v` do `fios6`) e a massa dele; depois um toque nas soldas dos pinos. Só
+    depois se fala em trocar o sensor.
+
+    **O que já fica decidido para o firmware, seja qual for o desfecho:**
+
+    - **Os fios RST e INT ficam, seja qual for a ligação.** O RST porque os sete bloqueios do
+      primeiro episódio passaram com um reinício, e no mar ninguém vai tirar o cabo; o INT porque é
+      como o fabricante manda ler o sensor (ele avisa quando tem dados), em vez de lhe perguntar
+      milhares de vezes por segundo.
+    - **As primeiras horas de um sensor correm ao ritmo do desenho** (100 / 100 / 100), com as
+      regras abaixo já a trabalhar. O ensaio ao dobro do ritmo só depois de 3 horas limpas.
 
     Regras que isto dá ao firmware da caixa 1:
 
@@ -506,6 +542,9 @@ definitivo, ou a caixa 2 fica de vez.
        levam): o cabo estraga linhas inteiras, e uma linha do motor estragada não pode passar por boa.
     9. **O ensaio de resistência repete-se com o RST e o cão de guarda a trabalhar** e só passa com
        3 horas seguidas em que qualquer bloqueio se resolva sozinho, com o tempo sem leituras contado.
+    10. **Um sensor que não volta com o RST diz-se ao portátil.** A caixa tenta o RST, conta as
+        tentativas e, se o sensor continuar calado, manda essa informação nas linhas dela, para o
+        ecrã dizer que o sensor de movimento não responde, em vez de ficar só sem proa.
 
 ## Pedido novo: carta com toque e caminhos guardados (por desenhar com o Ivo)
 
