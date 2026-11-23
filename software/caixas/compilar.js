@@ -2,6 +2,8 @@
 // Compila (e grava) o programa de uma das caixas com o arduino-cli.
 //   node compilar.js 1                 compila a caixa 1
 //   node compilar.js 1 --gravar COM3   compila e grava na placa que está nessa porta
+//   node compilar.js 1 --baud 230400 --gravar COM3   o mesmo, com outra velocidade na porta USB (só para
+//                                      ensaios: a do portátil está em signalk-arlequin-caixas/lib/linhas.js)
 // A pasta de compilação fica fora do projeto, na pasta temporária do sistema; a primeira vez de cada
 // caixa demora uns minutos. A biblioteca partilhada pelas duas caixas é a pasta "comum".
 // O arduino-cli procura-se na variável ARDUINO_CLI, depois no caminho do sistema, depois em
@@ -44,11 +46,19 @@ function principal (argv) {
     console.error('falta a porta: node compilar.js ' + caixa + ' --gravar COM3')
     process.exit(2)
   }
+  const iBaud = argv.indexOf('--baud')
+  const baud = iBaud >= 0 ? Number(argv[iBaud + 1]) : null
+  if (iBaud >= 0 && !(Number.isInteger(baud) && baud >= 9600 && baud <= 921600)) {
+    console.error('a velocidade tem de ser um número entre 9600 e 921600')
+    process.exit(2)
+  }
   const programa = `caixa${caixa}`
-  const pasta = path.join(os.tmpdir(), 'arlequin-caixas', programa)
+  // cada velocidade de ensaio tem a sua pasta de compilação, para não misturar com a do barco
+  const pasta = path.join(os.tmpdir(), 'arlequin-caixas', baud ? `${programa}-${baud}` : programa)
   fs.mkdirSync(pasta, { recursive: true })
   const cli = arduinoCli()
-  correr(cli, ['compile', '--fqbn', PLACA, '--library', 'comum', '--build-path', pasta, programa])
+  const opcoes = baud ? ['--build-property', `compiler.cpp.extra_flags=-DAQ_BAUD=${baud}UL`] : []
+  correr(cli, ['compile', '--fqbn', PLACA, '--library', 'comum', ...opcoes, '--build-path', pasta, programa])
   if (porta) correr(cli, ['upload', '--fqbn', PLACA, '--input-dir', pasta, '-p', porta, programa])
 }
 

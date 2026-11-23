@@ -26,7 +26,6 @@
 #include "pinos.h"
 #include "radio2.h"
 
-const uint32_t BAUD = 460800;
 const uint32_t CAO_DE_GUARDA_MS = 5000;
 const uint32_t BATIMENTO_MS = 1000;
 const int TRAMAS_POR_VOLTA = 32;  // tramas do motor tratadas em cada volta do ciclo, no máximo
@@ -73,7 +72,7 @@ static void obedece(const char *linha) {
 
 void setup() {
   Serial.setTxBufferSize(4096);
-  Serial.begin(BAUD);
+  Serial.begin(AQ_BAUD);
   pinMode(PINO_LUZ, OUTPUT);
   motorIniciar();
   radioIniciar();

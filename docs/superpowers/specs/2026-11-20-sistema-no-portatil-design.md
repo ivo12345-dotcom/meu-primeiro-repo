@@ -179,6 +179,37 @@ caixa (viva, contadores, força do rádio). Os campos exatos estão em
   linhas em 3 minutos sem uma estragada (a 921 600, na bancada da véspera, estragavam-se 1,4 %); o
   portátil achou a caixa sozinho entre as portas USB; uma caixa presa recomeça sozinha em 5 segundos.
   Fica por medir a taxa de linhas estragadas em horas, no ensaio de resistência.
+- **Com as duas caixas (23/11 à tarde):** o motor a fingir chega ao portátil pelo rádio (2100
+  rotações, 82 °C, 14,2 V; rádio a −20/−26 dBm com as placas lado a lado, sem pacotes perdidos); com
+  as duas placas ligadas por USB o portátil escolhe sozinho a caixa 1; quando a caixa 2 recomeça ou
+  se cala, a caixa 1 continua sem um soluço.
+- **O cabo USB tirado e posto (Ivo, 23/11, 15:22):** em menos de 5 segundos os valores passaram a
+  vazio, a caixa 1 a "sem ligação" e o aviso acendeu; com o cabo de volta, o programa achou a porta
+  sozinho e voltou tudo em cerca de um segundo, o motor pelo rádio incluído. A placa perdeu a
+  corrente, por isso os sinais a fingir dela desligaram-se e o ecrã passou a avisar "o sensor de
+  movimento não responde", que era verdade.
+
+**A ponte USB das placas tem duas manias, vistas a 23/11 neste portátil** (a ponte é o chip CP2102 da
+placa ELEGOO; a causa não se sabe, vêm e vão com o tempo, e o programa das caixas não tem culpa: os
+dois defeitos têm o tamanho de um pacote USB ou chegam mais depressa do que o fio leva):
+
+1. **Enxurrada de cópias ao abrir a porta.** Depois de a porta estar fechada uns segundos com a caixa
+   a mandar poucas linhas, a abertura entregou por vezes 120 a 280 KB de cópias das últimas linhas,
+   tudo no primeiro segundo. Visto com duas bibliotecas diferentes (das 14:14 às 14:30; depois deixou
+   de aparecer). São linhas válidas, só que aos milhares. **Proteção:** o plugin das caixas deita fora
+   uma linha igual à anterior chegada menos de 20 ms depois dela, e conta-as à parte.
+2. **Um bocado de 64 bytes vazios (FF) no meio dos dados.** Das 14:57 às 15:22, com as duas caixas a
+   mandar 29 linhas por segundo, apareceu um de 40 em 40 a 80 em 80 segundos: perde-se a linha que
+   ele tapa e a seguinte fica colada a ele (16 linhas inválidas em 49 000). Antes e depois desse
+   período, com o mesmo programa a ler e com outro, 26 000 linhas seguidas sem nenhuma. Atrasar de
+   propósito a leitura até 6 segundos não o provoca. **Proteção:** a soma de controlo deita fora a
+   linha colada, e o número de ordem do movimento diz quantas leituras faltaram; o plugin guarda as
+   últimas 10 linhas inválidas, com a hora, para se ver o que são. Nenhum valor errado chega ao ecrã
+   nem à gravação: perdem-se uma ou duas linhas por minuto nos períodos maus.
+
+Fica por fazer: um ensaio de resistência de horas com as duas caixas, para ver quanto tempo passam
+nos períodos maus; e, se incomodar, experimentar o cabo a metade da velocidade (o programa das
+caixas já se compila para outra velocidade: `node compilar.js 1 --baud 230400`).
 
 ## No portátil
 

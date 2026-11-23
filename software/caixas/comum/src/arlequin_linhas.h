@@ -16,6 +16,13 @@
 
 const size_t AQ_MAX_LINHA = 200;
 
+// A velocidade da porta USB das duas caixas. Tem de ser a mesma do portátil (BAUD em
+// software/signalk-arlequin-caixas/lib/linhas.js). Pode trocar-se ao compilar, só para ensaios:
+//   node compilar.js 1 --baud 230400
+#ifndef AQ_BAUD
+#define AQ_BAUD 460800UL
+#endif
+
 inline uint32_t aqCortadas = 0;  // linhas que passavam dos 200 caracteres
 inline uint32_t aqPerdidas = 0;  // linhas que não couberam na porta
 

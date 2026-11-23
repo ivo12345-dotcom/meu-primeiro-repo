@@ -7,6 +7,9 @@ const path = require('node:path')
 const { pedirSerialport } = require('../../signalk-arlequin-caixas/lib/fonte')
 const { soma, BAUD, MAX_LINHA } = require('../../signalk-arlequin-caixas/lib/linhas')
 
+// Para ensaiar outra velocidade na porta (com a placa compilada para ela): ARLEQUIN_BAUD=230400
+const VELOCIDADE = Number(process.env.ARLEQUIN_BAUD) || BAUD
+
 const RESPOSTA = /^\$(AQR,([^,*]+),([^*]*))\*([0-9A-Fa-f]{2})$/
 
 // A porta de uma placa, dada por uma variável de ambiente (ARLEQUIN_CAIXA1=COM3), ou null.
@@ -27,7 +30,7 @@ function abrir (porta) {
   const { SerialPort } = pedirSerialport([path.join(__dirname, '..', '..', 'dev')])
   return new Promise((resolve, reject) => {
     // hupcl: false deixa as duas linhas de comando em repouso: abrir a porta não reinicia a placa
-    const s = new SerialPort({ path: porta, baudRate: BAUD, autoOpen: false, hupcl: false })
+    const s = new SerialPort({ path: porta, baudRate: VELOCIDADE, autoOpen: false, hupcl: false })
     const ouvintes = new Set()
     let resto = ''
     // Ao abrir, a porta pode trazer duas coisas que não são da caixa agora:

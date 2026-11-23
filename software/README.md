@@ -253,6 +253,13 @@ proa nem adornamento"; o resto (vento, velocidade, motor) continua. Ficam també
 **As linhas do motor levam soma de controlo** desde 23/11/2026: uma linha que o cabo estrague é deitada
 fora e conta nas inválidas, em vez de dar um valor errado do motor.
 
+**A ponte USB das placas tem duas manias** (ver o desenho, "Das caixas para o portátil"): às vezes
+entrega milhares de cópias da mesma linha ao abrir a porta, e às vezes mete um bocado de 64 bytes vazios
+no meio dos dados. O plugin deita fora as cópias (o estado mostra "N cópias deitadas fora" quando as
+houve) e as linhas estragadas caem pela soma de controlo. No `/estado`, `repetidas` conta as cópias e
+`ultimasInvalidas` guarda as últimas 10 linhas que não se perceberam, com a hora: algumas inválidas por
+hora são normais; muitas seguidas pedem que se veja o cabo USB.
+
 **Segurança (estado a 22/11/2026).** O aviso CVE-2026-123807 (GHSA-4xm8-rg9h-jhq2) diz que o servidor
 SignalK e o plugin das rotas e pontos (`@signalk/resources-provider`) deixavam ler, escrever e apagar
 ficheiros fora da pasta dos recursos, a quem chegasse à porta 3000. Confirmado no nosso servidor com a
