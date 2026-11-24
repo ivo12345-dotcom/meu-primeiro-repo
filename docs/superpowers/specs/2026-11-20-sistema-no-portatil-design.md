@@ -180,7 +180,10 @@ multímetro, com tudo desligado (60 a 120 Ω entre os dois fios dos dados).
 
 - Um módulo transcetor CAN de 3,3 V liga a derivação à placa, **só em escuta** (a placa nunca
   escreve no barramento do motor).
-- Alimentação pelos 12 V do barco, com fusível e um conversor 12 → 5 V.
+- Alimentação pelos 12 V do barco, com fusível e um conversor 12 → 5 V. O conversor acaba numa
+  ficha USB-C que entra na placa: **a caixa 2 não leva cabo USB ao portátil** (dúvida do Ivo a
+  24/11). Na bancada as duas placas estiveram no USB do portátil só para terem corrente e para se
+  lhes gravar o programa.
 - Manda cada trama para a caixa 1 pelo rádio das placas (ESP-NOW). Não há fio entre o motor e o
   portátil, por isso não há caminho elétrico entre a massa do motor e o USB do portátil.
 
@@ -455,6 +458,10 @@ Por comprar:
 | Extensão do cabo da roda do log até à caixa 1, só se o cabo da roda não chegar ao cubículo: cabo de antena de televisão macho–fêmea. A ficha da roda é a ficha de antena de TV (IEC, ou "Belling-Lee"); a própria NASA vende a extensão de 5 m com essa ficha, para o log e para a sonda (ref. SM523-EXTCAB). Visto a 24/11: [RL Flex 5 m, condutor de cobre puro](https://www.amazon.es/dp/B0F2HLPCQJ), €11,17, enviado pela Amazon (há de 10 m). Proposta: a ponta fêmea recebe a ficha da roda, com massa de silicone e fita; a ponta macho corta-se e solda-se dentro da caixa 1, a entrar por um bucim. Cobre e não aço, por causa da bússola: confirma-se com um íman | Caixa 1 | Depois de ver no barco se o cabo da roda chega |
 | Caixas de plástico (impressas), bucins, fio | As duas caixas | Na montagem |
 
+**24/11, 13h: o Ivo disse que já comprou, e avisa quando chegar.** Falta ele dizer o que veio: qual
+dos dois cabos USB, e se o conversor, os porta-fusíveis e os módulos CAN foram na mesma encomenda.
+Quando o cabo chegar, o ensaio de uma hora faz-se em casa antes de ele ir para o barco.
+
 As duas resistências de 1 kΩ são regra da revisão de 23/11: os sinais a fingir da caixa 1 escrevem
 nos próprios pinos de entrada, e sem a resistência um ensaio corrido por engano com o barco ligado
 punha a placa e o comparador (ou o adaptador) a mandar no mesmo fio. Com ela passam 3 mA e não se
@@ -482,10 +489,11 @@ definitivo, ou a caixa 2 fica de vez.
 ## Pontos em aberto
 
 1. **Versão do mostrador do vento** (foto das costas): NMEA ou linguagem do repetidor.
-2. **Sinal da roda do log** (medir com o multímetro): escolhe o comparador. **Visto pelo Ivo no
-   barco (24/11, foto das costas de um mostrador NASA; pela nota dele, o do log):** a tomada onde
+2. **Sinal da roda do log** (medir com o multímetro): escolhe o comparador. **Visto pelo Ivo
+   (24/11, foto das costas do mostrador do log, que ele tem na bancada):** a tomada onde
    entra o cabo é a de antena de televisão (IEC), e a do cabo do transdutor da sonda é igual.
-   Com a ficha de fora, a medida faz-se nela (pino do meio e anel de fora). **O cabo da sonda não se
+   Com o mostrador na bancada, a ficha do cabo da roda fica de fora, e a medida faz-se nela (pino
+   do meio e anel de fora). **O cabo da sonda não se
    liga à caixa 1:** é por ele que o mostrador manda o impulso forte para o transdutor e ouve o eco;
    a profundidade lê-se na outra tomada do mostrador (ver "Para que servem os caminhos guardados").
 3. **A carta náutica no Fold: decidido pelo Ivo (20/11), carta no browser, servida pelo
