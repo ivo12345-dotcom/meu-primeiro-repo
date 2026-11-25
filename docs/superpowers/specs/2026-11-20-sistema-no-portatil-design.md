@@ -946,6 +946,16 @@ desligar. O que isto muda nas caixas, quando se fizer: a caixa 2 passa a ter doi
 ordens da caixa 1 (hoje só lê e reenvia). Continua a faltar: a foto da frente do painel, as costas
 dos botões de perto e o esquema elétrico do motor.
 
+**Onde aparece o botão (Ivo, 25/11): "um botão no tablet e no portátil, nos dispositivos que eu
+tiver acesso".** O ecrã é uma página servida pelo portátil, por isso o botão aparece igual em todos
+os aparelhos que a abrirem (portátil, tablet, telemóvel), sem instalar nada em cada um. Só comanda
+quem tiver sessão iniciada com uma conta que possa escrever (`NAVEGACAO.md`, "Permissões"): uma
+conta só de leitura vê o motor mas o botão não faz nada. Proposta do Claude para o "um botão": um
+só, que muda de nome com o estado do motor ("Ligar motor" com ele parado, "Desligar motor" com ele
+a trabalhar), de toque demorado, e que fica apagado quando o sistema não sabe o estado (painel
+desligado ou sem dados): aí usa-se o painel. Por confirmar com o Ivo, e continua por saber se o
+botão de ligar do painel é de toque ou de manter carregado.
+
 ## Decisões de 20/11
 
 - Sistema completo no portátil, e não só um gravador (Ivo).
