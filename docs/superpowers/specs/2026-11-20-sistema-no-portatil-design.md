@@ -1066,6 +1066,29 @@ conjunto fechado. Não é preciso lá chegar. O manual de oficina do sistema el�
   botões do manual (sem leitura entre o negativo e cada botão solto, continuidade ao carregar); as
   duas medidas na ficha dos dados (entre o 2 e o 5 e entre o 1 e o 3).
 
+**Ideia do Ivo (25/11, 16:26): tirar os fios das ordens lá em cima, com a caixa 2 logo por baixo.**
+Em vez de ir à ficha, abrir a capa do cabo dos botões junto ao conjunto dos botões ("é fácil") e
+tirar daí os fios das ordens; a caixa 2 fica mesmo por baixo, onde há espaço (ele já viu), e
+desenha-se para esse sítio. Parecer do Claude: o sítio é bom. É o mesmo da derivação dos dados (a
+ficha do conta-rotações fica a um palmo), é seco e chega-se lá bem, e assim uma só caixa escuta os
+dados e, mais tarde, dá as ordens. Condições:
+
+- Abre-se a capa de fora sem ferir os fios de dentro, e só se mexe em três (arranque, parar e
+  negativo): uma derivação soldada a cada um, sem os cortar. Os outros três ficam como estão.
+- Antes de descarnar qualquer fio de dentro sabe-se que fio é qual. Uma derivação no fio errado
+  pode ser lida pela caixa do motor como um botão carregado.
+- Painel desligado e corta-corrente da bateria desligado enquanto se mexe.
+- **As cores desses fios não se sabem** (pergunta do Ivo). O manual dá o que faz cada pino pelo
+  número, não pela cor; o desenho do esquema elétrico (p. 42,
+  [página 44 no manualslib](https://www.manualslib.com/manual/2158057/Volvo-D1-13-B.html?page=44),
+  visto a 25/11) só mostra o lado do motor e não traz o cabo dos botões; uma pesquisa a 25/11 não
+  achou nenhuma tabela de cores. Leem-se no barco: a ficha desse cabo (na caixa do motor, se lá em
+  cima não houver nenhuma) fotografada do lado dos fios, como se fez à dos dados. O número de cada
+  buraco dá a função pelo manual, e a cor fica conhecida; confirma-se com o teste do manual nessa
+  ficha desligada.
+- **A caixa 2 desenha-se para esse sítio**, já com lugar para os dois relés, mesmo que eles só
+  entrem depois. Faltam as medidas do espaço (largura, altura e fundo) e onde se pode prender.
+
 ## Decisões de 20/11
 
 - Sistema completo no portátil, e não só um gravador (Ivo).
