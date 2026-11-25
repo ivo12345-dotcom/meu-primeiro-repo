@@ -210,10 +210,18 @@ branco, que numa das fotos fica escondido atrás do vermelho.
 - **Continua por fazer antes de soldar** (já estava no plano): com tudo desligado, 60 a 120 Ω entre
   o 2 e o 5. Se a primeira escuta não mostrar nada no par 2/5, experimenta-se o par 1/3: a caixa 2
   só escuta, por isso a experiência não estraga nada.
-- **A ficha de 3 pinos** (preta, com três vedantes laranja; fios amarelo, azul e vermelho) vai ao
-  mostrador do gasóleo, e da placa desse mostrador sai outra ficha, "tipo repetição" para outro
-  mostrador (Ivo, 25/11, sem certeza). Bate com a cadeia de mostradores extra que se liga atrás do
-  conta-rotações. A caixa 2 não lhe toca. Falta ver essa placa numa foto.
+- **O par 1/3 (pergunta do Ivo a 25/11: que dados lá vão?).** Não está confirmado. O que se sabe: a
+  ficha da Volvo tem lugar para duas linhas de dados (tabela da CSS); no barco do projeto aberto,
+  com motor da mesma família, o 1 e o 3 nem são usados, e tudo o que o conta-rotações mostra vem
+  pelo 2 e pelo 5. O mais provável é o par 1/3 estar vazio neste motor, mas é uma suposição.
+  **Tira-se a dúvida no barco, com a ficha desligada e a chave desligada:** medir entre o 2 e o 5
+  (perto de 120 Ω, ou 60) e entre o 1 e o 3 (sem leitura quer dizer que não há lá nada ligado).
+- **A ficha de 3 pinos** (preta, com três vedantes laranja; fios amarelo, azul e vermelho): os três
+  fios vêm do conta-rotações e entram num mostrador pequeno, numa placa nas costas dele; do outro
+  lado da placa sai outro chicote de três fios, que acaba numa ficha com tampão (Ivo, 25/11; ele
+  não tem a certeza de que mostrador é, fica para a foto da frente do painel). Bate com a cadeia
+  de mostradores extra que se liga atrás do conta-rotações: entra num mostrador e sai para o
+  seguinte, e a ficha com tampão é a saída livre. A caixa 2 não lhe toca.
 
 - Um módulo transcetor CAN de 3,3 V liga a derivação à placa, **só em escuta** (a placa nunca
   escreve no barramento do motor).
