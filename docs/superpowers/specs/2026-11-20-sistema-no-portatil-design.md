@@ -585,6 +585,31 @@ piloto automático quando ele chegar (o `NAVEGACAO.md` prevê para ela um adapta
 escuta: mandar ordens para uma dessas linhas é outra conversa. Fica por decidir quando lá se
 chegar.
 
+**25/11, 20:42–20:51: pinos soldados em duas plaquinhas e a R2 tirada a uma** (o Ivo, em casa;
+foto dele marcada em `docs/caixas/caixa2-modulos-fios.jpg`).
+
+- As plaquinhas são as "WCMCU-230", com o chip marcado VP230. Têm letras dos dois lados. Os pinos
+  entraram pelo lado do chip (plástico preto desse lado, pinos compridos para cima) e a solda
+  ficou no lado liso, como no sensor.
+- Na foto lê-se **121** na R2 (120 Ω, a resistência da ponta da linha, junto a CANH e CANL) e
+  **103** na R1 (10 kΩ). Saiu a certa.
+- **A, a do barco: sem a R2.** No sítio dela veem-se as duas ilhas separadas. **B, a do ensaio:
+  com a R2.** As outras duas ficam guardadas, por mexer.
+- O multímetro ficou no barco. A medida entre CANH e CANL (a A sem leitura, a B perto de 120 Ω)
+  faz-se antes de a A ir para o barco.
+- Ligações da A à placa da caixa 2: 3V3 ao 3V3, GND ao GND, CRX ao D4, e o CTX preso ao 3V3 da
+  própria plaquinha, por uma ponte de fio com capa soldada por trás (do pino 3V3 ao pino CTX, por
+  cima do GND).
+
+**25/11, 20:30: quatro fotos da ficha dos botões** (uma de frente, com a cunha verde, e três do
+lado dos fios; é uma Deutsch de 6 pinos, como a dos dados). Nas três vê-se a mesma arrumação: do
+lado do fecho ficam o roxo e o tampão; ao meio, frente a frente, o vermelho e o amarelo; na ponta
+oposta, frente a frente, o branco e o preto. Bate com os números que o Ivo leu na ficha (1 roxo,
+2 vermelho, 3 branco, 4 preto, 5 amarelo, 6 tampão). Os números moldados não se conseguem ler nas
+fotos. A ficha pequena de 3 pinos da caixa do motor ficou por ver (ele já tinha saído). Por
+fazer: a foto marcada dos três fios (as fotos mostram as mãos de perto: a pele desfoca-se antes
+de irem para o repositório).
+
 As duas resistências de 1 kΩ são regra da revisão de 23/11: os sinais a fingir da caixa 1 escrevem
 nos próprios pinos de entrada, e sem a resistência um ensaio corrido por engano com o barco ligado
 punha a placa e o comparador (ou o adaptador) a mandar no mesmo fio. Com ela passam 3 mA e não se
