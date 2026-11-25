@@ -210,12 +210,18 @@ branco, que numa das fotos fica escondido atrás do vermelho.
 - **Continua por fazer antes de soldar** (já estava no plano): com tudo desligado, 60 a 120 Ω entre
   o 2 e o 5. Se a primeira escuta não mostrar nada no par 2/5, experimenta-se o par 1/3: a caixa 2
   só escuta, por isso a experiência não estraga nada.
-- **O par 1/3 (pergunta do Ivo a 25/11: que dados lá vão?).** Não está confirmado. O que se sabe: a
-  ficha da Volvo tem lugar para duas linhas de dados (tabela da CSS); no barco do projeto aberto,
-  com motor da mesma família, o 1 e o 3 nem são usados, e tudo o que o conta-rotações mostra vem
-  pelo 2 e pelo 5. O mais provável é o par 1/3 estar vazio neste motor, mas é uma suposição.
-  **Tira-se a dúvida no barco, com a ficha desligada e a chave desligada:** medir entre o 2 e o 5
-  (perto de 120 Ω, ou 60) e entre o 1 e o 3 (sem leitura quer dizer que não há lá nada ligado).
+- **O par 1/3 (pergunta do Ivo a 25/11: que dados lá vão?).** Fonte oficial, lida a 25/11: o manual
+  de oficina da Volvo Penta para este motor (Grupo 30, sistema elétrico, D1-13 B, D1-20 B, D1-30 B,
+  D2-40 B, de 2007, p. 27 e 43;
+  [página 45 no manualslib](https://www.manualslib.com/manual/2158057/Volvo-D1-13-B.html?page=45))
+  dá a ficha "Multi link" assim: 1 CAN L, 2 CAN L, 3 CAN H, 4 negativo, 5 CAN H, 6 positivo, e diz
+  que o multilink tem "dois pares de fios de comunicação CAN e a alimentação". Bate com as cores da
+  foto: os dois amarelos são os L e os dois brancos os H. Ou seja, o par 1/3 é outra vez a linha de
+  dados. O manual não diz se os dois pares levam os mesmos dados nem se estão unidos por dentro (no
+  barco do projeto aberto o 1 e o 3 nem são usados). **Tira-se a dúvida no barco, com a ficha e a
+  chave desligadas:** resistência entre o 2 e o 5 e entre o 1 e o 3 (perto de 120 Ω, ou 60, numa
+  linha viva; sem leitura quer dizer par vazio) e continuidade entre o 1 e o 2 e entre o 3 e o 5
+  (se der, os dois pares são a mesma linha).
 - **A ficha de 3 pinos** (preta, com três vedantes laranja; fios amarelo, azul e vermelho): os três
   fios vêm do conta-rotações e entram num mostrador pequeno, numa placa nas costas dele; do outro
   lado da placa sai outro chicote de três fios, que acaba numa ficha com tampão (Ivo, 25/11; ele
@@ -953,8 +959,48 @@ quem tiver sessão iniciada com uma conta que possa escrever (`NAVEGACAO.md`, "P
 conta só de leitura vê o motor mas o botão não faz nada. Proposta do Claude para o "um botão": um
 só, que muda de nome com o estado do motor ("Ligar motor" com ele parado, "Desligar motor" com ele
 a trabalhar), de toque demorado, e que fica apagado quando o sistema não sabe o estado (painel
-desligado ou sem dados): aí usa-se o painel. Por confirmar com o Ivo, e continua por saber se o
-botão de ligar do painel é de toque ou de manter carregado.
+desligado ou sem dados): aí usa-se o painel. Por confirmar com o Ivo.
+
+**Decidido pelo Ivo (25/11, 13:44): sem conta para o motor, e sem complicar.** No separador Motor
+do ecrã: carregar uns segundos liga, carregar uns segundos desliga, em qualquer aparelho que abra o
+ecrã, sem iniciar sessão ("esquece o acidental"). Isto substitui, para o motor, a parte da conta de
+escrita do parágrafo acima: os comandos de ligar e desligar o motor ficam como exceção à regra das
+permissões (`NAVEGACAO.md`, "Permissões"). Consequência dita ao Ivo: qualquer aparelho que esteja
+na rede do barco consegue ligar e desligar o motor; a proteção passa a ser a palavra-passe da rede
+e o botão ON do painel (com o painel desligado, o botão do ecrã não faz nada). Vale dentro da rede
+do barco: o comando não fica aberto à Internet.
+
+**Os botões, pelo manual da Volvo (25/11).** O Ivo não chega às costas dos botões: estão num
+conjunto fechado. Não é preciso lá chegar. O manual de oficina do sistema elétrico deste motor
+(Volvo Penta, Grupo 30, D1-13 B, D1-20 B, D1-30 B, D2-40 B, de 2007, p. 27, 33–34, 37 e 43;
+[manualslib](https://www.manualslib.com/manual/2158057/Volvo-D1-13-B.html?page=35)) diz:
+
+- O painel tem quatro botões (parar, ligar/desligar o sistema, reconhecer alarme/brilho,
+  arranque/pré-aquecimento), que "funcionam como interruptores e fecham ao negativo da bateria".
+- O painel vai à caixa do motor por uma **ficha própria de 6 pinos, separada da dos dados**:
+  1 parar, 2 ligar/desligar, 3 alarme/brilho, 4 negativo da bateria, 5 arranque/pré-aquecimento,
+  6 besouro. Com a linha de dados avariada, "o painel de botões funciona normalmente".
+- Logo, **a ordem de ligar não vai pela linha de dados.** Um relé que una o fio do pino 5 ao do
+  pino 4 faz de dedo no arranque; um que una o 1 ao 4 faz de dedo no parar. Os relés entram nos
+  fios desse cabo, atrás do painel ou junto à caixa do motor, e não nos botões.
+- ⚠️ **As duas fichas de 6 pinos (dados e botões) são iguais por fora.** O manual dá como causa
+  possível de avaria estarem trocadas na caixa do motor. Antes de soldar seja o que for,
+  identifica-se cada uma pelas medidas, com tudo desligado: na dos dados, 60 a 120 Ω entre o 2 e o
+  5; na dos botões, sem leitura entre o 4 e cada um dos outros com os botões soltos, e continuidade
+  ao carregar (4–5 arranque, 4–1 parar, 4–2 ligar/desligar, 4–3 alarme). A ficha fotografada a
+  25/11 tem tudo da dos dados (alimentação em fio grosso vermelho e preto, dois amarelos e dois
+  brancos, manga amarela, ligada ao conta-rotações), mas é a medida que fecha a questão. Ligar a
+  caixa 2 à ficha dos botões por engano podia ser lido pela caixa do motor como um botão carregado.
+- **Como o Ivo liga hoje (25/11):** ON; quando acaba o apito da verificação, START carregado até o
+  motor pegar, e larga; para parar, STOP carregado uns segundos. Bate com o manual: o botão de
+  arranque faz o pré-aquecimento (se a água estiver abaixo de 50 °C) e fecha o relé do motor de
+  arranque, que está dentro da caixa do motor. Fica respondido o "toque ou manter": é manter, e o
+  comando de ligar já estava desenhado para segurar o contacto até o motor pegar ou até 10 s.
+- O manual diz que o interruptor de ponto-morto tem de estar fechado para o motor arrancar: por
+  ver se o Arlequin o tem ligado. O sistema não vê a manete; sem esse interruptor, um arranque dado
+  do ecrã com a manete engatada põe o barco a andar.
+- **Falta:** encontrar a ficha dos botões (atrás do painel, ou na caixa do motor, onde as duas
+  fichas de 6 pinos ficam lado a lado) e fotografá-la do lado dos fios; a frente do painel.
 
 ## Decisões de 20/11
 

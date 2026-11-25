@@ -311,7 +311,14 @@ Já existe um projeto aberto que os lê num D1/D2 com MDI
   (lida a 25/11) dá 1 = CAN-L e 3 = CAN-H de uma linha, 2 = CAN-L e 5 = CAN-H da outra, 4 = massa
   e 6 = alimentação: coincide com o projeto aberto nos pinos 2 e 5. (Estava aqui "pinos 1/2 e 3/5",
   apontado do manual do YDEG-04, que não foi relido: pela tabela da CSS, o 1 e o 2 são os dois
-  CAN-L e o 3 e o 5 os dois CAN-H, e não dois pares.) No Arlequin os seis pinos têm fio (fotos de
+  CAN-L e o 3 e o 5 os dois CAN-H, e não dois pares.) **Fonte oficial (lida a 25/11):** manual de
+  oficina Volvo Penta, Grupo 30 (sistema elétrico), D1-13 B, D1-20 B, D1-30 B e D2-40 B, de 2007,
+  p. 43 ([página 45 no manualslib](https://www.manualslib.com/manual/2158057/Volvo-D1-13-B.html?page=45)):
+  ficha "Multi link" 1 CAN L, 2 CAN L, 3 CAN H, 4 negativo, 5 CAN H, 6 positivo ("dois pares de
+  fios CAN e a alimentação", p. 27). ⚠️ O painel de botões tem **outra ficha de 6 pinos, igual por
+  fora**: 1 parar, 2 ligar/desligar, 3 alarme/brilho, 4 negativo, 5 arranque/pré-aquecimento,
+  6 besouro. Não confundir as duas (ver o desenho de 20/11, "Os botões, pelo manual da Volvo").
+  No Arlequin os seis pinos têm fio (fotos de
   25/11; cores em "Motor J1939: compras"). **Confirmar com o multímetro antes
   de ligar:** 60–120 Ω entre CAN H e CAN L com tudo desligado.
 - **Primeiro teste:** `candump can1` com a ignição ligada. Ver que
