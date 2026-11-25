@@ -1120,6 +1120,24 @@ dados e, mais tarde, dá as ordens. Condições:
   cima não houver nenhuma) fotografada do lado dos fios, como se fez à dos dados. O número de cada
   buraco dá a função pelo manual, e a cor fica conhecida; confirma-se com o teste do manual nessa
   ficha desligada.
+- **As cores, lidas pelo Ivo na ficha do lado do motor (25/11, 20:14; por foto ainda não):**
+
+  | Buraco | Fio | O que faz (pelo manual) | Derivação para os relés |
+  |---|---|---|---|
+  | 1 | roxo ("roxo ou lilás, mas acho que é roxo") | parar (STOP) | **sim** |
+  | 2 | vermelho | ligar/desligar o painel | não |
+  | 3 | branco | calar o alarme / brilho | não |
+  | 4 | preto | negativo da bateria | **sim** |
+  | 5 | amarelo | arranque e pré-aquecimento (START) | **sim** |
+  | 6 | sem fio, com tampão | o manual põe aqui o besouro | não |
+
+  O preto no 4 bate com o manual (o 4 é o negativo), o que dá confiança de que os números lidos
+  na ficha são os do manual. O roxo para o parar é a cor que a Volvo usa nos fios do parar dos
+  motores mais antigos. São cinco fios, e não seis. Na foto das fichas de 25/11 (15:09), a ficha
+  com o fio roxo e o tampão branco é então esta, a dos botões. **Continua a valer a prova antes de
+  soldar:** com a ficha desligada e tudo sem corrente, o multímetro em continuidade entre o preto
+  (4) e o amarelo (5) só apita com o START carregado, e entre o preto (4) e o roxo (1) só com o
+  STOP carregado. Para ligar e desligar do ecrã são precisos três fios: amarelo, roxo e preto.
 - **A caixa 2 desenha-se para esse sítio**, já com lugar para os dois relés, mesmo que eles só
   entrem depois. Faltam as medidas do espaço (largura, altura e fundo) e onde se pode prender.
 
