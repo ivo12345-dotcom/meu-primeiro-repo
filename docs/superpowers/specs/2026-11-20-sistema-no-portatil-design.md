@@ -1132,8 +1132,9 @@ dados e, mais tarde, dá as ordens. Condições:
   | 6 | sem fio, com tampão | o manual põe aqui o besouro | não |
 
   O preto no 4 bate com o manual (o 4 é o negativo), o que dá confiança de que os números lidos
-  na ficha são os do manual. O roxo para o parar é a cor que a Volvo usa nos fios do parar dos
-  motores mais antigos. São cinco fios, e não seis. Na foto das fichas de 25/11 (15:09), a ficha
+  na ficha são os do manual. O roxo no parar também é o que o Claude se lembra de ver nos esquemas
+  dos Volvo Penta mais antigos (de memória, sem fonte lida a 25/11: não conta como prova). São
+  cinco fios, e não seis. Na foto das fichas de 25/11 (15:09), a ficha
   com o fio roxo e o tampão branco é então esta, a dos botões. **Continua a valer a prova antes de
   soldar:** com a ficha desligada e tudo sem corrente, o multímetro em continuidade entre o preto
   (4) e o amarelo (5) só apita com o START carregado, e entre o preto (4) e o roxo (1) só com o
