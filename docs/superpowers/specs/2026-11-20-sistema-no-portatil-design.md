@@ -272,7 +272,12 @@ branco, que numa das fotos fica escondido atrás do vermelho.
 - Alimentação pelos 12 V do barco, com fusível e um conversor 12 → 5 V. O conversor acaba numa
   ficha USB-C que entra na placa: **a caixa 2 não leva cabo USB ao portátil** (dúvida do Ivo a
   24/11). Na bancada as duas placas estiveram no USB do portátil só para terem corrente e para se
-  lhes gravar o programa.
+  lhes gravar o programa. **Por decidir (apontado a 25/11): de que ponto, por trás do painel, saem
+  esses 12 V.** Do pino 6 da ficha dos dados não é (não se toca). Convém um ponto que se apague
+  com o corta-corrente das baterias, para a caixa não gastar bateria com o barco fechado: a placa
+  tem o rádio sempre ligado (estimativa de Claude: à volta de 0,05 A tirados aos 12 V, ou seja,
+  pouco mais de 1 Ah por dia; mede-se em casa, com o multímetro em série, quando o conversor
+  estiver ligado).
 - Manda cada trama para a caixa 1 pelo rádio das placas (ESP-NOW). Não há fio entre o motor e o
   portátil, por isso não há caminho elétrico entre a massa do motor e o USB do portátil.
 
@@ -550,6 +555,26 @@ Por comprar:
 **24/11, 13h: o Ivo disse que já comprou, e avisa quando chegar.** Falta ele dizer o que veio: qual
 dos dois cabos USB, e se o conversor, os porta-fusíveis e os módulos CAN foram na mesma encomenda.
 Quando o cabo chegar, o ensaio de uma hora faz-se em casa antes de ele ir para o barco.
+
+**25/11, 19:30: chegaram os módulos e o conversor** (o Ivo: "já chegou as placas para a caixa 2 e
+também o transformador para alimentar a caixa 2"). Por saber: se os porta-fusíveis e o cabo USB da
+caixa 1 vieram também. Pedida a foto das peças em cima da mesa, para lhe mostrar nela cada passo
+antes de ele pegar no ferro. O que se segue, em casa:
+
+1. Soldar os pinos aos **dois** módulos.
+2. Tirar a resistência de 120 Ω **só a um**, o que vai para a caixa 2. Prova com o multímetro, com
+   o módulo sem corrente, entre CANH e CANL: perto de 120 Ω antes, sem leitura depois.
+3. Os quatro fios desse módulo à placa da caixa 2 (3V3, GND, CRX ao D4, CTX preso aos 3,3 V).
+4. **Ensaio da escuta em casa (proposta de Claude, a dizer ao Ivo).** A escuta do fio verdadeiro
+   nunca foi ensaiada: o motor a fingir da caixa 2 nasce dentro dela, e por isso não passa pelo
+   módulo nem pelo pino D4. Com o segundo módulo, que fica com a resistência (uma linha de bancada
+   precisa de uma), a placa da caixa 1 faz de motor num fio de bancada, com um programa de bancada
+   à parte, e a caixa 2 diz quantas tramas ouviu (`estado`, `motor-tramas`). O programa das duas
+   caixas não muda. No fim a caixa 1 volta a receber o programa dela e correm-se os ensaios das
+   duas. Assim, se no barco não se ouvir nada, a dúvida fica só do lado do barco (o par de fios, a
+   derivação), e não do lado da caixa.
+5. O conversor: uma hora a alimentar a caixa 2 com 12 V, em casa, com a caixa 1 a ouvi-la pelo
+   rádio (`node ensaio/resistencia.js COM3 60 --duas`). Por saber: que fonte de 12 V há em casa.
 
 As duas resistências de 1 kΩ são regra da revisão de 23/11: os sinais a fingir da caixa 1 escrevem
 nos próprios pinos de entrada, e sem a resistência um ensaio corrido por engano com o barco ligado
