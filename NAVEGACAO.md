@@ -318,6 +318,10 @@ Já existe um projeto aberto que os lê num D1/D2 com MDI
   fios CAN e a alimentação", p. 27). ⚠️ O painel de botões tem **outra ficha de 6 pinos, igual por
   fora**: 1 parar, 2 ligar/desligar, 3 alarme/brilho, 4 negativo, 5 arranque/pré-aquecimento,
   6 besouro. Não confundir as duas (ver o desenho de 20/11, "Os botões, pelo manual da Volvo").
+  **No Arlequin (fotos de 25/11):** a etiqueta da caixa do motor (referência 21120710) chama-lhes
+  "Multilink" e "Panel", como o manual. No painel não se confundem: a dos dados encaixa nas costas
+  do conta-rotações, e o cabo dos botões sai moldado de dentro do conjunto dos botões, sem ficha
+  (`docs/caixas/caixa2-painel-frente-e-costas.jpg` e `caixa2-caixa-motor-etiqueta-e-fichas.jpg`).
   No Arlequin os seis pinos têm fio (fotos de
   25/11; cores em "Motor J1939: compras"). **Confirmar com o multímetro antes
   de ligar:** 60–120 Ω entre CAN H e CAN L com tudo desligado.

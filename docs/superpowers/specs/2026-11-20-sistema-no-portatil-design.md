@@ -160,6 +160,11 @@ multímetro, com tudo desligado (60 a 120 Ω entre os dois fios dos dados).
   provável que o valor também vá no cabo de dados, e nesse caso a caixa 2 lê-o sem sonda nossa. (O
   `NAVEGACAO.md` §2b dava o nível do gasóleo como fora da caixa do motor, por se julgar que o medidor
   era só analógico.)
+  **Corrigido a 25/11, com as fotos da frente e das costas lado a lado:** esse mostrador branco
+  pequeno é o da **temperatura da água** (na frente: em baixo, à direita, da Volvo, com o símbolo
+  do termómetro), e não o do gasóleo. A pista do nível do gasóleo no cabo de dados cai, e o
+  `NAVEGACAO.md` §2b fica como estava: o gasóleo tem um mostrador à parte (ver o ponto das costas
+  verdes, abaixo).
 - Visto por trás, o painel fica ao contrário: o conta-rotações está à esquerda na frente do painel
   e à direita nas costas.
 - O Ivo viu nas imagens que as costas de uma das fichas têm **letras em vez de números** (por
@@ -170,13 +175,44 @@ multímetro, com tudo desligado (60 a 120 Ω entre os dois fios dos dados).
   são motores: a derivação e a caixa 2 ficam afastadas desses fios.
 - Há ainda um mostrador antigo de ponteiro, de costas verdes, com três pernos e um fio cinzento:
   por identificar pela frente do painel (se for o do gasóleo, o fio cinzento é o da sonda).
+  **Identificado a 25/11: é o do gasóleo** (na frente: em cima, à direita, branco, com "FUEL"; não
+  tem a marca da Volvo). Tem fios próprios nos três pernos e não entra na corrente dos mostradores
+  da Volvo.
 - As etiquetas dos fios são de dois tipos (Ivo, 23/11): umas têm números (referências), outras têm
   a descrição escrita à mão.
 - O Ivo tem um vídeo das costas do painel inteiro, que não cabe no envio pelo telemóvel (limite de
   30 MB): passa-se para o portátil e tiram-se de lá as imagens.
 - Faltam: a frente do painel inteiro (não está nas notas nem nas fotos guardadas), uma vista de
   mais longe das costas (espaço e folga do cabo) e os números da etiqueta branca e da manga vermelha
-  do cabo de dados.
+  do cabo de dados. **25/11: a frente e a vista de mais longe já vieram** (ver "Frente e costas do
+  painel", abaixo). Dos números, na manga vermelha lê-se algo como "T3886666" e na etiqueta branca
+  só "884…": por ler no barco.
+
+**Frente e costas do painel (fotos do Ivo, 25/11, 15:09).** Foto marcada, com as duas vistas e as
+mesmas marcas em ambas: `docs/caixas/caixa2-painel-frente-e-costas.jpg`.
+
+- **De frente:** à esquerda o conta-rotações (com o conta-horas: **1363,9 h** a 25/11/2026, lidas
+  pelo Ivo no mostrador); ao meio o conjunto dos botões (quadrado, "EVC", quatro botões: ligar o
+  painel, arranque, calar o alarme/brilho e STOP); à direita, em baixo, a temperatura da água (da
+  Volvo) e, em cima, o gasóleo (à parte); no cimo, ao meio, três comandos que não são do motor (os
+  interruptores das duas ventoinhas do cofre do motor, explicados pelo Ivo a 23/11, e um botão de
+  pressão).
+- **Por trás, a ficha dos dados** é a de 6 pinos nas costas do conta-rotações, com o cabo de manga
+  amarela e depois vermelha. É aí a derivação da caixa 2 (pinos 2, 5 e 4).
+- **Por trás, o conjunto dos botões** é o corpo preto redondo, preso por uma porca grande. O cabo
+  **sai de dentro dele, moldado, sem ficha**: um cabo preto redondo, mais fino do que o dos dados
+  (o Ivo: "é o fio mais fino, já sei qual é"). Vai para a direita, preso com abraçadeiras aos
+  outros cabos, e sai da foto: **falta saber onde tem a ficha de 6 pinos** (atrás do painel, mais
+  adiante, ou só na caixa do motor).
+- **Consequência para a derivação:** na ponta do painel as duas ligações não se confundem. A dos
+  dados encaixa no conta-rotações; a dos botões não tem ficha nenhuma no conjunto. O risco de as
+  trocar fica só na caixa do motor, onde as duas fichas de 6 pinos entram lado a lado.
+- **Os três fios da ficha pequena do conta-rotações** descem a uma junção preta de 3 pinos, seguem
+  para o mostrador da temperatura e saem dele para a ficha com tampão (a saída livre).
+- **Espaço para a caixa 2:** por baixo dos mostradores há uma cavidade aberta em fibra, com sítio
+  livre a menos de 50 cm da ficha do conta-rotações. Os fios vermelhos das ventoinhas passam por
+  lá: a caixa e a derivação ficam afastadas deles, como já estava escrito. Por decidir: como se
+  prende a caixa (sem furar para fora).
 
 **A ficha de 6 pinos, vista de perto (Ivo, 25/11: duas fotos com a ficha desligada, do lado onde os
 fios entram).** Foto marcada: `docs/caixas/caixa2-ficha-conta-rotacoes-fios.jpg`. A ficha é uma
@@ -227,7 +263,9 @@ branco, que numa das fotos fica escondido atrás do vermelho.
   lado da placa sai outro chicote de três fios, que acaba numa ficha com tampão (Ivo, 25/11; ele
   não tem a certeza de que mostrador é, fica para a foto da frente do painel). Bate com a cadeia
   de mostradores extra que se liga atrás do conta-rotações: entra num mostrador e sai para o
-  seguinte, e a ficha com tampão é a saída livre. A caixa 2 não lhe toca.
+  seguinte, e a ficha com tampão é a saída livre. A caixa 2 não lhe toca. **Visto nas fotos das
+  15:09: o mostrador é o da temperatura da água**, e pelo caminho os três fios passam por uma
+  junção preta de 3 pinos (ver "Frente e costas do painel", acima).
 
 - Um módulo transcetor CAN de 3,3 V liga a derivação à placa, **só em escuta** (a placa nunca
   escreve no barramento do motor).
@@ -999,8 +1037,34 @@ conjunto fechado. Não é preciso lá chegar. O manual de oficina do sistema el�
 - O manual diz que o interruptor de ponto-morto tem de estar fechado para o motor arrancar: por
   ver se o Arlequin o tem ligado. O sistema não vê a manete; sem esse interruptor, um arranque dado
   do ecrã com a manete engatada põe o barco a andar.
-- **Falta:** encontrar a ficha dos botões (atrás do painel, ou na caixa do motor, onde as duas
-  fichas de 6 pinos ficam lado a lado) e fotografá-la do lado dos fios; a frente do painel.
+- **A caixa do motor, pela etiqueta dela (fotos do Ivo, 25/11, 15:09; foto marcada em
+  `docs/caixas/caixa2-caixa-motor-etiqueta-e-fichas.jpg`).** A etiqueta tem a referência
+  **21120710** e um desenho com o nome de cada ligação: uma ficha pequena ("Fuel level / Aux
+  switch"), **"Panel"**, **"Multilink"**, "Engine interface" e três bornes de parafuso. São os
+  nomes do manual, o que confirma que o manual é o desta caixa: "Panel" é a ficha dos botões e
+  "Multilink" a dos dados. No desenho, a "Panel" fica entre a ficha pequena e a "Multilink". Na
+  foto das fichas por baixo da caixa, o cabo de manga amarela leva os fios dos dados (vermelho
+  grosso, amarelos e brancos, os mesmos da ficha do conta-rotações). A ficha dos botões não se
+  consegue apontar com certeza nessa foto; o Ivo identificou o cabo no barco ("é o fio mais fino").
+- **O que é a 21120710, pelo catálogo oficial** (volvopenta.com/shop, secção "Sistema Elétrico EVC
+  D1-D2", [referência 54157915](https://www.volvopenta.com/shop/0/part-sections/54157915), lido a
+  25/11): é a "unidade de comando", e a Volvo foi-a substituindo por versões novas, por esta ordem:
+  21120710 → 21261871 → 21511215 → 21558939 → 22594274. A do Arlequin é das primeiras. Fica só o
+  registo, para o dia em que a referência for precisa.
+- **Onde entram os relés, a avaliar quando se achar a ficha dos botões (proposta do Claude):** em
+  vez de cortar o cabo dos botões, um "T" feito com um par de fichas iguais às da Volvo (uma macho
+  e uma fêmea de 6 pinos), metido entre a ficha dos botões e a tomada dela (a mesma ideia do "cabo
+  em Y" que o `NAVEGACAO.md` já tinha para os dados). Não se corta nada do motor e tira-se em
+  segundos se alguma coisa correr mal. Depende de onde está essa ficha: se só
+  existir na caixa do motor, ou os relés ficam junto ao motor ou leva-se um cabo de três fios até
+  ao painel.
+- A ficha pequena da caixa do motor ("Fuel level / Aux switch") é a entrada do nível do gasóleo e
+  de um interruptor extra. O manual fala de um interruptor de ponto-morto e a legenda do esquema de
+  um "interruptor auxiliar" (n.º 11), sem dizer se são o mesmo: por ver no barco o que está ligado
+  a essa ficha.
+- **Falta:** seguir o cabo dos botões até à ficha dele e fotografá-la do lado dos fios; o teste dos
+  botões do manual (sem leitura entre o negativo e cada botão solto, continuidade ao carregar); as
+  duas medidas na ficha dos dados (entre o 2 e o 5 e entre o 1 e o 3).
 
 ## Decisões de 20/11
 
