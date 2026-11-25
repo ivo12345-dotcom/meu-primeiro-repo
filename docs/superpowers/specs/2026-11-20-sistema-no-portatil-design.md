@@ -936,6 +936,16 @@ do painel seja de toque quer seja de manter carregado.
 
 Fica fora das duas caixas desta fase até haver as fotos e o esquema.
 
+**25/11 (pergunta do Ivo: por onde vai a ordem de ligar o motor dada no ecrã? Pela linha que se
+escuta?).** Não. A linha de dados (pinos 2 e 5 da ficha do conta-rotações) só se escuta: a caixa 2
+nunca escreve nela. A ordem vai pelos botões do painel, como já estava decidido: ecrã → portátil →
+caixa 1 → rádio → caixa 2 → um relé em paralelo com o botão → caixa do motor. A linha de dados
+serve no sentido contrário, para o sistema saber se o painel está ligado e se o motor já pegou. O
+Ivo repetiu o pedido: no ecrã, um botão de carregar um bocadinho (toque demorado) para ligar e
+desligar. O que isto muda nas caixas, quando se fizer: a caixa 2 passa a ter dois relés e a receber
+ordens da caixa 1 (hoje só lê e reenvia). Continua a faltar: a foto da frente do painel, as costas
+dos botões de perto e o esquema elétrico do motor.
+
 ## Decisões de 20/11
 
 - Sistema completo no portátil, e não só um gravador (Ivo).
