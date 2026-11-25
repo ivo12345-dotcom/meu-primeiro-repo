@@ -20,6 +20,7 @@ comandos, os pacotes do rádio) está em `comum/`.
 | Caixa 1: sinal de vida, reinício automático, roda do log, vento, movimento a fingir | feito e ensaiado na placa |
 | Caixa 1: rádio | feito; a placa passa os ensaios dela com o rádio ligado |
 | Caixa 2: escuta do motor, rádio, motor a fingir | feito e ensaiado com as duas placas ligadas (a escuta do motor verdadeiro só no barco) |
+| Caixa 2: escuta pelo fio, na bancada, com os módulos do barramento | programa de bancada e ensaio escritos a 25/11; **por correr** (falta ligar os módulos às placas) |
 | Revisão independente do programa (23/11) | feita; os cinco pontos importantes estão corrigidos na versão **0.2.1**, que é a que está gravada nas duas placas |
 | Sensor de movimento verdadeiro (BNO085) | **por fazer**: o primeiro sensor deixou de responder a 22/11; espera-se o segundo. Até lá a caixa 1 diz ao portátil que o sensor não responde |
 | Entradas do log e do vento no barco | **por fazer**: falta escolher o comparador e o adaptador (medidas do Ivo). Cada entrada leva uma **resistência de 1 kΩ em série** junto à placa (ver "Sinais a fingir") |
@@ -110,6 +111,40 @@ vida (os que o relógio da caixa mostra e, pelo relógio do portátil, o silênc
 a caixa que recomeça; linhas que a caixa diz que não conseguiu mandar; a porta que se perde (acaba
 logo); e, com a caixa 2, o silêncio dela, os recomeços e os pacotes perdidos no rádio. As cópias que a
 ponte USB repete só se mostram: são linhas boas.
+
+## Ensaio da escuta pelo fio (só na bancada)
+
+O motor a fingir da caixa 2 nasce dentro dela, e por isso não passa pelo módulo do barramento nem
+pelo pino D4. Para ensaiar esse bocado em casa, outra placa faz de motor num par de fios:
+
+- **A placa da caixa 1, emprestada**, leva o programa `software/ferramentas/bancada/motor_no_fio` e o
+  módulo B (o que fica com a resistência R2, de 120 Ω): 3V3 ao 3V3, GND ao GND, CTX ao TX2, CRX ao RX2.
+- **A caixa 2** fica com o programa dela e o módulo A (sem a R2): 3V3 ao 3V3, GND ao GND, CRX ao D4,
+  CTX preso ao 3V3 do próprio módulo.
+- CANH com CANH e CANL com CANL, entre os dois módulos. As duas placas no USB do portátil.
+
+```powershell
+node ensaio/escuta-fio.js COM3 COM5
+```
+
+`COM3` é a placa que faz de motor e `COM5` a caixa 2. Saem rajadas de 1000 tramas e dez segundos à
+cadência do motor, e compara-se o que saiu com o que a caixa 2 diz que ouviu (`estado`,
+`motor-tramas`). No fim escreve `LIMPO` ou `COM FALHAS`.
+
+O programa de bancada compila-se e grava-se na pasta `software/ferramentas/bancada`:
+
+```powershell
+arduino-cli compile --fqbn esp32:esp32:esp32doit-devkit-v1 --build-path $env:TEMP\arlequin-caixas\motor_no_fio motor_no_fio
+```
+
+```powershell
+arduino-cli upload --fqbn esp32:esp32:esp32doit-devkit-v1 --input-dir $env:TEMP\arlequin-caixas\motor_no_fio -p COM3 motor_no_fio
+```
+
+No fim, a placa da caixa 1 volta a levar o programa dela (`npm run gravar:1 -- COM3`) e correm-se os
+ensaios das duas.
+
+> **A placa que faz de motor escreve na linha. Nunca se liga à linha do motor do barco.**
 
 ## Sinais a fingir (comandos de ensaio)
 
