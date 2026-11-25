@@ -576,6 +576,15 @@ antes de ele pegar no ferro. O que se segue, em casa:
 5. O conversor: uma hora a alimentar a caixa 2 com 12 V, em casa, com a caixa 1 a ouvi-la pelo
    rádio (`node ensaio/resistencia.js COM3 60 --duas`). Por saber: que fonte de 12 V há em casa.
 
+**25/11, 20:08: os módulos são quatro, não dois.** O Ivo não reparou que o anúncio já era de duas
+unidades e pô-lo duas vezes no carrinho. Ficam assim: um para a caixa 2, um para o ensaio em casa
+e dois de reserva. Pergunta dele: se os que sobram dão "para ir buscar outras informações"
+("depois logo se vê"). Dão, para **escutar** qualquer outra linha do mesmo género: o segundo par
+da ficha do motor (pinos 1 e 3), se as medidas mostrarem que é uma linha à parte, e a rede do
+piloto automático quando ele chegar (o `NAVEGACAO.md` prevê para ela um adaptador USB–CAN). Só
+escuta: mandar ordens para uma dessas linhas é outra conversa. Fica por decidir quando lá se
+chegar.
+
 As duas resistências de 1 kΩ são regra da revisão de 23/11: os sinais a fingir da caixa 1 escrevem
 nos próprios pinos de entrada, e sem a resistência um ensaio corrido por engano com o barco ligado
 punha a placa e o comparador (ou o adaptador) a mandar no mesmo fio. Com ela passam 3 mA e não se
