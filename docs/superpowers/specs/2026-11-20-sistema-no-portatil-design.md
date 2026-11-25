@@ -151,8 +151,8 @@ multímetro, com tudo desligado (60 a 120 Ω entre os dois fios dos dados).
 
 - O conta-rotações tem nas costas a ficha de 6 fios do cabo de dados do motor (cinzenta, com o fecho
   laranja; cabo de manga amarela, depois vermelha). É aí que se tenta a derivação. Veem-se dois fios
-  amarelos, um branco, um preto e um vermelho, mas ainda não que fio entra em cada número da ficha:
-  **falta uma foto parada e de perto, do lado onde os fios entram.**
+  amarelos, um branco, um preto e um vermelho, mas ainda não que fio entra em cada número da ficha
+  (resolvido a 25/11 com duas fotos de perto: ver "A ficha de 6 pinos, vista de perto", abaixo).
 - A outra ficha do conta-rotações, pequena, de 3 fios (vermelho, azul, amarelo), é a saída para os
   mostradores extra da Volvo. O mostrador branco pequeno ligado a ela (ficha vermelha, do lado
   esquerdo visto por trás) é o do **nível do combustível** (Ivo, 23/11). **Pista a confirmar na
@@ -177,6 +177,43 @@ multímetro, com tudo desligado (60 a 120 Ω entre os dois fios dos dados).
 - Faltam: a frente do painel inteiro (não está nas notas nem nas fotos guardadas), uma vista de
   mais longe das costas (espaço e folga do cabo) e os números da etiqueta branca e da manga vermelha
   do cabo de dados.
+
+**A ficha de 6 pinos, vista de perto (Ivo, 25/11: duas fotos com a ficha desligada, do lado onde os
+fios entram).** Foto marcada: `docs/caixas/caixa2-ficha-conta-rotacoes-fios.jpg`. A ficha é uma
+Deutsch (lê-se "DEUTSCH" na borracha laranja) e tem **seis fios**, não cinco: há um segundo fio
+branco, que numa das fotos fica escondido atrás do vermelho.
+
+| Pino | Fio | O que é | Derivação |
+|---|---|---|---|
+| 1 | amarelo com cinzento, fino | a outra linha de dados (CAN-L) | não |
+| **2** | amarelo, fino | **dados do motor, CAN-L** | **sim** |
+| 3 | branco, fino | a outra linha de dados (CAN-H) | não |
+| **4** | preto, grosso | **massa** | **sim** |
+| **5** | branco, fino | **dados do motor, CAN-H** | **sim** |
+| 6 | vermelho, grosso | +12 V | não se toca |
+
+- **Na ficha:** uma fila tem, por ordem, branco (3), amarelo (2) e amarelo com cinzento (1); a outra
+  tem preto (4), branco (5) e vermelho (6). O 1 e o 6 ficam do lado da lingueta do fecho. **O 2 e o 5
+  são os dois buracos do meio, um em frente ao outro**, e isso vale mesmo que a numeração das pontas
+  estivesse trocada.
+- **De onde vêm os números:** junto ao buraco do fio branco de canto lê-se um "3" moldado no
+  plástico e junto ao do amarelo um "2" (no limite do que a foto deixa ler); o preto e o vermelho
+  estão nas pontas da outra fila, que é onde as duas fontes põem a massa (4) e os +12 V (6).
+- **De onde vem o que cada pino faz:** o projeto aberto num D1/D2 com MDI (2 = CAN-L, 5 = CAN-H,
+  4 = massa, 6 = positivo; 1 e 3 sem uso nesse barco) e a tabela do
+  [cabo adaptador da CSS Electronics para esta ficha da Volvo](https://www.csselectronics.com/products/dt06-deutsch-adapter-cable-volvo-penta-engine)
+  (1 = CAN-L e 3 = CAN-H de uma linha; 2 = CAN-L e 5 = CAN-H da outra; 4 = massa; 6 = alimentação),
+  lidos a 25/11. Coincidem nos pinos 2 e 5.
+- **Há dois fios brancos e dois amarelos.** Ao longo do cabo não se distinguem pela cor (e os finos
+  podem ser de duas cores e mostrar uma ou outra conforme o lado por onde se olha): segue-se cada fio
+  desde o buraco da ficha, ou confirma-se com o multímetro em continuidade.
+- **Continua por fazer antes de soldar** (já estava no plano): com tudo desligado, 60 a 120 Ω entre
+  o 2 e o 5. Se a primeira escuta não mostrar nada no par 2/5, experimenta-se o par 1/3: a caixa 2
+  só escuta, por isso a experiência não estraga nada.
+- **A ficha de 3 pinos** (preta, com três vedantes laranja; fios amarelo, azul e vermelho) vai ao
+  mostrador do gasóleo, e da placa desse mostrador sai outra ficha, "tipo repetição" para outro
+  mostrador (Ivo, 25/11, sem certeza). Bate com a cadeia de mostradores extra que se liga atrás do
+  conta-rotações. A caixa 2 não lhe toca. Falta ver essa placa numa foto.
 
 - Um módulo transcetor CAN de 3,3 V liga a derivação à placa, **só em escuta** (a placa nunca
   escreve no barramento do motor).

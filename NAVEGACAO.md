@@ -306,8 +306,13 @@ Já existe um projeto aberto que os lê num D1/D2 com MDI
 - **Cabo em Y feito por nós:** ficha Deutsch **DT04-6P** + **DT06-6S** e uma
   derivação, em série entre o MDI e o conta-rotações.
 - **Pinos (segundo o projeto aberto): 2 = CAN L, 5 = CAN H, 4 = massa,
-  6 = +12 V; 1 e 3 sem uso.** ⚠️ O manual do YDEG-04 fala em **dois troços
-  de CAN** nesta ficha (pinos 1/2 e 3/5). **Confirmar com o multímetro antes
+  6 = +12 V; 1 e 3 sem uso.** ⚠️ A ficha leva **duas linhas de CAN**. A tabela do
+  [cabo adaptador da CSS Electronics para esta ficha da Volvo](https://www.csselectronics.com/products/dt06-deutsch-adapter-cable-volvo-penta-engine)
+  (lida a 25/11) dá 1 = CAN-L e 3 = CAN-H de uma linha, 2 = CAN-L e 5 = CAN-H da outra, 4 = massa
+  e 6 = alimentação: coincide com o projeto aberto nos pinos 2 e 5. (Estava aqui "pinos 1/2 e 3/5",
+  apontado do manual do YDEG-04, que não foi relido: pela tabela da CSS, o 1 e o 2 são os dois
+  CAN-L e o 3 e o 5 os dois CAN-H, e não dois pares.) No Arlequin os seis pinos têm fio (fotos de
+  25/11; cores em "Motor J1939: compras"). **Confirmar com o multímetro antes
   de ligar:** 60–120 Ω entre CAN H e CAN L com tudo desligado.
 - **Primeiro teste:** `candump can1` com a ignição ligada. Ver que
   identificadores aparecem antes de escrever qualquer descodificação.
@@ -657,9 +662,12 @@ sem gastar porta USB), mas deixa de ser preciso comprá-la para começar. Falta 
 
 **Ligação: DECIDIDO pelo Ivo (29/09) — direto à cablagem da Volvo, com
 emendas em T soldadas** (em vez do cabo em Y). Como fazer:
-1. **Identificar os fios antes de descarnar:** as cores não são conhecidas.
-   Com o multímetro, pela traseira da ficha Deutsch (sem a abrir), achar os
-   fios dos pinos **5 (CAN-H), 2 (CAN-L) e 4 (massa)**. Tudo desligado:
+1. **Identificar os fios antes de descarnar.** Fios da ficha do conta-rotações, vistos a 25/11
+   (foto marcada em `docs/caixas/caixa2-ficha-conta-rotacoes-fios.jpg`): 1 amarelo com cinzento,
+   **2 amarelo (CAN-L)**, 3 branco, **4 preto grosso (massa)**, **5 branco (CAN-H)**, 6 vermelho
+   grosso (+12 V). O 2 e o 5 são os dois buracos do meio, um em frente ao outro. **Há dois fios
+   brancos e dois amarelos:** ao longo do cabo não se distinguem pela cor, por isso segue-se cada
+   fio desde o buraco da ficha ou confirma-se com o multímetro em continuidade. Tudo desligado:
    **60–120 Ω entre o 5 e o 2**. O pino 6 (+12 V) não se toca.
 2. **Ignição desligada e bateria isolada** enquanto se solda (eletrónica do MDI).
 3. **Emenda em T:** descarnar ~10 mm a meio do fio sem cortar os filamentos,
@@ -1218,6 +1226,11 @@ forte e à noite na marina, e contar com 20–60 Ah/dia, não com 800 W.
 **Alternador de reserva e alternador mais potente (pedido do Ivo, 06/10).** O D1-20 traz um alternador de
 **115 A** (tipo Mitsubishi A3TR0091, regulador interno) com **correia poly-V de 6 nervuras** (polia de
 62 mm): a correia aguenta 150–170 A, ao contrário de uma correia em V simples (~70–100 A).
+⚠️ **25/11:** a correia montada é uma **5PK 848, de 5 nervuras** (lida nas costas da correia:
+`OBRAS.md` §4), e a original Volvo 21951188 tem 18 mm de largura, que também são 5. A conta dos
+150–170 A foi feita para 6 nervuras e fica por rever se um dia se pensar num alternador maior.
+O caderno do eletricista (`docs/esquema-eletrico-eletricista.md` e `.pdf`) ainda diz "6 nervuras":
+corrigir quando for regerado (não muda nada na obra dele).
 - **Reserva:** um alternador de 115 A de substituição, com a mesma montagem e o mesmo D+ para o MDI:
   €201,64–239,95 na SVB (A3TR0091ZT+). Levar também uma correia de reserva. Com os 2 × 625 W de solar o
   alternador deixa de ser a única carga, mas a solo a reserva continua a fazer sentido (noites de
