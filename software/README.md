@@ -229,16 +229,21 @@ comandos chamam antes de arrancar o servidor):
 e ligar a entrada), ou em `software/bordo/config/settings.json` (o `device` da entrada `b330`, por exemplo
 `"COM5"`, e `"enabled": true`). O `npm start` já não a liga nem desliga sozinho.
 
-**O B330 pelo USB não manda frases de GPS** (visto a bordo a 26/11/2026): só as mensagens de AIS, e a
-posição do próprio barco vem dentro delas (`!AIVDO`). Para o servidor as tomar como o próprio barco,
-a pasta de configuração do barco tem de ter um `baseDeltas.json` com o número AIS (MMSI) dele:
+**O B330 pelo USB só mandava as mensagens de AIS** (visto a bordo a 26/11/2026), com a posição do
+próprio barco dentro delas (`!AIVDO`). Nesse dia ligaram-se no próprio aparelho as frases de GPS
+(GGA e RMC), com o programa do fabricante (proAIS2), e desde então a posição, o rumo, a velocidade
+e a hora vêm também do GPS (fonte `b330.GP`). O programa do fabricante e o servidor não podem ter a
+porta ao mesmo tempo: para abrir um, fecha-se o outro.
+
+Para o servidor tomar as mensagens `!AIVDO` como o próprio barco, a pasta de configuração do barco
+tem de ter um `baseDeltas.json` com o número AIS (MMSI) dele:
 
 ```json
 [{ "context": "vessels.self", "updates": [{ "values": [{ "path": "", "value": { "name": "Arlequin", "mmsi": "<os 9 algarismos>" } }] }] }]
 ```
 
-Sem isso o ecrã mostra os alvos mas fica sem posição, rumo, velocidade e distâncias. O número não se
-escreve no repositório.
+Antes de haver as frases de GPS, sem este ficheiro o ecrã mostrava os alvos mas ficava sem posição,
+rumo, velocidade e distâncias. O número não se escreve no repositório.
 
 **A proa verdadeira e o vento real** não são dos nossos plugins: faz-os o `signalk-derived-data` (o único
 plugin de fora que este perfil acrescenta), ligado só para quatro contas: a declinação magnética pela

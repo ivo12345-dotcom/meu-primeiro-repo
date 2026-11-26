@@ -702,6 +702,63 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
 - O Ivo tem um sortido de resistências (50 valores, 1/4 W, com as de 1 kΩ): as resistências em
   série das entradas do log e do vento saem daí.
 
+**A bordo, 26/11, 18:50–20:00: o programa do AIS, o registo das viagens e o mostrador do vento.**
+
+- **Programa do AIS (proAIS2 2.0.0, do fabricante).** Descarregado do site da em-trak (página de
+  apoio do B330), 66 MB, assinado pela SRT Marine Systems. A instalação normal falha no passo do
+  controlador USB (erro 1722). Instala-se sem esse passo, só com o programa e as bibliotecas:
+  `msiexec /i proAIS2_x64.msi ADDLOCAL=ProductFeature,DP_F_Redist`. O Windows 11 já vê o AIS como
+  porta série sem esse controlador.
+- **O programa e o ecrã de bordo não usam o cabo ao mesmo tempo**: a porta é só de um. Para abrir o
+  proAIS2 para-se o servidor; no fim, "Disconnect" e volta-se a arrancar o servidor.
+- **Frases de GPS ligadas no AIS.** No separador da configuração ligaram-se a GGA e a RMC e
+  gravou-se ("Write Configuration"; antes de gravar o programa mostra um aviso para clientes dos
+  EUA, que se aceita). Desde então o AIS manda também `$GPRMC` e `$GPGGA` pelo USB, e o servidor tem
+  posição, rumo, velocidade e hora do GPS (fonte `b330.GP`; 9 satélites nesse dia). Passa a haver
+  duas fontes para a posição própria, `b330.GP` e `b330.AI`: se o ecrã saltar entre as duas, dá-se
+  prioridade à do GPS em `priorities.json`. O `baseDeltas.json` continua a ser preciso.
+- **Saúde do aparelho (separador Diagnostics):** todas as verificações certas, antena com VSWR
+  1,1:1, alimentação a 13,5 V, software 040200.02.02.00.
+- **O que está gravado no aparelho:** tipo 36 (veleiro), dimensões 7/3/1/2 m (da antena do GPS à
+  proa, à popa, a bombordo e a estibordo), saída NMEA1 a 38400. O número (MMSI) está bloqueado: só
+  um revendedor autorizado da em-trak o muda.
+- **Wi-Fi do AIS:** já vinha configurado pelo dono anterior, como ponto de acesso (o AIS cria a
+  rede dele; não entra na de terra), canal 3, endereço 192.168.0.1, porta 2000. Só se configura
+  pelo proAIS2 e com o AIS alimentado a 12 V. O nome e a palavra-passe da rede não se escrevem
+  aqui. Por confirmar: se o Ivo já mudou a palavra-passe, e o ensaio com um aparelho que não seja o
+  telemóvel que dá Internet ao portátil.
+- **Separador Anti-tamper:** fica sem palavra-passe (não se tranca o aparelho com uma palavra-passe
+  que se pode perder).
+- **Registo das viagens (separador VDR).** O AIS guarda as posições do próprio barco desde 1 de
+  outubro de 2021. O proAIS2 descarrega-as ("Get data", cerca de dez minutos) para um ficheiro de
+  texto, `vdrrmc.log`, no Ambiente de Trabalho: 234 mil linhas `$GPRMC`, uma por posição, muitas
+  quando o barco anda e quase nenhumas quando está parado. **Os dados ficam só no portátil, fora
+  deste repositório** (`Documents\Veleiro\ais-registo-viagens`, com os dois programas que os leem e
+  os mapas). Duas armadilhas do ficheiro: a longitude 9°10,00' W vem escrita `009010` (um zero a
+  mais e sem ponto; 2 linhas em 234 mil), e os minutos certos vêm sem casas decimais (`3846`,
+  `00902`). O leitor só conta caminho quando o barco se afasta 100 m do último ponto contado, para
+  o tremer do GPS no cais não dar milhas. Por fazer: passar o leitor para este repositório, com
+  testes e sem dados.
+- **Navtex:** nada recebido na emissão das 18:50. O ecrã cheio de símbolos era uma mensagem antiga
+  guardada, não ruído; o Ivo apagou as mensagens todas (UP e DOWN ao mesmo tempo). O manual diz que
+  o carregador das baterias e a corrente da doca fazem interferência, que a antena é ativa
+  (alimentada pelo cabo) e que cada mensagem acaba com a contagem de erros; o ecrã das opções tem
+  um espetro do sinal. Próxima prova: a emissão das 22:50, com tudo em "All". Se nada vier:
+  experimentar com o carregador e a doca desligados, depois a ficha e o cabo da antena. No fim,
+  voltar a "Some" só com a R.
+- **Mostrador do vento (NASA Clipper Wind, modelo antigo).** Por trás tem os dois fios da
+  alimentação (vermelho e preto), o cabo do mastro (cinzento, preso ao mostrador) e uma tomada
+  redonda DIN. O cabo do mastro (malha, preto, azul, branco e vermelho) passa por uma placa de
+  junção marcada "WINCON", cor com cor: aí só andam os sinais em bruto do mastro, não servem. Os
+  dados do vento já feitos saem pela tomada redonda: 12 V, massa e dados NMEA (visto num caso igual
+  no fórum da YBW, onde as cores dadas pela própria NASA estavam trocadas: só vale a medida). O Ivo
+  encontrou a ficha DIN de 3 pinos que entra nessa tomada, com um cabo cinzento que não se sabe
+  onde acaba e dois fios acrescentados aos pinos por dentro da ficha, um amarelo e um verde, de
+  pontas soltas (a fita preta só os segurava). Por medir, por esta ordem: pino com pino não pode
+  dar continuidade (o cabo cinzento pode estar cortado com os fios a tocarem-se); a que pino vai
+  cada fio; e os volts do amarelo e do verde com a ficha metida. A entrada do vento da caixa 1
+  (RX2) só aguenta 3,3 V: a adaptação escolhe-se depois da medida.
+
 **A bordo, 26/11, 17:55–18:50 (as caixas não se ensaiaram: o Ivo deixou-as para outro dia).**
 
 - **AIS pelo USB.** O em-trak B330 aparece no portátil como uma porta série USB própria (nesse dia,
