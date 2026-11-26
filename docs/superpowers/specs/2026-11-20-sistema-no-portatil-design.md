@@ -802,6 +802,16 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
   do vento, é mais um PC817; se tiver só a saída antiga para o segundo mostrador (dois fios de
   dados, sinal rápido), o PC817 é lento de mais e bastam resistências para baixar o nível. O Claude
   aposta no segundo caso (estimativa, sem prova).
+- **Lista completa da Mauser dada ao Ivo (26/11, 21:30; preços com IVA; Lisboa e Freixeira tinham
+  tudo).** Para o vento: PC817 `001-0558` ×4, BC547C `002-0243` ×5, díodo 1N4007 `007-0209` ×10
+  (o 1N4148 `007-0205` só havia em Corroios) e placa de furos `096-6400`: 3,02 €. Para a roda do
+  log, como aposta: LM393P `001-2380` ×2, LM358P `001-0538` ×2 (se o sinal tiver de ser aumentado
+  antes do comparador), condensador cerâmico de 100 nF `004-0632` ×5 e suportes de 8 pinos
+  `012-0002` ×10: 3,72 €. Para a sonda, nada. As páginas abrem só com a referência:
+  `https://mauser.pt/<referência>`.
+- **Acrescento à adaptação do vento: um díodo em paralelo com o díodo do optoacoplador, virado ao
+  contrário** (cátodo do lado do amarelo, depois da resistência de 1 kΩ; ânodo no verde). O PC817
+  só aguenta 6 V ao contrário, e o Ivo viu valores negativos no multímetro.
 
 **A bordo, 26/11, 17:55–18:50 (as caixas não se ensaiaram: o Ivo deixou-as para outro dia).**
 
