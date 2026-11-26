@@ -786,6 +786,14 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
   [PC817C, 50 unidades, BOJACK](https://www.amazon.es/dp/B08CXKZ98W), 9,14 €, e
   [BC547C, 25 unidades](https://www.amazon.es/dp/B09JNTVBX3), 6,00 €. Na loja de eletrónica, duas
   de cada ficam por menos de 2 €. Por saber: se tem em casa uma placa perfurada para as soldar.
+- **Na Mauser (visto a 26/11, 21:17; preços com IVA): fica muito mais barato.**
+  [PC817 Everlight, ref. 001-0558](https://mauser.pt/001-0558/everlight-pc817-ci-optoacoplador-saida-transistor-5kv),
+  0,21 € cada (Lisboa 10, Corroios 28, Freixeira 273), e
+  [BC547C, ref. 002-0243](https://mauser.pt/002-0243/bc547c-dio-transistor-npn-45v-0-1a-hfe-400-to-92),
+  0,05 € cada, vendido de 5 em 5 (Lisboa 55, Corroios 15, Freixeira 1549). Na Portela, esgotadas.
+  Proposta: 4 PC817 e 5 BC547C, 1,09 €. Placa de furos de 5 × 7 cm, se fizer falta:
+  [ref. 096-6400](https://mauser.pt/096-6400/placa-protoboard-50x70mm-432-furos), 0,95 €. A pesquisa
+  do site novo é `https://mauser.pt/search?q=...`; o aviso dos cookies recusa-se em "Personalizar".
 
 **A bordo, 26/11, 17:55–18:50 (as caixas não se ensaiaram: o Ivo deixou-as para outro dia).**
 
