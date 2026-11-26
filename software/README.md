@@ -229,6 +229,17 @@ comandos chamam antes de arrancar o servidor):
 e ligar a entrada), ou em `software/bordo/config/settings.json` (o `device` da entrada `b330`, por exemplo
 `"COM5"`, e `"enabled": true`). O `npm start` já não a liga nem desliga sozinho.
 
+**O B330 pelo USB não manda frases de GPS** (visto a bordo a 26/11/2026): só as mensagens de AIS, e a
+posição do próprio barco vem dentro delas (`!AIVDO`). Para o servidor as tomar como o próprio barco,
+a pasta de configuração do barco tem de ter um `baseDeltas.json` com o número AIS (MMSI) dele:
+
+```json
+[{ "context": "vessels.self", "updates": [{ "values": [{ "path": "", "value": { "name": "Arlequin", "mmsi": "<os 9 algarismos>" } }] }] }]
+```
+
+Sem isso o ecrã mostra os alvos mas fica sem posição, rumo, velocidade e distâncias. O número não se
+escreve no repositório.
+
 **A proa verdadeira e o vento real** não são dos nossos plugins: faz-os o `signalk-derived-data` (o único
 plugin de fora que este perfil acrescenta), ligado só para quatro contas: a declinação magnética pela
 posição, a proa verdadeira, o vento real pela água e a direção do vento. O ficheiro

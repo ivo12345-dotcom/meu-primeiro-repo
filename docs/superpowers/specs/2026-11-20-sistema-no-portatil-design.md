@@ -702,6 +702,40 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
 - O Ivo tem um sortido de resistências (50 valores, 1/4 W, com as de 1 kΩ): as resistências em
   série das entradas do log e do vento saem daí.
 
+**A bordo, 26/11, 17:55–18:50 (as caixas não se ensaiaram: o Ivo deixou-as para outro dia).**
+
+- **AIS pelo USB.** O em-trak B330 aparece no portátil como uma porta série USB própria (nesse dia,
+  COM7; não é a ponte das placas). Em 30 segundos ouviu 36 barcos diferentes e mandou a posição do
+  próprio barco de segundo a segundo. **Pelo USB só manda as mensagens de AIS (`!AIVDM`, `!AIVDO`) e
+  um texto de estado (`$AITXT`): não manda as frases de GPS** em que o perfil de bordo contava
+  (RMC e GGA, as que a caixa a fingir manda). Por isso o ecrã tinha os alvos mas não tinha posição,
+  rumo nem velocidade próprios, nem distâncias aos alvos.
+- **Como ficou resolvido:** o servidor passa a saber qual é o número AIS (MMSI) do próprio barco,
+  num ficheiro `baseDeltas.json` na pasta de configuração do barco (`software/bordo/config/`, fora
+  do git). Com isso, as mensagens `!AIVDO` contam como o próprio barco. Depois de reiniciar: posição,
+  rumo e velocidade no ecrã (fonte `b330.AI`), e distância e aproximação a cada alvo. A entrada
+  `b330` ficou ligada nessa porta. **O número e o indicativo do barco não se escrevem neste
+  repositório**, que é público.
+- **O que o AIS diz do barco:** o nome gravado é o antigo e o número é do Reino Unido (os três
+  primeiros algarismos dão a bandeira nas aplicações; os portugueses começam por 263). Para mudar a
+  bandeira é preciso um número português (ANACOM, licença de estação) e regravar o aparelho; nestes
+  aparelhos o número costuma ficar bloqueado depois de gravado (fabricante ou revendedor). O
+  procedimento do B330 está por confirmar no manual. A foto que as aplicações mostram carrega-se no
+  site de cada uma, não vai pelo AIS.
+- Os alvos aparecem primeiro só com o número: a posição vem de poucos em poucos segundos e o nome
+  de 6 em 6 minutos.
+- **Navtex:** é um NASA Target Navtex Pro. Estava a gravar só as estações R e Z; a R é Lisboa
+  (Monsanto), em inglês, nos 518 kHz, com emissões às 02:50, 06:50, 10:50, 14:50, 18:50 e 22:50 UTC.
+  O Ivo pôs estações e mensagens em "All" e o ecrã encheu-se de símbolos sem sentido (o mais
+  provável é ruído e estações fracas; por provar na emissão das 18:50). Recomendado: voltar a
+  "Some" só com a R.
+- **Luzes de bordo fracas e a piscar (defeito que o barco tem desde a compra):** o amperímetro do
+  serviço oscilava entre cerca de 3 e 9 A de dois em dois segundos e meio (vídeo do Ivo), e as
+  luzes ao mesmo ritmo. Com o termóstato do frigorífico no 0, parou tudo. É o compressor do frio a
+  tentar arrancar e a desistir, vezes seguidas. Por ver, no compressor: a caixa eletrónica dele, as
+  piscadelas da luz de diagnóstico e a tensão nos fios durante o arranque; e a tensão da bateria de
+  serviço (há pequenas quebras ao ligar outras coisas, com o barco ligado à doca).
+
 **Decisão do Ivo sobre a base (26/11, 15:02–15:28): fica tudo na mesma base**, a placa, a plaquinha, o
 conversor e os dois relés ("vamos meter tudo na base, o conversor e os relés também"). A versão 1, abaixo,
 não se imprime. A base completa desenha-se quando os relés chegarem ("quando chegar os relés fazemos
