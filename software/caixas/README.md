@@ -21,6 +21,7 @@ comandos, os pacotes do rádio) está em `comum/`.
 | Caixa 1: rádio | feito; a placa passa os ensaios dela com o rádio ligado |
 | Caixa 2: escuta do motor, rádio, motor a fingir | feito e ensaiado com as duas placas ligadas (a escuta do motor verdadeiro só no barco) |
 | Caixa 2: escuta pelo fio, na bancada, com os módulos do barramento | **passou a 26/11**: 6145 tramas saídas, 6145 ouvidas, nenhum erro (rajadas de 1000 a 200 e a 1000 por segundo, e 10 s à cadência do motor). Desfeita a montagem, os ensaios das duas placas passaram todos (40 em 40, `npm test`) |
+| Escuta do motor no barco (`ensaio/ouvir-motor.js`) | escrita e experimentada em casa a 26/11 com o motor a fingir; **a primeira escuta do motor verdadeiro está por fazer** |
 | Revisão independente do programa (23/11) | feita; os cinco pontos importantes estão corrigidos na versão **0.2.1**, que é a que está gravada nas duas placas |
 | Sensor de movimento verdadeiro (BNO085) | **por fazer**: o primeiro sensor deixou de responder a 22/11; espera-se o segundo. Até lá a caixa 1 diz ao portátil que o sensor não responde |
 | Entradas do log e do vento no barco | **por fazer**: falta escolher o comparador e o adaptador (medidas do Ivo). Cada entrada leva uma **resistência de 1 kΩ em série** junto à placa (ver "Sinais a fingir") |
@@ -157,6 +158,25 @@ No fim, a placa da caixa 1 volta a levar o programa dela (`npm run gravar:1 -- C
 ensaios das duas.
 
 > **A placa que faz de motor escreve na linha. Nunca se liga à linha do motor do barco.**
+
+## Escuta do motor no barco
+
+Mostra no portátil o que a caixa 2 ouve na linha do motor. As tramas chegam pelo caminho de sempre
+(caixa 2, rádio, caixa 1, USB), por isso a porta é a da caixa 1:
+
+```powershell
+node ensaio/ouvir-motor.js COM5 300 --registo escuta.txt
+```
+
+De 5 em 5 segundos diz o sinal da caixa 2, quantas tramas chegaram e os valores que já sabemos ler
+(rotações, água, tensão, horas). No fim escreve uma linha por tipo de trama e por aparelho, com os
+últimos bytes, incluindo os tipos que ainda não conhecemos. Com `--registo` guarda todas as linhas tal
+como chegam. O tempo é em segundos (60 se não se disser; 0 fica até se carregar em Ctrl+C).
+
+**Não manda nada a nenhuma caixa: só ouve.** Pode correr com o motor a trabalhar. O ecrã do barco não
+pode estar a usar a mesma porta ao mesmo tempo. As contas estão em `ensaio/censo.js`, com ensaios sem
+placas (`ensaio/censo.test.js`). Experimentado a 26/11 com o motor a fingir da caixa 2: 14 tramas por
+segundo, cinco tipos, 2100 rotações, 82 °C, 14,2 V.
 
 ## Sinais a fingir (comandos de ensaio)
 

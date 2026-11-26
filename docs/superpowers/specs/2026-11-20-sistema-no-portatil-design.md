@@ -653,6 +653,55 @@ Como foi:
 com até **8,5 cm de largura, 20 cm de altura e 30 cm de comprimento**. Chega para a placa, a
 plaquinha, os dois relés e o conversor. Falta saber como se prende e por onde entram os cabos.
 
+**26/11, 12:35–14:10: preparar a ida ao barco das 18h** (o Ivo: "vamos testar isto tudo no sítio e
+pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
+
+- **Cabo 1, os fios que leem o motor** (três fios, até 50 cm; foto da ponta da caixa em
+  `docs/caixas/caixa2-cabo-dados-ponta-da-caixa.jpg`, a da ficha em
+  `docs/caixas/caixa2-ficha-conta-rotacoes-fios.jpg`):
+
+  | Fio | Lado do barco (ficha do conta-rotações) | Lado da caixa 2 |
+  |---|---|---|
+  | H | branco fino do buraco 5 | pino CANH da plaquinha A |
+  | L | amarelo fino do buraco 2 | pino CANL da plaquinha A |
+  | massa | preto grosso do buraco 4 | GND da placa, na fila do VIN: o 2.º pino a contar da ficha USB |
+
+  O 1.º pino dessa fila é o VIN (5 V): um fio de massa aí é um curto. O H e o L vão torcidos um no
+  outro e marcados. O Ivo vai usar fio de capa de silicone (serve; protege-se nas arestas).
+- **Cabo 2, os fios de ligar e desligar:** amarelo (arranque), roxo (parar) e preto (negativo,
+  comum). Parecer do Claude: pode ficar feito, mas sem relés nem programa do lado da caixa não se
+  liga ainda; uma ponta solta do amarelo que toque no preto dá ao motor de arranque. Para as 18h
+  prova-se à mão, depois da prova com o multímetro: amarelo ao preto arranca, roxo ao preto para.
+- **Como os botões se portam (o Ivo, 13:14):** pode ficar a carregar no START, que a caixa do motor
+  larga o motor de arranque sozinha quando o motor pega; no STOP, se tirar o dedo cedo demais,
+  "parece que desliga mas não desliga". Para o programa: ligar é segurar o contacto até o motor
+  pegar; desligar é segurá-lo uns segundos a mais. Sem mais proteções, como ele decidiu a 25/11.
+- **Os relés** (pergunta dele: porque ainda não se compraram): podiam ter sido indicados na noite
+  de 25/11, quando as cores dos fios ficaram lidas; falha do Claude. Encomendados pelo Ivo a 26/11:
+  [ARCELI, 5 módulos de 1 relé de 3 V com optoacoplador e disparo de nível alto](https://www.amazon.es/dp/B0CLTZFWY4)
+  (10,16 €, visto a 26/11). Escolhidos por serem feitos para placas de 3,3 V e por ficarem abertos
+  com a caixa desligada ou a recomeçar. Na Mauser, o equivalente de 5 V com seleção de disparo
+  (ref. 095-8645) estava esgotado; havia o Keyestudio KS0057 (2 relés de 5 V, disparo em alto pela
+  ficha do fabricante, sem dizer se obedece a 3,3 V). A placa nunca se liga diretamente aos fios
+  dos botões: têm os 12 V do barco.
+- **O conversor** é um DGXBY U1205-03 (15 W; entrada 12 V, de 8 a 22 V; saída 5 V, 3 A no máximo,
+  em ficha USB-C). Ensaio em casa com uma LiPo de airsoft de 11,1 V e 1450 mAh: 24 minutos limpos
+  (21 605 linhas, nenhuma estragada, a caixa 2 sem um segundo de silêncio nem recomeços). Parou
+  quando o Ivo desligou a bateria para meter o fusível, que não tinha posto (ficou um de 5 A; os de
+  2 A compram-se). Depois disso a caixa 2 acendia a luz vermelha mas não arrancava (sem luz azul,
+  sem rádio); ligada ao portátil arrancou logo. A caixa está boa; a causa do lado da bateria não se
+  apurou (o Ivo suspeita de bateria fraca; não se mediu). Decisão dele: esquece-se esta bateria e o
+  ensaio do conversor faz-se no barco, com a bateria do barco e o fusível à saída do ponto dos 12 V.
+- **Para as 18h, por ordem:** tudo desligado; ficha do conta-rotações tirada e as duas medidas
+  (2–5 e 1–3); as três derivações do cabo 1; ficha de volta; caixa 2 com corrente; portátil com a
+  caixa 1; painel ligado sem arranque, e escuta (`ensaio/ouvir-motor.js`); depois o motor a
+  trabalhar. Roda do log e vento: só medir e fotografar. AIS: experimentar pelo USB.
+- **Cabo de rede blindado para os fios dos instrumentos** (pergunta dele): serve para sinal, se for
+  de fios flexíveis e de cobre (não rígido nem de alumínio cobreado), com a blindagem à massa só na
+  ponta da caixa, e sem levar corrente de alimentação a sério.
+- O Ivo tem um sortido de resistências (50 valores, 1/4 W, com as de 1 kΩ): as resistências em
+  série das entradas do log e do vento saem daí.
+
 **25/11, 20:30: quatro fotos da ficha dos botões** (uma de frente, com a cunha verde, e três do
 lado dos fios; é uma Deutsch de 6 pinos, como a dos dados). Nas três vê-se a mesma arrumação: do
 lado do fecho ficam o roxo e o tampão; ao meio, frente a frente, o vermelho e o amarelo; na ponta
