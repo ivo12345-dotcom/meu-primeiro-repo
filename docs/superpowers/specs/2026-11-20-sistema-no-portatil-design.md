@@ -758,6 +758,25 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
   dar continuidade (o cabo cinzento pode estar cortado com os fios a tocarem-se); a que pino vai
   cada fio; e os volts do amarelo e do verde com a ficha metida. A entrada do vento da caixa 1
   (RX2) só aguenta 3,3 V: a adaptação escolhe-se depois da medida.
+- **Medido pelo Ivo (19:55), com a ficha metida e os instrumentos ligados:** o **verde é a massa**
+  (dá continuidade com o pino de cima da ficha, o "B" da foto marcada, e com a chapa; verde contra
+  a chapa: zero). O **amarelo é o fio dos dados**: contra o verde ou contra a chapa dá um valor
+  pequeno que não para quieto, entre uns 20 e uns 100 e poucos milivolts, às vezes negativo, a
+  mexer com o vento no mostrador. É a média de um fio que descansa no zero e salta para cima
+  quando manda a frase: o sentido normal da linha "A" do NMEA 0183, ao contrário do que a porta
+  série da placa espera (repouso em cima; em `vento.h` o pino está com puxada para cima e sem
+  inversão). Por saber: o pino do amarelo e a altura dos saltos (5 ou 12 V).
+- **Adaptação escolhida (por montar e por ensaiar em casa):** um optoacoplador PC817 entre o
+  amarelo e o RX2. Limita a tensão, põe o sinal no sentido certo sem mexer no programa, e separa a
+  massa do barco da do portátil (que está nos 220 V), como a norma manda a quem ouve. Lado do
+  mostrador: amarelo, resistência de 1 kΩ, díodo do optoacoplador, verde (serve para 5 e para
+  12 V: 4 a 11 mA). Lado da caixa 1: coletor ao RX2 com uma resistência de cerca de 2,2 kΩ aos
+  3,3 V (com a puxada interna, de dezenas de kΩ, o PC817 fica lento de mais para 4 800 baud),
+  emissor à massa da placa. Plano B, se o mostrador não tiver força para o díodo: um transístor
+  BC547 com 10 kΩ na base (sem separação das massas). A comprar pelo Ivo: 2 PC817 e 2 BC547.
+  Ensaio em casa antes de ir ao barco: a placa de bancada a fazer de mostrador, com o sinal
+  invertido, a acender o díodo. Enquanto não houver cabo novo, a ficha fica fora da tomada do
+  mostrador (o cabo cinzento pode levar os 12 V a um sítio desconhecido) e as duas pontas isoladas.
 
 **A bordo, 26/11, 17:55–18:50 (as caixas não se ensaiaram: o Ivo deixou-as para outro dia).**
 
