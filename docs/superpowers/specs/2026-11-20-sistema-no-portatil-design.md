@@ -777,6 +777,15 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
   Ensaio em casa antes de ir ao barco: a placa de bancada a fazer de mostrador, com o sinal
   invertido, a acender o díodo. Enquanto não houver cabo novo, a ficha fica fora da tomada do
   mostrador (o cabo cinzento pode levar os 12 V a um sítio desconhecido) e as duas pontas isoladas.
+- **Onde fica a adaptação (decisão do Ivo, 26/11, 20:04):** dentro da caixa 1, no seco, e não
+  atrás do mostrador, onde há humidade. Da ficha do mostrador até lá vão só dois fios do mesmo par
+  de um cabo de rede blindado: um leva o amarelo (dados), o outro o verde (massa). A malha liga-se
+  só do lado do mostrador, ao verde; do lado da caixa 1 corta-se e isola-se, para as duas massas
+  não ficarem unidas pela malha.
+- **Peças vistas na Amazon a 26/11 (21:12), para ele encomendar:**
+  [PC817C, 50 unidades, BOJACK](https://www.amazon.es/dp/B08CXKZ98W), 9,14 €, e
+  [BC547C, 25 unidades](https://www.amazon.es/dp/B09JNTVBX3), 6,00 €. Na loja de eletrónica, duas
+  de cada ficam por menos de 2 €. Por saber: se tem em casa uma placa perfurada para as soldar.
 
 **A bordo, 26/11, 17:55–18:50 (as caixas não se ensaiaram: o Ivo deixou-as para outro dia).**
 
