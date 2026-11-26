@@ -20,7 +20,7 @@ comandos, os pacotes do rádio) está em `comum/`.
 | Caixa 1: sinal de vida, reinício automático, roda do log, vento, movimento a fingir | feito e ensaiado na placa |
 | Caixa 1: rádio | feito; a placa passa os ensaios dela com o rádio ligado |
 | Caixa 2: escuta do motor, rádio, motor a fingir | feito e ensaiado com as duas placas ligadas (a escuta do motor verdadeiro só no barco) |
-| Caixa 2: escuta pelo fio, na bancada, com os módulos do barramento | programa de bancada e ensaio escritos a 25/11; **por correr** (falta ligar os módulos às placas) |
+| Caixa 2: escuta pelo fio, na bancada, com os módulos do barramento | **passou a 26/11**: 6145 tramas saídas, 6145 ouvidas, nenhum erro (rajadas de 1000 a 200 e a 1000 por segundo, e 10 s à cadência do motor) |
 | Revisão independente do programa (23/11) | feita; os cinco pontos importantes estão corrigidos na versão **0.2.1**, que é a que está gravada nas duas placas |
 | Sensor de movimento verdadeiro (BNO085) | **por fazer**: o primeiro sensor deixou de responder a 22/11; espera-se o segundo. Até lá a caixa 1 diz ao portátil que o sensor não responde |
 | Entradas do log e do vento no barco | **por fazer**: falta escolher o comparador e o adaptador (medidas do Ivo). Cada entrada leva uma **resistência de 1 kΩ em série** junto à placa (ver "Sinais a fingir") |
@@ -130,6 +130,18 @@ node ensaio/escuta-fio.js COM3 COM5
 `COM3` é a placa que faz de motor e `COM5` a caixa 2. Saem rajadas de 1000 tramas e dez segundos à
 cadência do motor, e compara-se o que saiu com o que a caixa 2 diz que ouviu (`estado`,
 `motor-tramas`). No fim escreve `LIMPO` ou `COM FALHAS`.
+
+As ligações estão marcadas em `docs/caixas/bancada-ensaio-fio-ligacoes.jpg`. Quatro avisos de 26/11:
+
+- **Os números das portas trocam** quando se desligam e voltam a ligar os cabos USB. Para saber qual é
+  qual ouve-se cada porta sem escrever nada: a caixa 2 diz quem é no batimento (`$AQB,2,...`) e a placa
+  com o programa de bancada fica calada.
+- **À placa com o programa de bancada não se mandam comandos `$AQC`.** Ela lê letra a letra, e as letras
+  `a`, `n` e `r` de um comando punham-na a mandar tramas.
+- **Se a caixa 2 contar zero sem erros**, veja-se primeiro se CANH e CANL estão ligados entre os dois
+  módulos (e não trocados): foi o que faltou à primeira.
+- Antes de correr os ensaios da caixa 1 tira-se o fio do RX2: o vento a fingir escreve nesse pino, e o
+  módulo também.
 
 O programa de bancada compila-se e grava-se na pasta `software/ferramentas/bancada`:
 

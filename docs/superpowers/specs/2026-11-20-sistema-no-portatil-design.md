@@ -601,6 +601,49 @@ foto dele marcada em `docs/caixas/caixa2-modulos-fios.jpg`).
   própria plaquinha, por uma ponte de fio com capa soldada por trás (do pino 3V3 ao pino CTX, por
   cima do GND).
 
+**26/11, 09:33–10:45: o ensaio da escuta pelo fio correu em casa e passou.** A caixa 2 ouviu pelo
+fio todas as tramas que saíram, com o programa dela (0.2.1) e a plaquinha A tal como vai para o
+barco (sem a R2, com a ponte).
+
+| Passo | Saíram | A caixa 2 ouviu |
+|---|---|---|
+| 3 rajadas de 1000 tramas, uma de 5 em 5 ms | 3000 | 3000 |
+| 3 rajadas de 1000 tramas, uma por milissegundo | 3000 | 3000 |
+| 10 s à cadência do gerador (14 tramas por segundo) | 145 | 145 |
+
+Nenhuma ignorada, nenhuma falhada, nenhum erro na linha (`node ensaio/escuta-fio.js COM5 COM3`,
+"LIMPO"). Fica provado em casa o caminho fios → plaquinha A → pino D4 → controlador em só escuta →
+contagem. O que este ensaio não prova: a passagem dessas tramas pelo rádio até ao portátil (a placa
+da caixa 1 estava a fazer de motor, por isso a caixa 2 deitou-as fora, `radio-deitadas-fora=6145`).
+Esse bocado está provado à parte, com o motor a fingir de dentro da caixa 2; os dois bocados
+juntam-se na mesma função do programa. Para os ensaiar de uma vez só fazia falta uma terceira placa.
+
+Como foi:
+
+- **A ponte da A** fê-la o Ivo às 10:02: fio vermelho com capa, soldado por trás, do pino CTX ao
+  pino 3V3, em arco por fora da plaquinha. A B não leva ponte (nela o CTX vai por fio à placa).
+  Sem multímetro em casa, a prova de que a ponte não tem curto foi a placa da caixa 2 acordar e
+  falar pelo rádio com a plaquinha A ligada.
+- **Ligações**, marcadas sobre as fotos dele em `docs/caixas/bancada-ensaio-fio-ligacoes.jpg`:
+  A à placa da caixa 2 (3V3, GND, CRX ao D4); B à placa da caixa 1 (3V3, GND, CTX ao TX2, CRX ao
+  RX2); e CANH com CANH, CANL com CANL entre as duas. A placa da caixa 1 tinha os seis fios do
+  sensor; o vermelho e o cinzento (3V3 e GND) passaram do sensor para a plaquinha B durante o
+  ensaio, porque a placa só tem um pino de 3V3.
+- **À primeira a caixa 2 não ouviu nada** (0 em 7 passos, com a placa que fazia de motor a dizer
+  que tinha saído tudo sem erros). Causa, vista nas fotos que o Ivo mandou a seguir: faltavam os
+  dois fios entre as plaquinhas. Postos esses dois fios, passou à primeira. Fica a lição para o
+  barco: uma caixa 2 que conta zero sem erros é o retrato de um par de fios que não chega a ela
+  (ou que chega trocado: com CANH e CANL trocados também se ouve silêncio, sem erros).
+- As portas USB trocaram ao desligar e voltar a ligar os cabos (a caixa 2 passou da COM6 para a
+  COM3). Antes de gravar ou de mandar comandos, ouve-se cada porta sem escrever: a caixa diz quem
+  é no batimento (`$AQB,1` ou `$AQB,2`), e a placa com o programa de bancada fica calada.
+- No fim a placa da caixa 1 voltou a levar o programa dela (0.2.1, `npm run gravar:1 -- COM5`) e
+  as duas caixas voltaram a ver-se pelo rádio.
+
+**Espaço para a caixa 2 no barco (o Ivo, 26/11, 10:24):** por baixo dos mostradores cabe uma caixa
+com até **8,5 cm de largura, 20 cm de altura e 30 cm de comprimento**. Chega para a placa, a
+plaquinha, os dois relés e o conversor. Falta saber como se prende e por onde entram os cabos.
+
 **25/11, 20:30: quatro fotos da ficha dos botões** (uma de frente, com a cunha verde, e três do
 lado dos fios; é uma Deutsch de 6 pinos, como a dos dados). Nas três vê-se a mesma arrumação: do
 lado do fecho ficam o roxo e o tampão; ao meio, frente a frente, o vermelho e o amarelo; na ponta
