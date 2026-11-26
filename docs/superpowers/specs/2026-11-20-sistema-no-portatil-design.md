@@ -702,6 +702,29 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
 - O Ivo tem um sortido de resistências (50 valores, 1/4 W, com as de 1 kΩ): as resistências em
   série das entradas do log e do vento saem daí.
 
+**Base da caixa 2, versão 1 (26/11, 14:45; desenhada, por aprovar pelo Ivo e por imprimir).** Pedido
+dele: "desenha a base da caixa 2 para pormos as placas no sítio"; as medidas do espaço (8,5 × 20 ×
+30 cm) são o máximo, e pode ser mais pequena. Gera-se com `software/ferramentas/caixas/caixa2_base.py`
+(imagens com `caixa2_imagens.py`); ficheiros em `docs/caixas/caixa2-base.stl`, `.step` e `.jpg`.
+
+- 128 × 60 × 13 mm com as orelhas (a base em si tem 104 × 60), fundo de 3 mm e o mesmo rebordo da
+  caixa 1 para a tampa.
+- Leva a placa ESP32 e a plaquinha do barramento, as duas de pinos para cima e enfiadas em espigões
+  (gota de cola em cima). As torres do ESP32 são as da caixa 1, sem mudar medida nenhuma.
+- A plaquinha fica ao lado da ficha USB, com os pinos virados para a ponta dos cabos: a ponte de fio
+  dela sai para esse lado e tem 10 mm livres. As medidas da plaquinha vêm das fotos do Ivo (régua: o
+  passo dos pinos), com ±0,3 mm: por isso os espigões dela têm 2,4 mm (furos de 3,0) e a distância
+  entre eles é de 11,2 mm, que serve para furos entre 10,6 e 11,8 mm.
+- Os cabos saem todos pela mesma ponta, por duas passagens no rebordo. O cabo USB prende-se a um
+  berço com abraçadeira, como na caixa 1; os fios do motor prendem-se ao fundo, também com
+  abraçadeira.
+- Prende-se por uma orelha em cada ponta (furo de 4,3 mm), para não alargar a base; por baixo é lisa.
+- **De fora, de propósito:** o conversor (bloco fechado com orelhas próprias: prende-se ao lado e só
+  a ficha USB-C entra na base) e os dois relés (entram na versão 2, com as medidas das peças
+  verdadeiras e com a tampa).
+- A verificação do programa dá tudo livre: nada bate em nada, o ESP32 pousa em 10 mm² e a plaquinha
+  em 25 mm².
+
 **25/11, 20:30: quatro fotos da ficha dos botões** (uma de frente, com a cunha verde, e três do
 lado dos fios; é uma Deutsch de 6 pinos, como a dos dados). Nas três vê-se a mesma arrumação: do
 lado do fecho ficam o roxo e o tampão; ao meio, frente a frente, o vermelho e o amarelo; na ponta
