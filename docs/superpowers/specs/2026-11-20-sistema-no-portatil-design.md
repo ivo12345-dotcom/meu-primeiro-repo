@@ -725,7 +725,7 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
 - **Wi-Fi do AIS:** já vinha configurado pelo dono anterior, como ponto de acesso (o AIS cria a
   rede dele; não entra na de terra), canal 3, endereço 192.168.0.1, porta 2000. Só se configura
   pelo proAIS2 e com o AIS alimentado a 12 V. O nome e a palavra-passe da rede não se escrevem
-  aqui. Por confirmar: se o Ivo já mudou a palavra-passe, e o ensaio com um aparelho que não seja o
+  aqui. O Ivo mudou a palavra-passe nesse dia (20:00). Por fazer: o ensaio com um aparelho que não seja o
   telemóvel que dá Internet ao portátil.
 - **Separador Anti-tamper:** fica sem palavra-passe (não se tranca o aparelho com uma palavra-passe
   que se pode perder).
