@@ -639,6 +639,10 @@ Como foi:
   é no batimento (`$AQB,1` ou `$AQB,2`), e a placa com o programa de bancada fica calada.
 - No fim a placa da caixa 1 voltou a levar o programa dela (0.2.1, `npm run gravar:1 -- COM5`) e
   as duas caixas voltaram a ver-se pelo rádio.
+- Desfeita a montagem, a caixa 1 volta aos seis fios do sensor, marcados em
+  `docs/caixas/bancada-caixa1-seis-fios.jpg` (o fio da massa é agora cinzento; na foto de 22/11
+  era preto). Antes de correr os ensaios da caixa 1 sai o fio do RX2: o vento a fingir escreve
+  nesse pino e o módulo também.
 
 **Espaço para a caixa 2 no barco (o Ivo, 26/11, 10:24):** por baixo dos mostradores cabe uma caixa
 com até **8,5 cm de largura, 20 cm de altura e 30 cm de comprimento**. Chega para a placa, a
