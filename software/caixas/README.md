@@ -20,7 +20,7 @@ comandos, os pacotes do rádio) está em `comum/`.
 | Caixa 1: sinal de vida, reinício automático, roda do log, vento, movimento a fingir | feito e ensaiado na placa |
 | Caixa 1: rádio | feito; a placa passa os ensaios dela com o rádio ligado |
 | Caixa 2: escuta do motor, rádio, motor a fingir | feito e ensaiado com as duas placas ligadas (a escuta do motor verdadeiro só no barco) |
-| Caixa 2: escuta pelo fio, na bancada, com os módulos do barramento | **passou a 26/11**: 6145 tramas saídas, 6145 ouvidas, nenhum erro (rajadas de 1000 a 200 e a 1000 por segundo, e 10 s à cadência do motor) |
+| Caixa 2: escuta pelo fio, na bancada, com os módulos do barramento | **passou a 26/11**: 6145 tramas saídas, 6145 ouvidas, nenhum erro (rajadas de 1000 a 200 e a 1000 por segundo, e 10 s à cadência do motor). Desfeita a montagem, os ensaios das duas placas passaram todos (40 em 40, `npm test`) |
 | Revisão independente do programa (23/11) | feita; os cinco pontos importantes estão corrigidos na versão **0.2.1**, que é a que está gravada nas duas placas |
 | Sensor de movimento verdadeiro (BNO085) | **por fazer**: o primeiro sensor deixou de responder a 22/11; espera-se o segundo. Até lá a caixa 1 diz ao portátil que o sensor não responde |
 | Entradas do log e do vento no barco | **por fazer**: falta escolher o comparador e o adaptador (medidas do Ivo). Cada entrada leva uma **resistência de 1 kΩ em série** junto à placa (ver "Sinais a fingir") |

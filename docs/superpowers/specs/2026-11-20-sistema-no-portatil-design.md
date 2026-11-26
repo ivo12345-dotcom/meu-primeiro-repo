@@ -643,6 +643,11 @@ Como foi:
   `docs/caixas/bancada-caixa1-seis-fios.jpg` (o fio da massa é agora cinzento; na foto de 22/11
   era preto). Antes de correr os ensaios da caixa 1 sai o fio do RX2: o vento a fingir escreve
   nesse pino e o módulo também.
+- **Verificação no fim (11:45–11:50):** com a montagem desfeita, a plaquinha A na placa da
+  caixa 2 e o sensor outra vez com os seis fios, `npm test` com as duas placas deu **40 em 40**,
+  nenhuma falha e nenhuma saltada. Antes disso, uma volta só dos ensaios da caixa 2 tinha falhado
+  num (5 em 6): uma linha chegou com 64 bytes vazios colados, a mania n.º 2 da ponte USB (acima);
+  repetida logo a seguir, passou (6 em 6).
 
 **Espaço para a caixa 2 no barco (o Ivo, 26/11, 10:24):** por baixo dos mostradores cabe uma caixa
 com até **8,5 cm de largura, 20 cm de altura e 30 cm de comprimento**. Chega para a placa, a
