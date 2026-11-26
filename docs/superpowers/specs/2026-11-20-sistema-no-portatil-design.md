@@ -702,7 +702,23 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
 - O Ivo tem um sortido de resistências (50 valores, 1/4 W, com as de 1 kΩ): as resistências em
   série das entradas do log e do vento saem daí.
 
-**Base da caixa 2, versão 1 (26/11, 14:45; desenhada, por aprovar pelo Ivo e por imprimir).** Pedido
+**Decisão do Ivo sobre a base (26/11, 15:02–15:28): fica tudo na mesma base**, a placa, a plaquinha, o
+conversor e os dois relés ("vamos meter tudo na base, o conversor e os relés também"). A versão 1, abaixo,
+não se imprime. A base completa desenha-se quando os relés chegarem ("quando chegar os relés fazemos
+isso"), com as medidas das peças na mão: dos relés, e do conversor o corpo, o comprimento com as orelhas e o
+comprimento do cabo até à ficha USB-C, que fica enrolado dentro da base.
+
+**Corrente da caixa 2 no ensaio das 18h (26/11, 15:32–15:36):** o Ivo queria dá-la pelo cabo USB do
+portátil, e o portátil vai estar nos 220 V do barco. Assim a terra da tomada ficava unida à massa do motor
+por um fio fino e pela porta USB, com o motor de arranque a trabalhar: não. A caixa 2 leva um power bank ao
+pé dela (se ele se desligar sozinho por a caixa gastar pouco, passa-se para a tomada USB da mesa de
+navegação, com um cabo mais comprido, ou para um carregador de telemóvel). A caixa 1 fica no portátil.
+Esquema das ligações e ordem dos passos numa folha: `docs/caixas/caixa2-esquema-barco.jpg`.
+
+**Água doce (26/11, 14:59):** o medidor só entra quando houver o Pi. Até lá, o plugin da água fica
+desligado no perfil de bordo e o erro que ele dá no separador Motor ("HTTP 500") não se corrige.
+
+**Base da caixa 2, versão 1 (26/11, 14:45; desenhada; NÃO se imprime, ver a decisão acima).** Pedido
 dele: "desenha a base da caixa 2 para pormos as placas no sítio"; as medidas do espaço (8,5 × 20 ×
 30 cm) são o máximo, e pode ser mais pequena. Gera-se com `software/ferramentas/caixas/caixa2_base.py`
 (imagens com `caixa2_imagens.py`); ficheiros em `docs/caixas/caixa2-base.stl`, `.step` e `.jpg`.
