@@ -794,6 +794,14 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
   Proposta: 4 PC817 e 5 BC547C, 1,09 €. Placa de furos de 5 × 7 cm, se fizer falta:
   [ref. 096-6400](https://mauser.pt/096-6400/placa-protoboard-50x70mm-432-furos), 0,95 €. A pesquisa
   do site novo é `https://mauser.pt/search?q=...`; o aviso dos cookies recusa-se em "Personalizar".
+- **Servem estas peças para a roda do log e para a sonda? (pergunta do Ivo, 26/11, 21:20.)** Para a
+  roda, não: o sinal dela é fraco e pede o comparador da tabela das peças, que só se escolhe depois
+  da medida na ponta cortada (candidato provável: LM393 em DIP, na Mauser
+  [ref. 001-2380](https://mauser.pt/001-2380/texas-instruments-lm393p-ci-comparador-de-tensao-duplo-baixa-potencia),
+  0,47 €). Para a sonda, depende das costas do mostrador (foto por tirar): se tiver uma saída como a
+  do vento, é mais um PC817; se tiver só a saída antiga para o segundo mostrador (dois fios de
+  dados, sinal rápido), o PC817 é lento de mais e bastam resistências para baixar o nível. O Claude
+  aposta no segundo caso (estimativa, sem prova).
 
 **A bordo, 26/11, 17:55–18:50 (as caixas não se ensaiaram: o Ivo deixou-as para outro dia).**
 
