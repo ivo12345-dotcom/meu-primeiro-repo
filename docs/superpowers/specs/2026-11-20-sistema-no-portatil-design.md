@@ -649,9 +649,9 @@ lado dos fios; é uma Deutsch de 6 pinos, como a dos dados). Nas três vê-se a 
 lado do fecho ficam o roxo e o tampão; ao meio, frente a frente, o vermelho e o amarelo; na ponta
 oposta, frente a frente, o branco e o preto. Bate com os números que o Ivo leu na ficha (1 roxo,
 2 vermelho, 3 branco, 4 preto, 5 amarelo, 6 tampão). Os números moldados não se conseguem ler nas
-fotos. A ficha pequena de 3 pinos da caixa do motor ficou por ver (ele já tinha saído). Por
-fazer: a foto marcada dos três fios (as fotos mostram as mãos de perto: a pele desfoca-se antes
-de irem para o repositório).
+fotos. A ficha pequena de 3 pinos da caixa do motor ficou por ver (ele já tinha saído). A foto
+marcada dos três fios (amarelo, roxo e preto) ficou feita a 26/11, com a pele das mãos desfocada:
+`docs/caixas/caixa2-ficha-botoes-fios.jpg`.
 
 As duas resistências de 1 kΩ são regra da revisão de 23/11: os sinais a fingir da caixa 1 escrevem
 nos próprios pinos de entrada, e sem a resistência um ensaio corrido por engano com o barco ligado
