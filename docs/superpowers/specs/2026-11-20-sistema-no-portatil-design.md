@@ -702,6 +702,23 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
 - O Ivo tem um sortido de resistências (50 valores, 1/4 W, com as de 1 kΩ): as resistências em
   série das entradas do log e do vento saem daí.
 
+**A bordo, 27/11, 17:27–17:41: a roda do log medida na ponta cortada do cabo (fio do meio e malha).**
+
+- **Em ohms**, a rodar a roda à mão: o valor salta entre "OL" (aberto) e zero ou poucos ohms (o Ivo
+  viu até 24 Ω). **Em volts alternados, a girar: nada.** É a assinatura de um contacto que a roda
+  abre e fecha (como um interruptor de lâminas com íman), e não de uma bobina com sinal fraco, que
+  era o que este desenho supunha. A roda está viva.
+- **O que muda:** o comparador (e o amplificador) deixam de ser precisos; o LM393 e o LM358
+  comprados ficam de reserva. O programa da caixa 1 já serve como está (`log.h`: pino D27 com
+  puxada para baixo, conta as subidas e recusa duas a menos de 4 ms, que é o que apaga o ressalto
+  de um contacto).
+- **Ligação proposta (por montar e ensaiar):** 3,3 V → resistência de 1 kΩ → um fio da roda; o
+  outro fio da roda → D27; de D27 à massa, uma resistência de 10 kΩ e um condensador de 100 nF. O
+  contacto fechado leva o pino aos 3,3 V (uma subida, um impulso); aberto, o pino cai a zero.
+- **Por saber:** quantas vezes fecha por volta (pedido ao Ivo: multímetro no apito, uma volta
+  devagar, contar os apitos e ver se é sempre nas mesmas posições). Os nós por impulso acertam-se
+  depois, a navegar, contra o GPS.
+
 **A bordo, 26/11, 18:50–20:00: o programa do AIS, o registo das viagens e o mostrador do vento.**
 
 - **Programa do AIS (proAIS2 2.0.0, do fabricante).** Descarregado do site da em-trak (página de
