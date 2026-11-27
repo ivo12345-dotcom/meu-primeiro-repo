@@ -9,6 +9,7 @@
 #include <Arduino.h>
 #include <driver/gpio.h>
 #include <driver/ledc.h>
+#include <driver/uart.h>
 #include <esp_rom_gpio.h>
 #include <esp_timer.h>
 #include <hal/gpio_ll.h>
@@ -70,30 +71,45 @@ inline bool ensaioLog(long hz) {
 // ---- O vento a fingir: uma segunda porta série da placa escreve a frase para o próprio pino do vento --
 // A porta de escrita sai num pino sem fio (TX2) e o mesmo sinal é levado, por dentro do chip, ao pino
 // do vento, que fica ao mesmo tempo saída (do gerador) e entrada (da leitura verdadeira).
-const int PINO_GERADOR_VENTO = 17;  // TX2: não leva fio nenhum
+//
+// "Por fora" (o quarto valor do comando): a caixa faz de mostrador. A frase sai SÓ pelo pino TX2 e ao
+// contrário, com o repouso em baixo, que é como o mostrador NASA a manda; não se leva por dentro ao pino
+// do vento, que fica só entrada. Quem a tem de trazer, direita, ao RX2 é a plaquinha do optoacoplador,
+// ligada por fora (ensaio/plaquinha-vento.js). Sem plaquinha, não entra nada.
+const int PINO_GERADOR_VENTO = 17;  // TX2: sem fio nenhum, a não ser no ensaio da plaquinha
 const char FIM_DE_FRASE[] = {13, 10, 0};  // o fim de uma frase NMEA 0183: CR e LF
-static bool ensaioVentoLigado = false, ensaioVentoLixo = false, ensaioVentoExtra = false;
+static bool ensaioVentoLigado = false, ensaioVentoLixo = false, ensaioVentoExtra = false, ensaioVentoPorFora = false;
 static long ensaioVentoGrau = 0, ensaioVentoNo = 0;  // em décimos
 static uint32_t ensaioVentoProxima = 0, ensaioVentoSemente = 20261123;
 
 // decimosDeGrau 0 a 3599 e decimosDeNo 0 a 999; (0, 0) para; (-1, x) manda lixo em vez da frase;
-// extra junta por segundo uma frase que não é o MWV. Devolve false se estiver fora dos limites.
-inline bool ensaioVento(long decimosDeGrau, long decimosDeNo, bool extra) {
+// extra junta por segundo uma frase que não é o MWV; porFora manda a frase só pelo pino TX2 e ao
+// contrário (ver acima). Devolve false se estiver fora dos limites.
+inline bool ensaioVento(long decimosDeGrau, long decimosDeNo, bool extra, bool porFora = false) {
   const bool lixo = decimosDeGrau == -1;
   if (!lixo && (decimosDeGrau < 0 || decimosDeGrau > 3599 || decimosDeNo < 0 || decimosDeNo > 999)) return false;
   const bool ligar = lixo || decimosDeGrau != 0 || decimosDeNo != 0;
+  // parar, ou mudar de caminho com o gerador ligado: desliga-se primeiro, e o pino do vento volta a ser
+  // só entrada
+  if (ensaioVentoLigado && (!ligar || porFora != ensaioVentoPorFora)) {
+    Serial1.flush();
+    gpio_set_direction((gpio_num_t)PINO_VENTO, GPIO_MODE_INPUT);
+    Serial1.end();
+    ensaioVentoLigado = false;
+  }
   if (ligar && !ensaioVentoLigado) {
     Serial1.setTxBufferSize(512);
     Serial1.begin(4800, SERIAL_8N1, -1, PINO_GERADOR_VENTO);
-    gpio_set_direction((gpio_num_t)PINO_VENTO, GPIO_MODE_INPUT_OUTPUT);
-    esp_rom_gpio_connect_out_signal(PINO_VENTO, U1TXD_OUT_IDX, false, false);
+    // o sentido da escrita diz-se sempre, para não ficar o da vez anterior
+    uart_set_line_inverse(UART_NUM_1, porFora ? UART_SIGNAL_TXD_INV : UART_SIGNAL_INV_DISABLE);
+    if (!porFora) {
+      gpio_set_direction((gpio_num_t)PINO_VENTO, GPIO_MODE_INPUT_OUTPUT);
+      esp_rom_gpio_connect_out_signal(PINO_VENTO, U1TXD_OUT_IDX, false, false);
+    }
     ensaioVentoProxima = millis();
-  } else if (!ligar && ensaioVentoLigado) {
-    Serial1.flush();
-    gpio_set_direction((gpio_num_t)PINO_VENTO, GPIO_MODE_INPUT);  // volta a ser só entrada
-    Serial1.end();
   }
   ensaioVentoLigado = ligar;
+  ensaioVentoPorFora = ligar && porFora;
   ensaioVentoLixo = lixo;
   ensaioVentoExtra = extra;
   ensaioVentoGrau = decimosDeGrau;

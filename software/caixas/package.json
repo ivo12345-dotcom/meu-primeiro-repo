@@ -1,6 +1,6 @@
 {
   "name": "arlequin-caixas",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "O programa das duas caixas ESP32 do Arlequin e os ensaios com as placas ligadas ao portátil",
   "license": "MIT",

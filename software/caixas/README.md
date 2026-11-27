@@ -22,7 +22,7 @@ comandos, os pacotes do rádio) está em `comum/`.
 | Caixa 2: escuta do motor, rádio, motor a fingir | feito e ensaiado com as duas placas ligadas (a escuta do motor verdadeiro só no barco) |
 | Caixa 2: escuta pelo fio, na bancada, com os módulos do barramento | **passou a 26/11**: 6145 tramas saídas, 6145 ouvidas, nenhum erro (rajadas de 1000 a 200 e a 1000 por segundo, e 10 s à cadência do motor). Desfeita a montagem, os ensaios das duas placas passaram todos (40 em 40, `npm test`) |
 | Escuta do motor no barco (`ensaio/ouvir-motor.js`) | escrita e experimentada em casa a 26/11 com o motor a fingir; **a primeira escuta do motor verdadeiro está por fazer** |
-| Revisão independente do programa (23/11) | feita; os cinco pontos importantes estão corrigidos na versão **0.2.1**, que é a que está gravada nas duas placas |
+| Revisão independente do programa (23/11) | feita; os cinco pontos importantes estão corrigidos na versão **0.2.1**. A **0.2.2** (27/11) só acrescenta à caixa 1 o vento "por fora", para ensaiar a plaquinha do vento; a caixa 2 não muda, mas diz a versão e tem de ser gravada outra vez para os ensaios dela passarem |
 | Sensor de movimento verdadeiro (BNO085) | **por fazer**: o primeiro sensor deixou de responder a 22/11; espera-se o segundo. Até lá a caixa 1 diz ao portátil que o sensor não responde |
 | Entradas do log e do vento no barco | **por fazer**: falta escolher o comparador e o adaptador (medidas do Ivo). Cada entrada leva uma **resistência de 1 kΩ em série** junto à placa (ver "Sinais a fingir") |
 
@@ -197,13 +197,40 @@ ela deixar de o dizer, enquanto os últimos valores a fingir ainda valem.
 | Comando | Caixa | O que faz |
 |---|---|---|
 | `log,<Hz>` | 1 | Impulsos da roda a fingir (0 para; 26 dá 5,2 nós) |
-| `vento,<décimos de grau>,<décimos de nó>` | 1 | Uma frase de vento por segundo (`0,0` para; `-1,0` manda lixo, para ensaiar a entrada) |
+| `vento,<décimos de grau>,<décimos de nó>[,<0\|1>[,<0\|1>]]` | 1 | Uma frase de vento por segundo (`0,0` para; `-1,0` manda lixo, para ensaiar a entrada). O terceiro valor a 1 junta uma segunda frase, que não é o MWV. O quarto valor a 1 manda a frase **por fora**: só pelo pino TX2 e ao contrário, como o mostrador a manda (ver "Ensaio da plaquinha do vento") |
 | `movimento,<0\|1>` | 1 | 100 leituras por segundo com 12° de adornamento e a proa a 245° |
 | `avalanche,<1\|2>,<kHz>` | 1 | Uma onda rápida no pino do log (1) ou do vento (2), para ensaiar que um fio no ar ou um comparador a oscilar não param a caixa (0 para; 2000 no máximo) |
 | `motor,<rpm>` | 2 | Tramas do motor a fingir (0 para) |
 | `parar` | as duas | Desliga todos os geradores |
 | `estado` | as duas | Os contadores da caixa (o que entrou em cada entrada, o que se perdeu) |
 | `prender` | as duas | Prende a caixa de propósito, para ensaiar o reinício automático |
+
+## Ensaio da plaquinha do vento
+
+A plaquinha é o optoacoplador PC817 que fica entre a ficha do mostrador NASA e o RX2 da caixa 1
+(montagem: `docs/caixas/vento-plaquinha-montagem.jpg`, feita por
+`software/ferramentas/caixas/vento_plaquinha.py`). O mostrador manda a frase com o repouso em baixo e
+com uma tensão que a placa não aguenta; a plaquinha baixa a tensão, põe o sinal direito e separa as
+duas massas.
+
+Ensaia-se em casa só com a caixa 1 e o portátil: a caixa faz de mostrador. Com o quarto valor do
+comando `vento` a 1, a frase sai só pelo pino TX2, ao contrário (repouso em baixo), e não é levada por
+dentro ao pino do vento. Quem a tem de trazer ao RX2 é a plaquinha.
+
+Ligações, com o cabo USB fora (`docs/caixas/vento-plaquinha-ensaio-ligacoes.jpg`): TX2 ao fio
+AMARELO, um GND ao fio VERDE, RX2 ao fio RX2, o outro GND ao fio GND, 3V3 ao fio 3V3. O 3V3 e um dos
+GND são os do sensor: o vermelho e o cinzento dele saem durante o ensaio e voltam no fim.
+
+```
+node ensaio/plaquinha-vento.js COM3        (três fases de 20 s; outro número de segundos a seguir à porta)
+```
+
+Três ventos diferentes, o último com uma segunda frase colada. Cada fase passa se chegar uma frase
+por segundo, igual à mandada, e nenhuma for deitada fora. Se falhar, diz por onde procurar. Na placa a
+frase sai a 3,3 V e passam 2 mA no díodo do optoacoplador: menos do que com o mostrador (5 ou 12 V),
+por isso quem passa aqui passa lá com folga.
+
+`npm test` corre-se **sem** a plaquinha ligada: os outros ensaios do vento escrevem no próprio RX2.
 
 A caixa responde a cada comando com `$AQR,<comando>,<resultado>*HH`. O programa do portátil nunca manda
 comandos: só os ensaios o fazem.

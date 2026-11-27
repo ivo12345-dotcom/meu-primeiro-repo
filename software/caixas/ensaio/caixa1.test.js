@@ -248,6 +248,33 @@ test('o gerador do vento liga e desliga sem a leitura morrer, e a caixa conta o 
   assert.equal(depois['vento-invalidas'], antes['vento-invalidas'])
 }))
 
+// O mostrador a fingir "por fora": o quarto valor do comando faz a frase sair só pelo pino TX2 e ao
+// contrário (repouso em baixo, como a manda o mostrador NASA), sem a levar por dentro ao pino do vento.
+// Quem a traz ao RX2 é a plaquinha do optoacoplador, e isso ensaia-se com ensaio/plaquinha-vento.js.
+// Aqui a placa está sem plaquinha e sem fio nenhum no RX2: não pode entrar nada.
+test('vento por fora: sem a plaquinha não entra nada pelo pino do vento, e a caixa diz que finge', COM_PLACA, () => comACaixa(async (p) => {
+  assert.equal(await p.manda('parar'), 'ok')
+  const antes = contadores(await p.manda('estado'))
+  assert.equal(await p.manda('vento', 350, 140, 0, 1), 'ok')
+  const linhas = await p.linhas(4000)
+  assert.equal(ventos(linhas).length, 0, `entrou uma frase de vento sem fio nenhum: ${ventos(linhas)[0]}`)
+  const b = batimentos(linhas)
+  assert.ok(b.length >= 3 && b.every(x => x.sim === true), 'a caixa não disse que fingia')
+  const durante = contadores(await p.manda('estado'))
+  assert.equal(durante['vento-bytes'], antes['vento-bytes'], 'entraram bytes pelo pino do vento sem fio nenhum')
+  assert.equal(durante['vento-invalidas'], antes['vento-invalidas'])
+  // e a seguir o caminho por dentro continua a servir, com a frase direita
+  assert.equal(await p.manda('vento', 350, 140), 'ok')
+  const v = ventos(await p.linhas(3500))
+  assert.ok(v.length >= 2, `${v.length} frases de vento por dentro depois do ensaio por fora`)
+  assert.ok(v.every(f => f === '$IIMWV,35.0,R,14.0,N,A*3E'), v[0])
+  // de dentro para fora sem parar pelo meio: o pino do vento tem de voltar a ser só entrada
+  assert.equal(await p.manda('vento', 350, 140, 0, 1), 'ok')
+  await espera(1500)
+  assert.equal(ventos(await p.linhas(3000)).length, 0, 'a frase continuou a ir por dentro')
+  assert.equal(await p.manda('parar'), 'ok')
+}))
+
 // --- O movimento (leituras a fingir, 100 por segundo, com o cenário da caixa a fingir do portátil) ----
 const GRAU = Math.PI / 180
 const movimentos = (linhas) => linhas.map(ler).filter(l => l && l.tipo === 'movimento')

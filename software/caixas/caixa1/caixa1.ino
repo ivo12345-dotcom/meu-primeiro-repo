@@ -69,8 +69,9 @@ static void obedece(const char *linha) {
     responde(nome, ensaioLog(v[0]) ? "ok" : "fora-dos-limites");
   } else if (strcmp(nome, "movimento") == 0 && quantos == 1) {
     responde(nome, ensaioMovimento(v[0]) ? "ok" : "fora-dos-limites");
-  } else if (strcmp(nome, "vento") == 0 && (quantos == 2 || quantos == 3)) {
-    responde(nome, ensaioVento(v[0], v[1], quantos == 3 && v[2] != 0) ? "ok" : "fora-dos-limites");
+  } else if (strcmp(nome, "vento") == 0 && quantos >= 2 && quantos <= 4) {
+    // o terceiro valor junta uma segunda frase; o quarto manda a frase por fora, pelo pino TX2
+    responde(nome, ensaioVento(v[0], v[1], quantos >= 3 && v[2] != 0, quantos == 4 && v[3] != 0) ? "ok" : "fora-dos-limites");
   } else if (strcmp(nome, "avalanche") == 0 && quantos == 2) {
     responde(nome, ensaioAvalanche(v[0], v[1]) ? "ok" : "fora-dos-limites");
   } else if (strcmp(nome, "estado") == 0 && quantos == 0) {
