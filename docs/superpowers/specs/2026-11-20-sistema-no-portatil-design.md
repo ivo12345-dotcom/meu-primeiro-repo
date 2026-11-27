@@ -715,9 +715,12 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
 - **Ligação proposta (por montar e ensaiar):** 3,3 V → resistência de 1 kΩ → um fio da roda; o
   outro fio da roda → D27; de D27 à massa, uma resistência de 10 kΩ e um condensador de 100 nF. O
   contacto fechado leva o pino aos 3,3 V (uma subida, um impulso); aberto, o pino cai a zero.
-- **Por saber:** quantas vezes fecha por volta (pedido ao Ivo: multímetro no apito, uma volta
-  devagar, contar os apitos e ver se é sempre nas mesmas posições). Os nós por impulso acertam-se
-  depois, a navegar, contra o GPS.
+- **Contado pelo Ivo (17:44), com o multímetro no apito:** apita quase a volta toda e cala-se uma
+  vez em cada volta completa. O contacto está fechado quase sempre e abre uma vez por volta: **um
+  impulso por volta** (o desenho supunha cerca de dois). Com a ligação proposta o pino fica em cima
+  quase sempre, cai quando o contacto abre e volta a subir: uma subida por volta, que é o que o
+  programa conta. Com o contacto fechado passam 0,3 mA, mesmo com o barco parado. Os nós por
+  impulso acertam-se depois, a navegar, contra o GPS.
 
 **A bordo, 26/11, 18:50–20:00: o programa do AIS, o registo das viagens e o mostrador do vento.**
 
