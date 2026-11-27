@@ -217,9 +217,12 @@ Ensaia-se em casa só com a caixa 1 e o portátil: a caixa faz de mostrador. Com
 comando `vento` a 1, a frase sai só pelo pino TX2, ao contrário (repouso em baixo), e não é levada por
 dentro ao pino do vento. Quem a tem de trazer ao RX2 é a plaquinha.
 
-Ligações, com o cabo USB fora (`docs/caixas/vento-plaquinha-ensaio-ligacoes.jpg`): TX2 ao fio
-AMARELO, um GND ao fio VERDE, RX2 ao fio RX2, o outro GND ao fio GND, 3V3 ao fio 3V3. O 3V3 e um dos
-GND são os do sensor: o vermelho e o cinzento dele saem durante o ensaio e voltam no fim.
+Ligações, com o cabo USB fora (`docs/caixas/vento-plaquinha-ensaio-ligacoes.jpg`): TX2 à entrada dos
+dados da plaquinha (furo C3), um GND à massa do lado do mostrador (H4), RX2 ao furo N3, o outro GND ao
+N4, 3V3 ao T3. O 3V3 e um dos GND são os do sensor: o vermelho e o cinzento dele saem durante o
+ensaio e voltam no fim. Na plaquinha do Ivo os fios ficaram: azul em C3, claro em H4, amarelo em N3,
+verde sem fita em N4 e verde com fita em T3 (no desenho de montagem, "AMARELO" e "VERDE" são as
+cores dos fios da ficha do mostrador, que ligam ao C3 e ao H4).
 
 ```
 node ensaio/plaquinha-vento.js COM3        (três fases de 20 s; outro número de segundos a seguir à porta)
