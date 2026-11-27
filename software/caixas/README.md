@@ -24,7 +24,8 @@ comandos, os pacotes do rádio) está em `comum/`.
 | Escuta do motor no barco (`ensaio/ouvir-motor.js`) | escrita e experimentada em casa a 26/11 com o motor a fingir; **a primeira escuta do motor verdadeiro está por fazer** |
 | Revisão independente do programa (23/11) | feita; os cinco pontos importantes estão corrigidos na versão **0.2.1**. A **0.2.2** (27/11) só acrescenta à caixa 1 o vento "por fora", para ensaiar a plaquinha do vento; a caixa 2 não muda, mas diz a versão e tem de ser gravada outra vez para os ensaios dela passarem |
 | Sensor de movimento verdadeiro (BNO085) | **por fazer**: o primeiro sensor deixou de responder a 22/11; espera-se o segundo. Até lá a caixa 1 diz ao portátil que o sensor não responde |
-| Entradas do log e do vento no barco | **por fazer**: falta escolher o comparador e o adaptador (medidas do Ivo). Cada entrada leva uma **resistência de 1 kΩ em série** junto à placa (ver "Sinais a fingir") |
+| Entrada do vento | **plaquinha do optoacoplador montada e ensaiada em casa a 27/11: passa** (três fases de 20 s, nenhuma frase estragada). Falta o cabo no barco e a prova com o mostrador verdadeiro |
+| Entrada do log | a roda é um contacto que abre uma vez por volta (medido a 27/11): dispensa o comparador. Ligação por montar: 3,3 V, 1 kΩ, roda, D27, e de D27 à massa 10 kΩ e 100 nF |
 
 ## Os pinos
 

@@ -702,6 +702,32 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
 - O Ivo tem um sortido de resistências (50 valores, 1/4 W, com as de 1 kΩ): as resistências em
   série das entradas do log e do vento saem daí.
 
+**Em casa, 27/11, 19:33–20:55: a plaquinha do vento montada e ensaiada. PASSA.**
+
+- **Montagem.** Placa de furos de 5 × 7 cm com letras (A a X); suporte de 8 pinos em J3–J6 e
+  M3–M6, PC817 na metade de cima, 1 kΩ em D3–H3, 2,2 kΩ em O3–S3, díodo 1N4007 em pé em I4/I3 (risca
+  para cima). Desenho: `docs/caixas/vento-plaquinha-montagem.jpg`, feito e conferido por
+  `software/ferramentas/caixas/vento_plaquinha.py`. O Ivo ia soldar resistências de 1 Ω e de 2,2 Ω
+  (os sacos do sortido são parecidos): viu-se na foto dele a tempo. As certas têm um K no saco.
+- **Fios da plaquinha do Ivo:** azul em C3 (entrada dos dados; no barco recebe o amarelo da ficha
+  do mostrador), branco em H4 (massa do lado do mostrador; no barco recebe o verde da ficha),
+  amarelo em N3 (RX2), verde sem fita em N4 (GND da caixa 1), verde com fita em T3 (3V3).
+- **Ensaio (20:53), com a caixa 1 a fazer de mostrador** (programa 0.2.2, comando
+  `vento,...,1`: a frase sai só pelo TX2, ao contrário). `node ensaio/plaquinha-vento.js COM3`:
+  fase 1, 20 frases certas em 20 s; fase 2, 21 em 20 s (uma na fronteira da janela); fase 3, com
+  duas frases coladas, 20 em 20 s. Nenhuma estragada, e os bytes contados batem com os mandados
+  (540, 548 e 1340). Antes do ensaio, com a plaquinha ligada e sem sinal, o pino do vento não mexeu
+  uma única vez. Na placa a frase sai a 3,3 V (2 mA no díodo do PC817): com o mostrador, a 5 ou
+  12 V, há mais folga.
+- **A gravação da 0.2.2 falhou à primeira** (a 921 600 baud a ligação caiu aos 9 %: "No more data
+  to read from the serial port"). À segunda, a 115 200, ficou gravada e conferida:
+  `arduino-cli upload --fqbn esp32:esp32:esp32doit-devkit-v1:UploadSpeed=115200 --input-dir <pasta> -p COM3 caixa1`.
+  Causa por saber (os fios da plaquinha estavam ligados; não tocam nos pinos da gravação).
+- **Por fazer:** correr os ensaios todos da caixa 1 com a 0.2.2 e sem a plaquinha; gravar a 0.2.2
+  na caixa 2; decidir como a plaquinha recebe os 3,3 V dentro da caixa 1, onde o pino 3V3 da placa
+  já é do sensor (proposta do Claude: o pino 3Vo do sensor, que está vazio e dá 3,3 V); o cabo de
+  rede blindado do mostrador até à caixa 1; e a prova com o mostrador verdadeiro, no barco.
+
 **A bordo, 27/11, 17:27–17:41: a roda do log medida na ponta cortada do cabo (fio do meio e malha).**
 
 - **Em ohms**, a rodar a roda à mão: o valor salta entre "OL" (aberto) e zero ou poucos ohms (o Ivo
