@@ -702,6 +702,40 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
 - O Ivo tem um sortido de resistências (50 valores, 1/4 W, com as de 1 kΩ): as resistências em
   série das entradas do log e do vento saem daí.
 
+**Em casa, 27/11, 20:39–21:40: o sensor de movimento novo, ligado e a medir.**
+
+- **Chegou o segundo BNO085** (o primeiro deixou de responder a 22/11, ponto 12). O Ivo soldou-lhe
+  os pentes, fechou com solda as pontes PS0 e PS1 das costas (vistas na foto dele: boas) e ligou
+  os oito fios da Tarefa 7 do plano: VIN→3V3 (vermelho), GND→GND (cinzento), SCL→D22 (castanho),
+  SDA→D21 (laranja), INT→D19 (branco), RST→D18 (azul), DI→D23 (verde, novo) e CS→D5 (roxo, novo).
+  Conferido nas fotos dele, nas duas pontas, antes de dar corrente. Fotos marcadas:
+  `docs/caixas/sensor-novo-oito-fios.jpg` e `sensor-novo-oito-fios-placa.jpg`.
+- **Primeiro contacto (21:23): o sensor responde.** Ao primeiro toque no RST abriu a conversa e deu
+  o "recomeço completo".
+- **O que a placa ensinou sobre esta ligação** (fica escrito em `software/caixas/README.md`, "O
+  sensor de movimento", e nos comentários de `caixa1/sensor.h`):
+  1. Com o P0 preso aos 3 V não há maneira de acordar o sensor: a placa só lhe consegue escrever
+     enquanto ele avisa (INT em baixo). A biblioteca do fabricante, se escrever sem o aviso, fica à
+     espera para sempre (a função `txProcess` repete enquanto a escrita devolve 0). Foi o que prendeu
+     a primeira versão: o pedido da primeira leitura nunca saiu e a vigia recomeçou a placa.
+  2. Os pedidos da biblioteca que esperam resposta não têm prazo (a identificação e a gravação das
+     calibrações). O arranque deixou de fazer o da identificação.
+  3. A ordem que funciona: toque no RST; abrir e ler até ao "recomeço completo"; segundo toque, o de
+     acordar; ler a apresentação; pedir as três leituras; desligar a gravação periódica das
+     calibrações (regra 7). Escrever logo a seguir ao segundo toque, sem ler a apresentação, não
+     serve: os pedidos saem mas as leituras não vêm.
+- **Medido com a caixa pousada:** 10 linhas do movimento por segundo; 128 leituras de aceleração,
+  100 de rotação e 100 de atitude por segundo (o mesmo que a 4 fios); 9,61 m/s²; nenhuma leitura
+  deitada fora nem ilegível; nenhum toque no RST. A bússola do sensor está sem confiança (0, erro
+  estimado de 180°), como se esperava de um sensor que ainda não rodou.
+- **Ensaios na placa:** os 26 da caixa 1 correram às 21:32 com o sensor a medir: 25 passaram e 1 saltou-se (o que só faz sentido sem sensor). Dos novos: 10 linhas por segundo com 9 ou mais leituras cada e o peso certo; com um toque no RST a meio, o movimento voltou sozinho em menos de 2 s, o número de ordem seguiu e o batimento e o log não falharam uma linha; depois de a placa recomeçar, o movimento voltou em menos de 5 s; e a gravação das calibrações a pedido foi confirmada pelo sensor, sem ele deixar de medir. Antes, com a 0.2.2 e o sensor só ligado, 22 em 22.
+- **Quem fala com o sensor é uma tarefa à parte**, no outro núcleo do chip, que só entrega leituras
+  numa fila; o ciclo principal nunca espera por ele. Se essa tarefa ficar 4 s sem dar sinal, o ciclo
+  principal recomeça a placa (é a regra 5, o cão de guarda, aplicada à biblioteca).
+- **Por fazer:** o ensaio de 3 horas ao ritmo do desenho (regra 9), os seis pontos adiados da revisão
+  (passo 7 da Tarefa 7), a caixa 2 regravada com a versão nova, o ensaio "sem sensor" com o fio do
+  CS fora, e a bússola (rodar o sensor).
+
 **Em casa, 27/11, 19:33–20:55: a plaquinha do vento montada e ensaiada. PASSA.**
 
 - **Montagem.** Placa de furos de 5 × 7 cm com letras (A a X); suporte de 8 pinos em J3–J6 e

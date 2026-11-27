@@ -23,7 +23,7 @@ comandos, os pacotes do rádio) está em `comum/`.
 | Caixa 2: escuta pelo fio, na bancada, com os módulos do barramento | **passou a 26/11**: 6145 tramas saídas, 6145 ouvidas, nenhum erro (rajadas de 1000 a 200 e a 1000 por segundo, e 10 s à cadência do motor). Desfeita a montagem, os ensaios das duas placas passaram todos (40 em 40, `npm test`) |
 | Escuta do motor no barco (`ensaio/ouvir-motor.js`) | escrita e experimentada em casa a 26/11 com o motor a fingir; **a primeira escuta do motor verdadeiro está por fazer** |
 | Revisão independente do programa (23/11) | feita; os cinco pontos importantes estão corrigidos na versão **0.2.1**. A **0.2.2** (27/11) só acrescenta à caixa 1 o vento "por fora", para ensaiar a plaquinha do vento; a caixa 2 não muda, mas diz a versão e tem de ser gravada outra vez para os ensaios dela passarem |
-| Sensor de movimento verdadeiro (BNO085) | **por fazer**: o primeiro sensor deixou de responder a 22/11; espera-se o segundo. Até lá a caixa 1 diz ao portátil que o sensor não responde |
+| Sensor de movimento verdadeiro (BNO085) | **a medir desde 27/11**, com o sensor novo, pela ligação de 10 ligações (ver "O sensor de movimento"). Faltam o ensaio de 3 horas e os pontos adiados da revisão (passo 7 da Tarefa 7 do plano) |
 | Entrada do vento | **plaquinha do optoacoplador montada e ensaiada em casa a 27/11: passa** (três fases de 20 s, nenhuma frase estragada). Falta o cabo no barco e a prova com o mostrador verdadeiro |
 | Entrada do log | a roda é um contacto que abre uma vez por volta (medido a 27/11): dispensa o comparador. Ligação por montar: 3,3 V, 1 kΩ, roda, D27, e de D27 à massa 10 kΩ e 100 nF |
 
@@ -31,8 +31,11 @@ comandos, os pacotes do rádio) está em `comum/`.
 
 | Caixa 1 | Pino | Nota |
 |---|---|---|
-| Sensor: os dois fios de dados | D21, D22 | como está em `docs/caixas/bancada-ligacao-6-fios.jpg`; a ligação do sensor novo decide-se quando ele chegar |
-| Sensor: aviso (INT) e recomeço (RST) | D19, D18 | |
+| Sensor: relógio (SCL do sensor) | D22 | os oito fios estão marcados em `docs/caixas/sensor-novo-oito-fios.jpg` (lado do sensor) e `sensor-novo-oito-fios-placa.jpg` (lado da placa) |
+| Sensor: dados do sensor para a placa (SDA) | D21 | |
+| Sensor: dados da placa para o sensor (DI) | D23 | |
+| Sensor: a placa escolhe o sensor (CS) | D5 | |
+| Sensor: aviso (INT) e recomeço (RST) | D19, D18 | o RST só se puxa para baixo |
 | Roda do log | D27 | entrada; duas subidas a menos de 4 ms contam como uma; no máximo uma interrupção por volta do ciclo |
 | Vento | RX2 (D16) | 4 800 baud, só leitura; as mudanças de nível contam-se com limite por volta do ciclo |
 | Luz | D2 | acesa com tudo a sair; apaga-se um instante quando a caixa deita uma linha fora |
@@ -204,7 +207,44 @@ ela deixar de o dizer, enquanto os últimos valores a fingir ainda valem.
 | `motor,<rpm>` | 2 | Tramas do motor a fingir (0 para) |
 | `parar` | as duas | Desliga todos os geradores |
 | `estado` | as duas | Os contadores da caixa (o que entrou em cada entrada, o que se perdeu) |
+| `sensor` | 1 | O estado e os contadores do sensor: `estado` (0 a medir, 1 a arrancar, 2 calado, 3 não volta), `fase` (até onde chegou o último arranque; 7 é a medir), `toques` no RST, vezes que recomeçou sozinho, leituras deitadas fora ou ilegíveis, gravações das calibrações |
+| `leituras` | 1 | Quantas leituras de cada espécie chegaram do sensor desde o arranque da placa, e o nível do INT |
+| `rst` | 1 | Um toque no RST do sensor, para ensaiar que a caixa o volta a pôr a medir sozinha |
+| `guardar` | 1 | **De uso, com o barco parado:** o sensor grava as calibrações dele (a gravação automática está desligada). Responde `sem-sensor` se ele não estiver a medir |
 | `prender` | as duas | Prende a caixa de propósito, para ensaiar o reinício automático |
+
+## O sensor de movimento
+
+É o Adafruit BNO085 (ref. 4754), pela ligação de 10 ligações (SPI) e com a biblioteca do fabricante
+(Adafruit BNO08x 1.2.7). Oito fios e duas gotas de solda nas costas do sensor (pontes PS0 e PS1):
+
+| Sensor | Placa | | Sensor | Placa |
+|---|---|---|---|---|
+| VIN | 3V3 | | INT | D19 |
+| GND | GND | | RST | D18 |
+| SCL | D22 | | DI | D23 |
+| SDA | D21 | | CS | D5 |
+
+Quem fala com o sensor é uma tarefa à parte (`caixa1/sensor.h`), que só entrega leituras numa fila: o
+ciclo principal nunca espera por ele, e é só o ciclo principal que escreve na porta USB. Três coisas
+que a placa ensinou a 27/11 e que mandam no programa:
+
+- **Com o P0 do sensor preso aos 3 V, a placa só lhe consegue escrever enquanto ele está a avisar**
+  (o INT em baixo). A biblioteca, se escrever sem o aviso, fica à espera dele para sempre. Por isso
+  nunca se lhe pede para escrever sem o aviso já lá estar.
+- **A ordem que funciona ao arrancar:** um toque no RST; abrir a conversa e ler até ao "recomeço
+  completo" (a prova de que o sensor está vivo); um segundo toque, o de acordar, que não se conta;
+  ler a apresentação; pedir as três leituras; desligar a gravação periódica das calibrações.
+- **Há pedidos da biblioteca que esperam pela resposta sem prazo.** Os do arranque e das leituras
+  não são desses; o de gravar as calibrações (`guardar`) é. Se a tarefa do sensor ficar 4 s sem dar
+  sinal, o ciclo principal recomeça a placa (o motivo do arranque no batimento passa a 3).
+
+Sem leituras durante 500 ms o estado passa a 2 (calado): toque no RST e novo arranque, com as
+tentativas espaçadas (1, 2, 5, 10 s e depois de 30 em 30 s). Ao fim de 5 seguidas sem leituras passa
+a 3 (não volta) e continua a tentar de 30 em 30 s. O estado e os toques vão no batimento.
+
+Os ensaios do sensor (`ensaio/caixa1.test.js`) só correm com ele a medir e com a caixa pousada e
+parada; sem sensor saltam-se e dizem porquê.
 
 ## Ensaio da plaquinha do vento
 

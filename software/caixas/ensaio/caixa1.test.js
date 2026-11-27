@@ -303,7 +303,10 @@ test('movimento a fingir: 10 linhas por segundo, com a média de cada décimo, e
   assert.equal(await p.manda('parar'), 'ok')
 }))
 
-test('sem leituras do sensor não há linhas do movimento, e o número de ordem não avança sozinho', COM_PLACA, () => comACaixa(async (p) => {
+test('sem leituras do sensor não há linhas do movimento, e o número de ordem não avança sozinho', COM_PLACA, (t) => comACaixa(async (p) => {
+  assert.equal(await p.manda('parar'), 'ok')
+  await proximoBatimento(p)
+  if ((await proximoBatimento(p)).sensor === 0) return t.skip('há um sensor a medir: sem o gerador as linhas do movimento são as dele')
   assert.equal(await p.manda('movimento', 1), 'ok')
   const antes = movimentos(await p.linhas(1200))
   assert.equal(await p.manda('movimento', 0), 'ok')
@@ -317,6 +320,106 @@ test('sem leituras do sensor não há linhas do movimento, e o número de ordem 
   assert.ok(depois[0].n - antes.at(-1).n <= 5, `o número de ordem andou ${depois[0].n - antes.at(-1).n} com o sensor calado`)
   assert.equal(await p.manda('parar'), 'ok')
   assert.equal(await p.manda('movimento', 2), 'fora-dos-limites')
+}))
+
+// --- O sensor verdadeiro (BNO085 pela ligação de 10 ligações, com o INT e o RST) ----------------------
+// Correm com a caixa pousada e parada, e só com um sensor a medir: sem ele saltam-se e dizem porquê.
+async function comSensor (t, p) {
+  assert.equal(await p.manda('parar'), 'ok')
+  await proximoBatimento(p) // um batimento já sem geradores
+  const b = await proximoBatimento(p)
+  if (b.sensor === 0) return true
+  t.skip(`o sensor não está a medir (estado ${b.sensor} no batimento)`)
+  return false
+}
+const pousada = (x) => { const g = Math.hypot(...x.a) / 1000; return g > 9.3 && g < 10.3 }
+const eResposta = (l) => l.startsWith('$AQR,')
+
+test('movimento verdadeiro: 10 linhas por segundo, 9 ou mais leituras em cada, e a caixa pousada sente o peso', COM_PLACA, (t) => comACaixa(async (p) => {
+  if (!await comSensor(t, p)) return
+  const linhas = await p.linhas(5000)
+  assert.ok(linhas.map(ler).every(Boolean), 'saiu uma linha que o portátil não lê')
+  const m = movimentos(linhas)
+  assert.ok(m.length >= 49 && m.length <= 51, `${m.length} linhas do movimento em 5 s`)
+  for (let i = 1; i < m.length; i++) assert.equal(m[i].n, m[i - 1].n + 1, 'saltou um número de ordem')
+  assert.ok(m.every(x => x.k >= 9), `leituras por linha: ${[...new Set(m.map(x => x.k))]}`)
+  const fora = m.find(x => !pousada(x))
+  assert.ok(!fora, `aceleração fora do peso: ${fora && (Math.hypot(...fora.a) / 1000).toFixed(2)} m/s²`)
+  const b = batimentos(linhas)
+  assert.ok(b.length >= 4 && b.every(x => x.sensor === 0 && x.sim === false), 'o batimento não disse que o sensor media')
+  const c = contadores(await p.manda('sensor'))
+  assert.equal(c.estado, 0)
+  assert.equal(c.fase, 7)
+  assert.equal(c.ilegiveis, 0)
+}))
+
+test('Review Focus 3: o sensor cala-se a meio (um toque no RST) e volta sozinho em menos de 2 s, sem o resto dar por isso', COM_PLACA, (t) => comACaixa(async (p) => {
+  if (!await comSensor(t, p)) return
+  assert.equal(await p.manda('log', 26), 'ok')
+  await espera(1200)
+  const antes = contadores(await p.manda('sensor'))
+  const juntas = []
+  const parar = p.ouvir((l) => juntas.push({ l, quando: Date.now() }))
+  await espera(1500)
+  const tocado = Date.now()
+  assert.equal(await p.manda('rst'), 'ok')
+  await espera(5000)
+  parar()
+  const lidas = juntas.map(x => ({ ...x, v: ler(x.l) }))
+  const ilegivel = lidas.find(x => !x.v && !eResposta(x.l))
+  assert.ok(!ilegivel, `linha que o portátil não lê: ${ilegivel && ilegivel.l}`)
+  const m = lidas.filter(x => x.v && x.v.tipo === 'movimento')
+  assert.ok(m.filter(x => x.quando < tocado).length >= 10, 'não havia movimento antes do toque')
+  assert.ok(m.filter(x => x.quando >= tocado + 150).length > 0, 'o movimento não voltou em 5 s')
+  // o maior buraco no movimento: é o do toque
+  let buraco = 0
+  for (let i = 1; i < m.length; i++) buraco = Math.max(buraco, m[i].quando - m[i - 1].quando)
+  assert.ok(buraco > 150, `o toque no RST não calou o sensor (maior intervalo ${buraco} ms)`)
+  assert.ok(buraco < 2000, `o movimento esteve ${buraco} ms calado`)
+  // o número de ordem continua de onde ia: não recomeça nem salta
+  for (let i = 1; i < m.length; i++) assert.equal(m[i].v.n, m[i - 1].v.n + 1, 'o número de ordem não seguiu')
+  // o batimento e o log não falharam uma linha
+  const b = lidas.filter(x => x.v && x.v.tipo === 'batimento' && x.v.caixa === 1).map(x => x.v)
+  for (let i = 1; i < b.length; i++) {
+    const passo = b[i].ms - b[i - 1].ms
+    assert.ok(passo >= 950 && passo <= 1050, `batimentos a ${passo} ms um do outro durante o toque`)
+  }
+  const logs = lidas.filter(x => x.v && x.v.tipo === 'log').map(x => x.v)
+  assert.ok(logs.length >= 12, `só ${logs.length} linhas do log em 6,5 s`)
+  for (let i = 1; i < logs.length; i++) {
+    const passo = logs[i].ms - logs[i - 1].ms
+    assert.ok(passo >= 450 && passo <= 550, `linhas do log a ${passo} ms uma da outra durante o toque`)
+  }
+  assert.equal(await p.manda('parar'), 'ok')
+  const depois = contadores(await p.manda('sensor'))
+  assert.equal(depois.toques - antes.toques, 1, 'o contador de toques não subiu 1')
+  assert.equal(depois.estado, 0)
+  assert.equal((await proximoBatimento(p)).rsts, depois.toques, 'o batimento não leva os toques')
+}))
+
+test('a placa recomeça com o sensor a meio de uma frase e o movimento volta em menos de 5 s', COM_PLACA, (t) => comACaixa(async (p) => {
+  if (!await comSensor(t, p)) return
+  const antes = await proximoBatimento(p)
+  assert.equal(await p.manda('prender'), 'ok')
+  const recomecou = await p.ate((l) => { const b = batimento1(l); return b && b.ms < antes.ms ? b : null }, 12000, 'a caixa a recomeçar')
+  const desde = Date.now()
+  const primeira = await p.ate((l) => { const x = ler(l); return x && x.tipo === 'movimento' ? x : null }, 6000, 'o movimento depois de recomeçar')
+  const demora = Date.now() - desde + recomecou.ms
+  assert.ok(demora < 5000, `o movimento só voltou ${demora} ms depois de a placa recomeçar`)
+  assert.ok(pousada(primeira))
+  assert.equal((await proximoBatimento(p, 3000)).sensor, 0)
+}))
+
+test('guardar: o sensor grava as calibrações a pedido e continua a medir', COM_PLACA, (t) => comACaixa(async (p) => {
+  if (!await comSensor(t, p)) return
+  const antes = contadores(await p.manda('sensor'))
+  assert.equal(await p.manda('guardar'), 'ok')
+  await espera(2500)
+  const depois = contadores(await p.manda('sensor'))
+  assert.equal(depois.guardadas - antes.guardadas, 1, `gravações confirmadas: ${depois.guardadas - antes.guardadas}; falhadas: ${depois['por-guardar'] - antes['por-guardar']}`)
+  assert.equal(depois.estado, 0)
+  assert.equal(depois.toques, antes.toques, 'gravar não pode custar um toque no RST')
+  assert.ok(movimentos(await p.linhas(1200)).length >= 10, 'o movimento parou depois de gravar')
 }))
 
 // --- Revisão final das caixas (23/11/2026) ------------------------------------------------------------

@@ -250,6 +250,7 @@ static void ensaioUmaLeitura(float s) {
 inline bool ensaioMovimento(long ligado) {
   if (ligado != 0 && ligado != 1) return false;
   if (ligado && !ensaioMovLigado) {
+    movLimpa();  // o que o sensor verdadeiro tinha a meio não se mistura com o que se finge
     ensaioMovInicio = millis();
     ensaioMovProxima = ensaioMovInicio;
   } else if (!ligado && ensaioMovLigado) {

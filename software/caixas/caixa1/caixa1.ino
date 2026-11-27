@@ -23,15 +23,17 @@
 #include "movimento.h"
 #include "pinos.h"
 #include "radio1.h"
+#include "sensor.h"
 #include "vento.h"
 
 const uint32_t CAO_DE_GUARDA_MS = 5000;
 const uint32_t BATIMENTO_MS = 1000;
 
 // O estado do sensor como vai no batimento: 0 a medir, 1 a arrancar, 2 calado e a tentar o RST,
-// 3 não volta, 4 a fingir. Enquanto não houver sensor.h, não há leituras: 3.
-static uint8_t estadoDoSensor() { return (ensaioLigados & ENSAIO_MOVIMENTO) ? 4 : 3; }
-static uint32_t toquesNoRst() { return 0; }
+// 3 não volta, 4 a fingir.
+static bool movimentoAFingir() { return (ensaioLigados & ENSAIO_MOVIMENTO) != 0; }
+static uint8_t estadoDoSensor() { return movimentoAFingir() ? 4 : sensorEstado(); }
+static uint32_t toquesNoRst() { return sensorRsts(); }
 
 static uint8_t motivoDoArranque = 0;
 static uint32_t proximoBatimento = 0;
@@ -83,6 +85,19 @@ static void obedece(const char *linha) {
              (unsigned long)ventoMexidas, (unsigned long)ventoBytes, (unsigned long)ventoFrases, (unsigned long)ventoInvalidas,
              (unsigned long)ventoAvalanches, (unsigned long)logRecusados, (unsigned long)aqPerdidas, (unsigned long)aqCortadas);
     responde(nome, texto);
+  } else if (strcmp(nome, "rst") == 0 && quantos == 0) {
+    sensorToca();  // um toque no RST do sensor: tem de voltar a medir sozinho
+    responde(nome, "ok");
+  } else if (strcmp(nome, "guardar") == 0 && quantos == 0) {
+    responde(nome, sensorGuarda() ? "ok" : "sem-sensor");
+  } else if (strcmp(nome, "sensor") == 0 && quantos == 0) {
+    char texto[186];
+    sensorContadores(texto, sizeof(texto));
+    responde(nome, texto);
+  } else if (strcmp(nome, "leituras") == 0 && quantos == 0) {
+    char texto[186];
+    sensorLeituras(texto, sizeof(texto));
+    responde(nome, texto);
   } else if (strcmp(nome, "prender") == 0 && quantos == 0) {
     responde(nome, "ok");
     Serial.flush();
@@ -116,6 +131,7 @@ void setup() {
   logIniciar();  // antes do vento: é o log que monta o serviço das interrupções dos pinos
   ventoIniciar();
   movIniciar();
+  sensorIniciar();
   radioIniciar();
 
   proximoBatimento = millis();
@@ -142,6 +158,7 @@ void loop() {
   logCorre(agora);
   ventoCorre();
   ensaioCorre(agora);
+  sensorCorre(agora, movimentoAFingir());
   movCorre(agora);
   radioCorre(agora);
 
