@@ -10,6 +10,7 @@ const path = require('node:path')
 const { abrir, comPlaca, espera } = require('./placa')
 const { ler, linhaMotor } = require('../../signalk-arlequin-caixas/lib/linhas')
 const { lerLinha, descodificar } = require('../../signalk-arlequin-j1939/lib/j1939')
+const { examinar, ficheirosDaCaixa2 } = require('./so-escuta')
 
 // A versão que as placas têm de dizer é a do programa que está nesta pasta (o que se acabou de gravar).
 const VERSAO = /#define\s+AQ_VERSAO\s+"([^"]+)"/.exec(fs.readFileSync(path.join(__dirname, '..', 'comum', 'src', 'arlequin_versao.h'), 'utf8'))[1]
@@ -150,12 +151,8 @@ test('Review Focus 2: com a caixa 2 calada, a caixa 1 continua a mandar o dela s
 }))
 
 test('só em escuta: o programa da caixa 2 nunca escreve no barramento do motor', () => {
-  const pasta = path.join(__dirname, '..', 'caixa2')
-  const ficheiros = fs.readdirSync(pasta).filter(n => /\.(ino|h|cpp)$/.test(n))
-  assert.ok(ficheiros.includes('caixa2.ino') && ficheiros.includes('motor.h'), `ficheiros da caixa 2: ${ficheiros}`)
-  const codigo = ficheiros.map(n => fs.readFileSync(path.join(pasta, n), 'utf8').replace(/\/\/.*$/gm, '')).join('\n')
-  for (const proibido of ['twai_transmit', 'TWAI_MODE_NORMAL', 'TWAI_MODE_NO_ACK', 'twai_initiate_recovery']) {
-    assert.ok(!codigo.includes(proibido), `o programa da caixa 2 usa ${proibido}`)
-  }
-  assert.match(codigo, /TWAI_MODE_LISTEN_ONLY/, 'o controlador do motor não é pedido em modo de só escuta')
+  const ficheiros = ficheirosDaCaixa2()
+  const nomes = ficheiros.map(f => f.nome)
+  assert.ok(nomes.includes('caixa2/caixa2.ino') && nomes.includes('caixa2/motor.h'), `ficheiros da caixa 2: ${nomes}`)
+  assert.deepEqual(examinar(ficheiros), [], 'o programa da caixa 2 podia escrever na linha do motor')
 })
