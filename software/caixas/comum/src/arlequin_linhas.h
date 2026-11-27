@@ -83,6 +83,72 @@ private:
   bool estourou_ = false;
 };
 
+// --- Textos de contadores que cabem sempre ------------------------------------------------------------
+// As respostas aos comandos "estado", "sensor" e "leituras" são um texto feito de contadores. Um contador
+// vai até 4294967295: com os números todos assim o texto não se pode cortar nem a linha passar dos 200.
+// Quem verifica é o compilador, a partir do formato do texto: um formato que não caiba não compila.
+
+// O pior comprimento de um texto feito com este formato: cada número com os algarismos todos (%lu e %u:
+// 10; %d: 11, com o sinal). Só conhece os formatos que os contadores usam; com outro qualquer devolve um
+// número enorme, para a verificação falhar em vez de se enganar por baixo.
+constexpr size_t aqPiorCaso(const char *f) {
+  size_t n = 0;
+  while (*f) {
+    if (*f != '%') {
+      n++;
+      f++;
+    } else if (f[1] == '%') {
+      n++;
+      f += 2;
+    } else if (f[1] == 'l' && f[2] == 'u') {
+      n += 10;
+      f += 3;
+    } else if (f[1] == 'u') {
+      n += 10;
+      f += 2;
+    } else if (f[1] == 'd') {
+      n += 11;
+      f += 2;
+    } else {
+      return 100000;
+    }
+  }
+  return n;
+}
+
+constexpr size_t aqLetras(const char *t) {
+  size_t n = 0;
+  while (t[n]) n++;
+  return n;
+}
+
+// A resposta "$AQR,<comando>,<texto>*HH", com o texto no pior caso, cabe numa linha?
+constexpr bool aqCabeNaResposta(const char *comando, const char *formato) {
+  return 5 + aqLetras(comando) + 1 + aqPiorCaso(formato) + 3 <= AQ_MAX_LINHA;
+}
+
+// A prova da conta de cima, feita pelo compilador de cada vez que se compila.
+static_assert(aqPiorCaso("") == 0, "aqPiorCaso: texto vazio");
+static_assert(aqPiorCaso("abc") == 3, "aqPiorCaso: texto sem números");
+static_assert(aqPiorCaso("a=%lu") == 12, "aqPiorCaso: um %lu são 10 algarismos");
+static_assert(aqPiorCaso("a=%u;b=%d") == 2 + 10 + 3 + 11, "aqPiorCaso: um %u são 10 algarismos e um %d são 11 com o sinal");
+static_assert(aqPiorCaso("100%%") == 4, "aqPiorCaso: %% é um sinal de percentagem");
+static_assert(aqPiorCaso("%s") > AQ_MAX_LINHA, "aqPiorCaso: um formato que não conhece tem de dar um número enorme");
+static_assert(aqPiorCaso("x=%5lu") > AQ_MAX_LINHA, "aqPiorCaso: um formato com largura não é dos que conhece");
+static_assert(aqPiorCaso("x=%") > AQ_MAX_LINHA, "aqPiorCaso: um % solto no fim não é um formato");
+// 18 números e 5 letras são 185: com "estado" a linha fica com 200 certos; mais uma letra já não cabe
+static_assert(aqCabeNaResposta("estado", "%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%luabcde"), "aqCabeNaResposta: 200 ainda cabe");
+static_assert(!aqCabeNaResposta("estado", "%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%luabcdef"), "aqCabeNaResposta: 201 já não cabe");
+static_assert(!aqCabeNaResposta("leituras", "%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%lu%luabcd"), "aqCabeNaResposta: o nome do comando também conta");
+
+// O espaço para o texto da resposta a um comando, à medida do formato: nunca se corta. E não compila se a
+// resposta, com os números todos no máximo, passar de uma linha.
+//   AQ_TEXTO(texto, "estado", ESTADO_FORMATO);
+//   snprintf(texto, sizeof(texto), ESTADO_FORMATO, ...);
+#define AQ_TEXTO(variavel, comando, formato)                                                               \
+  static_assert(aqCabeNaResposta(comando, formato), "a resposta a este comando pode passar de uma linha"); \
+  char variavel[aqPiorCaso(formato) + 1]
+
 // Uma trama do motor como linha: "(s.µs) can1 ID#DADOS*HH". O identificador vai com 8 letras.
 inline bool aqMotor(HardwareSerial &porta, uint32_t s, uint32_t us, uint32_t id, const uint8_t *dados, uint8_t quantos) {
   char b[64];

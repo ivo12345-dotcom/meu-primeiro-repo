@@ -33,6 +33,10 @@ const int TRAMAS_POR_VOLTA = 32;  // tramas do motor tratadas em cada volta do c
 static uint32_t proximoBatimento = 0;
 static AqEntrada entrada;
 
+// Os contadores da caixa, para o comando "estado". O espaço do texto sai deste formato (AQ_TEXTO): com
+// os números todos no máximo não se corta, e o compilador recusa um formato que não caiba numa linha.
+#define ESTADO_FORMATO "motor-tramas=%lu;motor-ignoradas=%lu;radio-ouve=%d;radio-falhadas=%lu;radio-sem-confirmar=%lu;radio-deitadas-fora=%lu"
+
 static void batimento(uint32_t agora) {
   AqLinha("B").i(2).u(agora).t(AQ_VERSAO).i(ensaioAlgum() ? 1 : 0).i(0).u(radioFalhadas + radioSemConfirmar).manda(Serial);
 }
@@ -54,8 +58,8 @@ static void obedece(const char *linha) {
   } else if (strcmp(nome, "motor") == 0 && quantos == 1) {
     responde(nome, ensaioMotor(v[0]) ? "ok" : "fora-dos-limites");
   } else if (strcmp(nome, "estado") == 0 && quantos == 0) {
-    char texto[128];
-    snprintf(texto, sizeof(texto), "motor-tramas=%lu;motor-ignoradas=%lu;radio-ouve=%d;radio-falhadas=%lu;radio-sem-confirmar=%lu;radio-deitadas-fora=%lu",
+    AQ_TEXTO(texto, "estado", ESTADO_FORMATO);
+    snprintf(texto, sizeof(texto), ESTADO_FORMATO,
              (unsigned long)motorTramas, (unsigned long)motorIgnoradas, radioTemOuvinte(millis()) ? 1 : 0, (unsigned long)radioFalhadas,
              (unsigned long)radioSemConfirmar, (unsigned long)radioDeitadasFora);
     responde(nome, texto);

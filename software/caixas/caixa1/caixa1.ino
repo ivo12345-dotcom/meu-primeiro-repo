@@ -39,6 +39,10 @@ static uint8_t motivoDoArranque = 0;
 static uint32_t proximoBatimento = 0;
 static AqEntrada entrada;
 
+// Os contadores da caixa, para o comando "estado". O espaço do texto sai deste formato (AQ_TEXTO): com
+// os números todos no máximo não se corta, e o compilador recusa um formato que não caiba numa linha.
+#define ESTADO_FORMATO "vento-mexidas=%lu;vento-bytes=%lu;vento-frases=%lu;vento-invalidas=%lu;avalanches=%lu;log-recusados=%lu;perdidas=%lu;cortadas=%lu"
+
 static void batimento(uint32_t agora) {
   AqLinha("B")
     .i(1)
@@ -79,9 +83,8 @@ static void obedece(const char *linha) {
   } else if (strcmp(nome, "estado") == 0 && quantos == 0) {
     // os contadores da caixa, para se ver de fora o que entra em cada entrada. Cabem sempre: com os 8
     // números no máximo (10 algarismos cada) o texto tem 185 letras e a linha 200, que é o limite.
-    char texto[186];
-    snprintf(texto, sizeof(texto),
-             "vento-mexidas=%lu;vento-bytes=%lu;vento-frases=%lu;vento-invalidas=%lu;avalanches=%lu;log-recusados=%lu;perdidas=%lu;cortadas=%lu",
+    AQ_TEXTO(texto, "estado", ESTADO_FORMATO);
+    snprintf(texto, sizeof(texto), ESTADO_FORMATO,
              (unsigned long)ventoMexidas, (unsigned long)ventoBytes, (unsigned long)ventoFrases, (unsigned long)ventoInvalidas,
              (unsigned long)ventoAvalanches, (unsigned long)logRecusados, (unsigned long)aqPerdidas, (unsigned long)aqCortadas);
     responde(nome, texto);
@@ -91,11 +94,11 @@ static void obedece(const char *linha) {
   } else if (strcmp(nome, "guardar") == 0 && quantos == 0) {
     responde(nome, sensorGuarda() ? "ok" : "sem-sensor");
   } else if (strcmp(nome, "sensor") == 0 && quantos == 0) {
-    char texto[186];
+    AQ_TEXTO(texto, "sensor", SENSOR_FORMATO);
     sensorContadores(texto, sizeof(texto));
     responde(nome, texto);
   } else if (strcmp(nome, "leituras") == 0 && quantos == 0) {
-    char texto[186];
+    AQ_TEXTO(texto, "leituras", SENSOR_LEITURAS_FORMATO);
     sensorLeituras(texto, sizeof(texto));
     responde(nome, texto);
   } else if (strcmp(nome, "prender") == 0 && quantos == 0) {

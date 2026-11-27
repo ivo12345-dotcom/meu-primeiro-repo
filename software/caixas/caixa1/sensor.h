@@ -289,17 +289,19 @@ inline bool sensorGuarda() {
   return true;
 }
 
-// Os contadores do sensor, para o comando "sensor" (cabe sempre: com os números todos no máximo dá 170 letras).
+// Os contadores do sensor, para o comando "sensor". Quem chama dá o espaço à medida do formato (AQ_TEXTO).
+#define SENSOR_FORMATO "estado=%u;fase=%u;toques=%lu;recomecos=%lu;deitadas=%lu;ilegiveis=%lu;guardadas=%lu;por-guardar=%lu;calado-ms=%lu"
 inline void sensorContadores(char *texto, size_t tamanho) {
-  snprintf(texto, tamanho, "estado=%u;fase=%u;toques=%lu;recomecos=%lu;deitadas=%lu;ilegiveis=%lu;guardadas=%lu;por-guardar=%lu;calado-ms=%lu",
+  snprintf(texto, tamanho, SENSOR_FORMATO,
            (unsigned)sensorEstadoV, (unsigned)sensorFase, (unsigned long)sensorToques, (unsigned long)sensorRecomecos, (unsigned long)sensorDeitadas,
            (unsigned long)sensorIlegiveis, (unsigned long)sensorGuardadas, (unsigned long)sensorPorGuardar,
            (unsigned long)(sensorEstadoV == SENSOR_A_MEDIR ? 0 : millis() - sensorUltimaMs));
 }
 
 // O que chegou do sensor desde o arranque da placa, para o comando "leituras".
+#define SENSOR_LEITURAS_FORMATO "aceleracao=%lu;rotacao=%lu;atitude=%lu;outras=%lu;pacotes=%lu;int=%d"
 inline void sensorLeituras(char *texto, size_t tamanho) {
-  snprintf(texto, tamanho, "aceleracao=%lu;rotacao=%lu;atitude=%lu;outras=%lu;pacotes=%lu;int=%d",
+  snprintf(texto, tamanho, SENSOR_LEITURAS_FORMATO,
            (unsigned long)sensorVistas[0], (unsigned long)sensorVistas[1], (unsigned long)sensorVistas[2],
            (unsigned long)sensorOutras, (unsigned long)sensorPacotes, digitalRead(PINO_INT));
 }
