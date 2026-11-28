@@ -471,9 +471,16 @@ for (const [nome, valores, eAFingir] of [['movimento', [1], eMovimento], ['vento
     assert.equal(await p.manda(nome, ...valores), 'ok')
     await p.ate(eAFingir, 2500, `uma linha a fingir do ${nome}`)
     parar()
-    const primeira = vistas.findIndex(eAFingir)
+    // O que chegou antes da resposta foi escrito antes de a caixa obedecer: com o sensor a medir, pode
+    // ser uma medição verdadeira (sai uma de 100 em 100 ms), e essa não tem de vir avisada. Até 28/11
+    // o ensaio contava-a como a primeira "a fingir" e falhava de vez em quando, conforme a ordem chegava
+    // à caixa uns ms antes ou depois dessa medição.
+    const resposta = vistas.findIndex(l => l.startsWith(`$AQR,${nome},`))
+    assert.ok(resposta >= 0, `não se viu a resposta ao comando "${nome}"`)
+    const depois = vistas.slice(resposta + 1)
+    const primeira = depois.findIndex(eAFingir)
     assert.ok(primeira >= 0, `não saiu nenhuma linha a fingir do ${nome}`)
-    const avisou = vistas.slice(0, primeira).some((l) => { const b = batimento1(l); return Boolean(b && b.sim) })
+    const avisou = depois.slice(0, primeira).some((l) => { const b = batimento1(l); return Boolean(b && b.sim) })
     assert.ok(avisou, `a primeira linha a fingir do ${nome} saiu antes de a caixa dizer que fingia`)
     assert.equal(await p.manda('parar'), 'ok')
   }))
@@ -652,4 +659,64 @@ test('uma enxurrada de ordens do portátil (3 s) não faz a caixa perder linhas 
   // obedece a algumas (não se cala), mas não a todas: uma de 10 em 10 ms dá umas 300 em 3 s
   const r = respostas(vistas)
   assert.ok(r >= 100 && r <= 600, `${r} respostas a ${mandadas} ordens`)
+}))
+
+// --- A ponte USB e os envios que acabam num múltiplo de 64 bytes (ensaio/ponte.js) ---------------------
+// Visto a 28/11/2026: com a caixa parada, as linhas do movimento tinham 64 bytes certos e cada uma ficava
+// retida na ponte USB da placa até chegar a seguinte (100 ms), ou a do log (até 400 ms). O comando
+// "surto" sossega o fio 15 ms, escreve uma linha com os bytes pedidos (e, se for pedida, uma segunda,
+// depois de uma pausa do fio em µs), fica calado uns ms e só então responde. Se a última linha escrita
+// chegar ao portátil colada à resposta, esteve retida à espera de mais bytes.
+const SURTO_CALADO = 20 // ms que a caixa fica calada antes de responder
+
+async function surto (p, n1, pausaUs = 0, n2 = 0) {
+  const chegadas = []
+  const parar = p.ouvir((l) => { if (l.startsWith('$AQR,x,')) chegadas.push({ hora: performance.now(), bytes: l.length + 1 }) })
+  const resposta = await p.manda('surto', n1, pausaUs, n2, SURTO_CALADO)
+  const fim = performance.now()
+  parar()
+  return { resposta, chegadas, antes: chegadas.length ? fim - chegadas.at(-1).hora : null }
+}
+
+// [o que é, bytes da primeira linha, pausa do fio em µs, bytes da segunda linha]
+const SURTOS = [
+  ['uma linha de 64 bytes', 64],
+  ['uma linha de 128 bytes', 128],
+  ['uma linha de 192 bytes', 192],
+  ['duas linhas de seguida que somam 64 bytes (30 + 34)', 30, 0, 34],
+  ['duas linhas de 64 bytes de seguida', 64, 0, 64],
+  // uma pausa curta: tanto pode ter chegado para a ponte despachar a primeira linha como não
+  ['25 e 39 bytes com 0,15 ms de pausa', 25, 150, 39],
+  ['25 e 39 bytes com 0,6 ms de pausa', 25, 600, 39],
+  ['25 e 39 bytes com 1,5 ms de pausa', 25, 1500, 39],
+  ['25 e 39 bytes com 4 ms de pausa', 25, 4000, 39],
+  // aqui um único byte a mais desfazia um múltiplo (128) e fazia outro (63 + 1): são precisos dois
+  ['65 e 63 bytes com 0,3 ms de pausa', 65, 300, 63],
+  ['65 e 63 bytes com 1,5 ms de pausa', 65, 1500, 63],
+  ['65 e 63 bytes com 4 ms de pausa', 65, 4000, 63]
+]
+
+test('a ponte USB não retém nenhuma linha: nem as de 64 bytes, nem as que somam 64 com a anterior', COM_PLACA, () => comACaixa(async (p) => {
+  assert.equal(await p.manda('parar'), 'ok')
+  // a prova de que o ensaio distingue: 40 bytes nunca ficaram retidos, e chegam bem antes da resposta
+  for (let vez = 0; vez < 3; vez++) {
+    const controlo = await surto(p, 40)
+    assert.equal(controlo.resposta, 'ok', 'a caixa não conhece o comando "surto": gravar outra vez (npm run gravar:1)')
+    assert.equal(controlo.chegadas.length, 1)
+    assert.equal(controlo.chegadas[0].bytes, 40, 'a linha do surto não tem os bytes pedidos')
+    assert.ok(controlo.antes >= SURTO_CALADO * 0.6, `a linha de 40 bytes chegou só ${controlo.antes.toFixed(1)} ms antes da resposta`)
+  }
+  const retidas = []
+  for (const [nome, n1, pausa = 0, n2 = 0] of SURTOS) {
+    for (let vez = 0; vez < 3; vez++) {
+      const s = await surto(p, n1, pausa, n2)
+      assert.equal(s.resposta, 'ok', nome)
+      assert.equal(s.chegadas.length, n2 ? 2 : 1, `${nome}: chegaram ${s.chegadas.length} linhas`)
+      if (s.antes < SURTO_CALADO * 0.6) retidas.push(`${nome}: a última linha chegou ${s.antes.toFixed(1)} ms antes da resposta (devia ser perto de ${SURTO_CALADO})`)
+    }
+  }
+  assert.deepEqual(retidas, [], 'linhas retidas na ponte USB')
+  for (const fora of [[11, 0, 0, 20], [201, 0, 0, 20], [64, 0, 11, 20], [64, 5001, 0, 20], [64, -1, 0, 20], [64, 0, 0, 31]]) {
+    assert.equal(await p.manda('surto', ...fora), 'fora-dos-limites', `surto,${fora.join(',')}`)
+  }
 }))

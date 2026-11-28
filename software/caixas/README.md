@@ -222,6 +222,7 @@ continua a dar o batimento e as medições sem falhar uma linha.
 | `roda,<voltas por segundo>[,<% aberta>]` | 1 | A roda **por fora**: o pino D26 faz de roda (em cima enquanto estaria fechada, solto enquanto estaria aberta; 15 % da volta aberta, por omissão). Só chega ao pino do log com um fio do D26 à plaquinha (ver "Ensaio da entrada da roda do log"). `roda,0` para e responde com as voltas que deu |
 | `vento,<décimos de grau>,<décimos de nó>[,<0\|1>[,<0\|1>]]` | 1 | Uma frase de vento por segundo (`0,0` para; `-1,0` manda lixo, para ensaiar a entrada). O terceiro valor a 1 junta uma segunda frase, que não é o MWV. O quarto valor a 1 manda a frase **por fora**: só pelo pino TX2 e ao contrário, como o mostrador a manda (ver "Ensaio da plaquinha do vento") |
 | `movimento,<0\|1>` | 1 | 100 leituras por segundo com 12° de adornamento e a proa a 245° |
+| `surto,<bytes>,<pausa em µs>,<bytes>,<calado em ms>` | 1 | Linhas com um número certo de bytes, para pôr à prova a ponte USB (ver "A ponte USB e as linhas de 64 bytes"): sossega o fio, escreve uma linha `$AQR,x,...` com os primeiros bytes e, se os segundos não forem 0, outra depois da pausa; fica calada e só então responde. Não põe a caixa a fingir |
 | `avalanche,<1\|2>,<kHz>` | 1 | Uma onda rápida no pino do log (1) ou do vento (2), para ensaiar que um fio no ar ou um comparador a oscilar não param a caixa (0 para; 2000 no máximo) |
 | `motor,<rpm>` | 2 | Tramas do motor a fingir (0 para) |
 | `parar` | as duas | Desliga todos os geradores |
@@ -350,6 +351,31 @@ Devagar, a meio, depressa, e com a roda aberta quase metade da volta. Cada fase 
 contar **exatamente** as voltas que a roda a fingir deu. Se contar o dobro, é a subida falsa da
 descida lenta. O `npm test` corre-se **sem** este fio (um dos ensaios conta que nada entre por fora).
 | azul e branco | C3 e H4 | no barco, o amarelo e o verde da ficha do mostrador do vento |
+
+## A ponte USB e as linhas de 64 bytes
+
+Entre a porta série do ESP32 e o cabo USB há um chip, a ponte (nestas placas, um CP210x). Entrega os
+bytes ao portátil em pacotes de 64. Enquanto houver bytes a chegar manda pacotes cheios; quando o fio
+para, manda o resto num pacote mais pequeno, e é esse pacote pequeno que faz o portátil entregar tudo
+ao programa. **Se o fio parar mesmo no fim de um pacote cheio não há resto, e o portátil fica com os
+bytes à espera de mais.** Nada se perde: chega tarde.
+
+Visto a 28/11/2026 com a caixa 1 parada em cima da mesa: as linhas do movimento tinham 64 bytes certos
+(depende dos algarismos de cada número), e cada uma só chegava com a seguinte (100 ms depois) ou com a
+do log (até 400 ms). Foi o contador dos intervalos compridos do ensaio de resistência que deu por isso.
+
+**A regra (`AqPonte`, em `comum/src/arlequin_linhas.h`):** depois de cada linha, se o fio pudesse parar
+num múltiplo de 64 bytes, a caixa junta-lhe um fim de linha a mais. São **linhas vazias, que quem lê
+não conta** (o plugin das caixas e os ensaios já as deitavam fora). Uma pausa curta entre duas linhas
+tanto pode ter chegado para a ponte despachar como não; por isso a conta faz-se a partir de todos os
+sítios onde ela pode ter despachado desde a última pausa de 10 ms, e às vezes são precisos dois fins
+de linha em vez de um. Gasta menos de um byte em mil.
+
+| Onde se prova | O quê |
+|---|---|
+| `ensaio/ponte.js` e `ponte.test.js` (sem placas) | A regra contra um modelo da ponte: milhares de sequências ao acaso, com a ponte a despachar ao fim de 0,1 a 9 ms, e nenhuma linha retida |
+| `ensaio/caixa1.test.js`, com o comando `surto` | Na placa: linhas de 64, 128 e 192 bytes, duas de seguida que somam 64, e pares com pausas de 0,15 a 4 ms. Passa se a última linha chegar cerca de 20 ms antes da resposta, e não colada a ela |
+| `ensaio/resistencia.js` | Conta os intervalos de mais de 250 ms entre duas linhas. Com o sensor a medir não deve haver nenhum; antes da regra eram mais de cem por minuto |
 
 ## O batimento
 

@@ -359,6 +359,40 @@ inline bool ensaioPerdidos(const long *valores, int quantos, uint32_t *total) {
   return true;
 }
 
+// ---- O surto: linhas com um número certo de bytes, para pôr à prova a ponte USB ------------------------
+// Não é um gerador: não mexe em pinos e não põe a caixa a fingir. A ponte USB da placa retém um envio que
+// acabe num múltiplo de 64 bytes até chegarem mais (arlequin_linhas.h, AqPonte). O comando "surto"
+// sossega o fio, escreve uma linha $AQR,x,... com n1 bytes (fim de linha incluído) e, se n2 não for 0,
+// outra com n2 bytes depois de o fio estar parado pausaUs (0: de seguida, sem pausa); fica calado
+// caladoMs e só então deixa responder. Quem ensaia vê se a última linha chegou a tempo ou colada à
+// resposta. O ciclo principal fica parado uns 40 ms, no máximo 60.
+static void ensaioLinhaDe(long bytes) {
+  char enche[AQ_MAX_LINHA];
+  const long n = bytes - 11;  // "$AQR,x," são 7 letras e "*HH" com o fim de linha são 4
+  memset(enche, '.', (size_t)n);
+  enche[n] = 0;
+  AqLinha("R").t("x").t(enche).manda(Serial);
+}
+
+// Devolve false, sem escrever nada, se estiver fora dos limites.
+inline bool ensaioSurto(long n1, long pausaUs, long n2, long caladoMs) {
+  const bool tamanhoBom1 = n1 >= 12 && n1 <= 200, tamanhoBom2 = n2 == 0 || (n2 >= 12 && n2 <= 200);
+  if (!tamanhoBom1 || !tamanhoBom2 || pausaUs < 0 || pausaUs > 5000 || caladoMs < 0 || caladoMs > 30) return false;
+  Serial.flush();
+  delay(15);  // o fio sossegado: a ponte já despachou o que vinha de trás
+  ensaioLinhaDe(n1);
+  if (n2 != 0) {
+    if (pausaUs > 0) {
+      Serial.flush();  // a pausa conta-se do último byte a sair pelo fio
+      delayMicroseconds((uint32_t)pausaUs);
+    }
+    ensaioLinhaDe(n2);
+  }
+  Serial.flush();
+  delay((uint32_t)caladoMs);
+  return true;
+}
+
 // Chama-se em cada volta do ciclo principal: manda o que os geradores devem neste instante.
 inline void ensaioCorre(uint32_t agoraMs) {
   ensaioCorreMovimento(agoraMs);

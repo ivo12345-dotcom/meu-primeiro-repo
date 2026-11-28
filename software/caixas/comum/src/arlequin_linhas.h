@@ -8,11 +8,16 @@
 // Regras deste lado:
 //   - nenhuma linha passa de 200 caracteres: uma linha que passasse não se manda e conta em aqCortadas;
 //   - nunca se fica à espera da porta: sem espaço para a linha inteira, não se manda e conta em
-//     aqPerdidas (é o "perdidos" do batimento da caixa 1). Meia linha nunca sai.
+//     aqPerdidas (é o "perdidos" do batimento da caixa 1). Meia linha nunca sai;
+//   - o fio nunca para num múltiplo de 64 bytes: a ponte USB da placa retinha a linha até virem mais
+//     (AqPonte, mais abaixo). Para isso a caixa junta, quando é preciso, um ou mais fins de linha a
+//     seguir a uma linha: são linhas vazias, que quem lê não conta.
 #pragma once
 
 #include <Arduino.h>
+#include <esp_timer.h>
 #include <stdarg.h>
+#include <string.h>
 
 const size_t AQ_MAX_LINHA = 200;
 
@@ -34,13 +39,83 @@ inline uint8_t aqSoma(const char *texto, size_t n) {
 
 inline uint8_t aqSoma(const char *texto) { return aqSoma(texto, strlen(texto)); }
 
-// Escreve n bytes de uma vez, ou nada.
+// ---- A ponte USB e os múltiplos de 64 bytes -------------------------------------------------------------
+// Entre a porta série do ESP32 e o cabo USB há um chip (CP210x) que entrega os bytes ao portátil em
+// pacotes de 64. Enquanto houver bytes a chegar manda pacotes cheios; quando o fio para, manda o resto
+// num pacote mais pequeno, e é esse que faz o portátil entregar tudo ao programa. Se o fio parar mesmo no
+// fim de um pacote cheio não há resto: o portátil fica com os bytes e à espera, até virem mais. Visto a
+// 28/11/2026, com a caixa 1 parada em cima da mesa: as linhas do movimento tinham 64 bytes certos e cada
+// uma esperava pela seguinte (100 ms) ou pela do log (até 400 ms). Nada se perdia: chegava tarde.
+//
+// A regra: depois de cada linha, se o fio pudesse parar num múltiplo de 64 bytes, a caixa junta-lhe fins
+// de linha até já não poder. O "pudesse" tem uma dúvida dentro: uma pausa curta entre duas linhas tanto
+// pode ter chegado para a ponte despachar o resto como não. Por isso a conta faz-se a partir de todos os
+// sítios onde ela pode ter despachado desde a última pausa comprida (10 ms: aí despachou de certeza), e
+// os fins de linha são os precisos para nenhuma dessas contas dar um múltiplo de 64. Quase sempre é um;
+// são dois quando um só desfazia um múltiplo e fazia outro.
+//
+// A mesma regra, com um modelo da ponte para a pôr à prova sem placas: ensaio/ponte.js.
+const uint32_t AQ_PACOTE_USB = 64;
+const int64_t AQ_PONTE_SOSSEGA_US = 10000;  // com o fio parado há mais do que isto, a ponte já despachou
+const int AQ_PONTE_INICIOS = 16;            // sítios duvidosos de que a caixa se lembra
+
+class AqPonte {
+public:
+  // Acabaram de se escrever n bytes. Devolve quantos fins de linha é preciso juntar-lhes já (0 quase
+  // sempre; nunca mais do que cabem). O que devolve fica contado como escrito.
+  uint32_t escreveu(int64_t agoraUs, uint32_t n, uint32_t cabem) {
+    const int64_t parado = agoraUs - fim_;
+    if (quantos_ == 0 || parado >= AQ_PONTE_SOSSEGA_US) {
+      quantos_ = 1;  // começa aqui, de certeza
+      desde_[0] = 0;
+    } else if (parado > 0) {
+      // o fio esteve parado um instante: a ponte pode ter despachado aqui, ou não
+      if (quantos_ == AQ_PONTE_INICIOS) {  // cheio: sai o mais antigo dos duvidosos (o primeiro, o certo, fica)
+        memmove(&desde_[1], &desde_[2], (AQ_PONTE_INICIOS - 2) * sizeof(desde_[0]));
+        quantos_--;
+      }
+      desde_[quantos_++] = 0;
+    }
+    for (int i = 0; i < quantos_; i++) desde_[i] += n;
+    uint32_t aMais = 0;
+    if (algumMultiplo(0)) {
+      aMais = 1;
+      while (aMais < AQ_PACOTE_USB && algumMultiplo(aMais)) aMais++;
+      if (aMais > cabem || aMais >= AQ_PACOTE_USB) aMais = 0;  // não cabem na porta: fica como está
+      for (int i = 0; i < quantos_; i++) desde_[i] += aMais;
+    }
+    // quando acaba de sair pelo fio o que já se escreveu: dez bits por byte, à velocidade da porta
+    fim_ = (parado > 0 ? agoraUs : fim_) + (int64_t)(n + aMais) * 10000000LL / (int64_t)AQ_BAUD;
+    return aMais;
+  }
+
+private:
+  bool algumMultiplo(uint32_t mais) const {
+    for (int i = 0; i < quantos_; i++) {
+      if ((desde_[i] + mais) % AQ_PACOTE_USB == 0) return true;
+    }
+    return false;
+  }
+
+  int64_t fim_ = 0;
+  uint32_t desde_[AQ_PONTE_INICIOS];  // bytes escritos desde cada sítio onde a ponte pode ter despachado
+  int quantos_ = 0;
+};
+
+inline AqPonte aqPonte;
+
+// Escreve n bytes de uma vez, ou nada. Junta-lhes os fins de linha que a ponte USB pedir (ver acima).
 inline bool aqEscreve(HardwareSerial &porta, const char *dados, size_t n) {
-  if ((size_t)porta.availableForWrite() < n) {
+  static const char FINS[] = "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n";  // mais do que os sítios lembrados
+  const size_t cabem = (size_t)porta.availableForWrite();
+  if (cabem < n) {
     aqPerdidas++;
     return false;
   }
   porta.write((const uint8_t *)dados, n);
+  const size_t resto = cabem - n;
+  const uint32_t aMais = aqPonte.escreveu(esp_timer_get_time(), (uint32_t)n, (uint32_t)(resto < sizeof(FINS) - 1 ? resto : sizeof(FINS) - 1));
+  if (aMais > 0) porta.write((const uint8_t *)FINS, aMais);
   return true;
 }
 

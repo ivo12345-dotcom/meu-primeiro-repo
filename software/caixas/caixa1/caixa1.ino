@@ -128,6 +128,9 @@ static bool obedece(const char *linha) {
     // a conta "há quanto tempo chegou o sinal da outra caixa" (arlequin_radio.h), com horas dadas à mão
     if (v[2] < 0 || v[2] > 60000) responde(nome, "fora-dos-limites");
     else responde(nome, aqRecente((uint32_t)v[0], (uint32_t)v[1], (uint32_t)v[2]) ? "1" : "0");
+  } else if (strcmp(nome, "surto") == 0 && quantos == 4) {
+    // linhas com um número certo de bytes, para pôr à prova a ponte USB (ensaio.h)
+    responde(nome, ensaioSurto(v[0], v[1], v[2], v[3]) ? "ok" : "fora-dos-limites");
   } else if (strcmp(nome, "prender") == 0 && quantos == 0) {
     responde(nome, "ok");
     Serial.flush();

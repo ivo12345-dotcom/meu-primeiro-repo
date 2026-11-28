@@ -1413,6 +1413,44 @@ definitivo, ou a caixa 2 fica de vez.
     - **Não é o ensaio final do passo 7:** correu só com a caixa 1 e sem o sexto ponto adiado (o
       rádio da caixa 2 que volta a tentar). Esse repete-se com as duas caixas, 3 horas.
 
+    **O atraso de 501 ms ficou explicado e corrigido (28/11, 08:38–09:10; programa 0.3.0-a9).** Um
+    ensaio de resistência arrancado às 08:38 deu, logo no primeiro minuto, 117 intervalos de mais
+    de 250 ms entre linhas, sem uma em falta. Medido linha a linha (a que horas chega cada uma ao
+    portátil): das 201 linhas de movimento de 20 s, 190 tinham exatamente 64 bytes, e essas chegavam
+    todas tarde (100 ms a mediana, 401 ms a pior), coladas à linha seguinte; as outras 11 chegavam
+    em 1 ms. Nenhum monte de linhas entregue de uma vez somava um múltiplo de 64 bytes.
+
+    - **A causa é a ponte USB da placa** (o chip CP210x, entre a porta série do ESP32 e o cabo).
+      Entrega os bytes ao portátil em pacotes de 64. Quando o fio para, manda o resto num pacote
+      mais pequeno, e é esse que faz o portátil entregar tudo ao programa. Se o fio parar mesmo no
+      fim de um pacote cheio não há resto, e o portátil fica com os bytes à espera de mais.
+    - **Porque aparecia e desaparecia:** depende dos algarismos de cada número da linha. Com a
+      caixa parada em cima da mesa, a linha do movimento tem 64 bytes enquanto o número de ordem
+      tiver quatro algarismos: dos 100 aos 1000 s depois de a caixa arrancar. O ensaio de 27/11
+      apanhou uma no primeiro minuto (os 501 ms: a linha esperou pela do log seguinte); o da noite
+      começou com a caixa ligada há mais tempo e não apanhou nenhuma. No mar os números mexem
+      sempre: seria uma linha em cada 64, mais ou menos, a chegar 100 ms atrasada.
+    - **A correção (regra `AqPonte`, em `software/caixas/comum/src/arlequin_linhas.h`):** depois de
+      cada linha, se o fio pudesse parar num múltiplo de 64 bytes, a caixa junta-lhe um fim de
+      linha a mais. São linhas vazias, que o plugin das caixas e os ensaios já deitavam fora. Uma
+      pausa curta entre duas linhas tanto pode ter chegado para a ponte despachar como não: a conta
+      faz-se pelas duas hipóteses, e às vezes são precisos dois fins de linha. Gasta menos de um
+      byte em mil.
+    - **Como ficou provado.** Num modelo da ponte, sem placas (`ensaio/ponte.js`, 6 ensaios):
+      milhares de sequências ao acaso, com a ponte a despachar ao fim de 0,1 a 9 ms, e nenhuma
+      linha retida. Na placa, com o comando de bancada novo `surto` (linhas com um número certo de
+      bytes): antes da correção ficavam retidas, as três vezes em três, as linhas de 64, 128 e 192
+      bytes e duas de seguida que somassem 64 ou 128; os pares com uma pausa do fio de 0,15 ms ou
+      mais já não ficavam (a ponte despacha ao fim de menos de 0,15 ms de fio parado). Com a
+      correção não fica nenhuma. Medido outra vez durante 30 s, com as 300 linhas de movimento
+      todas de 64 bytes: chegam de 100 em 100 ms (101 ms o maior intervalo) e 1 ms depois de
+      escritas (2,4 ms a pior).
+    - **Um ensaio da bateria falhava ao acaso e ficou acertado.** "Ao ligar o movimento a fingir, a
+      caixa diz que finge antes de sair a primeira linha a fingir" contava como fingida uma medição
+      verdadeira que a caixa tivesse escrito uns ms antes de receber a ordem. Passou a contar só o
+      que chega depois da resposta à ordem; corrido 12 vezes seguidas, passou as 12. O programa da
+      caixa estava certo.
+
 ## Pedido novo: carta com toque e caminhos guardados (por desenhar com o Ivo)
 
 O Ivo quer, no Fold: mexer na carta com os dedos, marcar uma rota, ver as batimétricas, ver sempre
