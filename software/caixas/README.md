@@ -25,7 +25,7 @@ comandos, os pacotes do rádio) está em `comum/`.
 | Revisão independente do programa (23/11) | feita; os cinco pontos importantes estão corrigidos na versão **0.2.1**. A **0.2.2** (27/11) só acrescenta à caixa 1 o vento "por fora", para ensaiar a plaquinha do vento; a caixa 2 não muda, mas diz a versão e tem de ser gravada outra vez para os ensaios dela passarem |
 | Sensor de movimento verdadeiro (BNO085) | **a medir desde 27/11**, com o sensor novo, pela ligação de 10 ligações (ver "O sensor de movimento"). Faltam o ensaio de 3 horas e os pontos adiados da revisão (passo 7 da Tarefa 7 do plano) |
 | Entrada do vento | **plaquinha do optoacoplador montada e ensaiada em casa a 27/11: passa** (três fases de 20 s, nenhuma frase estragada). Falta o cabo no barco e a prova com o mostrador verdadeiro |
-| Entrada do log | a roda é um contacto que abre uma vez por volta (medido a 27/11): dispensa o comparador. Ligação por montar: 3,3 V, 1 kΩ, roda, D27, e de D27 à massa 10 kΩ e 100 nF |
+| Entrada do log | a roda é um contacto que abre uma vez por volta (medido a 27/11): dispensa o comparador. Ligação por montar, na plaquinha do vento (ver "A fila dos 3,3 V e da massa"): 3,3 V, 1 kΩ, roda; do outro fio da roda, 10 kΩ e 100 nF à massa e 1 kΩ em série até ao D27 |
 
 ## Os pinos
 
@@ -202,9 +202,13 @@ ela deixar de o dizer, enquanto os últimos valores a fingir ainda valem.
 > **Só na bancada, com os fios do log e do vento soltos.** Os geradores do log, do vento e da avalanche
 > fazem a caixa **escrever nos próprios pinos de entrada**. Com a roda do log (o comparador) ou o
 > mostrador do vento ligados, ficam dois a mandar no mesmo fio. Por isso: no barco não se correm os
-> ensaios com geradores (`npm test` usa-os sempre; o de resistência só com `--sem-geradores`), e cada
-> uma das duas entradas leva uma **resistência de 1 kΩ em série**, junto à placa, que torna o engano
-> inofensivo. O movimento e o motor a fingir não mexem em pinos.
+> ensaios com geradores (`npm test` usa-os sempre; o de resistência só com `--sem-geradores`). A
+> entrada do log leva uma **resistência de 1 kΩ em série**, na plaquinha, que torna o engano
+> inofensivo: sem ela o pino, feito saída, carregava e descarregava diretamente o condensador de
+> 100 nF da roda. A entrada do vento não a leva (o RX2 liga ao coletor do optoacoplador): aí quem
+> limita a corrente é o próprio optoacoplador, a poucos mA na bancada; no barco, com o mostrador a
+> mandar, podia chegar a dezenas de mA durante os bits de uma frase. O movimento e o motor a fingir
+> não mexem em pinos.
 
 **As ordens têm conta e medida.** Cada caixa lê no máximo 96 bytes de ordens em cada volta do ciclo e,
 depois de obedecer a uma, só volta a ler passados 10 ms: no máximo 100 respostas por segundo. Ordens
@@ -290,7 +294,9 @@ por segundo, igual à mandada, e nenhuma for deitada fora. Se falhar, diz por on
 frase sai a 3,3 V e passam 2 mA no díodo do optoacoplador: menos do que com o mostrador (5 ou 12 V),
 por isso quem passa aqui passa lá com folga.
 
-`npm test` corre-se **sem** a plaquinha ligada: os outros ensaios do vento escrevem no próprio RX2.
+`npm test` corre-se com os dois fios do lado do mostrador (azul e branco) **soltos**: os outros
+ensaios do vento escrevem no próprio RX2, e um deles conta que nada entre por fora. O lado da caixa 1
+da plaquinha (RX2, 3V3 e GND) pode ficar ligado.
 
 A caixa responde a cada comando com `$AQR,<comando>,<resultado>*HH`. O programa do portátil nunca manda
 comandos: só os ensaios o fazem.
@@ -303,6 +309,26 @@ mudanças de nível na entrada do vento passaram do limite: fio no ar ou ruído)
 sinal de fora, não para quando a placa recomeça sozinha (um recomeço não apaga o que os pinos tinham);
 só para com o `parar`, ou quando a placa arranca e volta a pôr os pinos como entradas. É de propósito:
 serve para ensaiar que a caixa arranca com a avalanche a decorrer.
+
+## A fila dos 3,3 V e da massa
+
+A placa da caixa 1 só tem um pino de 3,3 V, e o sensor de movimento, a plaquinha do vento e a roda do
+log precisam todos dele. A plaquinha do vento já o recebe (furo T3) e à massa (N4): as duas filas
+fazem-se nela, e as peças da roda do log ficam na mesma placa. Desenho de montagem, com a conferência
+a multímetro: `docs/caixas/caixa1-fila-montagem.jpg`, feito por
+`software/ferramentas/caixas/caixa1_fila.py` (que só desenha se as pontes derem o circuito). Onde os
+fios ligam na placa da caixa 1: `docs/caixas/caixa1-fila-ligacoes.jpg`.
+
+| Fio da plaquinha | Furo | Para onde vai |
+|---|---|---|
+| verde com fita | T3 | pino 3V3 da placa (1.º da fila do botão BOOT, a contar da ficha USB) |
+| verde sem fita | N4 | pino GND ao lado (2.º) |
+| amarelo | N3 | RX2 (6.º) |
+| do D27 | W9 | D27: na outra fila, o 6.º a contar da ficha USB (o 1.º dessa fila é o VIN, 5 V) |
+| do VIN do sensor | V3 | pino VIN do sensor |
+| do GND do sensor | N5 | pino GND do sensor |
+| os dois da roda | T7 e Q9 | os dois fios da roda do log, por qualquer ordem |
+| azul e branco | C3 e H4 | no barco, o amarelo e o verde da ficha do mostrador do vento |
 
 ## O batimento
 

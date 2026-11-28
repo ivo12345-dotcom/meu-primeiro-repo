@@ -713,6 +713,60 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
 - O Ivo tem um sortido de resistências (50 valores, 1/4 W, com as de 1 kΩ): as resistências em
   série das entradas do log e do vento saem daí.
 
+**28/11, de manhã: a fila dos 3,3 V e da massa da caixa 1, desenhada (por montar e por ensaiar).**
+
+- **O problema.** A placa da caixa 1 só tem um pino de 3,3 V, e há três coisas a pedi-lo: o sensor
+  de movimento, a plaquinha do vento (a resistência de 2,2 kΩ do RX2) e a roda do log.
+- **Decisão: as duas filas fazem-se na plaquinha do vento**, que já recebe os 3,3 V (furo T3, fio
+  verde com fita) e a massa da caixa 1 (furo N4, fio verde sem fita). O sensor passa a ser
+  alimentado por ela, por dois fios novos soldados à placa (o vermelho e o cinzento que iam do
+  sensor aos pinos 3V3 e GND da placa saem). A proposta de 27/11, dar os 3,3 V à plaquinha pelo
+  pino 3Vo do sensor, fica sem efeito: punha o vento e a roda dependentes do sensor e do
+  regulador dele. As três peças da roda vão para a mesma placa, e não há mais placa nenhuma.
+- **Montagem** (as letras são as da placa; as filas contam-se a partir da beira das letras):
+
+  | O quê | Furos |
+  |---|---|
+  | Fila dos 3,3 V (fila 3) | T3 (já lá está o verde com fita), U3 e V3, juntos com solda |
+  | Fila da massa (fila 5) | N5, O5 e P5, juntos com solda; e o N4 com o N5, a única ponte de uma fila para a outra |
+  | Fio do VIN do sensor | V3 |
+  | Fio do GND do sensor | N5 |
+  | 1 kΩ, dos 3,3 V a um fio da roda | U3 a U7; esse fio da roda em T7 |
+  | 10 kΩ e 100 nF, do outro fio da roda à massa | O9 a O5 e P9 a P5; esse fio da roda em Q9 |
+  | 1 kΩ em série até ao D27 | R9 a V9; o fio do D27 em W9 |
+
+  Livres para mais tarde (a sonda): W3 e X3 para mais 3,3 V, Q5 a S5 para mais massa.
+- **A entrada da roda mudou em relação à proposta de 27/11: leva uma resistência de 1 kΩ em série
+  até ao pino D27.** É a regra que o `software/caixas/README.md` já tinha desde a revisão de 23/11
+  (as entradas com 1 kΩ em série, junto à placa) e que a proposta de 27/11 esqueceu. Sem ela, os
+  ensaios de bancada que fazem do D27 uma saída (a roda a fingir e a avalanche de 1 MHz) punham o
+  pino a carregar e a descarregar o condensador de 100 nF diretamente, perto do máximo de corrente
+  dele, durante segundos; e um fio da roda que tocasse nos 12 V do barco entrava no pino sem nada
+  pelo meio. Com a roda fechada o pino fica a cerca de 2,9 V (o mínimo que ele lê como "em cima" é
+  2,5 V), contando com a puxada para baixo de dentro do chip.
+- **A entrada do vento fica como está, sem resistência em série** (o RX2 liga ao coletor do PC817).
+  Quem pode puxar o pino para baixo é só o transístor do optoacoplador, que não deixa passar mais
+  do que a corrente do díodo vezes o ganho dele: 4 a 8 mA na bancada (2 mA no díodo). No barco, com
+  o mostrador a 12 V, podiam ser 20 a 40 mA, mas só durante os bits de uma frase e só se alguém
+  corresse lá os ensaios com geradores, o que o README proíbe. Pôr a resistência obrigava a
+  dessoldar o fio amarelo de uma placa que passou no ensaio.
+- **O que o programa do desenho confere antes de desenhar** (`software/ferramentas/caixas/caixa1_fila.py`):
+  que as pontes dão exatamente o circuito pedido; que o que já estava soldado é o do desenho de
+  27/11; que nada de novo fica a menos de três colunas do lado do mostrador (o PC817 separa as duas
+  massas); que os 3,3 V e a massa nunca ficam em furos vizinhos; e que tudo cabe nas primeiras
+  nove filas. O único par de furos vizinhos de redes diferentes com peça nova é o N5 (massa) com o
+  M5, um pino da metade vazia do suporte: um pingo de solda a mais aí não faz nada.
+- **A placa tem de ser cortada para caber na base.** A base tem 43,6 mm por dentro do rebordo e a
+  placa 50 mm. Por isso fica tudo nas primeiras nove filas: cortada pela fila 15 dá cerca de
+  40 mm. O sítio dela na base (os 12 cm livres entre o sensor e a placa) e a maneira de a prender
+  continuam por desenhar.
+- **Desenhos dados ao Ivo (08:15):** `docs/caixas/caixa1-fila-montagem.jpg` (o que soldar, com a
+  conferência a multímetro) e `docs/caixas/caixa1-fila-ligacoes.jpg` (onde ligam os fios na placa
+  da caixa 1, marcado numa foto dele). As cores dos cinco fios novos são as que ele escolher.
+- **Por fazer:** ele soldar e conferir; o ensaio em casa do sensor, do vento e da roda ao mesmo
+  tempo; e a prova de que a roda conta certo com as descidas lentas que o condensador dá (um pino
+  livre da placa a fazer de roda, como a caixa já faz de mostrador no ensaio do vento).
+
 **Em casa, 28/11, 00:40–01:35: três dos pontos adiados feitos na caixa 1, e o sensor mexido à mão.**
 
 - **Pontos adiados da revisão (passo 7 da Tarefa 7 do plano), cada um visto falhar primeiro na
@@ -803,7 +857,8 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
   Causa por saber (os fios da plaquinha estavam ligados; não tocam nos pinos da gravação).
 - **Por fazer:** correr os ensaios todos da caixa 1 com a 0.2.2 e sem a plaquinha; gravar a 0.2.2
   na caixa 2; decidir como a plaquinha recebe os 3,3 V dentro da caixa 1, onde o pino 3V3 da placa
-  já é do sensor (proposta do Claude: o pino 3Vo do sensor, que está vazio e dá 3,3 V); o cabo de
+  já é do sensor (proposta do Claude: o pino 3Vo do sensor, que está vazio e dá 3,3 V; decidido de
+  outra maneira a 28/11: ver "a fila dos 3,3 V e da massa", acima); o cabo de
   rede blindado do mostrador até à caixa 1; e a prova com o mostrador verdadeiro, no barco.
 
 **A bordo, 27/11, 17:27–17:41: a roda do log medida na ponta cortada do cabo (fio do meio e malha).**
@@ -819,6 +874,8 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
 - **Ligação proposta (por montar e ensaiar):** 3,3 V → resistência de 1 kΩ → um fio da roda; o
   outro fio da roda → D27; de D27 à massa, uma resistência de 10 kΩ e um condensador de 100 nF. O
   contacto fechado leva o pino aos 3,3 V (uma subida, um impulso); aberto, o pino cai a zero.
+  (A 28/11 juntou-se uma resistência de 1 kΩ em série até ao D27, e as peças foram para a plaquinha
+  do vento: ver "a fila dos 3,3 V e da massa", acima.)
 - **Contado pelo Ivo (17:44), com o multímetro no apito:** apita quase a volta toda e cala-se uma
   vez em cada volta completa. O contacto está fechado quase sempre e abre uma vez por volta: **um
   impulso por volta** (o desenho supunha cerca de dois). Com a ligação proposta o pino fica em cima
