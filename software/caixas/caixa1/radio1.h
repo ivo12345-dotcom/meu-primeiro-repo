@@ -3,6 +3,10 @@
 //   por cada trama do motor:        (s.µs) can1 ID#DADOS*HH, com a hora da caixa 2
 // Os pacotes chegam numa tarefa do rádio; passam para o ciclo principal por uma fila, porque só ele
 // escreve na porta. Fila cheia conta em perdidos.
+//
+// Se o rádio não ligar ao arrancar, a caixa não fica sem ele até lhe cortarem a corrente: volta a tentar
+// de 30 em 30 s, sem recomeçar a placa. Sem o farol desta caixa a caixa 2 cala-se (só manda a quem ouve),
+// e do portátil só se via "caixa 2 sem ligação". Cada vez que consegue conta em "religado" (comando radio).
 #pragma once
 
 #include <Arduino.h>
@@ -11,6 +15,7 @@
 #include <arlequin_radio.h>
 
 const uint32_t FAROL_MS = 1000;
+const uint32_t RADIO_TENTA_MS = 30000;  // de quanto em quanto tempo se volta a tentar ligar o rádio
 const int RADIO_FILA = 32;
 const int RADIO_POR_VOLTA = 8;  // pacotes tratados em cada volta do ciclo, no máximo
 
@@ -23,8 +28,9 @@ struct RadioPacote {
 static QueueHandle_t radioFila = nullptr;
 static volatile uint32_t radioFilaCheia = 0;
 static bool radioLigado = false;
+static uint32_t radioRepostos = 0;  // vezes que o rádio teve de ser ligado outra vez
 static uint16_t radioArranque = 0, radioOrdem = 0;
-static uint32_t radioProximoFarol = 0;
+static uint32_t radioProximoFarol = 0, radioProximaTentativa = 0;
 static AqPerdidos radioPerdidos;
 static bool radioConhece2 = false;
 static uint16_t radioArranque2 = 0;
@@ -43,6 +49,20 @@ inline void radioIniciar() {
   radioArranque = aqNumeroDoArranque();
   radioLigado = radioFila && aqRadioLiga(radioAoReceber);
   radioProximoFarol = millis();
+  radioProximaTentativa = millis() + RADIO_TENTA_MS;
+}
+
+// A avaria de bancada (comando "avaria,1"): o rádio vai abaixo, como se não tivesse ligado ao arrancar.
+inline void radioAvaria() {
+  aqRadioDesliga();
+  radioLigado = false;
+  radioProximaTentativa = millis() + RADIO_TENTA_MS;  // como ao arrancar: a primeira tentativa é daqui a 30 s
+}
+
+// O estado do rádio, para o comando "radio". Quem chama dá o espaço à medida do formato (AQ_TEXTO).
+#define RADIO_FORMATO "ligado=%d;religado=%lu;fila-cheia=%lu;perdidos=%lu"
+inline void radioEstado(char *texto, size_t tamanho) {
+  snprintf(texto, tamanho, RADIO_FORMATO, radioLigado ? 1 : 0, (unsigned long)radioRepostos, (unsigned long)radioFilaCheia, (unsigned long)radioPerdidos.total);
 }
 
 // O número de ordem deste pacote da caixa 2: conta os saltos, e recomeça a contar se ela recomeçou.
@@ -83,7 +103,15 @@ static void radioTrata(const RadioPacote &p) {
 }
 
 inline void radioCorre(uint32_t agoraMs) {
-  if (!radioLigado) return;
+  if (!radioLigado) {
+    // o rádio não ligou, ou foi abaixo: volta-se a tentar de 30 em 30 s, sem recomeçar a placa
+    if (!radioFila || (int32_t)(agoraMs - radioProximaTentativa) < 0) return;
+    radioProximaTentativa = agoraMs + RADIO_TENTA_MS;
+    radioLigado = aqRadioLiga(radioAoReceber);
+    if (!radioLigado) return;
+    radioRepostos++;
+    radioProximoFarol = agoraMs;
+  }
   if ((int32_t)(agoraMs - radioProximoFarol) >= 0) {
     radioProximoFarol = agoraMs + FAROL_MS;
     AqCabecalho farol;

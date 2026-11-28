@@ -236,6 +236,48 @@ for (const [avaria, nome, caladaMs, prazoMs] of [
   }))
 }
 
+// O mesmo do lado da caixa 1 (revisão final da Tarefa 7, 28/11/2026): se o rádio dela não ligasse ao
+// arrancar, não saía o farol, a caixa 2 ficava calada (só manda a quem ouve) e do portátil só se via "caixa
+// 2 sem ligação", até alguém cortar a corrente à caixa certa. Passou a tentar outra vez de 30 em 30 s. A
+// avaria faz-se com "avaria,1" na caixa 1.
+test('o rádio da caixa 1 vai abaixo e ela volta a ligá-lo sozinha: o batimento da caixa 2 volta em menos de 45 s, sem nenhuma das duas recomeçar', COM_AS_DUAS, () => comAsDuas(async (p1, p2) => {
+  assert.equal(await p2.manda('parar'), 'ok')
+  assert.equal(await p1.manda('parar'), 'ok')
+  await p1.ate(batimento(2), 12000, 'o batimento da caixa 2, pelo rádio, antes da avaria')
+  const radioAntes = contadores(await p1.manda('radio'))
+  assert.equal(radioAntes.ligado, 1)
+  const antes1 = await proximo(p1, 1)
+  const antes2 = await proximo(p2, 2)
+  const vistas = []
+  const parar = p1.ouvir((l) => vistas.push({ l, quando: Date.now() }))
+  assert.equal(await p1.manda('avaria', 1), 'ok')
+  const daAvaria = Date.now()
+  await espera(45000)
+  parar()
+  const da2 = vistas.filter(x => batimento(2)(x.l)).map(x => x.quando - daAvaria)
+  const noSilencio = da2.filter(ms => ms > 1500 && ms <= 20000)
+  assert.equal(noSilencio.length, 0, `a caixa 1 continuou a ouvir a caixa 2 (${noSilencio.length} batimentos) com o rádio em baixo`)
+  assert.ok(da2.some(ms => ms > 20000), 'o batimento da caixa 2 não voltou em 45 s')
+  // voltou sozinha: nenhuma das duas recomeçou, e a caixa 1 contou que teve de repor o rádio
+  const b1 = vistas.map(x => batimento(1)(x.l)).filter(Boolean)
+  assert.ok(b1.length >= 43, `só ${b1.length} batimentos da caixa 1 em 45 s`)
+  for (let i = 1; i < b1.length; i++) {
+    const passo = b1[i].ms - b1[i - 1].ms
+    assert.ok(passo >= 900 && passo <= 1100, `batimentos da caixa 1 a ${passo} ms um do outro com o rádio a ser reposto`)
+  }
+  assert.ok(b1.every(x => x.arranque === antes1.arranque), 'a caixa 1 recomeçou')
+  assert.ok((await proximo(p2, 2)).ms > antes2.ms, 'a caixa 2 recomeçou')
+  const radioDepois = contadores(await p1.manda('radio'))
+  assert.equal(radioDepois.ligado, 1)
+  assert.equal(radioDepois.religado - radioAntes.religado, 1, 'a caixa 1 não contou que teve de repor o rádio')
+  // e fica a funcionar: o motor a fingir chega, e os perdidos não disparam (a caixa 2 ainda mandou uns 5
+  // batimentos antes de dar pela falta do farol)
+  const b2 = vistas.map(x => batimento(2)(x.l)).filter(Boolean)
+  assert.ok(b2.at(-1).perdidos - b2[0].perdidos <= 12, `pacotes perdidos com o rádio da caixa 1 em baixo: ${b2.at(-1).perdidos - b2[0].perdidos}`)
+  assert.equal(await p2.manda('motor', 2100), 'ok')
+  await p1.ate(eMotor, 4000, 'uma trama do motor depois de o rádio voltar')
+}))
+
 test('caixa 2: a avaria de bancada só aceita 1 ou 2', COM_A_2, async () => {
   const p = await abrir(P2)
   try {

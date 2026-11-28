@@ -128,6 +128,23 @@ static bool obedece(const char *linha) {
     // a conta "há quanto tempo chegou o sinal da outra caixa" (arlequin_radio.h), com horas dadas à mão
     if (v[2] < 0 || v[2] > 60000) responde(nome, "fora-dos-limites");
     else responde(nome, aqRecente((uint32_t)v[0], (uint32_t)v[1], (uint32_t)v[2]) ? "1" : "0");
+  } else if (strcmp(nome, "avaria") == 0 && (quantos == 1 || quantos == 2)) {
+    // avarias feitas de propósito, para ensaiar que a caixa dá por elas e as resolve sozinha: 1 o rádio vai
+    // abaixo; 3 o sensor fica mudo os segundos pedidos; 4 o sensor deixa de mandar uma das três leituras
+    bool feito = false;
+    if (v[0] == 1 && quantos == 1) {
+      radioAvaria();
+      feito = true;
+    } else if (v[0] == 3 && quantos == 2) {
+      feito = sensorAvariaMudo(v[1]);
+    } else if (v[0] == 4 && quantos == 2) {
+      feito = sensorAvariaCala(v[1]);
+    }
+    responde(nome, feito ? "ok" : "fora-dos-limites");
+  } else if (strcmp(nome, "radio") == 0 && quantos == 0) {
+    AQ_TEXTO(texto, "radio", RADIO_FORMATO);
+    radioEstado(texto, sizeof(texto));
+    responde(nome, texto);
   } else if (strcmp(nome, "surto") == 0 && quantos == 4) {
     // linhas com um número certo de bytes, para pôr à prova a ponte USB (ensaio.h)
     responde(nome, ensaioSurto(v[0], v[1], v[2], v[3]) ? "ok" : "fora-dos-limites");
@@ -158,6 +175,9 @@ void setup() {
   // vento, a placa recomeçava e ficava presa a arrancar, calada, até lhe cortarem a corrente.)
   gpio_intr_disable((gpio_num_t)PINO_LOG);
   gpio_intr_disable((gpio_num_t)PINO_VENTO);
+  // E o pino que faz de roda nos ensaios (ensaio.h) fica solto: um recomeço a meio de um ensaio da roda
+  // podia deixá-lo em cima.
+  pinMode(PINO_RODA_POR_FORA, INPUT);
 
   Serial.setTxBufferSize(8192);
   Serial.begin(AQ_BAUD);

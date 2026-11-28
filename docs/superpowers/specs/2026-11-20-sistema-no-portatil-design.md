@@ -723,6 +723,65 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
 - O Ivo tem um sortido de resistências (50 valores, 1/4 W, com as de 1 kΩ): as resistências em
   série das entradas do log e do vento saem daí.
 
+**28/11, 10:12–11:35: a revisão final da Tarefa 7 e a versão 0.3.1 nas duas caixas.**
+
+- **A revisão final**, feita por um revisor de contexto novo sobre tudo o que mudou no passo 7 (só
+  leu: não tocou nas placas nem correu ensaios), não achou nenhum ponto crítico e achou cinco
+  importantes. Quatro ficaram corrigidos de uma só vez, cada um visto falhar primeiro; o quinto só se
+  prova com a plaquinha soldada. As duas caixas têm gravada a versão **0.3.1**.
+- **1. O ensaio de resistência dava "LIMPO" a uma noite com o sensor calado.** Só contava o que
+  chegava: se o sensor se calasse a meio e não voltasse, deixavam de chegar linhas de movimento e não
+  havia nada estragado para contar. Passou a medir o tempo sem movimento pelo relógio do portátil, a
+  falhar se a noite acabar com o sensor noutro estado que não "a medir" ou com um silêncio por
+  fechar, e a ler os contadores do sensor no princípio e no fim. Opção nova `--motor`: falha se as
+  tramas do motor da caixa 2 não chegarem ou pararem. Sem placas: `ensaio/contador.test.js`.
+- **2. O caminho de um sensor que não volta não tinha ensaio** (calado, toques no RST cada vez mais
+  espaçados, "não volta", e o regresso). Comando de bancada novo, `avaria,3,<segundos>`: prende o RST
+  do sensor em baixo esse tempo, como se lhe faltasse um fio. O ensaio deixa-o mudo 35 s e confere os
+  estados no batimento (0, 2, 3, 0), os seis toques e os intervalos entre eles (1, 2, 5, 10 e 30 s), e
+  que entretanto o batimento e o log não falham uma linha e não sai movimento nenhum. Visto falhar
+  com o programa estragado de propósito (nunca dizia "não volta").
+- **3. "Calado" era não chegar leitura nenhuma; passou a ser faltar qualquer das três há meio
+  segundo.** O sensor manda três espécies de leitura (aceleração, rotação e atitude). Se parasse só
+  a aceleração ou só a rotação, deixava de sair movimento e a caixa continuava a dizer que o sensor
+  media, sem lhe dar o toque (visto na placa com o comando novo `avaria,4,<espécie>`: 0 toques). Se
+  parasse só a atitude, o risco era o movimento sair com a última, parada no tempo; neste sensor a
+  caixa já dava por isso, porque calar a atitude cala-o todo durante mais de meio segundo, e o
+  ensaio fica como prova. Agora, nos três casos, dá o toque e o sensor volta a medir tudo em menos
+  de 5 s.
+- **5. O rádio da caixa 1 não voltava a tentar.** Se não ligasse ao arrancar, a caixa 1 ficava sem
+  ele até lhe cortarem a corrente; sem o farol dela a caixa 2 cala-se (só manda a quem ouve), e do
+  portátil só se via "caixa 2 sem ligação". Passou a tentar de 30 em 30 s, sem recomeçar a placa, e
+  conta em `religado` (comando novo `radio`). Provado com as duas caixas e `avaria,1` na caixa 1:
+  antes o batimento da caixa 2 não voltava em 45 s; agora volta, sem nenhuma das duas recomeçar.
+- **4. Por provar: a roda do log pode contar cada volta a dobrar.** O condensador de 100 nF da
+  entrada faz o pino descer devagar quando a roda abre, e as entradas deste chip não têm folga
+  entre o "em cima" e o "em baixo": uma descida lenta pode passar por subida. Só se vê com a
+  plaquinha soldada (`ensaio/roda-por-fora.js`), e vê-se **antes** do ensaio final de 3 horas, para
+  a correção, se for precisa, ir no programa que faz esse ensaio. A correção está pensada: a
+  interrupção só carimba a hora, e o ciclo só aceita a volta se o pino ainda estiver em cima cerca
+  de 2 ms depois.
+- **Foram com o mesmo passe duas coisas das ferramentas da roda:** o pino que faz de roda nos
+  ensaios (D26) fica solto ao arrancar, e a paragem do comando `roda` espera 2 ms pelo temporizador
+  (uma mudança que já ia a meio ainda podia contar mais uma volta).
+- **Enquanto o Ivo soldava a plaquinha, as duas caixas correram 68 minutos com a 0.3.0**, até eu
+  parar o ensaio para gravar a caixa 1: ia limpo (114 258 linhas, nenhuma estragada; 40 807 de
+  movimento sem faltas; nenhum pacote perdido no rádio; maior silêncio 103 ms). Não é o ensaio
+  final.
+- **Baterias com a 0.3.1:** a da caixa 1, 35 ensaios, 34 passam e 1 salta-se (o que só serve sem
+  sensor); a das duas caixas, 12 em 12; tudo de seguida com as duas ligadas, 114 ensaios, 113 passam
+  e 1 salta-se. Os ensaios do portátil passam todos.
+- **O que a revisão deixou para decidir, e ficou decidido:** o desenho elétrico da plaquinha
+  prova-se com os ensaios do vento e da roda; uma apresentação estragada do sensor pode fazer a
+  caixa recomeçar (recomeça sozinha e o sensor volta em menos de 5 s); o rádio perto da bússola
+  continua por ver até a bússola ter confiança. E uma nota dele: se o lado da proa (`-x`) estivesse
+  trocado, também o rumo ficava 180° ao contrário, por isso a prova da bússola à mão passa a ser a
+  confirmação independente antes de ir para o mar.
+- **Por fazer:** a plaquinha soldada e ligada à caixa 1 (o sensor alimentado por ela); os ensaios do
+  vento e da roda por fora; a bateria da caixa 1 nessa montagem; o ensaio final de 3 horas com as
+  duas caixas (`--duas --motor`); e as duas provas à mão (a bússola e, se se quiser, o fio do CS
+  fora).
+
 **28/11, 09:30–09:56: o último ponto adiado (o rádio da caixa 2) e a versão 0.3.0 nas duas caixas.**
 
 - **Os seis pontos adiados da revisão (passo 7 da Tarefa 7 do plano) estão todos feitos**, cada um

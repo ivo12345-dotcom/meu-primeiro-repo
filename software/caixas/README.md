@@ -22,8 +22,9 @@ comandos, os pacotes do rádio) está em `comum/`.
 | Caixa 2: escuta do motor, rádio, motor a fingir | feito e ensaiado com as duas placas ligadas (a escuta do motor verdadeiro só no barco). Desde a 0.3.0, se o rádio não ligar ou perder o destino, volta a tentar sozinho (ver "O rádio da caixa 2 volta a tentar") |
 | Caixa 2: escuta pelo fio, na bancada, com os módulos do barramento | **passou a 26/11**: 6145 tramas saídas, 6145 ouvidas, nenhum erro (rajadas de 1000 a 200 e a 1000 por segundo, e 10 s à cadência do motor). Desfeita a montagem, os ensaios das duas placas passaram todos (40 em 40, `npm test`) |
 | Escuta do motor no barco (`ensaio/ouvir-motor.js`) | escrita e experimentada em casa a 26/11 com o motor a fingir; **a primeira escuta do motor verdadeiro está por fazer** |
-| Revisão independente do programa (23/11) | feita; os cinco pontos importantes estão corrigidos na versão **0.2.1**, e os seis pontos que tinham ficado adiados na versão **0.3.0** (28/11), que é a que as duas placas têm gravada. A 0.3.0 traz também o sensor de movimento, a regra da ponte USB e os comandos de bancada novos (`roda`, `surto`, `avaria`) |
-| Sensor de movimento verdadeiro (BNO085) | **a medir desde 27/11**, com o sensor novo, pela ligação de 10 ligações (ver "O sensor de movimento"). Ensaios de resistência só com a caixa 1: 3 horas a 27/11 e 6 horas na noite de 28/11, os dois limpos. Falta o ensaio final de 3 horas com as duas caixas e a 0.3.0 |
+| Revisão independente do programa (23/11) | feita; os cinco pontos importantes estão corrigidos na versão **0.2.1**, e os seis pontos que tinham ficado adiados na versão **0.3.0** (28/11). A 0.3.0 traz também o sensor de movimento, a regra da ponte USB e os comandos de bancada novos (`roda`, `surto`, `avaria`) |
+| Revisão final, com olhos novos (28/11) | feita: nenhum ponto crítico e cinco importantes. Quatro estão corrigidos na versão **0.3.1**, que é a que as duas placas têm gravada: o ensaio de resistência já não dá por limpa uma noite com o sensor calado; "calado" passou a ser faltar qualquer das três leituras; o caminho do sensor que não volta tem ensaio na placa (`avaria,3,35`); e o rádio da caixa 1 volta a tentar sozinho. O quinto (a roda do log poder contar a dobrar com a descida lenta) só se prova com a plaquinha soldada: `ensaio/roda-por-fora.js` |
+| Sensor de movimento verdadeiro (BNO085) | **a medir desde 27/11**, com o sensor novo, pela ligação de 10 ligações (ver "O sensor de movimento"). Ensaios de resistência só com a caixa 1: 3 horas a 27/11 e 6 horas na noite de 28/11, os dois limpos. Falta o ensaio final de 3 horas com as duas caixas e a 0.3.1, e duas provas à mão: a da bússola (rodar o sensor devagar em todos os sentidos; a confiança tem de subir; é também a confirmação independente do lado da proa) e, se se quiser, a de tirar o fio CS com a caixa ligada (o mesmo caminho já tem ensaio sem mexer em fios: `avaria,3,35`) |
 | Entrada do vento | **plaquinha do optoacoplador montada e ensaiada em casa a 27/11: passa** (três fases de 20 s, nenhuma frase estragada). Falta o cabo no barco e a prova com o mostrador verdadeiro |
 | Entrada do log | a roda é um contacto que abre uma vez por volta (medido a 27/11): dispensa o comparador. Ligação por montar, na plaquinha do vento (ver "A fila dos 3,3 V e da massa"): 3,3 V, 1 kΩ, roda; do outro fio da roda, 10 kΩ e 100 nF à massa e 1 kΩ em série até ao D27 |
 
@@ -239,7 +240,8 @@ continua a dar o batimento e as medições sem falhar uma linha.
 | `surto,<bytes>,<pausa em µs>,<bytes>,<calado em ms>` | 1 | Linhas com um número certo de bytes, para pôr à prova a ponte USB (ver "A ponte USB e as linhas de 64 bytes"): sossega o fio, escreve uma linha `$AQR,x,...` com os primeiros bytes e, se os segundos não forem 0, outra depois da pausa; fica calada e só então responde. Não põe a caixa a fingir |
 | `avalanche,<1\|2>,<kHz>` | 1 | Uma onda rápida no pino do log (1) ou do vento (2), para ensaiar que um fio no ar ou um comparador a oscilar não param a caixa (0 para; 2000 no máximo) |
 | `motor,<rpm>` | 2 | Tramas do motor a fingir (0 para) |
-| `avaria,<1\|2>` | 2 | Uma avaria do rádio feita de propósito, para ensaiar que a caixa o repõe sozinha: 1 deita o rádio abaixo, como se não tivesse ligado ao arrancar; 2 tira-lhe o destino, como se o registo da caixa 1 tivesse falhado. Não põe a caixa a fingir |
+| `avaria,<qual>[,<valor>]` | as duas | Uma avaria feita de propósito, para ensaiar que a caixa dá por ela e a resolve sozinha. Não põe a caixa a fingir. **Rádio:** `avaria,1` deita o rádio abaixo, como se não tivesse ligado ao arrancar (nas duas caixas); `avaria,2` tira à caixa 2 o destino, como se o registo da caixa 1 tivesse falhado. **Sensor (caixa 1):** `avaria,3,<segundos>` deixa-o mudo esse tempo (1 a 120 s), com o RST preso em baixo, como se lhe faltasse um fio; `avaria,4,<1\|2\|3>` manda-o deixar de enviar uma das três leituras (a aceleração, a rotação ou a atitude) |
+| `radio` | 1 | O estado do rádio da caixa 1: `ligado`, `religado` (vezes que teve de ser ligado outra vez), a fila cheia e os pacotes perdidos |
 | `parar` | as duas | Desliga todos os geradores |
 | `estado` | as duas | Os contadores da caixa (o que entrou em cada entrada, o que se perdeu) |
 | `sensor` | 1 | O estado e os contadores do sensor: `estado` (0 a medir, 1 a arrancar, 2 calado, 3 não volta), `fase` (até onde chegou o último arranque; 7 é a medir), `toques` no RST, vezes que recomeçou sozinho, leituras deitadas fora ou ilegíveis, gravações das calibrações |
@@ -282,6 +284,17 @@ a 3 (não volta) e continua a tentar de 30 em 30 s. O estado e os toques vão no
 
 Os ensaios do sensor (`ensaio/caixa1.test.js`) só correm com ele a medir e com a caixa pousada e
 parada; sem sensor saltam-se e dizem porquê.
+
+**"Calado" é faltar qualquer das três leituras há meio segundo** (desde a 0.3.1; antes era não chegar
+nenhuma). Se parasse só a atitude, o movimento continuava a sair com a última, parada no tempo, como se
+fosse de agora; se parasse só a aceleração, deixava de sair movimento e a caixa dizia que o sensor
+media. Prova-se com `avaria,4,<espécie>`: a caixa dá um toque no RST e põe-no a medir tudo outra vez em
+menos de 5 s.
+
+**O caminho inteiro de um sensor que não volta** prova-se com `avaria,3,35`: o batimento diz "calado"
+(2), os toques no RST vão-se espaçando (1, 2, 5, 10 e 30 s), ao quinto sem resposta diz "não volta" (3),
+e quando o sensor volta a poder falar a caixa apanha-o no toque seguinte (0). Entretanto o batimento e o
+log não falham uma linha, não sai movimento nenhum, e o número de ordem do movimento segue de onde ia.
 
 ## Ensaio da plaquinha do vento
 
@@ -345,6 +358,7 @@ fios ligam na placa da caixa 1: `docs/caixas/caixa1-fila-ligacoes.jpg`.
 | do VIN do sensor | V3 | pino VIN do sensor |
 | do GND do sensor | N5 | pino GND do sensor |
 | os dois da roda | T7 e Q9 | os dois fios da roda do log, por qualquer ordem |
+| azul e branco | C3 e H4 | no barco, o amarelo e o verde da ficha do mostrador do vento |
 
 ## Ensaio da entrada da roda do log
 
@@ -365,7 +379,6 @@ node ensaio/roda-por-fora.js COM3        (quatro fases de 20 s; outro número de
 Devagar, a meio, depressa, e com a roda aberta quase metade da volta. Cada fase passa se a caixa
 contar **exatamente** as voltas que a roda a fingir deu. Se contar o dobro, é a subida falsa da
 descida lenta. O `npm test` corre-se **sem** este fio (um dos ensaios conta que nada entre por fora).
-| azul e branco | C3 e H4 | no barco, o amarelo e o verde da ficha do mostrador do vento |
 
 ## O rádio da caixa 2 volta a tentar
 
@@ -378,6 +391,11 @@ lido). Cada vez que repõe uma coisa que tinha falhado conta em `religado`, no c
 Prova-se com as duas placas e o comando `avaria`: com o rádio deitado abaixo, o batimento da caixa 2
 deixa de chegar à caixa 1 e volta em menos de 15 s; sem destino, volta em menos de 3 s. Sem a caixa
 recomeçar, e com o motor a fingir a chegar logo a seguir.
+
+**A caixa 1 faz o mesmo desde a 0.3.1** (revisão final de 28/11): sem o rádio dela não sai o farol, a
+caixa 2 cala-se (só manda a quem ouve) e do portátil só se via "caixa 2 sem ligação". Tenta outra vez de
+30 em 30 s, e conta em `religado` no comando `radio`. Prova-se com `avaria,1` na caixa 1: o batimento
+da caixa 2 deixa de chegar e volta em menos de 45 s, sem nenhuma das duas recomeçar.
 
 Um cuidado que ficou escrito no programa (`aqRadioDesliga`, em `comum/src/arlequin_radio.h`) e num
 ensaio sem placas (`ensaio/radio.test.js`): o rádio só se desfaz se tiver sido aberto. Pedir ao chip

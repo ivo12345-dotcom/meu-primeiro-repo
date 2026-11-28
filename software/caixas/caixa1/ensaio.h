@@ -115,6 +115,9 @@ inline bool ensaioRoda(long hz, long aberta, uint32_t *voltas) {
     // se o temporizador ia a meio de uma mudança, pode ter-se armado outra vez: para-se de novo
     for (int i = 0; i < 5 && esp_timer_delete(ensaioRodaRelogio) != ESP_OK; i++) esp_timer_stop(ensaioRodaRelogio);
     ensaioRodaRelogio = nullptr;
+    // uma mudança que já ia a meio ainda pode fechar o pino e contar mais uma volta: espera-se por ela,
+    // para o pino ficar mesmo solto e a conta das voltas ser a final
+    delay(2);
   }
   ensaioRodaAbre();
   *voltas = ensaioRodaVoltas;

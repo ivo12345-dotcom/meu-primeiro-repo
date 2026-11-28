@@ -10,9 +10,11 @@
 //     e só então escrever (regras 1 e 2); só vale "a medir" quando as três leituras chegam mesmo;
 //   - a gravação periódica das calibrações do sensor fica desligada (regra 7): grava-se a pedido, com o
 //     barco parado (comando "guardar");
-//   - 500 ms sem leituras é "calado": toque no RST e volta a arrancar, com os toques espaçados (1, 2, 5,
-//     10 s e depois de 30 em 30 s); ao fim de 5 toques seguidos sem leituras é "não volta", e continua a
-//     tentar de 30 em 30 s (regras 4 e 10). O estado e os toques vão no batimento;
+//   - 500 ms sem uma das três leituras é "calado": toque no RST e volta a arrancar, com os toques
+//     espaçados (1, 2, 5, 10 s e depois de 30 em 30 s); ao fim de 5 toques seguidos sem leituras é "não
+//     volta", e continua a tentar de 30 em 30 s (regras 4 e 10). O estado e os toques vão no batimento.
+//     Basta faltar UMA: se parasse só a atitude, o movimento continuava a sair com a última, parada no
+//     tempo; se parasse só a aceleração, deixava de sair e a caixa dizia que o sensor media;
 //   - a biblioteca tem pedidos que esperam pela resposta sem prazo. Os do arranque e das leituras não são
 //     desses; o de gravar as calibrações é. Se a tarefa ficar presa lá dentro, o ciclo principal dá por
 //     isso (a tarefa deixa de dar sinal) e recomeça a placa, como faria o cão de guarda (regra 5).
@@ -59,8 +61,14 @@ static volatile uint32_t sensorIlegiveis = 0;    // leituras que a biblioteca n�
 static volatile uint32_t sensorGuardadas = 0;    // gravações das calibrações que o sensor confirmou
 static volatile uint32_t sensorPorGuardar = 0;   // gravações pedidas que falharam
 static volatile uint32_t sensorSinalMs = 0;      // a última vez que a tarefa deu sinal de vida
-static volatile uint32_t sensorUltimaMs = 0;     // a última leitura
+static volatile uint32_t sensorUltimaMs = 0;     // a última leitura, seja de que espécie for
+static volatile uint32_t sensorUltimaDe[3] = {0, 0, 0};  // a última de cada espécie: aceleração, rotação, atitude
 static volatile bool sensorPedeToque = false, sensorPedeGuardar = false;
+// As avarias de bancada (comando "avaria", só para ensaiar): o RST preso em baixo até uma certa hora, que
+// deixa o sensor mudo como se lhe faltasse um fio; e o pedido de calar uma das três leituras (1 a 3).
+static volatile bool sensorMudo = false;
+static volatile uint32_t sensorMudoAteMs = 0;
+static volatile uint8_t sensorPedeCalar = 0;
 static volatile bool sensorRecomecou = false;    // chegou o "recomeço completo"
 static volatile bool sensorChegou[3] = {false, false, false};
 // Até onde chegou o último arranque (para se ver de fora onde encrava): 0 a conversa não abriu, 1 sem
@@ -127,15 +135,31 @@ static void sensorAoLer(void *, sh2_SensorEvent_t *evento) {
   }
   sensorVistas[l.tipo - 1] = sensorVistas[l.tipo - 1] + 1;
   sensorChegou[l.tipo - 1] = true;
-  sensorUltimaMs = millis();
+  sensorUltimaDe[l.tipo - 1] = sensorUltimaMs = millis();
   if (xQueueSend(sensorFila, &l, 0) != pdTRUE) sensorDeitadas = sensorDeitadas + 1;
+}
+
+// Falta alguma das três leituras há meio segundo? É isso o sensor calado.
+static bool sensorFaltaAlguma() {
+  const uint32_t agora = millis();
+  for (int i = 0; i < 3; i++) {
+    if (agora - sensorUltimaDe[i] >= SENSOR_CALADO_MS) return true;
+  }
+  return false;
+}
+
+// As três leituras dão-se por chegadas agora (depois de uma pausa que não é o sensor calado).
+static void sensorAcertaAsHoras() {
+  const uint32_t agora = millis();
+  sensorUltimaMs = agora;
+  for (int i = 0; i < 3; i++) sensorUltimaDe[i] = agora;
 }
 
 // Um toque no RST: a linha só se puxa para baixo; em cima é o sensor que a tem.
 static void sensorToque(bool conta) {
   digitalWrite(PINO_RST, LOW);
   vTaskDelay(pdMS_TO_TICKS(10));
-  digitalWrite(PINO_RST, HIGH);
+  if (!sensorMudo) digitalWrite(PINO_RST, HIGH);  // com a avaria de bancada o RST fica preso em baixo
   if (conta) sensorToques = sensorToques + 1;
 }
 
@@ -229,7 +253,14 @@ static bool sensorMede() {
       sensorPedeGuardar = false;
       if (sensorAvisa(600) && sh2_saveDcdNow() == SH2_OK) sensorGuardadas = sensorGuardadas + 1;
       else sensorPorGuardar = sensorPorGuardar + 1;
-      sensorUltimaMs = millis();  // a gravação demora: não é o sensor calado
+      sensorAcertaAsHoras();  // a gravação demora: não é o sensor calado
+      continue;
+    }
+    if (sensorPedeCalar) {  // avaria de bancada: o sensor deixa de mandar uma das três leituras
+      const sh2_SensorId_t quais[3] = {SH2_ACCELEROMETER, SH2_GYROSCOPE_CALIBRATED, SH2_ROTATION_VECTOR};
+      const uint8_t qual = sensorPedeCalar;
+      sensorPedeCalar = 0;
+      if (sensorAvisa(600)) sensorBno.enableReport(quais[qual - 1], 0);
       continue;
     }
     sensorOuve();
@@ -238,7 +269,7 @@ static bool sensorMede() {
       sensorRecomecos = sensorRecomecos + 1;
       if (!sensorPede()) return false;
     }
-    if (millis() - sensorUltimaMs >= SENSOR_CALADO_MS) return false;
+    if (sensorFaltaAlguma()) return false;
   }
 }
 
@@ -289,6 +320,23 @@ inline bool sensorGuarda() {
   return true;
 }
 
+// As avarias de bancada do sensor (comando "avaria"). 3: o sensor fica mudo durante os segundos pedidos (1 a
+// 120), com o RST preso em baixo. 4: o sensor deixa de mandar uma das leituras (1 a aceleração, 2 a rotação,
+// 3 a atitude); só com ele a medir. Devolvem false, sem mexer em nada, fora dos limites.
+inline bool sensorAvariaMudo(long segundos) {
+  if (segundos < 1 || segundos > 120) return false;
+  sensorMudoAteMs = millis() + (uint32_t)segundos * 1000UL;
+  sensorMudo = true;
+  digitalWrite(PINO_RST, LOW);
+  return true;
+}
+
+inline bool sensorAvariaCala(long qual) {
+  if (qual < 1 || qual > 3 || sensorEstadoV != SENSOR_A_MEDIR) return false;
+  sensorPedeCalar = (uint8_t)qual;
+  return true;
+}
+
 // Os contadores do sensor, para o comando "sensor". Quem chama dá o espaço à medida do formato (AQ_TEXTO).
 #define SENSOR_FORMATO "estado=%u;fase=%u;toques=%lu;recomecos=%lu;deitadas=%lu;ilegiveis=%lu;guardadas=%lu;por-guardar=%lu;calado-ms=%lu"
 inline void sensorContadores(char *texto, size_t tamanho) {
@@ -313,7 +361,8 @@ inline void sensorIniciar() {
   SPI.begin(PINO_SENSOR_RELOGIO, PINO_SENSOR_DADOS, PINO_SENSOR_ORDENS, -1);
   digitalWrite(PINO_RST, HIGH);
   pinMode(PINO_RST, OUTPUT_OPEN_DRAIN);
-  sensorSinalMs = sensorUltimaMs = millis();
+  sensorSinalMs = millis();
+  sensorAcertaAsHoras();
   // no outro núcleo do chip, com a prioridade do ciclo principal: o que o sensor demorar não lhe toca
   xTaskCreatePinnedToCore(sensorTarefa, "sensor", 8192, nullptr, 1, nullptr, 0);
 }
@@ -323,6 +372,11 @@ inline void sensorIniciar() {
 inline void sensorCorre(uint32_t agoraMs, bool aFingir) {
   static uint8_t anterior = SENSOR_A_ARRANCAR;
   const uint8_t estado = sensorEstadoV;
+  // a avaria de bancada "mudo" acaba à hora marcada: o RST volta a ser do sensor
+  if (sensorMudo && (int32_t)(agoraMs - sensorMudoAteMs) >= 0) {
+    sensorMudo = false;
+    digitalWrite(PINO_RST, HIGH);
+  }
   if (estado != SENSOR_A_MEDIR && anterior == SENSOR_A_MEDIR && !aFingir) movLimpa();  // calou-se: o que ia a meio não vale
   anterior = estado;
 

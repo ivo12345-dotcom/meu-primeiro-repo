@@ -720,3 +720,104 @@ test('a ponte USB não retém nenhuma linha: nem as de 64 bytes, nem as que soma
     assert.equal(await p.manda('surto', ...fora), 'fora-dos-limites', `surto,${fora.join(',')}`)
   }
 }))
+
+// --- Revisão final da Tarefa 7 (28/11/2026): as avarias do sensor, feitas de propósito -------------------
+// O comando "avaria" da caixa 1: 3 prende o RST do sensor em baixo os segundos pedidos (fica mudo, como se
+// lhe faltasse um fio); 4 manda o sensor deixar de enviar uma das três leituras (1 a aceleração, 2 a
+// rotação, 3 a atitude), com as outras a continuarem.
+
+// O caminho inteiro de um sensor que se cala e não volta nunca tinha sido visto de ponta a ponta com o
+// sensor montado: o ensaio do toque no RST prova que ele volta, não que a caixa dá pelo silêncio, espaça
+// os toques, diz "não volta" e o apanha quando ele voltar. As esperas entre toques são 1, 2, 5, 10 e 30 s.
+test('o sensor fica mudo 35 s: a caixa diz "calado", dá toques cada vez mais espaçados, diz "não volta", e apanha-o quando ele volta, sem o resto dar por isso', COM_PLACA, (t) => comACaixa(async (p) => {
+  if (!await comSensor(t, p)) return
+  assert.equal(await p.manda('parar'), 'ok')
+  const antes = await proximoBatimento(p)
+  const sensorAntes = contadores(await p.manda('sensor'))
+  const vistas = []
+  const parar = p.ouvir((l) => vistas.push({ l, quando: Date.now() }))
+  await espera(1200)
+  const mudo = Date.now()
+  assert.equal(await p.manda('avaria', 3, 35), 'ok')
+  // seis toques: o do silêncio e mais cinco, o último meio minuto depois de a caixa o dar por perdido
+  const voltou = await p.ate((l) => { const b = batimento1(l); return b && b.sensor === 0 && b.rsts >= antes.rsts + 6 ? b : null }, 80000, 'o sensor de volta a medir')
+  await espera(3000)
+  parar()
+  const lidas = vistas.map(x => ({ ...x, v: ler(x.l) }))
+  const ilegivel = lidas.find(x => !x.v && !eResposta(x.l))
+  assert.ok(!ilegivel, `linha que o portátil não lê: ${ilegivel && ilegivel.l}`)
+  const b = lidas.filter(x => x.v && x.v.tipo === 'batimento' && x.v.caixa === 1)
+  // os estados que o batimento disse, pela ordem: a medir, calado, não volta, a medir
+  const estados = b.map(x => x.v.sensor).filter((e, i, a) => i === 0 || e !== a[i - 1])
+  assert.deepEqual(estados, [0, 2, 3, 0], `estados do sensor no batimento: ${estados.join(' → ')}`)
+  // o "não volta" veio com o sensor ainda mudo, e ficou até ele voltar
+  const primeiroNaoVolta = b.find(x => x.v.sensor === 3)
+  assert.ok(primeiroNaoVolta.quando - mudo < 35000, `a caixa só disse "não volta" ${((primeiroNaoVolta.quando - mudo) / 1000).toFixed(0)} s depois: o sensor já podia falar`)
+  // os toques: seis, e cada vez mais espaçados (vistos no batimento, de segundo a segundo)
+  assert.equal(voltou.rsts - antes.rsts, 6, 'toques no RST durante o silêncio')
+  const subidas = []
+  for (let i = 1; i < b.length; i++) if (b[i].v.rsts > b[i - 1].v.rsts) subidas.push(b[i].quando)
+  assert.equal(subidas.length, 6, `o batimento mostrou ${subidas.length} subidas do contador de toques`)
+  const entre = subidas.slice(1).map((q, i) => (q - subidas[i]) / 1000)
+  const ESPERAS = [1, 2, 5, 10, 30]
+  for (let i = 0; i < ESPERAS.length; i++) {
+    assert.ok(entre[i] >= ESPERAS[i] - 0.2 && entre[i] <= ESPERAS[i] + 4, `entre o toque ${i + 1} e o ${i + 2} passaram ${entre[i].toFixed(1)} s (a espera é de ${ESPERAS[i]} s, mais a tentativa)`)
+  }
+  // enquanto esteve mudo não saiu movimento nenhum, e quando voltou o número de ordem seguiu de onde ia
+  const m = lidas.filter(x => x.v && x.v.tipo === 'movimento')
+  const noSilencio = m.filter(x => x.quando > mudo + 1500 && x.quando < mudo + 35000)
+  assert.equal(noSilencio.length, 0, `saíram ${noSilencio.length} linhas de movimento com o sensor mudo`)
+  assert.ok(m.filter(x => x.quando > mudo + 35000).length >= 20, 'o movimento não voltou')
+  for (let i = 1; i < m.length; i++) assert.equal(m[i].v.n, m[i - 1].v.n + 1, 'o número de ordem do movimento não seguiu')
+  // o batimento e o log não falharam uma linha, e a caixa não recomeçou
+  for (let i = 1; i < b.length; i++) {
+    const passo = b[i].v.ms - b[i - 1].v.ms
+    assert.ok(passo >= 950 && passo <= 1050, `batimentos a ${passo} ms um do outro com o sensor mudo`)
+  }
+  assert.ok(b.every(x => x.v.arranque === antes.arranque), 'a caixa recomeçou')
+  const logs = lidas.filter(x => x.v && x.v.tipo === 'log').map(x => x.v)
+  for (let i = 1; i < logs.length; i++) {
+    const passo = logs[i].ms - logs[i - 1].ms
+    assert.ok(passo >= 450 && passo <= 550, `linhas do log a ${passo} ms uma da outra com o sensor mudo`)
+  }
+  const sensorDepois = contadores(await p.manda('sensor'))
+  assert.equal(sensorDepois.estado, 0)
+  assert.equal(sensorDepois.toques - sensorAntes.toques, 6)
+  for (const fora of [[3, 0], [3, 121], [4, 0], [4, 4], [5, 1], [0, 1]]) assert.equal(await p.manda('avaria', ...fora), 'fora-dos-limites', `avaria,${fora.join(',')}`)
+}))
+
+// Visto na revisão: "calado" era não chegar leitura NENHUMA em meio segundo. Se parasse só a atitude, o
+// movimento continuava a sair com a última atitude, parada no tempo, como se fosse de agora; se parasse só
+// a aceleração, deixava de sair movimento e a caixa continuava a dizer que o sensor media.
+for (const [qual, nome, chave] of [[1, 'a aceleração', 'aceleracao'], [2, 'a rotação', 'rotacao'], [3, 'a atitude', 'atitude']]) {
+  test(`o sensor deixa de mandar ${nome} e continua com as outras leituras: a caixa dá por isso e põe-no a medir tudo outra vez em menos de 5 s`, COM_PLACA, (t) => comACaixa(async (p) => {
+    if (!await comSensor(t, p)) return
+    assert.equal(await p.manda('parar'), 'ok')
+    const antes = await proximoBatimento(p)
+    const sensorAntes = contadores(await p.manda('sensor'))
+    const vistas = []
+    const parar = p.ouvir((l) => vistas.push(l))
+    assert.equal(await p.manda('avaria', 4, qual), 'ok')
+    await espera(5000)
+    parar()
+    const sensorDepois = contadores(await p.manda('sensor'))
+    assert.equal(sensorDepois.toques - sensorAntes.toques, 1, `a caixa não deu por ${nome} ter parado (toques no RST: ${sensorDepois.toques - sensorAntes.toques})`)
+    assert.equal(sensorDepois.estado, 0, 'o sensor não voltou a medir')
+    // as três leituras voltaram todas a chegar, a 100 por segundo
+    const l1 = contadores(await p.manda('leituras'))
+    await espera(1500)
+    const l2 = contadores(await p.manda('leituras'))
+    for (const k of ['aceleracao', 'rotacao', 'atitude']) {
+      assert.ok(l2[k] - l1[k] >= 120, `depois de a caixa o pôr a medir outra vez, chegaram ${l2[k] - l1[k]} leituras de ${k} em 1,5 s${k === chave ? ' (a que tinha parado)' : ''}`)
+    }
+    // o batimento não falhou e a caixa não recomeçou
+    const b = batimentos(vistas)
+    assert.ok(b.length >= 4, `${b.length} batimentos em 5 s`)
+    assert.ok(b.every(x => x.arranque === antes.arranque), 'a caixa recomeçou')
+    for (let i = 1; i < b.length; i++) {
+      const passo = b[i].ms - b[i - 1].ms
+      assert.ok(passo >= 950 && passo <= 1050, `batimentos a ${passo} ms um do outro`)
+    }
+    assert.ok(vistas.every(l => ler(l) || eResposta(l)), 'saiu uma linha que o portátil não lê')
+  }))
+}
