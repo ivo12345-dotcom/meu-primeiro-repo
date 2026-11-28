@@ -723,6 +723,39 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
 - O Ivo tem um sortido de resistências (50 valores, 1/4 W, com as de 1 kΩ): as resistências em
   série das entradas do log e do vento saem daí.
 
+**28/11, 09:30–09:56: o último ponto adiado (o rádio da caixa 2) e a versão 0.3.0 nas duas caixas.**
+
+- **Os seis pontos adiados da revisão (passo 7 da Tarefa 7 do plano) estão todos feitos**, cada um
+  visto falhar primeiro na placa. As duas caixas têm gravada a versão **0.3.0**.
+- **O sexto ponto: o rádio da caixa 2 volta a tentar sozinho.** Até aqui, se o rádio não ligasse ao
+  arrancar, ou se o registo do destino (a caixa 1) falhasse, a caixa 2 ficava calada no rádio até lhe
+  cortarem a corrente, com o batimento a sair pelo USB como se nada fosse: do portátil só se via
+  que o motor não chegava. Passou a tentar outra vez, o rádio de 10 em 10 s e o destino de segundo a
+  segundo, sem recomeçar a placa. Cada vez que repõe uma coisa que tinha falhado conta em
+  `religado`, no comando `estado`.
+- **Como ficou provado, com as duas caixas.** Comando de bancada novo, `avaria`: 1 deita o rádio da
+  caixa 2 abaixo; 2 tira-lhe o destino. Só com a avaria gravada, o batimento da caixa 2 não voltava
+  à caixa 1 (nem em 15 s, nem em 3 s). Com o rádio que volta a tentar, volta nos dois casos, sem a
+  caixa recomeçar e com o motor a fingir a chegar logo a seguir.
+- **Um tropeço pelo caminho, que ficou guardado.** À primeira, o programa novo mandava desfazer o
+  rádio ao arrancar, antes de alguma vez o ter aberto. O chip não aguenta essa ordem: a caixa 2
+  recomeçava sem parar, calada (visto na mensagem de erro dela: a função `esp_now_deinit` a ir
+  buscar o que não existe). O rádio só se desfaz agora se tiver sido aberto (`aqRadioDesliga`, em
+  `comum/src/arlequin_radio.h`), e um ensaio sem placas (`ensaio/radio.test.js`) falha se alguém
+  voltar a desfazê-lo por outro lado.
+- **Com a caixa 2 ligada, passaram também os dois ensaios que esperavam por ela:** a conta de há
+  quanto tempo chegou o sinal da caixa 1 e a enxurrada de ordens pelo USB. Com o programa antigo
+  dela (0.2.1) a enxurrada deixava passar só 2 batimentos em 4,5 s.
+- **Baterias com a 0.3.0:** a da caixa 1, 31 ensaios, 30 passam e 1 salta-se (o que só serve sem
+  sensor); a das duas caixas, 11 em 11; tudo de seguida com as duas ligadas, 103 ensaios, 102 passam
+  e 1 salta-se. Os ensaios do portátil passam todos.
+- **Caixa 2 na bancada:** o fio branco que estava solto é o da leitura do motor (do pino CRX da
+  plaquinha do motor ao D4, o 5.º pino a contar da ficha USB). Marcado na foto do Ivo de 26/11:
+  `docs/caixas/caixa2-fio-branco.jpg`.
+- **Por fazer:** o ensaio final de 3 horas com as duas caixas, já com a plaquinha da caixa 1 a
+  alimentar o sensor; a revisão final, de contexto fresco, da Tarefa 7; e as duas provas à mão (o
+  aviso "sem sensor", com o fio do CS fora, e a bússola).
+
 **28/11, de manhã: a fila dos 3,3 V e da massa da caixa 1, desenhada (por montar e por ensaiar).**
 
 - **O problema.** A placa da caixa 1 só tem um pino de 3,3 V, e há três coisas a pedi-lo: o sensor
@@ -773,6 +806,9 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
 - **Desenhos dados ao Ivo (08:15):** `docs/caixas/caixa1-fila-montagem.jpg` (o que soldar, com a
   conferência a multímetro) e `docs/caixas/caixa1-fila-ligacoes.jpg` (onde ligam os fios na placa
   da caixa 1, marcado numa foto dele). As cores dos cinco fios novos são as que ele escolher.
+  Às 10:10, a pedido dele, o mesmo desenho por cima de uma foto que tirou à plaquinha:
+  `docs/caixas/caixa1-fila-na-foto.jpg`. A placa tem letras nas duas beiras compridas: a fila 1 é a
+  da beira mais perto do suporte (o suporte está nas filas 3 a 6).
 - **Uma dúvida que só a placa tira: a roda pode contar a dobrar.** O condensador faz o pino descer
   devagar quando a roda abre (cerca de 0,6 ms até meio), e as entradas deste chip não têm folga
   entre o "em cima" e o "em baixo": uma descida lenta pode passar por subida. Os ensaios que havia
