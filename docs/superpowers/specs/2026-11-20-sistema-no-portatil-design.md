@@ -739,8 +739,9 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
   em "Base da caixa 1". A bússola continua sem confiança (0, erro de 180°): não chegou a ser rodada.
 - **O ensaio de resistência passou a dizer os atrasos:** quantos intervalos de mais de 250 ms houve
   entre duas linhas e a que altura do ensaio foi o maior (o de 27/11 só dizia "501 ms").
-- **Ensaio da noite:** 6 horas com a 0.3.0-a7, só a caixa 1, sem sinais a fingir, a começar à
-  01:33. O resultado fica no ponto 12.
+- **Ensaio da noite:** 6 horas com a 0.3.0-a7, só a caixa 1, sem sinais a fingir, da 01:33 às
+  07:33: **LIMPO.** Nenhuma leitura em falta, nenhuma linha estragada, nenhum atraso de mais de
+  250 ms. Os números estão no ponto 12.
 
 **Em casa, 27/11, 20:39–21:40: o sensor de movimento novo, ligado e a medir.**
 
@@ -1308,11 +1309,40 @@ definitivo, ou a caixa 2 fica de vez.
       contagem está completa (604 linhas de movimento). Foi um atraso na entrega, uma vez; a causa
       não se viu (o contador só guarda o maior intervalo, não a hora dele). Nos quatro ensaios de
       23/11, com os sinais a fingir, o maior intervalo andou pelos 100 ms. Fica para o ensaio
-      seguinte dizer se se repete e quando.
+      seguinte dizer se se repete e quando. (Não se repetiu: ver o ensaio da noite de 28/11, abaixo.)
     - **Falta repetir** com os pontos adiados do passo 7 da Tarefa 7 do plano e com as duas caixas,
       como o plano manda: este correu só com a caixa 1 e antes deles.
     - A partir daqui o ensaio ao dobro do ritmo (200 / 200 / 100) deixa de estar vedado ("só depois
       de 3 horas limpas"). O desenho não precisa dele.
+
+    **Ensaio da noite, 28/11 da 01:33 às 07:33: LIMPO, 6 horas.** A mesma caixa 1 e o mesmo sensor,
+    já com o programa 0.3.0-a7 (cinco dos seis pontos adiados do passo 7 da Tarefa 7 do plano), ao
+    ritmo do desenho, sem sinais a fingir, pousada na mesa do Ivo. O mesmo contador
+    (`COM3 360 --sem-geradores`), que desde 28/11 também conta os atrasos na entrega. O registo, de
+    minuto a minuto, ficou no portátil, em
+    `Documents\Veleiro\bancada\caixas\2026-11-28_0137_resistencia-0.3.0-a7-noite-6h.log`.
+
+    | O que se contou em 21 603 s | Resultado |
+    |---|---|
+    | Tempo total sem leituras do movimento | **0 s.** 216 036 linhas de movimento (10 por segundo), nenhuma em falta pelo número de ordem |
+    | Linhas estragadas a 460 800 baud | **0 em 280 847** (0,0000 %) |
+    | Segundos sem batimento da caixa 1 | 0 (21 604 batimentos) |
+    | Recomeços da placa | 0 |
+    | Mudanças do estado do sensor e toques no RST | 0 e 0: o sensor nunca se calou |
+    | Linhas que a caixa não conseguiu mandar | 0 |
+    | Maior intervalo entre duas linhas, no relógio do portátil | 200 ms, uma vez, às 2 h 18 min 41 s de ensaio (03:52:35) |
+    | Intervalos de mais de 250 ms entre duas linhas | 0 |
+
+    - **O atraso de 501 ms de 27/11 não se repetiu em 6 horas.** O maior intervalo foi subindo
+      devagar (102 ms aos 13 s, 110 ms aos 2 min, 114 ms aos 37 min, 200 ms às 2 h 18 min) e nas
+      3 h 41 min seguintes não houve outro maior. O de 27/11 fica como caso único, de causa não vista.
+    - **Regular de ponta a ponta:** em cada um dos 360 minutos do registo chegaram entre 780 e 782
+      linhas, e 600 ou 601 de movimento.
+    - **Com o de 27/11 são 9 horas de ensaio de resistência (3 + 6) sem um único episódio do sensor
+      novo.** A parte da regra 9 que diz "qualquer bloqueio se resolva sozinho" continua por isso sem
+      ser posta à prova num ensaio comprido; o recomeço pelo RST está ensaiado à parte.
+    - **Não é o ensaio final do passo 7:** correu só com a caixa 1 e sem o sexto ponto adiado (o
+      rádio da caixa 2 que volta a tentar). Esse repete-se com as duas caixas, 3 horas.
 
 ## Pedido novo: carta com toque e caminhos guardados (por desenhar com o Ivo)
 
