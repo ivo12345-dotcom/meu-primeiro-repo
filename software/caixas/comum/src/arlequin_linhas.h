@@ -224,3 +224,42 @@ private:
   size_t n_ = 0, pronta_ = 0;
   bool aDeitarFora_ = false;
 };
+
+// --- As ordens do portátil, com conta e medida ---------------------------------------------------------
+// Um portátil a mandar ordens sem parar (um programa avariado, ou outro programa na porta errada) não
+// pode atrasar o ciclo da caixa nem pô-la a deitar fora as medições para lhe responder. Visto na caixa 1
+// a 28/11/2026, com 3000 ordens por segundo durante 3 s: a caixa respondia a todas, as respostas enchiam
+// a saída e ela deitava fora mais de 5000 linhas; nesses 3 s não passou uma linha de movimento e passou
+// um batimento só.
+//
+// Por isso:
+//   - em cada volta do ciclo leem-se no máximo AQ_ORDENS_BYTES bytes;
+//   - depois de se obedecer a uma ordem só se volta a ler passados AQ_ORDENS_INTERVALO_MS. São no máximo
+//     100 respostas por segundo, menos de metade do que o cabo leva. (Só o limite de bytes não chegava:
+//     visto na mesma placa, continuava a deitar fora mais de 3000 linhas.)
+// O que chegar entretanto espera na memória da porta: cabe lá uma dúzia de ordens seguidas, que são
+// todas obedecidas, uma de cada vez. Numa enxurrada não cabe e perde-se, que é o que se quer.
+const int AQ_ORDENS_BYTES = 96;
+const uint32_t AQ_ORDENS_INTERVALO_MS = 10;
+
+class AqOrdens {
+public:
+  // Chama-se em todas as voltas do ciclo. obedece(linha) é chamada por cada linha inteira que chegar e
+  // devolve true se a linha era uma ordem com a soma certa (a que respondeu).
+  template <typename F>
+  void corre(HardwareSerial &porta, uint32_t agoraMs, F obedece) {
+    // ultima_ é a hora de uma volta anterior deste mesmo ciclo: a conta sem sinal dá sempre o tempo
+    // que passou, mesmo com o relógio a dar a volta
+    if (agoraMs - ultima_ < AQ_ORDENS_INTERVALO_MS) return;
+    for (int lidos = 0; lidos < AQ_ORDENS_BYTES && porta.available() > 0; lidos++) {
+      if (!entrada_.junta(porta.read())) continue;
+      if (!obedece(entrada_.texto())) continue;
+      ultima_ = agoraMs;
+      return;
+    }
+  }
+
+private:
+  AqEntrada entrada_;
+  uint32_t ultima_ = 0;
+};

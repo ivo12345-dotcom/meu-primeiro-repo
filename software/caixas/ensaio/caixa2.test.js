@@ -9,6 +9,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { abrir, comPlaca, espera } = require('./placa')
 const { enganosDoRecente } = require('./recente')
+const { enxurrada, respostas } = require('./enxurrada')
 const { ler, linhaMotor } = require('../../signalk-arlequin-caixas/lib/linhas')
 const { lerLinha, descodificar } = require('../../signalk-arlequin-j1939/lib/j1939')
 const { examinar, ficheirosDaCaixa2 } = require('./so-escuta')
@@ -161,6 +162,32 @@ test('caixa 2: há quanto tempo chegou o sinal da caixa 1, a conta não se engan
     assert.deepEqual(await enganosDoRecente(p), [])
     assert.equal(await p.manda('recente', 1000, 1000, 60001), 'fora-dos-limites')
     assert.equal(await p.manda('recente', 1000, 1000, -1), 'fora-dos-limites')
+  } finally {
+    await p.fechar()
+  }
+})
+
+// A caixa 2 lê as ordens do USB da mesma maneira, com o mesmo limite (ensaio/enxurrada.js). No barco o
+// USB só lhe dá corrente; isto é para a bancada e para o dia em que a liguem a um portátil.
+test('caixa 2: uma enxurrada de ordens pelo USB (3 s) não lhe atrasa o batimento nem a faz recomeçar', COM_A_2, async () => {
+  const p = await abrir(P2)
+  try {
+    assert.equal(await p.manda('parar'), 'ok')
+    await espera(300)
+    const antes = await proximo(p, 2)
+    const { mandadas, vistas } = await enxurrada(p)
+    assert.equal(await p.manda('parar'), 'ok', 'depois da enxurrada a caixa 2 deixou de obedecer')
+    const depois = await proximo(p, 2)
+    assert.ok(mandadas >= 3000, `só se conseguiram mandar ${mandadas} ordens em 3 s: não chega a ser uma enxurrada`)
+    const b = batimentos(vistas, 2)
+    assert.ok(b.length >= 4, `só ${b.length} batimentos da caixa 2 em 4,5 s`)
+    assert.ok(b.every(x => x.ms > antes.ms) && depois.ms > antes.ms, 'a caixa 2 recomeçou')
+    for (let i = 1; i < b.length; i++) {
+      const passo = b[i].ms - b[i - 1].ms
+      assert.ok(passo >= 950 && passo <= 1050, `batimentos da caixa 2 a ${passo} ms um do outro durante a enxurrada`)
+    }
+    const r = respostas(vistas)
+    assert.ok(r >= 100 && r <= 600, `${r} respostas a ${mandadas} ordens`)
   } finally {
     await p.fechar()
   }

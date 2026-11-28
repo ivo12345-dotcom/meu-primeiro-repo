@@ -88,8 +88,9 @@ que uma avalanche de sinais numa entrada (1 MHz no pino do log ou no do vento) n
 recomeçar, e que, se recomeçar a meio dela, volta a arrancar; a conta dos pacotes perdidos no rádio,
 caso a caso (a volta do número de ordem, repetidos, atrasados e recomeços da caixa 2); a conta de há
 quanto tempo chegou o sinal da outra caixa, também caso a caso (o sinal que chega a meio de uma volta do
-ciclo, e o relógio da placa a dar a volta); e, com as duas, o motor pelo rádio e o que acontece quando
-a caixa 2 recomeça ou se cala.
+ciclo, e o relógio da placa a dar a volta); que uma enxurrada de ordens do portátil (3000 por segundo,
+3 s) não lhe atrasa o batimento nem a faz deitar fora uma linha; e, com as duas, o motor pelo rádio e o
+que acontece quando a caixa 2 recomeça ou se cala.
 
 Os ensaios `contador.test.js` e `placa.test.js` não precisam de placas: correm sempre.
 
@@ -200,6 +201,12 @@ ela deixar de o dizer, enquanto os últimos valores a fingir ainda valem.
 > ensaios com geradores (`npm test` usa-os sempre; o de resistência só com `--sem-geradores`), e cada
 > uma das duas entradas leva uma **resistência de 1 kΩ em série**, junto à placa, que torna o engano
 > inofensivo. O movimento e o motor a fingir não mexem em pinos.
+
+**As ordens têm conta e medida.** Cada caixa lê no máximo 96 bytes de ordens em cada volta do ciclo e,
+depois de obedecer a uma, só volta a ler passados 10 ms: no máximo 100 respostas por segundo. Ordens
+mandadas de seguida (até uma dúzia) esperam na memória da porta e são todas obedecidas, uma de cada vez.
+Uma enxurrada (um programa avariado, ou outro programa na porta errada) perde-se quase toda, e a caixa
+continua a dar o batimento e as medições sem falhar uma linha.
 
 | Comando | Caixa | O que faz |
 |---|---|---|

@@ -9,6 +9,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { abrir, comPlaca, espera } = require('./placa')
 const { enganosDoRecente } = require('./recente')
+const { enxurrada, respostas } = require('./enxurrada')
 const { ler } = require('../../signalk-arlequin-caixas/lib/linhas')
 
 // A versão que a placa tem de dizer é a do programa que está nesta pasta (o que se acabou de gravar).
@@ -592,4 +593,35 @@ test('há quanto tempo chegou o sinal da outra caixa: a conta não se engana a m
   assert.deepEqual(await enganosDoRecente(p), [])
   assert.equal(await p.manda('recente', 1000, 1000, 60001), 'fora-dos-limites')
   assert.equal(await p.manda('recente', 1000, 1000, -1), 'fora-dos-limites')
+}))
+
+// As ordens do portátil lidas sem limite por volta do ciclo: o que estava mal, e o limite que passou a
+// haver, estão em ensaio/enxurrada.js.
+test('uma enxurrada de ordens do portátil (3 s) não faz a caixa perder linhas nem lhe atrasa o batimento', COM_PLACA, () => comACaixa(async (p) => {
+  assert.equal(await p.manda('parar'), 'ok')
+  await espera(300)
+  const antes = await proximoBatimento(p)
+  const { mandadas, vistas } = await enxurrada(p)
+  assert.equal(await p.manda('parar'), 'ok', 'depois da enxurrada a caixa deixou de obedecer')
+  const depois = await proximoBatimento(p)
+  assert.ok(mandadas >= 3000, `só se conseguiram mandar ${mandadas} ordens em 3 s: não chega a ser uma enxurrada`)
+  // o batimento não falha nem se atrasa, e a caixa não recomeça
+  const b = batimentos(vistas)
+  assert.ok(b.length >= 4, `só ${b.length} batimentos em 4,5 s`)
+  assert.ok(b.every(x => x.ms > antes.ms) && depois.ms > antes.ms, 'a caixa recomeçou')
+  for (let i = 1; i < b.length; i++) {
+    const passo = b[i].ms - b[i - 1].ms
+    assert.ok(passo >= 950 && passo <= 1050, `batimentos a ${passo} ms um do outro durante a enxurrada`)
+  }
+  // não deitou fora nenhuma linha dela para responder às ordens
+  assert.equal(depois.perdidos, antes.perdidos, `para responder às ordens a caixa deitou fora ${depois.perdidos - antes.perdidos} linhas`)
+  // com o sensor a medir, o movimento continua a sair a 10 linhas por segundo, sem uma em falta
+  if (antes.sensor === 0) {
+    const mov = vistas.map(ler).filter(l => l && l.tipo === 'movimento')
+    assert.ok(mov.length >= 40, `só ${mov.length} linhas de movimento em 4,5 s de enxurrada`)
+    for (let i = 1; i < mov.length; i++) assert.equal(mov[i].n, mov[i - 1].n + 1, 'faltou uma linha de movimento durante a enxurrada')
+  }
+  // obedece a algumas (não se cala), mas não a todas: uma de 10 em 10 ms dá umas 300 em 3 s
+  const r = respostas(vistas)
+  assert.ok(r >= 100 && r <= 600, `${r} respostas a ${mandadas} ordens`)
 }))
