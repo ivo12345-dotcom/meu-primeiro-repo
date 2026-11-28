@@ -18,7 +18,8 @@
 //   bordo    (npm start)        garante que a pasta do barco existe e guarda uma cópia dela na pasta dos
 //                               dados quando mudou. Não muda valor nenhum: o que o barco tem, fica.
 //   ensaio   (npm run ensaio)   copia a configuração do barco para config-ensaio e põe-lhe por cima:
-//                                 caixas: porta "tcp://localhost:8765" e "ensaio" ligado (tudo simulado)
+//                                 caixas: porta "tcp://localhost:8765" e "ensaio" ligado (tudo simulado),
+//                                   com a montagem de quem finge (eixo y à proa, z para cima)
 //                                 caixa negra, AI e rota: a pasta de dados "arlequin-dados-ensaio"
 //                                 o GPS a fingir ligado e o B330 verdadeiro desligado
 //   ensaio-placa (npm run ensaio-placa)  o mesmo ensaio, mas com a caixa 1 verdadeira ligada por USB: fica
@@ -117,6 +118,11 @@ function paraOEnsaio (config, ensaio, comAPlaca = false) {
   const caixas = deUmPlugin('signalk-arlequin-caixas')
   if (!comAPlaca) caixas.porta = PORTA_ENSAIO
   caixas.ensaio = true
+  // Quem finge (a caixa a fingir, e os geradores de bancada da caixa verdadeira) faz o movimento de uma
+  // caixa montada com o eixo y à proa e o z para cima. No ensaio vale essa montagem, e não a do barco:
+  // com a do barco, o adornamento a fingir saía como caimento.
+  caixas.eixoProa = '+y'
+  caixas.eixoCima = '+z'
   for (const id of COM_DADOS) deUmPlugin(id).pasta = DADOS_ENSAIO
   fornecedor('b330').enabled = false
   fornecedor('b330-a-fingir').enabled = true

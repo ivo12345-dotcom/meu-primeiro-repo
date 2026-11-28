@@ -216,7 +216,8 @@ comandos chamam antes de arrancar o servidor):
 **O que se acerta no barco**, no Admin UI do SignalK (`http://localhost:3000`), plugin "Arlequin · caixas":
 
 - `nosPorHz`: o fator da roda do log, contra o GPS em água parada;
-- `eixoProa` e `eixoCima`: como a caixa ficou montada; `desvioProa`, `desvioAdorno` e `desvioCaimento`:
+- `eixoProa` e `eixoCima`: como a caixa ficou montada (com a base da caixa 1 como está, `-x` e `+z`:
+  provado na bancada a 28/11, e já vem assim do modelo); `desvioProa`, `desvioAdorno` e `desvioCaimento`:
   o que o sensor marca com o barco direito e apontado; `tabelaDesvios`: a tabela de desvios da bússola;
 - `desvioVento` e `fatorVento`, se o mostrador do vento não estiver certo;
 - `erroMaxProa` (20° de fábrica): a proa só se publica quando o sensor confia na bússola dele e estima um

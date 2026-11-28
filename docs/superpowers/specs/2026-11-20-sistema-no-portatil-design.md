@@ -140,6 +140,16 @@ sensor, que é a da popa: a configuração seria `eixoProa: '-x'`, com `eixoCima
 hoje tem `'+y'` (o valor por omissão do plugin) nos três perfis: com ela, um adornamento sai como
 caimento.
 
+**Confirmado a 28/11, às 09:19: `eixoProa: '-x'`, `eixoCima: '+z'`.** Com a caixa 1 à escuta e as
+contas feitas com essa montagem, o Ivo levantou a ponta da ficha USB uns três dedos, segurou e
+pousou: o caimento subiu de -3,3° para +6,8° (cerca de 10°, que é o que três dedos dão em 28 cm de
+base), ficou assim 5 s e voltou; o adornamento não mexeu (+2,5°). A proa subiu, como devia. O
+sensor está portanto montado com a seta X para a popa, ao contrário do que este desenho previa, e
+fica assim: acerta-se no programa, não na base. Mudado no modelo do `software/bordo` e na
+configuração do barco. No modo de ensaio (a caixa a fingir, ou os geradores de bancada da caixa
+verdadeira) vale a montagem de quem finge, eixo y à proa e z para cima, e o `preparar.js` passou a
+pô-la por cima da do barco: sem isso o adornamento a fingir saía como caimento.
+
 Os chicotes do vento e do log passam a ir para a cabine de popa, e não para a mesa de navegação.
 **Ligação ao portátil:** cabo USB se o portátil ficar até 5 m (dá também a alimentação). Se não
 chegar, a caixa 1 fala pelo rádio das placas com uma terceira placa pequena ligada ao USB do

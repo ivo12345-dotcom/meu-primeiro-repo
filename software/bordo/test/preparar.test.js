@@ -306,3 +306,28 @@ test('o comando do ensaio com a placa usa a pasta do ensaio', () => {
   const s = require('../package.json').scripts
   assert.match(s['ensaio-placa'], /^node preparar\.js ensaio-placa && node \S+signalk-server -c config-ensaio$/)
 })
+
+// A caixa a fingir, e os geradores de bancada da caixa verdadeira, fazem o movimento de uma caixa montada
+// com o eixo y à proa e o z para cima. A do barco está montada de outra maneira (a 28/11/2026 ficou
+// provado na bancada: a seta X do sensor aponta para a popa). No ensaio vale a montagem de quem finge:
+// com a do barco, o adornamento a fingir saía como caimento. A do barco não se toca.
+test('no ensaio vale a montagem da caixa a fingir (y à proa, z para cima), seja qual for a do barco', (t) => {
+  const p = pastas(t)
+  preparar('bordo', p)
+  mexer(p.config, 'signalk-arlequin-caixas', c => { c.eixoProa = '+x'; c.eixoCima = '-z' })
+  for (const modo of ['ensaio', 'ensaio-placa']) {
+    preparar(modo, p)
+    const c = plugin(p.ensaio, 'signalk-arlequin-caixas').configuration
+    assert.equal(c.eixoProa, '+y', `eixo da proa no modo ${modo}`)
+    assert.equal(c.eixoCima, '+z', `eixo de cima no modo ${modo}`)
+  }
+  const barco = plugin(p.config, 'signalk-arlequin-caixas').configuration
+  assert.equal(barco.eixoProa, '+x', 'o ensaio mexeu na montagem do barco')
+  assert.equal(barco.eixoCima, '-z', 'o ensaio mexeu na montagem do barco')
+})
+
+test('o modelo traz a montagem da caixa 1 como está na base: a seta X do sensor para a popa, o Z para cima', () => {
+  const c = plugin(MODELO, 'signalk-arlequin-caixas').configuration
+  assert.equal(c.eixoProa, '-x')
+  assert.equal(c.eixoCima, '+z')
+})
