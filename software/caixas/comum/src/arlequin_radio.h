@@ -89,12 +89,26 @@ inline bool aqRecente(uint32_t agoraMs, uint32_t quandoMs, uint32_t prazoMs) {
 }
 
 // Liga o rádio das placas no canal fixo, sem se ligar a rede nenhuma, e regista quem recebe.
+inline bool aqRadioAberto = false;  // o rádio das placas foi aberto (esp_now_init) e ainda não se desfez
+
+// Desfaz o rádio das placas, se estiver aberto. Só nesse caso: pedir ao chip que o desfaça sem nunca o ter
+// aberto fá-lo ir buscar o que não existe, e a placa recomeça sem parar (visto na caixa 2 a 28/11/2026).
+inline void aqRadioDesliga() {
+  if (!aqRadioAberto) return;
+  esp_now_deinit();
+  aqRadioAberto = false;
+}
+
+// Liga o rádio das placas. Pode chamar-se outra vez depois de ter falhado: desfaz primeiro o que tiver
+// ficado aberto da tentativa anterior.
 inline bool aqRadioLiga(esp_now_recv_cb_t aoReceber) {
+  aqRadioDesliga();
   WiFi.persistent(false);
   if (!WiFi.mode(WIFI_STA)) return false;
   esp_wifi_set_ps(WIFI_PS_NONE);  // sempre à escuta
   esp_wifi_set_channel(AQ_CANAL, WIFI_SECOND_CHAN_NONE);
   if (esp_now_init() != ESP_OK) return false;
+  aqRadioAberto = true;
   esp_now_register_recv_cb(aoReceber);
   esp_now_peer_info_t todos = {};
   memcpy(todos.peer_addr, AQ_TODOS, 6);

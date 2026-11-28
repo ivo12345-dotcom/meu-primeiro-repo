@@ -35,7 +35,7 @@ static AqOrdens ordens;
 
 // Os contadores da caixa, para o comando "estado". O espaço do texto sai deste formato (AQ_TEXTO): com
 // os números todos no máximo não se corta, e o compilador recusa um formato que não caiba numa linha.
-#define ESTADO_FORMATO "motor-tramas=%lu;motor-ignoradas=%lu;radio-ouve=%d;radio-falhadas=%lu;radio-sem-confirmar=%lu;radio-deitadas-fora=%lu"
+#define ESTADO_FORMATO "motor-tramas=%lu;motor-ignoradas=%lu;radio-ouve=%d;radio-falhadas=%lu;radio-sem-confirmar=%lu;radio-deitadas-fora=%lu;religado=%lu"
 
 static void batimento(uint32_t agora) {
   AqLinha("B").i(2).u(agora).t(AQ_VERSAO).i(ensaioAlgum() ? 1 : 0).i(0).u(radioFalhadas + radioSemConfirmar).manda(Serial);
@@ -62,8 +62,11 @@ static bool obedece(const char *linha) {
     AQ_TEXTO(texto, "estado", ESTADO_FORMATO);
     snprintf(texto, sizeof(texto), ESTADO_FORMATO,
              (unsigned long)motorTramas, (unsigned long)motorIgnoradas, radioTemOuvinte(millis()) ? 1 : 0, (unsigned long)radioFalhadas,
-             (unsigned long)radioSemConfirmar, (unsigned long)radioDeitadasFora);
+             (unsigned long)radioSemConfirmar, (unsigned long)radioDeitadasFora, (unsigned long)radioRepostos);
     responde(nome, texto);
+  } else if (strcmp(nome, "avaria") == 0 && quantos == 1) {
+    // uma avaria do rádio feita de propósito, para ensaiar que a caixa o repõe sozinha (radio2.h)
+    responde(nome, radioAvaria(v[0]) ? "ok" : "fora-dos-limites");
   } else if (strcmp(nome, "recente") == 0 && quantos == 3) {
     // a conta "há quanto tempo chegou o sinal da caixa 1" (arlequin_radio.h), com horas dadas à mão
     if (v[2] < 0 || v[2] > 60000) responde(nome, "fora-dos-limites");

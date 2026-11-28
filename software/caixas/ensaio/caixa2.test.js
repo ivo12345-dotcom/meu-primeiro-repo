@@ -200,15 +200,11 @@ test('caixa 2: uma enxurrada de ordens pelo USB (3 s) não lhe atrasa o batiment
 // arrancar (a caixa volta a tentar de 10 em 10 s); 2 tira-lhe o destino, como se o registo tivesse
 // falhado (volta a tentar de segundo a segundo).
 const contadores = (texto) => Object.fromEntries(texto.split(';').map(par => { const [k, v] = par.split('='); return [k, Number(v)] }))
-// Por fazer: o comando "avaria" e o rádio que volta a tentar ainda não existem no programa da caixa 2.
-// Enquanto assim for, estes ensaios correm (com as duas caixas ligadas) mas não contam como falha.
-const POR_FAZER = { todo: 'ponto 2 do passo 7 da Tarefa 7: o rádio da caixa 2 que volta a tentar' }
-
 for (const [avaria, nome, caladaMs, prazoMs] of [
   [1, 'o rádio da caixa 2 vai abaixo e ela volta a ligá-lo sozinha', 5000, 15000],
   [2, 'a caixa 2 perde o destino e volta a registá-lo sozinha', 0, 3000]
 ]) {
-  test(`${nome}: o batimento dela volta à caixa 1 em menos de ${prazoMs / 1000} s, sem ela recomeçar`, { ...COM_AS_DUAS, ...POR_FAZER }, () => comAsDuas(async (p1, p2) => {
+  test(`${nome}: o batimento dela volta à caixa 1 em menos de ${prazoMs / 1000} s, sem ela recomeçar`, COM_AS_DUAS, () => comAsDuas(async (p1, p2) => {
     assert.equal(await p2.manda('parar'), 'ok')
     await p1.ate(batimento(2), 12000, 'o batimento da caixa 2, pelo rádio, antes da avaria')
     const estadoAntes = contadores(await p2.manda('estado'))
@@ -240,7 +236,7 @@ for (const [avaria, nome, caladaMs, prazoMs] of [
   }))
 }
 
-test('caixa 2: a avaria de bancada só aceita 1 ou 2', { ...COM_A_2, ...POR_FAZER }, async () => {
+test('caixa 2: a avaria de bancada só aceita 1 ou 2', COM_A_2, async () => {
   const p = await abrir(P2)
   try {
     for (const fora of [0, 3, -1]) assert.equal(await p.manda('avaria', fora), 'fora-dos-limites', `avaria,${fora}`)

@@ -13,17 +13,17 @@ As caixas não fazem contas nem guardam calibrações: mandam o que leem, em bru
 portátil (`software/signalk-arlequin-caixas`). O que as duas têm em comum (as linhas com soma, os
 comandos, os pacotes do rádio) está em `comum/`.
 
-## Estado (23/11/2026)
+## Estado (28/11/2026)
 
 | Parte | Estado |
 |---|---|
 | Caixa 1: sinal de vida, reinício automático, roda do log, vento, movimento a fingir | feito e ensaiado na placa |
 | Caixa 1: rádio | feito; a placa passa os ensaios dela com o rádio ligado |
-| Caixa 2: escuta do motor, rádio, motor a fingir | feito e ensaiado com as duas placas ligadas (a escuta do motor verdadeiro só no barco) |
+| Caixa 2: escuta do motor, rádio, motor a fingir | feito e ensaiado com as duas placas ligadas (a escuta do motor verdadeiro só no barco). Desde a 0.3.0, se o rádio não ligar ou perder o destino, volta a tentar sozinho (ver "O rádio da caixa 2 volta a tentar") |
 | Caixa 2: escuta pelo fio, na bancada, com os módulos do barramento | **passou a 26/11**: 6145 tramas saídas, 6145 ouvidas, nenhum erro (rajadas de 1000 a 200 e a 1000 por segundo, e 10 s à cadência do motor). Desfeita a montagem, os ensaios das duas placas passaram todos (40 em 40, `npm test`) |
 | Escuta do motor no barco (`ensaio/ouvir-motor.js`) | escrita e experimentada em casa a 26/11 com o motor a fingir; **a primeira escuta do motor verdadeiro está por fazer** |
-| Revisão independente do programa (23/11) | feita; os cinco pontos importantes estão corrigidos na versão **0.2.1**. A **0.2.2** (27/11) só acrescenta à caixa 1 o vento "por fora", para ensaiar a plaquinha do vento; a caixa 2 não muda, mas diz a versão e tem de ser gravada outra vez para os ensaios dela passarem |
-| Sensor de movimento verdadeiro (BNO085) | **a medir desde 27/11**, com o sensor novo, pela ligação de 10 ligações (ver "O sensor de movimento"). Faltam o ensaio de 3 horas e os pontos adiados da revisão (passo 7 da Tarefa 7 do plano) |
+| Revisão independente do programa (23/11) | feita; os cinco pontos importantes estão corrigidos na versão **0.2.1**, e os seis pontos que tinham ficado adiados na versão **0.3.0** (28/11), que é a que as duas placas têm gravada. A 0.3.0 traz também o sensor de movimento, a regra da ponte USB e os comandos de bancada novos (`roda`, `surto`, `avaria`) |
+| Sensor de movimento verdadeiro (BNO085) | **a medir desde 27/11**, com o sensor novo, pela ligação de 10 ligações (ver "O sensor de movimento"). Ensaios de resistência só com a caixa 1: 3 horas a 27/11 e 6 horas na noite de 28/11, os dois limpos. Falta o ensaio final de 3 horas com as duas caixas e a 0.3.0 |
 | Entrada do vento | **plaquinha do optoacoplador montada e ensaiada em casa a 27/11: passa** (três fases de 20 s, nenhuma frase estragada). Falta o cabo no barco e a prova com o mostrador verdadeiro |
 | Entrada do log | a roda é um contacto que abre uma vez por volta (medido a 27/11): dispensa o comparador. Ligação por montar, na plaquinha do vento (ver "A fila dos 3,3 V e da massa"): 3,3 V, 1 kΩ, roda; do outro fio da roda, 10 kΩ e 100 nF à massa e 1 kΩ em série até ao D27 |
 
@@ -89,8 +89,9 @@ recomeçar, e que, se recomeçar a meio dela, volta a arrancar; a conta dos paco
 caso a caso (a volta do número de ordem, repetidos, atrasados e recomeços da caixa 2); a conta de há
 quanto tempo chegou o sinal da outra caixa, também caso a caso (o sinal que chega a meio de uma volta do
 ciclo, e o relógio da placa a dar a volta); que uma enxurrada de ordens do portátil (3000 por segundo,
-3 s) não lhe atrasa o batimento nem a faz deitar fora uma linha; e, com as duas, o motor pelo rádio e o
-que acontece quando a caixa 2 recomeça ou se cala.
+3 s) não lhe atrasa o batimento nem a faz deitar fora uma linha; que a ponte USB não retém nenhuma
+linha; e, com as duas, o motor pelo rádio, o que acontece quando a caixa 2 recomeça ou se cala, e que
+ela repõe o rádio sozinha quando ele vai abaixo ou perde o destino.
 
 Os ensaios `contador.test.js` e `placa.test.js` não precisam de placas: correm sempre.
 
@@ -225,6 +226,7 @@ continua a dar o batimento e as medições sem falhar uma linha.
 | `surto,<bytes>,<pausa em µs>,<bytes>,<calado em ms>` | 1 | Linhas com um número certo de bytes, para pôr à prova a ponte USB (ver "A ponte USB e as linhas de 64 bytes"): sossega o fio, escreve uma linha `$AQR,x,...` com os primeiros bytes e, se os segundos não forem 0, outra depois da pausa; fica calada e só então responde. Não põe a caixa a fingir |
 | `avalanche,<1\|2>,<kHz>` | 1 | Uma onda rápida no pino do log (1) ou do vento (2), para ensaiar que um fio no ar ou um comparador a oscilar não param a caixa (0 para; 2000 no máximo) |
 | `motor,<rpm>` | 2 | Tramas do motor a fingir (0 para) |
+| `avaria,<1\|2>` | 2 | Uma avaria do rádio feita de propósito, para ensaiar que a caixa o repõe sozinha: 1 deita o rádio abaixo, como se não tivesse ligado ao arrancar; 2 tira-lhe o destino, como se o registo da caixa 1 tivesse falhado. Não põe a caixa a fingir |
 | `parar` | as duas | Desliga todos os geradores |
 | `estado` | as duas | Os contadores da caixa (o que entrou em cada entrada, o que se perdeu) |
 | `sensor` | 1 | O estado e os contadores do sensor: `estado` (0 a medir, 1 a arrancar, 2 calado, 3 não volta), `fase` (até onde chegou o último arranque; 7 é a medir), `toques` no RST, vezes que recomeçou sozinho, leituras deitadas fora ou ilegíveis, gravações das calibrações |
@@ -351,6 +353,22 @@ Devagar, a meio, depressa, e com a roda aberta quase metade da volta. Cada fase 
 contar **exatamente** as voltas que a roda a fingir deu. Se contar o dobro, é a subida falsa da
 descida lenta. O `npm test` corre-se **sem** este fio (um dos ensaios conta que nada entre por fora).
 | azul e branco | C3 e H4 | no barco, o amarelo e o verde da ficha do mostrador do vento |
+
+## O rádio da caixa 2 volta a tentar
+
+Até à 0.2.2, se o rádio da caixa 2 não ligasse ao arrancar, ou se o registo do destino (a caixa 1)
+falhasse, ela ficava calada no rádio até lhe cortarem a corrente, com o batimento a sair pelo USB como
+se nada fosse: do portátil só se via que o motor não chegava. Desde a 0.3.0 volta a tentar sozinha, o
+rádio de 10 em 10 s e o destino de segundo a segundo, sem recomeçar a placa (o motor continua a ser
+lido). Cada vez que repõe uma coisa que tinha falhado conta em `religado`, no comando `estado`.
+
+Prova-se com as duas placas e o comando `avaria`: com o rádio deitado abaixo, o batimento da caixa 2
+deixa de chegar à caixa 1 e volta em menos de 15 s; sem destino, volta em menos de 3 s. Sem a caixa
+recomeçar, e com o motor a fingir a chegar logo a seguir.
+
+Um cuidado que ficou escrito no programa (`aqRadioDesliga`, em `comum/src/arlequin_radio.h`) e num
+ensaio sem placas (`ensaio/radio.test.js`): o rádio só se desfaz se tiver sido aberto. Pedir ao chip
+que o desfaça sem nunca o ter aberto fá-lo recomeçar sem parar, calado (visto na caixa 2 a 28/11).
 
 ## A ponte USB e as linhas de 64 bytes
 
