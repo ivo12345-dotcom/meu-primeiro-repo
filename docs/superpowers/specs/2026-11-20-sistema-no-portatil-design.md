@@ -129,6 +129,17 @@ desenho (a fila do VIN do lado oposto à palavra PROA, e a seta X impressa no se
 onde aponta a seta da base), o eixo dele que aponta à proa é o X: na configuração do plugin das
 caixas fica `eixoProa: '+x'`, a confirmar com a bússola na bancada.
 
+**Bancada de 28/11 (01:20–01:32), com o sensor novo na base: o X está ao comprido, mas parece
+apontar para a popa.** O Ivo inclinou a base para um lado e para o outro, ao comprido, com a caixa 1
+à escuta. O sensor sentiu os dois gestos no eixo Y dele (52° e 28°) e quase nada no X, o que
+confirma que o X está ao comprido da base. Pela descrição do Ivo (a placa do ESP32 do lado dele e o
+sensor adiante; primeiro para a esquerda, depois para a direita), a seta X aponta para a ponta do
+sensor, que é a da popa: a configuração seria `eixoProa: '-x'`, com `eixoCima: '+z'`, e não `'+x'`.
+**Por confirmar** com a prova que não depende de esquerda e direita: levantar a ponta da ficha USB
+(a proa da base) e ver o caimento subir. Só depois se muda a configuração do `software/bordo`, que
+hoje tem `'+y'` (o valor por omissão do plugin) nos três perfis: com ela, um adornamento sai como
+caimento.
+
 Os chicotes do vento e do log passam a ir para a cabine de popa, e não para a mesa de navegação.
 **Ligação ao portátil:** cabo USB se o portátil ficar até 5 m (dá também a alimentação). Se não
 chegar, a caixa 1 fala pelo rádio das placas com uma terceira placa pequena ligada ao USB do
@@ -701,6 +712,35 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
   ponta da caixa, e sem levar corrente de alimentação a sério.
 - O Ivo tem um sortido de resistências (50 valores, 1/4 W, com as de 1 kΩ): as resistências em
   série das entradas do log e do vento saem daí.
+
+**Em casa, 28/11, 00:40–01:35: três dos pontos adiados feitos na caixa 1, e o sensor mexido à mão.**
+
+- **Pontos adiados da revisão (passo 7 da Tarefa 7 do plano), cada um visto falhar primeiro na
+  placa.** Com os dois de 27/11 (a verificação "só em escuta" e o texto dos contadores) são cinco
+  em seis. A caixa 1 ficou com o programa 0.3.0-a7 e a bateria dela dá 28 ensaios em 28.
+  1. *A conta dos pacotes perdidos no rádio* passou a ter ensaio próprio (0.3.0-a5): a placa faz
+     a conta com números de ordem dados à mão (comando `perdidos`) e compara-se com uma tabela de
+     15 casos. Com a conta estragada de propósito em três sítios, a tabela apanhou os quatro casos
+     previstos e só esses.
+  2. *O sinal da caixa 1 que chega a meio de uma volta do ciclo da caixa 2* (0.3.0-a6): a conta
+     "há quanto tempo chegou" passou a ser com sinal, com 1 s de folga (comando `recente`, tabela
+     de 14 casos). Com a conta antiga falhavam os três casos "a meio da volta" e só esses.
+  3. *Uma enxurrada de ordens do portátil* (0.3.0-a7). Medido antes: com 3000 ordens por segundo
+     durante 3 s a caixa deitava fora mais de 5000 linhas, e nesses 3 s passava um batimento e
+     nenhuma linha de movimento. O limite de bytes por volta que o plano pedia não chegou (ainda
+     deitava fora mais de 3000). Com uma ordem obedecida de 10 em 10 ms, no máximo: das 8960
+     ordens responde a 333, os batimentos saem a 1000 ms certos, o movimento não perde uma linha e
+     a caixa não deita nada fora.
+- **Por fazer destes pontos:** gravar a caixa 2 (a parte dela dos pontos 2 e 3 compila, mas a caixa
+  esteve desligada) e o sexto ponto, que é só dela: o rádio que falha ao arrancar e volta a tentar.
+- **O sensor mexido à mão pelo Ivo (01:20–01:32), com a caixa 1 à escuta:** 10 linhas por segundo
+  sem uma em falta, os gestos todos apanhados (até 52°) e o sensor de volta ao sítio certo depois
+  de cada um. Ficou à vista que o lado da proa ainda não está dito ao programa: ver a nota de 28/11
+  em "Base da caixa 1". A bússola continua sem confiança (0, erro de 180°): não chegou a ser rodada.
+- **O ensaio de resistência passou a dizer os atrasos:** quantos intervalos de mais de 250 ms houve
+  entre duas linhas e a que altura do ensaio foi o maior (o de 27/11 só dizia "501 ms").
+- **Ensaio da noite:** 6 horas com a 0.3.0-a7, só a caixa 1, sem sinais a fingir, a começar à
+  01:33. O resultado fica no ponto 12.
 
 **Em casa, 27/11, 20:39–21:40: o sensor de movimento novo, ligado e a medir.**
 
