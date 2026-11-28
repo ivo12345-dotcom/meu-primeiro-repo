@@ -169,3 +169,41 @@ test('a caixa que recomeça: os segundos que esteve calada contam pelo relógio 
   assert.equal(c.c.recomecos, 1)
   assert.ok(c.segundosSemBatimento() >= 7 && c.segundosSemBatimento() <= 9, `${c.segundosSemBatimento()} s sem batimento da caixa 1`)
 })
+
+// Ensaio de 3 horas do sensor novo (27/11/2026): o resumo dizia "maior silêncio 501 ms" desde o primeiro
+// minuto, sem se saber quando tinha sido nem se se repetia (com o sensor a medir, o costume é uma linha de
+// 100 em 100 ms). O contador passa a dizer a que altura do ensaio foi o maior intervalo entre duas linhas
+// e quantos passaram dos 250 ms. Não entram no veredicto: as linhas chegaram, só chegaram tarde.
+test('os intervalos compridos entre linhas contam-se, e fica a altura do ensaio em que foi o maior', () => {
+  const agora = relogio()
+  const c = novoContador({ agora })
+  let n = 0
+  const dezPorSegundo = (segundos) => { for (let i = 0; i < segundos * 10; i++) { agora.passa(100); c.linha(mov(n++)) } }
+  dezPorSegundo(65)
+  assert.equal(c.c.intervalosCompridos, 0)
+  assert.doesNotMatch(c.resumo(), /de mais de 250 ms/)
+  agora.passa(500) // um atraso: meio segundo sem chegar nada, aos 65,5 s do ensaio
+  c.linha(mov(n++))
+  assert.match(c.resumo(), /maior silêncio 500 ms \(aos 1 min 05 s\) · 1 intervalo de mais de 250 ms/)
+  dezPorSegundo(120)
+  agora.passa(300) // outro, mais pequeno: conta, mas o maior continua a ser o primeiro
+  c.linha(mov(n++))
+  agora.passa(250) // 250 ms certos ainda não é "mais de 250"
+  c.linha(mov(n++))
+  dezPorSegundo(10)
+  assert.equal(c.c.intervalosCompridos, 2)
+  assert.equal(c.c.maiorSilencioMs, 500)
+  assert.equal(c.c.maiorSilencioAos, 65500)
+  assert.match(c.resumo(), /maior silêncio 500 ms \(aos 1 min 05 s\) · 2 intervalos de mais de 250 ms/)
+  // um silêncio que ainda está a decorrer já conta para o maior, com a altura a que se deu por ele;
+  // para a conta dos intervalos só entra quando uma linha o fechar
+  agora.passa(2000)
+  c.tique()
+  assert.equal(c.c.maiorSilencioMs, 2000)
+  assert.equal(c.c.maiorSilencioAos, 65500 + 120000 + 300 + 250 + 10000 + 2000)
+  assert.equal(c.c.intervalosCompridos, 2)
+  agora.passa(100)
+  c.linha(mov(n++))
+  assert.equal(c.c.intervalosCompridos, 3)
+  assert.equal(c.c.maiorSilencioMs, 2100)
+})

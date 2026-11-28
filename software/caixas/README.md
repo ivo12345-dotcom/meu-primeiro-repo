@@ -121,6 +121,10 @@ a caixa que recomeça; linhas que a caixa diz que não conseguiu mandar; a porta
 logo); e, com a caixa 2, o silêncio dela, os recomeços e os pacotes perdidos no rádio. As cópias que a
 ponte USB repete só se mostram: são linhas boas.
 
+Mostra também o maior intervalo entre duas linhas seguidas, a que altura do ensaio foi ("aos 12 min
+05 s"), e quantos intervalos passaram dos 250 ms (com o sensor a medir chega uma linha de 100 em 100 ms).
+Não contam como falha: são linhas que chegaram, mas tarde.
+
 ## Ensaio da escuta pelo fio (só na bancada)
 
 O motor a fingir da caixa 2 nasce dentro dela, e por isso não passa pelo módulo do barramento nem

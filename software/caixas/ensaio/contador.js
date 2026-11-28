@@ -12,9 +12,17 @@
 //   - com a caixa 2 (se foi pedida, ou desde que apareça): o mesmo silêncio, os recomeços dela e os
 //     pacotes que a caixa 1 conta como perdidos no rádio.
 // As cópias que a ponte USB repete (e que quem lê a porta deita fora) só se mostram: são linhas boas.
+// Os intervalos compridos entre duas linhas também só se mostram (quantos foram, e a que altura do ensaio
+// foi o maior): as linhas chegaram, só chegaram tarde.
 const { ler } = require('../../signalk-arlequin-caixas/lib/linhas')
 
 const FOLGA = 1500 // ms: um batimento que demore mais do que isto a seguir ao anterior já conta como falta
+// ms: com o sensor a medir chega uma linha de 100 em 100 ms; mais do que isto entre duas linhas seguidas é
+// um atraso na entrega (ou a caixa sem sensor, que só manda o log de meio em meio segundo)
+const INTERVALO_COMPRIDO = 250
+
+// A altura do ensaio, para se ler: "aos 12 min 05 s".
+const altura = (ms) => `${Math.floor(ms / 60000)} min ${String(Math.floor(ms / 1000) % 60).padStart(2, '0')} s`
 
 // Os segundos em falta num intervalo entre dois batimentos (que deviam vir de segundo a segundo).
 const emFalta = (ms) => (ms > FOLGA ? Math.round(ms / 1000) - 1 : 0)
@@ -25,7 +33,8 @@ function novoContador ({ agora = Date.now, duasCaixas = false } = {}) {
   const c = {
     linhas: 0, estragadas: 0, batimentos: 0, log: 0, vento: 0, movimento: 0, motor: 0,
     saltosDoMovimento: 0, leiturasEmFalta: 0, segundosSemBatimento: 0, recomecos: 0,
-    mudancasDoSensor: 0, toquesNoRst: 0, maiorSilencioMs: 0, deitadasForaPelaCaixa: 0,
+    mudancasDoSensor: 0, toquesNoRst: 0, maiorSilencioMs: 0, maiorSilencioAos: null, intervalosCompridos: 0,
+    deitadasForaPelaCaixa: 0,
     batimentos2: 0, segundosSemBatimento2: 0, recomecos2: 0, perdidosNoRadio: 0,
     repetidas: 0, portaFechou: null
   }
@@ -43,13 +52,22 @@ function novoContador ({ agora = Date.now, duasCaixas = false } = {}) {
   const esperaPela2 = () => duasCaixas || ultimo2 !== null
   const segundosSemBatimento2 = () => (esperaPela2() ? c.segundosSemBatimento2 + emAberto(ultimo2) : 0)
 
+  // O maior silêncio até agora, e a que altura do ensaio se deu por ele (ms desde o princípio).
+  function silencio (ms, hora) {
+    if (ms <= c.maiorSilencioMs) return
+    c.maiorSilencioMs = ms
+    c.maiorSilencioAos = hora - inicio
+  }
+
   function tique () {
-    c.maiorSilencioMs = Math.max(c.maiorSilencioMs, agora() - ultimaLinha)
+    const hora = agora()
+    silencio(hora - ultimaLinha, hora)
   }
 
   function linha (texto) {
     const hora = agora()
-    c.maiorSilencioMs = Math.max(c.maiorSilencioMs, hora - ultimaLinha)
+    silencio(hora - ultimaLinha, hora)
+    if (hora - ultimaLinha > INTERVALO_COMPRIDO) c.intervalosCompridos++
     ultimaLinha = hora
     c.linhas++
     if (texto.startsWith('$AQR,')) return // respostas a comandos: não são do contrato com o portátil
@@ -100,17 +118,18 @@ function novoContador ({ agora = Date.now, duasCaixas = false } = {}) {
     }
   }
 
+  const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`
+
   function resumo () {
     tique()
     return `${c.linhas} linhas · ${c.estragadas} estragadas · movimento ${c.movimento} (${c.leiturasEmFalta} em falta) · ` +
       `${segundosSemBatimento()} s sem batimento · ${c.recomecos} recomeços · sensor: ${c.mudancasDoSensor} mudanças, ${c.toquesNoRst} toques · ` +
-      `maior silêncio ${c.maiorSilencioMs} ms` +
+      `maior silêncio ${c.maiorSilencioMs} ms` + (c.maiorSilencioAos === null ? '' : ` (aos ${altura(c.maiorSilencioAos)})`) +
+      (c.intervalosCompridos ? ` · ${plural(c.intervalosCompridos, 'intervalo', 'intervalos')} de mais de ${INTERVALO_COMPRIDO} ms` : '') +
       (esperaPela2() ? ` · caixa 2: ${segundosSemBatimento2()} s sem batimento, ${c.recomecos2} recomeços, ${c.perdidosNoRadio} perdidos no rádio` : '') +
       (c.repetidas ? ` · ${c.repetidas} cópias deitadas fora` : '') +
       (c.portaFechou ? ` · A PORTA FECHOU: ${c.portaFechou}` : '')
   }
-
-  const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`
 
   function veredicto () {
     tique()
