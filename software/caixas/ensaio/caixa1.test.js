@@ -534,3 +534,51 @@ for (const [nome, qual] of [['do log', 1], ['do vento', 2]]) {
     assert.equal(await p.manda('parar'), 'ok')
   }))
 }
+
+// --- Os pontos adiados da revisão final (passo 7 da Tarefa 7, 27/11/2026) ------------------------------
+
+// A conta dos pacotes que se perdem no rádio (AqPerdidos, em arlequin_radio.h) não tinha ensaio próprio.
+// Neste portátil não há compilador para o próprio portátil: é a placa que faz a conta, com a mesma classe
+// que usa no rádio. O comando de bancada "perdidos" dá-lhe números de ordem como se chegassem pacotes
+// (-1 começa uma conta nova, -2 é a caixa 2 a recomeçar) e ela responde com o total de perdidos. A conta
+// da bancada é outra: a do rádio verdadeiro não mexe.
+async function perdidosNaPlaca (p, ordens) {
+  const valores = [-1, ...ordens.map(o => (o === 'recomeça' ? -2 : o))]
+  let total = ''
+  for (let i = 0; i < valores.length; i += 4) total = await p.manda('perdidos', ...valores.slice(i, i + 4))
+  return total
+}
+
+const PERDIDOS = [
+  ['o primeiro pacote não conta', [777], 0],
+  ['pacotes em ordem', [10, 11, 12, 13], 0],
+  ['um salto de três', [10, 11, 15], 3],
+  ['dois saltos somam-se', [10, 12, 13, 16], 3],
+  ['a volta do número de ordem, sem perdas', [65534, 65535, 0, 1], 0],
+  ['a volta do número de ordem, com quatro perdidos pelo meio', [65533, 2], 4],
+  ['um pacote repetido', [10, 11, 11, 12], 0],
+  ['um pacote atrasado não conta nem faz a conta andar para trás', [10, 11, 12, 10, 13], 0],
+  ['atrasado 255 pacotes ainda é um atrasado', [1000, 745, 1001], 0],
+  ['256 para trás já é um recomeço mal apanhado: conta-se a partir daí', [1000, 744, 746], 1],
+  ['um salto de 1000 ainda conta', [0, 1001], 1000],
+  ['um salto de mais de 1000 é um recomeço mal apanhado: não conta', [0, 1002], 0],
+  ['depois de um recomeço mal apanhado conta-se a partir daí', [0, 1002, 1004], 1],
+  ['a caixa 2 recomeça com o número de ordem lá no alto: não são 535 perdidos', [65000, 'recomeça', 0, 1], 0],
+  ['a caixa 2 recomeça pouco depois de arrancar: volta logo a contar', [100, 'recomeça', 0, 3], 2]
+]
+
+test('a conta dos pacotes perdidos no rádio: saltos, a volta do número de ordem, repetidos, atrasados e recomeços', COM_PLACA, () => comACaixa(async (p) => {
+  // a tabela corre toda, para uma conta estragada mostrar de uma vez todos os casos em que se engana
+  const enganos = []
+  for (const [nome, ordens, esperado] of PERDIDOS) {
+    const total = await perdidosNaPlaca(p, ordens)
+    if (total !== String(esperado)) enganos.push(`${nome} (${ordens.join(', ')}): deu ${total}, devia dar ${esperado}`)
+  }
+  assert.deepEqual(enganos, [])
+  assert.equal(await p.manda('perdidos', 65536), 'fora-dos-limites')
+  assert.equal(await p.manda('perdidos', -3), 'fora-dos-limites')
+  // um valor fora dos limites recusa o comando inteiro: o 13 que vinha antes dele não chegou a contar
+  assert.equal(await p.manda('perdidos', -1, 10), '0')
+  assert.equal(await p.manda('perdidos', 13, 70000), 'fora-dos-limites')
+  assert.equal(await p.manda('perdidos', 13), '2')
+}))

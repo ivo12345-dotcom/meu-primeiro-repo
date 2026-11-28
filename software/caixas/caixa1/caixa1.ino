@@ -101,6 +101,16 @@ static void obedece(const char *linha) {
     AQ_TEXTO(texto, "leituras", SENSOR_LEITURAS_FORMATO);
     sensorLeituras(texto, sizeof(texto));
     responde(nome, texto);
+  } else if (strcmp(nome, "perdidos") == 0 && quantos >= 1) {
+    // a conta dos pacotes perdidos no rádio, posta à prova com números de ordem dados à mão (ensaio.h)
+    uint32_t total = 0;
+    if (ensaioPerdidos(v, quantos, &total)) {
+      AQ_TEXTO(texto, "perdidos", "%lu");
+      snprintf(texto, sizeof(texto), "%lu", (unsigned long)total);
+      responde(nome, texto);
+    } else {
+      responde(nome, "fora-dos-limites");
+    }
   } else if (strcmp(nome, "prender") == 0 && quantos == 0) {
     responde(nome, "ok");
     Serial.flush();

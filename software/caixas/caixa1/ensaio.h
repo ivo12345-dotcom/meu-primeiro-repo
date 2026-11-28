@@ -16,6 +16,7 @@
 #include <soc/gpio_sig_map.h>
 
 #include <arlequin_linhas.h>
+#include <arlequin_radio.h>
 
 #include "movimento.h"
 #include "pinos.h"
@@ -270,6 +271,27 @@ static void ensaioCorreMovimento(uint32_t agoraMs) {
     feitas++;
   }
   if ((int32_t)(agoraMs - ensaioMovProxima) >= 0) ensaioMovProxima = agoraMs + 10;  // muito atrasado: acerta
+}
+
+// ---- A conta dos pacotes perdidos no rádio, posta à prova ---------------------------------------------
+// Não é um gerador: não manda nada, não mexe em pinos e não põe a caixa a fingir. O comando "perdidos" dá
+// números de ordem a uma conta igual à do rádio (a mesma classe, AqPerdidos), como se chegassem pacotes,
+// e a caixa responde com o total de perdidos. A conta do rádio verdadeiro é outra e não mexe. Cada valor:
+//   0 a 65535: o número de ordem de um pacote que chega;   -1: conta nova;   -2: a caixa 2 recomeçou.
+// Devolve false, sem mexer em nada, se algum valor não for nenhum destes.
+static AqPerdidos ensaioContaDePerdidos;
+
+inline bool ensaioPerdidos(const long *valores, int quantos, uint32_t *total) {
+  for (int i = 0; i < quantos; i++) {
+    if (valores[i] < -2 || valores[i] > 65535) return false;
+  }
+  for (int i = 0; i < quantos; i++) {
+    if (valores[i] == -1) ensaioContaDePerdidos = AqPerdidos();
+    else if (valores[i] == -2) ensaioContaDePerdidos.recomecou();
+    else ensaioContaDePerdidos.chegou((uint16_t)valores[i]);
+  }
+  *total = ensaioContaDePerdidos.total;
+  return true;
 }
 
 // Chama-se em cada volta do ciclo principal: manda o que os geradores devem neste instante.
