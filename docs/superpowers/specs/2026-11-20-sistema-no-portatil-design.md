@@ -732,9 +732,12 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
 - **Quem fala com o sensor é uma tarefa à parte**, no outro núcleo do chip, que só entrega leituras
   numa fila; o ciclo principal nunca espera por ele. Se essa tarefa ficar 4 s sem dar sinal, o ciclo
   principal recomeça a placa (é a regra 5, o cão de guarda, aplicada à biblioteca).
-- **Por fazer:** o ensaio de 3 horas ao ritmo do desenho (regra 9), os seis pontos adiados da revisão
-  (passo 7 da Tarefa 7), a caixa 2 regravada com a versão nova, o ensaio "sem sensor" com o fio do
-  CS fora, e a bússola (rodar o sensor).
+- **O ensaio de 3 horas ao ritmo do desenho (regra 9) correu nessa noite, das 21:36 às 00:36:
+  LIMPO.** Sem uma leitura em falta, sem uma linha estragada e sem o sensor se calar. Os números
+  estão no ponto 12.
+- **Por fazer:** os pontos adiados da revisão (passo 7 da Tarefa 7; dois dos seis ficaram feitos a
+  27/11), a caixa 2 regravada com a versão nova, o ensaio de 3 horas repetido com esses pontos e com
+  as duas caixas, o ensaio "sem sensor" com o fio do CS fora, e a bússola (rodar o sensor).
 
 **Em casa, 27/11, 19:33–20:55: a plaquinha do vento montada e ensaiada. PASSA.**
 
@@ -1238,6 +1241,38 @@ definitivo, ou a caixa 2 fica de vez.
     10. **Um sensor que não volta com o RST diz-se ao portátil.** A caixa tenta o RST, conta as
         tentativas e, se o sensor continuar calado, manda essa informação nas linhas dela, para o
         ecrã dizer que o sensor de movimento não responde, em vez de ficar só sem proa.
+
+    **Ensaio de resistência do sensor novo, 27/11 das 21:36 às 00:36: LIMPO (regra 9).** O segundo
+    BNO085, pela ligação de 10 ligações (SPI) com o INT e o RST, na caixa 1 com o programa 0.3.0-a3,
+    ao ritmo do desenho (100 / 100 / 100), sem sinais a fingir, com a caixa pousada na mesa do Ivo.
+    Contado pelo `software/caixas/ensaio/resistencia.js` (`COM3 180 --sem-geradores`), com o leitor
+    que lê as linhas no barco. O registo, de minuto a minuto, ficou no portátil, em
+    `Documents\Veleiro\bancada\caixas\2026-11-27_2137_resistencia-sensor-novo-3h.log`.
+
+    | O que se contou em 10 801 s | Resultado |
+    |---|---|
+    | Tempo total sem leituras do movimento | **0 s.** 108 021 linhas de movimento (10 por segundo), nenhuma em falta pelo número de ordem |
+    | Linhas estragadas a 460 800 baud | **0 em 140 427** (0,0000 %) |
+    | Segundos sem batimento da caixa 1 | 0 (10 802 batimentos) |
+    | Recomeços da placa | 0 |
+    | Mudanças do estado do sensor e toques no RST | 0 e 0: o sensor nunca se calou |
+    | Linhas que a caixa não conseguiu mandar | 0 |
+    | Maior intervalo entre duas linhas, no relógio do portátil | 501 ms, uma vez, logo no primeiro minuto |
+
+    - **O sensor não teve um único episódio em 3 horas.** O primeiro tinha bloqueado sozinho às
+      2 h 26 min (22/11, a 4 fios e ao dobro do ritmo). Por isso a parte da regra 9 que diz "qualquer
+      bloqueio se resolva sozinho" não chegou a ser posta à prova neste ensaio: não houve bloqueio. O
+      recomeço pelo RST está ensaiado à parte, com um toque dado de propósito (ensaio "Review Focus 3"
+      da caixa 1: o movimento volta em menos de 2 s).
+    - **O intervalo de 501 ms não foi uma perda:** nesse minuto os números de ordem seguem-se e a
+      contagem está completa (604 linhas de movimento). Foi um atraso na entrega, uma vez; a causa
+      não se viu (o contador só guarda o maior intervalo, não a hora dele). Nos quatro ensaios de
+      23/11, com os sinais a fingir, o maior intervalo andou pelos 100 ms. Fica para o ensaio
+      seguinte dizer se se repete e quando.
+    - **Falta repetir** com os pontos adiados do passo 7 da Tarefa 7 do plano e com as duas caixas,
+      como o plano manda: este correu só com a caixa 1 e antes deles.
+    - A partir daqui o ensaio ao dobro do ritmo (200 / 200 / 100) deixa de estar vedado ("só depois
+      de 3 horas limpas"). O desenho não precisa dele.
 
 ## Pedido novo: carta com toque e caminhos guardados (por desenhar com o Ivo)
 
