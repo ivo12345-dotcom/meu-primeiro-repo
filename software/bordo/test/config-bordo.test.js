@@ -74,10 +74,14 @@ test('o estado no git é o de bordo: a caixa verdadeira, os dados na pasta de ca
   assert.equal(s.vessel.name, 'Arlequin')
 })
 
-test('as caixas arrancam com os valores por omissão do próprio plugin', () => {
+// A única coisa que o modelo traz diferente do plugin é a montagem da caixa 1 tal como está na base: a
+// seta X do sensor para a popa (provado na bancada a 28/11/2026). O valor por omissão do plugin, eixo y à
+// proa, é o da caixa a fingir e dos ensaios.
+test('as caixas arrancam com os valores por omissão do próprio plugin, e com a montagem da caixa 1 como está na base', () => {
   const esquema = require('../../signalk-arlequin-caixas')({}).schema.properties
   const omissao = Object.fromEntries(Object.entries(esquema).map(([k, v]) => [k, v.default]))
-  assert.deepEqual(plugin('signalk-arlequin-caixas').configuration, omissao)
+  assert.equal(omissao.eixoProa, '+y')
+  assert.deepEqual(plugin('signalk-arlequin-caixas').configuration, { ...omissao, eixoProa: '-x' })
 })
 
 test('o motor lê pela caixa; a rota sem modo de teste; a caixa negra com os limites do dev', () => {
