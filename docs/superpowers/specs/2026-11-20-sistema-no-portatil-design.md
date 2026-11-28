@@ -763,9 +763,21 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
 - **Desenhos dados ao Ivo (08:15):** `docs/caixas/caixa1-fila-montagem.jpg` (o que soldar, com a
   conferência a multímetro) e `docs/caixas/caixa1-fila-ligacoes.jpg` (onde ligam os fios na placa
   da caixa 1, marcado numa foto dele). As cores dos cinco fios novos são as que ele escolher.
+- **Uma dúvida que só a placa tira: a roda pode contar a dobrar.** O condensador faz o pino descer
+  devagar quando a roda abre (cerca de 0,6 ms até meio), e as entradas deste chip não têm folga
+  entre o "em cima" e o "em baixo": uma descida lenta pode passar por subida. Os ensaios que havia
+  não o apanhavam, porque a roda a fingir mexe no próprio pino, com flancos rápidos.
+- **A roda por fora (programa 0.3.0-a8, gravado na caixa 1 às 08:23).** Comando de bancada novo,
+  `roda,<voltas por segundo>[,<% aberta>]`: o pino D26, que não leva fio nenhum, faz de roda (em
+  cima enquanto ela estaria fechada, solto enquanto estaria aberta) e a caixa conta as voltas que
+  deu. Com o fio da roda do furo Q9 no D26, o sinal chega ao pino do log pelo caminho verdadeiro.
+  `node ensaio/roda-por-fora.js COM3` corre quatro fases (devagar, a meio, depressa e com a roda
+  aberta quase metade da volta) e só passa se a caixa contar exatamente as voltas dadas. Sem a
+  plaquinha diz, como deve, que não chega nada. Bateria da caixa 1 com a a8: 30 ensaios, 29 passam
+  e 1 salta-se (o que só serve sem sensor).
 - **Por fazer:** ele soldar e conferir; o ensaio em casa do sensor, do vento e da roda ao mesmo
-  tempo; e a prova de que a roda conta certo com as descidas lentas que o condensador dá (um pino
-  livre da placa a fazer de roda, como a caixa já faz de mostrador no ensaio do vento).
+  tempo; e correr o ensaio da roda por fora com a plaquinha. Se contar a dobrar, a subida passa a só
+  contar com o pino ainda em cima passado um bocado (por escrever, depois de se ver falhar).
 
 **Em casa, 28/11, 00:40–01:35: três dos pontos adiados feitos na caixa 1, e o sensor mexido à mão.**
 

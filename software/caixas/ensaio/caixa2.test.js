@@ -193,6 +193,62 @@ test('caixa 2: uma enxurrada de ordens pelo USB (3 s) não lhe atrasa o batiment
   }
 })
 
+// O último ponto adiado: o rádio da caixa 2 que falha e volta a tentar. Até à 0.3.0, se o rádio não
+// ligasse ao arrancar, ou se o destino (a caixa 1) não ficasse registado, a caixa 2 ficava calada no rádio
+// até lhe cortarem a corrente, com o batimento dela a sair pelo USB como se nada fosse. As avarias
+// fazem-se na bancada com o comando "avaria": 1 deita o rádio abaixo, como se não tivesse ligado ao
+// arrancar (a caixa volta a tentar de 10 em 10 s); 2 tira-lhe o destino, como se o registo tivesse
+// falhado (volta a tentar de segundo a segundo).
+const contadores = (texto) => Object.fromEntries(texto.split(';').map(par => { const [k, v] = par.split('='); return [k, Number(v)] }))
+// Por fazer: o comando "avaria" e o rádio que volta a tentar ainda não existem no programa da caixa 2.
+// Enquanto assim for, estes ensaios correm (com as duas caixas ligadas) mas não contam como falha.
+const POR_FAZER = { todo: 'ponto 2 do passo 7 da Tarefa 7: o rádio da caixa 2 que volta a tentar' }
+
+for (const [avaria, nome, caladaMs, prazoMs] of [
+  [1, 'o rádio da caixa 2 vai abaixo e ela volta a ligá-lo sozinha', 5000, 15000],
+  [2, 'a caixa 2 perde o destino e volta a registá-lo sozinha', 0, 3000]
+]) {
+  test(`${nome}: o batimento dela volta à caixa 1 em menos de ${prazoMs / 1000} s, sem ela recomeçar`, { ...COM_AS_DUAS, ...POR_FAZER }, () => comAsDuas(async (p1, p2) => {
+    assert.equal(await p2.manda('parar'), 'ok')
+    await p1.ate(batimento(2), 12000, 'o batimento da caixa 2, pelo rádio, antes da avaria')
+    const estadoAntes = contadores(await p2.manda('estado'))
+    const antes = await proximo(p2, 2)
+    const chegados = [] // as horas (do portátil) a que a caixa 1 passou um batimento da caixa 2
+    const parar = p1.ouvir((l) => { if (batimento(2)(l)) chegados.push(Date.now()) })
+    assert.equal(await p2.manda('avaria', avaria), 'ok')
+    const daAvaria = Date.now()
+    await espera(prazoMs)
+    parar()
+    // os batimentos que chegaram depois do silêncio (ou, na avaria 2, depois de o que ia a caminho já
+    // ter chegado): são os da volta
+    const depoisDoSilencio = chegados.filter(h => h - daAvaria > Math.max(caladaMs, 300))
+    const noSilencio = chegados.filter(h => h - daAvaria > 1200 && h - daAvaria <= caladaMs)
+    assert.equal(noSilencio.length, 0, `a caixa 1 continuou a ouvir a caixa 2 (${noSilencio.length} batimentos) com a avaria feita`)
+    assert.ok(depoisDoSilencio.length >= 1, `o batimento da caixa 2 não voltou à caixa 1 em ${prazoMs / 1000} s`)
+    // voltou sozinha: sem recomeçar, e contou que teve de repor o rádio
+    const depois = await proximo(p2, 2)
+    assert.ok(depois.ms > antes.ms, 'a caixa 2 recomeçou para voltar a ter rádio')
+    const estadoDepois = contadores(await p2.manda('estado'))
+    assert.equal(estadoDepois.religado - estadoAntes.religado, 1, 'a caixa 2 não contou que teve de repor o rádio')
+    // e fica a funcionar: o motor a fingir chega à caixa 1, e os perdidos não disparam
+    const b1 = await proximo(p1, 2, 3000)
+    assert.equal(await p2.manda('motor', 2100), 'ok')
+    await p1.ate(eMotor, 4000, 'uma trama do motor depois de o rádio voltar')
+    await espera(1500)
+    const b2 = await proximo(p1, 2, 3000)
+    assert.ok(b2.perdidos - b1.perdidos <= 3, `pacotes perdidos depois de o rádio voltar: ${b2.perdidos - b1.perdidos}`)
+  }))
+}
+
+test('caixa 2: a avaria de bancada só aceita 1 ou 2', { ...COM_A_2, ...POR_FAZER }, async () => {
+  const p = await abrir(P2)
+  try {
+    for (const fora of [0, 3, -1]) assert.equal(await p.manda('avaria', fora), 'fora-dos-limites', `avaria,${fora}`)
+  } finally {
+    await p.fechar()
+  }
+})
+
 test('só em escuta: o programa da caixa 2 nunca escreve no barramento do motor', () => {
   const ficheiros = ficheirosDaCaixa2()
   const nomes = ficheiros.map(f => f.nome)

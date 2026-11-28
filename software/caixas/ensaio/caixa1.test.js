@@ -182,6 +182,34 @@ test('Review Focus 5: impulsos duplos (a menos de 4 ms um do outro) contam como 
   assert.equal(await p.manda('log', 1000), 'fora-dos-limites')
 }))
 
+// A roda por fora: o pino D26 faz de roda (fechada quase a volta toda, aberta uma vez por volta) e só
+// chega ao pino do log se houver um fio do D26 à plaquinha (ensaio/roda-por-fora.js). Aqui, sem esse fio.
+test('roda por fora: sem o fio do D26 não entra nada pelo pino da roda, a caixa diz que finge e conta as voltas que deu', COM_PLACA, () => comACaixa(async (p) => {
+  assert.equal(await p.manda('parar'), 'ok')
+  const antes = logs(await p.linhas(1200)).at(-1)
+  assert.equal(await p.manda('roda', 26, 15), 'ok')
+  const linhas = await p.linhas(3000)
+  const b = batimentos(linhas)
+  assert.ok(b.length >= 3, `${b.length} batimentos em 3 s`)
+  assert.ok(b.every(x => x.sim === true), 'a caixa não disse que fingia')
+  const voltas = Number(await p.manda('roda', 0))
+  assert.ok(voltas >= 72 && voltas <= 86, `${voltas} voltas em cerca de 3 s, a 26 por segundo`)
+  await espera(700)
+  const depois = logs(await p.linhas(1200)).at(-1)
+  assert.equal(depois.impulsos, antes.impulsos, 'entrou alguma coisa pelo pino da roda sem fio nenhum')
+  assert.equal((await proximoBatimento(p)).sim, false, 'a caixa continua a dizer que finge depois de a roda parar')
+  // a contagem das voltas recomeça de cada vez que a roda se liga, e o "parar" também a para
+  assert.equal(await p.manda('roda', 50), 'ok')
+  await espera(1000)
+  assert.equal(await p.manda('parar'), 'ok')
+  const segunda = Number(await p.manda('roda', 0))
+  assert.ok(segunda >= 40 && segunda <= 60, `${segunda} voltas em cerca de 1 s, a 50 por segundo`)
+  assert.equal((await proximoBatimento(p)).sim, false)
+  for (const fora of [[101], [-1], [26, 4], [26, 61]]) {
+    assert.equal(await p.manda('roda', ...fora), 'fora-dos-limites', `roda,${fora.join(',')}`)
+  }
+}))
+
 // --- O vento (a frase a fingir sai de uma segunda porta série da placa, para o próprio pino do vento) --
 const ventos = (linhas) => linhas.filter(l => /^\$..MWV,/.test(l))
 

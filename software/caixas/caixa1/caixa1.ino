@@ -74,6 +74,18 @@ static bool obedece(const char *linha) {
     responde(nome, "ok");
   } else if (strcmp(nome, "log") == 0 && quantos == 1) {
     responde(nome, ensaioLog(v[0]) ? "ok" : "fora-dos-limites");
+  } else if (strcmp(nome, "roda") == 0 && (quantos == 1 || quantos == 2)) {
+    // a roda por fora: o pino D26 faz de roda (ensaio.h). Ao parar, a resposta são as voltas que deu
+    uint32_t voltas = 0;
+    if (!ensaioRoda(v[0], quantos == 2 ? v[1] : 15, &voltas)) {
+      responde(nome, "fora-dos-limites");
+    } else if (v[0] != 0) {
+      responde(nome, "ok");
+    } else {
+      AQ_TEXTO(texto, "roda", "%lu");
+      snprintf(texto, sizeof(texto), "%lu", (unsigned long)voltas);
+      responde(nome, texto);
+    }
   } else if (strcmp(nome, "movimento") == 0 && quantos == 1) {
     responde(nome, ensaioMovimento(v[0]) ? "ok" : "fora-dos-limites");
   } else if (strcmp(nome, "vento") == 0 && quantos >= 2 && quantos <= 4) {

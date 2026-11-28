@@ -219,6 +219,7 @@ continua a dar o batimento e as medições sem falhar uma linha.
 | Comando | Caixa | O que faz |
 |---|---|---|
 | `log,<Hz>` | 1 | Impulsos da roda a fingir (0 para; 26 dá 5,2 nós) |
+| `roda,<voltas por segundo>[,<% aberta>]` | 1 | A roda **por fora**: o pino D26 faz de roda (em cima enquanto estaria fechada, solto enquanto estaria aberta; 15 % da volta aberta, por omissão). Só chega ao pino do log com um fio do D26 à plaquinha (ver "Ensaio da entrada da roda do log"). `roda,0` para e responde com as voltas que deu |
 | `vento,<décimos de grau>,<décimos de nó>[,<0\|1>[,<0\|1>]]` | 1 | Uma frase de vento por segundo (`0,0` para; `-1,0` manda lixo, para ensaiar a entrada). O terceiro valor a 1 junta uma segunda frase, que não é o MWV. O quarto valor a 1 manda a frase **por fora**: só pelo pino TX2 e ao contrário, como o mostrador a manda (ver "Ensaio da plaquinha do vento") |
 | `movimento,<0\|1>` | 1 | 100 leituras por segundo com 12° de adornamento e a proa a 245° |
 | `avalanche,<1\|2>,<kHz>` | 1 | Uma onda rápida no pino do log (1) ou do vento (2), para ensaiar que um fio no ar ou um comparador a oscilar não param a caixa (0 para; 2000 no máximo) |
@@ -328,6 +329,26 @@ fios ligam na placa da caixa 1: `docs/caixas/caixa1-fila-ligacoes.jpg`.
 | do VIN do sensor | V3 | pino VIN do sensor |
 | do GND do sensor | N5 | pino GND do sensor |
 | os dois da roda | T7 e Q9 | os dois fios da roda do log, por qualquer ordem |
+
+## Ensaio da entrada da roda do log
+
+A roda é um contacto que está fechado quase a volta toda e abre uma vez por volta. Na plaquinha, um
+dos fios dela recebe os 3,3 V por 1 kΩ; o outro tem 10 kΩ e 100 nF à massa e vai ao D27 por 1 kΩ. O
+condensador tira o ruído do cabo comprido, mas faz o pino **descer devagar** quando a roda abre (cerca
+de 0,6 ms até meio). As entradas deste chip não têm folga entre o "em cima" e o "em baixo": uma
+descida lenta pode passar por subida, e a caixa contava duas vezes a mesma volta.
+
+Ensaia-se em casa, sem roda: a caixa faz de roda pelo pino D26 (comando `roda`). Com o cabo USB fora,
+o fio da roda do furo **Q9** vai ao pino **D26** (na fila do VIN, o 7.º a contar da ficha USB, colado
+ao do D27); o outro fio da roda (T7) fica solto.
+
+```
+node ensaio/roda-por-fora.js COM3        (quatro fases de 20 s; outro número de segundos a seguir à porta)
+```
+
+Devagar, a meio, depressa, e com a roda aberta quase metade da volta. Cada fase passa se a caixa
+contar **exatamente** as voltas que a roda a fingir deu. Se contar o dobro, é a subida falsa da
+descida lenta. O `npm test` corre-se **sem** este fio (um dos ensaios conta que nada entre por fora).
 | azul e branco | C3 e H4 | no barco, o amarelo e o verde da ficha do mostrador do vento |
 
 ## O batimento

@@ -25,6 +25,7 @@ const uint8_t ENSAIO_LOG = 1;
 const uint8_t ENSAIO_VENTO = 2;
 const uint8_t ENSAIO_MOVIMENTO = 4;
 const uint8_t ENSAIO_AVALANCHE = 8;
+const uint8_t ENSAIO_RODA = 16;
 
 inline uint8_t ensaioLigados = 0;
 
@@ -66,6 +67,70 @@ inline bool ensaioLog(long hz) {
   if (esp_timer_create(&relogio, &ensaioLogRelogio) != ESP_OK) return false;
   esp_timer_start_periodic(ensaioLogRelogio, 500000ULL / (uint64_t)hz);  // meia volta de cada vez
   ensaioMarca(ENSAIO_LOG, true);
+  return true;
+}
+
+// ---- A roda por fora: um pino livre faz de roda verdadeira --------------------------------------------
+// A roda é um contacto fechado quase a volta toda, que abre uma vez por volta (medido no barco a
+// 27/11/2026). Aqui o pino D26, que não leva fio nenhum, faz de contacto: fica em cima enquanto a roda
+// estaria fechada e solto (só entrada) enquanto estaria aberta. Liga-se por fora ao fio da roda do lado
+// do D27 (furo Q9 da plaquinha), e o sinal chega ao pino do log pelo caminho verdadeiro: sobe depressa e
+// desce devagar, pela resistência de 10 kΩ e pelo condensador de 100 nF (ensaio/roda-por-fora.js). Sem
+// esse fio, não entra nada. A caixa conta as voltas que deu, para o ensaio as comparar com as contadas.
+// As mudanças saem de um temporizador do chip, fora do ciclo principal: como as da roda verdadeira,
+// caem em qualquer altura da volta do ciclo.
+const int PINO_RODA_POR_FORA = 26;  // D26: sem fio nenhum, a não ser no ensaio da roda
+static esp_timer_handle_t ensaioRodaRelogio = nullptr;
+static volatile bool ensaioRodaLigada = false, ensaioRodaFechada = false;
+static volatile uint32_t ensaioRodaVoltas = 0;
+static uint64_t ensaioRodaFechadaUs = 0, ensaioRodaAbertaUs = 0;
+
+static void ensaioRodaAbre() {
+  gpio_set_direction((gpio_num_t)PINO_RODA_POR_FORA, GPIO_MODE_INPUT);  // solto: quem o traz a zero é a plaquinha
+  ensaioRodaFechada = false;
+}
+
+static void ensaioRodaMuda(void *) {
+  if (!ensaioRodaLigada) return;
+  if (ensaioRodaFechada) {
+    ensaioRodaAbre();
+    esp_timer_start_once(ensaioRodaRelogio, ensaioRodaAbertaUs);
+  } else {
+    gpio_set_level((gpio_num_t)PINO_RODA_POR_FORA, 1);
+    gpio_set_direction((gpio_num_t)PINO_RODA_POR_FORA, GPIO_MODE_OUTPUT);
+    ensaioRodaFechada = true;
+    ensaioRodaVoltas = ensaioRodaVoltas + 1;  // cada vez que fecha é uma subida: uma volta
+    esp_timer_start_once(ensaioRodaRelogio, ensaioRodaFechadaUs);
+  }
+}
+
+// hz: voltas por segundo (0 para parar; 100 no máximo). aberta: a parte da volta com a roda aberta, em
+// percentagem (de 5 a 60). voltas: as que deu desde que foi ligada. Devolve false, sem mexer em nada, se
+// estiver fora dos limites.
+inline bool ensaioRoda(long hz, long aberta, uint32_t *voltas) {
+  if (hz < 0 || hz > 100 || (hz != 0 && (aberta < 5 || aberta > 60))) return false;
+  if (ensaioRodaRelogio) {
+    ensaioRodaLigada = false;
+    esp_timer_stop(ensaioRodaRelogio);
+    // se o temporizador ia a meio de uma mudança, pode ter-se armado outra vez: para-se de novo
+    for (int i = 0; i < 5 && esp_timer_delete(ensaioRodaRelogio) != ESP_OK; i++) esp_timer_stop(ensaioRodaRelogio);
+    ensaioRodaRelogio = nullptr;
+  }
+  ensaioRodaAbre();
+  *voltas = ensaioRodaVoltas;
+  if (hz == 0) {
+    ensaioMarca(ENSAIO_RODA, false);
+    return true;
+  }
+  const uint64_t voltaUs = 1000000ULL / (uint64_t)hz;
+  ensaioRodaAbertaUs = voltaUs * (uint64_t)aberta / 100;
+  ensaioRodaFechadaUs = voltaUs - ensaioRodaAbertaUs;
+  ensaioRodaVoltas = 0;
+  const esp_timer_create_args_t relogio = {.callback = ensaioRodaMuda, .arg = nullptr, .dispatch_method = ESP_TIMER_TASK, .name = "roda-por-fora", .skip_unhandled_events = true};
+  if (esp_timer_create(&relogio, &ensaioRodaRelogio) != ESP_OK) return false;
+  ensaioRodaLigada = true;
+  ensaioMarca(ENSAIO_RODA, true);
+  esp_timer_start_once(ensaioRodaRelogio, ensaioRodaAbertaUs);  // começa aberta: a primeira volta é uma subida inteira
   return true;
 }
 
@@ -301,7 +366,9 @@ inline void ensaioCorre(uint32_t agoraMs) {
 }
 
 inline void ensaioParar() {
+  uint32_t voltas = 0;
   ensaioAvalanchePara();
+  ensaioRoda(0, 0, &voltas);
   ensaioLog(0);
   ensaioVento(0, 0, false);
   ensaioMovimento(0);
