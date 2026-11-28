@@ -113,6 +113,7 @@ node ensaio/resistencia.js COM3 60 --caixa2 COM5 --registo C:\caminho\registo.lo
 | (nenhuma) | Liga os sinais a fingir da caixa 1 (log, vento, movimento). **Só na bancada** |
 | `--caixa2 COM5` | Liga também o motor a fingir da caixa 2 e exige o sinal dela pelo rádio |
 | `--duas` | Exige o sinal da caixa 2, sem lhe mexer |
+| `--motor` | Exige tramas do motor, e que cheguem até ao fim. Com `--sem-geradores`, o motor a fingir liga-se antes, à mão (`motor,2100` na porta da caixa 2) |
 | `--sem-geradores` | Não liga sinal a fingir nenhum: ouve o que a caixa tiver de verdade. **É a única maneira de o correr no barco** |
 | `--registo <ficheiro>` | Guarda também o que escreve |
 
@@ -121,6 +122,18 @@ vida (os que o relógio da caixa mostra e, pelo relógio do portátil, o silênc
 a caixa que recomeça; linhas que a caixa diz que não conseguiu mandar; a porta que se perde (acaba
 logo); e, com a caixa 2, o silêncio dela, os recomeços e os pacotes perdidos no rádio. As cópias que a
 ponte USB repete só se mostram: são linhas boas.
+
+**O sensor de movimento calado também conta** (desde a revisão de 28/11; antes, um sensor que se
+calasse a meio e não voltasse saía `LIMPO`, porque o número de ordem das linhas não avança enquanto
+ele está calado). O ensaio conta o tempo sem linhas de movimento pelo relógio do portátil e mostra-o.
+Falha se acabar com o sensor sem medir (o estado dele no batimento) ou com um silêncio a decorrer; um
+silêncio que se resolveu sozinho passa, com os segundos à vista, como pede a regra 9 do desenho. No
+princípio e no fim pergunta à caixa os contadores do sensor (comando `sensor`, que só lê) e diz o que
+mudou: um sensor que recomeça sozinho e volta logo não se vê de outra maneira.
+
+O ensaio final, com o sensor verdadeiro, a caixa 2 e as tramas do motor a chegar (o motor a fingir
+liga-se antes, com `motor,2100` na porta da caixa 2):
+`node ensaio/resistencia.js COM3 180 --sem-geradores --duas --motor`
 
 Mostra também o maior intervalo entre duas linhas seguidas, a que altura do ensaio foi ("aos 12 min
 05 s"), e quantos intervalos passaram dos 250 ms (com o sensor a medir chega uma linha de 100 em 100 ms).
