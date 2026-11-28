@@ -207,3 +207,134 @@ test('os intervalos compridos entre linhas contam-se, e fica a altura do ensaio 
   assert.equal(c.c.intervalosCompridos, 3)
   assert.equal(c.c.maiorSilencioMs, 2100)
 })
+
+// Revisão final da Tarefa 7 (28/11/2026): o ensaio de resistência dava "LIMPO" a um sensor de movimento que
+// se calasse a meio e não voltasse. O número de ordem das linhas do movimento não avança enquanto ele está
+// calado (não há salto para contar), o batimento da caixa continua, e as linhas do motor tapam o silêncio.
+// A regra 9 do desenho pede o tempo sem leituras contado, e que só passe o que se resolver sozinho.
+function umSegundoSemMovimento (c, agora, s, sensor) {
+  c.linha(bat1(s * 1000, { sim: 0, sensor }))
+  c.linha(bat2(s * 1000 + 300))
+  c.linha(escrever('L', [s * 1000, s * 26, 38462]))
+  c.linha(motor(s))
+  agora.passa(1000)
+  c.tique()
+}
+const umSegundoAMedir = (c, agora, s, n0) => {
+  c.linha(bat1(s * 1000, { sim: 0, sensor: 0 }))
+  c.linha(bat2(s * 1000 + 300))
+  c.linha(escrever('L', [s * 1000, s * 26, 38462]))
+  for (let i = 0; i < 10; i++) c.linha(mov(n0 + i))
+  c.linha(motor(s))
+  agora.passa(1000)
+  c.tique()
+}
+
+test('o sensor cala-se a meio e não volta: o ensaio não sai limpo, e diz há quanto tempo não há movimento', () => {
+  const agora = relogio()
+  const c = novoContador({ agora, duasCaixas: true })
+  for (let s = 1; s <= 60; s++) umSegundoAMedir(c, agora, s, s * 10)
+  assert.equal(c.veredicto().limpo, true)
+  assert.doesNotMatch(c.resumo(), /sem movimento/)
+  // cala-se: primeiro a caixa tenta acordá-lo (estado 2), depois dá-o por perdido (estado 3)
+  for (let s = 61; s <= 150; s++) umSegundoSemMovimento(c, agora, s, s <= 70 ? 2 : 3)
+  const v = c.veredicto()
+  assert.equal(v.limpo, false, 'um sensor calado há minuto e meio não pode dar LIMPO')
+  assert.ok(c.segundosSemMovimento() >= 89 && c.segundosSemMovimento() <= 91, `${c.segundosSemMovimento()} s sem movimento`)
+  assert.match(v.falhas.join(' | '), /acabou com o sensor de movimento sem medir \(estado 3\)/)
+  assert.match(v.falhas.join(' | '), /9[01] s sem movimento no fim do ensaio|89 s sem movimento no fim do ensaio/)
+  assert.match(c.resumo(), /(89|90|91) s sem movimento/)
+  // o resto esteve sempre bem: são só essas as falhas
+  assert.equal(v.falhas.length, 2, v.falhas.join(' | '))
+})
+
+test('o sensor cala-se 8 s e volta sozinho: o ensaio passa, com os segundos sem movimento à vista', () => {
+  const agora = relogio()
+  const c = novoContador({ agora, duasCaixas: true })
+  for (let s = 1; s <= 60; s++) umSegundoAMedir(c, agora, s, s * 10)
+  for (let s = 61; s <= 68; s++) umSegundoSemMovimento(c, agora, s, 2)
+  // volta: o número de ordem continua de onde ia (a caixa não o avança enquanto o sensor está calado)
+  for (let s = 69; s <= 130; s++) umSegundoAMedir(c, agora, s, 610 + (s - 69) * 10)
+  const v = c.veredicto()
+  assert.deepEqual(v.falhas, [], 'um bloqueio que se resolve sozinho passa (regra 9)')
+  assert.equal(c.c.leiturasEmFalta, 0)
+  assert.ok(c.segundosSemMovimento() >= 7 && c.segundosSemMovimento() <= 9, `${c.segundosSemMovimento()} s sem movimento`)
+  assert.match(c.resumo(), /[789] s sem movimento/)
+  assert.equal(c.c.mudancasDoSensor, 2)
+})
+
+test('um ensaio em que o sensor nunca chegou a medir não sai limpo', () => {
+  const agora = relogio()
+  const c = novoContador({ agora, duasCaixas: true })
+  for (let s = 1; s <= 30; s++) umSegundoSemMovimento(c, agora, s, 3)
+  const v = c.veredicto()
+  assert.equal(v.limpo, false)
+  assert.match(v.falhas.join(' | '), /sem medir \(estado 3\)/)
+  assert.match(v.falhas.join(' | '), /(29|30) s sem movimento no fim do ensaio/)
+})
+
+test('uma caixa de programa antigo, que não diz o estado do sensor nem manda movimento, não é acusada de o ter calado', () => {
+  const agora = relogio()
+  const c = novoContador({ agora })
+  for (let s = 1; s <= 30; s++) {
+    c.linha(escrever('B', [1, s * 1000, '0.2.0', 0, 0, 0]))
+    c.linha(escrever('L', [s * 1000, s * 26, 38462]))
+    agora.passa(1000)
+    c.tique()
+  }
+  assert.deepEqual(c.veredicto().falhas, [])
+  assert.equal(c.segundosSemMovimento(), 0)
+})
+
+test('pedido o motor: sem tramas do motor, ou com elas a pararem antes do fim, o ensaio não sai limpo', () => {
+  const agora = relogio()
+  const sem = novoContador({ agora, duasCaixas: true, motor: true })
+  for (let s = 1; s <= 30; s++) {
+    sem.linha(bat1(s * 1000, { sim: 0, sensor: 0 }))
+    sem.linha(bat2(s * 1000 + 300))
+    for (let i = 0; i < 10; i++) sem.linha(mov(s * 10 + i))
+    agora.passa(1000)
+    sem.tique()
+  }
+  assert.match(sem.veredicto().falhas.join(' | '), /nenhuma trama do motor chegou/)
+
+  const com = novoContador({ agora, duasCaixas: true, motor: true })
+  for (let s = 1; s <= 30; s++) umSegundoAMedir(com, agora, s, s * 10)
+  assert.deepEqual(com.veredicto().falhas, [])
+  // o motor deixa de chegar nos últimos 20 s (o resto continua)
+  for (let s = 31; s <= 50; s++) {
+    com.linha(bat1(s * 1000, { sim: 0, sensor: 0 }))
+    com.linha(bat2(s * 1000 + 300))
+    for (let i = 0; i < 10; i++) com.linha(mov(s * 10 + i))
+    agora.passa(1000)
+    com.tique()
+  }
+  assert.match(com.veredicto().falhas.join(' | '), /(19|20|21) s sem tramas do motor no fim do ensaio/)
+
+  // sem ser pedido, o motor não entra no veredicto
+  const livre = novoContador({ agora, duasCaixas: true })
+  for (let s = 1; s <= 30; s++) {
+    livre.linha(bat1(s * 1000, { sim: 0, sensor: 0 }))
+    livre.linha(bat2(s * 1000 + 300))
+    for (let i = 0; i < 10; i++) livre.linha(mov(s * 10 + i))
+    agora.passa(1000)
+    livre.tique()
+  }
+  assert.deepEqual(livre.veredicto().falhas, [])
+})
+
+// Um sensor que recomeça sozinho e volta logo não muda de estado no batimento nem leva toque: só se vê
+// nos contadores do comando "sensor", lidos no princípio e no fim do ensaio.
+test('os contadores do sensor, do princípio ao fim do ensaio: diz-se o que mudou', () => {
+  const { mudancasDoSensor } = require('./contador')
+  const antes = 'estado=0;fase=7;toques=2;recomecos=0;deitadas=0;ilegiveis=1;guardadas=0;por-guardar=0;calado-ms=0'
+  assert.equal(mudancasDoSensor(antes, antes), 'sensor, do princípio ao fim: nada mudou (toques no RST 2, recomeços sozinho 0, leituras deitadas fora 0, ilegíveis 1)')
+  const depois = 'estado=0;fase=7;toques=3;recomecos=2;deitadas=0;ilegiveis=5;guardadas=0;por-guardar=0;calado-ms=0'
+  assert.equal(mudancasDoSensor(antes, depois), 'sensor, do princípio ao fim: toques no RST +1, recomeços sozinho +2, ilegíveis +4')
+  // a caixa recomeçou a meio: os contadores voltaram a zero e a diferença não quer dizer nada
+  const menos = 'estado=0;fase=7;toques=0;recomecos=0;deitadas=0;ilegiveis=0;guardadas=0;por-guardar=0;calado-ms=0'
+  assert.match(mudancasDoSensor(antes, menos), /a caixa recomeçou/)
+  // um programa antigo não conhece o comando
+  assert.equal(mudancasDoSensor('desconhecido', 'desconhecido'), null)
+  assert.equal(mudancasDoSensor(null, depois), null)
+})
