@@ -8,6 +8,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { abrir, comPlaca, espera } = require('./placa')
+const { enganosDoRecente } = require('./recente')
 const { ler } = require('../../signalk-arlequin-caixas/lib/linhas')
 
 // A versão que a placa tem de dizer é a do programa que está nesta pasta (o que se acabou de gravar).
@@ -581,4 +582,14 @@ test('a conta dos pacotes perdidos no rádio: saltos, a volta do número de orde
   assert.equal(await p.manda('perdidos', -1, 10), '0')
   assert.equal(await p.manda('perdidos', 13, 70000), 'fora-dos-limites')
   assert.equal(await p.manda('perdidos', 13), '2')
+}))
+
+// O rádio da caixa 2 só manda enquanto ouvir o sinal da caixa 1. A conta "há quanto tempo chegou o
+// sinal" (aqRecente, em arlequin_radio.h) é da biblioteca comum às duas caixas, e a caixa 1 também a põe
+// à prova, com o comando de bancada "recente": é ela que está sempre ligada ao portátil. A tabela dos
+// casos, e o que estava mal, estão em ensaio/recente.js.
+test('há quanto tempo chegou o sinal da outra caixa: a conta não se engana a meio da volta do ciclo nem com o relógio a dar a volta', COM_PLACA, () => comACaixa(async (p) => {
+  assert.deepEqual(await enganosDoRecente(p), [])
+  assert.equal(await p.manda('recente', 1000, 1000, 60001), 'fora-dos-limites')
+  assert.equal(await p.manda('recente', 1000, 1000, -1), 'fora-dos-limites')
 }))

@@ -56,7 +56,7 @@ inline void radioIniciar() {
 
 // A caixa 1 está a ouvir? (o farol dela chegou há 5 s ou menos)
 inline bool radioTemOuvinte(uint32_t agoraMs) {
-  return radioLigado && radioOuviuFarol && agoraMs - radioUltimoFarol <= RADIO_SEM_FAROL_MS;
+  return radioLigado && radioOuviuFarol && aqRecente(agoraMs, radioUltimoFarol, RADIO_SEM_FAROL_MS);
 }
 
 static void radioManda(const void *pacote, size_t n) {

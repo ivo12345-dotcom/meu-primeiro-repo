@@ -71,6 +71,23 @@ inline uint16_t aqNumeroDoArranque() {
   return n ? n : 1;
 }
 
+// O que aconteceu em quandoMs foi há prazoMs ou menos, contando de agoraMs? As horas são as do relógio
+// da placa (millis), que dá a volta de 49,7 em 49,7 dias: a conta faz-se com sinal, para dar certo
+// através da volta.
+//
+// quandoMs pode ser um pouco DEPOIS de agoraMs: quem pergunta tirou a hora no princípio da volta do
+// ciclo, e o que aconteceu (um pacote do rádio, que chega noutra tarefa) pode ter chegado a meio dela.
+// Feita sem sinal, a conta dava então a volta para 49 dias, e o que tinha acabado de chegar parecia
+// perdido há muito. Até AQ_FOLGA_MS depois de agoraMs conta como "agora mesmo"; mais do que isso já não
+// é desta volta: é um silêncio de mais de 24 dias, que deu a volta ao relógio.
+// (O prazo tem de ser de menos de 24 dias; os que se usam são de segundos.)
+const uint32_t AQ_FOLGA_MS = 1000;
+
+inline bool aqRecente(uint32_t agoraMs, uint32_t quandoMs, uint32_t prazoMs) {
+  const int32_t ha = (int32_t)(agoraMs - quandoMs);
+  return ha >= -(int32_t)AQ_FOLGA_MS && ha <= (int32_t)prazoMs;
+}
+
 // Liga o rádio das placas no canal fixo, sem se ligar a rede nenhuma, e regista quem recebe.
 inline bool aqRadioLiga(esp_now_recv_cb_t aoReceber) {
   WiFi.persistent(false);

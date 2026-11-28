@@ -63,6 +63,10 @@ static void obedece(const char *linha) {
              (unsigned long)motorTramas, (unsigned long)motorIgnoradas, radioTemOuvinte(millis()) ? 1 : 0, (unsigned long)radioFalhadas,
              (unsigned long)radioSemConfirmar, (unsigned long)radioDeitadasFora);
     responde(nome, texto);
+  } else if (strcmp(nome, "recente") == 0 && quantos == 3) {
+    // a conta "há quanto tempo chegou o sinal da caixa 1" (arlequin_radio.h), com horas dadas à mão
+    if (v[2] < 0 || v[2] > 60000) responde(nome, "fora-dos-limites");
+    else responde(nome, aqRecente((uint32_t)v[0], (uint32_t)v[1], (uint32_t)v[2]) ? "1" : "0");
   } else if (strcmp(nome, "prender") == 0 && quantos == 0) {
     responde(nome, "ok");
     Serial.flush();

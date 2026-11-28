@@ -8,6 +8,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const { abrir, comPlaca, espera } = require('./placa')
+const { enganosDoRecente } = require('./recente')
 const { ler, linhaMotor } = require('../../signalk-arlequin-caixas/lib/linhas')
 const { lerLinha, descodificar } = require('../../signalk-arlequin-j1939/lib/j1939')
 const { examinar, ficheirosDaCaixa2 } = require('./so-escuta')
@@ -149,6 +150,21 @@ test('Review Focus 2: com a caixa 2 calada, a caixa 1 continua a mandar o dela s
     await p1.manda('parar').catch(() => {})
   }
 }))
+
+// Pontos adiados da revisão final (passo 7 da Tarefa 7, 27/11/2026). O rádio da caixa 2 só manda enquanto
+// ouvir o sinal da caixa 1; a conta "há quanto tempo chegou o sinal" enganava-se se ele chegasse a meio
+// de uma volta do ciclo. É a mesma tabela que a caixa 1 corre (ensaio/recente.js), aqui na caixa que usa
+// a conta de verdade (radio2.h, radioTemOuvinte).
+test('caixa 2: há quanto tempo chegou o sinal da caixa 1, a conta não se engana a meio da volta do ciclo nem com o relógio a dar a volta', COM_A_2, async () => {
+  const p = await abrir(P2)
+  try {
+    assert.deepEqual(await enganosDoRecente(p), [])
+    assert.equal(await p.manda('recente', 1000, 1000, 60001), 'fora-dos-limites')
+    assert.equal(await p.manda('recente', 1000, 1000, -1), 'fora-dos-limites')
+  } finally {
+    await p.fechar()
+  }
+})
 
 test('só em escuta: o programa da caixa 2 nunca escreve no barramento do motor', () => {
   const ficheiros = ficheirosDaCaixa2()

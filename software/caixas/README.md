@@ -86,8 +86,10 @@ contagem e o período do log; o vento tal e qual, e que lixo na entrada do vento
 movimento a 10 linhas por segundo; que a caixa diz que finge antes de sair a primeira linha a fingir;
 que uma avalanche de sinais numa entrada (1 MHz no pino do log ou no do vento) não a para nem a faz
 recomeçar, e que, se recomeçar a meio dela, volta a arrancar; a conta dos pacotes perdidos no rádio,
-caso a caso (a volta do número de ordem, repetidos, atrasados e recomeços da caixa 2); e, com as duas,
-o motor pelo rádio e o que acontece quando a caixa 2 recomeça ou se cala.
+caso a caso (a volta do número de ordem, repetidos, atrasados e recomeços da caixa 2); a conta de há
+quanto tempo chegou o sinal da outra caixa, também caso a caso (o sinal que chega a meio de uma volta do
+ciclo, e o relógio da placa a dar a volta); e, com as duas, o motor pelo rádio e o que acontece quando
+a caixa 2 recomeça ou se cala.
 
 Os ensaios `contador.test.js` e `placa.test.js` não precisam de placas: correm sempre.
 
@@ -214,6 +216,7 @@ ela deixar de o dizer, enquanto os últimos valores a fingir ainda valem.
 | `guardar` | 1 | **De uso, com o barco parado:** o sensor grava as calibrações dele (a gravação automática está desligada). Responde `sem-sensor` se ele não estiver a medir |
 | `prender` | as duas | Prende a caixa de propósito, para ensaiar o reinício automático |
 | `perdidos,<até 4 valores>` | 1 | Põe à prova a conta dos pacotes perdidos no rádio, com números de ordem dados à mão: 0 a 65535 é um pacote que chega, -1 começa uma conta nova, -2 é a caixa 2 a recomeçar. Responde com o total de perdidos (ou `fora-dos-limites`, sem contar nada). Não é um gerador: a caixa não passa a fingir, e a conta do rádio verdadeiro é outra e não mexe |
+| `recente,<agora>,<quando>,<prazo>` | as duas | Põe à prova a conta "há quanto tempo chegou o sinal da outra caixa" (a que diz à caixa 2 se a caixa 1 a está a ouvir), com horas dadas à mão, em milissegundos; as negativas são as do fim da volta do relógio da placa. Responde `1` (foi há `prazo` ou menos) ou `0`; `fora-dos-limites` se o prazo não estiver entre 0 e 60000. Também não é um gerador |
 
 ## O sensor de movimento
 
