@@ -9,7 +9,8 @@
 //   fio RODA do furo Q9 -> pino D26 (fila do VIN, o 7.º a contar da ficha USB)
 //   fio do D27 (furo W9) -> pino D27 (o 6.º)      verde sem fita -> GND      verde com fita -> 3V3
 //   o outro fio da RODA (furo T7) fica solto
-// Quatro fases, devagar e depressa; cada uma passa se a caixa contar exatamente as voltas que a roda deu.
+// Cinco fases: devagar, depressa, e a última com o contacto a ressaltar ao abrir (essa pede o programa
+// 0.3.3 ou mais novo). Cada uma passa se a caixa contar exatamente as voltas que a roda deu.
 const { abrir } = require('./placa')
 const { FASES, comandoDaFase, contas } = require('./roda')
 const { ler } = require('../../signalk-arlequin-caixas/lib/linhas')
@@ -43,7 +44,7 @@ async function principal (argv) {
       const impulsosAntes = await contagem()
       const resposta = await p.manda('roda', ...comandoDaFase(fase))
       if (resposta !== 'ok') {
-        throw new Error(`a caixa respondeu "${resposta}" ao comando da roda por fora: o programa dela é anterior ao 0.3.0-a8 (gravar outra vez: npm run gravar:1 -- ${porta})`)
+        throw new Error(`a caixa respondeu "${resposta}" ao comando da roda por fora (${fase.nome}): o programa dela é anterior ao ${fase.ressalto ? '0.3.3' : '0.3.0-a8'} (gravar outra vez: npm run gravar:1 -- ${porta})`)
       }
       await espera(segundos * 1000)
       const voltas = Number(await p.manda('roda', 0))

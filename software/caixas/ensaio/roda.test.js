@@ -18,8 +18,23 @@ test('as fases cobrem a roda devagar, a meio e depressa, e uma com a roda aberta
     assert.ok(Number.isInteger(f.aberta) && f.aberta >= 5 && f.aberta <= 60, `${f.aberta} % aberta`)
     // aberta tempo que chegue para o pino descer: mais de 2 ms (a descida leva cerca de 0,6 ms a passar o meio)
     assert.ok((1000 / f.hz) * f.aberta / 100 >= 2, `${f.nome}: aberta menos de 2 ms, o pino não chega a descer`)
-    assert.deepEqual(comandoDaFase(f), [f.hz, f.aberta])
+    assert.deepEqual(comandoDaFase(f), f.ressalto ? [f.hz, f.aberta, f.ressalto] : [f.hz, f.aberta])
   }
+})
+
+test('há uma fase com o contacto a ressaltar ao abrir, e o ressalto cabe na parte aberta da volta', () => {
+  const comRessalto = FASES.filter(f => f.ressalto)
+  assert.ok(comRessalto.length >= 1, 'falta a fase do ressalto')
+  for (const f of comRessalto) {
+    assert.ok(Number.isInteger(f.ressalto) && f.ressalto >= 50 && f.ressalto <= 1000, `${f.ressalto} µs de ressalto`)
+    // 300 µs antes do ressalto e outros tantos depois, como a caixa exige (ensaioRoda, em caixa1/ensaio.h)
+    assert.ok((1000000 / f.hz) * f.aberta / 100 >= 600 + f.ressalto, `${f.nome}: o ressalto não cabe na parte aberta`)
+    // devagar que chegue para a regra antiga contar a dobrar: a subida falsa a mais de 4 ms da verdadeira
+    assert.ok((1000 / f.hz) * f.aberta / 100 > 4 + 0.3 + f.ressalto / 1000, `${f.nome}: depressa de mais para o ressalto se ver`)
+    assert.equal(comandoDaFase(f).length, 3)
+  }
+  // as fases sem ressalto continuam a mandar só dois valores: servem com um programa anterior ao 0.3.3
+  assert.ok(FASES.filter(f => !f.ressalto).every(f => comandoDaFase(f).length === 2))
 })
 
 test('passa só quando a caixa contou exatamente as voltas que a roda a fingir deu', () => {

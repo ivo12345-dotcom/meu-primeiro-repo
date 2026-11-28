@@ -173,12 +173,11 @@ test('Review Focus 5: com a roda parada a contagem não mexe, e sem dois impulso
 }))
 
 test('Review Focus 5: impulsos duplos (a menos de 4 ms um do outro) contam como um', COM_PLACA, () => comACaixa(async (p) => {
-  assert.equal(await p.manda('log', 400), 'ok') // muito acima do que a roda dá: 2,5 ms entre impulsos
-  await espera(1000)
-  const l = logs(await p.linhas(3000))
-  const porSegundo = (l.at(-1).impulsos - l[0].impulsos) / ((l.at(-1).ms - l[0].ms) / 1000)
-  assert.ok(porSegundo > 150 && porSegundo <= 250, `${porSegundo.toFixed(1)} impulsos por segundo`)
-  assert.equal(await p.manda('parar'), 'ok')
+  // muito acima do que a roda dá: 3,3 ms entre voltas, cada uma com o pino 2,8 ms em cima. Conta uma sim,
+  // uma não
+  const r = await rodaPorDentro(p, 300, 15, 0, 2000)
+  assert.ok(r.voltas >= 500, `${r.voltas} voltas em 2 s a 300 por segundo`)
+  assert.ok(r.impulsos >= r.voltas * 0.45 && r.impulsos <= r.voltas * 0.55, `${r.impulsos} impulsos em ${r.voltas} voltas`)
   assert.equal(await p.manda('log', 1000), 'fora-dos-limites')
 }))
 
@@ -208,6 +207,63 @@ test('roda por fora: sem o fio do D26 não entra nada pelo pino da roda, a caixa
   for (const fora of [[101], [-1], [26, 4], [26, 61]]) {
     assert.equal(await p.manda('roda', ...fora), 'fora-dos-limites', `roda,${fora.join(',')}`)
   }
+}))
+
+// A roda por dentro: o mesmo gerador, mas a mexer no próprio pino do log, sem fio nenhum (o quarto valor do
+// comando a 1). Faz de roda verdadeira (fechada quase a volta toda, aberta uma vez por volta) e diz quantas
+// voltas deu: o log tem de contar exatamente essas. O terceiro valor é um ressalto do contacto ao abrir:
+// 300 µs depois de abrir, fecha outra vez durante esses microssegundos.
+async function rodaPorDentro (p, hz, aberta, ressalto, ms) {
+  assert.equal(await p.manda('parar'), 'ok')
+  await espera(700)
+  const impulsosAntes = logs(await p.linhas(1200)).at(-1).impulsos
+  const recusadosAntes = contadores(await p.manda('estado'))['log-recusados']
+  assert.equal(await p.manda('roda', hz, aberta, ressalto, 1), 'ok')
+  await espera(ms)
+  const voltas = Number(await p.manda('roda', 0))
+  await espera(700) // a última volta ainda pode estar por contar
+  const impulsos = logs(await p.linhas(1200)).at(-1).impulsos - impulsosAntes
+  const recusados = contadores(await p.manda('estado'))['log-recusados'] - recusadosAntes
+  return { voltas, impulsos, recusados }
+}
+
+test('a roda por dentro, devagar e depressa: o log conta exatamente as voltas que ela deu', COM_PLACA, () => comACaixa(async (p) => {
+  for (const hz of [2, 26, 60, 100]) {
+    const r = await rodaPorDentro(p, hz, 15, 0, 3000)
+    assert.ok(r.voltas >= hz * 2.5, `${r.voltas} voltas em 3 s a ${hz} por segundo`)
+    assert.equal(r.impulsos, r.voltas, `a ${hz} voltas por segundo: ${r.impulsos} impulsos em ${r.voltas} voltas`)
+  }
+  assert.equal((await proximoBatimento(p)).sim, false, 'a caixa continua a dizer que finge depois de a roda parar')
+  for (const fora of [[401, 15, 0, 1], [26, 15, 49, 1], [26, 15, 1001, 1], [100, 5, 150, 1]]) {
+    assert.equal(await p.manda('roda', ...fora), 'fora-dos-limites', `roda,${fora.join(',')}`)
+  }
+}))
+
+// O ponto 4 da revisão final de 28/11: uma subida do pino que não é uma volta. O contacto da roda pode
+// ressaltar ao abrir, e o condensador da entrada faz o pino descer devagar, o que neste chip pode parecer
+// uma subida. Com a regra antiga (toda a subida a mais de 4 ms da anterior conta), cada volta contava
+// duas vezes, devagar e a meio; depressa, a subida falsa contava e a verdadeira era recusada.
+test('o contacto da roda ressalta ao abrir: o ressalto não conta como volta', COM_PLACA, () => comACaixa(async (p) => {
+  for (const hz of [2, 26, 60]) {
+    const r = await rodaPorDentro(p, hz, 15, 150, 3000)
+    assert.ok(r.voltas >= hz * 2.5, `${r.voltas} voltas em 3 s a ${hz} por segundo`)
+    assert.equal(r.impulsos, r.voltas, `a ${hz} voltas por segundo, com ressalto: ${r.impulsos} impulsos em ${r.voltas} voltas`)
+    assert.ok(r.recusados >= r.voltas - 1, `a ${hz} voltas por segundo: só ${r.recusados} subidas recusadas em ${r.voltas} ressaltos`)
+  }
+}))
+
+test('uma subida que não se aguenta 2 ms em cima não é uma volta: a 400 por segundo, metade do tempo em cima, nada conta', COM_PLACA, () => comACaixa(async (p) => {
+  assert.equal(await p.manda('parar'), 'ok')
+  await espera(700)
+  const antes = logs(await p.linhas(1200)).at(-1).impulsos
+  const recusadosAntes = contadores(await p.manda('estado'))['log-recusados']
+  assert.equal(await p.manda('log', 400), 'ok') // em cima 1,25 ms de cada vez
+  await espera(2000)
+  assert.equal(await p.manda('parar'), 'ok')
+  await espera(700)
+  const depois = logs(await p.linhas(1200)).at(-1).impulsos
+  assert.equal(depois, antes, `contaram-se ${depois - antes} voltas em 2 s de subidas que não se aguentam`)
+  assert.ok(contadores(await p.manda('estado'))['log-recusados'] - recusadosAntes >= 700, 'as subidas recusadas não foram contadas')
 }))
 
 // --- O vento (a frase a fingir sai de uma segunda porta série da placa, para o próprio pino do vento) --

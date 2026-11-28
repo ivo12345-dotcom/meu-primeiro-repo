@@ -723,6 +723,42 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
 - O Ivo tem um sortido de resistências (50 valores, 1/4 W, com as de 1 kΩ): as resistências em
   série das entradas do log e do vento saem daí.
 
+**28/11, 14:30–14:56: a roda do log deixa de poder contar a dobrar (o ponto 4 da revisão final),
+versão 0.3.3 nas duas caixas.**
+
+- **O defeito.** A caixa contava uma volta por cada subida do pino da roda que viesse a mais de
+  4 ms da anterior. Mas nem toda a subida é uma volta: o contacto da roda pode ressaltar ao abrir
+  (fecha um instante e abre outra vez), e o condensador da entrada faz o pino descer devagar, o que
+  neste chip, que não tem folga entre o "em cima" e o "em baixo", pode parecer uma subida. A roda
+  está fechada quase a volta toda: a subida falsa cai logo a seguir à abertura, muito mais de 4 ms
+  depois da subida verdadeira anterior, e contava.
+- **Visto falhar na placa, sem a plaquinha.** O gerador de bancada da roda ganhou duas coisas
+  (0.3.3-a1, com a regra antiga): mexer no próprio pino do log, sem fio ("por dentro"), e um
+  ressalto ao abrir. Com um ressalto de 150 µs a 2 voltas por segundo: **12 impulsos em 6 voltas.**
+  E uma onda de 400 por segundo, com o pino 1,25 ms em cima de cada vez, dava 403 voltas em 2 s.
+- **A regra nova (`caixa1/log.h`): uma subida só é uma volta se o pino se aguentar em cima 2 ms
+  seguidos.** A caixa passa a ver as duas mudanças do pino: a subida fica à espera, e uma descida
+  antes dos 2 ms anula-a e conta em `log-recusados`. A hora da volta é a da subida, por isso o
+  tempo entre voltas não muda. A regra dos 4 ms mantém-se. Para uma avalanche de ruído não parar a
+  caixa, atende 16 mudanças por volta do ciclo, no máximo (como a entrada do vento), e ao deixar de
+  olhar anula a subida que estivesse à espera. Ao arrancar toma nota de como o pino está: a roda
+  parada costuma estar fechada, e isso não é uma volta. Os 2 ms escolhem-se pelo circuito: um
+  ressalto de 150 µs, esticado pelo condensador (carrega depressa, descarrega devagar), fica em
+  cima menos de 1 ms; a roda fechada, mesmo a 100 voltas por segundo, fica mais de 8 ms.
+- **Depois da regra nova:** com o ressalto, 6 em 6, a 2, 26 e 60 voltas por segundo; sem ressalto,
+  a contagem exata a 2, 26, 60 e 100; a onda de 400 por segundo não conta nada; duas voltas a menos
+  de 4 ms contam como uma. O ensaio antigo dos "impulsos duplos" usava a onda de 400 por segundo,
+  que deixou de contar: refez-se com a roda por dentro a 300 por segundo (o pino 2,8 ms em cima).
+  Baterias com a 0.3.3: a da caixa 1, 39 ensaios, 38 passam e 1 salta-se; a das duas caixas, 12 em
+  12; tudo de seguida com as duas ligadas, 137 ensaios, 136 passam e 1 salta-se. Os ensaios do
+  portátil passam todos.
+- **O que falta provar**, e não se consegue sem a plaquinha e sem a roda: o caminho verdadeiro
+  (`ensaio/roda-por-fora.js`, agora com uma quinta fase, a do ressalto) e o contacto verdadeiro,
+  rodado à mão com o barco em seco (`ensaio/ouvir-roda.js` mostra cada volta contada). Os programas
+  compilados da 0.3.2 ficaram guardados, para se ver primeiro, pelo fio, se a regra antiga falhava
+  mesmo com a descida lenta.
+- Esta parte foi dada a rever ao mesmo revisor da manhã (só a leu).
+
 **28/11, 13:45–14:30: o barco vai para a água na segunda (30/11); o que se instala, o ensaio geral
 em casa e a escuta do vento (versão 0.3.2).**
 

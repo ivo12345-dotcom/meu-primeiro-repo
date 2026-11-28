@@ -22,12 +22,12 @@ comandos, os pacotes do rádio) está em `comum/`.
 | Caixa 2: escuta do motor, rádio, motor a fingir | feito e ensaiado com as duas placas ligadas (a escuta do motor verdadeiro só no barco). Desde a 0.3.0, se o rádio não ligar ou perder o destino, volta a tentar sozinho (ver "O rádio da caixa 2 volta a tentar") |
 | Caixa 2: escuta pelo fio, na bancada, com os módulos do barramento | **passou a 26/11**: 6145 tramas saídas, 6145 ouvidas, nenhum erro (rajadas de 1000 a 200 e a 1000 por segundo, e 10 s à cadência do motor). Desfeita a montagem, os ensaios das duas placas passaram todos (40 em 40, `npm test`) |
 | Escuta do motor no barco (`ensaio/ouvir-motor.js`) | escrita e experimentada em casa a 26/11 com o motor a fingir; **a primeira escuta do motor verdadeiro está por fazer** |
-| Escuta do vento no barco (`ensaio/ouvir-vento.js`) | escrita a 28/11, com o comando `cru` da caixa 1 (versão **0.3.2**, que é a que as duas placas têm gravada e não muda mais nada): mostra tal e qual o que entra pelo fio do vento e diz o que é. Experimentada em casa com o mostrador a fingir (fio parado, frases boas, lixo); **a primeira escuta do mostrador verdadeiro está por fazer** |
+| Escuta do vento no barco (`ensaio/ouvir-vento.js`) | escrita a 28/11, com o comando `cru` da caixa 1 (desde a versão **0.3.2**): mostra tal e qual o que entra pelo fio do vento e diz o que é. Experimentada em casa com o mostrador a fingir (fio parado, frases boas, lixo); **a primeira escuta do mostrador verdadeiro está por fazer** |
 | Revisão independente do programa (23/11) | feita; os cinco pontos importantes estão corrigidos na versão **0.2.1**, e os seis pontos que tinham ficado adiados na versão **0.3.0** (28/11). A 0.3.0 traz também o sensor de movimento, a regra da ponte USB e os comandos de bancada novos (`roda`, `surto`, `avaria`) |
-| Revisão final, com olhos novos (28/11) | feita: nenhum ponto crítico e cinco importantes. Quatro estão corrigidos na versão **0.3.1**: o ensaio de resistência já não dá por limpa uma noite com o sensor calado; "calado" passou a ser faltar qualquer das três leituras; o caminho do sensor que não volta tem ensaio na placa (`avaria,3,35`); e o rádio da caixa 1 volta a tentar sozinho. O quinto (a roda do log poder contar a dobrar com a descida lenta) só se prova com a plaquinha soldada: `ensaio/roda-por-fora.js` |
+| Revisão final, com olhos novos (28/11) | feita: nenhum ponto crítico e cinco importantes. Quatro estão corrigidos na versão **0.3.1**: o ensaio de resistência já não dá por limpa uma noite com o sensor calado; "calado" passou a ser faltar qualquer das três leituras; o caminho do sensor que não volta tem ensaio na placa (`avaria,3,35`); e o rádio da caixa 1 volta a tentar sozinho. O quinto (a roda do log poder contar a dobrar) está corrigido na versão **0.3.3**: uma subida do pino só conta como volta se ele se aguentar em cima 2 ms (ver "Ensaio da entrada da roda do log"). Visto falhar primeiro na placa, com o contacto a ressaltar a fingir (12 impulsos em 6 voltas). Falta a prova com a plaquinha (`ensaio/roda-por-fora.js`) e com a roda verdadeira, rodada à mão |
 | Sensor de movimento verdadeiro (BNO085) | **a medir desde 27/11**, com o sensor novo, pela ligação de 10 ligações (ver "O sensor de movimento"). Ensaios de resistência só com a caixa 1: 3 horas a 27/11 e 6 horas na noite de 28/11, os dois limpos. Falta o ensaio final de 3 horas com as duas caixas e a 0.3.1, e duas provas à mão: a da bússola (rodar o sensor devagar em todos os sentidos; a confiança tem de subir; é também a confirmação independente do lado da proa) e, se se quiser, a de tirar o fio CS com a caixa ligada (o mesmo caminho já tem ensaio sem mexer em fios: `avaria,3,35`) |
 | Entrada do vento | **plaquinha do optoacoplador montada e ensaiada em casa a 27/11: passa** (três fases de 20 s, nenhuma frase estragada). Falta o cabo no barco e a prova com o mostrador verdadeiro |
-| Entrada do log | a roda é um contacto que abre uma vez por volta (medido a 27/11): dispensa o comparador. Ligação por montar, na plaquinha do vento (ver "A fila dos 3,3 V e da massa"): 3,3 V, 1 kΩ, roda; do outro fio da roda, 10 kΩ e 100 nF à massa e 1 kΩ em série até ao D27 |
+| Entrada do log | a roda é um contacto que abre uma vez por volta (medido a 27/11): dispensa o comparador. Ligação por montar, na plaquinha do vento (ver "A fila dos 3,3 V e da massa"): 3,3 V, 1 kΩ, roda; do outro fio da roda, 10 kΩ e 100 nF à massa e 1 kΩ em série até ao D27. Desde a **0.3.3**, que é a versão que as duas placas têm gravada, uma subida só conta se o pino se aguentar em cima 2 ms: um ressalto do contacto ou a descida lenta do pino já não contam como volta |
 
 ## Os pinos
 
@@ -270,8 +270,8 @@ continua a dar o batimento e as medições sem falhar uma linha.
 
 | Comando | Caixa | O que faz |
 |---|---|---|
-| `log,<Hz>` | 1 | Impulsos da roda a fingir (0 para; 26 dá 5,2 nós) |
-| `roda,<voltas por segundo>[,<% aberta>]` | 1 | A roda **por fora**: o pino D26 faz de roda (em cima enquanto estaria fechada, solto enquanto estaria aberta; 15 % da volta aberta, por omissão). Só chega ao pino do log com um fio do D26 à plaquinha (ver "Ensaio da entrada da roda do log"). `roda,0` para e responde com as voltas que deu |
+| `log,<Hz>` | 1 | Impulsos da roda a fingir, metade do tempo em cima e metade em baixo (0 para; 26 dá 5,2 nós). Acima de 250 por segundo o pino não se aguenta 2 ms em cima e nada conta |
+| `roda,<voltas por segundo>[,<% aberta>[,<ressalto em µs>[,<0\|1>]]]` | 1 | A roda a fingir que abre e fecha como a verdadeira (em cima enquanto estaria fechada; 15 % da volta aberta, por omissão). **Por fora** (o normal): quem faz de roda é o pino D26, e o sinal só chega ao pino do log com um fio do D26 à plaquinha (ver "Ensaio da entrada da roda do log"); 100 voltas por segundo no máximo. **Por dentro** (o quarto valor a 1): mexe no próprio pino do log, sem fio nenhum; até 400 por segundo. O terceiro valor é um **ressalto** ao abrir: 300 µs depois de abrir, fecha outra vez durante esses microssegundos (de 50 a 1000). `roda,0` para e responde com as voltas que deu |
 | `vento,<décimos de grau>,<décimos de nó>[,<0\|1>[,<0\|1>]]` | 1 | Uma frase de vento por segundo (`0,0` para; `-1,0` manda lixo, para ensaiar a entrada). O terceiro valor a 1 junta uma segunda frase, que não é o MWV. O quarto valor a 1 manda a frase **por fora**: só pelo pino TX2 e ao contrário, como o mostrador a manda (ver "Ensaio da plaquinha do vento") |
 | `movimento,<0\|1>` | 1 | 100 leituras por segundo com 12° de adornamento e a proa a 245° |
 | `surto,<bytes>,<pausa em µs>,<bytes>,<calado em ms>` | 1 | Linhas com um número certo de bytes, para pôr à prova a ponte USB (ver "A ponte USB e as linhas de 64 bytes"): sossega o fio, escreve uma linha `$AQR,x,...` com os primeiros bytes e, se os segundos não forem 0, outra depois da pausa; fica calada e só então responde. Não põe a caixa a fingir |
@@ -371,7 +371,10 @@ comandos: só os ensaios o fazem.
 
 Dois contadores do `estado` da caixa 1 servem para a instalação no barco: `avalanches` (vezes que as
 mudanças de nível na entrada do vento passaram do limite: fio no ar ou ruído) e `log-recusados`
-(impulsos a menos de 4 ms do anterior: ruído do comparador). Com as entradas boas, não sobem.
+(subidas do pino da roda que não contaram como volta: não se aguentaram em cima 2 ms, ou vieram a menos
+de 4 ms da volta anterior). O primeiro, com a entrada boa, não sobe. O segundo pode subir uma ou duas
+por volta se o contacto da roda ressaltar: é a regra a trabalhar. A subir aos milhares por segundo, é
+ruído no fio da roda.
 
 **A avalanche e os recomeços.** A onda da avalanche é feita por um temporizador do chip e, como um
 sinal de fora, não para quando a placa recomeça sozinha (um recomeço não apaga o que os pinos tinham);
@@ -404,19 +407,43 @@ A roda é um contacto que está fechado quase a volta toda e abre uma vez por vo
 dos fios dela recebe os 3,3 V por 1 kΩ; o outro tem 10 kΩ e 100 nF à massa e vai ao D27 por 1 kΩ. O
 condensador tira o ruído do cabo comprido, mas faz o pino **descer devagar** quando a roda abre (cerca
 de 0,6 ms até meio). As entradas deste chip não têm folga entre o "em cima" e o "em baixo": uma
-descida lenta pode passar por subida, e a caixa contava duas vezes a mesma volta.
+descida lenta pode passar por subida. E um contacto a sério pode ressaltar ao abrir: fecha um instante
+e abre outra vez. Com a regra antiga (toda a subida a mais de 4 ms da anterior contava), a caixa contava
+duas vezes a mesma volta.
 
-Ensaia-se em casa, sem roda: a caixa faz de roda pelo pino D26 (comando `roda`). Com o cabo USB fora,
-o fio da roda do furo **Q9** vai ao pino **D26** (na fila do VIN, o 7.º a contar da ficha USB, colado
-ao do D27); o outro fio da roda (T7) fica solto.
+**A regra, desde a 0.3.3 (`caixa1/log.h`): uma subida só é uma volta se o pino se aguentar em cima 2 ms
+seguidos.** A roda fechada aguenta-se muito mais do que isso (fica fechada quase a volta toda); um
+ressalto, mesmo esticado pelo condensador, fica por meio milissegundo. A caixa vê as duas mudanças do
+pino: a subida fica à espera, e uma descida antes dos 2 ms anula-a (conta em `log-recusados`). A hora da
+volta é a da subida, não a da confirmação: o tempo entre voltas não fica mexido. A regra dos 4 ms entre
+duas voltas mantém-se. Visto falhar primeiro na placa, a 28/11, com a roda por dentro e um ressalto de
+150 µs: 12 impulsos em 6 voltas com a regra antiga; 6 em 6 com a nova, a 2, 26 e 60 voltas por segundo.
+
+Ensaia-se em casa, sem roda, pelo caminho verdadeiro: a caixa faz de roda pelo pino D26 (comando
+`roda`). Com o cabo USB fora, o fio da roda do furo **Q9** vai ao pino **D26** (na fila do VIN, o 7.º a
+contar da ficha USB, colado ao do D27); o outro fio da roda (T7) fica solto.
 
 ```
-node ensaio/roda-por-fora.js COM3        (quatro fases de 20 s; outro número de segundos a seguir à porta)
+node ensaio/roda-por-fora.js COM3        (cinco fases de 20 s; outro número de segundos a seguir à porta)
 ```
 
-Devagar, a meio, depressa, e com a roda aberta quase metade da volta. Cada fase passa se a caixa
-contar **exatamente** as voltas que a roda a fingir deu. Se contar o dobro, é a subida falsa da
-descida lenta. O `npm test` corre-se **sem** este fio (um dos ensaios conta que nada entre por fora).
+Devagar, a meio, depressa, com a roda aberta quase metade da volta, e com o contacto a ressaltar ao
+abrir. Cada fase passa se a caixa contar **exatamente** as voltas que a roda a fingir deu. O `npm test`
+corre-se **sem** este fio (um dos ensaios conta que nada entre por fora): a contagem ensaia-se aí com a
+roda **por dentro**, que mexe no próprio pino do log.
+
+**No barco, com ele em seco:** dão-se 10 voltas à roda com o dedo, por baixo do casco, e a caixa tem
+de contar 10. É a única prova com o contacto verdadeiro, e à mão é o caso mais difícil: devagar, um
+contacto hesita mais ao abrir e ao fechar. A escuta mostra cada volta à medida que a caixa a conta, e
+no fim o total e as subidas recusadas:
+
+```powershell
+node ensaio/ouvir-roda.js COM3 60
+```
+
+Só lê (manda um comando só, `estado`, ao princípio e ao fim): não liga geradores nem manda `parar`. O
+tempo é em segundos (60 se não se disser; 0 fica até se carregar em Ctrl+C). Experimentada em casa a
+28/11 com a roda por dentro a 2 voltas por segundo.
 
 ## O rádio da caixa 2 volta a tentar
 

@@ -8,15 +8,22 @@
 // e fica fechada quase a volta toda). Devagar e a meio, a roda fica aberta mais do que os 4 ms em que a
 // caixa recusa um segundo impulso: é aí que uma subida falsa, na descida lenta do pino, contava a dobrar.
 // Depressa, fica aberta menos de 4 ms, e a subida falsa ficava escondida pela recusa.
+//
+// A última fase junta um ressalto do contacto ao abrir: 300 µs depois de abrir, a roda fecha outra vez
+// durante 150 µs. O condensador da entrada estica esse instante (carrega depressa, descarrega devagar):
+// no pino do log fica uma subida de meio milissegundo, que não é uma volta. Precisa do programa 0.3.3
+// ou mais novo (o comando "roda" com três valores).
 const FASES = [
   { nome: 'devagar: 2 voltas por segundo', hz: 2, aberta: 15 },
   { nome: '26 voltas por segundo', hz: 26, aberta: 15 },
   { nome: 'depressa: 60 voltas por segundo', hz: 60, aberta: 15 },
-  { nome: '26 voltas por segundo, aberta quase metade da volta', hz: 26, aberta: 45 }
+  { nome: '26 voltas por segundo, aberta quase metade da volta', hz: 26, aberta: 45 },
+  { nome: '26 voltas por segundo, com o contacto a ressaltar ao abrir', hz: 26, aberta: 15, ressalto: 150 }
 ]
 
-// Os valores do comando "roda" de uma fase: voltas por segundo e percentagem da volta com a roda aberta.
-const comandoDaFase = (f) => [f.hz, f.aberta]
+// Os valores do comando "roda" de uma fase: voltas por segundo, percentagem da volta com a roda aberta
+// e, se a fase o tiver, o ressalto ao abrir, em microssegundos.
+const comandoDaFase = (f) => (f.ressalto ? [f.hz, f.aberta, f.ressalto] : [f.hz, f.aberta])
 
 const MINIMO_DE_VOLTAS = 20
 

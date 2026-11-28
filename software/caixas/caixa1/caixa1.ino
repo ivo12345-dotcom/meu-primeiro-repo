@@ -74,10 +74,12 @@ static bool obedece(const char *linha) {
     responde(nome, "ok");
   } else if (strcmp(nome, "log") == 0 && quantos == 1) {
     responde(nome, ensaioLog(v[0]) ? "ok" : "fora-dos-limites");
-  } else if (strcmp(nome, "roda") == 0 && (quantos == 1 || quantos == 2)) {
-    // a roda por fora: o pino D26 faz de roda (ensaio.h). Ao parar, a resposta são as voltas que deu
+  } else if (strcmp(nome, "roda") == 0 && quantos >= 1 && quantos <= 4) {
+    // a roda a fingir que abre e fecha como a verdadeira (ensaio.h): por fora, pelo pino D26, ou por dentro,
+    // no próprio pino do log (o quarto valor a 1); o terceiro valor é um ressalto ao abrir, em µs. Ao
+    // parar, a resposta são as voltas que deu
     uint32_t voltas = 0;
-    if (!ensaioRoda(v[0], quantos == 2 ? v[1] : 15, &voltas)) {
+    if (!ensaioRoda(v[0], quantos >= 2 ? v[1] : 15, quantos >= 3 ? v[2] : 0, quantos == 4 && v[3] != 0, &voltas)) {
       responde(nome, "fora-dos-limites");
     } else if (v[0] != 0) {
       responde(nome, "ok");
