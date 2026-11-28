@@ -723,6 +723,56 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
 - O Ivo tem um sortido de resistências (50 valores, 1/4 W, com as de 1 kΩ): as resistências em
   série das entradas do log e do vento saem daí.
 
+**28/11, 14:59–15:50: o Ivo quer instalar hoje, com a caixa 2; a revisão da regra da roda e a
+versão 0.3.4.**
+
+- **O Ivo (14:59):** quer também a caixa 2 já ligada, só a escutar (ligar e desligar o motor fica
+  para os relés); tem 220 V a bordo, para o portátil; vai andar com o barco segunda e terça o dia
+  todo e quer o máximo de dados; e quer instalar **hoje**. Recebeu a lista por ordem (em casa: a
+  plaquinha da caixa 1, ligá-la, o cabo do motor da caixa 2, o cabo de 5 m e a bússola; no barco:
+  portátil e AIS, as quatro uniões da caixa 1, as três derivações da caixa 2, e as provas uma a
+  uma) e cinco desenhos: `caixa1-fila-montagem`, `caixa1-fila-ligacoes`,
+  `caixa2-cabo-dados-ponta-da-caixa`, `caixa1-esquema-barco` (novo) e `caixa2-esquema-barco`
+  (refeito: sem a parte de ligar e desligar à mão). **A corrente da caixa 2**, por agora, é um
+  carregador de telemóvel numa ficha de 220 V (ou um power bank): o conversor de 12 V nunca foi
+  ensaiado na bateria do barco. Com o portátil nos 220 V ele não adormece sozinho; fechar-lhe a
+  tampa adormece-o, a não ser que o Ivo mude essa definição.
+- **A revisão da regra nova da roda** (o mesmo revisor da manhã; só leu, e fez um modelo da lógica
+  no portátil): nada de crítico. Um ponto importante e sete menores:
+  - *Importante:* a fase do ressalto do ensaio pelo fio não provava nada. Aos 300 µs depois de a
+    roda abrir, o condensador ainda tem o pino em cima: o ressalto nem se via, e a fase passava com
+    qualquer regra. **Corrigido:** o ressalto a fingir vem 1,5 ms depois de abrir; a fase só passa
+    se os ressaltos forem vistos e recusados, um por volta; e há outra fase, com um ressalto de
+    1 ms, que mostra a folga dos 2 ms neste chip.
+  - *Menor, corrigido:* com ruído muito rápido, a entrada cala-se ao fim de 16 mudanças; uma subida
+    posta à espera nessa altura contava sem ninguém ter vigiado o pino. **Visto falhar na placa:**
+    ruído de 1 MHz com o ciclo a parar 50 ms de cada vez dava uma volta que não existia. Agora essa
+    subida não vale.
+  - *Menor, corrigido:* acima de 16 mudanças por volta do ciclo a roda deixava de contar sem deixar
+    rasto. Há agora um contador (`caladas`, no comando `tempos`).
+  - *Menores, corrigidos:* a escuta da roda podia dizer 9 em 10 por não esperar pela última linha;
+    a roda a fingir, parada a meio de um ressalto, podia dar uma volta a mais; um ensaio que exigia
+    zero em 800 subidas de 1,25 ms passou a 1 ms e admite uma em mil; um texto do README.
+  - *Menor, com ensaio novo e sem mexer no programa:* o ciclo parado dezenas de milissegundos. A
+    contagem continua pela interrupção: com a roda a 100 voltas por segundo e o ciclo a parar 50 ms
+    quinze vezes, a contagem é exata.
+  - *Menor, por fazer:* a espera só existe para cima. Com a roda fechada, uma falha em baixo mais
+    comprida do que o condensador tapa (cerca de 0,45 ms) dava uma volta a mais 2 ms depois; a
+    regra antiga fazia o mesmo. Só se mexe se a prova das 10 voltas contar a mais.
+- **O que o revisor não pôde julgar, e a medida que passou a haver.** Para o pino chegar a descer,
+  a roda tem de ficar aberta 0,5 a 1 ms; com a roda depressa e a parte aberta da volta muito
+  estreita, perdem-se voltas com qualquer regra, e nenhum ensaio o vê. A **0.3.4** mede o contacto
+  (comando `tempos`): quanto tempo o pino esteve em baixo em cada volta, da descida à subida que
+  ficou, e a subida recusada mais comprida. `ensaio/ouvir-roda.js` mostra-o volta a volta, com a
+  parte da volta que isso foi. Na prova das 10 voltas à mão fica-se a saber se o condensador de
+  100 nF serve para a roda verdadeira, antes de o barco ir para a água.
+- Baterias com a 0.3.4 nas duas placas: a da caixa 1, 42 ensaios, 41 passam e 1 salta-se; a das
+  duas caixas, 12 em 12; tudo de seguida com as duas ligadas, 141 ensaios, 140 passam e 1 salta-se.
+  Os ensaios do portátil passam todos.
+- **Por provar com a plaquinha e com a roda**, por esta ordem: os fios da roda juntos ao ligar a
+  caixa (a roda parada fechada) têm de dar zero voltas; `ensaio/roda-por-fora.js` (seis fases); e,
+  no barco, as 10 voltas à mão com `ensaio/ouvir-roda.js`.
+
 **28/11, 14:30–14:56: a roda do log deixa de poder contar a dobrar (o ponto 4 da revisão final),
 versão 0.3.3 nas duas caixas.**
 

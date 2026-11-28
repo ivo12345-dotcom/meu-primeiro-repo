@@ -84,14 +84,16 @@ inline bool ensaioLog(long hz) {
 // POR DENTRO (o quarto valor do comando a 1): o gerador mexe no próprio pino do log, sem fio nenhum, e
 // "aberta" é o pino posto em baixo. Serve para ensaiar a contagem sem a plaquinha.
 //
-// O RESSALTO (o terceiro valor, em microssegundos): 300 µs depois de abrir, o contacto fecha outra vez
+// O RESSALTO (o terceiro valor, em microssegundos): 1,5 ms depois de abrir, o contacto fecha outra vez
 // durante esse tempo e volta a abrir. É o que um contacto a sério pode fazer ao abrir, e o que a descida
-// lenta do pino pode parecer: uma subida que não é uma volta. Não entra na conta das voltas dadas.
+// lenta do pino pode parecer: uma subida que não é uma volta. Não entra na conta das voltas dadas. Vem
+// 1,5 ms depois de abrir para o pino já ter descido quando o sinal passa pela plaquinha: o condensador
+// leva meio milissegundo, ou mais, a deixá-lo descer, e um ressalto mais cedo nem se via.
 //
 // As mudanças saem de um temporizador do chip, fora do ciclo principal: como as da roda verdadeira,
 // caem em qualquer altura da volta do ciclo.
 const int PINO_RODA_POR_FORA = 26;  // D26: sem fio nenhum, a não ser no ensaio da roda
-const uint64_t ENSAIO_RODA_ANTES_DO_RESSALTO_US = 300;
+const uint64_t ENSAIO_RODA_ANTES_DO_RESSALTO_US = 1500;
 static esp_timer_handle_t ensaioRodaRelogio = nullptr;
 static volatile bool ensaioRodaLigada = false;
 // onde vai a volta: 0 fechada; 1 aberta, antes do ressalto; 2 no ressalto; 3 aberta até ao fim da volta
@@ -148,7 +150,7 @@ static void ensaioRodaMuda(void *) {
 
 // hz: voltas por segundo (0 para parar; 100 no máximo por fora e 400 por dentro). aberta: a parte da volta
 // com a roda aberta, em percentagem (de 5 a 60). ressaltoUs: 0, ou de 50 a 1000 (tem de caber na parte
-// aberta, com 300 µs antes e outros tantos depois). porDentro: mexe no próprio pino do log. voltas: as que
+// aberta, com 1,5 ms antes e 0,3 ms depois). porDentro: mexe no próprio pino do log. voltas: as que
 // deu desde que foi ligada. Devolve false, sem mexer em nada, se estiver fora dos limites.
 inline bool ensaioRoda(long hz, long aberta, long ressaltoUs, bool porDentro, uint32_t *voltas) {
   if (hz < 0 || hz > (porDentro ? 400 : 100)) return false;
@@ -156,7 +158,7 @@ inline bool ensaioRoda(long hz, long aberta, long ressaltoUs, bool porDentro, ui
     if (aberta < 5 || aberta > 60) return false;
     if (ressaltoUs != 0 && (ressaltoUs < 50 || ressaltoUs > 1000)) return false;
     const uint64_t cabe = 1000000ULL / (uint64_t)hz * (uint64_t)aberta / 100;
-    if (ressaltoUs != 0 && cabe < 2 * ENSAIO_RODA_ANTES_DO_RESSALTO_US + (uint64_t)ressaltoUs) return false;
+    if (ressaltoUs != 0 && cabe < ENSAIO_RODA_ANTES_DO_RESSALTO_US + (uint64_t)ressaltoUs + 300) return false;
   }
   if (ensaioRodaRelogio) {
     ensaioRodaLigada = false;
@@ -164,6 +166,8 @@ inline bool ensaioRoda(long hz, long aberta, long ressaltoUs, bool porDentro, ui
     // se o temporizador ia a meio de uma mudança, pode ter-se armado outra vez: para-se de novo
     for (int i = 0; i < 5 && esp_timer_delete(ensaioRodaRelogio) != ESP_OK; i++) esp_timer_stop(ensaioRodaRelogio);
     ensaioRodaRelogio = nullptr;
+    // parou a meio do ressalto: abre já, ou o pino ficava em cima o tempo de contar uma volta que a roda não deu
+    if (ensaioRodaFase == 2) ensaioRodaAbre();
     // uma mudança que já ia a meio ainda pode fechar o pino e contar mais uma volta: espera-se por ela,
     // para o pino ficar mesmo solto e a conta das voltas ser a final
     delay(2);

@@ -27,12 +27,15 @@ test('há uma fase com o contacto a ressaltar ao abrir, e o ressalto cabe na par
   assert.ok(comRessalto.length >= 1, 'falta a fase do ressalto')
   for (const f of comRessalto) {
     assert.ok(Number.isInteger(f.ressalto) && f.ressalto >= 50 && f.ressalto <= 1000, `${f.ressalto} µs de ressalto`)
-    // 300 µs antes do ressalto e outros tantos depois, como a caixa exige (ensaioRoda, em caixa1/ensaio.h)
-    assert.ok((1000000 / f.hz) * f.aberta / 100 >= 600 + f.ressalto, `${f.nome}: o ressalto não cabe na parte aberta`)
-    // devagar que chegue para a regra antiga contar a dobrar: a subida falsa a mais de 4 ms da verdadeira
-    assert.ok((1000 / f.hz) * f.aberta / 100 > 4 + 0.3 + f.ressalto / 1000, `${f.nome}: depressa de mais para o ressalto se ver`)
+    // 1,5 ms antes do ressalto (para o pino já ter descido, pelo condensador) e 0,3 ms depois, como a
+    // caixa exige (ensaioRoda, em caixa1/ensaio.h)
+    assert.ok((1000000 / f.hz) * f.aberta / 100 >= 1800 + f.ressalto, `${f.nome}: o ressalto não cabe na parte aberta`)
     assert.equal(comandoDaFase(f).length, 3)
   }
+  // um ressalto curto, devagar que chegue para a regra antiga contar a dobrar (a subida falsa a mais de
+  // 4 ms da verdadeira), e um comprido, de 1 ms, para se ver a folga dos 2 ms neste chip
+  assert.ok(comRessalto.some(f => f.ressalto <= 200 && (1000 / f.hz) * f.aberta / 100 > 4 + 1.5 + f.ressalto / 1000), 'falta a fase do ressalto curto, devagar')
+  assert.ok(comRessalto.some(f => f.ressalto >= 1000), 'falta a fase do ressalto comprido')
   // as fases sem ressalto continuam a mandar só dois valores: servem com um programa anterior ao 0.3.3
   assert.ok(FASES.filter(f => !f.ressalto).every(f => comandoDaFase(f).length === 2))
 })
@@ -73,6 +76,18 @@ test('impulsos a mais ou a menos dizem-se com a conta feita', () => {
   const menos = contas({ voltas: 400, impulsos: 380, recusados: 0 })
   assert.equal(menos.passa, false)
   assert.match(menos.diagnostico, /faltam 20 impulsos/)
+})
+
+test('numa fase com ressalto, passar pede também que os ressaltos tenham chegado ao pino e sido recusados', () => {
+  const viu = contas({ voltas: 260, impulsos: 260, recusados: 259, ressalto: 150 })
+  assert.equal(viu.passa, true)
+  assert.match(viu.diagnostico, /259 subidas recusadas/)
+  // a contagem certa sem recusadas quer dizer que o ressalto nem se viu: a fase não provou nada
+  const naoViu = contas({ voltas: 260, impulsos: 260, recusados: 0, ressalto: 150 })
+  assert.equal(naoViu.passa, false)
+  assert.match(naoViu.diagnostico, /o ressalto não chegou ao pino/)
+  // com o ressalto a contar como volta, é o dobro, como nas outras fases
+  assert.match(contas({ voltas: 260, impulsos: 520, recusados: 0, ressalto: 150 }).diagnostico, /dobro/)
 })
 
 test('as subidas recusadas mostram-se, mas não entram no veredicto', () => {

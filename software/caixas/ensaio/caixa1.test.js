@@ -244,26 +244,97 @@ test('a roda por dentro, devagar e depressa: o log conta exatamente as voltas qu
 // uma subida. Com a regra antiga (toda a subida a mais de 4 ms da anterior conta), cada volta contava
 // duas vezes, devagar e a meio; depressa, a subida falsa contava e a verdadeira era recusada.
 test('o contacto da roda ressalta ao abrir: o ressalto não conta como volta', COM_PLACA, () => comACaixa(async (p) => {
-  for (const hz of [2, 26, 60]) {
-    const r = await rodaPorDentro(p, hz, 15, 150, 3000)
+  // um ressalto curto, devagar e depressa, e um comprido (1 ms): metade do que a regra pede para contar
+  for (const [hz, ressalto] of [[2, 150], [26, 150], [60, 150], [26, 1000]]) {
+    const r = await rodaPorDentro(p, hz, 15, ressalto, 3000)
     assert.ok(r.voltas >= hz * 2.5, `${r.voltas} voltas em 3 s a ${hz} por segundo`)
-    assert.equal(r.impulsos, r.voltas, `a ${hz} voltas por segundo, com ressalto: ${r.impulsos} impulsos em ${r.voltas} voltas`)
+    assert.equal(r.impulsos, r.voltas, `a ${hz} voltas por segundo, com ressalto de ${ressalto} µs: ${r.impulsos} impulsos em ${r.voltas} voltas`)
     assert.ok(r.recusados >= r.voltas - 1, `a ${hz} voltas por segundo: só ${r.recusados} subidas recusadas em ${r.voltas} ressaltos`)
   }
+  // o ressalto vem 1,5 ms depois de a roda abrir e tem de caber na parte aberta, com 0,3 ms de folga
+  assert.equal(await p.manda('roda', 60, 15, 1000, 1), 'fora-dos-limites')
 }))
 
-test('uma subida que não se aguenta 2 ms em cima não é uma volta: a 400 por segundo, metade do tempo em cima, nada conta', COM_PLACA, () => comACaixa(async (p) => {
+test('uma subida que não se aguenta 2 ms em cima não é uma volta: a 500 por segundo, metade do tempo em cima, nada conta', COM_PLACA, () => comACaixa(async (p) => {
   assert.equal(await p.manda('parar'), 'ok')
   await espera(700)
   const antes = logs(await p.linhas(1200)).at(-1).impulsos
   const recusadosAntes = contadores(await p.manda('estado'))['log-recusados']
-  assert.equal(await p.manda('log', 400), 'ok') // em cima 1,25 ms de cada vez
+  assert.equal(await p.manda('log', 500), 'ok') // em cima 1 ms de cada vez
   await espera(2000)
   assert.equal(await p.manda('parar'), 'ok')
   await espera(700)
   const depois = logs(await p.linhas(1200)).at(-1).impulsos
-  assert.equal(depois, antes, `contaram-se ${depois - antes} voltas em 2 s de subidas que não se aguentam`)
-  assert.ok(contadores(await p.manda('estado'))['log-recusados'] - recusadosAntes >= 700, 'as subidas recusadas não foram contadas')
+  // uma em mil ainda se admite: o temporizador que faz a onda pode atrasar-se 1 ms uma vez por acaso
+  assert.ok(depois - antes <= 1, `contaram-se ${depois - antes} voltas em 2 s de subidas que não se aguentam`)
+  assert.ok(contadores(await p.manda('estado'))['log-recusados'] - recusadosAntes >= 900, 'as subidas recusadas não foram contadas')
+}))
+
+// O comando "tempos" diz como o contacto da roda se portou desde a última vez que se perguntou, em
+// microssegundos: quanto tempo o pino esteve em baixo na última volta (aberta-ult) e na mais curta
+// (aberta-min), contado da descida à subida que ficou; e a subida recusada mais comprida (recusada-max).
+// Mais as voltas do ciclo em que a entrada se calou por ter mudanças a mais (caladas). No barco, com a roda
+// rodada à mão, é o que diz se o condensador da entrada e os 2 ms servem para o contacto verdadeiro.
+test('tempos: a caixa mede quanto tempo a roda esteve aberta em cada volta e a subida recusada mais comprida', COM_PLACA, () => comACaixa(async (p) => {
+  assert.equal(await p.manda('parar'), 'ok')
+  const chaves = ['aberta-ult', 'aberta-min', 'recusada-max', 'caladas']
+  const zero = contadores(await p.manda('tempos')) // o mínimo e o máximo contam-se desde a última pergunta
+  for (const k of chaves) assert.ok(Number.isInteger(zero[k]), `falta ${k} na resposta do comando tempos`)
+  // a 26 voltas por segundo com 15 % da volta aberta, a roda está aberta 5,8 ms em cada volta
+  await rodaPorDentro(p, 26, 15, 0, 2000)
+  let t = contadores(await p.manda('tempos'))
+  assert.ok(Math.abs(t['aberta-ult'] - 5769) <= 400, `aberta ${t['aberta-ult']} µs na última volta`)
+  assert.ok(t['aberta-min'] >= 5369 && t['aberta-min'] <= t['aberta-ult'], `aberta ${t['aberta-min']} µs na volta mais curta`)
+  assert.equal(t['recusada-max'], 0)
+  assert.equal(t.caladas, zero.caladas, 'a entrada calou-se com a roda a andar normalmente')
+  // com um ressalto de 150 µs: a parte aberta conta-se na mesma até à subida que ficou, e o ressalto vê-se
+  await rodaPorDentro(p, 26, 15, 150, 2000)
+  t = contadores(await p.manda('tempos'))
+  assert.ok(Math.abs(t['aberta-ult'] - 5769) <= 400, `aberta ${t['aberta-ult']} µs na última volta, com ressalto`)
+  assert.ok(t['recusada-max'] >= 100 && t['recusada-max'] <= 700, `a subida recusada mais comprida: ${t['recusada-max']} µs`)
+  // perguntar outra vez sem a roda ter andado: o mínimo e o máximo recomeçam
+  t = contadores(await p.manda('tempos'))
+  assert.equal(t['aberta-min'], 0)
+  assert.equal(t['recusada-max'], 0)
+}))
+
+// O ciclo principal pode parar umas dezenas de milissegundos (a escrever para o portátil, por exemplo). A
+// contagem não pode depender dele: a interrupção confirma a subida anterior quando chega a descida seguinte.
+test('o ciclo principal para dezenas de ms com a roda a andar depressa: não se perde nem se inventa volta nenhuma', COM_PLACA, () => comACaixa(async (p) => {
+  assert.equal(await p.manda('parar'), 'ok')
+  await espera(700)
+  const antes = logs(await p.linhas(1200)).at(-1).impulsos
+  assert.equal(await p.manda('roda', 100, 15, 0, 1), 'ok')
+  for (let i = 0; i < 15; i++) {
+    assert.equal(await p.manda('surto', 64, 0, 0, 30), 'ok') // o ciclo fica parado uns 50 ms
+    await espera(120)
+  }
+  const voltas = Number(await p.manda('roda', 0))
+  await espera(700)
+  const impulsos = logs(await p.linhas(1200)).at(-1).impulsos - antes
+  assert.ok(voltas >= 200, `${voltas} voltas`)
+  assert.equal(impulsos, voltas, `${impulsos} impulsos em ${voltas} voltas, com o ciclo a parar 15 vezes`)
+}))
+
+// Ruído rápido no fio com o ciclo principal a parar: a interrupção cala-se ao fim de 16 mudanças e deixa de
+// vigiar o pino. Uma subida que ficasse à espera nessa altura contava sem ninguém ter visto se o pino se
+// aguentou (achado da revisão de 28/11 à regra nova).
+test('ruído rápido na entrada da roda com o ciclo principal a parar: não se conta volta nenhuma', COM_PLACA, () => comACaixa(async (p) => {
+  assert.equal(await p.manda('parar'), 'ok')
+  await espera(700)
+  const antes = logs(await p.linhas(1200)).at(-1).impulsos
+  const caladasAntes = contadores(await p.manda('tempos')).caladas
+  assert.equal(await p.manda('avalanche', 1, 1000), 'ok')
+  for (let i = 0; i < 25; i++) {
+    assert.equal(await p.manda('surto', 64, 0, 0, 30), 'ok')
+    await espera(60)
+  }
+  const caladas = contadores(await p.manda('tempos')).caladas - caladasAntes
+  assert.equal(await p.manda('parar'), 'ok')
+  await espera(700)
+  const depois = logs(await p.linhas(1200)).at(-1).impulsos
+  assert.equal(depois, antes, `contaram-se ${depois - antes} voltas só com ruído no fio`)
+  assert.ok(caladas >= 500, `a entrada só se calou ${caladas} vezes em 3 s de ruído: o contador das caladas não anda`)
 }))
 
 // --- O vento (a frase a fingir sai de uma segunda porta série da placa, para o próprio pino do vento) --
@@ -606,10 +677,10 @@ async function aguentaAAvalanche (p, qual) {
 
 test('avalanche na entrada do log (1 MHz): a caixa continua a dar o batimento, obedece e não recomeça', COM_PLACA, () => comACaixa(async (p) => {
   const { linhas, contados, durante } = await aguentaAAvalanche(p, 1)
-  // a contagem não dispara: no máximo um impulso de 4 em 4 ms
+  // a contagem não mexe: nenhuma destas subidas se aguenta 2 ms em cima
   const l = logs(linhas)
   assert.ok(l.length >= 14, `${l.length} linhas do log em 8 s`)
-  assert.ok(hzDoLog(l) <= 255, `${hzDoLog(l).toFixed(0)} impulsos por segundo contados na avalanche`)
+  assert.equal(l.at(-1).impulsos, l[0].impulsos, `${l.at(-1).impulsos - l[0].impulsos} voltas contadas na avalanche`)
   assert.ok(durante['log-recusados'] - contados['log-recusados'] >= 1000, 'a caixa não contou os flancos a mais que recusou')
   // e a entrada fica como estava: a roda a fingir volta a contar certo
   assert.equal(await p.manda('log', 26), 'ok')

@@ -9,16 +9,19 @@
 // caixa recusa um segundo impulso: é aí que uma subida falsa, na descida lenta do pino, contava a dobrar.
 // Depressa, fica aberta menos de 4 ms, e a subida falsa ficava escondida pela recusa.
 //
-// A última fase junta um ressalto do contacto ao abrir: 300 µs depois de abrir, a roda fecha outra vez
-// durante 150 µs. O condensador da entrada estica esse instante (carrega depressa, descarrega devagar):
-// no pino do log fica uma subida de meio milissegundo, que não é uma volta. Precisa do programa 0.3.3
-// ou mais novo (o comando "roda" com três valores).
+// As duas últimas fases juntam um ressalto do contacto ao abrir: 1,5 ms depois de abrir (com o pino já em
+// baixo), a roda fecha outra vez um instante. O condensador da entrada estica esse instante (carrega
+// depressa, descarrega devagar): o ressalto de 150 µs fica no pino como uma subida de mais de meio
+// milissegundo, e o de 1 ms como uma de milissegundo e meio ou mais, conforme o chip. Nenhuma é uma volta.
+// A do ressalto comprido mostra a folga da regra dos 2 ms neste chip. Precisam do programa 0.3.4 ou mais
+// novo (o comando "roda" com três valores e o ressalto 1,5 ms depois de abrir).
 const FASES = [
   { nome: 'devagar: 2 voltas por segundo', hz: 2, aberta: 15 },
   { nome: '26 voltas por segundo', hz: 26, aberta: 15 },
   { nome: 'depressa: 60 voltas por segundo', hz: 60, aberta: 15 },
   { nome: '26 voltas por segundo, aberta quase metade da volta', hz: 26, aberta: 45 },
-  { nome: '26 voltas por segundo, com o contacto a ressaltar ao abrir', hz: 26, aberta: 15, ressalto: 150 }
+  { nome: '13 voltas por segundo, com o contacto a ressaltar ao abrir', hz: 13, aberta: 15, ressalto: 150 },
+  { nome: '13 voltas por segundo, com um ressalto comprido, de 1 ms', hz: 13, aberta: 15, ressalto: 1000 }
 ]
 
 // Os valores do comando "roda" de uma fase: voltas por segundo, percentagem da volta com a roda aberta
@@ -28,12 +31,17 @@ const comandoDaFase = (f) => (f.ressalto ? [f.hz, f.aberta, f.ressalto] : [f.hz,
 const MINIMO_DE_VOLTAS = 20
 
 // O resultado de uma fase: as voltas que a roda a fingir deu, os impulsos que o contador do log contou
-// nesse tempo e as subidas que ele recusou (a menos de 4 ms da anterior).
-function contas ({ voltas, impulsos, recusados }) {
+// nesse tempo e as subidas que ele recusou (as que não se aguentaram em cima, ou a menos de 4 ms da volta
+// anterior). ressalto: o da fase, em µs, se o tiver: aí, contar certo só prova alguma coisa se os
+// ressaltos chegaram ao pino, e isso vê-se por terem sido recusados (um por volta).
+function contas ({ voltas, impulsos, recusados, ressalto = 0 }) {
   const r = { voltas, impulsos, recusados, passa: false, diagnostico: '' }
   const dasRecusadas = recusados > 0 ? `, ${recusados} subidas recusadas` : ''
   if (voltas < MINIMO_DE_VOLTAS) {
     r.diagnostico = `poucas voltas (${voltas}) para provar alguma coisa: alongar a fase`
+  } else if (impulsos === voltas && ressalto > 0 && recusados < voltas - 1) {
+    r.diagnostico = `contou certo (${voltas} voltas), mas o ressalto não chegou ao pino: só ${recusados} subidas recusadas em ` +
+      `${voltas} ressaltos. A fase não provou nada: ver se o pino chega a descer antes do ressalto`
   } else if (impulsos === voltas) {
     r.passa = true
     r.diagnostico = `passa: ${voltas} voltas, ${impulsos} impulsos${dasRecusadas}`

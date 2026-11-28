@@ -103,6 +103,12 @@ static bool obedece(const char *linha) {
              (unsigned long)ventoMexidas, (unsigned long)ventoBytes, (unsigned long)ventoFrases, (unsigned long)ventoInvalidas,
              (unsigned long)ventoAvalanches, (unsigned long)logRecusados, (unsigned long)aqPerdidas, (unsigned long)aqCortadas);
     responde(nome, texto);
+  } else if (strcmp(nome, "tempos") == 0 && quantos == 0) {
+    // como o contacto da roda se portou desde a última pergunta (log.h): quanto tempo esteve aberta em cada
+    // volta, a subida recusada mais comprida e as vezes que a entrada se calou. Só lê.
+    AQ_TEXTO(texto, "tempos", LOG_TEMPOS_FORMATO);
+    logTempos(texto, sizeof(texto));
+    responde(nome, texto);
   } else if (strcmp(nome, "cru") == 0 && quantos == 0) {
     // as últimas letras que entraram pelo pino do vento, tal e qual (vento.h): para se ver de fora o que o
     // mostrador manda quando a caixa não lhe acha frases. Só lê: não mexe em pino nenhum.
