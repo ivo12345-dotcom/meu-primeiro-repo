@@ -24,6 +24,14 @@ const size_t VENTO_MAX = 82;  // o tamanho máximo de uma frase NMEA 0183
 // (Revisão final de 23/11/2026: com 1 MHz neste pino a caixa deixava de responder.)
 const uint32_t VENTO_RAJADA = 16;
 
+// As últimas letras que entraram pelo pino do vento, tal e qual chegaram, boas ou más. É o que o comando
+// "cru" mostra, para se ver de fora o que o mostrador manda quando a caixa não lhe acha frases: uma frase
+// que não é o MWV (ignora-se sem contar), o MWV sem a soma no fim, ou a velocidade e o sentido trocados.
+// São 80 porque é o que cabe, em hexadecimal, numa linha de 200.
+const size_t VENTO_CRU = 80;
+static uint8_t ventoCru[VENTO_CRU];
+static size_t ventoCruOnde = 0, ventoCruQuantas = 0;  // onde entra a próxima letra, e quantas lá estão
+
 inline uint32_t ventoInvalidas = 0;
 inline uint32_t ventoBytes = 0;      // tudo o que entrou pelo pino do vento, bom ou mau
 inline uint32_t ventoFrases = 0;     // frases MWV boas, mandadas ao portátil
@@ -83,6 +91,25 @@ inline void ventoIniciar() {
   gpio_isr_handler_add((gpio_num_t)PINO_VENTO, ventoMexeu, nullptr);
 }
 
+// O texto do comando "cru": o total de letras entradas desde o arranque (o contador vento-bytes) e as
+// últimas, até VENTO_CRU, em hexadecimal e pela ordem de chegada. Com o total, quem pergunta várias vezes
+// seguidas sabe quantas letras são novas e junta-as sem repetir nem saltar (ensaio/cru.js).
+const size_t VENTO_CRU_TEXTO = sizeof("total=") - 1 + 10 + sizeof(";hex=") - 1 + 2 * VENTO_CRU;
+// a linha inteira é "$AQR," + "cru" + "," + o texto + "*HH"
+static_assert(5 + 3 + 1 + VENTO_CRU_TEXTO + 3 <= AQ_MAX_LINHA, "cru: o texto não cabe numa linha");
+
+inline void ventoCruTexto(char *texto, size_t espaco) {
+  static const char LETRAS[] = "0123456789ABCDEF";
+  size_t n = (size_t)snprintf(texto, espaco, "total=%lu;hex=", (unsigned long)ventoBytes);
+  const size_t primeira = (ventoCruOnde + VENTO_CRU - ventoCruQuantas) % VENTO_CRU;
+  for (size_t i = 0; i < ventoCruQuantas && n + 2 < espaco; i++) {
+    const uint8_t b = ventoCru[(primeira + i) % VENTO_CRU];
+    texto[n++] = LETRAS[b >> 4];
+    texto[n++] = LETRAS[b & 15];
+  }
+  texto[n] = 0;
+}
+
 // Chama-se em todas as voltas do ciclo principal.
 inline void ventoCorre() {
   ventoNaVolta = 0;
@@ -93,6 +120,9 @@ inline void ventoCorre() {
   }
   while (Serial2.available() > 0) {
     const int c = Serial2.read();
+    ventoCru[ventoCruOnde] = (uint8_t)c;
+    ventoCruOnde = (ventoCruOnde + 1) % VENTO_CRU;
+    if (ventoCruQuantas < VENTO_CRU) ventoCruQuantas++;
     ventoBytes++;
     if (c == '\n' || c == '\r') {
       if (!ventoADeitarFora && ventoN > 0) {

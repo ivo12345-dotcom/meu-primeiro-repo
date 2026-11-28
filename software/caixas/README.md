@@ -22,8 +22,9 @@ comandos, os pacotes do rádio) está em `comum/`.
 | Caixa 2: escuta do motor, rádio, motor a fingir | feito e ensaiado com as duas placas ligadas (a escuta do motor verdadeiro só no barco). Desde a 0.3.0, se o rádio não ligar ou perder o destino, volta a tentar sozinho (ver "O rádio da caixa 2 volta a tentar") |
 | Caixa 2: escuta pelo fio, na bancada, com os módulos do barramento | **passou a 26/11**: 6145 tramas saídas, 6145 ouvidas, nenhum erro (rajadas de 1000 a 200 e a 1000 por segundo, e 10 s à cadência do motor). Desfeita a montagem, os ensaios das duas placas passaram todos (40 em 40, `npm test`) |
 | Escuta do motor no barco (`ensaio/ouvir-motor.js`) | escrita e experimentada em casa a 26/11 com o motor a fingir; **a primeira escuta do motor verdadeiro está por fazer** |
+| Escuta do vento no barco (`ensaio/ouvir-vento.js`) | escrita a 28/11, com o comando `cru` da caixa 1 (versão **0.3.2**, que é a que as duas placas têm gravada e não muda mais nada): mostra tal e qual o que entra pelo fio do vento e diz o que é. Experimentada em casa com o mostrador a fingir (fio parado, frases boas, lixo); **a primeira escuta do mostrador verdadeiro está por fazer** |
 | Revisão independente do programa (23/11) | feita; os cinco pontos importantes estão corrigidos na versão **0.2.1**, e os seis pontos que tinham ficado adiados na versão **0.3.0** (28/11). A 0.3.0 traz também o sensor de movimento, a regra da ponte USB e os comandos de bancada novos (`roda`, `surto`, `avaria`) |
-| Revisão final, com olhos novos (28/11) | feita: nenhum ponto crítico e cinco importantes. Quatro estão corrigidos na versão **0.3.1**, que é a que as duas placas têm gravada: o ensaio de resistência já não dá por limpa uma noite com o sensor calado; "calado" passou a ser faltar qualquer das três leituras; o caminho do sensor que não volta tem ensaio na placa (`avaria,3,35`); e o rádio da caixa 1 volta a tentar sozinho. O quinto (a roda do log poder contar a dobrar com a descida lenta) só se prova com a plaquinha soldada: `ensaio/roda-por-fora.js` |
+| Revisão final, com olhos novos (28/11) | feita: nenhum ponto crítico e cinco importantes. Quatro estão corrigidos na versão **0.3.1**: o ensaio de resistência já não dá por limpa uma noite com o sensor calado; "calado" passou a ser faltar qualquer das três leituras; o caminho do sensor que não volta tem ensaio na placa (`avaria,3,35`); e o rádio da caixa 1 volta a tentar sozinho. O quinto (a roda do log poder contar a dobrar com a descida lenta) só se prova com a plaquinha soldada: `ensaio/roda-por-fora.js` |
 | Sensor de movimento verdadeiro (BNO085) | **a medir desde 27/11**, com o sensor novo, pela ligação de 10 ligações (ver "O sensor de movimento"). Ensaios de resistência só com a caixa 1: 3 horas a 27/11 e 6 horas na noite de 28/11, os dois limpos. Falta o ensaio final de 3 horas com as duas caixas e a 0.3.1, e duas provas à mão: a da bússola (rodar o sensor devagar em todos os sentidos; a confiança tem de subir; é também a confirmação independente do lado da proa) e, se se quiser, a de tirar o fio CS com a caixa ligada (o mesmo caminho já tem ensaio sem mexer em fios: `avaria,3,35`) |
 | Entrada do vento | **plaquinha do optoacoplador montada e ensaiada em casa a 27/11: passa** (três fases de 20 s, nenhuma frase estragada). Falta o cabo no barco e a prova com o mostrador verdadeiro |
 | Entrada do log | a roda é um contacto que abre uma vez por volta (medido a 27/11): dispensa o comparador. Ligação por montar, na plaquinha do vento (ver "A fila dos 3,3 V e da massa"): 3,3 V, 1 kΩ, roda; do outro fio da roda, 10 kΩ e 100 nF à massa e 1 kΩ em série até ao D27 |
@@ -205,6 +206,42 @@ pode estar a usar a mesma porta ao mesmo tempo. As contas estão em `ensaio/cens
 placas (`ensaio/censo.test.js`). Experimentado a 26/11 com o motor a fingir da caixa 2: 14 tramas por
 segundo, cinco tipos, 2100 rotações, 82 °C, 14,2 V.
 
+## Escuta do vento no barco
+
+A caixa 1 só deixa passar para o portátil a frase `MWV` inteira e com a soma certa. Tudo o resto deita
+fora: as frases de outro tipo sem as contar, as estragadas a contar em `vento-invalidas`. No barco, se o
+vento não aparecer, isso não chega para saber porquê. A escuta mostra o que entra de facto pelo fio:
+
+```powershell
+node ensaio/ouvir-vento.js COM3 20
+```
+
+Escreve cada linha tal e qual chegou, com o que ela é (vento boa, vento com a soma errada, vento sem
+soma, outra frase, ou "não é uma frase", com o que não é letra à vista em `\xHH`), e no fim o veredicto
+em português corrente:
+
+| O que vê | O que diz |
+|---|---|
+| O fio não mexe | Não chega sinal: o mostrador desligado, o amarelo e o verde trocados, os fios azul e branco, os 3,3 V da plaquinha |
+| O fio mexe e não se forma letra nenhuma | Sinal fraco ou em impulsos curtos de mais: a resistência de entrada, as soldas do optoacoplador |
+| Frases boas e nenhuma estragada | **O vento chega bem** (e a última leitura) |
+| Boas e estragadas | O sinal está no limite: mexer na resistência de entrada (mais ohms se o mostrador mandar 12 V) |
+| A frase do vento sem a soma no fim | O programa da caixa tem de passar a aceitá-las |
+| Frases inteiras de outro tipo (`VWR`, por exemplo) | O programa da caixa tem de passar a lê-las |
+| Letras que não são texto | A velocidade ou o sentido do sinal não são os esperados (4800 por segundo, repouso em baixo do lado do mostrador) |
+
+**Só lê.** Manda à caixa dois comandos, `estado` e `cru`, que não mexem em pino nenhum: não liga
+geradores nem manda `parar`, e pode correr com o mostrador ligado. O ecrã do barco não pode estar a
+usar a mesma porta ao mesmo tempo. O tempo é em segundos (20 se não se disser; de 5 a 600).
+
+A caixa guarda as últimas 80 letras entradas (é o que cabe, em hexadecimal, numa linha de 200) e o
+comando `cru` devolve-as com o total de letras desde o arranque. A escuta pergunta dez vezes por
+segundo e, pelo total, junta só as letras novas de cada resposta: a 4800 por segundo entram no máximo
+48 entre duas perguntas, por isso não se perde nenhuma (se se perder, diz quantas). As contas estão em
+`ensaio/cru.js`, com ensaios sem placas (`ensaio/cru.test.js`), e há um ensaio na placa
+(`ensaio/caixa1.test.js`, "cru: ..."): o mostrador a fingir manda o `MWV` e um `VWR` por segundo, e o
+`VWR`, que a caixa não deixa passar nem conta, tem de aparecer inteiro na escuta.
+
 ## Sinais a fingir (comandos de ensaio)
 
 Cada caixa traz geradores de bancada: sinais feitos por ela própria, que entram pelo caminho
@@ -244,6 +281,7 @@ continua a dar o batimento e as medições sem falhar uma linha.
 | `radio` | 1 | O estado do rádio da caixa 1: `ligado`, `religado` (vezes que teve de ser ligado outra vez), a fila cheia e os pacotes perdidos |
 | `parar` | as duas | Desliga todos os geradores |
 | `estado` | as duas | Os contadores da caixa (o que entrou em cada entrada, o que se perdeu) |
+| `cru` | 1 | As últimas 80 letras que entraram pelo pino do vento, tal e qual chegaram, em hexadecimal, e o total de letras entradas desde o arranque: `total=<n>;hex=<...>`. Só lê, não mexe em pino nenhum. É o que a escuta do vento usa (ver "Escuta do vento no barco") |
 | `sensor` | 1 | O estado e os contadores do sensor: `estado` (0 a medir, 1 a arrancar, 2 calado, 3 não volta), `fase` (até onde chegou o último arranque; 7 é a medir), `toques` no RST, vezes que recomeçou sozinho, leituras deitadas fora ou ilegíveis, gravações das calibrações |
 | `leituras` | 1 | Quantas leituras de cada espécie chegaram do sensor desde o arranque da placa, e o nível do INT |
 | `rst` | 1 | Um toque no RST do sensor, para ensaiar que a caixa o volta a pôr a medir sozinha |

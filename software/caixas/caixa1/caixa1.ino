@@ -101,6 +101,12 @@ static bool obedece(const char *linha) {
              (unsigned long)ventoMexidas, (unsigned long)ventoBytes, (unsigned long)ventoFrases, (unsigned long)ventoInvalidas,
              (unsigned long)ventoAvalanches, (unsigned long)logRecusados, (unsigned long)aqPerdidas, (unsigned long)aqCortadas);
     responde(nome, texto);
+  } else if (strcmp(nome, "cru") == 0 && quantos == 0) {
+    // as últimas letras que entraram pelo pino do vento, tal e qual (vento.h): para se ver de fora o que o
+    // mostrador manda quando a caixa não lhe acha frases. Só lê: não mexe em pino nenhum.
+    char texto[VENTO_CRU_TEXTO + 1];
+    ventoCruTexto(texto, sizeof(texto));
+    responde(nome, texto);
   } else if (strcmp(nome, "rst") == 0 && quantos == 0) {
     sensorToca();  // um toque no RST do sensor: tem de voltar a medir sozinho
     responde(nome, "ok");

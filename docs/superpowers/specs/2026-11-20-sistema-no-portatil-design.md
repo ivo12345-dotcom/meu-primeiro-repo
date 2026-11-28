@@ -723,6 +723,51 @@ pôr o motor a trabalhar e a desligar, e ver se ligamos alguns instrumentos").
 - O Ivo tem um sortido de resistências (50 valores, 1/4 W, com as de 1 kΩ): as resistências em
   série das entradas do log e do vento saem daí.
 
+**28/11, 13:45–14:30: o barco vai para a água na segunda (30/11); o que se instala, o ensaio geral
+em casa e a escuta do vento (versão 0.3.2).**
+
+- **O prazo (Ivo, 13:45):** o barco vai para a água na segunda-feira, 30/11, e faz logo a primeira
+  viagem; a instalação faz-se entre 28 e 29/11. Quer, pelo menos, os dados dos instrumentos
+  gravados. Os relés só chegam na segunda: ligar e desligar o motor pelo ecrã fica de fora (para
+  escutar o motor não fazem falta). Já tem o cabo USB de 5 m.
+- **A ordem combinada**, do mais certo para o menos certo: o AIS e o GPS pelo USB (provados a bordo
+  a 26/11, e a caixa negra gravou nesse dia a posição de 10 em 10 s); a caixa 1 com o sensor, no
+  cubículo; o vento; a roda do log; o motor, por último, por ser o único trabalho que mexe em fios
+  do motor na véspera de o barco ir para a água. A profundidade não entra nesta viagem (a leitura
+  da sonda continua por fazer). Com o barco em seco, a roda do log roda-se à mão por baixo do
+  casco: é a prova de que a caixa conta as voltas uma a uma, e só se pode fazer até segunda.
+- **O ensaio comprido das duas caixas com a 0.3.1**, enquanto o Ivo soldava a plaquinha: das 11:46
+  às 13:53, parado aos 127 minutos para se usarem as placas. 213 392 linhas, nenhuma estragada;
+  76 212 de movimento sem uma em falta; nenhum toque no sensor; nenhum pacote perdido no rádio;
+  maior silêncio 110 ms. A regra nova do "calado" (faltar qualquer das três leituras) não deu
+  nenhum falso alarme em duas horas. Não é o ensaio final: falta a plaquinha ligada.
+- **Ensaio geral em casa, com as duas caixas verdadeiras** (`npm run ensaio-placa`, 13:56): o
+  servidor achou a caixa 1 sozinho, e a tabela da caixa negra ficou com a posição (a fingir), o
+  adornamento e o caimento (do sensor verdadeiro), as rotações e o consumo (do motor a fingir,
+  vindos pelo rádio). **A proa ficou em branco:** a bússola do sensor ainda está sem confiança, e
+  o plugin só publica a proa quando o sensor confia nela (`erroMaxProa`). Fica por fazer a prova
+  da bússola à mão; no barco, a bússola acerta-se com o barco a rodar.
+- **O portátil a trabalhar da bateria adormece ao fim de uma hora sem lhe mexerem** (lido com
+  `powercfg`, sem mudar nada; ligado à corrente, nunca). Numa viagem a gravação parava a meio. É
+  uma definição do Windows, que é o Ivo que muda, como a de fechar a tampa. A firewall já deixa
+  entrar ligações ao programa do servidor (regras lidas, sem mexer): o ecrã no Fold só depende da
+  rede do Fold e do endereço do portátil nela.
+- **A escuta do vento.** A caixa 1 só deixa passar a frase `MWV` com a soma certa e deita fora o
+  resto, as frases de outro tipo sem as contar. Na primeira vez com o mostrador verdadeiro, se o
+  vento não aparecesse, não havia maneira de ver o que ele manda. A versão **0.3.2** dá à caixa 1 o
+  comando `cru` (as últimas 80 letras entradas pelo pino do vento, tal e qual, e o total; só lê),
+  e `ensaio/ouvir-vento.js` mostra-as linha a linha e dá o veredicto em português corrente: fio
+  parado, frases boas, estragadas, sem soma, de outro tipo, ou letras que não são texto. Visto
+  falhar primeiro na placa (a 0.3.1 responde "desconhecido"). Experimentado em casa nas três
+  situações que se conseguem fazer sem mostrador: fio parado, o `MWV` com um `VWR` por segundo, e
+  lixo. Baterias com a 0.3.2: a da caixa 1, 36 ensaios, 35 passam e 1 salta-se; a das duas caixas,
+  12 em 12; tudo de seguida com as duas ligadas, 133 ensaios, 132 passam e 1 salta-se. Os ensaios
+  do portátil passam todos.
+- **Desenho para o barco:** as quatro uniões da caixa 1 (o amarelo e o verde da ficha do mostrador
+  do vento ao azul e ao branco da plaquinha; o fio do meio e a malha do cabo da roda aos dois fios
+  da roda) e a ordem dos passos. Faz-se com as cores dos fios novos quando o Ivo as disser. O do
+  motor já existia (`docs/caixas/caixa2-esquema-barco.jpg`).
+
 **28/11, 10:12–11:35: a revisão final da Tarefa 7 e a versão 0.3.1 nas duas caixas.**
 
 - **A revisão final**, feita por um revisor de contexto novo sobre tudo o que mudou no passo 7 (só

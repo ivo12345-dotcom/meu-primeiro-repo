@@ -278,6 +278,40 @@ test('o gerador do vento liga e desliga sem a leitura morrer, e a caixa conta o 
   assert.equal(depois['vento-invalidas'], antes['vento-invalidas'])
 }))
 
+// O comando "cru" devolve as últimas letras que entraram pelo pino do vento, tal e qual chegaram, e o total
+// de letras entradas: é como se vê de fora o que o mostrador manda quando a caixa não lhe acha frases
+// (ensaio/ouvir-vento.js, para a primeira escuta no barco). Aqui o mostrador a fingir manda o MWV e um VWR
+// por segundo: o VWR, que a caixa não deixa passar nem conta, tem de aparecer na fita, e entre duas
+// respostas não pode faltar letra nenhuma (o anel da caixa dá a volta três vezes durante o ensaio).
+const { juntar, emLinhas } = require('./cru')
+
+test('cru: a caixa mostra tal e qual o que entrou pelo pino do vento, incluindo as frases que não deixa passar', COM_PLACA, () => comACaixa(async (p) => {
+  assert.equal(await p.manda('parar'), 'ok')
+  await espera(300)
+  let fita = juntar(null, await p.manda('cru'))
+  const antes = contadores(await p.manda('estado'))
+  assert.equal(fita.total, antes['vento-bytes'], 'o total do cru não é o contador vento-bytes')
+  assert.equal(await p.manda('vento', 350, 140, 1), 'ok') // o MWV e um $IIVWR por segundo
+  const fim = Date.now() + 3600
+  while (Date.now() < fim) {
+    fita = juntar(fita, await p.manda('cru'))
+    await espera(100)
+  }
+  assert.equal(await p.manda('parar'), 'ok')
+  await espera(300)
+  fita = juntar(fita, await p.manda('cru'))
+  const depois = contadores(await p.manda('estado'))
+  assert.equal(fita.perdidas, 0, 'faltaram letras entre duas respostas')
+  assert.equal(fita.recomecos, 0)
+  assert.equal(fita.bytes.length, depois['vento-bytes'] - antes['vento-bytes'], 'a fita não tem as letras todas que a caixa contou')
+  const { linhas } = emLinhas(fita.bytes)
+  const mwv = linhas.filter(l => l === '$IIMWV,35.0,R,14.0,N,A*3E').length
+  const vwr = linhas.filter(l => l === '$IIVWR,35.0,R,14.0,N,7.2,M,25.9,K*71').length
+  assert.ok(mwv >= 3, `${mwv} frases MWV inteiras na fita: ${JSON.stringify(linhas.slice(0, 4))}`)
+  assert.ok(vwr >= 3, `${vwr} frases VWR inteiras na fita`)
+  assert.equal(linhas.length, mwv + vwr, `há linhas na fita que não são nenhuma das duas: ${JSON.stringify(linhas.filter(l => !/^\$II(MWV|VWR)/.test(l)).slice(0, 3))}`)
+}))
+
 // O mostrador a fingir "por fora": o quarto valor do comando faz a frase sair só pelo pino TX2 e ao
 // contrário (repouso em baixo, como a manda o mostrador NASA), sem a levar por dentro ao pino do vento.
 // Quem a traz ao RX2 é a plaquinha do optoacoplador, e isso ensaia-se com ensaio/plaquinha-vento.js.
